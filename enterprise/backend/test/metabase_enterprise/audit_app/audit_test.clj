@@ -5,16 +5,17 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-app.audit :as ee-audit]
+   [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins :as plugins]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.plugins.core :as plugins]
    [metabase.sync.task.sync-databases :as task.sync-databases]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -75,7 +76,7 @@
         (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
 
     (testing "Audit DB doesn't get re-installed unless the engine changes"
-      (with-redefs [ee-audit/load-analytics-content (constantly nil)]
+      (with-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
@@ -110,16 +111,22 @@
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
-  (with-audit-db-restoration
-    (ee-audit/ensure-audit-db-installed!)
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
+  (mt/with-temp-scheduler!
+    (#'task.sync-databases/job-init)
+    (with-audit-db-restoration
+      (ee-audit/ensure-audit-db-installed!)
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync scheduled after installation")
 
-    (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Cannot sync Database: It is the audit db."
-           (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
+      (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot sync Database: It is the audit db."
+             (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync occured even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -9,14 +10,6 @@ export const SectionWarnings = styled(Warnings)`
   top: 2rem;
   right: 2rem;
   z-index: 2;
-`;
-
-export const ChartSettingsPreview = styled.div`
-  flex: 2 0 0;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--mb-color-border);
-  padding-top: 1.5rem;
 `;
 
 export const ChartSettingsVisualizationContainer = styled.div`

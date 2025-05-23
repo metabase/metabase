@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 interface ErrorMessageRootProps {
@@ -6,5 +7,5 @@ interface ErrorMessageRootProps {
 
 export const ErrorMessageRoot = styled.div<ErrorMessageRootProps>`
   color: var(--mb-color-error);
-  margin-top: ${props => !props.inline && "1rem"};
+  margin-top: ${(props) => !props.inline && "1rem"};
 `;

@@ -45,12 +45,14 @@ type SetupOpts = {
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  withAddButton?: boolean;
 };
 
 function setup({
   query = createQuery(),
   column = findLatitudeColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -62,18 +64,19 @@ function setup({
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,
     { storeInitialState },
   );
 
-  function getNextFilterParts() {
+  const getNextFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
     return Lib.coordinateFilterParts(query, 0, filter);
-  }
+  };
 
-  function getNextFilterColumnNames() {
+  const getNextFilterColumnNames = () => {
     const parts = getNextFilterParts();
     const column = checkNotNull(parts?.column);
     const longitudeColumn = parts?.longitudeColumn;
@@ -83,13 +86,19 @@ function setup({
         ? Lib.displayInfo(query, 0, longitudeColumn).longDisplayName
         : null,
     };
-  }
+  };
+
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
 
   return {
     query,
     column,
     getNextFilterParts,
     getNextFilterColumnNames,
+    getNextFilterChangeOpts,
     onChange,
     onBack,
   };
@@ -122,7 +131,7 @@ describe("CoordinateFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
@@ -130,7 +139,7 @@ describe("CoordinateFilterPicker", () => {
     describe("with one value", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should add a filter with a %s value",
-        async (title, value) => {
+        async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnNames } = setup();
 
           await setOperator("Less than");
@@ -360,13 +369,28 @@ describe("CoordinateFilterPicker", () => {
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it.each([
+      { label: "Apply filter", run: true },
+      { label: "Add another filter", run: false },
+    ])(
+      'should add a filter via the "$label" button when the add button is enabled',
+      async ({ label, run }) => {
+        const { getNextFilterChangeOpts } = setup({ withAddButton: true });
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        await userEvent.type(input, "15");
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        expect(getNextFilterChangeOpts()).toMatchObject({ run });
+      },
+    );
   });
 
   describe("existing filter", () => {
     describe("with one value", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should render a filter with a %s value",
-        (title, value) => {
+        (_title, value) => {
           const opts = createQueryWithCoordinateFilter({
             operator: ">",
             values: [value],
@@ -382,7 +406,7 @@ describe("CoordinateFilterPicker", () => {
 
       it.each(NUMERIC_TEST_CASES)(
         "should update a filter with a %s value",
-        async (title, value) => {
+        async (_title, value) => {
           const opts = createQueryWithCoordinateFilter({
             operator: ">",
             values: [100],
@@ -550,7 +574,7 @@ describe("CoordinateFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });

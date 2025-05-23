@@ -31,7 +31,7 @@ export function RecentModels({
       <Text
         id={skeleton ? undefined : headingId}
         fw="bold"
-        size={16}
+        fz={16}
         color="text-dark"
         mb="lg"
         style={{ visibility: skeleton ? "hidden" : undefined }}
@@ -42,7 +42,7 @@ export function RecentModels({
             <PinnedItemCard skeleton iconForSkeleton="model" />
           </Repeat>
         ) : (
-          models.map(model => (
+          models.map((model) => (
             <PinnedItemCard
               key={`model-${model.id}`}
               item={model}

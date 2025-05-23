@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -319,12 +319,13 @@ function getTitle(title) {
 }
 
 function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
-  const selectedOption = options.find(option => option === isSelected);
-  const regularOptions = options.filter(option => option !== isSelected);
+  const selectedOption = options.find((option) => option === isSelected);
+  const regularOptions = options.filter((option) => option !== isSelected);
 
   // Custom question has two popovers open.
   // The binning options are in the latest (last) one.
   // Using `.last()` works even when only one popover is open so it covers both scenarios.
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {
@@ -332,7 +333,7 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
         cy.findByText("More…").click();
       }
 
-      regularOptions.forEach(option => {
+      regularOptions.forEach((option) => {
         // Implicit assertion - will fail if string is rendered multiple times
         cy.findByText(option);
       });

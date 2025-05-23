@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -12,7 +13,7 @@ interface ParameterFormLabelProps {
 }
 
 export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
-  color: ${props => (props.error ? color("error") : color("text-medium"))};
+  color: ${(props) => (props.error ? color("error") : color("text-medium"))};
   font-size: 0.75rem;
   display: flex;
   gap: ${space(1)};

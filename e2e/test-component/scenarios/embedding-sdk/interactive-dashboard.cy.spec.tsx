@@ -1,28 +1,57 @@
+const { H } = cy;
 import {
   InteractiveDashboard,
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, getTextCardDetails } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { defer } from "metabase/lib/promise";
 import { Stack } from "metabase/ui";
+import type {
+  ConcreteFieldReference,
+  DashboardCard,
+  Parameter,
+} from "metabase-types/api";
 
-describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
+const { ORDERS } = SAMPLE_DATABASE;
+
+const DATE_FILTER: Parameter = {
+  id: "2",
+  name: "Date filter",
+  slug: "filter-date",
+  type: "date/all-options",
+};
+const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  { "base-type": "type/DateTime" },
+];
+
+describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    const textCard = getTextCardDetails({ col: 16, text: "Test text card" });
-    const questionCard = {
+    const textCard = H.getTextCardDetails({ col: 16, text: "Test text card" });
+    const questionCard: Partial<DashboardCard> = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
+      parameter_mappings: [
+        {
+          parameter_id: DATE_FILTER.id,
+          card_id: ORDERS_QUESTION_ID,
+          target: ["dimension", CREATED_AT_FIELD_REF],
+        },
+      ],
       card_id: ORDERS_QUESTION_ID,
       row: 0,
       col: 0,
@@ -30,9 +59,10 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       size_y: 8,
     };
 
-    cy.createDashboard({
+    H.createDashboard({
       name: "Orders in a dashboard",
       dashcards: [questionCard, textCard],
+      parameters: [DATE_FILTER],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
@@ -49,7 +79,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it("should be able to display custom question layout when clicking on dashboard cards", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(
         <InteractiveDashboard
           dashboardId={dashboardId}
@@ -69,6 +99,22 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       cy.findByText("Orders").click();
       cy.contains("Orders").should("be.visible");
       cy.contains("This is a custom question layout.");
+    });
+  });
+
+  it("should show a watermark on dashcards in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findAllByTestId("development-watermark").should("have.length", 1);
     });
   });
 
@@ -101,14 +147,14 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
 
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
         });
 
         getSdkRoot().within(() => {
           cy.findByText("Orders in a dashboard").should("be.visible");
           cy.findByText("Orders").should("be.visible");
-          cy.findByText("Rows 1-6 of first 2000").should("be.visible");
+          H.assertTableRowsCount(2000);
           cy.findByText("Test text card").should("be.visible");
         });
       });
@@ -124,10 +170,84 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText("Rows 1-6 of first 2000").should("not.exist");
+          H.tableInteractiveBody().should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });
     });
+  });
+
+  it('should drill dashboards with filter values and not showing "Question not found" error (EMB-84)', () => {
+    cy.get("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    H.filterWidget().eq(0).click();
+    H.popover().button("Previous 12 months").click();
+
+    const { promise, resolve: resolveCardEndpoint } = defer();
+
+    /**
+     * This seems to be the only reliable way to force the error to stay, and we will resolve
+     * the promise that will cause the error to go away manually after asserting that it's not there.
+     */
+    cy.intercept("get", "/api/card/*", (req) => {
+      return promise.then(() => {
+        req.continue();
+      });
+    }).as("getCard");
+
+    getSdkRoot().within(() => {
+      H.getDashboardCard().findByText("Orders").click();
+      cy.findByText("Question not found")
+        .should("not.exist")
+        .then(() => {
+          resolveCardEndpoint();
+        });
+      cy.findByText("New question").should("be.visible");
+    });
+  });
+
+  it("should only call POST /dataset once when parent component re-renders (EMB-288)", () => {
+    cy.intercept("POST", "/api/dataset").as("datasetQuery");
+
+    const TestComponent = ({ dashboardId }: { dashboardId: string }) => {
+      const [counter, setCounter] = useState(0);
+
+      return (
+        <div>
+          <button onClick={() => setCounter((c) => c + 1)}>
+            Trigger parent re-render ({counter})
+          </button>
+
+          <InteractiveDashboard dashboardId={dashboardId} />
+        </div>
+      );
+    };
+
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<TestComponent dashboardId={dashboardId} />);
+    });
+
+    // Drill down to "See these Orders"
+    cy.wait("@dashcardQuery");
+    cy.get("[data-dataset-index=0] > [data-column-id='PRODUCT_ID']").click();
+
+    H.popover()
+      .findByText(/View this Product/)
+      .click();
+
+    cy.wait("@datasetQuery");
+
+    // Trigger multiple parent re-renders
+    getSdkRoot().within(() => {
+      cy.findByText(/Trigger parent re-render/).click();
+      cy.findByText(/Trigger parent re-render/).click();
+      cy.findByText(/Trigger parent re-render/).click();
+    });
+
+    // Verify no additional dataset queries were made after re-renders
+    cy.wait(500);
+    cy.get("@datasetQuery.all").should("have.length", 1);
   });
 });

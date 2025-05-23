@@ -21,6 +21,6 @@ export const CreatedAtFilter: SearchFilterDropdown<"created_at"> = {
       <SearchFilterDatePicker value={value} onChange={onChange} />
     </Box>
   ),
-  fromUrl: value => value,
-  toUrl: value => value,
+  fromUrl: (value) => value,
+  toUrl: (value) => value,
 };

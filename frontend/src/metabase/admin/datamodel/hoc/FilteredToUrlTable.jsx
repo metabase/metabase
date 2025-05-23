@@ -14,7 +14,7 @@ import { Icon } from "metabase/ui";
 /**
  * @deprecated HOCs are deprecated
  */
-const FilteredToUrlTable = propName => ComposedComponent =>
+const FilteredToUrlTable = (propName) => (ComposedComponent) =>
   connect(null, { push })(
     class FilteredToUrlTable extends Component {
       constructor(props) {
@@ -23,7 +23,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
         this.state = { tableId: table != null ? parseInt(table) : null };
       }
 
-      setTableId = tableId => {
+      setTableId = (tableId) => {
         this.setState({ tableId });
         this.props.push({
           ...this.props.location,
@@ -38,7 +38,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
           [propName]:
             tableId == null
               ? items
-              : items.filter(item => item.table_id === tableId),
+              : items.filter((item) => item.table_id === tableId),
           tableSelector: (
             <TableSelector tableId={tableId} setTableId={this.setTableId} />
           ),
@@ -79,7 +79,7 @@ class TableSelectorInner extends Component {
                 <Icon
                   name={table ? "close" : "chevrondown"}
                   size={12}
-                  onClick={e => {
+                  onClick={(e) => {
                     if (table) {
                       e.stopPropagation();
                       setTableId(null);

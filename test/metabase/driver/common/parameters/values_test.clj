@@ -13,13 +13,13 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -83,7 +83,13 @@
     (is (= "100"
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}])))))
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
+
+  (testing "BigInteger value"
+    (is (= 9223372036854775808
+           (#'params.values/value-for-tag
+            {:name "id", :id test-uuid, :display-name "ID", :type :number}
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
 
 (defn- value-for-tag
   "Call the private function and de-recordize the field"
@@ -401,7 +407,7 @@
                                       []))))
                     (testing "query hits persisted table"
                       (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
-                                                                (public-settings/site-uuid))
+                                                                (system/site-uuid))
                             update-query     (format "update %s.%s set name = name || ' from cached table'"
                                                      persisted-schema (:table_name pi))
                             model-query (format "select c_orig.name, c_cached.name
@@ -462,8 +468,8 @@
                                  (ex-data e)))
                              (take-while some? (iterate ex-cause e)))]
           (testing "should be a card Query error"
-            (is (= true
-                   (boolean (:card-query-error? exc-data)))))
+            (is (true?
+                 (boolean (:card-query-error? exc-data)))))
           (testing "card-id"
             (is (= 1
                    (:card-id exc-data))))
@@ -582,7 +588,7 @@
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                       meta/metadata-provider
-                                      {:cards [(assoc (lib.tu/mock-cards :orders)
+                                      {:cards [(assoc ((lib.tu/mock-cards) :orders)
                                                       :id 1
                                                       :dataset-query (lib.tu.macros/mbql-query orders
                                                                        {:filter      [:between $total 30 60]

@@ -4,12 +4,12 @@ export function createModelIndex({ modelId, pkName, valueName }) {
     ({ body }) => {
       const pkRef = [
         "field",
-        body.fields.find(f => f.name === pkName).id,
+        body.fields.find((f) => f.name === pkName).id,
         null,
       ];
       const valueRef = [
         "field",
-        body.fields.find(f => f.name === valueName).id,
+        body.fields.find((f) => f.name === valueName).id,
         null,
       ];
 
@@ -17,7 +17,7 @@ export function createModelIndex({ modelId, pkName, valueName }) {
         pk_ref: pkRef,
         value_ref: valueRef,
         model_id: modelId,
-      }).then(response => {
+      }).then((response) => {
         expect(response.body.state).to.equal("indexed");
         expect(response.body.id).to.equal(1);
       });

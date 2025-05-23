@@ -1,10 +1,9 @@
-import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ProfileLink } from "metabase/nav/components/ProfileLink";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
@@ -78,7 +77,7 @@ function setupHosted(opts = {}) {
 
 describe("ProfileLink", () => {
   beforeEach(() => {
-    fetchMock.get("path:/api/util/bug_report_details", "mockBugReportDetails");
+    fetchMock.get("path:/api/bug-reporting/details", "mockBugReportDetails");
   });
 
   describe("self-hosted", () => {
@@ -87,7 +86,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      REGULAR_ITEMS.forEach(title => {
+      REGULAR_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
       expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
@@ -98,7 +97,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      ADMIN_ITEMS.forEach(title => {
+      ADMIN_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
     });
@@ -110,7 +109,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      REGULAR_ITEMS.forEach(title => {
+      REGULAR_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
       expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
@@ -121,7 +120,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      HOSTED_ITEMS.forEach(title => {
+      HOSTED_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
     });

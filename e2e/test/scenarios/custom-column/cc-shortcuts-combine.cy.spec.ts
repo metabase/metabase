@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > question > custom column > expression shortcuts > combine", () => {
@@ -36,8 +36,8 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
       cy.button("Done").click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
+      H.CustomExpressionEditor.value().should(
+        "equal",
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(
@@ -60,7 +60,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       cy.findByText("Select columns to combine").click();
     });
 
-    cy.get(".ace_text-input").should("have.value", "\n\n");
+    H.CustomExpressionEditor.value().should("equal", "");
     cy.findByTestId("expression-name").should("have.value", "");
   });
 
@@ -79,6 +79,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       "123.45678901234567 123.45678901234567 email@example.com",
     );
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByLabelText("Remove column").last().click();
 
     cy.findByTestId("combine-example").should(
@@ -147,7 +148,7 @@ H.describeWithSnowplow(
 
       H.expressionEditorWidget().button("Done").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "column_combine_via_shortcut",
         custom_expressions_used: ["concat"],
         database_id: SAMPLE_DB_ID,
@@ -158,16 +159,16 @@ H.describeWithSnowplow(
 );
 
 function selectCombineColumns() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Combine columns").click();
-  });
+  H.popover().findByText("Combine columns").click();
 }
 
 function selectColumn(index: number, table: string, name?: string) {
   H.expressionEditorWidget().within(() => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("column-input").eq(index).click();
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {

@@ -6,7 +6,8 @@ import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./TagEditorParam.module.css";
 
-interface ContainerLabelProps extends BoxProps {
+type BoxPropsWithChildren = BoxProps & { children: React.ReactNode };
+interface ContainerLabelProps extends BoxPropsWithChildren {
   paddingTop?: boolean;
   id?: string | undefined;
 }
@@ -23,7 +24,7 @@ const ContainerLabel = ({
   );
 };
 
-const InputContainer = ({ children, ...props }: BoxProps) => {
+const InputContainer = ({ children, ...props }: BoxPropsWithChildren) => {
   return (
     <Box display="block" component="label" pb="xl" {...props}>
       {children}
@@ -31,7 +32,7 @@ const InputContainer = ({ children, ...props }: BoxProps) => {
   );
 };
 
-const ErrorSpan = ({ children, ...props }: BoxProps) => {
+const ErrorSpan = ({ children, ...props }: BoxPropsWithChildren) => {
   return (
     <Box component="span" className={S.ErrorSpan} {...props}>
       {children}

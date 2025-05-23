@@ -5,7 +5,6 @@ import innerText from "react-innertext";
 import { jt, t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getIsNightMode } from "metabase/dashboard/selectors";
 import { color, lighten } from "metabase/lib/colors";
@@ -14,12 +13,12 @@ import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Box, Flex, Text, Title, useMantineTheme } from "metabase/ui";
+import { Box, Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
-import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -188,11 +187,11 @@ const Separator = ({ inTooltip }) => {
 
   return (
     <Text
-      display="inline-block"
+      d="inline-block"
       mx="0.2rem"
       style={{ transform: "scale(0.7)" }}
       c={separatorColor}
-      span
+      component="span"
     >
       {" • "}
     </Text>
@@ -258,29 +257,31 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
-    const descColor = "var(--mb-color-text-secondary)";
+    const descColor = inTooltip
+      ? "var(--mb-color-tooltip-text-secondary)"
+      : "var(--mb-color-text-secondary)";
 
     if (isEmpty(comparisonDescStr)) {
       return (
-        <Text key={valueStr} c={descColor} span>
+        <Text key={valueStr} c={descColor} component="span">
           {valueStr}
         </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <Text key="value-str" c={descColor} span>
+      <Text key="value-str" c={descColor} component="span">
         {valueStr}
       </Text>
     )}`;
   };
 
-  const detailCandidates = valueCandidates.map(valueStr =>
+  const detailCandidates = valueCandidates.map((valueStr) =>
     getDetailCandidate(valueStr),
   );
   const fullDetailDisplay = detailCandidates[0];
   const fittedDetailDisplay = detailCandidates.find(
-    e =>
+    (e) =>
       measureTextWidth(innerText(e), {
         size: fontSize,
         family: fontFamily,
@@ -313,10 +314,12 @@ function PreviousValueComparison({
       return null;
     }
 
-    const detailColor = "var(--mb-color-text-secondary)";
+    const detailColor = inTooltip
+      ? "var(--mb-color-tooltip-text-secondary)"
+      : "var(--mb-color-text-secondary)";
 
     return (
-      <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>
+      <Title order={5} style={{ whiteSpace: "pre", color: detailColor }}>
         <Separator inTooltip={inTooltip} />
         {children}
       </Title>
@@ -325,9 +328,9 @@ function PreviousValueComparison({
 
   return (
     <Tooltip
-      isEnabled={fullDetailDisplay !== fittedDetailDisplay}
-      placement="bottom"
-      tooltip={
+      disabled={fullDetailDisplay === fittedDetailDisplay}
+      position="bottom"
+      label={
         <Flex align="center">
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
             {display.percentChange}
@@ -360,7 +363,7 @@ function PreviousValueComparison({
 }
 
 Object.assign(SmartScalar, {
-  uiName: t`Trend`,
+  getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,
@@ -370,12 +373,16 @@ Object.assign(SmartScalar, {
 
   settings: {
     ...fieldSetting("scalar.field", {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Data`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Primary number`,
       fieldFilter: isSuitableScalarColumn,
     }),
     "scalar.comparisons": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Data`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
       getValue: (series, vizSettings) => getComparisons(series, vizSettings),
@@ -389,25 +396,32 @@ Object.assign(SmartScalar, {
           maxComparisons: MAX_COMPARISONS,
           comparableColumns: getColumnsForComparison(cols, vizSettings),
           options: getComparisonOptions(series, vizSettings),
+          series,
+          settings: vizSettings,
         };
       },
       readDependencies: ["scalar.field"],
     },
     "scalar.switch_positive_negative": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
       inline: true,
       default: VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
     },
     "scalar.compact_primary_number": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Compact number`,
       widget: "toggle",
       inline: true,
       default: VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
     },
     ...columnSettings({
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,
       getColumns: (
         [
@@ -418,7 +432,7 @@ Object.assign(SmartScalar, {
         settings,
       ) => [
         // try and find a selected field setting
-        cols.find(col => col.name === settings["scalar.field"]) ||
+        cols.find((col) => col.name === settings["scalar.field"]) ||
           // fall back to the second column
           cols[1] ||
           // but if there's only one column use that
@@ -434,18 +448,17 @@ Object.assign(SmartScalar, {
   },
 
   // Smart scalars need to have a breakout
-  checkRenderable(
-    [
-      {
-        data: { insights },
-      },
-    ],
-    settings,
-  ) {
+  checkRenderable([
+    {
+      data: { insights },
+    },
+  ]) {
     if (!insights || insights.length === 0) {
-      throw new NoBreakoutError(
+      throw new ChartSettingsError(
         t`Group only by a time field to see how this has changed over time`,
       );
     }
   },
+
+  hasEmptyState: true,
 });

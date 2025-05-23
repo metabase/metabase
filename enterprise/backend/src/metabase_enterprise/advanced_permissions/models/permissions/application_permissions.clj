@@ -1,10 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions
-  "Code for generating and updating the Application Permission graph. See [[metabase.models.permissions]] for more
+  "Code for generating and updating the Application Permission graph. See [[metabase.permissions.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
-   [metabase.models.application-permissions-revision :as a-perm-revision]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.models.application-permissions-revision :as a-perm-revision]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.path :as permissions.path]
    [metabase.permissions.util :as perms.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -38,7 +39,7 @@
 
 (defn- permission-for-type
   [permissions-set perm-type]
-  (if (perms/set-has-full-permissions? permissions-set (perms/application-perms-path perm-type))
+  (if (perms/set-has-full-permissions? permissions-set (permissions.path/application-perms-path perm-type))
     :yes
     :no))
 
@@ -50,9 +51,9 @@
    :subscription (permission-for-type permission-set :subscription)})
 
 (mu/defn graph :- ApplicationPermissionsGraph
-  "Fetch a graph representing the application permissions status for groups that has at least one application permission enabled.
-  This works just like the function of the same name in `metabase.models.permissions`;
-  see also the documentation for that function."
+  "Fetch a graph representing the application permissions status for groups that has at least one application permission
+  enabled. This works just like the function of the same name in `metabase.permissions.models.permissions`; see also the
+  documentation for that function."
   []
   {:revision (a-perm-revision/latest-id)
    :groups   (into {} (for [[group-id perms] (group-id->permissions-set)]
@@ -73,8 +74,8 @@
 
 (mu/defn update-graph!
   "Update the application Permissions graph.
-  This works just like [[metabase.models.data-permissions.graph/update-data-perms-graph!]], but for Application permissions;
-  refer to that function's extensive documentation to get a sense for how this works."
+  This works just like [[metabase.permissions.models.data-permissions.graph/update-data-perms-graph!]], but for
+  Application permissions; refer to that function's extensive documentation to get a sense for how this works."
   ([new-graph :- ApplicationPermissionsGraph]
    (update-graph! new-graph false))
 

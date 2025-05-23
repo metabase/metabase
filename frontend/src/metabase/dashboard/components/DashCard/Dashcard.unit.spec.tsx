@@ -1,4 +1,15 @@
-import { queryIcon, renderWithProviders, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import {
+  act,
+  getIcon,
+  mockGetBoundingClientRect,
+  queryIcon,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
@@ -23,6 +34,7 @@ const testDashboard = createMockDashboard();
 const tableDashcard = createMockDashboardCard({
   card: createMockCard({
     name: "My Card",
+    description: "This is a table card",
     display: "table",
   }),
 });
@@ -79,8 +91,8 @@ function setup({
       isEditing={false}
       isEditingParameter={false}
       {...props}
-      onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
+      isTrashedOnRemove={false}
       onRemove={jest.fn()}
       markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
@@ -91,6 +103,7 @@ function setup({
       downloadsEnabled
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
+      onEditVisualization={jest.fn()}
     />,
     {
       storeInitialState: {
@@ -108,18 +121,53 @@ function setup({
 }
 
 describe("DashCard", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    setupLastDownloadFormatEndpoints();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("should show a dashcard title", () => {
     setup();
     expect(screen.getByText("My Card")).toBeVisible();
   });
 
+  it("should show card's description in a tooltip", async () => {
+    setup();
+    expect(screen.queryByText("This is a table card")).not.toBeInTheDocument();
+    userEvent.hover(getIcon("info"));
+    expect(await screen.findByText("This is a table card")).toBeVisible();
+  });
+
+  it("should not show the info icon if a card doesn't have description", () => {
+    setup({
+      dashcard: createMockDashboardCard({
+        card: createMockCard({ description: null }),
+      }),
+    });
+    expect(queryIcon("info")).not.toBeInTheDocument();
+  });
+
   it("should show a table card", () => {
     setup();
-    expect(screen.getByText("My Card")).toBeVisible();
-    expect(screen.getByRole("table")).toBeVisible();
-    expect(screen.getByText("NAME")).toBeVisible();
-    expect(screen.getByText("Davy Crocket")).toBeVisible();
-    expect(screen.getByText("Daniel Boone")).toBeVisible();
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    // Scoping to visualization root because there can be other elements with the same text used for column widths measurements
+    const visualizationRoot = screen.getByTestId("visualization-root");
+    expect(within(visualizationRoot).getByText("My Card")).toBeVisible();
+    expect(within(visualizationRoot).getByRole("grid")).toBeVisible();
+    expect(within(visualizationRoot).getByText("NAME")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Davy Crocket")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Daniel Boone")).toBeVisible();
   });
 
   it("should show a text card", () => {
@@ -188,6 +236,11 @@ describe("DashCard", () => {
   });
 
   describe("edit mode", () => {
+    it("should not show the info icon", () => {
+      setup({ isEditing: true });
+      expect(queryIcon("info")).not.toBeInTheDocument();
+    });
+
     it("should show a 'replace card' action", async () => {
       setup({ isEditing: true });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
@@ -196,6 +249,62 @@ describe("DashCard", () => {
     it("should show a 'replace card' action for erroring queries", async () => {
       setup({ isEditing: true, dashcardData: erroringDashcardData });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "bar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(screen.getByLabelText("Edit visualization")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Visualize another way"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Show visualization options"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types not supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "smartscalar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(
+        screen.getByLabelText("Visualize another way"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Show visualization options"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Edit visualization"),
+      ).not.toBeInTheDocument();
     });
 
     it.each([

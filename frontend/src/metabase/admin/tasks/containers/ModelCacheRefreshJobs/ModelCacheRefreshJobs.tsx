@@ -10,7 +10,6 @@ import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import PersistedModels from "metabase/entities/persisted-models";
@@ -18,7 +17,7 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { capitalize } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
@@ -80,14 +79,14 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
       </th>
       <th>{renderStatus()}</th>
       <th>
-        <Tooltip tooltip={<DateTime value={job.refresh_begin} />}>
-          {lastRunAtLabel}
+        <Tooltip label={<DateTime value={job.refresh_begin} />}>
+          <span>{lastRunAtLabel}</span>
         </Tooltip>
       </th>
       <th>{job.creator?.common_name || t`Automatic`}</th>
       <th>
         {checkCanRefreshModelCache(job) && (
-          <Tooltip tooltip={t`Refresh`}>
+          <Tooltip label={t`Refresh`}>
             <IconButtonContainer onClick={onRefresh}>
               <Icon name="refresh" />
             </IconButtonContainer>
@@ -118,7 +117,7 @@ function ModelCacheRefreshJobs({ onRefresh }: Props) {
   const { data: persistedModels, total } = data ?? { data: [], total: 0 };
   const hasPagination = total > PAGE_SIZE;
   const modelCacheInfo = persistedModels.filter(
-    cacheInfo => cacheInfo.state !== "deletable",
+    (cacheInfo) => cacheInfo.state !== "deletable",
   );
 
   if (error || isFetching) {
@@ -156,7 +155,7 @@ function ModelCacheRefreshJobs({ onRefresh }: Props) {
           </tr>
         </thead>
         <tbody>
-          {modelCacheInfo.map(job => (
+          {modelCacheInfo.map((job) => (
             <JobTableItem
               key={job.id}
               job={job}

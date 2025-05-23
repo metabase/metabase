@@ -1,5 +1,5 @@
 import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
+import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Text } from "metabase/ui";
 
 export type SearchFilterDateDisplayProps = {

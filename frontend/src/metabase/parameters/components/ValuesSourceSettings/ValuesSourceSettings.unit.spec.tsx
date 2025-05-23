@@ -61,17 +61,15 @@ describe("ValuesSourceSettings", () => {
       }),
     });
 
-    await userEvent.click(screen.getByRole("radio", { name: "Dropdown list" }));
+    userEvent.click(screen.getByRole("radio", { name: "Dropdown list" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
-    await userEvent.click(screen.getByRole("radio", { name: "Search box" }));
+    userEvent.click(screen.getByRole("radio", { name: "Search box" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
 
     // hovering over the button shows the tooltip"
-    await userEvent.hover(
-      screen.getByTestId("values-source-settings-edit-btn"),
-    );
+    userEvent.hover(screen.getByTestId("values-source-settings-edit-btn"));
     expect(
-      screen.getByText(
+      await screen.findByText(
         "You can’t customize selectable values for this filter because it is linked to another one.",
       ),
     ).toBeInTheDocument();

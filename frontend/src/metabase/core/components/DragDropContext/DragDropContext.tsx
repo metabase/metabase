@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import { withEmotionCache } from "@emotion/react";
 import type { DragDropContextProps } from "react-beautiful-dnd";
 import { DragDropContext as ReactDragDropContext } from "react-beautiful-dnd";

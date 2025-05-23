@@ -127,11 +127,10 @@
 (mu/defn required-native-extras :- set?
   "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
   needed for MongoDB queries."
-  [metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-  (let [db (lib.metadata/database metadata-provider)]
-    (cond-> #{}
-      (get-in db [:features :native-requires-specified-collection])
-      (conj :collection))))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (cond-> #{}
+    (lib.metadata/database-supports? metadata-providerable :native-requires-specified-collection)
+    (conj :collection)))
 
 (mu/defn with-native-extras :- ::lib.schema/query
   "Updates the extras required for the db to run this query.
@@ -175,16 +174,13 @@
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
-  ([query :- ::lib.schema/query
-    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-   (with-different-database query metadata-provider nil))
-  ([query :- ::lib.schema/query
-    metadata-provider :- ::lib.schema.metadata/metadata-providerable
-    native-extras :- [:maybe ::native-extras]]
-   (assert-native-query! (lib.util/query-stage query 0))
-   ;; Changing the database should also clean up template tags, see #31926
-   (-> (lib.query/query-with-stages metadata-provider (:stages query))
-       (with-native-extras native-extras))))
+  [query :- ::lib.schema/query
+   metadata-provider :- ::lib.schema.metadata/metadata-providerable]
+  (assert-native-query! (lib.util/query-stage query 0))
+  (let [stages-without-fields (->> (:stages query)
+                                   (mapv (fn [stage]
+                                           (update stage :template-tags update-vals #(dissoc % :dimension)))))]
+    (lib.query/query-with-stages metadata-provider stages-without-fields)))
 
 (mu/defn native-extras :- [:maybe ::native-extras]
   "Returns the extra keys for native queries associated with this query."
@@ -214,7 +210,7 @@
      (assert-native-query! stage)
      (let [valid-tags (keys existing-tags)]
        (assoc stage :template-tags
-              (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
+              (merge existing-tags (select-keys tags valid-tags)))))))
 
 (mu/defn raw-native-query :- ::common/non-blank-string
   "Returns the native query string"
@@ -250,7 +246,7 @@
 
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
-   This is only filled in by [[metabase.api.database/add-native-perms-info]]
+   This is only filled in by [[metabase.warehouses.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
   (assert-native-query! (lib.util/query-stage query 0))
@@ -261,9 +257,13 @@
   (and
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
-   (not (str/blank? (raw-native-query query)))))
+   (not (str/blank? (raw-native-query query)))
+   (every? #(if (= :dimension (:type %))
+              (:dimension %)
+              true)
+           (vals (template-tags query)))))
 
-(mu/defn engine :- :keyword
+(mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]

@@ -1,6 +1,7 @@
 import { assocIn } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/v1/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
 } from "metabase-lib/v1/queries/NativeQuery";
@@ -19,12 +20,15 @@ const metadata = createMockMetadata({
     createMockDatabase({
       id: MONGO_DB_ID,
       engine: "mongo",
-      features: ["basic-aggregations", "nested-fields", "dynamic-schema"],
+      features: [
+        "basic-aggregations",
+        "nested-fields",
+        "dynamic-schema",
+        "native-requires-specified-collection",
+      ],
     }),
   ],
 });
-
-const sampleDatabase = metadata.database(SAMPLE_DB_ID);
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {
@@ -39,14 +43,14 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
 
 function makeQuery(query, templateTags) {
   return new NativeQuery(
-    sampleDatabase.question(),
+    Question.create({ type: "native", metadata }),
     makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
   );
 }
 
 function makeMongoQuery(query, templateTags) {
   return new NativeQuery(
-    sampleDatabase.question(),
+    Question.create({ type: "native", metadata }),
     makeDatasetQuery(query, templateTags, MONGO_DB_ID),
   );
 }
@@ -128,7 +132,7 @@ describe("NativeQuery", () => {
 
     describe("setCollectionName(newCollection) selects or updates a target table for you mongo native query", () => {
       it("allows you to update mongo collections", () => {
-        const fakeCollectionID = 9999;
+        const fakeCollectionID = "9999";
         const fakeMongoQuery =
           makeMongoQuery("").setCollectionName(fakeCollectionID);
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);
@@ -280,7 +284,7 @@ describe("NativeQuery", () => {
         const q = makeQuery().setQueryText(
           "{{#1}} {{ #2 }} {{ #1-a-card-name }} {{ #1-a-card-name }}",
         );
-        expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
+        expect(q.templateTags().map((v) => v["card-id"])).toEqual([1, 2, 1]);
       });
     });
   });
@@ -332,7 +336,7 @@ describe("NativeQuery", () => {
       );
       const variables = q.variables();
       expect(variables).toHaveLength(1);
-      expect(variables.map(v => v.displayName())).toEqual(["Category"]);
+      expect(variables.map((v) => v.displayName())).toEqual(["Category"]);
     });
 
     it("should not return variable for dimension template tag", () => {
@@ -359,7 +363,7 @@ describe("NativeQuery", () => {
         });
       const dimensions = q.dimensionOptions().dimensions;
       expect(dimensions).toHaveLength(1);
-      expect(dimensions.map(d => d.displayName())).toEqual(["Category"]);
+      expect(dimensions.map((d) => d.displayName())).toEqual(["Category"]);
     });
   });
 

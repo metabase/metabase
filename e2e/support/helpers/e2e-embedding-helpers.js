@@ -22,7 +22,6 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * @typedef {object} PageStyle
  * @property {boolean} [bordered]
  * @property {boolean} [titled]
- * @property {boolean} [hide_download_button] - EE/PRO only feature to disable downloads
  * @property {boolean} [downloads] - EE/PRO only feature to disable downloads
  */
 
@@ -46,7 +45,7 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * });
  */
 export function visitEmbeddedPage(payload, options) {
-  getEmbeddedPageUrl(payload, options).then(urlOptions => {
+  getEmbeddedPageUrl(payload, options).then((urlOptions) => {
     // Always visit embedded page logged out
     cy.signOut();
 
@@ -109,7 +108,7 @@ export function getEmbeddedPageUrl(
     return {
       url: urlRoot,
       qs: { ...setFilters, ...qs },
-      onBeforeLoad: window => {
+      onBeforeLoad: (window) => {
         onBeforeLoad?.(window);
         if (urlHash) {
           window.location.hash = urlHash;
@@ -157,7 +156,7 @@ export function getEmbeddedPageUrl(
  * but make sure user is signed out.
  */
 export function visitIframe() {
-  getIframeUrl().then(iframeUrl => {
+  getIframeUrl().then((iframeUrl) => {
     cy.signOut();
     cy.visit(iframeUrl);
   });
@@ -166,7 +165,7 @@ export function visitIframe() {
 function getIframeUrl() {
   modal().findByText("Preview").click();
 
-  return cy.document().then(doc => {
+  return cy.document().then((doc) => {
     const iframe = doc.querySelector("iframe");
 
     return iframe.src;
@@ -253,7 +252,7 @@ export function publishChanges(apiPath, callback) {
   cy.button(/^(Publish|Publish changes)$/).click();
 
   // TODO this could be simplified when we send one publish request instead of two
-  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
+  cy.wait(["@publishChanges", "@publishChanges"]).then((xhrs) => {
     // Unfortunately, the order of requests is not always the same.
     // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
     const targetXhr = xhrs.find(({ request }) =>
@@ -306,7 +305,7 @@ export function createPublicDashboardLink(dashboardId) {
 /**
  * @param {Object} options
  * @param {string} options.url
- * @param {Object} options.qs
+ * @param {import("metabase-types/store").InteractiveEmbeddingOptions} options.qs
  * @param {Function} [options.onBeforeLoad]
  */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {

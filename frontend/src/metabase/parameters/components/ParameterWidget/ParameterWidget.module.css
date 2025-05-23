@@ -1,0 +1,41 @@
+.ParameterFieldSet {
+  background: var(--mb-color-background);
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--mb-color-border);
+  margin: 0.5em 0;
+  padding: 0.25em 1em;
+  width: 100%;
+
+  &.fieldHasValueOrFocus {
+    border-color: var(--mb-color-brand);
+  }
+
+  legend {
+    text-transform: none;
+    position: relative;
+    height: 2px;
+    line-height: 0;
+    margin-left: -0.45em;
+    padding: 0 0.5em;
+  }
+
+  @media screen and (min-width: 440px) {
+    margin-right: 0.85em;
+    width: auto;
+  }
+}
+
+.ParameterContainer {
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-bg-white);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  margin: 0.25rem 0.5rem 0.25rem 0;
+
+  &.isEditingParameter {
+    border-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+  }
+}

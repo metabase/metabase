@@ -6,6 +6,7 @@ import {
   questionIdArgType,
   questionIds,
 } from "embedding-sdk/test/storybook-id-args";
+import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
@@ -37,8 +38,12 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
-  return <InteractiveQuestion {...args} />;
+const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
+  return (
+    <Box bg="var(--mb-color-background)" mih="100vh">
+      <InteractiveQuestion {...args} />
+    </Box>
+  );
 };
 
 export const Default = {
@@ -47,7 +52,7 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollectionId: undefined,
+    targetCollection: undefined,
     title: true,
     withResetButton: true,
   },
@@ -56,15 +61,28 @@ export const Default = {
 export const EditorOnly = {
   render(args: InteractiveQuestionComponentProps) {
     return (
-      <InteractiveQuestion {...args}>
-        <InteractiveQuestion.Editor />
-      </InteractiveQuestion>
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <InteractiveQuestion {...args}>
+          <InteractiveQuestion.Editor />
+        </InteractiveQuestion>
+      </Box>
     );
   },
 
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollectionId: undefined,
+    targetCollection: undefined,
   },
+};
+
+export const CreateQuestion = {
+  render(args: InteractiveQuestionComponentProps) {
+    return (
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <InteractiveQuestion {...args} />
+      </Box>
+    );
+  },
+  args: { questionId: "new" },
 };

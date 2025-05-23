@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -85,10 +85,10 @@
                                         "ID_2" "TITLE" "VENDOR" "PRICE" "RATING"]
                                  card3 ["ID" "TAX" "TOTAL" "ID_2" "RATING"]}]
             (let [query (mt/mbql-query orders
-                          {:source-table (str "card__" (u/the-id card))})]
-              (let [results (qp/process-query query)]
-                (is (=? fields
-                        (map :name (mt/cols results)))))))
+                          {:source-table (str "card__" (u/the-id card))})
+                  results (qp/process-query query)]
+              (is (=? fields
+                      (map :name (mt/cols results))))))
           (is (= ["Product → Rating" "Sum of Total"]
                  (->> (mt/process-query summary-query)
                       mt/cols
@@ -106,7 +106,7 @@
           ;; running the actual tests
           (try
             (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-              (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true]
+              (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
                 (qp.store/with-metadata-provider mp
                   ;; running these questions after fields have been removed from the database
                   ;; and the change has been detected by syncing
@@ -122,10 +122,10 @@
                                                   "ID_2" "TITLE" "PRICE" "RATING"]
                                            card3 ["ID" "TOTAL" "ID_2" "RATING"]}]
                       (let [query (mt/mbql-query orders
-                                    {:source-table (str "card__" (u/the-id card))})]
-                        (let [results (qp/process-query query)]
-                          (is (=? fields
-                                  (map :name (mt/cols results))))))))
+                                    {:source-table (str "card__" (u/the-id card))})
+                            results (qp/process-query query)]
+                        (is (=? fields
+                                (map :name (mt/cols results)))))))
                   (testing "Active columns can be used"
                     (is (= ["Product → Rating" "Sum of Total"]
                            (->> (mt/run-mbql-query orders

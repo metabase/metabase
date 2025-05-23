@@ -10,7 +10,7 @@ Metabase can persist the results of your models so that your models (and the que
 
 Metabase will store model results in tables in a bespoke schema in your data warehouse (not the Metabase application database). When people ask questions based on your models, Metabase will use the tables with the stored results instead of re-running the model's query.
 
-> Model persistence doesn't work with [data sandboxing](../permissions/data-sandboxes.md).
+> Model persistence doesn't work with [data sandboxing](../permissions/data-sandboxes.md) or [impersonation](../permissions/impersonation.md).
 
 ## Turn on model persistence in Metabase
 
@@ -26,7 +26,7 @@ To turn on model persistence for your Metabase, go to **Admin settings** > **Per
 
 You can set models to refresh based on one of the default frequencies (every 1 hour, 2 hours, etc.), or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own update frequency.
 
-The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud)).
+The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud/)).
 
 We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
 

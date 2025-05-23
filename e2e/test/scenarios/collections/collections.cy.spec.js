@@ -1,14 +1,16 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ALL_USERS_GROUP_ID,
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -28,10 +30,98 @@ describe("scenarios > collection defaults", () => {
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
+  H.describeWithSnowplow("new collection button", () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should show the new collection button in the root collection", () => {
+      cy.intercept("POST", "/api/collection").as("createCollection");
+
+      visitRootCollection();
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .click();
+
+      cy.log("Track the collection initiation from the header");
+      H.expectUnstructuredSnowplowEvent({
+        event: "plus_button_clicked",
+        triggered_from: "collection-header",
+      });
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByLabelText("Name").type("MCL");
+        cy.findByTestId("collection-picker-button").should(
+          "contain",
+          "Our analytics",
+        );
+        cy.button("Create").click();
+        cy.wait("@createCollection");
+      });
+      cy.location("pathname").should("match", /^\/collection\/\d+-mcl/);
+      cy.findByTestId("collection-empty-state").should("be.visible");
+
+      cy.log(
+        "Newly created collection should also have the new collection button",
+      );
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("be.visible");
+
+      cy.log("Track the collection initiation from the main navbar");
+      H.navigationSidebar().findByLabelText("Create a new collection").click();
+      cy.findByTestId("new-collection-modal").should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "plus_button_clicked",
+        triggered_from: "collection-nav",
+      });
+    });
+
+    it("user without curate permissions should only be allowed to create a new collection inside their personal collection scope", () => {
+      cy.intercept("POST", "/api/collection").as("createCollection");
+
+      cy.signIn("readonly");
+      visitRootCollection();
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("not.exist");
+
+      H.visitCollection(READ_ONLY_PERSONAL_COLLECTION_ID);
+
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .click();
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByLabelText("Name").type("sub");
+        cy.findByTestId("collection-picker-button").should(
+          "contain",
+          "Read Only Tableton's Personal Collection",
+        );
+        cy.button("Create").click();
+        cy.wait("@createCollection");
+      });
+      cy.location("pathname").should("match", /^\/collection\/\d+-sub/);
+      cy.findByTestId("collection-empty-state").should("be.visible");
+
+      cy.log(
+        "Newly created personal sub-collection should also have the new collection button",
+      );
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("be.visible");
+    });
+  });
+
   describe("new collection modal", () => {
     it("should be usable on small screens", () => {
       const COLLECTIONS_COUNT = 5;
-      _.times(COLLECTIONS_COUNT, index => {
+      _.times(COLLECTIONS_COUNT, (index) => {
         cy.request("POST", "/api/collection", {
           name: `Collection ${index + 1}`,
           parent_id: null,
@@ -42,14 +132,11 @@ describe("scenarios > collection defaults", () => {
 
       cy.viewport(800, 500);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Collection").click();
-
-      cy.findByTestId("new-collection-modal").then(modal => {
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Test collection",
+          { force: true },
         );
         cy.findByLabelText("Description").type("Test collection description");
         cy.findByTestId("collection-picker-button")
@@ -253,8 +340,8 @@ describe("scenarios > collection defaults", () => {
       cy.intercept(
         "GET",
         "/api/collection/root/items?models=dashboard**",
-        req => {
-          req.on("response", res => {
+        (req) => {
+          req.on("response", (res) => {
             res.send(
               assocIn(res.body, ["data", 0, "last-edit-info"], {
                 id: 1,
@@ -277,8 +364,8 @@ describe("scenarios > collection defaults", () => {
       cy.intercept(
         "GET",
         "/api/collection/root/items?models=dashboard**",
-        req => {
-          req.on("response", res => {
+        (req) => {
+          req.on("response", (res) => {
             res.send(
               assocIn(res.body, ["data", 0, "last-edit-info"], {
                 id: 1,
@@ -300,6 +387,24 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
+  it("should not show you the parent collection in recents or search results", () => {
+    H.visitCollection(THIRD_COLLECTION_ID);
+    H.openCollectionMenu();
+    H.popover().findByText("Move").click();
+    H.entityPickerModal().within(() => {
+      cy.findByRole("button", { name: /First collection / }).should("exist");
+      cy.findByRole("button", { name: /Second collection/ }).should(
+        "not.exist",
+      );
+
+      cy.findByPlaceholderText("Search…").type("coll");
+      cy.findByRole("button", { name: /Robert Tableton/ }).should("exist");
+      cy.findByRole("button", { name: /Second collection/ }).should(
+        "not.exist",
+      );
+    });
+  });
+
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       H.restore();
@@ -307,22 +412,22 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should handle moving a question when you don't have access to entier collection path (metabase#44316", () => {
-      cy.createCollection({
+      H.createCollection({
         name: "Collection A",
       }).then(({ body: collectionA }) => {
-        cy.createCollection({
+        H.createCollection({
           name: "Collection B",
           parent_id: collectionA.id,
         }).then(({ body: collectionB }) => {
-          cy.createCollection({
+          H.createCollection({
             name: "Collection C",
             parent_id: collectionB.id,
           }).then(({ body: collectionC }) => {
-            cy.createCollection({
+            H.createCollection({
               name: "Collection D",
               parent_id: collectionC.id,
             }).then(({ body: collectionD }) => {
-              cy.createCollection({
+              H.createCollection({
                 name: "Collection E",
                 parent_id: collectionD.id,
               }).then(({ body: collectionE }) => {
@@ -379,7 +484,7 @@ describe("scenarios > collection defaults", () => {
         native: { query: "select 1 --[[]]", "template-tags": {} },
       };
 
-      cy.createNativeQuestion(questionDetails);
+      H.createNativeQuestion(questionDetails);
 
       visitRootCollection();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -485,7 +590,7 @@ describe("scenarios > collection defaults", () => {
       const COLLECTION = "14122C";
 
       // Create Parent collection within admin's personal collection
-      cy.createCollection({
+      H.createCollection({
         name: COLLECTION,
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
@@ -510,7 +615,7 @@ describe("scenarios > collection defaults", () => {
       const NEW_COLLECTION = "New collection";
 
       // Create New collection within `Our analytics`
-      cy.createCollection({
+      H.createCollection({
         name: NEW_COLLECTION,
         parent_id: null,
       });
@@ -689,7 +794,7 @@ describe("scenarios > collection defaults", () => {
         });
 
         it("moving collections should disable moving into any of the moving collections", () => {
-          cy.createCollection({ name: "Another collection" });
+          H.createCollection({ name: "Another collection" });
 
           cy.log("moving a single collection");
           cy.visit(`/collection/${SECOND_COLLECTION_ID}`);
@@ -709,7 +814,10 @@ describe("scenarios > collection defaults", () => {
             );
 
             cy.log("moving collection should be visible but disabled");
-            findPickerItem("Second collection").should("have.attr", "disabled");
+            findPickerItem("Second collection").should(
+              "have.attr",
+              "data-disabled",
+            );
             cy.findByText("Cancel").click();
           });
 
@@ -731,7 +839,10 @@ describe("scenarios > collection defaults", () => {
             );
 
             cy.log("moving collection should be visible but disabled");
-            findPickerItem("Third collection").should("have.attr", "disabled");
+            findPickerItem("Third collection").should(
+              "have.attr",
+              "data-disabled",
+            );
             cy.findByText("Cancel").click();
           });
 
@@ -748,10 +859,13 @@ describe("scenarios > collection defaults", () => {
 
           H.entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
-            findPickerItem("First collection").should("have.attr", "disabled");
+            findPickerItem("First collection").should(
+              "have.attr",
+              "data-disabled",
+            );
             findPickerItem("Another collection").should(
               "have.attr",
-              "disabled",
+              "data-disabled",
             );
             findPickerItem("Our analytics").should(
               "have.attr",
@@ -780,7 +894,7 @@ describe("scenarios > collection defaults", () => {
           H.createCollection({ name: "Outer collection 2" });
 
           // modify the inner collection so that it shows up in recents
-          cy.get("@innerCollectionId").then(innerCollectionId => {
+          cy.get("@innerCollectionId").then((innerCollectionId) => {
             cy.request("PUT", `/api/collection/${innerCollectionId}`, {
               name: "Inner collection 1 - modified",
             });
@@ -832,7 +946,7 @@ describe("scenarios > collection defaults", () => {
     it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
-      Cypress._.times(50, i => cy.createDashboard({ name: `Dashboard ${i}` }));
+      Cypress._.times(50, (i) => H.createDashboard({ name: `Dashboard ${i}` }));
 
       cy.visit("/");
       // There is already a collection named "First collection" in the default snapshot
@@ -843,13 +957,9 @@ describe("scenarios > collection defaults", () => {
 
     it("should create new collections within the current collection", () => {
       H.visitCollection(THIRD_COLLECTION_ID);
-      cy.findByTestId("app-bar").findByText("New").click();
+      H.startNewCollectionFromSidebar();
 
-      H.popover().within(() => {
-        cy.findByText("Collection").click();
-      });
-
-      cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByText("Collection it's saved in").should("be.visible");
         cy.findByTestId("collection-picker-button")
           .findByText("Third collection")
@@ -884,6 +994,7 @@ describe("scenarios > collection items listing", () => {
 
   function assertCollectionItemsOrder(testId, names) {
     for (let index = 0; index < names.length; ++index) {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId(testId).eq(index).should("have.text", names[index]);
     }
   }
@@ -894,7 +1005,7 @@ describe("scenarios > collection items listing", () => {
   }
 
   function archiveAll() {
-    cy.request("GET", "/api/collection/root/items").then(response => {
+    cy.request("GET", "/api/collection/root/items").then((response) => {
       response.body.data.forEach(({ model, id }) => {
         if (model !== "collection") {
           cy.request(
@@ -940,11 +1051,11 @@ describe("scenarios > collection items listing", () => {
       // so the test won't fail if we change the default database
       archiveAll();
 
-      _.times(ADDED_DASHBOARDS, i =>
-        cy.createDashboard({ name: `dashboard ${i}` }),
+      _.times(ADDED_DASHBOARDS, (i) =>
+        H.createDashboard({ name: `dashboard ${i}` }),
       );
-      _.times(ADDED_QUESTIONS, i =>
-        cy.createQuestion({
+      _.times(ADDED_QUESTIONS, (i) =>
+        H.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,
         }),
@@ -992,7 +1103,7 @@ describe("scenarios > collection items listing", () => {
 
     it("should allow to sort unpinned items by columns asc and desc", () => {
       ["A", "B", "C"].forEach((letter, i) => {
-        cy.createDashboard({
+        H.createDashboard({
           name: `${letter} Dashboard`,
           collection_position: null,
         });
@@ -1001,7 +1112,7 @@ describe("scenarios > collection items listing", () => {
         // In that way we can test sorting by this column correctly
         cy.signIn("normal");
 
-        cy.createQuestion({
+        H.createQuestion({
           name: `${letter} Question`,
           collection_position: null,
           query: TEST_QUESTION_QUERY,
@@ -1137,9 +1248,9 @@ describe("scenarios > collection items listing", () => {
     });
 
     it("should reset pagination if sorting applied on not first page", () => {
-      _.times(15, i => cy.createDashboard(`dashboard ${i}`));
-      _.times(15, i =>
-        cy.createQuestion({
+      _.times(15, (i) => H.createDashboard(`dashboard ${i}`));
+      _.times(15, (i) =>
+        H.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,
         }),
@@ -1159,6 +1270,29 @@ describe("scenarios > collection items listing", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
     });
+  });
+});
+
+describe("scenarios > collections > entity id support", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("/collection/entity/${entity_id} should redirect to /collection/${id}", () => {
+    cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}`);
+    cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}`);
+
+    // Making sure the collection loads
+    H.main().findByText("First collection").should("be.visible");
+  });
+
+  it("/collection/entity/${entity_id}/move should redirect to /collection/${id}/move", () => {
+    cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}/move`);
+    cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}/move`);
+
+    H.main().findByText("First collection").should("be.visible");
+    H.modal().findByText('Move "First collection"?').should("be.visible");
   });
 });
 
@@ -1204,7 +1338,7 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
     cy.get("@root")
       .next("ul")
       .within(() => {
-        children.forEach(child => {
+        children.forEach((child) => {
           cy.findByText(child);
         });
       });
@@ -1212,7 +1346,7 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
 }
 
 function moveItemToCollection(itemName, collectionName) {
-  cy.request("GET", "/api/collection/root/items").then(resp => {
+  cy.request("GET", "/api/collection/root/items").then((resp) => {
     const ALL_ITEMS = resp.body.data;
 
     const { id, model } = getCollectionItem(ALL_ITEMS, itemName);
@@ -1224,11 +1358,11 @@ function moveItemToCollection(itemName, collectionName) {
   });
 
   function getCollectionItem(collection, itemName) {
-    return collection.find(item => item.name === itemName);
+    return collection.find((item) => item.name === itemName);
   }
 }
 
 // the button element that gets attributes is 2 levels up from the text
 function findPickerItem(name) {
-  return cy.findByText(name).closest("button");
+  return cy.findByText(name).closest("a");
 }

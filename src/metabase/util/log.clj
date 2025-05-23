@@ -8,9 +8,12 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
+   [metabase.util.format :as u.format]
    [metabase.util.log.capture]
-   [net.cgrand.macrovich :as macros]))
+   [net.cgrand.macrovich :as macros])
+  (:import
+   (org.apache.logging.log4j ThreadContext)))
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
@@ -82,8 +85,8 @@
   [level x & more]
   `(do
      ~(config/build-type-case
-        :dev
-        `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
+       :dev
+       `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
      ~(macros/case
         :cljs (glogi-logp (str *ns*) level x more)
         :clj  (tools-logp *ns*       level x more))))
@@ -94,8 +97,8 @@
   [level x & args]
   `(do
      ~(config/build-type-case
-        :dev
-        `(metabase.util.log.capture/capture-logf ~(str *ns*) ~level ~x ~@args))
+       :dev
+       `(metabase.util.log.capture/capture-logf ~(str *ns*) ~level ~x ~@args))
      ~(macros/case
         :cljs (glogi-logf (str *ns*) level x args)
         :clj  (tools-logf *ns*       level x args))))
@@ -207,3 +210,34 @@
   [& body]
   `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
      ~@body))
+
+(defmacro with-context
+  "Executes body with the given context map and message prefix in ThreadContext.
+   The context map's keys and values are added to the ThreadContext individually.
+   Preserves any existing context values and restores them after execution.
+
+   Example usage:
+   (with-context {:notification_id 1}
+     (log/infof \"Hello\"))
+
+   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
+  [context-map & body]
+  (macros/case
+    :clj `(let [ctx-map# ~(update-keys context-map #(str "mb-" (u.format/qualified-name %)))
+                ctx-keys# (keys ctx-map#)
+                ;; Store original values before modifying
+                original-values# (into {}
+                                       (keep (fn [k#]
+                                               (when-let [v# (ThreadContext/get (name k#))]
+                                                 [(name k#) v#])))
+                                       ctx-keys#)]
+            (try
+              (doseq [k# ctx-keys#]
+                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
+              ~@body
+              (finally
+                (doseq [k# ctx-keys#]
+                  (if-let [original# (find original-values# (name k#))]
+                    (ThreadContext/put (name k#) (val original#))
+                    (ThreadContext/remove (name k#)))))))
+    :cljs ~@body))

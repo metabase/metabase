@@ -4,9 +4,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.public-settings :as public-settings]
+   [metabase.appearance.core :as appearance]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.filters :as filters]
@@ -27,28 +26,20 @@
   "Default card height"
   6)
 
-(defn create-collection!
-  "Create and return a new collection."
-  [title description parent-collection-id]
-  (first (t2/insert-returning-instances!
-          'Collection
-          (merge
-           {:name        title
-            :description description}
-           (when parent-collection-id
-             {:location (collection/children-location (t2/select-one ['Collection :location :id]
-                                                                     :id parent-collection-id))})))))
-
-(defn get-or-create-root-container-collection
-  "Get or create container collection for automagic dashboards in the root collection."
-  []
-  (or (t2/select-one 'Collection
-                     :name     "Automatically Generated Dashboards"
-                     :location "/")
-      (create-collection! "Automatically Generated Dashboards" nil nil)))
+(defn get-or-create-container-collection
+  "Get or create container collection for automagic dashboards in a given location."
+  [location]
+  (or (t2/select-one :model/Collection
+                     :name "Automatically Generated Dashboards"
+                     :archived false
+                     :location location)
+      (t2/insert-returning-instance!
+       :model/Collection
+       {:name "Automatically Generated Dashboards"
+        :location location})))
 
 (defn colors
-  "A vector of colors used for coloring charts. Uses [[public-settings/application-colors]] for user choices."
+  "A vector of colors used for coloring charts. Uses [[appearance/application-colors]] for user choices."
   []
   (let [order [:brand :accent1 :accent2 :accent3 :accent4 :accent5 :accent6 :accent7]
         colors-map (merge {:brand   "#509EE3"
@@ -59,7 +50,7 @@
                            :accent5 "#F2A86F"
                            :accent6 "#98D9D9"
                            :accent7 "#7172AD"}
-                          (public-settings/application-colors))]
+                          (appearance/application-colors))]
     (into [] (map colors-map) order)))
 
 (defn- ensure-distinct-colors
@@ -148,7 +139,7 @@
                   :collection_id nil
                   :id            (or id (gensym))}
                  (merge (visualization-settings card))
-                 card/populate-query-fields)]
+                 queries/populate-card-query-fields)]
     (update dashboard :dashcards conj
             (merge (card-defaults)
                    {:col                    y
@@ -327,7 +318,7 @@
                                                      (fn [dashcard card]
                                                        (m/assoc-some dashcard :card card))
                                                      dashcards
-                                                     (card/with-can-run-adhoc-query cards)))))]
+                                                     (queries/with-can-run-adhoc-query cards)))))]
 
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)

@@ -45,7 +45,7 @@ There are two types of actions:
 
 There are multiple ways to run actions:
 
-- [From the model details page](../data-modeling/models.md#model-detail-page) by clicking the **run** button.
+- [From the model details page](../data-modeling/models.md#model-details) by clicking the **run** button.
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../dashboards/actions.md).
 

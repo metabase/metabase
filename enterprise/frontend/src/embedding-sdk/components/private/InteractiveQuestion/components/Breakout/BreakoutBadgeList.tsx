@@ -5,26 +5,26 @@ import {
   useBreakoutData,
 } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout/use-breakout-data";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
-import type { QuestionStateParams } from "embedding-sdk/types/question";
 
 import { BadgeList } from "../util/BadgeList";
 
 export const BreakoutBadgeListInner = ({
-  question,
-  updateQuestion,
   onSelectItem,
   onAddItem,
   onRemoveItem,
-}: QuestionStateParams & {
+}: {
   onSelectItem: (item: SDKBreakoutItem, index: number) => void;
   onAddItem: (item: SDKBreakoutItem | undefined) => void;
   onRemoveItem: (item: SDKBreakoutItem, index: number) => void;
 }) => {
-  const breakoutItems = useBreakoutData({ question, updateQuestion });
+  const breakoutItems = useBreakoutData();
 
   return (
     <BadgeList
-      items={breakoutItems.map(item => ({ item, name: item.longDisplayName }))}
+      items={breakoutItems.map((item) => ({
+        item,
+        name: item.longDisplayName,
+      }))}
       addButtonLabel={t`Add another grouping`}
       onSelectItem={onSelectItem}
       onAddItem={onAddItem}
@@ -42,7 +42,7 @@ export const BreakoutBadgeList = ({
   onAddItem: (item: SDKBreakoutItem | undefined) => void;
   onRemoveItem: (item: SDKBreakoutItem, index: number) => void;
 }) => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question } = useInteractiveQuestionContext();
 
   if (!question) {
     return null;
@@ -50,8 +50,6 @@ export const BreakoutBadgeList = ({
 
   return (
     <BreakoutBadgeListInner
-      question={question}
-      updateQuestion={updateQuestion}
       onSelectItem={onSelectItem}
       onAddItem={onAddItem}
       onRemoveItem={onRemoveItem}

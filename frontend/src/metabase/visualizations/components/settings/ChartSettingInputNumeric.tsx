@@ -1,5 +1,6 @@
-import { type ChangeEvent, useState } from "react";
-import _ from "underscore";
+import debounce from "lodash.debounce";
+import { type ChangeEvent, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
 
@@ -23,7 +24,8 @@ const ALLOWED_CHARS = new Set([
 
 // Note: there are more props than these that are provided by the viz settings
 // code, we just don't have types for them here.
-interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
+interface ChartSettingInputProps
+  extends Omit<ChartSettingWidgetProps<number>, "onChangeSettings"> {
   options?: {
     isInteger?: boolean;
     isNonNegative?: boolean;
@@ -31,6 +33,7 @@ interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
   id?: string;
   placeholder?: string;
   getDefault?: () => string;
+  className?: string;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -40,9 +43,32 @@ export const ChartSettingInputNumeric = ({
   options,
   id,
   getDefault,
+  className,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
+
+  const handleChangeRef = useLatest((e: ChangeEvent<HTMLInputElement>) => {
+    let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
+    if (options?.isInteger) {
+      num = Math.round(num);
+    }
+    if (options?.isNonNegative && num < 0) {
+      num *= -1;
+    }
+
+    if (isNaN(num)) {
+      onChange(undefined);
+    } else {
+      onChange(num);
+      setInputValue(String(num));
+    }
+  });
+  const handleChangeDebounced = useMemo(() => {
+    return debounce((e: ChangeEvent<HTMLInputElement>) => {
+      handleChangeRef.current(e);
+    }, 400);
+  }, [handleChangeRef]);
 
   return (
     <TextInput
@@ -53,26 +79,12 @@ export const ChartSettingInputNumeric = ({
       error={inputValue && isNaN(Number(inputValue))}
       value={String(inputValue)}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value.split("").every(ch => ALLOWED_CHARS.has(ch))) {
+        if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
           setInputValue(e.target.value);
+          handleChangeDebounced(e);
         }
       }}
-      onBlur={e => {
-        let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
-        if (options?.isInteger) {
-          num = Math.round(num);
-        }
-        if (options?.isNonNegative && num < 0) {
-          num *= -1;
-        }
-
-        if (isNaN(num)) {
-          onChange(undefined);
-        } else {
-          onChange(num);
-          setInputValue(String(num));
-        }
-      }}
+      className={className}
     />
   );
 };

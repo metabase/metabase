@@ -9,22 +9,25 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SwagButton } from "metabase/admin/settings/components/Swag/SwagButton";
-import { UpsellSSO } from "metabase/admin/upsells";
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
+import { useGetSettingQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import SaveStatus from "metabase/components/SaveStatus";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { Box } from "metabase/ui";
+import { newVersionAvailable } from "metabase/lib/utils";
+import { Box, Group } from "metabase/ui";
 
 import {
   getActiveSection,
   getActiveSectionName,
+  getCurrentVersion,
   getDerivedSettingValues,
-  getNewVersionAvailable,
   getSections,
   getSettingValues,
   getSettings,
@@ -46,11 +49,10 @@ const mapStateToProps = (state, props) => {
     sections: getSections(state, props),
     activeSection: getActiveSection(state, props),
     activeSectionName: getActiveSectionName(state, props),
-    newVersionAvailable: getNewVersionAvailable(state, props),
   };
 };
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   ...bindActionCreators(
     {
       initializeSettings,
@@ -61,6 +63,18 @@ const mapDispatchToProps = dispatch => ({
   ),
   dispatch,
 });
+
+const NewVersionIndicatorWrapper = () => {
+  const { data: versionInfo } = useGetSettingQuery("version-info");
+  const currentVersion = useSelector(getCurrentVersion);
+  const updateChannel = useSetting("update-channel") ?? "latest";
+  const latestVersion = versionInfo?.[updateChannel]?.version;
+
+  if (newVersionAvailable({ currentVersion, latestVersion })) {
+    return <NewVersionIndicator>1</NewVersionIndicator>;
+  }
+  return null;
+};
 
 class SettingsEditor extends Component {
   layout = null; // the reference to AdminLayout
@@ -201,7 +215,7 @@ class SettingsEditor extends Component {
   }
 
   renderSettingsSections() {
-    const { sections, activeSectionName, newVersionAvailable } = this.props;
+    const { sections, activeSectionName } = this.props;
 
     const renderedSections = Object.entries(sections).map(
       ([slug, section], idx) => {
@@ -228,12 +242,10 @@ class SettingsEditor extends Component {
 
         // if this is the Updates section && there is a new version then lets add a little indicator
         const shouldDisplayNewVersionIndicator =
-          slug === "updates" &&
-          newVersionAvailable &&
-          !MetabaseSettings.isHosted();
+          slug === "updates" && !MetabaseSettings.isHosted();
 
         const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
-          <NewVersionIndicator>1</NewVersionIndicator>
+          <NewVersionIndicatorWrapper />
         ) : null;
 
         return (
@@ -243,7 +255,10 @@ class SettingsEditor extends Component {
               to={"/admin/settings/" + slug}
               className={classes}
             >
-              <span>{section.name}</span>
+              <Group gap="xs">
+                <span>{section.name}</span>
+                {section?.isUpsell && <UpsellGem />}
+              </Group>
               {newVersionIndicator}
             </Link>
           </li>
@@ -261,25 +276,9 @@ class SettingsEditor extends Component {
     );
   }
 
-  renderUpsell() {
-    const upsell =
-      this.props.activeSectionName === "authentication" ? (
-        <UpsellSSO source="authentication-sidebar" />
-      ) : null;
-
-    if (!upsell) {
-      return null;
-    }
-
-    return <Box style={{ flexShrink: 0 }}>{upsell}</Box>;
-  }
-
   render() {
     return (
-      <AdminLayout
-        sidebar={this.renderSettingsSections()}
-        upsell={this.renderUpsell()}
-      >
+      <AdminLayout sidebar={this.renderSettingsSections()}>
         <Box w="100%">
           <SaveStatus ref={this.saveStatusRef} />
           <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>

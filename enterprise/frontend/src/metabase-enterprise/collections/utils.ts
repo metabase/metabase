@@ -76,14 +76,14 @@ export const filterOutItemsFromInstanceAnalytics = <
   /** Cache of ids of instance analytics collections */
   const cache = new Set<CollectionId>();
 
-  return items.filter(item => {
+  return items.filter((item) => {
     if (cache.has(item.collection.id)) {
       return false;
     }
     const ancestors = item.collection.effective_ancestors || [];
     const path = [item.collection, ...ancestors];
     if (path.some(isInstanceAnalyticsCollection)) {
-      path.map(c => c.id).forEach(id => cache.add(id));
+      path.map((c) => c.id).forEach((id) => cache.add(id));
       return false;
     }
     return true;

@@ -1,5 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-
+import { fireEvent, render, screen } from "__support__/ui";
 import { Tree } from "metabase/components/tree";
 
 const data = [
@@ -23,10 +22,6 @@ const data = [
 ];
 
 describe("Tree", () => {
-  beforeAll(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
   it("should render collapsed items when selectedId is not specified", () => {
     render(<Tree data={data} onSelect={jest.fn()} />);
     expect(screen.getAllByRole("menuitem")).toHaveLength(2);

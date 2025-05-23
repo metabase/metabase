@@ -1,7 +1,7 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
-import { renderToString } from "react-dom/server";
 import { t } from "ttag";
 
+import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import {
   EChartsTooltip,
@@ -35,10 +35,10 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
   let footer = undefined;
 
   if (params.dataType === "node") {
-    node = chartModel.data.nodes.find(node => node.rawName === data.rawName)!;
+    node = chartModel.data.nodes.find((node) => node.rawName === data.rawName)!;
     header = formatters.node(node);
   } else if (params.dataType === "edge") {
-    node = chartModel.data.nodes.find(node => node.rawName === data.source)!;
+    node = chartModel.data.nodes.find((node) => node.rawName === data.source)!;
     header = `${formatters.source(data.source)} → ${formatters.target(data.target)}`;
   }
 
@@ -53,7 +53,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
   );
   const formattedNodeValue = formatters.value(nodeValue);
 
-  rows = Array.from(node.outputLinkByTarget.values()).map(link => {
+  rows = Array.from(node.outputLinkByTarget.values()).map((link) => {
     const color = chartModel.nodeColors[String(link.targetNode.rawName)];
     const isFocused = params.dataType === "edge" && data.target === link.target;
     return {
@@ -96,12 +96,12 @@ export const getTooltipOption = (
     ...getTooltipBaseOption(containerRef),
     trigger: "item",
     triggerOn: "mousemove",
-    formatter: params => {
+    formatter: (params) => {
       if (Array.isArray(params)) {
         return "";
       }
 
-      return renderToString(
+      return reactNodeToHtmlString(
         <ChartItemTooltip params={params} chartModel={chartModel} />,
       );
     },

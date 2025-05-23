@@ -1,7 +1,7 @@
 import { Card, Flex, Text } from "metabase/ui";
 
 export default {
-  title: "Design System/colors",
+  title: "Design System/Colors",
 };
 
 const COLOR_NAMES = [
@@ -30,6 +30,7 @@ const COLOR_NAMES = [
   "--mb-color-warning",
   "--mb-color-text-primary",
   "--mb-color-text-secondary",
+  "--mb-color-text-secondary-inverse",
   "--mb-color-text-tertiary",
   "--mb-color-text-selected",
   "--mb-color-text-brand",
@@ -51,7 +52,7 @@ const COLOR_NAMES = [
 export function Default() {
   return (
     <Flex gap="md" wrap="wrap">
-      {COLOR_NAMES.map(colorName => {
+      {COLOR_NAMES.map((colorName) => {
         return (
           <Card
             bg={`var(${colorName})`}

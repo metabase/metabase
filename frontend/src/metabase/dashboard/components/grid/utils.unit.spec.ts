@@ -70,7 +70,7 @@ describe("generateMobileLayout", () => {
         "table",
         "area",
       ];
-      types.forEach(type => {
+      types.forEach((type) => {
         const result = generateMobileLayout([
           createMockDashcardLayout(10, type),
         ]);
@@ -92,15 +92,18 @@ describe("generateMobileLayout", () => {
       expect(result[2].y).toBe(5); // after action + scalar
     });
 
-    it("should set width=1 and x=0 for all cards", () => {
+    it("should set width=1, minWidth=1, and x=0 for all cards", () => {
       const result = generateMobileLayout([
         createMockDashcardLayout(10, "bar"),
         createMockDashcardLayout(10, "scalar"),
       ]);
 
-      result.forEach(layout => {
+      result.forEach((layout) => {
         expect(layout.w).toBe(1);
         expect(layout.x).toBe(0);
+
+        // minWidth must be >= width, otherwise GridLayout throws a prop type validation error
+        expect(layout.minW).toBe(1);
       });
     });
   });

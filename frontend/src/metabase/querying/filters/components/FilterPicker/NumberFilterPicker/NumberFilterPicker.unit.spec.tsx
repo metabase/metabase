@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { columnFinder } from "metabase-lib/test-helpers";
 
 import {
   createQuery,
@@ -45,12 +46,14 @@ type SetupOpts = {
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  withAddButton?: boolean;
 };
 
 function setup({
   query = createQuery(),
   column = findNumericColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -62,28 +65,35 @@ function setup({
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,
     { storeInitialState },
   );
 
-  function getNextFilterParts() {
+  const getNextFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
     return Lib.numberFilterParts(query, 0, filter);
-  }
+  };
 
-  function getNextFilterColumnName() {
+  const getNextFilterColumnName = () => {
     const parts = getNextFilterParts();
     const column = checkNotNull(parts?.column);
     return Lib.displayInfo(query, 0, column).longDisplayName;
-  }
+  };
+
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
 
   return {
     query,
     column,
     getNextFilterParts,
     getNextFilterColumnName,
+    getNextFilterChangeOpts,
     onChange,
     onBack,
   };
@@ -116,7 +126,7 @@ describe("NumberFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
@@ -124,7 +134,7 @@ describe("NumberFilterPicker", () => {
     describe("with one value", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should add a filter with a %s value",
-        async (title, value) => {
+        async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnName } = setup();
 
           await setOperator("Greater than");
@@ -161,6 +171,27 @@ describe("NumberFilterPicker", () => {
           values: [15],
         });
         expect(getNextFilterColumnName()).toBe("Total");
+      });
+
+      it("should add a filter with a big integer value", async () => {
+        const query = createQuery();
+        const columns = Lib.filterableColumns(query, -1);
+        const findColumn = columnFinder(query, columns);
+        const column = findColumn("ORDERS", "ID");
+        const { onChange, getNextFilterParts, getNextFilterColumnName } = setup(
+          { query, column },
+        );
+
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        await userEvent.type(input, "9007199254740993{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
+          operator: ">",
+          column: expect.anything(),
+          values: [9007199254740993n],
+        });
+        expect(getNextFilterColumnName()).toBe("ID");
       });
     });
 
@@ -290,13 +321,28 @@ describe("NumberFilterPicker", () => {
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it.each([
+      { label: "Apply filter", run: true },
+      { label: "Add another filter", run: false },
+    ])(
+      'should add a filter via the "$label" button when the add button is enabled',
+      async ({ label, run }) => {
+        const { getNextFilterChangeOpts } = setup({ withAddButton: true });
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        await userEvent.type(input, "15");
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        expect(getNextFilterChangeOpts()).toMatchObject({ run });
+      },
+    );
   });
 
   describe("existing filter", () => {
     describe("with one value", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should render a filter with a %s value",
-        (title, value) => {
+        (_title, value) => {
           setup(
             createQueryWithNumberFilter({
               operator: ">",
@@ -313,7 +359,7 @@ describe("NumberFilterPicker", () => {
 
       it.each(NUMERIC_TEST_CASES)(
         "should update a filter with a %s value",
-        async (title, value) => {
+        async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnName } = setup(
             createQueryWithNumberFilter({
               operator: ">",
@@ -452,7 +498,7 @@ describe("NumberFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });

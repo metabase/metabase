@@ -1,6 +1,5 @@
-import type { MenuItemProps } from "@mantine/core";
+import type { MenuItemProps, PolymorphicComponentProps } from "@mantine/core";
 import { Menu } from "@mantine/core";
-import type { PolymorphicComponentProps } from "@mantine/utils";
 import type { MouseEvent, TouchEvent } from "react";
 
 // hack to prevent parent Popover from closing when selecting a Menu.Item

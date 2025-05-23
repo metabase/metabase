@@ -7,9 +7,9 @@ redirect_from:
 
 # Interactive embedding
 
-{% include plans-blockquote.html feature="Interactive embedding" %}
+{% include plans-blockquote.html feature="Interactive embedding" convert_pro_link_to_embbedding=true %}
 
-{% include shared/in-page-promo.html %}
+{% include shared/in-page-promo-embedding-workshop.html %}
 
 **Interactive embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
@@ -61,19 +61,39 @@ Once you're ready to roll out your interactive embed, make sure that people **al
 
 ### Pointing an iframe to a Metabase URL
 
-Go to your Metabase instance and find the page that you want to embed.
+Go to your Metabase and find the page that you want to embed.
 
 For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url), such as:
 
 ```
-http://metabase.yourcompany.com/
+src="http://metabase.yourcompany.com/"
 ```
 
-To embed a specific Metabase dashboard, use the dashboard's URL, such as:
+To embed a specific Metabase dashboard, you'll want to use the dashboard's Entity ID URL `/dashboard/entity/[Entity ID]`.
 
 ```
-http://metabase.yourcompany.com/dashboard/1
+src="http://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
 ```
+
+To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**.  Then in your iframe's `src` attribute to:
+
+```
+src=http://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b
+```
+
+If your dashboard has more than one tab, select the tab you want people to land on and copy the Tab's ID. Add the tab's ID to the URL:
+
+```
+src=http://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b?tab=YLNdEYtzuSMA0lqO7u3FD
+```
+
+You _can_ use a dashboard's sequential ID, but you should prefer the Entity ID, as Entity IDs are stable across different Metabase environments (e.g., if you're testing on a staging environment, the Entity IDs will remain the same when [exporting the data and importing it](../installation-and-operation/serialization.md) into a production environment).
+
+If you want to point to a question, collection, or model, visit the item, click on its info, grab the item's Entity ID and follow the url structure: `/[Item type]/entity/[Entity-Id]`. Examples:
+
+- `/collection/entity/[Entity ID]`
+- `/model/entity/[Entity ID]`
+- `/question/entity/[Entity ID]`
 
 ### Pointing an iframe to an authentication endpoint
 
@@ -212,130 +232,7 @@ Additionally, each person within a single customer account could also be a membe
 
 ## Showing or hiding Metabase UI components
 
-To change the interface of your interactive embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
-
-For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
-
-```
-your_embedding_url?top_nav=false&side_nav=false
-```
-
-![Top nav and side nav disabled](./images/no-top-no-side.png)
-
-Options include:
-
-- [Action buttons](#action_buttons)
-- [Additional info](#additional_info)
-- [Breadcrumbs](#breadcrumbs)
-- [Header](#header)
-- [Locale](#locale)
-- [Logo](#logo)
-- [New button](#new_button)
-- [Search](#search)
-- [Side nav](#side_nav)
-- [Top nav](#top_nav)
-
-### `action_buttons`
-
-Visible by default on question pages when the [header](#header) is enabled.
-
-To hide the action buttons such as **Filter**, **Summarize**, the query builder button, and so on:
-
-```
-header=false&action_buttons=false
-```
-
-![Action buttons](./images/action-buttons.png)
-
-### `additional_info`
-
-Visible by default on question and dashboard pages, when the [header](#header) is enabled.
-
-To hide the gray text "Edited X days ago by FirstName LastName", as well as the breadcrumbs with collection, database, and table names:
-
-`header=false&additional_info=false`
-
-![Additional info](./images/additional-info.png)
-
-### `breadcrumbs`
-
-Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). To hide the breadcrumbs:
-
-```
-breadcrumbs=false
-```
-
-### `header`
-
-Visible by default on question and dashboard pages.
-
-To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
-
-`header=false`
-
-### `locale`
-
-You can change the language of the user interface via a parameter. For example, to set the locale to Spanish:
-
-```
-locale=es
-```
-
-Read more about [localization](../configuring-metabase/localization.md).
-
-### `logo`
-
-Whether to show the logo that opens and closes the sidebar nav. Default is true. How Metabase displays the logo depends on the `side_nav` setting. Here's a rough breakdown of how these two parameters interact:
-
-If `logo=true` and:
-
-- `side_nav=true`: Looks like regular Metabase (with whatever logo you have set).
-- `side_nav=false`: There is no sidebar, so nothing happens when you hover over the logo.
-
-If `logo=false` and:
-
-- `side_nav=true`: Metabase shows the generic sidebar icon, with a gray color in normal state, and a brand color on hover.
-- `side_nav=false`: There is no side nav nor logo, so the breadcrumbs move all the way to the left of the screen.
-
-### `new_button`
-
-Hidden by default. To show the **+ New** button used to create queries or dashboards:
-
-```
-top_nav=true&new_button=true
-```
-
-### `search`
-
-Hidden by default. To show the search box in the top nav:
-
-```
-top_nav=true&search=true
-```
-
-### `side_nav`
-
-The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
-
-To allow people to minimize the sidebar:
-
-```
-top_nav=true&side_nav=true
-```
-
-![Side nav](./images/side-nav.png)
-
-### `top_nav`
-
-Shown by default. To hide the top navigation bar:
-
-```
-top_nav=false
-```
-
-![Top nav bar](./images/top-nav.png)
-
-`search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
+See [interactive UI components](./interactive-ui-components.md)
 
 ## Reference apps
 

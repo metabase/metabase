@@ -178,7 +178,7 @@
                                    {:columns (->> (meta/fields :products)
                                                   (map #(meta/field-metadata :products %))
                                                   (sort-by :position)
-                                                  (map #(select-keys % [:lib/type :name :display-name :field-ref
+                                                  (map #(select-keys % [:lib/type :name :display-name :field-ref :ident
                                                                         :base-type :effective-type :semantic-type])))}))
      :native?        true
      :row            {"ID"         "3"

@@ -23,13 +23,19 @@ const DefaultTemplate = () => (
 );
 
 export default {
-  title: "viz/EChartsTooltip",
+  parameters: {
+    loki: { skip: true },
+  },
+  title: "Viz/Components/EChartsTooltip",
   component: EChartsTooltip,
 };
 
 export const Default = { render: DefaultTemplate };
 
 export const LightTheme = {
+  parameters: {
+    loki: { skip: true },
+  },
   render: ({ theme }: { theme: MetabaseTheme }) => (
     <SdkVisualizationWrapper theme={theme}>
       <DefaultTemplate />

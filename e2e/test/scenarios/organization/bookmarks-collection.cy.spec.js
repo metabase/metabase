@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_TABLES, USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -73,8 +73,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.visit("/collection/root");
 
     pin(name);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Rows/);
+    H.tableHeaderColumn("ID");
     bookmarkPinnedItem(name);
   });
 
@@ -93,7 +92,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
   });
 
   it("adds and removes bookmarks from Model in collection", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "Orders Model",
       query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
       type: "model",

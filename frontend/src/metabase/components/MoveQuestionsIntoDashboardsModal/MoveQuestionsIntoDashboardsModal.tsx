@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -55,7 +54,7 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
 
     const handleBulkMoveQuestionIntoDashboards = async () => {
       if (collectionId) {
-        const cardIds = candidatesReq.data?.data.map(card => card.id) ?? [];
+        const cardIds = candidatesReq.data?.data.map((card) => card.id) ?? [];
         try {
           await bulkMove({ collectionId, cardIds }).unwrap();
           dispatch(

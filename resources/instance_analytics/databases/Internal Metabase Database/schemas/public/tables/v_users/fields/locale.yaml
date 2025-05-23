@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: locale
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: 6h2HCCV0Kl1_wvsv6uDn9

@@ -74,12 +74,12 @@
                      options options)))))))
 
 (defn remove-randomized-idents
-  "Recursively remove all uuids and `:ident`s from x."
+  "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
   [x]
   (walk/postwalk
    (fn [x]
      (if (map? x)
-       (dissoc x :lib/uuid :ident)
+       (dissoc x :lib/uuid :ident :entity_id :entity-id)
        x))
    x))
 

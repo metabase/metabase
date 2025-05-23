@@ -31,7 +31,7 @@ function setup({
   renderWithProviders(
     <Route
       path="/public/dashboard/:id"
-      component={props => (
+      component={(props) => (
         <PublicApp {...props}>
           <SyncedEmbedFrame {...embedFrameProps}>
             <h1 data-testid="test-content">Test</h1>
@@ -63,7 +63,7 @@ describe("PublicApp", () => {
   it("renders description", async () => {
     setup({ name: "My Title", description: "My Description" });
     await userEvent.hover(getIcon("info"));
-    expect(screen.getByText("My Description")).toBeInTheDocument();
+    expect(await screen.findByText("My Description")).toBeInTheDocument();
   });
 
   it("renders action buttons", () => {
@@ -122,12 +122,15 @@ describe("PublicApp", () => {
       expect(embedFrame).not.toHaveAttribute("data-embed-theme");
     });
 
-    test.each(["night", "transparent"])("correctly handles %s theme", theme => {
-      setup({ hash: `#theme=${theme}` });
-      expect(screen.getByTestId("embed-frame")).toHaveAttribute(
-        "data-embed-theme",
-        theme,
-      );
-    });
+    test.each(["night", "transparent"])(
+      "correctly handles %s theme",
+      (theme) => {
+        setup({ hash: `#theme=${theme}` });
+        expect(screen.getByTestId("embed-frame")).toHaveAttribute(
+          "data-embed-theme",
+          theme,
+        );
+      },
+    );
   });
 });

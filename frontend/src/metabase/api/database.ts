@@ -1,8 +1,13 @@
 import type {
+  AutocompleteRequest,
+  AutocompleteSuggestion,
+  CardAutocompleteRequest,
+  CardAutocompleteSuggestion,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
   Field,
+  GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
   ListDatabaseIdFieldsRequest,
@@ -21,23 +26,25 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideAutocompleteSuggestionListTags,
+  provideCardAutocompleteSuggestionListTags,
   provideDatabaseListTags,
   provideDatabaseTags,
   tag,
 } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listDatabases: builder.query<
       ListDatabasesResponse,
       ListDatabasesRequest | void
     >({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/database",
         params,
       }),
-      providesTags: response => provideDatabaseListTags(response?.data ?? []),
+      providesTags: (response) => provideDatabaseListTags(response?.data ?? []),
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...params }) => ({
@@ -45,7 +52,16 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         params,
       }),
-      providesTags: database => (database ? provideDatabaseTags(database) : []),
+      providesTags: (database) =>
+        database ? provideDatabaseTags(database) : [],
+    }),
+    getDatabaseHealth: builder.query<GetDatabaseHealthResponse, DatabaseId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/healthcheck`,
+      }),
+      // invalidate health check in the case db connection info changes
+      providesTags: (_, __, id) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -53,7 +69,8 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}/metadata`,
         params,
       }),
-      providesTags: database => (database ? provideDatabaseTags(database) : []),
+      providesTags: (database) =>
+        database ? provideDatabaseTags(database) : [],
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
@@ -66,17 +83,17 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (schemas = []) => [
         listTag("schema"),
-        ...schemas.map(schema => idTag("schema", schema)),
+        ...schemas.map((schema) => idTag("schema", schema)),
       ],
     }),
     listSyncableDatabaseSchemas: builder.query<SchemaName[], DatabaseId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/database/${id}/syncable_schemas`,
       }),
       providesTags: (schemas = []) => [
         listTag("schema"),
-        ...schemas.map(schema => idTag("schema", schema)),
+        ...schemas.map((schema) => idTag("schema", schema)),
       ],
     }),
     listDatabaseSchemaTables: builder.query<
@@ -90,7 +107,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (tables = []) => [
         listTag("table"),
-        ...tables.map(table => idTag("table", table.id)),
+        ...tables.map((table) => idTag("table", table.id)),
       ],
     }),
     listVirtualDatabaseTables: builder.query<
@@ -104,7 +121,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (tables = []) => [
         listTag("table"),
-        ...tables.map(table => idTag("table", table.id)),
+        ...tables.map((table) => idTag("table", table.id)),
       ],
     }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
@@ -116,7 +133,7 @@ export const databaseApi = Api.injectEndpoints({
       providesTags: [listTag("field")],
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/database",
         body,
@@ -137,11 +154,12 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/database/${id}`,
       }),
@@ -152,11 +170,36 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
+    persistDatabase: builder.mutation<void, DatabaseId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/persist/database/${id}/persist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
+    unpersistDatabase: builder.mutation<void, DatabaseId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/persist/database/${id}/unpersist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
+    dismissDatabaseSyncSpinner: builder.mutation<void, DatabaseId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/database/${id}/dismiss_spinner`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("database"), idTag("database", id)]),
+    }),
     syncDatabaseSchema: builder.mutation<void, DatabaseId>({
-      query: databaseId => ({
+      query: (databaseId) => ({
         method: "POST",
         url: `/api/database/${databaseId}/sync_schema`,
       }),
@@ -166,26 +209,27 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
-      query: databaseId => ({
+      query: (databaseId) => ({
         method: "POST",
         url: `/api/database/${databaseId}/rescan_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     discardDatabaseFieldValues: builder.mutation<void, DatabaseId>({
-      query: databaseId => ({
+      query: (databaseId) => ({
         method: "POST",
         url: `/api/database/${databaseId}/discard_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    addSampleDatabase: builder.mutation<void, Database>({
+    addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
         url: `/api/database/sample_database`,
@@ -193,12 +237,35 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("database")]),
     }),
+    listAutocompleteSuggestions: builder.query<
+      AutocompleteSuggestion[],
+      AutocompleteRequest
+    >({
+      query: ({ databaseId, ...params }) => ({
+        method: "GET",
+        url: `/api/database/${databaseId}/autocomplete_suggestions`,
+        params,
+      }),
+      providesTags: () => provideAutocompleteSuggestionListTags(),
+    }),
+    listCardAutocompleteSuggestions: builder.query<
+      CardAutocompleteSuggestion[],
+      CardAutocompleteRequest
+    >({
+      query: ({ databaseId, ...params }) => ({
+        method: "GET",
+        url: `/api/database/${databaseId}/card_autocomplete_suggestions`,
+        params,
+      }),
+      providesTags: () => provideCardAutocompleteSuggestionListTags(),
+    }),
   }),
 });
 
 export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
+  useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,
@@ -208,7 +275,15 @@ export const {
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,
+  usePersistDatabaseMutation,
+  useUnpersistDatabaseMutation,
+  useDismissDatabaseSyncSpinnerMutation,
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
+  useListAutocompleteSuggestionsQuery,
+  useLazyListAutocompleteSuggestionsQuery,
+  useAddSampleDatabaseMutation,
+  useListCardAutocompleteSuggestionsQuery,
+  useLazyListCardAutocompleteSuggestionsQuery,
 } = databaseApi;

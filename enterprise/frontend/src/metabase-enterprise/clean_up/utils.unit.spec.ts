@@ -28,6 +28,11 @@ describe("canCleanUp", () => {
   });
 
   it("does not allow cleaning up a collection when the user does not have write access", () => {
+    const collection = createMockCollection({ can_write: false });
+    expect(canCleanUp(collection)).toBe(false);
+  });
+
+  it("does allows cleaning up a collection when the user has write access", () => {
     const collection = createMockCollection({ can_write: true });
     expect(canCleanUp(collection)).toBe(true);
   });

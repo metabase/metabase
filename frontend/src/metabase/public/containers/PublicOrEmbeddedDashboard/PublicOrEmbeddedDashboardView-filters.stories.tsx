@@ -1,20 +1,19 @@
-// @ts-expect-error There is no type definition
-import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import { type ComponentProps, useEffect } from "react";
+import type { ComponentProps } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getUnsavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
-import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import Table from "metabase/visualizations/visualizations/Table";
+import Table from "metabase/visualizations/visualizations/Table/Table";
+import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   createMockCard,
@@ -45,12 +44,18 @@ registerVisualization(Table);
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
+/**
+ * This is an arbitrary number, it should be big enough to pass CI tests.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
+ */
+const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
+
 export default {
-  title: "embed/PublicOrEmbeddedDashboardView/filters",
+  title: "App/Embed/PublicOrEmbeddedDashboardView/filters",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    WaitForResizeToStopDecorator,
+    createWaitForResizeToStopDecorator(TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING),
     MockIsEmbeddingDecorator,
   ],
   parameters: {
@@ -113,20 +118,6 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-/**
- * This is an arbitrary number, it should be big enough to pass CI tests.
- * This works because we set delays for ExplicitSize to 0 in storybook.
- */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
-function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
-  useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
-  }, [asyncCallback]);
-
-  return <Story />;
 }
 
 declare global {
@@ -231,22 +222,23 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
+
   if (!dashboard) {
     return <>Please pass `dashboard`</>;
   }
 
   const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
-    text: getDashboardUiParameters(
+    text: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({}),
       {},
     ),
-    number: getDashboardUiParameters(
+    number: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -260,7 +252,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       createMockMetadata({}),
       {},
     ),
-    dropdown_multiple: getDashboardUiParameters(
+    dropdown_multiple: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({
@@ -268,7 +260,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       }),
       {},
     ),
-    dropdown_single: getDashboardUiParameters(
+    dropdown_single: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_SINGLE_FILTER],
       createMockMetadata({
@@ -276,7 +268,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       }),
       {},
     ),
-    search: getDashboardUiParameters(
+    search: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({
@@ -284,7 +276,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       }),
       {},
     ),
-    date_all_options: getDashboardUiParameters(
+    date_all_options: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -298,7 +290,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       createMockMetadata({}),
       {},
     ),
-    date_month_year: getDashboardUiParameters(
+    date_month_year: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -312,7 +304,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       createMockMetadata({}),
       {},
     ),
-    date_quarter_year: getDashboardUiParameters(
+    date_quarter_year: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -326,7 +318,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       createMockMetadata({}),
       {},
     ),
-    date_single: getDashboardUiParameters(
+    date_single: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -340,7 +332,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       createMockMetadata({}),
       {},
     ),
-    date_range: getDashboardUiParameters(
+    date_range: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -354,7 +346,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       createMockMetadata({}),
       {},
     ),
-    date_relative: getDashboardUiParameters(
+    date_relative: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -368,7 +360,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
       createMockMetadata({}),
       {},
     ),
-    temporal_unit: getDashboardUiParameters(
+    temporal_unit: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -420,6 +412,7 @@ const createDefaultArgs = (
     selectedTabId: TAB_ID,
     parameterType: "text",
     ...args,
+    downloadsEnabled: { pdf: true, results: false },
   };
 };
 
@@ -459,7 +452,6 @@ export const LightThemeTextWithValue = {
   args: createDefaultArgs(),
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const asyncCallback = createAsyncCallback();
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -470,7 +462,6 @@ export const LightThemeTextWithValue = {
       "filter value",
     );
     await userEvent.click(getLastPopoverElement());
-    asyncCallback();
   },
 };
 

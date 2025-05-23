@@ -65,11 +65,14 @@ describe("ChartSettingsButton", () => {
     setup();
     await userEvent.click(screen.getByLabelText("palette icon"));
 
-    expect(screen.getByTestId("chartsettings-sidebar")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("chartsettings-sidebar"),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("visualization-root")).toBeInTheDocument();
 
     await userEvent.click(screen.getByDisplayValue("Linear Interpolated"));
 
-    expect(screen.getByTestId("select-dropdown")).toBeInTheDocument();
+    //Select dropdowns render a listbox
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 });

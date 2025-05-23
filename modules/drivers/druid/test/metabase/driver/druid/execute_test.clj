@@ -1,11 +1,12 @@
 (ns ^:mb/driver-tests metabase.driver.druid.execute-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase.driver.druid.execute :as druid.execute]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [metabase.util.json :as json]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.driver.druid.execute :as druid.execute]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (deftest results-order-test
   (mt/test-driver :druid

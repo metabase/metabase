@@ -16,11 +16,11 @@ import {
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/PieChart",
+  title: "Viz/Static Viz/PieChart",
   component: StaticVisualization,
 };
 
-const Template: StoryFn<StaticChartProps> = args => {
+const Template: StoryFn<StaticChartProps> = (args) => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
       <StaticVisualization {...args} isStorybook />
@@ -425,4 +425,13 @@ export const SunburstOtherLabel = Template.bind({});
 SunburstOtherLabel.args = {
   rawSeries: data.sunburstOtherLabel as any,
   renderingContext,
+};
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.allSettings as any,
+    renderingContext,
+    hasDevWatermark: true,
+  },
 };

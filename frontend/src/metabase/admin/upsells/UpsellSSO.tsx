@@ -6,9 +6,10 @@ import { getSetting } from "metabase/selectors/settings";
 import { Box, List } from "metabase/ui";
 
 import { UpsellCard } from "./components";
+import { UPGRADE_URL } from "./constants";
 
 export const UpsellSSO = ({ source }: { source: string }) => {
-  const tokenFeatures = useSelector(state =>
+  const tokenFeatures = useSelector((state) =>
     getSetting(state, "token-features"),
   );
 
@@ -24,7 +25,7 @@ export const UpsellSSO = ({ source }: { source: string }) => {
       title={t`Tired of manually managing people and groups?`}
       campaign="sso"
       buttonText={t`Try Metabase Pro`}
-      buttonLink="https://www.metabase.com/upgrade"
+      buttonLink={UPGRADE_URL}
       source={source}
       style={{ maxWidth: 242 }}
     >

@@ -143,7 +143,7 @@ const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {
 
 const hasViewDataOptions = (entities: any[]) => {
   return entities.some(
-    entity =>
+    (entity) =>
       entity.permissions?.findIndex(
         (permissionSectionConfig: any) =>
           permissionSectionConfig.permission === DataPermission.VIEW_DATA,
@@ -157,6 +157,7 @@ type EntityWithPermissions = {
   entityId: EntityId;
   canSelect?: boolean;
   permissions: PermissionSectionConfig[];
+  callout?: string;
 };
 
 export const getDatabasesPermissionEditor = createSelector(
@@ -206,7 +207,7 @@ export const getDatabasesPermissionEditor = createSelector(
       entities = schema
         .getTables()
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
-        .map(table => {
+        .map((table) => {
           const entityId = getTableEntityId(table);
           return {
             id: table.id,
@@ -228,7 +229,7 @@ export const getDatabasesPermissionEditor = createSelector(
         ?.database(databaseId)
         ?.getSchemas()
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(schema => {
+        .map((schema) => {
           const entityId = getSchemaEntityId(schema);
           return {
             id: schema.id,
@@ -254,13 +255,16 @@ export const getDatabasesPermissionEditor = createSelector(
       permissionSubject = "schemas";
       entities = metadata
         .databasesList({ savedQuestions: false })
-        .filter(db => !PLUGIN_AUDIT.isAuditDb(db as Database))
-        .map(database => {
+        .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as Database))
+        .map((database) => {
           const entityId = getDatabaseEntityId(database);
           return {
             id: database.id,
             name: database.name,
             entityId,
+            callout: database.hasDatabaseRoutingEnabled()
+              ? t`(Database routing enabled)`
+              : undefined,
             canSelect: true,
             permissions: buildSchemasPermissions(
               entityId,
@@ -319,7 +323,7 @@ export const getDatabasesPermissionEditor = createSelector(
 type DataPermissionEditorEntity = {
   id: Group["id"];
   name: Group["name"];
-  hint: string | null;
+  hint: React.ReactNode | string | null;
   entityId: {
     databaseId?: DatabaseId;
     schemaName?: Schema["name"];
@@ -373,7 +377,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       const permissionSubject =
         tableId != null ? "fields" : schemaName != null ? "tables" : "schemas";
 
-      const entities = sortedGroups.map(group => {
+      const entities = sortedGroups.map((group) => {
         const isAdmin = isAdminGroup(group);
         let groupPermissions;
 

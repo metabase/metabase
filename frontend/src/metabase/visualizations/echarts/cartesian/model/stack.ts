@@ -15,13 +15,13 @@ export const getStackModels = (
 
   const seriesModelsByDisplay = _.groupBy(
     seriesModels,
-    seriesModel =>
+    (seriesModel) =>
       settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
   );
 
   return getObjectKeys(seriesModelsByDisplay)
-    .filter(display => display === "bar" || display === "area")
-    .map(display => {
+    .filter((display) => display === "bar" || display === "area")
+    .map((display) => {
       const stackSeriesModels = seriesModelsByDisplay[display];
 
       let axis: "left" | "right";
@@ -29,7 +29,7 @@ export const getStackModels = (
         axis = "left";
       } else {
         axis = stackSeriesModels.every(
-          seriesModel =>
+          (seriesModel) =>
             settings.series(seriesModel.legacySeriesSettingsObjectKey)?.axis ===
             "right",
         )
@@ -41,7 +41,7 @@ export const getStackModels = (
         axis,
         display: display as "bar" | "area", // Ensured by filtering above
         seriesKeys: seriesModelsByDisplay[display].map(
-          seriesModel => seriesModel.dataKey,
+          (seriesModel) => seriesModel.dataKey,
         ),
       };
     });

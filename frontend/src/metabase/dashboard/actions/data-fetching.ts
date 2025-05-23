@@ -32,11 +32,8 @@ import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
-import {
-  getDashboardQuestions,
-  getDashboardUiParameters,
-} from "metabase/parameters/utils/dashboards";
-import { addFields, addParamValues } from "metabase/redux/metadata";
+import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -47,6 +44,7 @@ import {
   PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -102,10 +100,26 @@ function isNewDashcard(dashcard: DashboardCard) {
 function isNewAdditionalSeriesCard(
   card: Card,
   dashcard: QuestionDashboardCard,
+  dashcardBeforeEditing?: DashboardCard,
 ) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    if (!dashcardBeforeEditing || !("series" in dashcardBeforeEditing)) {
+      return false;
+    }
+
+    const prevSeries = dashcardBeforeEditing.series ?? [];
+    const newSeries = dashcard.series ?? [];
+
+    return (
+      card.id !== dashcard.card_id &&
+      !prevSeries.some((s) => s.id === card.id) &&
+      newSeries.some((s) => s.id === card.id)
+    );
+  }
+
   return (
     card.id !== dashcard.card_id &&
-    !dashcard.series?.some(s => s.id === card.id)
+    !dashcard.series?.some((s) => s.id === card.id)
   );
 }
 
@@ -114,7 +128,7 @@ export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
 
 const updateLoadingTitle = createThunkAction(
   SET_DOCUMENT_TITLE,
-  totalCards => (_dispatch, getState) => {
+  (totalCards) => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
     return `${loadingComplete}/${totalCards} loaded`;
@@ -282,6 +296,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled = true;
     });
 
+    const metadata = getMetadata(getState());
     const queryOptions = {
       cancelled: deferred.promise,
     };
@@ -299,7 +314,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          PublicApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             uuid: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -314,7 +333,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          EmbedApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -329,10 +352,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
-          { ...datasetQuery, ignore_cache: ignoreCache },
-          queryOptions,
-        ),
+        maybeUsePivotEndpoint(
+          MetabaseApi.dataset,
+          card,
+          metadata,
+        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
       );
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -347,7 +371,7 @@ export const fetchCardDataAction = createAsyncThunk<
       const shouldUseCardQueryEndpoint =
         isNewDashcard(dashcard) ||
         (isQuestionDashCard(dashcard) &&
-          isNewAdditionalSeriesCard(card, dashcard)) ||
+          isNewAdditionalSeriesCard(card, dashcard, dashcardBeforeEditing)) ||
         hasReplacedCard;
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
@@ -366,9 +390,12 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           };
-
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
+        maybeUsePivotEndpoint(
+          endpoint,
+          card,
+          metadata,
+        )(requestBody, queryOptions),
       );
     }
 
@@ -555,7 +582,7 @@ export const clearCardData = createAction(
 function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
   const parameters =
     datasetQuery?.parameters
-      ?.map(parameter => ({
+      ?.map((parameter) => ({
         ...parameter,
         value: parameter.value ?? null,
       }))
@@ -625,7 +652,7 @@ export const fetchDashboard = createAsyncThunk(
         entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
-            loadedDashboard.dashcards.map(id => [
+            loadedDashboard.dashcards.map((id) => [
               id,
               getDashCardById(getState(), id),
             ]),
@@ -722,22 +749,18 @@ export const fetchDashboard = createAsyncThunk(
         });
       }
 
-      if (result.param_values) {
-        await dispatch(addParamValues(result.param_values));
-      }
       if (result.param_fields) {
-        await dispatch(addFields(result.param_fields));
+        await dispatch(addFields(Object.values(result.param_fields).flat()));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const metadata = getMetadata(getState());
-      const questions = getDashboardQuestions(result.dashcards, metadata);
-      const parameters = getDashboardUiParameters(
+      const parameters = getSavedDashboardUiParameters(
         result.dashcards,
-        result.parameters ?? [],
+        result.parameters,
+        result.param_fields,
         metadata,
-        questions,
       );
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())

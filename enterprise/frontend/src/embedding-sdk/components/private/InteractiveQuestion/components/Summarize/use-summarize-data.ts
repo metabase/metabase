@@ -31,7 +31,7 @@ export const useSummarizeData = () => {
   const aggregationItems: SDKAggregationItem[] = useMemo(
     () =>
       query
-        ? getAggregationItems({ query, stageIndex }).map(aggregationItem => {
+        ? getAggregationItems({ query, stageIndex }).map((aggregationItem) => {
             const onRemoveAggregation = () => {
               if (query) {
                 const nextQuery = Lib.removeClause(

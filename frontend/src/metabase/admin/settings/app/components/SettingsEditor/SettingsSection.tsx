@@ -1,4 +1,5 @@
 import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 
 import { SettingsSetting } from "metabase/admin/settings/components/SettingsSetting";
 import type { SettingElement } from "metabase/admin/settings/types";
@@ -38,11 +39,11 @@ export function SettingsSection({
   const dispatch = useDispatch();
 
   if (tabs) {
-    const activeTab = tabs.find(tab => tab.isActive);
+    const activeTab = tabs.find((tab) => tab.isActive);
     return (
       <Tabs value={activeTab?.key}>
         <Tabs.List mx="1rem" mb="1rem">
-          {tabs.map(tab => {
+          {tabs.map((tab) => {
             return (
               <Tabs.Tab
                 key={tab.key}
@@ -56,7 +57,7 @@ export function SettingsSection({
         </Tabs.List>
         {tabs.map((tab, index) => {
           const isFirstTab = index === 0;
-          const tabSettingElements = settingElements.filter(settingElement =>
+          const tabSettingElements = settingElements.filter((settingElement) =>
             settingElement.tab ? settingElement.tab === tab.key : isFirstTab,
           );
 
@@ -107,25 +108,32 @@ function SettingsList({
   onChangeSetting,
   reloadSettings,
 }: SettingsListProps) {
+  const { hash } = useLocation();
+
   return (
     <ul>
       {settingElements
         .filter(({ getHidden }) =>
           getHidden ? !getHidden(settingValues, derivedSettingValues) : true,
         )
-        .map((settingElement, index) => (
-          <SettingsSetting
-            key={settingElement.key}
-            setting={settingElement}
-            onChange={(newValue: SettingValue) =>
-              updateSetting(settingElement, newValue)
-            }
-            onChangeSetting={onChangeSetting}
-            reloadSettings={reloadSettings}
-            autoFocus={index === 0}
-            settingValues={settingValues}
-          />
-        ))}
+        .map((settingElement, index) => {
+          const isAnchoredTo = hash === `#${settingElement.key}`;
+
+          return (
+            <SettingsSetting
+              key={settingElement.key}
+              setting={settingElement}
+              onChange={(newValue: SettingValue) =>
+                updateSetting(settingElement, newValue)
+              }
+              onChangeSetting={onChangeSetting}
+              reloadSettings={reloadSettings}
+              autoFocus={hash ? isAnchoredTo : index === 0}
+              autoScrollIntoView={isAnchoredTo}
+              settingValues={settingValues}
+            />
+          );
+        })}
     </ul>
   );
 }

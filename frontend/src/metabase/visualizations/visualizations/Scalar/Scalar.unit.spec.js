@@ -26,6 +26,7 @@ describe("Scalar", () => {
         rawSeries={series()}
         settings={settings}
         isDashboard
+        showTitle
         visualizationIsClickable={() => false}
       />,
     );
@@ -54,13 +55,14 @@ describe("Scalar", () => {
         rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
         isDashboard
+        showTitle
         visualizationIsClickable={() => false}
       />,
     );
 
     await userEvent.hover(getIcon("info_filled"));
 
-    expect(screen.getByRole("tooltip")).toHaveTextContent(DESCRIPTION);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(DESCRIPTION);
   });
 
   it("should render markdown in description", async () => {
@@ -72,6 +74,7 @@ describe("Scalar", () => {
         rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
         isDashboard
+        showTitle
         visualizationIsClickable={() => false}
       />,
     );
@@ -79,7 +82,7 @@ describe("Scalar", () => {
     await userEvent.hover(getIcon("info_filled"));
 
     expect(
-      within(screen.getByRole("tooltip")).getByRole("link"),
+      within(await screen.findByRole("tooltip")).getByRole("link"),
     ).toHaveTextContent("link");
   });
 
@@ -100,6 +103,7 @@ describe("Scalar", () => {
     render(
       <Scalar
         isDashboard // displays title
+        showTitle
         series={series(null)}
         rawSeries={series(null)}
         settings={settings}

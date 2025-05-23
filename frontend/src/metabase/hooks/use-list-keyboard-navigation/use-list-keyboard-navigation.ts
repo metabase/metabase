@@ -35,7 +35,7 @@ export const useListKeyboardNavigation = <
   }, [cursorIndex]);
 
   const handleKeyDown: EventListener = useCallback(
-    event => {
+    (event) => {
       const { key } = event as KeyboardEvent;
       switch (key) {
         case "ArrowDown":

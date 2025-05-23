@@ -11,7 +11,7 @@ table_id:
 database_type: text
 base_type: type/Text
 effective_type: type/Text
-semantic_type: null
+semantic_type: type/PK
 database_is_auto_increment: false
 database_required: false
 fk_target_field_id: null
@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: entity_qualified_id
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: FfvPOwGSBOnX_bQnS8Q_g

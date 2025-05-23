@@ -8,13 +8,17 @@ import EntityItem from "metabase/components/EntityItem";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
-import Tooltip from "metabase/core/components/Tooltip";
 import { useSelector } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { IconProps } from "metabase/ui";
-import type { CollectionItem, SearchResult } from "metabase-types/api";
+import { Tooltip } from "metabase/ui";
+import type {
+  CollectionItem,
+  ListCollectionItemsSortColumn,
+  SearchResult,
+} from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
 import { SortableColumnHeader } from "./BaseItemsTable";
@@ -31,7 +35,10 @@ import {
   TableColumn,
 } from "./BaseItemsTable.styled";
 
-type HeaderProps = Omit<SortableColumnHeaderProps, "name">;
+type HeaderProps = Omit<
+  SortableColumnHeaderProps<ListCollectionItemsSortColumn>,
+  "name"
+>;
 
 const ItemLinkComponent = ({
   onClick,
@@ -273,7 +280,7 @@ export const Columns = {
           containerName="ItemsTableContainer"
         >
           {lastEditInfo && (
-            <Tooltip tooltip={<DateTime value={lastEditInfo.timestamp} />}>
+            <Tooltip label={<DateTime value={lastEditInfo.timestamp} />}>
               <DateTime unit="day" value={lastEditInfo.timestamp} />
             </Tooltip>
           )}

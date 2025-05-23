@@ -1,24 +1,29 @@
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import NumericInput from "metabase/core/components/NumericInput";
 import CS from "metabase/css/core/index.css";
-import { parseNumberValue } from "metabase/lib/number";
+import { type NumberValue, parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  Footer,
-  TokenFieldWrapper,
-  WidgetLabel,
-  WidgetRoot,
-} from "metabase/parameters/components/widgets/Widget.styled";
-import { MultiAutocomplete } from "metabase/ui";
-import type { Parameter, ParameterValue } from "metabase-types/api";
+  deserializeNumberParameterValue,
+  serializeNumberParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
+import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import type {
+  Parameter,
+  ParameterValue,
+  ParameterValueOrArray,
+} from "metabase-types/api";
+
+import { Footer, TokenFieldWrapper, WidgetLabel } from "../Widget";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 export type NumberInputWidgetProps = {
-  value: number[] | undefined;
-  setValue: (value: number[] | undefined) => void;
+  value: ParameterValueOrArray | null | undefined;
+  setValue: (value: ParameterValueOrArray | null | undefined) => void;
   className?: string;
   arity?: "n" | number;
   infixText?: string;
@@ -39,25 +44,17 @@ export function NumberInputWidget({
   label,
   parameter,
 }: NumberInputWidgetProps) {
-  const arrayValue = normalize(value);
+  const arrayValue = deserializeNumberParameterValue(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(number | undefined)[]>(arrayValue);
+    useState<(NumberValue | undefined)[]>(arrayValue);
 
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
-  const allValuesSet = unsavedArrayValue.every(_.isNumber);
+  const allValuesSet = unsavedArrayValue.every(isNotNull);
   const isValid =
     (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
-
-  const onClick = () => {
-    if (isValid) {
-      if (allValuesUnset || unsavedArrayValue.length === 0) {
-        setValue(undefined);
-      } else {
-        setValue(unsavedArrayValue);
-      }
-    }
-  };
+  const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
+  const isRequired = parameter?.required;
 
   const filteredUnsavedArrayValue = useMemo(
     () => unsavedArrayValue.filter((x): x is number => x !== undefined),
@@ -65,85 +62,68 @@ export function NumberInputWidget({
   );
 
   const values = parameter?.values_source_config?.values ?? [];
-  const options =
-    values.map(getOption).filter((item): item is SelectItem => item !== null) ??
-    [];
-
-  const valueOptions = unsavedArrayValue
-    .map((item): SelectItem | null => {
-      const option = parameter?.values_source_config?.values?.find(
-        option => getValue(option)?.toString() === item?.toString(),
-      );
-
-      if (!option) {
-        return null;
-      }
-
-      const value = getValue(option)?.toString();
-      if (typeof value !== "string") {
-        return null;
-      }
-
-      return {
-        label: getLabel(option),
-        value,
-      };
-    })
-    .filter(isNotNull);
-
-  const customLabelOptions = options.filter(
-    option => option.label !== option.value,
+  const options = values.map(getOption).filter(isNotNull);
+  const labelByValue = Object.fromEntries(
+    options.map((option) => [option.value, option.label]),
   );
 
-  function parseValue(value: string | number | undefined): number | null {
-    if (value === undefined) {
-      return null;
+  const parseValue = (rawValue: string) => {
+    const number = parseNumber(rawValue);
+    return number !== null ? String(number) : null;
+  };
+
+  const handleChange = (newValues: string[]) => {
+    setUnsavedArrayValue(
+      newValues.map((value) => parseNumber(value)).filter(isNotNull),
+    );
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!isValid || (isRequired && isEmpty)) {
+      return;
     }
 
-    return parseNumberValue(value);
-  }
-
-  function shouldCreate(value: string | number) {
-    const res = parseValue(value);
-    return res !== null;
-  }
+    if (allValuesUnset || unsavedArrayValue.length === 0) {
+      setValue(undefined);
+    } else {
+      setValue(serializeNumberParameterValue(unsavedArrayValue));
+    }
+  };
 
   return (
-    <WidgetRoot className={className}>
+    <Box
+      component="form"
+      className={className}
+      w={WIDTH}
+      onSubmit={handleSubmit}
+    >
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
-            onChange={(values: string[]) =>
-              setUnsavedArrayValue(
-                values.map(value => parseValue(value) ?? undefined),
-              )
-            }
-            value={filteredUnsavedArrayValue.map(value => value?.toString())}
+            value={filteredUnsavedArrayValue.map((value) => value?.toString())}
+            data={options}
             placeholder={placeholder}
-            shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            data={customLabelOptions.concat(valueOptions)}
-            filter={(value, _selected, item) =>
-              Boolean(
-                value !== "" &&
-                  item.label?.toLowerCase().startsWith(value.toLowerCase()),
-              )
-            }
+            comboboxProps={COMBOBOX_PROPS}
+            parseValue={parseValue}
+            renderValue={({ value }) => labelByValue[value] ?? value}
+            onChange={handleChange}
           />
         </TokenFieldWrapper>
       ) : (
-        _.times(arity, i => (
+        _.times(arity, (i) => (
           <div key={i}>
             <NumericInput
               fullWidth
               className={CS.p1}
               autoFocus={autoFocus && i === 0}
-              value={unsavedArrayValue[i]}
-              onChange={newValue => {
-                setUnsavedArrayValue(unsavedArrayValue => {
+              value={unsavedArrayValue[i]?.toString()}
+              onChange={(_newValue, newValueText) => {
+                setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = newValue;
+                  newUnsavedValue[i] = parseNumber(newValueText) ?? undefined;
                   return newUnsavedValue;
                 });
               }}
@@ -162,44 +142,33 @@ export function NumberInputWidget({
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
           isValid={isValid}
-          onClick={onClick}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }
 
-function normalize(value: number[] | undefined): (number | undefined)[] {
-  if (Array.isArray(value)) {
-    return value;
-  } else {
-    return [];
-  }
-}
-
-type SelectItem = {
-  value: string;
-  label: string | undefined;
-};
-
-function getOption(entry: string | ParameterValue): SelectItem | null {
-  const value = getValue(entry)?.toString();
+function getOption(
+  entry: string | number | ParameterValue,
+): ComboboxItem | null {
+  const value = getValue(entry);
   const label = getLabel(entry);
-
-  if (!value) {
+  if (value == null) {
     return null;
   }
 
-  return { value, label };
+  return { value: String(value), label: String(label ?? value) };
 }
 
-function getLabel(option: string | ParameterValue) {
-  return option[1] ?? option[0]?.toString();
-}
-
-function getValue(option: string | ParameterValue) {
-  if (typeof option === "string") {
-    return option;
+function getLabel(option: string | number | ParameterValue) {
+  if (Array.isArray(option)) {
+    return option[1];
   }
-  return option[0];
+}
+
+function getValue(option: string | number | ParameterValue) {
+  if (Array.isArray(option)) {
+    return option[0];
+  }
+  return String(option);
 }

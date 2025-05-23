@@ -8,12 +8,12 @@ export const ApplicationPermissionsHelp = () => {
   const { url } = useDocsUrl("permissions/application");
   return (
     <Flex direction="column" py={rem(22)} px="lg">
-      <Title order={4}>{t`Applications permissions`}</Title>
+      <Title order={3}>{t`Applications permissions`}</Title>
       <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 
-      <Title order={5}>{t`Applications permissions`}</Title>
+      <Title order={6} my="sm">{t`Applications permissions`}</Title>
 
-      <Stack spacing={10} mt="sm">
+      <Stack gap={10} mt="sm">
         <Text>{t`Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.`}</Text>
         <Text>
           {jt`${(
@@ -32,7 +32,7 @@ export const ApplicationPermissionsHelp = () => {
         </Text>
       </Stack>
 
-      <Text component="footer" align="center" py="1rem" weight={600}>
+      <Text component="footer" ta="center" py="1rem" fw={600}>
         {jt`${(
           <ExternalLink key="link" href={url}>{t`Learn more`}</ExternalLink>
         )} about application permissions`}

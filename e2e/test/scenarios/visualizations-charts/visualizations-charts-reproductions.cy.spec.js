@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -33,7 +33,7 @@ describe("issue 13504", () => {
   });
 
   it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.cartesianChartCircle().eq(0).click({ force: true });
 
@@ -80,11 +80,11 @@ describe("issue 16170", { tags: "@mongo" }, () => {
         display: "line",
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
     });
   });
 
-  ["Zero", "Nothing"].forEach(replacementValue => {
+  ["Zero", "Nothing"].forEach((replacementValue) => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
       H.openVizSettingsSidebar();
 
@@ -97,6 +97,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       assertOnTheYAxis();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircle().eq(-2).trigger("mousemove");
 
       H.assertEChartsTooltip({
@@ -154,7 +155,7 @@ describe("issue 17524", () => {
 
   describe("scenario 1", () => {
     beforeEach(() => {
-      cy.createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
+      H.createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
     });
 
     it("should not alter visualization type when applying filter on a native question (metabase#17524-1)", () => {
@@ -162,6 +163,7 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("play").last().click();
 
       cy.get("polygon");
@@ -172,20 +174,19 @@ describe("issue 17524", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
     });
 
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
       cy.get("polygon");
 
       H.filter();
-
-      H.filterField("ID", {
-        operator: "Greater than",
-        value: "1",
+      H.popover().findByText("ID").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("1");
+        cy.button("Apply filter").click();
       });
-      cy.findByTestId("apply-filters").click();
-
       cy.get("polygon");
     });
   });
@@ -244,7 +245,7 @@ describe("issue 18061", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id, card_id } = dashboardCard;
 
@@ -275,7 +276,7 @@ describe("issue 18061", () => {
           ],
         };
 
-        cy.editDashboardCard(dashboardCard, mapFilterToCard);
+        H.editDashboardCard(dashboardCard, mapFilterToCard);
       },
     );
   });
@@ -287,7 +288,7 @@ describe("issue 18061", () => {
       cy.wait("@getCard");
       cy.wait("@cardQuery");
 
-      cy.window().then(w => (w.beforeReload = true));
+      cy.window().then((w) => (w.beforeReload = true));
 
       H.queryBuilderHeader().findByTestId("filters-visibility-control").click();
       cy.findByTestId("qb-filters-panel")
@@ -371,7 +372,7 @@ describe("issue 18063", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
     H.openVizSettingsSidebar();
@@ -382,7 +383,7 @@ describe("issue 18063", () => {
 
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    ["Latitude field", "Longitude field"].forEach(field =>
+    ["Latitude field", "Longitude field"].forEach((field) =>
       H.leftSidebar().within(() => {
         toggleFieldSelectElement(field);
       }),
@@ -484,7 +485,7 @@ describe("issue 20548", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.summarize();
   });
 
@@ -537,13 +538,15 @@ describe("issue 21452", () => {
       .findByDisplayValue("Cumulative sum of Quantity")
       .clear()
       .type("Foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display type").click();
-    // Dismiss the popup and close settings
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    H.cartesianChartCircle().first().realHover();
+    H.popover().findByText("Display type").click();
+
+    cy.log("Dismiss the popup and close settings");
+    H.leftSidebar().button("Done").click();
+
+    // trigger("mousemove") is more reliable than realHover
+    // maybe related to https://github.com/dmtrKovalenko/cypress-real-events/issues/691
+    H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
       header: "2022",
@@ -602,21 +605,12 @@ describe("issue 21665", () => {
     native: { query: "select 2" },
     display: "scalar",
   };
-  function editQ2NativeQuery(query, questionId) {
-    cy.request("PUT", `/api/card/${questionId}`, {
-      dataset_query: {
-        type: "native",
-        native: { query },
-        database: 1,
-      },
-    });
-  }
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails: Q1,
       dashboardDetails: { name: "21665D" },
     }).then(({ dashboardId, questionId }) => {
@@ -630,7 +624,7 @@ describe("issue 21665", () => {
       cy.log("dashboard id", dashboardId);
       cy.wrap(dashboardId).as("dashboardId");
 
-      cy.createNativeQuestion(Q2);
+      H.createNativeQuestion(Q2);
 
       H.visitDashboard(dashboardId);
       H.editDashboard();
@@ -645,19 +639,6 @@ describe("issue 21665", () => {
 
     H.saveDashboard();
     cy.wait("@getDashboard");
-  });
-
-  it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
-    cy.get("@questionId").then(questionId => {
-      editQ2NativeQuery("select order by --", questionId);
-    });
-
-    H.visitDashboard("@dashboardId");
-
-    cy.get("@dashboardLoaded").should("have.callCount", 3);
-    cy.findByTestId("dashcard")
-      .findByText("There was a problem displaying this chart.")
-      .should("be.visible");
   });
 });
 
@@ -688,7 +669,7 @@ describe.skip("issue 22527", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
@@ -725,6 +706,7 @@ describe("issue 25007", () => {
   };
 
   const clickLineDot = ({ index } = {}) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).click({ force: true });
   };
 
@@ -734,7 +716,7 @@ describe("issue 25007", () => {
   });
 
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
     H.echartsTooltip().findByText("May 1–7, 2022");
   });
@@ -801,7 +783,7 @@ describe("issue 27279", () => {
   });
 
   it("should reflect/apply sorting to the x-axis (metabase#27279)", () => {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
@@ -834,7 +816,7 @@ describe("issue 27279", () => {
     // need to add a single space on either side of the text as it is used as padding
     // in ECharts
     const xAxisTicks = ["F2021", "V2021", "S2022", "F2022"].map(
-      str => ` ${str} `,
+      (str) => ` ${str} `,
     );
     compareValuesInOrder(
       H.echartsContainer()
@@ -919,12 +901,12 @@ describe("issue 27427", () => {
   };
 
   function assertStaticVizRender(questionDetails, callback) {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request({
         method: "GET",
         url: `/api/pulse/preview_card/${id}`,
         failOnStatusCode: false,
-      }).then(response => {
+      }).then((response) => {
         callback(response);
       });
     });
@@ -947,6 +929,7 @@ describe("issue 27427", () => {
 
 const addCountGreaterThan2Filter = () => {
   H.openNotebook();
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   H.popover().findByText("Count").click();
   H.selectFilterOperator("Greater than");
@@ -992,7 +975,7 @@ describe("issue 32075", () => {
     addCountGreaterThan2Filter();
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1004,7 +987,7 @@ describe("issue 32075", () => {
     H.addSummaryGroupingField({ field: "Birth Date" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1016,7 +999,7 @@ describe("issue 32075", () => {
     H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1080,7 +1063,7 @@ describe("issue 33208", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         native: {
           query:
@@ -1112,7 +1095,7 @@ describe("issue 33208", () => {
 
   it("should not auto-select chart type when saving a native question with parameters that have default values", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(" ");
+    H.NativeEditor.focus().type(" ");
     H.saveSavedQuestion("top category");
     H.runNativeQuery({ wait: false });
     cy.findByTestId("scalar-value").should("be.visible");
@@ -1182,7 +1165,7 @@ describe("issue 43077", () => {
   });
 });
 
-H.describeEE("issue 49160", () => {
+describe("issue 49160", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1201,9 +1184,9 @@ H.describeEE("issue 49160", () => {
       display: "pie",
     });
 
-    // Shows pie placeholder
-    H.echartsContainer().findByText("18,760").should("be.visible");
-    cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+    cy.log("Shows an empty state that can open the summarize sidebar");
+    cy.findByAltText("pie chart example illustration").should("be.visible");
+    cy.findByLabelText("Open summarize sidebar").click();
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");
@@ -1231,5 +1214,38 @@ H.describeEE("issue 49160", () => {
     H.openVizSettingsSidebar();
 
     H.leftSidebar().findByText("Gizmo");
+  });
+});
+
+describe("issue 54271", () => {
+  const questionDetails = {
+    query: {
+      "source-table": REVIEWS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", REVIEWS.REVIEWER, null]],
+    },
+    display: "line",
+    visualization_settings: {
+      "graph.dimensions": ["REVIEWER"],
+      "graph.metrics": [["count"]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash the app when rendering a line chart with broken viz settings and table metadata (metabase#54271)", () => {
+    cy.log("broken semantic type - the field cannot be parsed as a date");
+    cy.request("PUT", `/api/field/${REVIEWS.REVIEWER}`, {
+      semantic_type: "type/CreationDate",
+    });
+
+    cy.log("broken viz settings - dimensions cannot have a text column");
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("no clear expectations but the app should not crash");
+    H.assertQueryBuilderRowCount(1076);
   });
 });

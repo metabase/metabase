@@ -5,6 +5,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
@@ -13,12 +14,14 @@
    ;; use alphabetical field_order by default because the default, database, will update the position
    (updates-that-will-be-performed! new-metadata-from-sync metadata-in-application-db {:field_order :alphabetical}))
   ([new-metadata-from-sync metadata-in-application-db table]
-   (mt/with-temp [:model/Table table table]
+   (mt/with-temp [:model/Database db {}
+                  :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
        (with-redefs [t2/update! (fn [model id updates]
                                   (swap! update-operations conj [(name model) id updates])
                                   (count updates))]
          (#'sync-metadata/update-field-metadata-if-needed!
+          db
           table
           new-metadata-from-sync
           metadata-in-application-db)
@@ -287,7 +290,7 @@
             (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
             (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
               (testing "updated field is re-fingerprinted and analyzed"
-                (is (=? {:semantic_type  :type/Category
+                (is (=? {:semantic_type  nil
                          :fingerprint    (mt/malli=? :map)
                          :base_type      :type/Integer
                          :effective_type :type/Integer}

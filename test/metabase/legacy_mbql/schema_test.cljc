@@ -104,6 +104,20 @@
       (is (not (me/humanize (mr/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
 
+(deftest ^:parallel year-of-era-test
+  (testing "year-of-era aggregations should be recognized"
+    (let [query {:database 1,
+                 :type :query,
+                 :query
+                 {:source-table 5,
+                  :aggregation [[:count]],
+                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]],
+                  :aggregation-idents {0 "sAl2I4RGqYvmLw1lfJinY"},
+                  :breakout-idents {0 "N7YYtmSRsForQqViDhkrg"}},
+                 :parameters []}]
+      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (= query (mbql.s/validate-query query))))))
+
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))
     mbql.s/aggregation
@@ -150,6 +164,33 @@
       @#'mbql.s/EqualityComparable
       [:or mbql.s/absolute-datetime mbql.s/value])))
 
+(deftest ^:parallel expression-value-wrapped-literals-test
+  (are [value] (not (me/humanize (mr/explain mbql.s/MBQLQuery
+                                             {:source-table 1, :expressions {"expr" [:value value nil]}})))
+    ""
+    "192.168.1.1"
+    "2025-03-11"
+    -1
+    0
+    1
+    1.23
+    true
+    false))
+
+(deftest ^:parallel expression-unwrapped-literals-test
+  (are [value] (= {:expressions {"expr" ["valid instance of one of these MBQL clauses: :expression, :field"]}}
+                  (me/humanize (mr/explain mbql.s/MBQLQuery
+                                           {:source-table 1, :expressions {"expr" value}})))
+    ""
+    "192.168.1.1"
+    "2025-03-11"
+    -1
+    0
+    1
+    1.23
+    true
+    false))
+
 (deftest ^:parallel or-test
   (are [schema expected] (= expected
                             (mu.humanize/humanize (mr/explain schema [:value "192.168.1.1" {:base_type :type/FK}])))
@@ -175,3 +216,26 @@
     ::mbql.s/Addable [:relative-datetime -1 :month]
     ::mbql.s/Addable [:interval -2 :month]
     ::mbql.s/+       [:+ [:relative-datetime -1 :month] [:interval -2 :month]]))
+
+(deftest ^:parallel filter-test
+  (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
+    [:value true nil]
+    [:value false nil]
+    [:expression "boolexpr"]
+    [:field 1 nil]
+    [:segment 1]
+    [:and [:expression "bool1"] [:expression "bool2"]]
+    [:or  [:expression "bool1"] [:expression "bool2"]]))
+
+(deftest ^:parallel emptyable-filter-test
+  (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
+    [:is-empty ""]
+    [:is-empty "A"]
+    [:is-empty [:field 1 nil]]
+    [:is-empty [:ltrim "A"]]
+    [:is-empty [:ltrim [:field 1 nil]]]
+    [:not-empty ""]
+    [:not-empty "A"]
+    [:not-empty [:field 1 nil]]
+    [:not-empty [:ltrim "A"]]
+    [:not-empty [:ltrim [:field 1 nil]]]))

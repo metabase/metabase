@@ -14,11 +14,11 @@ import { StaticVisualization } from "../StaticVisualization";
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/ComboChart",
+  title: "Viz/Static Viz/ComboChart",
   component: StaticVisualization,
 };
 
-const Template: StoryFn<StaticChartProps> = args => {
+const Template: StoryFn<StaticChartProps> = (args) => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
       <StaticVisualization {...args} isStorybook />
@@ -304,6 +304,22 @@ export const BarLogYScaleStackedNegative = {
   render: Template,
   args: {
     rawSeries: data.barLogYScaleStackedNegative as any,
+    renderingContext,
+  },
+};
+
+export const BarStackedNormalizedCustomMinMax48021 = {
+  render: Template,
+  args: {
+    rawSeries: data.barStackedNormalizedCustomMinMax48021 as any,
+    renderingContext,
+  },
+};
+
+export const BarStackedNormalizedGoalLine51054 = {
+  render: Template,
+  args: {
+    rawSeries: data.barStackedNormalizedGoalLine51054 as any,
     renderingContext,
   },
 };
@@ -1008,10 +1024,51 @@ export const OffsetBasedTimezone47835 = {
   },
 };
 
+export const NoDimensionColumn54755 = {
+  render: Template,
+  args: {
+    rawSeries: data.noDimensionColumn54755 as any,
+    renderingContext,
+  },
+};
+
+export const BarNonLinearNumericXAxis = {
+  render: Template,
+  args: {
+    rawSeries: data.barNonLinearNumericXAxis as any,
+    renderingContext,
+  },
+};
+
+export const BarWidthDstTimezones56424 = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+  },
+};
+
 export const Default = {
   render: Template,
   args: {
     rawSeries: data.messedUpAxis as any,
+    renderingContext,
+  },
+};
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+    hasDevWatermark: true,
+  },
+};
+
+export const VisualizerTimeseriesDifferentUnits = {
+  render: Template,
+  args: {
+    rawSeries: data.visualizerTimeseriesDifferentUnits as any,
     renderingContext,
   },
 };

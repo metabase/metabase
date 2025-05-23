@@ -11,7 +11,7 @@
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -45,5 +45,3 @@
                                 (mtx/string-transformer))]
     (api/check-superuser)
     (query-execution-logs year month)))
-
-(api/define-routes)

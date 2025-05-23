@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
@@ -10,7 +10,7 @@ import {
   questionSettingsSidesheet,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
-H.describeEE("scenarios > question > caching", () => {
+describe("scenarios > question > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

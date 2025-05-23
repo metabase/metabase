@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -21,14 +21,16 @@ describe("scenarios > question > snippets", () => {
 
   it("should let you create and use a snippet", () => {
     cy.log("Type a query and highlight some of the text");
-    H.startNewNativeQuestion().as("editor");
-    cy.get("@editor").type(
-      "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
-    );
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select 'stuff'");
+
+    for (let i = 0; i < "'stuff'".length; i++) {
+      cy.realPress(["Shift", "ArrowLeft"]);
+    }
 
     cy.log("Add a snippet of that text");
     cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Give your snippet a name").type("stuff-snippet");
@@ -36,7 +38,7 @@ describe("scenarios > question > snippets", () => {
     });
 
     cy.log("SQL editor should get updated automatically");
-    cy.get("@editor").should("contain", "select {{snippet: stuff-snippet}}");
+    H.NativeEditor.get().should("contain", "select {{snippet: stuff-snippet}}");
 
     cy.log("Run the query and check the value");
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -52,8 +54,9 @@ describe("scenarios > question > snippets", () => {
 
     // Populate the native editor first
     // 1. select
-    H.startNewNativeQuestion().as("editor");
-    cy.get("@editor").type("select ");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select ");
+
     // 2. snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").within(() => {
@@ -78,7 +81,7 @@ describe("scenarios > question > snippets", () => {
     });
 
     // SQL editor should get updated automatically
-    cy.get("@editor").contains("select {{snippet: Math}}");
+    H.NativeEditor.get().contains("select {{snippet: Math}}");
 
     // Run the query and check the new value
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -100,7 +103,7 @@ describe("scenarios > question > snippets", () => {
       });
 
       // Create native question using snippet 1
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "15387",
           native: {
@@ -128,29 +131,46 @@ describe("scenarios > question > snippets", () => {
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
-    H.nativeEditor()
+    H.NativeEditor.get()
       .should("be.visible")
       .and("have.text", "select * from {{snippet: Table: Orders}} limit 1");
     // Replace "Orders" with "Reviews"
-    H.focusNativeEditor().type(
+    H.NativeEditor.focus().type(
       "{end}" +
         "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
         "{backspace}".repeat("Orders".length) + // Delete orders character by character
         "Reviews",
     );
     // Check 2
-    H.nativeEditor()
+    H.NativeEditor.get()
       .should("be.visible")
       .and("have.text", "select * from {{snippet: Table: Reviews}} limit 1");
     // Rerun the query
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get("@results").contains(/christ/i);
   });
+
+  it("should be possible to search snippets", () => {
+    for (let i = 0; i < 16; i++) {
+      H.createSnippet({ name: `snippet ${i}`, content: `select ${i}` });
+    }
+
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+
+    H.rightSidebar().icon("search").click();
+    H.rightSidebar().findByRole("textbox").type("snippet 14");
+
+    H.rightSidebar().findByText("snippet 14").should("be.visible");
+    H.rightSidebar().findByText("snippet 2").should("not.exist");
+
+    H.rightSidebar().icon("close").click();
+    H.rightSidebar().findByText("snippet 2").should("be.visible");
+  });
 });
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore();
   });
 
@@ -168,14 +188,14 @@ describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > question > snippets (EE)", () => {
+describe("scenarios > question > snippets (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.setTokenFeatures("all");
   });
 
-  ["admin", "normal"].forEach(user => {
+  ["admin", "normal"].forEach((user) => {
     it(`${user} user can create a snippet (metabase#21581)`, () => {
       cy.intercept("POST", "/api/native-query-snippet").as("snippetCreated");
 
@@ -183,7 +203,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
 
       H.startNewNativeQuestion();
       cy.icon("snippet").click();
-      cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+      cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
       H.modal().within(() => {
         cy.findByLabelText(
@@ -196,8 +216,8 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
       });
 
       cy.wait("@snippetCreated");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("{{snippet: one}}");
+
+      H.NativeEditor.get().should("have.text", "{{snippet: one}}");
 
       cy.icon("play").first().click();
       cy.findByTestId("scalar-value").contains(1);
@@ -289,7 +309,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
     });
   });
 
-  ["admin", "nocollection"].map(user => {
+  ["admin", "nocollection"].map((user) => {
     it("should display nested snippets in their folder", () => {
       createNestedSnippet();
 
@@ -343,9 +363,11 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
       H.popover().findByText("Edit folder details").click();
       H.modal().findByTestId("collection-picker-button").click();
 
-      H.entityPickerModal()
-        .findByRole("button", { name: /Snippet Folder/ })
-        .should("be.disabled");
+      H.entityPickerModalItem(1, /Snippet Folder/).should(
+        "have.attr",
+        "data-disabled",
+        "true",
+      );
     });
 
     it("should not display snippet folder as part of collections (metabase#14907)", () => {
@@ -365,15 +387,13 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
       cy.icon("snippet").click();
 
       // Edit permissions for a snippet folder
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Snippet Folder")
-          .next()
-          .find(".Icon-ellipsis")
-          .click({ force: true });
-      });
+      H.rightSidebar()
+        .findByText("Snippet Folder")
+        .next()
+        .find(".Icon-ellipsis")
+        .click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Change permissions").click();
+      H.popover().findByText("Change permissions").click();
 
       // Update permissions for "All users" and let them only "View" this folder
       H.modal().within(() => {
@@ -383,15 +403,17 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
       });
 
       H.popover().contains("View").click();
-      cy.button("Save").click();
+      H.modal().button("Save").click();
 
       cy.wait("@updatePermissions");
 
       // Now let's do the sanity check for the top level (root) snippet permissions and make sure nothing changed there
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Snippets").parent().next().find(".Icon-ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Change permissions").click();
+      H.rightSidebar()
+        .findByTestId("snippet-header-buttons")
+        .icon("ellipsis")
+        .click();
+
+      H.popover().findByText("Change permissions").click();
 
       // UI check
       H.modal().within(() => {

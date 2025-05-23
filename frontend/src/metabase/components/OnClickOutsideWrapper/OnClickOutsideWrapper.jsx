@@ -1,12 +1,12 @@
 import PropTypes from "prop-types";
-import { Children, Component } from "react";
-import ReactDOM from "react-dom";
+import { Children, Component, createRef } from "react";
 
 import {
   RENDERED_POPOVERS,
   removePopoverData,
   shouldClosePopover,
 } from "metabase/hooks/use-sequenced-content-close-handler";
+import { Box } from "metabase/ui";
 
 export default class OnClickOutsideWrapper extends Component {
   static propTypes = {
@@ -16,10 +16,12 @@ export default class OnClickOutsideWrapper extends Component {
     ignoreElement: PropTypes.object,
   };
 
+  contentRef = createRef();
+
   componentDidMount() {
     // necessary to ignore click events that fire immediately, causing modals/popovers to close prematurely
     this._timeout = setTimeout(() => {
-      const contentEl = ReactDOM.findDOMNode(this);
+      const contentEl = this.contentRef.current;
 
       this.popoverData = {
         contentEl,
@@ -51,13 +53,17 @@ export default class OnClickOutsideWrapper extends Component {
     }, 0);
   }
 
-  _handleEvent = e => {
+  _handleEvent = (e) => {
     if (shouldClosePopover(e, this.popoverData)) {
       this.popoverData.close();
     }
   };
 
   render() {
-    return Children.only(this.props.children);
+    return (
+      <Box ref={this.contentRef} display="contents">
+        {Children.only(this.props.children)}
+      </Box>
+    );
   }
 }

@@ -5,11 +5,11 @@ import { color } from "metabase/lib/colors";
 import { ColorPill, type ColorPillProps } from "./ColorPill";
 
 export default {
-  title: "Core/ColorPill",
+  title: "Components/ColorPill",
   component: ColorPill,
 };
 
-const Template: StoryFn<ColorPillProps> = args => {
+const Template: StoryFn<ColorPillProps> = (args) => {
   return <ColorPill {...args} />;
 };
 

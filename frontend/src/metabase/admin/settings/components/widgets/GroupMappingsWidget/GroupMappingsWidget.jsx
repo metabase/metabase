@@ -4,12 +4,11 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import AdminContentTable from "metabase/components/AdminContentTable";
-import Tooltip from "metabase/core/components/Tooltip";
+import { AdminContentTable } from "metabase/components/AdminContentTable";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import { SettingToggle } from "../SettingToggle";
 
@@ -23,9 +22,9 @@ import {
   GroupMappingsWidgetToggleRoot as ToggleRoot,
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
 } from "./GroupMappingsWidget.styled";
-import MappingRow from "./MappingRow";
+import { MappingRow } from "./MappingRow";
 
-const groupIsMappable = group => !isDefaultGroup(group);
+const groupIsMappable = (group) => !isDefaultGroup(group);
 
 function GroupMappingsWidget({
   groupHeading,
@@ -52,7 +51,7 @@ function GroupMappingsWidget({
     setShowAddRow(false);
   };
 
-  const handleAddMapping = async name => {
+  const handleAddMapping = async (name) => {
     const mappingsPlusNewMapping = { ...mappings, [name]: [] };
 
     try {
@@ -67,12 +66,12 @@ function GroupMappingsWidget({
     }
   };
 
-  const handleChangeMapping = name => async (group, selected) => {
+  const handleChangeMapping = (name) => async (group, selected) => {
     const updatedMappings = selected
       ? { ...mappings, [name]: [...mappings[name], group.id] }
       : {
           ...mappings,
-          [name]: mappings[name].filter(id => id !== group.id),
+          [name]: mappings[name].filter((id) => id !== group.id),
         };
 
     try {
@@ -120,8 +119,8 @@ function GroupMappingsWidget({
           </ToggleRoot>
           <About>
             <Tooltip
-              tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
-              placement="top"
+              label={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
+              position="top"
             >
               <AboutContentRoot>
                 <Icon name="info" />

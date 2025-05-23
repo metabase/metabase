@@ -4,16 +4,15 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.request.core :as request]
    [metabase.server.instance :as server]
+   [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -192,21 +191,14 @@
 ;; Actual middleware. Determines whether request should be logged, and, if so, creates the info dictionary and hands
 ;; off to functions above.
 
-(defsetting health-check-logging-enabled
-  (deferred-tru "Whether to log health check requests from session middleware.")
-  :type       :boolean
-  :default    true
-  :visibility :internal
-  :export?    false)
-
 (defn- logging-disabled-uris
   "The set of URIs that should not be logged."
   []
-  (cond-> #{"/api/util/logs"}
-    (not (health-check-logging-enabled)) (conj "/api/health")))
+  (cond-> #{"/api/logger/logs"}
+    (not (server.settings/health-check-logging-enabled)) (conj "/api/health")))
 
 (defn- should-log-request? [{:keys [uri], :as request}]
-  ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
+  ;; don't log calls to /health or /logger/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
   (and (request/api-call? request)
        (not ((logging-disabled-uris) uri))))

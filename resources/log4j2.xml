@@ -2,7 +2,7 @@
 <Configuration>
   <Appenders>
     <Console name="STDOUT" target="SYSTEM_OUT" follow="true">
-      <PatternLayout pattern="%date %level %logger{2} :: %message%n%throwable">
+      <PatternLayout pattern="%date %level %logger{2} :: %message %notEmpty{%X}%n%throwable">
         <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
       </PatternLayout>
     </Console>

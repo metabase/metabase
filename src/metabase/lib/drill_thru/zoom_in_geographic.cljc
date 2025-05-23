@@ -194,7 +194,7 @@
   [query                        :- ::lib.schema/query
    _stage-number                :- :int
    {:keys [value], :as context} :- ::lib.schema.drill-thru/context]
-  (when value
+  (when (and value (not= value :null))
     (when-let [context (context-with-lat-lon query (lib.underlying/top-level-stage-number query) context)]
       (some (fn [f]
               (f context))
@@ -232,11 +232,12 @@
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [column value], :as drill} :- ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
-  (-> query
-      (lib.breakout/remove-existing-breakouts-for-column stage-number column)
-      ;; TODO -- remove/update existing filter?
-      (lib.filter/filter stage-number (lib.filter/= column value))
-      (add-or-update-lat-lon-binning stage-number drill)))
+  (let [resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
+    (-> query
+        (lib.breakout/remove-existing-breakouts-for-column stage-number column)
+        ;; TODO -- remove/update existing filter?
+        (lib.filter/filter stage-number (lib.filter/= resolved-column value))
+        (add-or-update-lat-lon-binning stage-number drill))))
 
 (mu/defn- apply-binned-lat-lon->binned-lat-lon-drill :- ::lib.schema/query
   [query        :- ::lib.schema/query

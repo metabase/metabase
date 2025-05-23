@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
@@ -80,7 +80,7 @@ describe("issue 11994", () => {
 
   it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {
     H.visitQuestion("@comboQuestionId");
-    cy.location().then(questionLocation => {
+    cy.location().then((questionLocation) => {
       cy.icon("table2").click();
       cy.location("href").should("eq", questionLocation.href);
     });
@@ -96,7 +96,7 @@ describe("issue 39221", () => {
     H.restore();
   });
 
-  ["admin", "normal"].forEach(user => {
+  ["admin", "normal"].forEach((user) => {
     it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
       cy.signOut();
       cy.signIn(user as "admin" | "normal");

@@ -8,6 +8,7 @@
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -109,13 +110,14 @@
 (defn- row->vec [row-col-names]
   (fn [^org.bson.Document row]
     (mapv (fn [col-name]
-            (let [col-parts (str/split col-name #"\.")
-                  val       (reduce
-                             (fn [^org.bson.Document object ^String part-name]
-                               (when object
-                                 (.get object part-name)))
-                             row
-                             col-parts)]
+            (let [val (if (str/includes? col-name ".")
+                        (reduce
+                         (fn [^org.bson.Document object ^String part-name]
+                           (when object
+                             (.get object part-name)))
+                         row
+                         (str/split col-name #"\."))
+                        (.get row col-name))]
               (mongo.conversion/from-document val {:keywordize true})))
           row-col-names)))
 
@@ -194,7 +196,7 @@
                                                       collection-name
                                                       session
                                                       query
-                                                      qp.pipeline/*query-timeout-ms*)]
+                                                      driver.settings/*query-timeout-ms*)]
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))

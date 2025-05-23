@@ -1,28 +1,30 @@
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 
-import { Box, Button, Divider, Group } from "metabase/ui";
+import { Box, Divider, Group } from "metabase/ui";
 
+import { renderDefaultSubmitButton } from "../../utils";
 import { TimeToggle } from "../TimeToggle";
 import { clearTimePart } from "../utils";
 
 import { DateRangePickerBody } from "./DateRangePickerBody";
 import type { DateRangePickerValue } from "./types";
 
-export interface DateRangePickerProps {
+export type DateRangePickerProps = {
   value: DateRangePickerValue;
-  submitButtonLabel: string;
   hasTimeToggle: boolean;
+  renderSubmitButton?: () => ReactNode;
   onChange: (value: DateRangePickerValue) => void;
   onSubmit: () => void;
-}
+};
 
 export function DateRangePicker({
-  value: { dateRange, hasTime },
-  submitButtonLabel,
+  value,
   hasTimeToggle,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
+  const { dateRange, hasTime } = value;
   const [startDate, endDate] = dateRange;
 
   const handleDateRangeChange = (newDateRange: [Date, Date]) => {
@@ -51,13 +53,11 @@ export function DateRangePicker({
         />
       </Box>
       <Divider />
-      <Group p="sm" position={hasTimeToggle ? "apart" : "right"}>
+      <Group p="sm" justify={hasTimeToggle ? "space-between" : "flex-end"}>
         {hasTimeToggle && (
           <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
         )}
-        <Button variant="filled" type="submit">
-          {submitButtonLabel}
-        </Button>
+        {renderSubmitButton()}
       </Group>
     </form>
   );

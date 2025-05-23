@@ -4,32 +4,41 @@ import { t } from "ttag";
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
-import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
+import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
-import { Editor } from "metabase/query_builder/components/NativeQueryEditor/Editor";
+import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { createDatasetQuery, createNativeQuery } from "./utils";
+import { createNativeQuestion } from "./utils";
 
 const TITLE = {
-  sql: t`SQL for this question`,
-  json: t`Native query for this question`,
+  get sql() {
+    return t`SQL for this question`;
+  },
+  get json() {
+    return t`Native query for this question`;
+  },
 };
 
 const BUTTON_TITLE = {
-  sql: t`Convert this question to SQL`,
-  json: t`Convert this question to a native query`,
+  get sql() {
+    return t`Convert this question to SQL`;
+  },
+  get json() {
+    return t`Convert this question to a native query`;
+  },
 };
 
 export const NotebookNativePreview = (): JSX.Element => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
 
-  const engine = question.database()?.engine;
+  const database = question.database();
+  const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
 
   const sourceQuery = question.query();
@@ -42,20 +51,13 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
-  const formattedQuery = formatNativeQuery(data?.query, engine);
-  const query = createNativeQuery(question, formattedQuery);
+  const newQuestion = createNativeQuestion(question, data);
+  const newQuery = newQuestion.query();
 
   const handleConvertClick = useCallback(() => {
-    if (!formattedQuery) {
-      return;
-    }
-
-    const newDatasetQuery = createDatasetQuery(formattedQuery, question);
-    const newQuestion = question.setDatasetQuery(newDatasetQuery);
-
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
     dispatch(setUIControls({ isNativeEditorOpen: true }));
-  }, [question, dispatch, formattedQuery]);
+  }, [newQuestion, dispatch]);
 
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
@@ -83,8 +85,14 @@ export const NotebookNativePreview = (): JSX.Element => {
       >
         {TITLE[engineType]}
       </Box>
-      <Box
-        style={{ flex: 1, borderTop: borderStyle, borderBottom: borderStyle }}
+      <Flex
+        style={{
+          flex: 1,
+          borderTop: borderStyle,
+          borderBottom: borderStyle,
+          overflow: "auto",
+        }}
+        direction="column"
       >
         {showLoader && <DelayedLoadingSpinner delay={1000} />}
         {showEmptySidebar}
@@ -95,12 +103,8 @@ export const NotebookNativePreview = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && (
-          <div style={{ height: "100%", flex: 1 }}>
-            <Editor query={query} readOnly />
-          </div>
-        )}
-      </Box>
+        {showQuery && <Editor query={newQuery} readOnly />}
+      </Flex>
       <Box ta="end" p="1.5rem">
         <Button
           variant="subtle"

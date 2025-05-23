@@ -4,6 +4,8 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
+   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -49,7 +51,7 @@
 
 (api.macros/defendpoint :put "/:id"
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
-  paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
+  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
@@ -74,6 +76,15 @@
    {:keys [table_id card_id]} :- [:map
                                   [:table_id ms/PositiveInt]
                                   [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
+  (when card_id
+    (let [db (t2/select-one :model/Database
+                            :id {:select [:t.db_id]
+                                 :from [[(t2/table-name :model/Table) :t]]
+                                 :where [:= :t.id table_id]})]
+      (when (not (driver.u/supports? (:engine db) :saved-question-sandboxing db))
+        (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
+                        {:status-code 400
+                         :message     (tru "Sandboxing with a saved question is not enabled for this database.")})))))
   (gtap/check-columns-match-table {:table_id table_id
                                    :card_id  card_id}))
 
@@ -88,13 +99,16 @@
 (defn- +check-sandboxes-enabled
   "Wrap the Ring handler to make sure sandboxes are enabled before allowing access to the API endpoints."
   [handler]
-  (fn [request respond raise]
-    (if-not (premium-features/enable-sandboxes?)
-      (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
-                           " "
-                           (tru "Please check you have set a valid Enterprise token and try again."))
-                      {:status-code 403}))
-      (handler request respond raise))))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (if-not (premium-features/enable-sandboxes?)
+       (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
+                            " "
+                            (tru "Please check you have set a valid Enterprise token and try again."))
+                       {:status-code 403}))
+       (handler request respond raise)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 ;; All endpoints in this namespace require superuser perms to view
 ;;
@@ -104,4 +118,6 @@
 ;; TODO - defining the `check-superuser` check *here* means the API documentation function won't pick up on the "this
 ;; requires a superuser" stuff since it parses the `defendpoint` body to look for a call to `check-superuser`. I
 ;; suppose this doesn't matter (much) body since this is an enterprise endpoint and won't go in the dox anyway.
-(api/define-routes api/+check-superuser +check-sandboxes-enabled)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/mt/gtap` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser +check-sandboxes-enabled))

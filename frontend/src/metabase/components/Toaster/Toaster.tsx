@@ -59,10 +59,10 @@ const Toaster = ({
         {...divProps}
       >
         <ToasterMessage>{message}</ToasterMessage>
-        <ToasterButton onClick={onConfirm} aria-label="Confirm">
+        <ToasterButton onClick={onConfirm} aria-label={t`Confirm`}>
           {confirmText}
         </ToasterButton>
-        <ToasterDismiss onClick={onDismiss} aria-label="Close">
+        <ToasterDismiss onClick={onDismiss} aria-label={t`Close`}>
           <Icon name="close" />
         </ToasterDismiss>
       </ToasterContainer>

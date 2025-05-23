@@ -1,12 +1,12 @@
 (ns metabase.lib.schema.common
   (:require
    [clojure.string :as str]
-   [metabase.types]
+   [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -17,6 +17,14 @@
   [x]
   (cond-> x
     (string? x) keyword))
+
+(defn normalize-keyword-lower
+  "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
+  string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
+  should not get converted to keywords, like numbers."
+  [x]
+  (cond-> x
+    (string? x) (-> u/lower-case-en keyword)))
 
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`."

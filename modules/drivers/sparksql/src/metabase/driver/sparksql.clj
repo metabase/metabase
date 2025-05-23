@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as hive-like]
    [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -235,6 +236,7 @@
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :expressions                     true
                               :native-parameters               true
                               :nested-queries                  true
@@ -249,3 +251,15 @@
 (defmethod sql.qp/quote-style :sparksql
   [_driver]
   :mysql)
+
+(defmethod sql.qp/->integer :sparksql
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
+
+(defmethod sql.qp/->honeysql [:sparksql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :sparksql
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

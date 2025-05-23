@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import ModalContent from "metabase/components/ModalContent";
 import { FormMessage } from "metabase/forms";
-import { Button } from "metabase/ui";
+import { Button, FocusTrap, Group } from "metabase/ui";
 
 interface ArchiveModalProps {
   title?: string;
@@ -34,7 +34,7 @@ export const ArchiveModal = ({
       modelId,
       triggeredFrom: "detail_page",
     })
-      .catch(error => setError(error))
+      .catch((error) => setError(error))
       .finally(() => {
         onClose?.();
       });
@@ -45,18 +45,23 @@ export const ArchiveModal = ({
       title={title || t`Trash this?`}
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
-        <Button key="cancel" onClick={onClose}>
-          {t`Cancel`}
-        </Button>,
-        <Button
-          key="archive"
-          color="error"
-          variant="filled"
-          onClick={archive}
-          loading={isLoading}
-        >
-          {t`Move to trash`}
-        </Button>,
+        <FocusTrap key="buttons">
+          <Group gap="0.5rem">
+            <Button key="cancel" onClick={onClose}>
+              {t`Cancel`}
+            </Button>
+            <Button
+              key="archive"
+              color="error"
+              variant="filled"
+              onClick={archive}
+              loading={isLoading}
+              data-autofocus
+            >
+              {t`Move to trash`}
+            </Button>
+          </Group>
+        </FocusTrap>,
       ]}
     >
       {message}

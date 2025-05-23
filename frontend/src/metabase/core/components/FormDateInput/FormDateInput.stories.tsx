@@ -5,11 +5,11 @@ import { Form, FormProvider } from "metabase/forms";
 import FormDateInput from "./FormDateInput";
 
 export default {
-  title: "Core/FormDateInput",
+  title: "Components/Ask Before Using/FormDateInput",
   component: FormDateInput,
 };
 
-const Template: StoryFn<typeof FormDateInput> = args => {
+const Template: StoryFn<typeof FormDateInput> = (args) => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 

@@ -9,13 +9,14 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -29,14 +30,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -63,17 +64,24 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
+                              :expressions/integer                    true
+                              :expressions/float                      true
+                              :expressions/date                       true
+                              :expressions/text                       true
+                              :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
-                              :window-functions/offset                false}]
+                              :window-functions/offset                false
+                              :expression-literals                    true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -192,8 +200,7 @@
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
@@ -204,8 +211,8 @@
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
-  [_]
-  (h2x/with-database-type-info [:now [:inline 6]] "timestamp"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -267,7 +274,7 @@
   [:length [:cast json-field-identifier :char]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
-  [:from_unixtime expr])
+  (h2x/with-database-type-info [:from_unixtime expr] "datetime"))
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
@@ -275,7 +282,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:convert expr [:raw "DATETIME"]])
+  (h2x/with-database-type-info [:convert expr [:raw "DATETIME"]] "datetime"))
 
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
@@ -305,14 +312,41 @@
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
 
-(defmethod sql.qp/->float :mysql
-  [_ value]
-  ;; no-op as MySQL doesn't support cast to float
-  value)
+(defmethod sql.qp/integer-dbtype :mysql
+  [_]
+  :signed)
 
-(defmethod sql.qp/->integer :mysql
-  [_ value]
-  (h2x/maybe-cast :signed value))
+(defmethod sql.qp/->honeysql [:mysql :split-part]
+  [driver [_ text divider position]]
+  (let [text (sql.qp/->honeysql driver text)
+        div  (sql.qp/->honeysql driver divider)
+        pos  (sql.qp/->honeysql driver position)]
+    [:case
+     ;; non-positive position
+     [:< pos 1]
+     ""
+
+     ;; position greater than number of parts
+     [:> pos
+      [:+ 1
+       [:floor
+        [:/
+         [:- [:length text]
+          [:length [:replace text div ""]]]
+         [:length div]]]]]
+     ""
+
+     ;; This needs some explanation.
+     ;; The inner substring_index returns the string up to the `pos` instance of `div`
+     ;; The outer substring_index returns the string from the last instance of `div` to the end
+     :else
+     [:substring_index
+      [:substring_index text div pos]
+      div -1]]))
+
+(defmethod sql.qp/->honeysql [:mysql :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -327,6 +361,9 @@
   If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
   {"integer"          "signed"
    "text"             "char"
+   ;; MySQL decimal defaults to 0 decimal places, so cast it as a double
+   ;; See https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+   "decimal"          "double"
    "double precision" "double"
    "bigint"           "unsigned"})
 
@@ -382,18 +419,6 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str (h2x/->datetime expr))))
 
-(defn- ->date [expr]
-  (if (h2x/is-of-type? expr "date")
-    expr
-    (-> [:date expr]
-        (h2x/with-database-type-info "date"))))
-
-(defn make-date
-  "Create and return a date based on  a year and a number of days value."
-  [year-expr number-of-days]
-  (-> [:makedate year-expr (sql.qp/inline-num number-of-days)]
-      (h2x/with-database-type-info "date")))
-
 (defmethod sql.qp/date [:mysql :minute]
   [_driver _unit expr]
   (let [format-str (if (= (h2x/database-type expr) "time")
@@ -411,43 +436,63 @@
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (h2x/minute expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (h2x/hour expr))
-(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] [:dayofmonth expr])
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] [:dayofyear expr])
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (h2x/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (h2x/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (h2x/year expr) 1))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
   [driver _unit expr]
   (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
 
+(defn- temporal-cast [type expr]
+  ;; mysql does not allow casting to timestamp
+  (if (= "timestamp" (u/lower-case-en type))
+    (h2x/maybe-cast "datetime" expr)
+    (h2x/maybe-cast type expr)))
+
+(defmethod sql.qp/date [:mysql :day]
+  [_ _ expr]
+  (if (h2x/is-of-type? expr "date")
+    expr
+    (->> (h2x/with-database-type-info [:date expr] "date")
+         (temporal-cast (h2x/database-type expr)))))
+
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
-(defmethod sql.qp/date [:mysql :week] [_ _ expr]
+(defmethod sql.qp/date [:mysql :week]
+  [_ _ expr]
   (let [extract-week-fn (fn [expr]
                           (str-to-date "%X%V %W"
                                        (h2x/concat [:yearweek expr]
                                                    (h2x/literal " Sunday"))))]
-    (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
+    (->> (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)
+         (temporal-cast (h2x/database-type expr)))))
 
 (defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (h2x/week expr 3))
 
-(defmethod sql.qp/date [:mysql :month] [_ _ expr]
-  (str-to-date "%Y-%m-%d"
-               (h2x/concat (date-format "%Y-%m" expr)
-                           (h2x/literal "-01"))))
+(defmethod sql.qp/date [:mysql :month]
+  [_ _ expr]
+  (->> (str-to-date "%Y-%m-%d" (h2x/concat (date-format "%Y-%m" expr) (h2x/literal "-01")))
+       (temporal-cast (h2x/database-type expr))))
 
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.
-(defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
-  (str-to-date "%Y-%m-%d"
-               (h2x/concat (h2x/year expr)
-                           (h2x/literal "-")
-                           (h2x/- (h2x/* (h2x/quarter expr)
-                                         3)
-                                  2)
-                           (h2x/literal "-01"))))
+(defmethod sql.qp/date [:mysql :quarter]
+  [_ _ expr]
+  (->> (str-to-date "%Y-%m-%d"
+                    (h2x/concat (h2x/year expr)
+                                (h2x/literal "-")
+                                (h2x/- (h2x/* (h2x/quarter expr)
+                                              3)
+                                       2)
+                                (h2x/literal "-01")))
+       (temporal-cast (h2x/database-type expr))))
+
+(defmethod sql.qp/date [:mysql :year]
+  [_ _ expr]
+  (->> (h2x/with-database-type-info [:makedate (h2x/year expr) (sql.qp/inline-num 1)] "date")
+       (temporal-cast (h2x/database-type expr))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -688,15 +733,21 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    ::upload/float                    [:double]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:datetime]
-    ::upload/offset-datetime          [:timestamp]))
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:datetime]
+    :metabase.upload/offset-datetime          [:timestamp]))
+
+(defmethod driver/allowed-promotions :mysql
+  [_driver]
+  {:metabase.upload/int     #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int
+                              :metabase.upload/float}})
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
@@ -920,17 +971,14 @@
                     [table-name privileges])))
           table-names)))
 
-;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
-;; name, but coerces boolean fields since mysql returns them as 0/1 integers
-(defmethod driver/describe-fields :mysql
-  [driver database & args]
-  (eduction
-   (map (fn [col]
-          (-> col
-              (update :pk? pos?)
-              (update :database-required pos?)
-              (update :database-is-auto-increment pos?))))
-   (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
+;; Coerces boolean fields since mysql returns them as 0/1 integers
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :mysql
+  [_driver _db & _args]
+  (map (fn [col]
+         (-> col
+             (update :pk? pos?)
+             (update :database-required pos?)
+             (update :database-is-auto-increment pos?)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
@@ -955,7 +1003,8 @@
                 [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
                 (when-let [db-name ((some-fn :db :dbname) details)]
                   [:= :c.table_schema db-name])
-                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]
+               :order-by [:c.table_name :c.ordinal_position]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :mysql
@@ -973,3 +1022,11 @@
                        (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (mdb/query-canceled-exception? :mysql e))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42S02"))

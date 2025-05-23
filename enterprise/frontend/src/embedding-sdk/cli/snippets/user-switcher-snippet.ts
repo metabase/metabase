@@ -1,11 +1,12 @@
 import { HARDCODED_USERS } from "../constants/hardcoded-users";
 
 export const getUserSwitcherSnippet = () => {
-  const users = HARDCODED_USERS.map(user => ({
+  const users = HARDCODED_USERS.map((user) => ({
     email: user.email,
     firstName: user.firstName,
   }));
 
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- cli snippets
   return `
 import {useContext} from 'react'
 
@@ -13,14 +14,19 @@ import {AnalyticsContext} from './analytics-provider'
 
 const USERS = ${JSON.stringify(users, null, 2)}
 
+// Demo component to switch between fake users.
+// In a real app, this would be managed by your auth provider.
+// See https://www.metabase.com/docs/latest/embedding/sdk/authentication
 export const UserSwitcher = () => {
   const {email, switchUser} = useContext(AnalyticsContext)
 
   return (
     <select
-      value={email}
+      value={email || undefined}
       onChange={(e) => {
-        switchUser(e.target.value)
+        if (switchUser) {
+          switchUser(e.target.value)
+        }
 
         // temporary workaround: reload the page to sign in as the new user
         window.location.reload()

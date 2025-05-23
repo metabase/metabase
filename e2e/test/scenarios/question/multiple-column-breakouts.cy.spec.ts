@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -305,7 +305,9 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover()
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket1Name).click();
           H.getNotebookStep("summarize")
             .findByTestId("breakout-step")
@@ -315,6 +317,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket2Name).click();
           H.visualize();
           cy.wait("@dataset");
@@ -440,6 +443,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(0)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket1Name).click();
           cy.wait("@dataset");
@@ -448,6 +452,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(1)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket2Name).click();
           cy.wait("@dataset");
@@ -518,6 +523,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           .should("contain.text", "All time")
           .click();
         H.popover().findByDisplayValue("All time").click();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.popover().last().findByText("On").click();
         H.popover().within(() => {
           cy.findByLabelText("Date").clear().type("August 14, 2023");
@@ -704,7 +710,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         setParametersAndAssertResults("@publicDashcardQuery");
 
         cy.log("set parameters in an embedded dashboard");
-        cy.get<number>("@dashboardId").then(dashboardId =>
+        cy.get<number>("@dashboardId").then((dashboardId) =>
           H.visitEmbeddedPage({
             resource: { dashboard: dashboardId },
             params: {},
@@ -736,7 +742,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.enterCustomColumnDetails({
             formula: expression1,
             name: "Expression1",
-            blur: true,
+            format: true,
+            allowFastSet: true,
           });
           H.popover().button("Done").click();
 
@@ -746,6 +753,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             formula: expression2,
             name: "Expression2",
             blur: true,
+            allowFastSet: true,
           });
           H.popover().button("Done").click();
 
@@ -827,7 +835,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -1137,8 +1145,8 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
     });
 
-    describe("filter modal", () => {
-      it("should be able to add post-aggregation filters for each breakout in the filter modal", () => {
+    describe("filter picker", () => {
+      it("should be able to add post-aggregation filters for each breakout in the filter picker", () => {
         function addDateBetweenFilter({
           columnName,
           columnMinValue,
@@ -1148,18 +1156,15 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: string;
           columnMaxValue: string;
         }) {
-          H.modal().within(() => {
-            cy.findByText("Summaries").click();
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByLabelText("More options")
-              .click();
-          });
+          H.filter();
           H.popover().within(() => {
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Summaries").click();
+            cy.findByText(columnName).click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
-            cy.button("Add filter").click();
+            cy.button("Apply filter").click();
           });
         }
 
@@ -1181,7 +1186,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: string;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
-          H.filter();
 
           cy.log("add a filter for the first column");
           addDateBetweenFilter({
@@ -1198,7 +1202,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.modal().button("Apply filters").click();
           cy.wait("@dataset");
         }
 
@@ -1211,16 +1214,17 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: number;
           columnMaxValue: number;
         }) {
-          H.modal().within(() => {
+          H.filter();
+          H.popover().within(() => {
             cy.findByText("Summaries").click();
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByPlaceholderText("Min")
+            cy.findByText(columnName).click();
+            cy.findByPlaceholderText("Min")
               .clear()
               .type(String(columnMinValue));
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByPlaceholderText("Max")
+            cy.findByPlaceholderText("Max")
               .clear()
               .type(String(columnMaxValue));
+            cy.button("Apply filter").click();
           });
         }
 
@@ -1242,7 +1246,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: number;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
-          H.filter();
 
           cy.log("add a filter for the first column");
           addNumericBetweenFilter({
@@ -1259,7 +1262,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.modal().button("Apply filters").click();
           cy.wait("@dataset");
         }
 
@@ -1412,7 +1414,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findAllByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -1800,11 +1802,13 @@ function tableHeaderClick(
   columnName: string,
   { columnIndex = 0 }: { columnIndex?: number } = {},
 ) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)
     .trigger("mousedown");
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)

@@ -18,7 +18,7 @@ export const StaticEmbeddingOptionCard = ({
   onToggle,
 }: EmbeddingOptionCardProps) => {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
-  const upgradeUrl = useSelector(state =>
+  const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "embed-settings" }),
   );
   const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();
@@ -41,7 +41,7 @@ export const StaticEmbeddingOptionCard = ({
         )
       }`}
     >
-      <Group position="apart" align="center" w="100%">
+      <Group justify="space-between" align="center" w="100%">
         <LinkButton
           variant="default"
           to={"/admin/settings/embedding-in-other-applications/standalone"}

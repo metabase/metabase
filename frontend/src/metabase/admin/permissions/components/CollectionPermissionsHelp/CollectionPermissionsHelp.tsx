@@ -10,12 +10,12 @@ export const CollectionPermissionsHelp = () => {
 
   return (
     <Flex direction="column" py={rem(22)} px="lg">
-      <Title order={4}>{t`Collection permissions`}</Title>
+      <Title order={3}>{t`Collection permissions`}</Title>
       <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 
       <Title order={6} my="sm">{t`Collections Permission Levels`}</Title>
 
-      <Stack spacing={16} mt="1rem">
+      <Stack gap={16} mt="1rem">
         <PermissionHelpDescription
           icon="check"
           iconColor="success"
@@ -38,7 +38,7 @@ export const CollectionPermissionsHelp = () => {
         />
       </Stack>
 
-      <Text component="footer" align="center" py={24} weight={600}>
+      <Text component="footer" ta="center" py={24} fw={600}>
         {jt`${(
           <ExternalLink key="link" href={url}>{t`Learn more`}</ExternalLink>
         )} about collection permissions`}

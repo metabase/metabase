@@ -21,7 +21,7 @@ export const SummarizeDropdownStory = {
     return (
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
-          <Group noWrap align="flex-start">
+          <Group wrap="nowrap" align="flex-start">
             <InteractiveQuestion.Summarize />
 
             <InteractiveQuestion.QuestionVisualization />

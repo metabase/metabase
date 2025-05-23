@@ -20,9 +20,11 @@ export function getAvailableOptions(
   availableOperators: DatePickerOperator[],
 ): OperatorOption[] {
   return OPERATOR_OPTIONS.filter(
-    option =>
+    (option) =>
       option.operators.length === 0 ||
-      option.operators.some(operator => availableOperators.includes(operator)),
+      option.operators.some((operator) =>
+        availableOperators.includes(operator),
+      ),
   );
 }
 
@@ -31,7 +33,7 @@ export function getOptionType(value: DatePickerValue | undefined): OptionType {
     case "specific":
       return value.operator;
     case "relative":
-      if (value.value === "current") {
+      if (value.value === 0) {
         return "current";
       } else {
         return value.value < 0 ? "last" : "next";

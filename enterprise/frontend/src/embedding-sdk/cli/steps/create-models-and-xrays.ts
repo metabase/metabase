@@ -7,7 +7,7 @@ import type { DashboardInfo } from "../types/dashboard";
 import { createModelFromTable } from "../utils/create-model-from-table";
 import { createXrayDashboardFromModel } from "../utils/xray-models";
 
-export const createModelsAndXrays: CliStepMethod = async state => {
+export const createModelsAndXrays: CliStepMethod = async (state) => {
   const {
     instanceUrl = "",
     databaseId,

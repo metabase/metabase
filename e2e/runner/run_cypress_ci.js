@@ -1,35 +1,39 @@
+const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
 const CypressBackend = require("./cypress-runner-backend");
-const generateSnapshots = require("./cypress-runner-generate-snapshots");
 const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
-const mode = process.argv[2];
 
-const baseUrl = process.env["E2E_HOST"] ?? "http://localhost:4000";
+const modeOrTestSuite = process.argv?.[2]?.trim();
+
+const availableModes = ["start", "snapshot"];
+const availableTestSuites = [
+  "e2e",
+  "component",
+  "metabase-nodejs-react-sdk-embedding-sample-e2e",
+  "metabase-nextjs-sdk-embedding-sample-e2e",
+  "shoppy-e2e",
+];
+
+if (
+  !availableModes.includes(modeOrTestSuite) &&
+  !availableTestSuites.includes(modeOrTestSuite)
+) {
+  console.error(`Invalid mode or test suite: ${modeOrTestSuite}`);
+  process.exit(FAILURE_EXIT_CODE);
+}
 
 const startServer = async () => {
-  const server = CypressBackend.createServer();
   printBold("Starting backend");
-  await CypressBackend.start(server);
+  await CypressBackend.start();
 };
 
-const snapshot = async () => {
-  printBold("Generating snapshots");
-  await generateSnapshots(baseUrl);
+const runTests = async (testSuite) => {
+  printBold(`Running ${testSuite} Cypress Tests`);
+  await runCypress(testSuite, process.exit);
 };
 
-const runTests = async () => {
-  printBold("Running Cypress Tests");
-  await runCypress(baseUrl, exitCode => process.exit(exitCode));
-};
-
-if (mode === "start") {
+if (modeOrTestSuite === "start") {
   startServer();
-}
-
-if (mode === "snapshot") {
-  snapshot();
-}
-
-if (mode === "test") {
-  runTests();
+} else {
+  runTests(modeOrTestSuite);
 }

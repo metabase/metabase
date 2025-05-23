@@ -1,4 +1,4 @@
-import { type Action, useRegisterActions } from "kbar";
+import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -18,13 +18,22 @@ import {
   getHasDatabaseWithActionsEnabled,
   getHasNativeWrite,
 } from "metabase/selectors/data";
+import {
+  getUserIsAdmin,
+  getUserPersonalCollectionId,
+} from "metabase/selectors/user";
+
+import {
+  type RegisterShortcutProps,
+  useRegisterShortcut,
+} from "./useRegisterShortcut";
 
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
 }: WithRouterProps & { isLoggedIn: boolean }) => {
   const dispatch = useDispatch();
-  const collectionId = useSelector(state =>
+  const collectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, props),
   );
 
@@ -35,6 +44,9 @@ export const useCommandPaletteBasicActions = ({
     query: { models: ["dataset"], limit: 1 },
     enabled: isLoggedIn,
   });
+
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
@@ -50,12 +62,12 @@ export const useCommandPaletteBasicActions = ({
     [dispatch],
   );
 
-  const initialActions = useMemo<Action[]>(() => {
-    const actions: Action[] = [];
+  const initialActions = useMemo<RegisterShortcutProps[]>(() => {
+    const actions: RegisterShortcutProps[] = [];
 
     if (hasDataAccess) {
       actions.push({
-        id: "new_question",
+        id: "create-new-question",
         name: t`New question`,
         section: "basic",
         icon: "insight",
@@ -77,7 +89,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasNativeWrite) {
       actions.push({
-        id: "new_query",
+        id: "create-new-native-query",
         name: t`New SQL query`,
         section: "basic",
         icon: "sql",
@@ -96,32 +108,28 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    actions.push(
-      ...[
-        {
-          id: "new_dashboard",
-          name: t`New dashboard`,
-          section: "basic",
-          icon: "dashboard",
-          perform: () => {
-            openNewModal("dashboard");
-          },
-        },
-        {
-          id: "new_collection",
-          name: t`New collection`,
-          section: "basic",
-          icon: "collection",
-          perform: () => {
-            openNewModal("collection");
-          },
-        },
-      ],
-    );
+    actions.push({
+      id: "create-new-dashboard",
+      name: t`New dashboard`,
+      section: "basic",
+      icon: "dashboard",
+      perform: () => {
+        openNewModal("dashboard");
+      },
+    });
+    actions.push({
+      id: "create-new-collection",
+      name: t`New collection`,
+      section: "basic",
+      icon: "collection",
+      perform: () => {
+        openNewModal("collection");
+      },
+    });
 
     if (hasNativeWrite) {
       actions.push({
-        id: "new_model",
+        id: "create-new-model",
         name: t`New model`,
         section: "basic",
         icon: "model",
@@ -134,7 +142,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasDataAccess) {
       actions.push({
-        id: "new_metric",
+        id: "create-new-metric",
         name: t`New metric`,
         section: "basic",
         icon: "metric",
@@ -154,40 +162,7 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
-      actions.push({
-        id: "new_action",
-        name: t`New action`,
-        section: "basic",
-        icon: "bolt",
-        perform: () => {
-          openNewModal("action");
-        },
-      });
-    }
-
-    const browseActions: Action[] = [
-      {
-        id: "navigate_models",
-        name: t`Browse models`,
-        section: "basic",
-        icon: "model",
-        perform: () => {
-          dispatch(push("/browse/models"));
-        },
-      },
-      {
-        id: "navigate_data",
-        name: t`Browse databases`,
-        section: "basic",
-        icon: "database",
-        perform: () => {
-          dispatch(push("/browse/databases"));
-        },
-      },
-    ];
-
-    const diagnosticAction = {
+    actions.push({
       id: "report-issue",
       name: t`Report an issue`,
       section: "basic",
@@ -197,18 +172,96 @@ export const useCommandPaletteBasicActions = ({
       perform: () => {
         dispatch(openDiagnostics());
       },
-    };
+    });
 
-    return [...actions, ...browseActions, diagnosticAction];
+    const browseActions: RegisterShortcutProps[] = [
+      {
+        id: "navigate-browse-model",
+        name: t`Browse models`,
+        section: "basic",
+        icon: "model",
+        perform: () => {
+          dispatch(push("/browse/models"));
+        },
+      },
+      {
+        id: "navigate-browse-database",
+        name: t`Browse databases`,
+        section: "basic",
+        icon: "database",
+        perform: () => {
+          dispatch(push("/browse/databases"));
+        },
+      },
+      {
+        id: "navigate-browse-metric",
+        name: t`Browse Metrics`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(push("/browse/metrics"));
+        },
+      },
+    ];
+
+    if (isAdmin) {
+      actions.push({
+        id: "navigate-admin-settings",
+        perform: () => dispatch(push("/admin/settings")),
+      });
+    }
+
+    if (personalCollectionId) {
+      actions.push({
+        id: "navigate-personal-collection",
+        perform: () => dispatch(push(`/collection/${personalCollectionId}`)),
+      });
+    }
+
+    actions.push(
+      {
+        id: "navigate-user-settings",
+        perform: () => dispatch(push("/account/profile")),
+      },
+      {
+        id: "navigate-trash",
+        perform: () => dispatch(push("/trash")),
+      },
+      {
+        id: "navigate-home",
+        perform: () => dispatch(push("/")),
+      },
+    );
+
+    return [...actions, ...browseActions];
   }, [
     dispatch,
     hasDataAccess,
+    hasNativeWrite,
+    collectionId,
+    openNewModal,
+    isAdmin,
+    personalCollectionId,
+  ]);
+
+  useRegisterShortcut(initialActions, [initialActions]);
+
+  const openActionModal = [];
+
+  if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
+    openActionModal.push({
+      id: "create-action",
+      name: t`New action`,
+      section: "basic",
+      icon: "bolt",
+      perform: () => {
+        openNewModal("action");
+      },
+    });
+  }
+  useRegisterActions(openActionModal, [
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,
-    collectionId,
-    openNewModal,
   ]);
-
-  useRegisterActions(initialActions, [initialActions]);
 };

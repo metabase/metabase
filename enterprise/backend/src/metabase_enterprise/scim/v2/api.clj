@@ -4,13 +4,13 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
-   [metabase-enterprise.scim.api :as scim]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.api.common :as api]
+   [metabase-enterprise.scim.settings :as scim.settings]
+   [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -111,10 +111,10 @@
   [thunk]
   (try
     (let [response (thunk)]
-      (prometheus/inc! :metabase-scim/response-ok)
+      (analytics/inc! :metabase-scim/response-ok)
       response)
     (catch Throwable e
-      (prometheus/inc! :metabase-scim/response-error)
+      (analytics/inc! :metabase-scim/response-error)
       (throw e))))
 
 (defmacro with-prometheus-counters
@@ -163,7 +163,7 @@
    :groups   (map
               (fn [membership]
                 {:value   (:entity_id membership)
-                 :$ref    (str (scim/scim-base-url) "/Groups/" (:entity_id membership))
+                 :$ref    (str (scim.settings/scim-base-url) "/Groups/" (:entity_id membership))
                  :display (:name membership)})
               (:user_group_memberships user))
    :locale   (:locale user)
@@ -351,7 +351,7 @@
    :members     (map
                  (fn [member]
                    {:value   (:entity_id member)
-                    :$ref    (str (scim/scim-base-url) "/Users/" (:entity_id member))
+                    :$ref    (str (scim.settings/scim-base-url) "/Users/" (:entity_id member))
                     :display (:email member)})
                  (:members group))
    :displayName (:name group)
@@ -411,10 +411,10 @@
   [group-id user-entity-ids]
   (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
     (when-let [memberships (map
-                            (fn [user-id] {:group_id group-id :user_id user-id})
+                            (fn [user-id] {:group group-id :user user-id})
                             user-ids)]
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
-      (t2/insert! :model/PermissionsGroupMembership memberships))))
+      (perms/add-users-to-groups! memberships))))
 
 (api.macros/defendpoint :post "/Groups"
   "Create a single group, and populates it if necessary."
@@ -461,5 +461,3 @@
     (let [group (get-group-by-entity-id id)]
       (t2/delete! :model/PermissionsGroup (u/the-id group))
       (scim-response nil 204))))
-
-(api/define-routes)

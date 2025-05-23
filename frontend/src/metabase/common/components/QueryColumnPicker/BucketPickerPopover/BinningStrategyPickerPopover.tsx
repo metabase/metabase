@@ -25,7 +25,7 @@ export function BinningStrategyPickerPopover({
 
   const items = useMemo(
     () => [
-      ...buckets.map(bucket => getBucketListItem(query, stageIndex, bucket)),
+      ...buckets.map((bucket) => getBucketListItem(query, stageIndex, bucket)),
       { displayName: t`Don't bin`, bucket: null },
     ],
     [query, stageIndex, buckets],

@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -104,7 +104,7 @@ H.describeWithSnowplow("extract shortcut", () => {
             value,
             example,
           });
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "column_extract_via_plus_modal",
             custom_expressions_used: expressions,
             database_id: SAMPLE_DB_ID,
@@ -141,7 +141,7 @@ H.describeWithSnowplow("extract shortcut", () => {
         formula: "year([Created At]) + 2",
         blur: true,
       });
-      H.popover().button("Update").click();
+      H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
     });
@@ -173,7 +173,7 @@ H.describeWithSnowplow("extract shortcut", () => {
           value,
           example,
         });
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -213,7 +213,7 @@ H.describeWithSnowplow("extract shortcut", () => {
           value,
           example,
         });
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -240,7 +240,9 @@ H.describeWithSnowplow("extract shortcut", () => {
       option: "Host",
     });
 
-    cy.get("#main-data-grid").scrollTo("left", { duration: 2000 / 60 });
+    H.tableInteractiveScrollContainer().scrollTo("left", {
+      duration: 2000 / 60,
+    });
 
     H.tableHeaderClick("ID");
 
@@ -248,7 +250,7 @@ H.describeWithSnowplow("extract shortcut", () => {
     H.popover().findAllByRole("button").first().click();
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
-    cy.findAllByRole("columnheader", { name: "ID" }).should("be.visible");
+    cy.findAllByRole("columnheader").contains("ID").should("be.visible");
   });
 
   it("should be possible to extract columns from a summarized table", () => {
@@ -332,11 +334,13 @@ function extractColumnAndCheck({
 
   cy.wait(`@${requestAlias}`);
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
     .should("have.text", newColumn)
     .should("be.visible");
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByRole("columnheader").last().should("have.text", newColumn);
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
@@ -372,6 +376,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
 
     cy.wait(`@${requestAlias}`);
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByRole("columnheader")
       .last()
       .should("have.text", newColumn)
@@ -383,7 +388,9 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   }
 
   function selectColumn(index: number, name: string) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().findAllByTestId("column-input").eq(index).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(name).click();
   }
 
@@ -421,7 +428,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       newValue: "borer-hudson@yahoo.com1",
     });
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
@@ -445,7 +452,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    cy.findByTestId("TableInteractive-root").should("exist");
+    H.tableInteractive().should("exist");
     combineColumns({
       columns: ["Created At: Hour of day", "Count"],
       newColumn: "Combined Created At: Hour of day, Count",
@@ -475,7 +482,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    cy.findByTestId("TableInteractive-root").should("exist");
+    H.tableInteractive().should("exist");
     combineColumns({
       columns: ["Created At: Hour of day", "Category"],
       newColumn: "Combined Created At: Hour of day, Category",

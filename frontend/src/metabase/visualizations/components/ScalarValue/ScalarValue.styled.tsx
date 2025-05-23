@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { space } from "metabase/styled-components/theme";
@@ -24,8 +25,8 @@ interface ScalarValueWrapperProps {
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
-  font-size: ${props => props.fontSize};
-  line-height: ${props => props.lineHeight};
+  font-size: ${(props) => props.fontSize};
+  line-height: ${(props) => props.lineHeight ?? "var(--mantine-line-height)"};
   cursor: pointer;
 
   &:hover {
@@ -39,7 +40,7 @@ interface ScalarTitleContainerProps {
 
 export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
   line-height: ${TITLE_LINE_HEIGHT_REM}rem;
-  max-height: ${props => props.lines * TITLE_LINE_HEIGHT_REM}rem;
+  max-height: ${(props) => props.lines * TITLE_LINE_HEIGHT_REM}rem;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -50,7 +51,7 @@ export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
 export const ScalarTitleContent = styled.h3`
   text-align: center;
   overflow: hidden;
-  cursor: ${props => props.onClick && "pointer"};
+  cursor: ${(props) => props.onClick && "pointer"};
   font-size: 14px;
 
   &:hover {

@@ -6,12 +6,15 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.util.malli :as mu]
+   [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
 (deftest ^:parallel basic-filter-parts-test
@@ -36,11 +39,37 @@
                                       :inside (lib/expression-clause short-op [col 12 34 56 78 90] {})
                                       (:< :>) (lib/expression-clause short-op [col col] {})
                                       (lib/expression-clause short-op [col 123] {}))]]
-      (testing (str short-op " with " (lib.types.isa/field-type col))
+      (testing (str short-op " with " (:name col))
         (is (=? {:lib/type :mbql/expression-parts
                  :operator short-op
                  :args vector?}
                 (lib/expression-parts query expression-clause)))))))
+
+(deftest ^:parallel literals-expression-parts-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))]
+    (doseq [literal ["foo"
+                     ""
+                     "42"
+                     42
+                     0
+                     -1
+                     true
+                     false]]
+      (testing (str "literal " literal)
+        (is (=? literal (lib/expression-parts query literal)))))))
+
+(deftest ^:parallel bigint-value-expression-parts-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
+        uid  (str (random-uuid))]
+    (is (=? {:lib/type :mbql/expression-parts
+             :operator :value
+             :options {:base-type :type/BigInteger
+                       :effective-type :type/BigInteger
+                       :lib/uuid uid}
+             :args ["12345"]}
+            (lib/expression-parts query [:value {:base-type :type/BigInteger
+                                                 :effective-type :type/BigInteger
+                                                 :lib/uuid uid} "12345"])))))
 
 (deftest ^:parallel filter-parts-field-properties-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -106,13 +135,111 @@
                                               (meta/field-metadata :products :id)
                                               1))))))
 
+(deftest ^:parallel expression-parts-column-reference-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
+        stage-number -1]
+    (testing "column references"
+      (doseq [col (lib/filterable-columns query)]
+        (is (=? {:lib/type :metadata/column
+                 :id (:id col)
+                 :name (:name col)
+                 :display-name (:display-name col)}
+                (lib/expression-parts query stage-number (lib.ref/ref col))))))
+
+    (testing "unknown column reference"
+      (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 100]]
+        (mu/disable-enforcement
+          (is (=? {:lib/type :metadata/column
+                   :display-name "Unknown Field"}
+                  (lib/expression-parts query stage-number unknown-ref))))))))
+
+(deftest ^:parallel expression-parts-segment-reference-test
+  (let [segment-id 100
+        segment-name "FooBar"
+        segment-description "This is a segment"
+        segments-db  {:segments [{:id          segment-id
+                                  :name        segment-name
+                                  :table-id    (meta/id :venues)
+                                  :definition  {}
+                                  :description segment-description}]}
+        metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider segments-db)
+        query (lib/query metadata-provider (meta/table-metadata :venues))
+        stage-number -1]
+    (testing "segment references"
+      (doseq [segment (lib/available-segments query)]
+        (is (=? {:lib/type :metadata/segment
+                 :id segment-id
+                 :name segment-name
+                 :description segment-description}
+                (lib/expression-parts query stage-number (lib.ref/ref segment))))))
+
+    (testing "unknown segment reference"
+      (let [unknown-ref [:segment {:lib/uuid (str (random-uuid))} 101]]
+        (mu/disable-enforcement
+          (is (=? {:lib/type :metadata/segment
+                   :display-name "Unknown Segment"}
+                  (lib/expression-parts query stage-number unknown-ref))))))))
+
+(deftest ^:parallel expression-parts-metric-reference-test
+  (let [metric-id 100
+        metric-name "FooBar"
+        metric-description "This is a metric"
+        metrics-db  {:segments [{:id          metric-id
+                                 :name        metric-name
+                                 :table-id    (meta/id :venues)
+                                 :definition  {}
+                                 :description metric-description}]}
+        metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db)
+        query (lib/query metadata-provider (meta/table-metadata :venues))
+        stage-number -1]
+    (testing "metric references"
+      (doseq [metric (lib/available-metrics query)]
+        (is (=? {:lib/type :metadata/segment
+                 :id metric-id
+                 :name metric-name
+                 :description metric-description}
+                (lib/expression-parts query stage-number (lib.ref/ref metric))))))
+
+    (testing "unknown metric reference"
+      (let [unknown-ref [:metric {:lib/uuid (str (random-uuid))} 101]]
+        (mu/disable-enforcement
+          (is (=? {:lib/type :metadata/metric
+                   :id 101
+                   :display-name "Unknown Metric"}
+                  (lib/expression-parts query stage-number unknown-ref))))))))
+
+(deftest ^:parallel expression-parts-expression-reference-test
+  (let [expression-name "Foo"
+        other-expression-name "Bar"
+        query (-> (lib.tu/venues-query)
+                  (lib/expression expression-name
+                                  (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2))
+                  (lib/expression other-expression-name
+                                  [:expression {:base-type :type/Integer} expression-name]))
+        ;;
+
+        stage-number -1]
+    (testing "expression references"
+      (mu/disable-enforcement
+        (is (=? {:lib/type :metadata/column
+                 :name expression-name
+                 :lib/expression-name expression-name
+                 :lib/source :source/expressions}
+                (lib/expression-parts query stage-number [:expression {:base-type :type/Integer} expression-name])))))
+
+    (testing "nested expression references"
+      (mu/disable-enforcement
+        (is (=? {:lib/type :metadata/column
+                 :name other-expression-name
+                 :lib/expression-name other-expression-name
+                 :lib/source :source/expressions}
+                (lib/expression-parts query stage-number [:expression {} other-expression-name])))))))
+
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
-          (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
-  (is (=? [:= {:lib/uuid string?} [:+ {} [:field {:lib/uuid string?} (meta/id :products :id)] 2] 1]
-          (lib/expression-clause := [(lib/expression-clause :+ [(meta/field-metadata :products :id) 2] {}) 1] {}))))
+          (lib/expression-clause := [(meta/field-metadata :products :id) 1] {}))))
 
 (deftest ^:parallel invisible-expression-parts-test
   (is (=? {:lib/type :mbql/expression-parts
@@ -121,11 +248,132 @@
                    :name "ID"
                    :display-name "ID"}
                   1]}
-          (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
-                                                              1)))))
+          (lib/expression-parts (lib.tu/venues-query) -1 (lib/= (lib/ref (meta/field-metadata :products :id))
+                                                                1)))))
+
+(deftest ^:parallel normalize-expression-clause-test
+  (let [column (meta/field-metadata :checkins :date)]
+    (testing "normalizes week-mode correctly"
+      (doseq [[expected strings] {:us ["US" "us" "Us"], :iso ["ISO" "iso" "Iso"]}
+              week-mode strings]
+        (is (= expected
+               (last (lib/expression-clause {:lib/type :mbql/expression-parts
+                                             :operator :get-week
+                                             :options {}
+                                             :args [column week-mode]}))))))))
+
+(deftest ^:parallel case-or-if-parts-test
+  (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        int-field    (meta/field-metadata :venues :category-id)
+        string-field (meta/field-metadata :venues :name)
+        dt-field     (meta/field-metadata :users :last-login)
+        boolean-field (meta/field-metadata :venues :category-id)
+        test-cases {(lib/case [[boolean-field int-field]])
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field]}
+
+                    (lib/case [[boolean-field int-field]] nil)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field]}
+
+                    (lib/case [[boolean-field int-field]] string-field)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field string-field]}
+
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]])
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field]}
+
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field]}
+
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field dt-field]}}]
+    (testing "case pairs should be flattened in expression parts"
+      (doseq [[clause parts] test-cases]
+        (let [{:keys [operator options args]} parts
+              res (lib.fe-util/expression-parts query -1 clause)]
+          (is (=? operator (:operator res)))
+          (is (=? options  (:options res)))
+          (is (=? (map :id args) (map :id (:args res)))))))
+
+    (testing "case pairs should be unflattened in expression clause"
+      (doseq [[expected-expression parts] test-cases]
+        (let [{:keys [operator options args]} parts
+              actual-expression (lib.fe-util/expression-clause operator args options)
+              [expected-op _ expected-args] expected-expression
+              [actual-op _ actual-args] actual-expression]
+          (is (=? expected-op actual-op))
+          (is (=? (map :id expected-args) (map :id actual-args))))))
+
+    (testing "case/if should round-trip through expression-parts and expression-clause"
+      (doseq [[clause] test-cases]
+        (let [parts                     (lib.fe-util/expression-parts query clause)
+              round-tripped-expression  (lib.fe-util/expression-clause
+                                         (:operator parts)
+                                         (:args parts)
+                                         nil)
+              round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
+
+          (is (=? (:operator parts) (:operator round-tripped-parts)))
+          (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
+
+(deftest ^:parallel nested-case-or-if-parts-test
+  (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        int-field    (meta/field-metadata :venues :category-id)
+        string-field (meta/field-metadata :venues :name)
+        boolean-field (meta/field-metadata :venues :category-id)]
+    (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
+      (doseq [parts [{:lib/type :mbql/expression-parts
+                      :operator :case
+                      :options {}
+                      :args [boolean-field
+                             int-field
+                             "default"]}
+
+                     {:lib/type :mbql/expression-parts
+                      :operator :upper
+                      :options {}
+                      :args [{:lib/type :mbql/expression-parts
+                              :operator :case
+                              :options {}
+                              :args [boolean-field
+                                     string-field
+                                     {:lib/type :mbql/expression-parts
+                                      :operator :case
+                                      :options {}
+                                      :args [boolean-field
+                                             int-field
+                                             "default"]}]}]}
+
+                     {:lib/type :mbql/expression-parts
+                      :operator :upper
+                      :options {}
+                      :args [{:lib/type :mbql/expression-parts
+                              :operator :lower
+                              :options {}
+                              :args [{:lib/type :mbql/expression-parts
+                                      :operator :case
+                                      :options {}
+                                      :args [boolean-field string-field]}]}]}]]
+
+        (let [expression (lib.fe-util/expression-clause
+                          (:operator parts)
+                          (:args parts)
+                          (:options parts))
+              round-tripped-parts (lib.fe-util/expression-parts query expression)]
+          (is (=? parts round-tripped-parts)))))))
 
 (deftest ^:parallel string-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :venues :name)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-empty column)
@@ -183,11 +431,23 @@
         (lib.filter/= "A" column)
         (lib.filter/is-null column)
         (lib.expression/concat column "A")
-        (lib.filter/and (lib.filter/= column "A") true)))))
+        (lib.filter/and (lib.filter/= column "A") true)))
+    (testing "should correctly propagate `:id` when destructuring a filter clause in a nested query"
+      (let [query         (lib.tu/venues-query)
+            query         (-> query
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (m/find-first #(= (:name %) "NAME") (lib/breakoutable-columns query)))
+                              (lib/append-stage))
+            filter-clause (lib/= (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query)) "test")
+            filter-parts  (lib.fe-util/string-filter-parts query -1 filter-clause)]
+        (is (=? {:field-id (meta/id :venues :name)}
+                (lib.field/field-values-search-info query (:column filter-parts))))))))
 
 (deftest ^:parallel number-filter-parts-test
-  (let [query  lib.tu/venues-query
-        column (meta/field-metadata :venues :price)]
+  (let [query         (lib.tu/venues-query)
+        column        (meta/field-metadata :venues :price)
+        bigint-value  (u.number/bigint "9007199254740993")
+        bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}
@@ -201,7 +461,12 @@
                               (lib.filter/>= column 10)         {:operator :>=, :column column, :values [10]}
                               (lib.filter/< column 10)          {:operator :<, :column column, :values [10]}
                               (lib.filter/<= column 10)         {:operator :<=, :column column, :values [10]}
-                              (lib.filter/between column 10 20) {:operator :between, :column column, :values [10 20]}}]
+                              (lib.filter/between column 10 20) {:operator :between, :column column, :values [10 20]}
+
+                              ;; bigint
+                              (lib.filter/= column bigint-clause) {:operator :=, :column column, :values [bigint-value]}
+                              (lib.filter/!= column bigint-clause) {:operator :!=, :column column, :values [bigint-value]}
+                              (lib.filter/> column bigint-clause) {:operator :>, :column column, :values [bigint-value]}}]
         (let [{:keys [operator column values]} parts]
           (is (=? parts (lib.fe-util/number-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/number-filter-parts query -1 (lib.fe-util/number-filter-clause operator
@@ -215,9 +480,11 @@
         (lib.filter/and (lib.filter/= column 10) true)))))
 
 (deftest ^:parallel coordinate-filter-parts-test
-  (let [query      (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
-        lat-column (meta/field-metadata :people :latitude)
-        lon-column (meta/field-metadata :people :longitude)]
+  (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
+        lat-column    (meta/field-metadata :people :latitude)
+        lon-column    (meta/field-metadata :people :longitude)
+        bigint-value  (u.number/bigint "9007199254740993")
+        bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= lat-column 10)
                               {:operator :=, :column lat-column, :values [10]}
@@ -256,7 +523,21 @@
                               {:operator         :inside
                                :column           lat-column
                                :longitude-column lon-column
-                               :values           [10 20 30 40]}}]
+                               :values           [10 20 30 40]}
+
+                              ;; bigint
+
+                              (lib.filter/= lat-column bigint-clause)
+                              {:operator :=, :column lat-column, :values [bigint-value]}
+
+                              (lib.filter/!= lat-column bigint-clause)
+                              {:operator :!=, :column lat-column, :values [bigint-value]}
+
+                              (lib.filter/> lat-column bigint-clause)
+                              {:operator :>, :column lat-column, :values [bigint-value]}
+
+                              (lib.filter/between lat-column bigint-clause bigint-clause)
+                              {:operator :between, :column lat-column, :values [bigint-value bigint-value]}}]
         (let [{:keys [operator column longitude-column values]} parts]
           (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 (lib.fe-util/coordinate-filter-clause operator
@@ -272,7 +553,7 @@
         (lib.filter/and (lib.filter/= lat-column 10) true)))))
 
 (deftest ^:parallel boolean-filter-parts-test
-  (let [query  (-> lib.tu/venues-query
+  (let [query  (-> (lib.tu/venues-query)
                    (lib.expression/expression "Boolean"
                                               (lib.filter/is-empty (meta/field-metadata :venues :name))))
         column (m/find-first #(= (:name %) "Boolean") (lib.filter/filterable-columns query))]
@@ -300,7 +581,7 @@
           (fn [values] (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values))))
 
 (deftest ^:parallel specific-date-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
@@ -365,12 +646,12 @@
         (lib.filter/and (lib.filter/< column "2024-11-28") true)))))
 
 (deftest ^:parallel relative-date-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
-      (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
+      (doseq [[clause parts] {(lib.filter/time-interval column 0 :day)
                               {:column column
-                               :value  :current
+                               :value  0
                                :unit   :day}
 
                               (lib.filter/time-interval column -10 :month)
@@ -411,13 +692,17 @@
                                                                            offset-value
                                                                            offset-unit
                                                                            options)))))))
+    (testing "should convert `:current` to `0` for backward compatibility"
+      (let [clause (lib.filter/time-interval column :current :day)
+            parts  {:column column, :value  0, :unit :day}]
+        (is (=? parts (lib.fe-util/relative-date-filter-parts query -1 clause)))))
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
 
 (deftest ^:parallel exclude-date-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
@@ -503,7 +788,7 @@
   (update parts :values (fn [values] (mapv #(u.time/format-for-base-type % :type/Time) values))))
 
 (deftest ^:parallel time-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (assoc (meta/field-metadata :checkins :date)
                       :base-type      :type/Time
                       :effective-type :type/Time)]
@@ -550,7 +835,7 @@
         (lib.filter/and (lib.filter/> column "10:20") true)))))
 
 (deftest ^:parallel default-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :venues :price)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
@@ -571,7 +856,7 @@
         date-arg-1 "2023-11-02"
         date-arg-2 "2024-01-03"
         datetime-arg "2024-12-05T22:50:27"]
-    (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
+    (are [expected clause] (=? expected (lib/filter-args-display-name (lib.tu/venues-query) -1 clause))
       "4 AM" (lib/= (lib/get-hour created-at) 4)
       "Excludes 12 PM" (lib/!= (lib/get-hour created-at) 12)
       "Mondays" (lib/= (lib.expression/get-day-of-week created-at :iso) 1)
@@ -589,10 +874,11 @@
       "Before Nov 2, 2023" (lib/< created-at date-arg-1)
       "Yesterday" (lib/time-interval created-at -1 :day)
       "Tomorrow" (lib/time-interval created-at 1 :day)
-      "Previous 10 Days" (lib/time-interval created-at -10 :day)
-      "Next 10 Days" (lib/time-interval created-at 10 :day)
+      "Previous 10 days" (lib/time-interval created-at -10 :day)
+      "Next 10 days" (lib/time-interval created-at 10 :day)
       "Today" (lib/time-interval created-at :current :day)
-      "This Month" (lib/time-interval created-at :current :month)
+      "This month" (lib/time-interval created-at :current :month)
+      "Previous 64 months, starting 7 months ago" (lib/relative-time-interval created-at -64 :month -7 :month)
       "Dec 5, 2024, 10:50 PM" (lib.filter/during created-at datetime-arg :minute)
       "Dec 5, 2024, 10:00 PM – 10:59 PM" (lib.filter/during created-at datetime-arg :hour)
       "Dec 5, 2024" (lib.filter/during created-at datetime-arg :day)
@@ -618,34 +904,34 @@
                       {:type :table,    :id (meta/id :venues)}
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/venues-query
-      (lib/append-stage lib.tu/venues-query)))
+      (lib.tu/venues-query)
+      (lib/append-stage (lib.tu/venues-query))))
   (testing "join query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id (meta/id :venues)}
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/query-with-join
-      (lib/append-stage lib.tu/query-with-join)))
+      (lib.tu/query-with-join)
+      (lib/append-stage (lib.tu/query-with-join))))
   (testing "source card based query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/query-with-source-card
-      (lib/append-stage lib.tu/query-with-source-card)))
+      (lib.tu/query-with-source-card)
+      (lib/append-stage (lib.tu/query-with-source-card))))
   (testing "source card based query with result metadata"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/query-with-source-card-with-result-metadata
-      (lib/append-stage lib.tu/query-with-source-card-with-result-metadata)))
+      (lib.tu/query-with-source-card-with-result-metadata)
+      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata))))
   (testing "model based query"
-    (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-model)]
+    (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-model)]
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}
@@ -654,7 +940,7 @@
         query
         (lib/append-stage query))))
   (testing "metric based query"
-    (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-metric)]
+    (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-metric)]
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}
@@ -701,7 +987,7 @@
     (is (= [{:type :table, :id "card__1"}]
            (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
 
-(deftest ^:parallel maybe-expand-temporal-expression-test
+(deftest ^:parallel expand-temporal-expression-test
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=
               {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
@@ -709,7 +995,7 @@
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-                                (#'lib.fe-util/maybe-expand-temporal-expression (update-temporal-unit expr unit)))
+                                (#'lib.fe-util/expand-temporal-expression (update-temporal-unit expr unit)))
         :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"
         :month "2024-05-01" "2024-05-31"
@@ -717,6 +1003,6 @@
         :year  "2024-01-01" "2024-12-31")
       (testing "Non-expandable temporal units"
         (are [unit] (let [expr (update-temporal-unit expr unit)]
-                      (= expr
-                         (#'lib.fe-util/maybe-expand-temporal-expression expr)))
+                      (= false
+                         (#'lib.fe-util/expandable-temporal-expression? expr)))
           :minute :day)))))

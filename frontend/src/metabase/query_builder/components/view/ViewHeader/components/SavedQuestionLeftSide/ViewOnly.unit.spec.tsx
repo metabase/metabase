@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
@@ -83,7 +84,7 @@ const ORDERS_QUERY = (function () {
   const query = createQuery({ databaseId: SAMPLE_DB_ID });
 
   const availableColumns = Lib.fieldableColumns(query, -1);
-  const columns = availableColumns.filter(column => {
+  const columns = availableColumns.filter((column) => {
     const info = Lib.displayInfo(query, -1, column);
     return info.table?.name === "ORDERS" || info.table?.name === "PRODUCTS";
   });
@@ -93,7 +94,7 @@ const ORDERS_QUERY = (function () {
 
 const ORDERS_JOIN_PRODUCTS_QUERY = (function () {
   let query = createQuery({ databaseId: SAMPLE_DB_ID });
-  const joinTable = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
+  const joinTable = checkNotNull(Lib.tableOrCardMetadata(query, PRODUCTS_ID));
 
   query = Lib.join(
     query,

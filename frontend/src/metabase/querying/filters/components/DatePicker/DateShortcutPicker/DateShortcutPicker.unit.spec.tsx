@@ -42,14 +42,14 @@ describe("DateShortcutPicker", () => {
     await userEvent.click(screen.getByText("Today"));
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "day",
     });
   });
 
   it("should be able to navigate to a more specific filter type", async () => {
     const { onSelectType } = setup();
-    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Fixed date range…"));
     expect(onSelectType).toHaveBeenCalledWith("specific");
   });
 });

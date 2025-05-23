@@ -1,0 +1,24 @@
+.root {
+  &[data-size="md"] {
+    .input {
+      font-size: var(--mantine-font-size-md);
+    }
+  }
+
+  &[data-size="xs"] {
+    .input {
+      font-size: var(--mantine-font-size-xs);
+    }
+  }
+}
+
+.input {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background);
+}
+
+.error {
+  &::first-letter {
+    text-transform: capitalize;
+  }
+}

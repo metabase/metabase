@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import _userEvent from "@testing-library/user-event";
 
+import { render, screen } from "__support__/ui";
 import {
   createMockModerationReview,
   createMockUser,
@@ -43,7 +43,7 @@ describe("ModerationReviewIcon", () => {
     render(<ModerationReviewIcon {...props} />);
     await userEvent.hover(screen.getByLabelText("verified icon"));
 
-    expect(screen.getByText("You verified this")).toBeInTheDocument();
+    expect(await screen.findByText("You verified this")).toBeInTheDocument();
     expect(screen.getByText("a year ago")).toBeInTheDocument();
   });
 });

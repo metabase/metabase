@@ -23,9 +23,6 @@ export const setup = ({
   hasEnterprisePlugins?: boolean;
   enableSerialization?: boolean;
 } & RenderWithProvidersOptions = {}) => {
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
@@ -33,6 +30,9 @@ export const setup = ({
       }),
     }),
   });
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
   return renderWithProviders(<DashboardEntityIdCard dashboard={dashboard} />, {
     ...renderOptions,
     storeInitialState: state,

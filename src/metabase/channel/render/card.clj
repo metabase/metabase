@@ -5,7 +5,9 @@
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.channel.render.util :as render.util]
+   [metabase.channel.urls :as urls]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -13,7 +15,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.markdown :as markdown]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
@@ -29,13 +30,22 @@
   [card]
   (h (urls/card-url (u/the-id card))))
 
-(mu/defn- make-title-if-needed :- [:maybe body/RenderedPartCard]
+(defn- visualizer-dashcard-href
+  "Build deep linking href for visualizer dashcards"
+  [dashcard]
+  (h (str (urls/dashboard-url (:dashboard_id dashcard)) "#scrollTo=" (:id dashcard))))
+
+(mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
-    (let [card-name    (or (-> dashcard :visualization_settings :card.title)
+    (let [card-name    (or (-> dashcard :visualization_settings :visualization :settings :card.title)
+                           (-> dashcard :visualization_settings :card.title)
                            (-> card :name))
           image-bundle (when (:channel.render/include-buttons? options)
-                         (image-bundle/external-link-image-bundle render-type))]
+                         (image-bundle/external-link-image-bundle render-type))
+          title-href   (if (render.util/is-visualizer-dashcard? dashcard)
+                         (visualizer-dashcard-href dashcard)
+                         (card-href card))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
        :content     [:table {:style (style/style {:margin-bottom   :2px
@@ -46,7 +56,7 @@
                        [:td {:style (style/style {:padding :0
                                                   :margin  :0})}
                         [:a {:style  (style/style (style/header-style))
-                             :href   (card-href card)
+                             :href   title-href
                              :target "_blank"
                              :rel    "noopener noreferrer"}
                          (h card-name)]]
@@ -56,7 +66,7 @@
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
-(mu/defn- make-description-if-needed :- [:maybe body/RenderedPartCard]
+(mu/defn- make-description-if-needed :- [:maybe ::body/RenderedPartCard]
   [dashcard card options :- [:maybe ::options]]
   (when (:channel.render/include-description? options)
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
@@ -67,11 +77,19 @@
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
 
+(defn- visualizer-display-type
+  "Return dashcard's display type if it is a visualizer dashcard else nil"
+  [dashcard]
+  (if (render.util/is-visualizer-dashcard? dashcard)
+    (keyword (get-in dashcard [:visualization_settings :visualization :display]))
+    nil))
+
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
   [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
-  (let [col-sample-count          (delay (count (take 3 cols)))
-        row-sample-count          (delay (count (take 2 rows)))]
+  (let [col-sample-count  (delay (count (take 3 cols)))
+        row-sample-count  (delay (count (take 2 rows)))
+        display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -86,11 +104,13 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
+             (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
              (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (not (contains? #{:progress :gauge} display-type))
+        (and (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
+             (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
@@ -121,7 +141,7 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
-(mu/defn- render-pulse-card-body :- body/RenderedPartCard
+(mu/defn- render-pulse-card-body :- ::body/RenderedPartCard
   [render-type
    timezone-id :- [:maybe :string]
    card
@@ -145,15 +165,15 @@
           (log/error e "Pulse card render error")
           (body/render :render-error nil nil nil nil nil))))))
 
-(mu/defn render-pulse-card :- body/RenderedPartCard
+(mu/defn render-pulse-card :- ::body/RenderedPartCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
   - attachments
   - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
-  ([render-type timezone-id  card dashcard results]
-   (render-pulse-card render-type timezone-id  card dashcard results nil))
+  ([render-type timezone-id card dashcard results]
+   (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type
     timezone-id :- [:maybe :string]
@@ -166,13 +186,16 @@
          {description :content}           (make-description-if-needed dashcard card options)
          {pulse-body       :content
           body-attachments :attachments
-          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
+          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
+         attachment-href                  (if (render.util/is-visualizer-dashcard? dashcard)
+                                            (visualizer-dashcard-href dashcard)
+                                            (card-href card))]
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                         [:div
-                         [:a {:href        (card-href card)
+                         [:a {:href        attachment-href
                               :target      "_blank"
                               :rel         "noopener noreferrer"
                               :style       (style/style
@@ -199,22 +222,23 @@
   ([timezone-id card results options :- [:maybe ::options]]
    (:content (render-pulse-card :inline timezone-id card nil results options))))
 
-(mu/defn render-pulse-section :- body/RenderedPartCard
+(mu/defn render-pulse-section :- ::body/RenderedPartCard
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
   ([timezone-id part]
-   (render-pulse-section timezone-id part))
+   (render-pulse-section timezone-id part {}))
 
   ([timezone-id
     {card :card, dashcard :dashcard, result :result, :as _part}
     options :- [:maybe ::options]]
-   (let [options                       (merge {:channel.render/include-title?       true
-                                               :channel.render/include-description? true}
-                                              options)
-         {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
-     {:attachments attachments
-      :content     [:div {:style (style/style {:margin-top    :20px
-                                               :margin-bottom :20px})}
-                    content]})))
+   (log/with-context {:card_id (:id card)}
+     (let [options                       (merge {:channel.render/include-title?       true
+                                                 :channel.render/include-description? true}
+                                                options)
+           {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
+       {:attachments attachments
+        :content     [:div {:style (style/style {:margin-top    :20px
+                                                 :margin-bottom :20px})}
+                      content]}))))
 
 (mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
@@ -237,7 +261,7 @@
 
 (mu/defn png-from-render-info :- bytes?
   "Create a PNG file (as a byte array) from rendering info."
-  ^bytes [rendered-info :- body/RenderedPartCard width]
+  ^bytes [rendered-info :- ::body/RenderedPartCard width]
   ;; TODO huh? why do we need this indirection?
   (png/render-html-to-png rendered-info width))
 

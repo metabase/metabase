@@ -1,3 +1,4 @@
+import type { CodeLanguage } from "metabase/components/CodeEditor";
 import type { Card, Dashboard } from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
@@ -19,6 +20,11 @@ export type EmbedResourceParameter = {
   default?: unknown;
 };
 
+export type EmbedResourceDownloadOptions = {
+  pdf: boolean;
+  results: boolean;
+};
+
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 
 export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
@@ -34,9 +40,7 @@ export type EmbeddingDisplayOptions = {
   background: boolean;
   bordered: boolean;
   titled: boolean;
-  /** this is deprecated in favor of `downloads`, but it's still supported */
-  hide_download_button?: boolean | null;
-  downloads: boolean | null;
+  downloads: EmbedResourceDownloadOptions | null;
 };
 
 /**
@@ -49,7 +53,9 @@ export type EmbeddingAdditionalHashOptions = {
   locale?: string;
 };
 
-export type EmbeddingHashOptions = EmbeddingDisplayOptions &
+export type EmbeddingHashOptions = {
+  downloads: string | boolean | null;
+} & Omit<EmbeddingDisplayOptions, "downloads"> &
   EmbeddingAdditionalHashOptions;
 
 export type CodeSampleParameters = {
@@ -65,7 +71,7 @@ export type ClientCodeSampleConfig = {
   id: string;
   name: string;
   source: string;
-  mode: string;
+  language: CodeLanguage;
 };
 
 export type ServerCodeSampleConfig = {
@@ -74,8 +80,8 @@ export type ServerCodeSampleConfig = {
   source: string;
   parametersSource: string;
   getIframeQuerySource: string;
-  mode: string;
   embedOption?: string;
+  language: CodeLanguage;
 };
 
 export type CodeSampleOption = ClientCodeSampleConfig | ServerCodeSampleConfig;

@@ -7,22 +7,20 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -73,8 +71,9 @@
               ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
               ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
               :cols (mapv (fn [col-name]
-                            (-> (qp.test-util/native-query-col :venues col-name)
-                                (dissoc :database_type)))
+                            (let [col (-> (qp.test-util/native-query-col :venues col-name)
+                                          (dissoc :database_type))]
+                              (assoc col :ident (lib/native-ident (:name col) "AAAAAAAAAAAAAAAAAAAAA"))))
                           [:id :longitude :category_id :price :name :latitude])}
              (mt/format-rows-by
               [int 4.0 int int str 4.0]
@@ -88,7 +87,11 @@
                         :limit        5}))
                     (update :cols (fn [cols]
                                     (mapv (fn [col]
-                                            (dissoc col :database_type))
+                                            (-> col
+                                                (dissoc :database_type)
+                                                ;; Overwrite the idents to make the card eid fixed.
+                                                (update :ident #(str "native[AAAAAAAAAAAAAAAAAAAAA]__"
+                                                                     (subs % 31)))))
                                           cols)))))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
@@ -771,8 +774,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
             (mt/with-temp [:model/Collection collection {}
                            :model/Card       card-1 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
@@ -794,14 +797,14 @@
                              (mi/can-read? object)))))))
 
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
-                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/with-test-user :rasta
                   (doseq [[object-name object] {"Collection" collection
                                                 "Card 1"     card-1
                                                 "Card 2"     card-2}]
                     (testing object-name
-                      (is (= true
-                             (mi/can-read? object)))))
+                      (is (true?
+                           (mi/can-read? object)))))
 
                   (testing "\nshould be able to run the query"
                     (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
@@ -836,36 +839,36 @@
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
         (mt/with-temp [:model/Collection source-card-collection {}
                        :model/Collection dest-card-collection   {}]
-          (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+          (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
 
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
           (mt/with-temp [:model/Collection dest-card-collection]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             (mt/with-temp [:model/Collection source-card-collection]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 
@@ -978,6 +981,43 @@
                     [int int]
                     (mt/run-mbql-query nil
                       {:source-table "card__1"}))))))))))
+
+(deftest ^:parallel expression-literals-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expression-literals)
+    (let [query (mt/mbql-query venues
+                  {:fields      [[:expression "one"]
+                                 [:expression "foo"]
+                                 [:expression "MyTrue"]
+                                 [:expression "MyFalse"]]
+                   :expressions {"one"     [:value 1     {:base_type :type/Integer}]
+                                 "foo"     [:value "foo" {:base_type :type/Text}]
+                                 "MyTrue"  [:value true  {:base_type :type/Boolean}]
+                                 "MyFalse" [:value false {:base_type :type/Boolean}]}
+                   :limit       1})]
+      (letfn [(check-result [rows]
+                (is (= [[1 "foo" true false]]
+                       (mt/formatted-rows
+                        [int str mt/boolish->bool mt/boolish->bool]
+                        rows))))]
+        (testing "can you use nested queries that have expression literals in them?"
+          (check-result (mt/run-mbql-query nil
+                          {:source-query (:query query)}))
+          (testing "if source query with expression literals is from a Card"
+            (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                              [query])
+              (check-result (mt/run-mbql-query nil
+                              {:source-table "card__1"}))))
+          (testing "if source query with expression literals is from a Model"
+            (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                              (mt/application-database-metadata-provider (mt/id))
+                                              {:cards [{:id 1
+                                                        :type :model
+                                                        :name "Model 1"
+                                                        :database-id (mt/id)
+                                                        :entity-id     (u/generate-nano-id)
+                                                        :dataset-query query}]})
+              (check-result (mt/run-mbql-query nil
+                              {:source-table "card__1"})))))))))
 
 (defmulti bucketing-already-bucketed-year-test-expected-rows
   {:arglists '([driver])}
@@ -1648,9 +1688,51 @@
                     (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
                                                    (lib/breakoutable-columns $q)))
                     (lib/append-stage $q)
+                    (lib/breakout $q (first (lib/breakoutable-columns $q)))
                     (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]
-        (is (= [[20]] (mt/formatted-rows
-                       [int] (qp/process-query query))))))))
+        (is (= [[10 10] [20 20]] (mt/formatted-rows
+                                  [int int] (qp/process-query query))))))))
+
+(deftest ^:parallel space-names-question-test
+  (mt/test-drivers (set/intersection
+                    (mt/normal-drivers-with-feature :identifiers-with-spaces)
+                    (mt/normal-drivers-with-feature :left-join))
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          card-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
+                         (lib/order-by (lib.metadata/field mp (mt/id "orders" "created_at")))
+                         (lib/limit 1)
+                         lib/->legacy-MBQL)
+          results (qp/process-query card-query)]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question
+                                                :dataset_query {:native (get-in results [:data :native_form])
+                                                                :database (mt/id)
+                                                                :type :native}
+                                                :name          "Spaces in Name"
+                                                :entity_id     "yZvzZlw8lRkATwq8w8fDi"
+                                                :result_metadata
+                                                (for [col (get-in results [:data :results_metadata :columns])]
+                                                  (assoc col :ident (lib/native-ident (:name col) "yZvzZlw8lRkATwq8w8fDi")))}]
+        (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
+              query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
+                      (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))
+
+                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                  created-at-pred
+                                                                  (lib/breakoutable-columns $q))
+                                         :month))
+                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                  created-at-pred
+                                                                  (lib/breakoutable-columns $q))
+                                         :day))
+                      (lib/filter $q (lib/!= (m/find-first created-at-pred (lib/filterable-columns $q)) nil))
+                      (lib/append-stage $q)
+                      (lib/breakout $q (first (lib/breakoutable-columns $q)))
+                      (lib/breakout $q (last (lib/breakoutable-columns $q))))]
+          (is (= [[#t "2016-04-01" #t "2016-04-30"]]
+                 (mt/formatted-rows
+                  [(comp t/local-date u.date/parse)
+                   (comp t/local-date u.date/parse)]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"

@@ -14,7 +14,7 @@ export type FormProps<C extends ElementType = typeof Box> =
   PolymorphicComponentProp<
     C,
     BoxProps &
-      FormHTMLAttributes<HTMLFormElement> & {
+      Omit<FormHTMLAttributes<HTMLFormElement>, "style"> & {
         disabled?: boolean;
       }
   >;

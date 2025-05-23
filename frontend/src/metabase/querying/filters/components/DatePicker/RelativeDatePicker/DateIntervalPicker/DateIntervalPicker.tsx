@@ -1,7 +1,10 @@
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
-import type { DatePickerUnit } from "metabase/querying/filters/types";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import {
   Button,
   Divider,
@@ -14,8 +17,9 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import type { DatePickerSubmitButtonProps } from "../../types";
+import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
-import type { DateIntervalValue } from "../types";
 import {
   formatDateRange,
   getInterval,
@@ -26,17 +30,17 @@ import {
 import { setDefaultOffset, setUnit } from "./utils";
 
 interface DateIntervalPickerProps {
-  value: DateIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
-  submitButtonLabel: string;
-  onChange: (value: DateIntervalValue) => void;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
 
 export function DateIntervalPicker({
   value,
   availableUnits,
-  submitButtonLabel,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
@@ -51,7 +55,7 @@ export function DateIntervalPicker({
   };
 
   const handleUnitChange = (inputValue: string | null) => {
-    const option = unitOptions.find(option => option.value === inputValue);
+    const option = unitOptions.find((option) => option.value === inputValue);
     if (option) {
       onChange(setUnit(value, option.value));
     }
@@ -68,7 +72,7 @@ export function DateIntervalPicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Flex p="md">
+      <Flex p="md" align="center">
         <NumberInput
           value={interval}
           aria-label={t`Interval`}
@@ -81,13 +85,17 @@ export function DateIntervalPicker({
           aria-label={t`Unit`}
           ml="md"
           onChange={handleUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
           <Button
             aria-label={t`Starting from…`}
             c="var(--mb-color-text-secondary)"
             variant="subtle"
-            leftIcon={<Icon name="arrow_left_to_line" />}
+            leftSection={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
           />
         </Tooltip>
@@ -96,14 +104,12 @@ export function DateIntervalPicker({
         <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
-      <Group px="md" py="sm" position="apart">
-        <Group c="var(--mb-color-text-secondary)" spacing="sm">
+      <Group px="md" py="sm" justify="space-between">
+        <Group c="var(--mb-color-text-secondary)" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        <Button variant="filled" type="submit">
-          {submitButtonLabel}
-        </Button>
+        {renderSubmitButton({ value, isDisabled: false })}
       </Group>
     </form>
   );

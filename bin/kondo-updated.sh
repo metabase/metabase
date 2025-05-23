@@ -7,6 +7,10 @@
 #
 #    ./bin/kondo-updated.sh master
 
+echo "This script is deprecated. Please use mage instead."
+echo "see:"
+echo "./bin/mage"
+
 set -euo pipefail
 
 # make sure we're in the root dir of the metabase repo i.e. the parent dir of the dir this script lives in
@@ -32,5 +36,7 @@ fi
 command="clojure -M:kondo --lint ${UPDATED_FILES[*]}"
 
 set -x
+
+
 
 $command

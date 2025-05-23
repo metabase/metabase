@@ -398,7 +398,7 @@
 
 (mu/defn- adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
   "Make an inclusive date range exclusive as needed."
-  [{:keys [inclusive-start? inclusive-end?]} temporal-range :- [:maybe TemporalRange]]
+  [temporal-range :- [:maybe TemporalRange] {:keys [inclusive-start? inclusive-end?]}]
   (-> temporal-range
       (m/update-existing :start #(if inclusive-start?
                                    %
@@ -434,6 +434,20 @@
       (m/update-existing :end u.date/format)
       (dissoc :unit)))
 
+(defn- date-string->raw-range
+  [date-string]
+  (let [now (t/local-date-time)]
+    ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
+    ;; days depending on the user timezone
+    (or (execute-decoders relative-date-string-decoders :range now date-string)
+        ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
+        ;; against the db field value that is casted granularity level of a day in the db time zone
+        (execute-decoders absolute-date-string-decoders :range nil date-string)
+        ;; if both of the decoders above fail, then the date string is invalid
+        (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
+                        {:param date-string
+                         :type  qp.error-type/invalid-parameter})))))
+
 (mu/defn date-string->range :- DateStringRange
   "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
   `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive,
@@ -456,22 +470,10 @@
   ([date-string  :- ::lib.schema.common/non-blank-string
     {:keys [inclusive-start? inclusive-end?]
      :or   {inclusive-start? true inclusive-end? true}}]
-   (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
-         now (t/local-date-time)]
-     ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
-     ;; days depending on the user timezone
-     (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
-              (adjust-inclusive-range-if-needed options)
-              format-date-range)
-         ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
-         ;; against the db field value that is casted granularity level of a day in the db time zone
-         (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
-              (adjust-inclusive-range-if-needed options)
-              format-date-range)
-         ;; if both of the decoders above fail, then the date string is invalid
-         (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
-                         {:param date-string
-                          :type  qp.error-type/invalid-parameter}))))))
+   (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}]
+     (-> (date-string->raw-range date-string)
+         (adjust-inclusive-range-if-needed options)
+         format-date-range))))
 
 (defn- date-str->qp-aware-offset-dt
   "Generate offset datetime from `date-str` with respect to qp's `results-timezone`."
@@ -481,6 +483,13 @@
       (try (.toOffsetDateTime (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id))))
            (catch Throwable _
              (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
+
+(defn- date-str->local-dt
+  "Generate local datetime from `date-str`"
+  [date-str]
+  (when date-str
+    (let [[y M d h m s] (u.time/yyyyMMddhhmmss->parts date-str)]
+      (t/local-date-time y M d h m s 0))))
 
 (defn- date-str->unit-fn
   "Return appropriate function for interval end adjustments in [[exclusive-datetime-range-end]]."
@@ -522,21 +531,26 @@
 
   First [[date-string->range]] generates range for dates (inclusive by default). Operating on that range,
   this function:
-  1. converts dates to OffsetDateTime, respecting qp's timezone, adding zero temporal padding,
+  1. converts dates to LocalDateTime or OffsetDateTime respecting qp's timezone, adding zero temporal padding,
   2. updates range to correct _end-exclusive datetime_*
   3. formats the range.
 
   This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters.
 
   * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
-  [raw-date-str]
+  [raw-date-str field-type]
   (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
         ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
-        range-raw (try (date-string->range raw-date-str)
-                       (catch Throwable _
-                         (fallback-raw-range raw-date-str)))]
-    (-> (update-vals range-raw date-str->qp-aware-offset-dt)
-        (m/update-existing :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
+        [range-raw unit] (try (let [r (date-string->raw-range raw-date-str)]
+                                [(format-date-range r) (:unit r)])
+                              (catch Throwable _
+                                [(fallback-raw-range raw-date-str) :day]))
+        date-str-conversion (if (isa? field-type :type/DateTimeWithTZ)
+                              date-str->qp-aware-offset-dt
+                              date-str->local-dt)]
+    (-> (update-vals range-raw date-str-conversion)
+        (m/update-existing :end exclusive-datetime-range-end (or ({:second t/seconds, :hour t/hours} unit)
+                                                                 (date-str->unit-fn (:end range-raw))))
         (maybe-adjust-open-range (date-str->unit-fn ((some-fn :start :end) range-raw)))
         format-date-range)))
 

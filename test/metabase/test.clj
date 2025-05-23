@@ -8,16 +8,16 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
+   [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.channel.email-test]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.init]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-   [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.http-client :as client]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
@@ -31,8 +31,8 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
-   [metabase.test.persistence :as test.persistence]
    [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
@@ -72,6 +72,7 @@
   mdb.test-util/keep-me
   metabase.channel.email-test/keep-me
   metabase.core.init/keep-me
+  metabase.model-persistence.test-util/keep-me
   metabase.request.core/keep-me
   metabase.test.util.dynamic-redefs/keep-me
   metabase.util.log.capture/keep-me
@@ -82,12 +83,11 @@
   schema-migrations-test.impl/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
-  toucan2.tools.with-temp/keep-me
   test-runner.assert-exprs/keep-me
-  test.persistence/keep-me
   test.redefs/keep-me
   test.tz/keep-me
   test.users/keep-me
+  toucan2.tools.with-temp/keep-me
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
@@ -116,7 +116,9 @@
   db
   format-name
   id
+  ident
   mbql-query
+  metadata-provider
   native-query
   query
   run-mbql-query
@@ -170,6 +172,9 @@
  [mdb.test-util
   with-app-db-timezone-id!]
 
+ [metabase.model-persistence.test-util
+  with-persistence-enabled!]
+
  [metabase.request.core
   as-admin
   with-current-user]
@@ -179,9 +184,10 @@
   with-dynamic-fn-redefs]
 
  [premium-features.test-util
+  assert-has-premium-feature-error
   with-premium-features
   with-additional-premium-features
-  assert-has-premium-feature-error]
+  when-ee-evailable]
 
  [perms.test-util
   with-restored-data-perms!
@@ -200,6 +206,9 @@
   with-metadata-provider]
 
  [qp.test-util
+  boolish->bool
+  card-with-metadata
+  card-with-updated-metadata
   card-with-source-metadata-for-query
   col
   cols
@@ -207,6 +216,7 @@
   formatted-rows+column-names
   format-rows-by
   formatted-rows
+  metadata->native-form
   nest-query
   normal-drivers
   normal-drivers-with-feature
@@ -225,9 +235,6 @@
 
  [test-runner.assert-exprs
   derecordize]
-
- [test.persistence
-  with-persistence-enabled!]
 
  [test.users
   fetch-user
@@ -256,6 +263,7 @@
   bytes->base64-data-uri
   latest-audit-log-entry
   let-url
+  metric-value
   obj->json->obj
   ordered-subset?
   postwalk-pred
@@ -264,6 +272,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called!
+  transitive
   repeat-concurrently
   with-all-users-permission
   with-column-remappings
@@ -277,6 +286,7 @@
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
   with-anaphora
+  with-prometheus-system!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -300,7 +310,7 @@
  [tu.misc
   object-defaults
   with-clock
-  with-single-admin-user]
+  with-single-admin-user!]
 
  [u.random
   random-name

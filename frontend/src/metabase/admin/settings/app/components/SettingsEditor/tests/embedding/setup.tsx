@@ -61,7 +61,7 @@ export const getInteractiveEmbeddingQuickStartLink = () => {
     screen.getByRole("article", {
       name: "Interactive embedding",
     }),
-  ).getByRole("link", { name: "Check out our Quick Start" });
+  ).getByRole("link", { name: "Check out our Quickstart" });
 };
 
 export const embeddingSettingsUrl =

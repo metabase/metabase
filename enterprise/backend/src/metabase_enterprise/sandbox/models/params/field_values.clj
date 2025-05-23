@@ -1,17 +1,12 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
-   [metabase-enterprise.advanced-permissions.api.util
-    :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.params.field-values :as params.field-values]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
 (comment api/keep-me)
@@ -34,7 +29,7 @@
     (when gtaps
       (row-level-restrictions/assert-one-gtap-per-table gtaps)
       ;; there shold be only one gtap per table and we only need one table here
-      ;; see docs in [[metabase.models.permissions]] for more info
+      ;; see docs in [[metabase.permissions.models.permissions]] for more info
       (t2/hydrate (first gtaps) :card))))
 
 (defn- field->gtap-attributes-for-current-user
@@ -80,60 +75,9 @@
                                            [:dimension [:field field-id _]] field-id))]
                     {k (get login-attributes k)})))])))
 
-(defenterprise field-id->field-values-for-current-user
-  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
-    {field-id FieldValues-instance}
-  Returns `nil` if `field-ids` is empty or no matching FieldValues exist."
-  :feature :sandboxes
-  [field-ids]
-  (let [fields                   (when (seq field-ids)
-                                   (t2/hydrate (t2/select :model/Field :id [:in (set field-ids)]) :table))
-        {unsandboxed-fields false
-         sandboxed-fields   true} (group-by (comp boolean field-is-sandboxed?) fields)]
-    (merge
-     ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
-     (when (seq unsandboxed-fields)
-       (params.field-values/default-field-id->field-values-for-current-user
-        (map u/the-id unsandboxed-fields)))
-     ;; for sandboxed fields, fetch the sandboxed values individually.
-     (into {} (for [{field-id :id, :as field} sandboxed-fields]
-                [field-id (select-keys (params.field-values/get-or-create-advanced-field-values! :sandbox field)
-                                       [:values :human_readable_values :field_id])])))))
-
-(defenterprise get-or-create-field-values-for-current-user!*
-  "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These
-  should be filtered as appropriate for the current User (currently this only applies to the EE impl)."
+(defenterprise hash-input-for-sandbox
+  "Returns a hash-input for FieldValues if the field is sandboxed."
   :feature :sandboxes
   [field]
-  (cond
-    (field-is-sandboxed? field)
-    (params.field-values/get-or-create-advanced-field-values! :sandbox field)
-
-    ;; Impersonation can have row-level security enforced by the database, so we still need to store field values per-user.
-    ;; TODO: only do this for DBs with impersonation in effect
-    (and api/*current-user-id*
-         (advanced-perms.api.u/impersonated-user?))
-    (params.field-values/get-or-create-advanced-field-values! :impersonation field)
-
-    :else
-    (params.field-values/default-get-or-create-field-values-for-current-user! field)))
-
-(defenterprise hash-key-for-linked-filters
-  "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
-  :feature :sandboxes
-  [field-id constraints]
-  (let [field (t2/select-one :model/Field :id field-id)]
-    (if (field-is-sandboxed? field)
-      (str (hash (concat [field-id
-                          constraints]
-                         (field->gtap-attributes-for-current-user field))))
-      (field-values/default-hash-key-for-linked-filters field-id constraints))))
-
-(defenterprise hash-key-for-sandbox
-  "Returns a hash-key for FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
-  :feature :sandboxes
-  [field-id]
-  (let [field (t2/select-one :model/Field :id field-id)]
-    (when (field-is-sandboxed? field)
-      (str (hash (concat [field-id]
-                         (field->gtap-attributes-for-current-user field)))))))
+  (when (field-is-sandboxed? field)
+    {:sandbox-attributes (field->gtap-attributes-for-current-user field)}))

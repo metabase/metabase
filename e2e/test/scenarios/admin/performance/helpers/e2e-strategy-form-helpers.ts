@@ -4,7 +4,7 @@ import { modal, popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
-} from "metabase/components/Schedule/constants";
+} from "metabase/components/Schedule/strings";
 import type {
   CacheStrategyType,
   CacheableModel,
@@ -56,13 +56,13 @@ export const preemptiveCachingSwitch = () =>
 export const enablePreemptiveCaching = () =>
   preemptiveCachingSwitch().within(() => {
     cy.findByRole("switch").should("not.be.checked");
-    cy.findByRole("switch").next("label").click();
+    cy.findByRole("switch").parent("label").click();
     cy.findByRole("switch").should("be.checked");
   });
 export const disablePreemptiveCaching = () =>
   preemptiveCachingSwitch().within(() => {
     cy.findByRole("switch").should("be.checked");
-    cy.findByRole("switch").next("label").click();
+    cy.findByRole("switch").parent("label").click();
     cy.findByRole("switch").should("not.be.checked");
   });
 export const checkPreemptiveCachingEnabled = () =>

@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { duration } from "metabase/lib/formatting";
+import { Tooltip } from "metabase/ui";
 
 import RunButton from "./RunButton";
 
@@ -23,8 +23,9 @@ export default function RunButtonWithTooltip({
   getTooltip = defaultGetTooltip,
   ...props
 }) {
+  const tooltip = getTooltip(props);
   return (
-    <Tooltip tooltip={getTooltip(props)} placement="top">
+    <Tooltip label={tooltip} disabled={!tooltip} position="top">
       <RunButton {...props} />
     </Tooltip>
   );

@@ -29,8 +29,9 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require
+   #?(:clj [metabase.util.performance :as perf]
+      :cljs [clojure.walk :as walk])
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -220,11 +221,19 @@
   [[_ field value unit]]
   [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
 
+(defn- normalize-value-opts
+  [opts]
+  (some-> opts
+          lib.schema.common/normalize-map
+          ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
+          (m/update-existing :base_type keyword)
+          (m/update-existing :semantic_type keyword)))
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details
   [[_ value info]]
-  [:value value info])
+  [:value value (normalize-value-opts info)])
 
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
@@ -241,7 +250,7 @@
 (defn- aggregation-subclause?
   [x]
   (or (when ((some-fn keyword? string?) x)
-        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*
+        (#{:avg :count :cum-count :distinct :distinct-where :stddev :sum :min :max :+ :- :/ :*
            :sum-where :count-where :share :var :median :percentile}
          (maybe-normalize-token x)))
       (when (mbql-clause? x)
@@ -374,14 +383,24 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
+(defn- update-existing! [transient-map k f]
+  (if-some [v (get transient-map k)]
+    (assoc! transient-map k (f v))
+    transient-map))
+
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]
-  {:pre [(map? metadata)]}
-  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
-      (m/update-existing :field_ref normalize-field-ref)
-      (m/update-existing :fingerprint walk/keywordize-keys)
-      (m/update-existing-in [:binning_info :binning_strategy] keyword)))
+  {:pre [(map? metadata)
+         #?(:clj  (instance? clojure.lang.IEditableCollection metadata)
+            :cljs (implements? cljs.core.IEditableCollection metadata))]}
+  (let [m (transient metadata)]
+    (-> (reduce #(update-existing! %1 %2 keyword) m
+                [:base_type :effective_type :semantic_type :visibility_type :source :unit])
+        (update-existing! :field_ref normalize-field-ref)
+        (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
+        (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))
+        persistent!)))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."

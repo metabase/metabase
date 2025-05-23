@@ -1,0 +1,1666 @@
+;; A "module" is any `metabase.<module>.core` namespace in `src`.
+;;
+;; ## `api`:
+;;
+;; Map of module name => the "core" external public-facing API namespace(s). You have three options here:
+;;
+;; 1. Special sentinel value `:any` means means this module does not (yet) have external public-facing API
+;;    namespace(s). This is mostly a temporary placeholder until we go in and create module namespaces, which means
+;;    you should go create one.
+;;
+;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed to use namespaces from
+;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
+;;    better than `:any`.
+;;
+;; 3. `nil` or not listed here -- we default to assuming there is (some subset) of the 'standard' API namespaces
+;;    `<module>.api`, `<module>.core`, and `<module>.init`
+;;
+;; ## `uses`:
+;;
+;; Map of module => other modules you're allowed to use there. You have two options here:
+;;
+;; 1. `:any` means namespaces in this module are allowed to use any other module -- allowed modules are not
+;;    enforced for this module. Module API namespaces for modules that have them defined are still enforced. For
+;;    ones that are `nil`, please go in and add a list of allowed modules. `:any` is mostly meant a temporary
+;;    placeholder until we can fill these all out, so feel free to fix these.
+;;
+;; 2. A set of module symbols. This is the list of modules that are allowed to be referenced. An empty set means no
+;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
+;;
+;; ## Tips
+;;
+;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally, and
+;; for tools for calculating this config -- you can use [[dev.deps-graph/print-kondo-config-diff]] to see what updates
+;; you need to make
+{:metabase/modules
+ {actions
+  {:api  #{metabase.actions.api
+           metabase.actions.core
+           metabase.actions.init}
+   :uses #{analytics
+           api
+           collections
+           driver
+           legacy-mbql
+           lib
+           model-persistence
+           models
+           public-sharing
+           queries
+           query-processor
+           search
+           settings
+           util}}
+
+  activity-feed
+  {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
+   :uses #{api
+           app-db
+           collections
+           config
+           events
+           models
+           util}}
+
+  appearance
+  {:api  #{metabase.appearance.core
+           metabase.appearance.init}
+   :uses #{settings util}}
+
+  analytics
+  {:api  #{metabase.analytics.api
+           metabase.analytics.core
+           metabase.analytics.init
+           metabase.analytics.prometheus
+           metabase.analytics.snowplow}
+   :uses #{appearance
+           api
+           app-db
+           channel
+           config
+           driver
+           eid-translation
+           internal-stats
+           lib-be
+           models
+           premium-features
+           session
+           settings
+           sso
+           system
+           task
+           util
+           version}}
+
+  analyze
+  {:api  #{metabase.analyze.core
+           metabase.analyze.query-results}
+   :uses #{config
+           driver
+           legacy-mbql
+           lib
+           models
+           sync
+           util}}
+
+  ;; TODO -- consolidate these into a `.core` API namespace.
+  api
+  {:api #{metabase.api.common
+          metabase.api.common.internal
+          metabase.api.common.validation
+          metabase.api.docs
+          metabase.api.init
+          metabase.api.macros
+          metabase.api.open-api
+          metabase.api.routes.common
+          metabase.api.settings
+          metabase.api.util
+          metabase.api.util.handlers}
+   :uses #{analytics
+           classloader
+           config
+           events
+           models
+           premium-features
+           request
+           settings
+           util
+           enterprise/advanced-permissions}}
+
+  api-keys
+  {:api  #{metabase.api-keys.api
+           metabase.api-keys.core}
+   :uses #{api
+           app-db
+           events
+           models
+           permissions
+           users
+           util}}
+
+  api-routes
+  {:api  #{metabase.api-routes.core}
+   :uses :any}
+
+  app-db
+  {:api  #{metabase.app-db.cluster-lock ; TODO FIXME
+           metabase.app-db.core
+           metabase.app-db.init
+           metabase.app-db.setup}
+   :uses #{auth-provider
+           classloader
+           config
+           connection-pool
+           task
+           util}}
+
+  audit-app
+  {:api  #{metabase.audit-app.core
+           metabase.audit-app.init}
+   :uses #{api
+           app-db
+           events
+           models
+           premium-features
+           settings
+           task
+           task-history
+           util}}
+
+  auth-provider
+  {:api  #{metabase.auth-provider.core}
+   :uses #{premium-features}}
+
+  batch-processing
+  {:api  #{metabase.batch-processing.core
+           metabase.batch-processing.init}
+   :uses #{app-db
+           settings
+           util}}
+
+  bookmarks
+  {:api  #{metabase.bookmarks.api}
+   :uses #{api
+           app-db
+           queries
+           util}}
+
+  bug-reporting
+  {:api  #{metabase.bug-reporting.api
+           metabase.bug-reporting.init}
+   :uses #{analytics
+           api
+           app-db
+           config
+           driver
+           premium-features
+           settings
+           util}}
+
+  cache
+  {:api  #{metabase.cache.api
+           metabase.cache.core
+           metabase.cache.init}
+   :uses #{api
+           app-db
+           config
+           events
+           models
+           premium-features
+           settings
+           util}}
+
+  ;; TODO -- way too many API namespaces.
+  channel
+  {:api  #{metabase.channel.api
+           metabase.channel.core
+           metabase.channel.email
+           metabase.channel.email.messages
+           metabase.channel.init
+           metabase.channel.models.channel
+           metabase.channel.render.core
+           metabase.channel.settings
+           metabase.channel.slack
+           metabase.channel.template.core
+           metabase.channel.urls}
+   :uses #{analytics
+           api
+           app-db
+           appearance
+           collections
+           config
+           dashboards
+           driver
+           events
+           formatter
+           lib
+           lib-be
+           models
+           notification
+           parameters
+           permissions
+           premium-features
+           query-processor
+           settings
+           system
+           task
+           timeline
+           types
+           util}}
+
+  classloader
+  {:api  #{metabase.classloader.core
+           metabase.classloader.init}
+   :uses #{util}}
+
+  cloud-migration
+  {:api  #{metabase.cloud-migration.api
+           metabase.cloud-migration.core
+           metabase.cloud-migration.init}
+   :uses #{api
+           app-db
+           cmd
+           config
+           models
+           premium-features
+           settings
+           task
+           util}}
+
+  content-verification
+  {:api  #{metabase.content-verification.core
+           metabase.content-verification.init}
+   :uses #{app-db
+           models
+           util}}
+
+  cmd
+  {:api  #{metabase.cmd.copy
+           metabase.cmd.core
+           metabase.cmd.dump-to-h2}
+   :uses #{api
+           api-routes
+           app-db
+           classloader
+           config
+           legacy-mbql
+           models
+           query-processor
+           search
+           settings
+           users
+           util}}
+
+  collections
+  {:api  #{metabase.collections.api
+           metabase.collections.models.collection
+           metabase.collections.models.collection.root}
+   :uses #{api
+           api-keys
+           app-db
+           audit-app
+           config
+           driver
+           events
+           legacy-mbql
+           models
+           notification
+           permissions
+           premium-features
+           queries
+           request
+           revisions
+           search
+           upload
+           util}}
+
+  ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
+  ;; if EE/test code is available; however we can ignore them since they're not real usages.
+  config
+  {:api  #{metabase.config.core}
+   :uses #{}}
+
+  ;; this is not actually a real module, but comes from one of our libraries.
+  connection-pool
+  {:api  #{metabase.connection-pool}
+   :uses #{}}
+
+  core
+  {:api  #{metabase.core.initialization-status}
+   :uses :any}
+
+  dashboards
+  {:api  #{metabase.dashboards.api
+           metabase.dashboards.autoplace
+           metabase.dashboards.constants
+           metabase.dashboards.models.dashboard
+           metabase.dashboards.models.dashboard-card
+           metabase.dashboards.models.dashboard-tab}
+   :uses #{actions
+           analytics
+           api
+           app-db
+           audit-app
+           channel
+           collections
+           config
+           embedding
+           events
+           lib
+           lib-be
+           models
+           parameters
+           permissions
+           public-sharing
+           pulse
+           queries
+           query-processor
+           request
+           revisions
+           search
+           util
+           warehouse-schema
+           xrays}}
+
+  database-routing
+  {:api  #{metabase.database-routing.core}
+   :uses #{premium-features}}
+
+  driver
+  {:api #{metabase.driver
+          metabase.driver.common
+          metabase.driver.common.parameters
+          metabase.driver.common.parameters.dates
+          metabase.driver.common.parameters.operators
+          metabase.driver.common.parameters.parse
+          metabase.driver.common.parameters.values
+          metabase.driver.ddl.interface
+          metabase.driver.h2
+          metabase.driver.impl
+          metabase.driver.init
+          metabase.driver.mysql
+          metabase.driver.postgres
+          metabase.driver.settings
+          metabase.driver.sql
+          metabase.driver.sql-jdbc.connection
+          metabase.driver.sql-jdbc.execute
+          metabase.driver.sql-jdbc.execute.diagnostic
+          metabase.driver.sql-jdbc.sync
+          metabase.driver.sql.query-processor
+          metabase.driver.sql.query-processor.deprecated
+          metabase.driver.sql.util
+          metabase.driver.sync
+          metabase.driver.util}
+   :uses #{actions
+           api
+           app-db
+           appearance
+           auth-provider
+           classloader
+           config
+           connection-pool
+           database-routing
+           events
+           legacy-mbql
+           lib
+           lib-be
+           logger
+           models
+           premium-features
+           query-processor
+           secrets
+           settings
+           sync
+           system
+           upload
+           warehouse-schema
+           warehouses
+           util}}
+
+  eid-translation
+  {:api  #{metabase.eid-translation.api
+           metabase.eid-translation.core
+           metabase.eid-translation.init}
+   :uses #{api
+           settings
+           util}}
+
+  embedding
+  {:api  #{metabase.embedding.api
+           metabase.embedding.init
+           metabase.embedding.settings
+           metabase.embedding.validation}
+   :uses #{analytics
+           api
+           config
+           driver
+           eid-translation
+           events
+           models
+           notification
+           parameters
+           premium-features
+           public-sharing
+           queries
+           query-processor
+           settings
+           tiles
+           util}}
+
+  events
+  {:api  #{metabase.events.core
+           metabase.events.init}
+   :uses #{models
+           util}}
+
+  formatter
+  {:api  #{metabase.formatter.core}
+   :uses #{appearance
+           models
+           system
+           query-processor
+           types
+           util}}
+
+  geojson
+  {:api  #{metabase.geojson.api
+           metabase.geojson.init}
+   :uses #{api
+           settings
+           util}}
+
+  indexed-entities
+  {:api  #{metabase.indexed-entities.api
+           metabase.indexed-entities.init}
+   :uses #{analytics
+           api
+           driver
+           legacy-mbql
+           lib
+           models
+           query-processor
+           search
+           sync
+           task
+           util}}
+
+  internal-stats
+  {:api #{metabase.internal-stats.core}
+   :uses #{app-db
+           models}}
+
+  legacy-mbql
+  {:api #{metabase.legacy-mbql.normalize
+          metabase.legacy-mbql.predicates
+          metabase.legacy-mbql.schema
+          metabase.legacy-mbql.schema.helpers
+          metabase.legacy-mbql.util}
+   :uses #{lib
+           models
+           types
+           util}}
+
+  lib
+  {:api #{metabase.lib.binning
+          metabase.lib.binning.util
+          metabase.lib.card
+          metabase.lib.core
+          metabase.lib.equality
+          metabase.lib.field
+          metabase.lib.filter
+          metabase.lib.ident
+          metabase.lib.join.util
+          metabase.lib.metadata
+          metabase.lib.metadata.cached-provider
+          metabase.lib.metadata.calculation
+          metabase.lib.metadata.invocation-tracker
+          metabase.lib.metadata.protocols
+          metabase.lib.normalize
+          metabase.lib.options
+          metabase.lib.query
+          metabase.lib.schema
+          metabase.lib.schema.actions
+          metabase.lib.schema.binning
+          metabase.lib.schema.common
+          metabase.lib.schema.expression
+          metabase.lib.schema.expression.temporal
+          metabase.lib.schema.expression.window
+          metabase.lib.schema.id
+          metabase.lib.schema.info
+          metabase.lib.schema.literal
+          metabase.lib.schema.metadata
+          metabase.lib.schema.parameter
+          metabase.lib.schema.template-tag
+          metabase.lib.schema.temporal-bucketing
+          metabase.lib.schema.util
+          metabase.lib.temporal-bucket
+          metabase.lib.types.isa
+          metabase.lib.util
+          metabase.lib.util.match
+          metabase.lib.walk}
+   :uses #{config
+           legacy-mbql
+           types
+           util}}
+
+  lib-be
+  {:api #{metabase.lib-be.core
+          metabase.lib-be.init
+          metabase.lib-be.metadata.jvm}
+   :uses #{lib
+           models
+           settings
+           util}}
+
+  logger
+  {:api  #{metabase.logger.api
+           metabase.logger.core
+           metabase.logger.init}
+   :uses #{analytics
+           api
+           classloader
+           config
+           util}}
+
+  login-history
+  {:api #{metabase.login-history.api
+          metabase.login-history.core
+          metabase.login-history.init}
+   :uses #{analytics
+           api
+           channel
+           request
+           settings
+           util}}
+
+  model-persistence
+  {:api #{metabase.model-persistence.api
+          metabase.model-persistence.core
+          metabase.model-persistence.init}
+   :uses #{api
+           app-db
+           driver
+           events
+           lib
+           models
+           premium-features
+           settings
+           queries
+           query-processor
+           request
+           system
+           task
+           task-history
+           util}}
+
+  models
+  {:api #{metabase.models.dispatch
+          metabase.models.humanization
+          metabase.models.init
+          metabase.models.interface
+          metabase.models.resolution
+          metabase.models.serialization
+          metabase.models.util.spec-update
+          metabase.models.visualization-settings}
+   :uses #{api
+           app-db
+           classloader
+           legacy-mbql
+           lib
+           lib-be
+           settings
+           util}}
+
+  native-query-snippets
+  {:api  #{metabase.native-query-snippets.api
+           metabase.native-query-snippets.core}
+   :uses #{api
+           collections
+           models
+           permissions
+           premium-features
+           util}}
+
+  notification
+  {:api  #{metabase.notification.api
+           metabase.notification.core
+           metabase.notification.init
+           metabase.notification.models
+           metabase.notification.payload.core}
+   :uses #{analytics
+           api
+           appearance
+           channel
+           config
+           dashboards
+           driver
+           events
+           models
+           parameters
+           permissions
+           premium-features
+           query-processor
+           request
+           session
+           settings
+           sso
+           system
+           task
+           task-history
+           users
+           util}}
+
+  ;; TODO -- too many API namespaces
+  parameters
+  {:api  #{metabase.parameters.chain-filter
+           metabase.parameters.custom-values
+           metabase.parameters.dashboard
+           metabase.parameters.field
+           metabase.parameters.init
+           metabase.parameters.params
+           metabase.parameters.shared}
+   :uses #{api
+           app-db
+           classloader
+           driver
+           legacy-mbql
+           lib
+           lib-be
+           models
+           query-processor
+           types
+           util
+           warehouse-schema
+           warehouses}}
+
+  permissions
+  {:api  #{metabase.permissions.api
+           metabase.permissions.core
+           metabase.permissions.init
+           ;; TODO -- move these into the API namespace.
+           metabase.permissions.models.application-permissions-revision
+           metabase.permissions.models.collection-permission-graph-revision
+           metabase.permissions.models.collection.graph
+           metabase.permissions.models.data-permissions
+           metabase.permissions.models.permissions
+           metabase.permissions.models.permissions-group
+           metabase.permissions.models.query.permissions
+           metabase.permissions.path
+           metabase.permissions.util}
+   :uses #{api
+           app-db
+           audit-app
+           collections
+           config
+           legacy-mbql
+           lib
+           models
+           premium-features
+           query-processor
+           request
+           settings
+           util}}
+
+  pivot
+  {:api #{metabase.pivot.core}
+   :uses #{models
+           util}}
+
+  plugins
+  {:api  #{metabase.plugins.core}
+   :uses #{classloader
+           config
+           driver
+           util}}
+
+  premium-features
+  {:api  #{metabase.premium-features.api
+           metabase.premium-features.core
+           metabase.premium-features.init}
+   :uses #{api
+           app-db
+           classloader
+           config
+           internal-stats
+           settings
+           util}}
+
+  product-feedback
+  {:api  #{metabase.product-feedback.api
+           metabase.product-feedback.init}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           config
+           driver
+           premium-features
+           settings
+           task
+           util}}
+
+  public-sharing
+  {:api  #{metabase.public-sharing.api
+           metabase.public-sharing.core
+           metabase.public-sharing.init
+           metabase.public-sharing.validation}
+   :uses #{actions
+           analytics
+           api
+           dashboards
+           events
+           lib
+           lib-be
+           models
+           parameters
+           queries
+           query-processor
+           request
+           settings
+           tiles
+           util}}
+
+  pulse
+  {:api  #{metabase.pulse.api
+           metabase.pulse.core
+           metabase.pulse.init}
+   :uses #{api
+           app-db
+           channel
+           classloader
+           collections
+           config
+           driver
+           events
+           models
+           notification
+           permissions
+           premium-features
+           query-processor
+           request
+           task
+           task-history
+           util
+           enterprise/advanced-permissions
+           enterprise/sandbox}}
+
+  queries
+  {:api  #{metabase.queries.api
+           metabase.queries.core
+           metabase.queries.init
+           metabase.queries.models.query ; TODO FIXME
+           metabase.queries.schema}      ; TODO FIXME
+   :uses #{analytics
+           analyze
+           api
+           app-db
+           audit-app
+           cache
+           channel
+           collections
+           config
+           content-verification
+           dashboards
+           embedding
+           events
+           legacy-mbql
+           lib
+           lib-be
+           models
+           parameters
+           permissions
+           premium-features
+           public-sharing
+           pulse
+           query-analysis
+           query-processor
+           request
+           revisions
+           search
+           util
+           view-log
+           warehouse-schema}}
+
+  query-analysis
+  {:api  #{metabase.query-analysis.core
+           metabase.query-analysis.init}
+   :uses #{config
+           driver
+           legacy-mbql
+           lib
+           query-processor
+           settings
+           task
+           util}}
+
+  query-processor
+  {:api #{metabase.query-processor
+          metabase.query-processor.api
+          metabase.query-processor.card
+          metabase.query-processor.compile
+          metabase.query-processor.dashboard
+          metabase.query-processor.debug
+          metabase.query-processor.error-type
+          metabase.query-processor.init
+          metabase.query-processor.interface
+          metabase.query-processor.metadata
+          metabase.query-processor.middleware.annotate
+          metabase.query-processor.middleware.cache-backend.db
+          metabase.query-processor.middleware.constraints
+          metabase.query-processor.middleware.fetch-source-query-legacy
+          metabase.query-processor.middleware.limit
+          metabase.query-processor.middleware.permissions
+          metabase.query-processor.middleware.wrap-value-literals
+          metabase.query-processor.pipeline
+          metabase.query-processor.pivot
+          metabase.query-processor.preprocess
+          metabase.query-processor.reducible
+          metabase.query-processor.schema
+          metabase.query-processor.setup
+          metabase.query-processor.store
+          metabase.query-processor.streaming
+          metabase.query-processor.streaming.common
+          metabase.query-processor.streaming.interface
+          metabase.query-processor.timezone
+          metabase.query-processor.util
+          metabase.query-processor.util.add-alias-info
+          metabase.query-processor.util.nest-query
+          metabase.query-processor.util.persisted-cache
+          metabase.query-processor.util.relative-datetime
+          metabase.query-processor.util.transformations.nest-breakouts
+          metabase.query-processor.writeback}
+   :uses #{analytics
+           analyze
+           api
+           app-db
+           appearance
+           audit-app
+           batch-processing
+           cache
+           config
+           driver
+           events
+           formatter
+           legacy-mbql
+           lib
+           lib-be
+           model-persistence
+           models
+           parameters
+           permissions
+           pivot
+           premium-features
+           queries
+           request
+           settings
+           system
+           server
+           types
+           users
+           util}}
+
+  request
+  {:api  #{metabase.request.core
+           metabase.request.init}
+   :uses #{api
+           config
+           permissions
+           session
+           settings
+           users
+           util}}
+
+  revisions
+  {:api  #{metabase.revisions.api
+           metabase.revisions.core
+           metabase.revisions.init}
+   :uses #{api
+           config
+           dashboards
+           events
+           models
+           permissions
+           util}}
+
+  sample-data
+  {:api  #{metabase.sample-data.core
+           metabase.sample-data.init}
+   :uses #{plugins
+           settings
+           sync
+           util}}
+
+  search
+  {:api #{metabase.search.api
+          metabase.search.appdb.scoring
+          metabase.search.config
+          metabase.search.core
+          metabase.search.in-place.scoring
+          metabase.search.ingestion
+          metabase.search.init
+          metabase.search.spec}
+   :uses #{analytics
+           api
+           app-db
+           appearance
+           audit-app
+           collections
+           config
+           driver
+           events
+           models
+           permissions
+           premium-features
+           queries
+           request
+           settings
+           startup
+           task
+           util
+           warehouses}}
+
+  secrets
+  {:api  #{metabase.secrets.core}
+   :uses #{api driver models premium-features util}}
+
+  segments
+  {:api  #{metabase.segments.api}
+   :uses #{api
+           events
+           legacy-mbql
+           lib
+           lib-be
+           models
+           permissions
+           search
+           util
+           xrays}}
+
+  server
+  {:api #{metabase.server.core
+          metabase.server.init
+          metabase.server.middleware.session
+          metabase.server.streaming-response} ; TODO -- too many API namespaces
+   :uses #{analytics
+           api
+           api-keys
+           app-db
+           appearance
+           config
+           core
+           driver
+           embedding
+           premium-features
+           query-processor
+           request
+           session
+           settings
+           system
+           util
+           enterprise/sso}}
+
+  session
+  {:api  #{metabase.session.core
+           metabase.session.api
+           metabase.session.init
+           metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
+   :uses #{api
+           app-db
+           channel
+           config
+           driver
+           events
+           login-history
+           request
+           settings
+           sso
+           system
+           task
+           users
+           util}}
+
+  settings
+  {:api  #{metabase.settings.api
+           metabase.settings.core
+           metabase.settings.init}
+   :uses #{api
+           app-db
+           config
+           events
+           models
+           premium-features
+           util
+           enterprise/advanced-permissions}}
+
+  setup
+  {:api  #{metabase.setup.api
+           metabase.setup.core
+           metabase.setup.init}
+   :uses #{analytics
+           api
+           app-db
+           appearance
+           channel
+           config
+           events
+           permissions
+           request
+           session
+           settings
+           system
+           users
+           util}}
+
+  sso
+  {:api  #{metabase.sso.api
+           metabase.sso.core
+           metabase.sso.init}
+   :uses #{api
+           config
+           permissions
+           premium-features
+           settings
+           users
+           util}}
+
+  startup
+  {:api  #{metabase.startup.core}
+   :uses #{util}}
+
+  sync
+  {:api #{metabase.sync.api
+          metabase.sync.core
+          metabase.sync.init
+          metabase.sync.schedules
+          metabase.sync.task.sync-databases
+          metabase.sync.util}
+   :uses #{analyze
+           api
+           app-db
+           audit-app
+           config
+           driver
+           events
+           lib
+           models
+           query-processor
+           settings
+           task
+           task-history
+           util
+           warehouse-schema
+           warehouses}}
+
+  system
+  {:api  #{metabase.system.core
+           metabase.system.init}
+   :uses #{appearance settings util}}
+
+  task
+  {:api #{metabase.task.bootstrap
+          metabase.task.core}
+   :uses #{app-db
+           classloader
+           util}}
+
+  task-history
+  {:api  #{metabase.task-history.api
+           metabase.task-history.core
+           metabase.task-history.init}
+   :uses #{api
+           models
+           permissions
+           premium-features
+           request
+           task
+           util}}
+
+  testing-api
+  {:api  #{metabase.testing-api.api
+           metabase.testing-api.core
+           metabase.testing-api.init}
+   :uses #{analytics
+           api
+           app-db
+           config
+           premium-features
+           search
+           util}}
+
+  tiles
+  {:api  #{metabase.tiles.api
+           metabase.tiles.init}
+   :uses #{api
+           legacy-mbql
+           query-processor
+           settings
+           util}}
+
+  timeline
+  {:api  #{metabase.timeline.api
+           metabase.timeline.core}
+   :uses #{analytics
+           api
+           collections
+           models
+           util}}
+
+  types
+  {:api  #{metabase.types.core
+           metabase.types.init}
+   :uses #{util}}
+
+  upload
+  {:api  #{metabase.upload.api
+           metabase.upload.core
+           metabase.upload.init}
+   :uses #{analytics
+           appearance
+           api
+           collections
+           driver
+           events
+           legacy-mbql
+           lib
+           model-persistence
+           models
+           permissions
+           queries
+           settings
+           sync
+           util
+           warehouse-schema}}
+
+  user-key-value
+  {:api  #{metabase.user-key-value.api
+           metabase.user-key-value.init}
+   :uses #{api
+           config
+           lib
+           util}}
+
+  users
+  {:api  #{metabase.users.api
+           metabase.users.init
+           metabase.users.models.user
+           metabase.users.models.user-parameter-value}
+   :uses #{analytics
+           api
+           appearance
+           batch-processing
+           channel
+           collections
+           config
+           events
+           models
+           permissions
+           premium-features
+           request
+           session
+           settings
+           setup
+           sso
+           system
+           util
+           enterprise/advanced-permissions}}
+
+  util
+  {:api :any
+   :uses #{classloader
+           config
+           legacy-mbql
+           lib
+           settings
+           system}}
+
+  version
+  {:api  #{metabase.version.core
+           metabase.version.init}
+   :uses #{config
+           settings
+           system
+           task
+           util}}
+
+  view-log
+  {:api  #{metabase.view-log.core
+           metabase.view-log.init}
+   :uses #{analytics
+           api
+           app-db
+           audit-app
+           batch-processing
+           events
+           models
+           permissions
+           premium-features
+           util}}
+
+  warehouse-schema
+  {:api  #{metabase.warehouse-schema.api
+           metabase.warehouse-schema.field
+           metabase.warehouse-schema.metadata-from-qp
+           metabase.warehouse-schema.metadata-queries
+           metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-values
+           metabase.warehouse-schema.models.table
+           metabase.warehouse-schema.table}
+   :uses #{analyze
+           api
+           app-db
+           audit-app
+           driver
+           events
+           lib
+           lib-be
+           models
+           parameters
+           permissions
+           premium-features
+           query-processor
+           request
+           search
+           sync
+           types
+           upload
+           util
+           warehouses
+           xrays}}
+
+  warehouses
+  {:api  #{metabase.warehouses.api
+           metabase.warehouses.core
+           metabase.warehouses.init
+           metabase.warehouses.models.database}
+   :uses #{analytics
+           api
+           app-db
+           audit-app
+           classloader
+           collections
+           config
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           queries
+           request
+           sample-data
+           search
+           secrets
+           settings
+           sync
+           upload
+           util
+           warehouse-schema
+           enterprise/advanced-permissions}}
+
+  xrays
+  {:api  #{metabase.xrays.api
+           metabase.xrays.core
+           metabase.xrays.init}
+   :uses #{analyze
+           appearance
+           api
+           collections
+           dashboards
+           driver
+           legacy-mbql
+           lib
+           models
+           permissions
+           settings
+           queries
+           query-processor
+           util
+           warehouse-schema}}
+
+  enterprise/advanced-config
+  {:api  #{metabase-enterprise.advanced-config.api.logs
+           metabase-enterprise.advanced-config.init
+           metabase-enterprise.advanced-config.file
+           metabase-enterprise.advanced-config.settings}
+   :uses #{api
+           api-keys
+           app-db
+           driver
+           permissions
+           premium-features
+           setup
+           settings
+           sync
+           users
+           util}}
+
+  enterprise/advanced-permissions
+  {:api  #{metabase-enterprise.advanced-permissions.api.routes
+           metabase-enterprise.advanced-permissions.common
+           metabase-enterprise.advanced-permissions.models.permissions.group-manager}
+   :uses #{api
+           lib
+           permissions
+           premium-features
+           query-processor
+           util
+           warehouses
+           enterprise/impersonation}}
+
+  enterprise/ai-entity-analysis
+  {:api #{metabase-enterprise.ai-entity-analysis.api}
+   :uses #{api
+           premium-features
+           enterprise/metabot-v3}}
+
+  enterprise/ai-sql-fixer
+  {:api #{metabase-enterprise.ai-sql-fixer.api}
+   :uses #{api
+           driver
+           enterprise/metabot-v3
+           query-analysis
+           query-processor
+           util}}
+
+  enterprise/ai-sql-generation
+  {:api #{metabase-enterprise.ai-sql-generation.api}
+   :uses #{api
+           driver
+           enterprise/metabot-v3
+           models
+           util}}
+
+  enterprise/analytics
+  {:api  #{}
+   :uses #{driver
+           premium-features
+           enterprise/advanced-config
+           enterprise/scim
+           enterprise/sso}}
+
+  enterprise/api
+  {:api  #{metabase-enterprise.api.routes
+           metabase-enterprise.api.routes.common}
+   :uses :any}
+
+  enterprise/audit-app
+  {:api  #{metabase-enterprise.audit-app.api.routes
+           metabase-enterprise.audit-app.init}
+   :uses #{api
+           app-db
+           audit-app
+           classloader
+           driver
+           lib
+           models
+           permissions
+           plugins
+           premium-features
+           query-processor
+           settings
+           sync
+           users
+           util
+           enterprise/serialization}}
+
+  enterprise/auth-provider
+  {:api  #{}
+   :uses #{premium-features
+           util}}
+
+  enterprise/billing
+  {:api  #{metabase-enterprise.billing.api.routes}
+   :uses #{api
+           premium-features util}}
+
+  enterprise/cache
+  {:api  #{metabase-enterprise.cache.init}
+   :uses #{cache
+           premium-features
+           query-processor
+           task
+           util}}
+
+  enterprise/content-verification
+  {:api  #{metabase-enterprise.content-verification.api.routes}
+   :uses #{api
+           content-verification
+           util
+           enterprise/api}}
+
+  enterprise/core
+  {:api  #{metabase-enterprise.core.init}
+   :uses :any}
+
+  enterprise/dashboard-subscription-filters
+  {:api  #{}
+   :uses #{premium-features}}
+
+  enterprise/data-editing
+  {:api  #{metabase-enterprise.data-editing.api}
+   :uses #{api
+           actions
+           util}}
+
+  enterprise/database-routing
+  {:api #{metabase-enterprise.database-routing.api}
+   :uses #{api
+           config
+           database-routing
+           events
+           lib
+           models
+           premium-features
+           query-processor
+           settings
+           util
+           warehouse-schema
+           warehouses}}
+
+  enterprise/gsheets
+  {:api  #{metabase-enterprise.gsheets.api
+           metabase-enterprise.gsheets.init}
+   :uses #{api
+           analytics
+           premium-features
+           settings
+           util
+           enterprise/harbormaster}}
+
+  enterprise/harbormaster
+  {:api #{metabase-enterprise.harbormaster.client}
+   :uses #{api
+           cloud-migration
+           util}}
+
+  enterprise/impersonation
+  {:api #{metabase-enterprise.impersonation.api}
+   :uses #{api
+           audit-app
+           driver
+           lib
+           models
+           premium-features
+           query-processor
+           util
+           warehouse-schema
+           enterprise/sandbox}}
+
+  enterprise/internal-stats
+  {:api #{}
+   :uses #{premium-features
+           settings}}
+
+  enterprise/llm
+  {:api  #{metabase-enterprise.llm.api
+           metabase-enterprise.llm.init}
+   :uses #{analytics
+           analyze
+           api
+           query-processor
+           settings
+           util}}
+
+  enterprise/metabot-v3
+  {:api #{metabase-enterprise.metabot-v3.api
+          metabase-enterprise.metabot-v3.core
+          metabase-enterprise.metabot-v3.init
+          metabase-enterprise.metabot-v3.tools.api}
+   :uses #{api
+           app-db
+           config
+           legacy-mbql
+           lib
+           lib-be
+           models
+           premium-features
+           pulse
+           query-processor
+           request
+           settings
+           system
+           users
+           util
+           warehouse-schema}}
+
+  enterprise/premium-features
+  {:api  #{}
+   :uses #{premium-features
+           util}}
+
+  enterprise/query-reference-validation
+  {:api  #{metabase-enterprise.query-reference-validation.api}
+   :uses #{api
+           collections
+           query-analysis
+           request
+           util}}
+
+  enterprise/sandbox
+  {:api #{metabase-enterprise.sandbox.api.routes
+          metabase-enterprise.sandbox.api.util}
+   :uses #{api
+           app-db
+           audit-app
+           classloader
+           driver
+           legacy-mbql
+           lib
+           models
+           permissions
+           premium-features
+           query-processor
+           request
+           users
+           util
+           warehouse-schema
+           warehouses
+           enterprise/api}}
+
+  enterprise/scim
+  {:api  #{metabase-enterprise.scim.core
+           metabase-enterprise.scim.init
+           metabase-enterprise.scim.routes}
+   :uses #{analytics
+           api
+           api-keys
+           models
+           permissions
+           settings
+           server
+           system
+           users
+           util
+           enterprise/serialization}}
+
+  enterprise/search
+  {:api  #{}
+   :uses #{premium-features
+           search}}
+
+  enterprise/serialization
+  {:api #{metabase-enterprise.serialization.api
+          metabase-enterprise.serialization.cmd
+          metabase-enterprise.serialization.v2.backfill-ids}
+   :uses #{analytics
+           api
+           app-db
+           appearance
+           collections
+           config
+           legacy-mbql
+           lib
+           logger
+           models
+           plugins
+           premium-features
+           settings
+           setup
+           util
+           warehouse-schema}}
+
+  enterprise/snippet-collections
+  {:api  #{}
+   :uses #{models
+           native-query-snippets
+           permissions
+           premium-features
+           util}}
+
+  enterprise/sso
+  {:api #{metabase-enterprise.sso.api.routes
+          metabase-enterprise.sso.init
+          metabase-enterprise.sso.settings}
+   :uses #{api
+           appearance
+           channel
+           embedding
+           events
+           notification
+           premium-features
+           request
+           session
+           settings
+           sso
+           system
+           users
+           util
+           enterprise/scim}}
+
+  enterprise/stale
+  {:api  #{metabase-enterprise.stale.api
+           metabase-enterprise.stale.init}
+   :uses #{analytics
+           api
+           collections
+           embedding
+           premium-features
+           queries
+           request
+           settings
+           util}}
+
+  enterprise/upload-management
+  {:api  #{metabase-enterprise.upload-management.api}
+   :uses #{api
+           models
+           premium-features
+           upload
+           util}}}
+
+ ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
+ ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
+ ;;
+ ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
+ ;; together, e.g. `metabase.lib-be.metadata.jvm`.
+ :linters
+ {:metabase/modules
+  {:ignored-namespace-patterns
+   #{"-test$"                               ; anything ending in `-test`
+     "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                          ; anything that contains `test.impl`
+     "test-setup"                           ; anything that contains `test-setup`
+     "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`

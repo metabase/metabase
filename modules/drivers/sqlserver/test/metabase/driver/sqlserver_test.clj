@@ -6,15 +6,16 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -56,16 +57,16 @@
           (is (query= original
                       (#'sqlserver/fix-order-bys original))))
         (testing "In source query -- add `:limit`"
-          (is (query= {:source-query (assoc original :limit qp.i/absolute-max-results)}
+          (is (query= {:source-query (assoc original :limit limit/absolute-max-results)}
                       (#'sqlserver/fix-order-bys {:source-query original}))))
         (testing "In source query in source query-- add `:limit` at both levels"
-          (is (query= {:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)
+          (is (query= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
                                       :order-by     [[:asc [:field 1]]]
-                                      :limit        qp.i/absolute-max-results}}
+                                      :limit        limit/absolute-max-results}}
                       (#'sqlserver/fix-order-bys {:source-query {:source-query original
                                                                  :order-by     [[:asc [:field 1]]]}}))))
         (testing "In source query inside source query for join -- add `:limit`"
-          (is (query= {:joins [{:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)}}]}
+          (is (query= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
                       (#'sqlserver/fix-order-bys
                        {:joins [{:source-query {:source-query original}}]}))))))))
 
@@ -239,6 +240,55 @@
            ;; rollback transaction so `temp` table gets discarded
            (finally
              (.rollback conn))))))))
+
+(deftest ^:parallel locale-week-test
+  (mt/test-driver :sqlserver
+    (testing "Make sure aggregating by week starts weeks on the appropriate day regardless of the value of DATEFIRST"
+      ;; we're manually sending sql to the database instead of using process-query because setting DATEFIRST doesn't
+      ;; persist otherwise
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver
+       (mt/db)
+       {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
+       (fn [^java.sql.Connection conn]
+         (doseq [datefirst (range 1 8)]
+           (binding [driver.common/*start-of-week* :sunday]
+             (let [{:keys [query params]} (qp.compile/compile (mt/mbql-query users
+                                                                {:aggregation [["count"]]
+                                                                 :breakout [!week.last_login]
+                                                                 :filter [:= $name "Plato Yeshua"]}))
+                   sql (format "SET DATEFIRST %d; %s" datefirst query)]
+               (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
+                           rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+                 (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))
+                       row (row-thunk)]
+                   (is (= [#t "2014-03-30T00:00" 1]
+                          row))))))))))))
+
+(deftest ^:parallel locale-day-of-week-test
+  (mt/test-driver :sqlserver
+    (testing "Make sure aggregating by day of week starts weeks on the appropriate day regardless of the value of
+    DATEFIRST"
+      ;; we're manually sending sql to the database instead of using process-query because setting DATEFIRST doesn't
+      ;; persist otherwise
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver
+       (mt/db)
+       {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
+       (fn [^java.sql.Connection conn]
+         (doseq [datefirst (range 1 8)]
+           (binding [driver.common/*start-of-week* :sunday]
+             (let [{:keys [query params]} (qp.compile/compile (mt/mbql-query users
+                                                                {:aggregation [["count"]]
+                                                                 :breakout [!day-of-week.last_login]
+                                                                 :filter [:= $name "Plato Yeshua"]}))
+                   sql (format "SET DATEFIRST %d; %s" datefirst query)]
+               (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
+                           rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+                 (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))
+                       row (row-thunk)]
+                   (is (= [3 1]
+                          row))))))))))))
 
 (deftest ^:parallel inline-value-test
   (mt/test-driver :sqlserver
@@ -474,6 +524,122 @@
                           :results_metadata
                           :columns
                           (map :base_type)))))))))))
+
+(deftest ^:parallel top-level-boolean-expressions-test
+  (mt/test-driver :sqlserver
+    (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
+      (let [true-value  [:value true {:base_type :type/Boolean}]
+            false-value [:value false {:base_type :type/Boolean}]]
+        (letfn [(orders-query [args]
+                  (-> (mt/mbql-query orders
+                        {:expressions {"MyTrue"  true-value
+                                       "MyFalse" false-value}
+                         :fields      [[:expression "MyTrue"]]
+                         :limit       1})
+                      (update :query merge args)))]
+          (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
+                  [{:desc "true filter"
+                    :query
+                    (orders-query {:filter true-value})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  1 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
+                   {:desc "false filter"
+                    :query
+                    (orders-query {:filter false-value})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  0 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  []}
+                   {:desc "not filter"
+                    :query
+                    (orders-query {:filter [:not false-value]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  NOT (0 = 1)"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
+                   {:desc "nested logical operators"
+                    :query
+                    (orders-query {:filter [:and
+                                            [:not false-value]
+                                            [:or
+                                             [:expression "MyFalse"]
+                                             [:expression "MyTrue"]]]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  NOT (0 = 1)"
+                     "  AND ("
+                     "    (0 = 1)"
+                     "    OR (1 = 1)"
+                     "  )"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
+                   {:desc "case expression"
+                    :query
+                    (orders-query {:expressions {"MyTrue"  true-value
+                                                 "MyFalse" false-value
+                                                 "MyCase"  [:case [[[:expression "MyFalse"] false-value]
+                                                                   [[:expression "MyTrue"]  true-value]]]}
+                                   :fields [[:expression "MyCase"]]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CASE"
+                     "    WHEN 0 = 1 THEN 0"
+                     "    WHEN 1 = 1 THEN 1"
+                     "  END AS MyCase"
+                     "FROM"
+                     "  dbo.orders"]
+                    :expected-types [:type/Integer]
+                    :expected-rows  [[1]]}
+                   ;; only top-level booleans should be transformed; otherwise an expression like 1 = 1 gets compiled
+                   ;; to (1 = 1) = (1 = 1)
+                   {:desc "non-top-level booleans"
+                    :query
+                    (orders-query {:filter [:= true-value true-value]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  1 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}]]
+            (testing (format "\n%s\nMBQL query = %s\n" desc query)
+              (testing "Should generate the correct SQL query"
+                (is (= expected-sql
+                       (pretty-sql (:query (qp.compile/compile query))))))
+              (testing "Should return correct results"
+                (let [result (qp/process-query query)
+                      rows (mt/rows result)
+                      cols (mt/cols result)
+                      results-metadata-cols (-> result :data :results_metadata :columns)]
+                  (is (= expected-rows
+                         rows))
+                  (is (= expected-types
+                         (map :base_type cols)))
+                  (is (= expected-types
+                         (map :base_type results-metadata-cols))))))))))))
 
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver

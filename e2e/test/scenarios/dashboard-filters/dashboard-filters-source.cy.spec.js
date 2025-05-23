@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -46,8 +46,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("structured question source", () => {
     it("should be able to use a structured question source", () => {
-      cy.createQuestion(structuredSourceQuestion, { wrapId: true });
-      cy.createQuestionAndDashboard({
+      H.createQuestion(structuredSourceQuestion, { wrapId: true });
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -65,13 +65,13 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a structured question source when embedded", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
+      H.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
+          H.createQuestionAndDashboard({
             questionDetails: targetQuestion,
             dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
+            H.editDashboardCard(card, getParameterMapping(card));
             H.visitEmbeddedPage(getDashboardResource(card));
           });
         },
@@ -81,13 +81,13 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a structured question source when public", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
+      H.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
+          H.createQuestionAndDashboard({
             questionDetails: targetQuestion,
             dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
+            H.editDashboardCard(card, getParameterMapping(card));
             H.visitPublicDashboard(card.dashboard_id);
           });
         },
@@ -97,8 +97,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a structured question source with string/contains parameter", () => {
-      cy.createQuestion(structuredSourceQuestion, { wrapId: true });
-      cy.createQuestionAndDashboard({
+      H.createQuestion(structuredSourceQuestion, { wrapId: true });
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -120,8 +120,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("native question source", () => {
     it("should be able to use a native question source", () => {
-      cy.createNativeQuestion(nativeSourceQuestion, { wrapId: true });
-      cy.createQuestionAndDashboard({
+      H.createNativeQuestion(nativeSourceQuestion, { wrapId: true });
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -139,13 +139,13 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a native question source when embedded", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
+      H.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
+          H.createQuestionAndDashboard({
             questionDetails: targetQuestion,
             dashboardDetails: getNativeDashboard(questionId),
           }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
+            H.editDashboardCard(card, getParameterMapping(card));
             H.visitEmbeddedPage(getDashboardResource(card));
           });
         },
@@ -155,13 +155,13 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a native question source when public", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
+      H.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
+          H.createQuestionAndDashboard({
             questionDetails: targetQuestion,
             dashboardDetails: getNativeDashboard(questionId),
           }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
+            H.editDashboardCard(card, getParameterMapping(card));
             H.visitPublicDashboard(card.dashboard_id);
           });
         },
@@ -173,7 +173,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("static list source (dropdown)", () => {
     it("should be able to use a static list source", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -191,11 +191,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -204,11 +204,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitPublicDashboard(card.dashboard_id);
       });
 
@@ -219,7 +219,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("static list source (search)", () => {
     it("should be able to use a static list source (search)", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -238,11 +238,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -251,11 +251,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitPublicDashboard(card.dashboard_id);
       });
 
@@ -265,7 +265,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("field source", () => {
     it("should be able to use search box with fields configured for list", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -288,8 +288,8 @@ describe(
     const TABLE_NAME = "ip_addresses";
 
     beforeEach(() => {
-      H.resetTestTable({ type: "postgres", table: TABLE_NAME });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: TABLE_NAME });
       cy.signInAsAdmin();
       H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
@@ -297,13 +297,15 @@ describe(
       });
 
       H.getTable({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
-        table => {
-          const countField = table.fields.find(field => field.name === "count");
+        (table) => {
+          const countField = table.fields.find(
+            (field) => field.name === "count",
+          );
           cy.request("PUT", `/api/field/${countField.id}`, {
             semantic_type: "type/Quantity",
           });
 
-          cy.createQuestionAndDashboard({
+          H.createQuestionAndDashboard({
             questionDetails: {
               database: WRITABLE_DB_ID,
               query: {
@@ -367,7 +369,7 @@ describe(
   },
 );
 
-H.describeEE("scenarios > dashboard > filters", () => {
+describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -383,13 +385,13 @@ H.describeEE("scenarios > dashboard > filters", () => {
       },
     });
 
-    cy.createQuestion(structuredSourceQuestion).then(
+    H.createQuestion(structuredSourceQuestion).then(
       ({ body: { id: questionId } }) => {
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails: targetQuestion,
           dashboardDetails: getStructuredDashboard(questionId),
         }).then(({ body: card }) => {
-          cy.editDashboardCard(card, getParameterMapping(card));
+          H.editDashboardCard(card, getParameterMapping(card));
           cy.signOut();
           cy.signInAsSandboxedUser();
           H.visitDashboard(card.dashboard_id);
@@ -451,7 +453,7 @@ const getDashboardResource = ({ dashboard_id }) => ({
   params: {},
 });
 
-const getTargetDashboard = sourceSettings => ({
+const getTargetDashboard = (sourceSettings) => ({
   parameters: [
     {
       ...targetParameter,
@@ -464,7 +466,7 @@ const getTargetDashboard = sourceSettings => ({
   },
 });
 
-const getStructuredDashboard = questionId => {
+const getStructuredDashboard = (questionId) => {
   return getTargetDashboard({
     values_source_type: "card",
     values_source_config: {
@@ -474,7 +476,7 @@ const getStructuredDashboard = questionId => {
   });
 };
 
-const getNativeDashboard = questionId => {
+const getNativeDashboard = (questionId) => {
   return getTargetDashboard({
     values_source_type: "card",
     values_source_config: {
@@ -484,7 +486,7 @@ const getNativeDashboard = questionId => {
   });
 };
 
-const getListDashboard = values_query_type => {
+const getListDashboard = (values_query_type) => {
   return getTargetDashboard({
     values_source_type: "static-list",
     values_query_type,
@@ -507,9 +509,10 @@ const getParameterMapping = ({ card_id }) => ({
 function setSearchFilter(label) {
   H.filterWidget().click();
   H.popover().within(() => {
-    H.fieldValuesInput().type(label);
+    H.fieldValuesCombobox().type(label);
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover().last().findByText(label).click();
   H.popover().within(() => {
     H.fieldValuesValue(0).should("be.visible").should("contain", label);

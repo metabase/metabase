@@ -3,7 +3,7 @@ import type { StoryObj } from "@storybook/react";
 import SlackSetup, { type SlackSetupProps } from "./SlackSetup";
 
 export default {
-  title: "Admin/Settings/Slack/SlackSetup",
+  title: "App/Admin/Settings/Slack/SlackSetup",
   component: SlackSetup,
   argTypes: {
     Form: { table: { disable: true } },
@@ -12,7 +12,7 @@ export default {
 };
 
 export const Default: StoryObj<SlackSetupProps> = {
-  render: args => {
+  render: (args) => {
     return <SlackSetup {...args} />;
   },
 

@@ -4,6 +4,7 @@ import {
   type CSSProperties,
   Children,
   type ReactNode,
+  forwardRef,
   useEffect,
   useState,
 } from "react";
@@ -28,25 +29,33 @@ export interface LoadingAndErrorWrapperProps {
   children?: ReactNode | (() => ReactNode);
 }
 
-export const LoadingAndErrorWrapper = ({
-  loading = false,
-  error,
-  noBackground = true,
-  noWrapper = false,
-  showSpinner = true,
-  getLoadingMessages = () => [t`Loading...`],
-  messageInterval = 6000,
-  renderError: renderCustomError,
-  style,
-  className,
-  "data-testid": testId,
-  children,
-}: LoadingAndErrorWrapperProps) => {
+export const LoadingAndErrorWrapper = forwardRef<
+  HTMLDivElement,
+  LoadingAndErrorWrapperProps
+>(function _LoadingAndErrorWrapper(
+  {
+    loading = false,
+    error,
+    noBackground = true,
+    noWrapper = false,
+    showSpinner = true,
+    getLoadingMessages = () => [t`Loading...`],
+    messageInterval = 6000,
+    renderError: renderCustomError,
+    style,
+    className,
+    "data-testid": testId,
+    children,
+  },
+  ref,
+) {
   const [messageIndex, setMessageIndex] = useState(0);
 
   const loadingInterval = () => {
     if (loading) {
-      setMessageIndex(oldIndex => (oldIndex + 1) % getLoadingMessages().length);
+      setMessageIndex(
+        (oldIndex) => (oldIndex + 1) % getLoadingMessages().length,
+      );
     }
   };
   const interval = useInterval(loadingInterval, messageInterval);
@@ -119,7 +128,7 @@ export const LoadingAndErrorWrapper = ({
     return Children.only(children);
   }
   return (
-    <div className={className} style={style} data-testid={testId}>
+    <div className={className} style={style} data-testid={testId} ref={ref}>
       {error ? (
         renderError(contentClassName)
       ) : loading ? (
@@ -134,4 +143,4 @@ export const LoadingAndErrorWrapper = ({
       )}
     </div>
   );
-};
+});

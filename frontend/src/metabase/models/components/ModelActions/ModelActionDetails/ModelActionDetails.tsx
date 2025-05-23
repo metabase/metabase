@@ -92,7 +92,7 @@ function ModelActionDetails({
   );
 
   const implicitActions = useMemo(
-    () => actions.filter(action => action.type === "implicit"),
+    () => actions.filter((action) => action.type === "implicit"),
     [actions],
   );
 
@@ -102,7 +102,7 @@ function ModelActionDetails({
       message: t`Disabling basic actions will also remove any buttons that use these actions. Are you sure you want to continue?`,
       confirmButtonText: t`Disable`,
       onConfirm: () => {
-        implicitActions.forEach(action => {
+        implicitActions.forEach((action) => {
           onDeleteAction(action);
         });
       },

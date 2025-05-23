@@ -88,10 +88,7 @@ export const addScalePadding = (
 ) => {
   const [start, end] = scale.range();
 
-  const adjustedDomainStart = scale.invert(start - paddingStart);
-  const adjustedDomainEnd = scale.invert(end + paddingEnd);
-
-  return scale.domain([adjustedDomainStart, adjustedDomainEnd]);
+  return scale.range([start + paddingStart, end - paddingEnd]);
 };
 
 const getTickInfo = (

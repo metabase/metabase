@@ -2,7 +2,7 @@ import type { HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 
 import { BookmarkButton, BookmarkIcon } from "./BookmarkToggle.styled";
 
@@ -40,13 +40,16 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
   }, []);
 
   const iconName = isBookmarked ? "bookmark_filled" : "bookmark";
+  const label = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   return (
-    <Tooltip
-      tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
-      placement={tooltipPlacement}
-    >
-      <BookmarkButton {...props} ref={ref} onClick={handleClick}>
+    <Tooltip label={label} position={tooltipPlacement}>
+      <BookmarkButton
+        {...props}
+        aria-label={label}
+        ref={ref}
+        onClick={handleClick}
+      >
         <BookmarkIcon
           name={iconName}
           isBookmarked={isBookmarked}

@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
@@ -14,7 +15,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
   setupGetUserKeyValueEndpoint,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
@@ -208,7 +209,7 @@ const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
   return (
-    <div>
+    <div data-testid="test-container">
       <link rel="icon" />
       <QueryBuilder {...props} />
     </div>
@@ -244,7 +245,7 @@ export const setup = async ({
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
-  setupFieldValuesEndpoints(
+  setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
   setupRecentViewsEndpoints([]);
@@ -277,25 +278,27 @@ export const setup = async ({
     container,
     history,
   } = renderWithProviders(
-    <Route>
-      <Route path="/" component={TestHome} />
-      <Route path="/model">
-        <Route path="new" component={NewModelOptions} />
-        <Route path="query" component={TestQueryBuilder} />
-        <Route path="metadata" component={TestQueryBuilder} />
-        <Route path="notebook" component={TestQueryBuilder} />
-        <Route path=":slug/query" component={TestQueryBuilder} />
-        <Route path=":slug/metadata" component={TestQueryBuilder} />
-        <Route path=":slug/notebook" component={TestQueryBuilder} />
+    <div>
+      <Route>
+        <Route path="/" component={TestHome} />
+        <Route path="/model">
+          <Route path="new" component={NewModelOptions} />
+          <Route path="query" component={TestQueryBuilder} />
+          <Route path="metadata" component={TestQueryBuilder} />
+          <Route path="notebook" component={TestQueryBuilder} />
+          <Route path=":slug/query" component={TestQueryBuilder} />
+          <Route path=":slug/metadata" component={TestQueryBuilder} />
+          <Route path=":slug/notebook" component={TestQueryBuilder} />
+        </Route>
+        <Route path="/question">
+          <IndexRoute component={TestQueryBuilder} />
+          <Route path="notebook" component={TestQueryBuilder} />
+          <Route path=":slug" component={TestQueryBuilder} />
+          <Route path=":slug/notebook" component={TestQueryBuilder} />
+        </Route>
+        <Route path="/redirect" component={TestRedirect} />
       </Route>
-      <Route path="/question">
-        <IndexRoute component={TestQueryBuilder} />
-        <Route path="notebook" component={TestQueryBuilder} />
-        <Route path=":slug" component={TestQueryBuilder} />
-        <Route path=":slug/notebook" component={TestQueryBuilder} />
-      </Route>
-      <Route path="/redirect" component={TestRedirect} />
-    </Route>,
+    </div>,
     {
       withRouter: true,
       initialRoute,
@@ -317,7 +320,7 @@ const waitForLoadingRequests = async (getState: () => State) => {
   await waitFor(
     () => {
       const requests = getRequests(getState());
-      const areRequestsLoading = requests.some(request => request.loading);
+      const areRequestsLoading = requests.some((request) => request.loading);
       expect(areRequestsLoading).toBe(false);
     },
     { timeout: 5000 },
@@ -325,9 +328,9 @@ const waitForLoadingRequests = async (getState: () => State) => {
 };
 
 const getRequests = (state: State): RequestState[] => {
-  return Object.values(state.requests).flatMap(group =>
-    Object.values(group).flatMap(entity =>
-      Object.values(entity).flatMap(request => Object.values(request)),
+  return Object.values(state.requests).flatMap((group) =>
+    Object.values(group).flatMap((entity) =>
+      Object.values(entity).flatMap((request) => Object.values(request)),
     ),
   );
 };
@@ -370,13 +373,11 @@ export const triggerMetadataChange = async () => {
 export const triggerVisualizationQueryChange = async () => {
   await userEvent.click(screen.getByText("Filter"));
 
-  const modal = screen.getByRole("dialog");
-  const total = within(modal).getByTestId("filter-column-Total");
-  const maxInput = within(total).getByPlaceholderText("Max");
+  const popover = screen.getByRole("dialog");
+  await userEvent.click(within(popover).getByText("Total"));
+  const maxInput = within(popover).getByPlaceholderText("Max");
   await userEvent.type(maxInput, "1000");
-  await userEvent.tab();
-
-  await userEvent.click(screen.getByTestId("apply-filters"));
+  await userEvent.click(await screen.findByText("Apply filter"));
 };
 
 export const triggerNotebookQueryChange = async () => {

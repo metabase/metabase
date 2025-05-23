@@ -10,7 +10,6 @@ import {
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
 import {
   getDashCardById,
   getDashboard,
@@ -20,7 +19,10 @@ import {
   getTabs,
 } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import {
+  getMappingOptionByTarget,
+  getParameterMappingOptions,
+} from "metabase/parameters/utils/mapping-options";
 import type {
   DashCardId,
   DashboardParameterMapping,
@@ -71,7 +73,7 @@ export function showAutoWireToast(
       return;
     }
 
-    const originalDashcardAttributes = dashcardsToAutoApply.map(dashcard => ({
+    const originalDashcardAttributes = dashcardsToAutoApply.map((dashcard) => ({
       id: dashcard.id,
       attributes: {
         parameter_mappings: dashcard.parameter_mappings,
@@ -158,13 +160,12 @@ export function showAutoWireToastNewCard({
 
       for (const dashcard of dashcards) {
         const mappings = (dashcard.parameter_mappings ?? []).filter(
-          mapping => mapping.parameter_id === parameter.id,
+          (mapping) => mapping.parameter_id === parameter.id,
         );
 
         for (const mapping of mappings) {
           const option = getMappingOptionByTarget(
             dashcardMappingOptions,
-            targetDashcard,
             mapping.target,
             targetQuestion,
             parameter,
@@ -193,7 +194,7 @@ export function showAutoWireToastNewCard({
       return;
     }
 
-    const parametersToMap = dashboard.parameters.filter(p =>
+    const parametersToMap = dashboard.parameters.filter((p) =>
       processedParameterIds.has(p.id),
     );
 

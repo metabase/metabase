@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const questionDetails = {
@@ -16,12 +16,12 @@ describe("scenarios > binning > from a saved sql question", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });
 
-    cy.get("@questionId").then(id => (questionId = id));
+    cy.get("@questionId").then((id) => (questionId = id));
 
     H.snapshot("binningSql");
   });
@@ -124,7 +124,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
 
-      H.visualize(response => {
+      H.visualize((response) => {
         assertOnResponse(response);
       });
 
@@ -141,7 +141,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
 
-      H.visualize(response => {
+      H.visualize((response) => {
         assertOnResponse(response);
       });
 
@@ -158,7 +158,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
 
-      H.visualize(response => {
+      H.visualize((response) => {
         assertOnResponse(response);
       });
 

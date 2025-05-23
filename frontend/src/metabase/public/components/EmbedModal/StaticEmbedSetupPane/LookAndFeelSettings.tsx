@@ -1,12 +1,13 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { UpsellMetabaseBanner } from "metabase/admin/upsells/UpsellMetabaseBanner";
+import { UpsellMetabaseBanner } from "metabase/admin/upsells";
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
+  DisplayTheme,
   EmbedResourceType,
   EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
@@ -21,12 +22,26 @@ import {
   Text,
 } from "metabase/ui";
 
+import {
+  DashboardDownloadSettings,
+  QuestionDownloadSettings,
+} from "./DownloadSettings";
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
-  { label: t`Light`, value: "light" },
-  { label: t`Dark`, value: "night" },
+  {
+    get label() {
+      return t`Light`;
+    },
+    value: "light" as DisplayTheme,
+  },
+  {
+    get label() {
+      return t`Dark`;
+    },
+    value: "night" as DisplayTheme,
+  },
 ] as const;
 type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
 
@@ -51,23 +66,24 @@ export const LookAndFeelSettings = ({
       utm_content: "static-embed-settings-look-and-feel",
     },
   });
-  const upgradePageUrl = useSelector(state =>
+  const upgradePageUrl = useSelector((state) =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-static-font",
       utm_content: "static-embed-settings-look-and-feel",
     }),
   );
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const availableFonts = useSelector(state =>
+  const availableFonts = useSelector((state) =>
     getSetting(state, "available-fonts"),
   );
+  const isDashboard = resourceType === "dashboard";
 
   return (
     <>
       <StaticEmbedSetupPaneSettingsContentSection
         title={t`Customizing look and feel`}
       >
-        <Stack spacing="1rem">
+        <Stack gap="1rem">
           <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
             <ExternalLink
               key="doc"
@@ -79,22 +95,21 @@ export const LookAndFeelSettings = ({
             <Select
               label={
                 <Text fw="bold" mb="0.25rem" lh="1rem">
-                  Font
+                  {t`Font`}
                 </Text>
               }
               value={displayOptions.font}
               data={[
                 {
                   label: t`Use instance font`,
-                  // @ts-expect-error Mantine v6 and v7 both expect value to be a string
-                  value: null,
+                  value: "",
                 },
-                ...availableFonts?.map(font => ({
+                ...availableFonts?.map((font) => ({
                   label: font,
                   value: font,
                 })),
               ]}
-              onChange={value => {
+              onChange={(value) => {
                 onChangeDisplayOptions({
                   ...displayOptions,
                   font: value,
@@ -113,7 +128,6 @@ export const LookAndFeelSettings = ({
           <DisplayOptionSection title={t`Theme`}>
             <SegmentedControl
               value={displayOptions.theme ?? undefined}
-              // `data` type is required to be mutable, but THEME_OPTIONS is const.
               data={[...THEME_OPTIONS]}
               fullWidth
               bg={color("bg-light")}
@@ -138,7 +152,7 @@ export const LookAndFeelSettings = ({
               size="sm"
               variant="stretch"
               checked={displayOptions.background}
-              onChange={e =>
+              onChange={(e) =>
                 onChangeDisplayOptions({
                   ...displayOptions,
                   background: e.target.checked,
@@ -153,7 +167,7 @@ export const LookAndFeelSettings = ({
             size="sm"
             variant="stretch"
             checked={displayOptions.bordered}
-            onChange={e =>
+            onChange={(e) =>
               onChangeDisplayOptions({
                 ...displayOptions,
                 bordered: e.target.checked,
@@ -167,7 +181,7 @@ export const LookAndFeelSettings = ({
             size="sm"
             variant="stretch"
             checked={displayOptions.titled}
-            onChange={e =>
+            onChange={(e) =>
               onChangeDisplayOptions({
                 ...displayOptions,
                 titled: e.target.checked,
@@ -175,21 +189,18 @@ export const LookAndFeelSettings = ({
             }
           />
 
-          {canWhitelabel && (
-            <Switch
-              label={t`Download buttons`}
-              labelPosition="left"
-              size="sm"
-              variant="stretch"
-              checked={displayOptions.downloads ?? true}
-              onChange={e =>
-                onChangeDisplayOptions({
-                  ...displayOptions,
-                  downloads: e.target.checked,
-                })
-              }
-            />
-          )}
+          {canWhitelabel &&
+            (isDashboard ? (
+              <DashboardDownloadSettings
+                displayOptions={displayOptions}
+                onChangeDisplayOptions={onChangeDisplayOptions}
+              />
+            ) : (
+              <QuestionDownloadSettings
+                displayOptions={displayOptions}
+                onChangeDisplayOptions={onChangeDisplayOptions}
+              />
+            ))}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
 

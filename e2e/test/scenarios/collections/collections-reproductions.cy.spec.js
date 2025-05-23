@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
@@ -79,16 +79,14 @@ describe("issue 24660", () => {
   };
 
   function createParentCollectionAndMoveQuestionToIt(questionId) {
-    return cy
-      .createCollection({
-        name: collectionName,
-        parent_id: null,
-      })
-      .then(({ body: { id } }) => {
-        cy.request("PUT", `/api/card/${questionId}`, {
-          collection_id: id,
-        });
+    return H.createCollection({
+      name: collectionName,
+      parent_id: null,
+    }).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${questionId}`, {
+        collection_id: id,
       });
+    });
   }
 
   beforeEach(() => {
@@ -111,7 +109,7 @@ describe("issue 24660", () => {
   });
 });
 
-H.describeEE("issue 30235", () => {
+describe("issue 30235", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -121,7 +119,7 @@ H.describeEE("issue 30235", () => {
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
     const COLLECTION_NAME = "C30235";
 
-    cy.createCollection({
+    H.createCollection({
       name: COLLECTION_NAME,
       parent_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: { id } }) => {

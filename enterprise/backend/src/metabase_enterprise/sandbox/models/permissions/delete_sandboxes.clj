@@ -1,6 +1,6 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -15,7 +15,7 @@
                       [condition])]
       (log/debugf "Deleting GTAPs for Group %d with conditions %s" (u/the-id group-or-id) (pr-str conditions))
       (try
-        (if-let [gtap-ids (not-empty (set (map :id (mdb.query/query
+        (if-let [gtap-ids (not-empty (set (map :id (app-db/query
                                                     {:select    [[:sandboxes.id :id]]
                                                      :from      [[:sandboxes]]
                                                      :left-join [[:metabase_table :table]
@@ -75,7 +75,7 @@
        data-perm-changes))))
 
 (defenterprise delete-gtaps-if-needed-after-permissions-change!
-  "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
+  "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
   longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed, i.e.
   the `things-only-in-new` returned by `clojure.data/diff`."
   :feature :sandboxes

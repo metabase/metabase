@@ -4,9 +4,10 @@
    [clojure.set :refer [subset?]]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -243,7 +244,7 @@
 
 (deftest get-users-api-group-id-test
   (testing "GET /api/user?group_id=:group_id"
-    (testing "should sort by admins -> group managers -> normal users when filter by group_id"
+    (testing "should sort by first name for all users in group"
       (mt/with-temp [:model/User                       user-a {:first_name "A"
                                                                :last_name  "A"}
                      :model/User                       user-b {:first_name "B"
@@ -261,9 +262,9 @@
                      :model/PermissionsGroupMembership _      {:user_id          (:id user-c)
                                                                :group_id         (:id group)
                                                                :is_group_manager false}]
-        (is (=? {:data [{:first_name "C"}
+        (is (=? {:data [{:first_name "A"}
                         {:first_name "B"}
-                        {:first_name "A"}]}
+                        {:first_name "C"}]}
                 (mt/user-http-request :crowberto :get 200 (format "/user?limit=25&offset=0&group_id=%d" (:id group)))))))))
 
 (deftest get-user-api-test
@@ -312,6 +313,17 @@
                                 :user_id (:id user-to-update)
                                 :group_id (:id group-to-add))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
+                          new-user-group-membership (conj current-user-group-membership
+                                                          {:id               (:id group-to-add)
+                                                           :is_group_manager true})]
+                      (testing (format "- add user to group with %s user without group_manager set" (mt/user-descriptor user))
+                        (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
+                                              {:user_group_memberships (map #(dissoc % :is_group_manager) new-user-group-membership)})))
+
+                    (t2/delete! :model/PermissionsGroupMembership
+                                :user_id (:id user-to-update)
+                                :group_id (:id group-to-add))
+                    (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (conj current-user-group-membership
                                                               {:id               (:id group-to-add)
                                                                :is_group_manager true})]
@@ -321,9 +333,7 @@
                   (remove-user-from-group! [req-user status group-to-remove]
                     (u/ignore-exceptions
                      ;; ensure `user-to-update` is in `group-to-remove`
-                      (t2/insert! :model/PermissionsGroupMembership
-                                  :user_id (:id user-to-update)
-                                  :group_id (:id group-to-remove)))
+                      (perms/add-user-to-group! user-to-update group-to-remove))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (into [] (filter #(not= (:id group-to-remove)
                                                                                 (:id %))

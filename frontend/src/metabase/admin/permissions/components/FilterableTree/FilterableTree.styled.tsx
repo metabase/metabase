@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Tree } from "metabase/components/tree";
@@ -28,12 +29,13 @@ export const EmptyStateContainer = styled.div`
 `;
 
 export const AdminTreeNode = styled(Tree.Node)`
-  color: ${props =>
+  color: ${(props) =>
     props.isSelected ? color("text-white") : color("text-medium")};
-  background-color: ${props => (props.isSelected ? color("filter") : "unset")};
+  background-color: ${(props) =>
+    props.isSelected ? color("filter") : "unset"};
 
   &:hover {
-    background-color: ${props =>
+    background-color: ${(props) =>
       props.isSelected ? color("filter") : lighten(color("filter"), 0.6)};
   }
 `;

@@ -27,6 +27,7 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
@@ -35,18 +36,37 @@
   (and (lib.util/clause-of-type? expr :field)
        (lib.equality/find-matching-column expr [column])))
 
-(mu/defn- remove-existing-filters-against-column :- ::lib.schema/query
-  "Remove any existing filters clauses that use `column` as the first arg in a stage of a `query`."
+(defn- contains-ref-for-column? [expr column]
+  (letfn [(ref-for-column? [expr]
+            (is-ref-for-column? expr column))]
+    (lib.util.match/match-one expr ref-for-column?)))
+
+(mu/defn- remove-existing-filters-against-column* :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- ::lib.schema.metadata/column]
+   column       :- ::lib.schema.metadata/column
+   matches?     :- fn?]
   (reduce
    (fn [query [_tag _opts expr :as filter-clause]]
-     (if (is-ref-for-column? expr column)
+     (if (matches? expr column)
        (lib.remove-replace/remove-clause query stage-number filter-clause)
        query))
    query
    (lib.filter/filters query stage-number)))
+
+(mu/defn- remove-existing-filters-against-column :- ::lib.schema/query
+  "Remove any existing filter clauses that use `column` as the first arg in a stage of a `query`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
+  (remove-existing-filters-against-column* query stage-number column is-ref-for-column?))
+
+(mu/defn- remove-existing-filters-against-column-checking-subclauses :- ::lib.schema/query
+  "Remove any existing filter clauses that contain `column` in a stage of a `query`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
+  (remove-existing-filters-against-column* query stage-number column contains-ref-for-column?))
 
 (mu/defn update-numeric-filter :- ::lib.schema/query
   "Add or update a filter against `numeric-column`. Adapted from
@@ -79,24 +99,34 @@
   only return 2 points, switch the unit to `:minute`."
   4)
 
-(def ^:private unit->next-unit
+(def ^:private unit->next-unit-datetime
   "E.g. the next unit after `:hour` is `:minute`."
   (let [units [:minute :hour :day :week :month :quarter :year]]
+    (zipmap units (cons nil units))))
+
+(def ^:private unit->next-unit-date
+  "E.g. the next unit after `:week` is `:day`."
+  (let [units [:day :week :month :quarter :year]]
     (zipmap units (cons nil units))))
 
 (mu/defn- temporal-filter-find-best-breakout-unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
   "If the current breakout `unit` will not return at least [[temporal-filter-min-num-points]], find the largest unit
   that will."
-  [unit  :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
-   start :- ::lib.schema.literal/temporal
-   end   :- ::lib.schema.literal/temporal]
-  (loop [unit unit]
-    (let [num-points      (u.time/unit-diff unit start end)
-          too-few-points? (< num-points temporal-filter-min-num-points)]
-      (if-let [next-largest-unit (when too-few-points?
-                                   (unit->next-unit unit))]
-        (recur next-largest-unit)
-        unit))))
+  [unit        :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+   start       :- ::lib.schema.literal/temporal
+   end         :- ::lib.schema.literal/temporal
+   column-type :- :keyword]
+  (let [next-unit (if (= column-type :type/Date)
+                    unit->next-unit-date
+                    ;; should catch :type/DateTime and :type/DateTimeWithTZ
+                    unit->next-unit-datetime)]
+    (loop [unit unit]
+      (let [num-points      (u.time/unit-diff unit start end)
+            too-few-points? (< num-points temporal-filter-min-num-points)]
+        (if-let [next-largest-unit (when too-few-points?
+                                     (next-unit unit))]
+          (recur next-largest-unit)
+          unit)))))
 
 (mu/defn- temporal-filter-update-breakouts :- ::lib.schema/query
   "Update the first breakout against `column` so it uses `new-unit` rather than the original unit (if any); remove all
@@ -177,7 +207,7 @@
              start         (u.time/truncate (u.time/add start unit 1) unit)
              end           (u.time/truncate end unit)
              ;; update the breakout unit if appropriate.
-             breakout-unit (temporal-filter-find-best-breakout-unit unit start end)
+             breakout-unit (temporal-filter-find-best-breakout-unit unit start end (:effective-type temporal-column))
              query         (if (= unit breakout-unit)
                              query
                              (temporal-filter-update-breakouts query stage-number temporal-column breakout-unit))]
@@ -207,8 +237,13 @@
     longitude-column                             :- :some
     {:keys [north east south west], :as _bounds} :- [:ref ::lat-lon.bounds]]
    (-> query
-       (remove-existing-filters-against-column stage-number latitude-column)
-       (remove-existing-filters-against-column stage-number longitude-column)
-       (lib.filter/filter stage-number (let [[lat-min lat-max] (sort [north south])
-                                             [lon-min lon-max] (sort [east west])]
-                                         (lib.filter/inside latitude-column longitude-column lat-max lon-min lat-min lon-max))))))
+       (remove-existing-filters-against-column-checking-subclauses stage-number latitude-column)
+       (remove-existing-filters-against-column-checking-subclauses stage-number longitude-column)
+       (lib.filter/filter stage-number
+                          (if (<= west east)
+                            ;; bounds do not cross the antimerdian. A single :inside filter suffices.
+                            (lib.filter/inside latitude-column longitude-column north west south east)
+                            ;; bounds do cross the antimerdian. Split into two filters for the east and west sides.
+                            (lib.filter/or
+                             (lib.filter/inside latitude-column longitude-column north west south 180)
+                             (lib.filter/inside latitude-column longitude-column north -180 south east)))))))

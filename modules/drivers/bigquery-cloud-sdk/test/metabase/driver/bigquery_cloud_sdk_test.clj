@@ -4,10 +4,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -20,6 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery TableResult)))
@@ -67,10 +68,10 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                      [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                       (t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                      (constantly conj))
+             (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                       [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                        (t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                       (constantly conj))
                   (sort-by first)
                   (take 5)))))
 
@@ -83,10 +84,10 @@
             page-callback   (fn [] (swap! pages-retrieved inc))]
         (with-bindings {#'bigquery/*page-size*     25
                         #'bigquery/*page-callback* page-callback}
-          (let [results (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                                 [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                                  (t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                                 (constantly conj))
+          (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                                  [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                                   (t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                                  (constantly conj))
                              (sort-by first)
                              (take 5))]
             (is (= [[1 "Red Medicine"]
@@ -520,6 +521,9 @@
               (testing "all fields are fingerprinted"
                 (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
               (testing "Field values are correctly synced"
+                ;; Manually activate Field values since they are not created during sync (#53387)
+                (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+                  (field-values/get-or-create-full-field-values! field))
                 (is (= {"customer_id"   #{1 2 3}
                         "vip_customer"  #{42}
                         "name"          #{"Khuat" "Quang" "Ngoc"}
@@ -682,7 +686,7 @@
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
-      (is (= [["1" "Plato Yeshua" "2014-04-01T08:30:00Z"]]
+      (is (= [[1 "Plato Yeshua" "2014-04-01T08:30:00Z"]]
              (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1, :order-by [[:asc $id]]}))))))))
 
 (deftest return-errors-test
@@ -866,7 +870,7 @@
         (try
           (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
-            (t2/insert! :model/Table (map #(dissoc % :id :schema) synced-tables))
+            (t2/insert! :model/Table (map #(dissoc % :id :entity_id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
@@ -1221,3 +1225,27 @@
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))
       (is (< (count before-names) (+ (count (future-thread-names)) 5))))))
+
+(deftest alternate-host-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Alternate BigQuery host can be configured"
+      (mt/with-temp [:model/Database {:as temp-db}
+                     {:engine  :bigquery-cloud-sdk
+                      :details (-> (:details (mt/db))
+                                   (assoc :host "bigquery.example.com"))}]
+        (let [client (#'bigquery/database-details->client (:details temp-db))]
+          (is (= "bigquery.example.com"
+                 (.getHost (.getOptions client)))
+              "BigQuery client should be configured with alternate host"))))))
+
+(deftest timestamp-precision-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [sql (str "select"
+                   " timestamp '2024-12-11 16:23:55.123456 UTC' col_timestamp,"
+                   " datetime  '2024-12-11T16:23:55.123456' col_datetime")
+          query {:database (mt/id)
+                 :type :native
+                 :native {:query sql}}]
+      (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
+              (-> (qp/process-query query)
+                  mt/rows))))))

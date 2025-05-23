@@ -14,6 +14,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -71,9 +72,9 @@
     :query-type   :aggregated
     :query-kinds [:mbql]
     :column-name  "count"
-    :custom-query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :orders))
+    :custom-query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) ((lib.tu/mock-cards) :orders))
                       (lib/aggregate (lib/count))
-                      (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                      (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                         (meta/id :orders :created-at))))
     :custom-row   {"CREATED_AT" "2023-12-01"
                    "count"      9}
@@ -197,11 +198,9 @@
           metric-card {:description "Orders with a subtotal of $100 or more."
                        :lib/type :metadata/card
                        :type :metric
-                       :dataset-query {:type     :query
-                                       :database (meta/id)
-                                       :query    {:source-table (meta/id :orders)
-                                                  :aggregation  [[:count]]
-                                                  :filter       [:>= [:field (meta/id :orders :subtotal) nil] 100]}}
+                       :dataset-query (lib.tu.macros/mbql-query orders
+                                        {:aggregation  [[:count]]
+                                         :filter       [:>= $subtotal 100]})
                        :database-id (meta/id)
                        :name "Large orders"
                        :id metric-id}
@@ -375,7 +374,7 @@
   (testing "should use the default row count for aggregations with negative values (#36143)"
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                         (lib/aggregate (lib/count))
-                        (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                        (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                           (meta/id :orders :created-at))))
           count-col (m/find-first #(= (:name %) "count")
                                   (lib/returned-columns query))

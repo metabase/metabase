@@ -3,31 +3,35 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.channel.email :as email]
-   [metabase.config :as config]
-   [metabase.db :as db]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
+   [metabase.appearance.core :as appearance]
+   [metabase.channel.slack :as slack]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.eid-translation :as eid-translation]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.integrations.google :as google]
-   [metabase.integrations.slack :as slack]
+   [metabase.eid-translation.core :as eid-translation]
+   [metabase.internal-stats.core :as internal-stats]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
+   [metabase.session.settings :as session.settings]
+   [metabase.settings.core :as setting]
+   [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.version.core :as version]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -104,55 +108,55 @@
 
 (def ^:private ui-colors #{:brand :filter :summarize})
 
-(defn appearance-ui-colors-changed?
+(defn- appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
   []
-  (boolean (seq (select-keys (public-settings/application-colors) ui-colors))))
+  (boolean (seq (select-keys (appearance/application-colors) ui-colors))))
 
-(defn appearance-chart-colors-changed?
+(defn- appearance-chart-colors-changed?
   "Returns true if the 'Chart Colors' have been customized"
   []
-  (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))
+  (boolean (seq (apply dissoc (appearance/application-colors) ui-colors))))
 
 (defn- instance-settings
   "Figure out global info about this instance"
   []
   {:version                              (config/mb-version-info :tag)
    :running_on                           (environment-type)
-   :startup_time_millis                  (int (public-settings/startup-time-millis))
+   :startup_time_millis                  (int (system/startup-time-millis))
    :application_database                 (config/config-str :mb-db-type)
-   :check_for_updates                    (public-settings/check-for-updates)
+   :check_for_updates                    (version/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
-   :email_configured                     (email/email-configured?)
+   :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (slack/slack-configured?)
-   :sso_configured                       (google/google-auth-enabled)
-   :instance_started                     (snowplow/instance-creation)
+   :sso_configured                       (setting/get :google-auth-enabled)
+   :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
-   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
-   :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
-   :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
-   :enable_embedding_static              (embed.settings/enable-embedding-static)
+   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
+   :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
+   :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
+   :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
-                                          (embed.settings/embedding-app-origin))
-   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                          (setting/get :embedding-app-origin))
+   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
                                                     (and sdk-origins (not= "localhost:*" sdk-origins))))
-   :embedding_app_origin_interactive_set (embed.settings/embedding-app-origins-interactive)
-   :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
-   :appearance_help_link                 (public-settings/help-link)
-   :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
-   :appearance_favicon                   (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
-   :appearance_loading_message           (not= (public-settings/loading-message) :doing-science)
-   :appearance_metabot_greeting          (not (public-settings/show-metabot))
-   :appearance_login_page_illustration   (public-settings/login-page-illustration)
-   :appearance_landing_page_illustration (public-settings/landing-page-illustration)
-   :appearance_no_data_illustration      (public-settings/no-data-illustration)
-   :appearance_no_object_illustration    (public-settings/no-object-illustration)
+   :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
+   :appearance_site_name                 (not= (appearance/site-name) "Metabase")
+   :appearance_help_link                 (appearance/help-link)
+   :appearance_logo                      (not= (appearance/application-logo-url) "app/assets/img/logo.svg")
+   :appearance_favicon                   (not= (appearance/application-favicon-url) "app/assets/img/favicon.ico")
+   :appearance_loading_message           (not= (appearance/loading-message) :doing-science)
+   :appearance_metabot_greeting          (not (appearance/show-metabot))
+   :appearance_login_page_illustration   (appearance/login-page-illustration)
+   :appearance_landing_page_illustration (appearance/landing-page-illustration)
+   :appearance_no_data_illustration      (appearance/no-data-illustration)
+   :appearance_no_object_illustration    (appearance/no-object-illustration)
    :appearance_ui_colors                 (appearance-ui-colors-changed?)
    :appearance_chart_colors              (appearance-chart-colors-changed?)
-   :appearance_show_mb_links             (not (public-settings/show-metabase-links))})
+   :appearance_show_mb_links             (not (appearance/show-metabase-links))})
 
 (defn- user-metrics
   "Get metrics based on user records.
@@ -172,36 +176,23 @@
   []
   {:groups (t2/count :model/PermissionsGroup)})
 
-(defn- card-has-params? [card]
-  (boolean (get-in card [:dataset_query :native :template-tags])))
-
 (defn- question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query
-                          :dashboard_id :entity_id :created_at :collection_id :name]
-                         {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    {:questions (merge-count-maps (for [card cards]
-                                    (let [native? (= (keyword (:query_type card)) :native)
-                                          dq? (some? (:dashboard_id card))]
-                                      {:total                 1
-                                       :native                native?
-                                       :gui                   (not native?)
-                                       :is_dashboard_question dq?
-                                       :with_params           (card-has-params? card)})))
-     :public    (merge-count-maps (for [card  cards
-                                        :when (:public_uuid card)]
-                                    {:total       1
-                                     :with_params (card-has-params? card)}))
-     :embedded  (merge-count-maps (for [card  cards
-                                        :when (:enable_embedding card)]
-                                    (let [embedding-params-vals (set (vals (:embedding_params card)))]
-                                      {:total                1
-                                       :with_params          (card-has-params? card)
-                                       :with_enabled_params  (contains? embedding-params-vals "enabled")
-                                       :with_locked_params   (contains? embedding-params-vals "locked")
-                                       :with_disabled_params (contains? embedding-params-vals "disabled")})))}))
+  (let [cards (internal-stats/question-statistics-all-time)]
+    ; duplicate previous behaviour where these are empty maps if there are no matching cards in the given
+    ;; category
+    (cond-> {:questions {} :public {} :embedded {}}
+      (> (:total cards) 0) (assoc :questions (select-keys cards [:total :native :gui :is_dashboard_question :with_params]))
+      (> (:total_public cards) 0) (assoc :public (-> (select-keys cards [:total_public :with_params_public])
+                                                     (set/rename-keys {:total_public :total :with_params_public :with_params})))
+      (> (:total_embedded cards) 0) (assoc :embedded (-> (select-keys cards [:total_embedded
+                                                                             :with_params_embedded
+                                                                             :with_enabled_params
+                                                                             :with_locked_params
+                                                                             :with_disabled_params])
+                                                         (set/rename-keys {:total_embedded :total :with_params_embedded :with_params}))))))
 
 (defn- dashboard-metrics
   "Get metrics based on dashboards
@@ -248,9 +239,9 @@
 
     ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
     ;; (Number of Tables per DB engine)
-    (db-frequencies Table (mdb.query/qualify Database :engine)
-      {:left-join [Database [:= (mdb.query/qualify Database :id)
-                                (mdb.query/qualify Table :db_id)]]})
+    (db-frequencies Table (app-db/qualify Database :engine)
+      {:left-join [Database [:= (app-db/qualify Database :id)
+                                (app-db/qualify Table :db_id)]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
@@ -265,15 +256,15 @@
      ;; Pulses only (filter out Alerts)
      (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
   [& where-conditions]
-  (-> (mdb.query/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
-                        :from      [:pulse]
-                        :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
-                        :where     (into
-                                    [:and
-                                     [:or
-                                      [:= :pulse_card.include_csv true]
-                                      [:= :pulse_card.include_xls true]]]
-                                    where-conditions)})
+  (-> (app-db/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
+                     :from      [:pulse]
+                     :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
+                     :where     (into
+                                 [:and
+                                  [:or
+                                   [:= :pulse_card.include_csv true]
+                                   [:= :pulse_card.include_xls true]]]
+                                 where-conditions)})
       first
       :count))
 
@@ -292,7 +283,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify :model/Pulse :alert_condition) nil]}]
+  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
     {:alerts               (t2/count :model/Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count :model/Pulse :alert_condition [:not= nil], :alert_first_only true)
@@ -306,7 +297,7 @@
   "Get metrics on Collection usage."
   []
   (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id] {:where (mi/exclude-internal-content-hsql :model/Card)})]
+        cards       (t2/select [:model/Card :collection_id :card_schema] {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -355,11 +346,6 @@
   []
   {:segments (t2/count :model/Segment)})
 
-(defn- metric-metrics
-  "Get metrics based on Metrics."
-  []
-  {:metrics (t2/count :model/LegacyMetric)})
-
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
@@ -367,11 +353,11 @@
   ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
   ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
   ;; any time shifts due to DST. See PR #48204
-  (let [thirty-days-ago (case (db/db-type)
+  (let [thirty-days-ago (case (app-db/db-type)
                           :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
                           :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
                           :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
-        started-at      (case (db/db-type)
+        started-at      (case (app-db/db-type)
                           :postgres "started_at AT TIME ZONE 'UTC'"
                           :h2       "started_at"
                           :mysql    "started_at")
@@ -478,7 +464,7 @@
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
-         {:uuid      (public-settings/site-uuid)
+         {:uuid      (system/site-uuid)
           :timestamp (t/offset-date-time)
           :stats     {:cache      (cache-metrics)
                       :collection (collection-metrics)
@@ -487,7 +473,6 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
-                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -534,7 +519,7 @@
         (t2/count :model/User {:where [:and
                                        [:<=
                                         :date_joined
-                                        (t/plus (t/offset-date-time (setting/get :instance-creation))
+                                        (t/plus (t/offset-date-time (analytics.settings/instance-creation))
                                                 (t/days activation-days))]
                                        (mi/exclude-internal-content-hsql :model/User)]
                                :limit (inc num-users)})]
@@ -603,31 +588,12 @@
   (u/prog1 eid-translation/default-counter
     (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
 
-(defn- categorize-query-execution [{:keys [context embedding_client executor_id]}]
-  (cond
-    (= "embedding-sdk-react" embedding_client)                        "sdk_embed"
-    (and (= "embedding-iframe" embedding_client) (some? executor_id)) "interactive_embed"
-    (and (= "embedding-iframe" embedding_client) (nil? executor_id))  "static_embed"
-    (some-> context name (str/starts-with? "public-"))                "public_link"
-    :else                                                             "internal"))
-
 (defn- ->one-day-ago []
   (t/minus (t/offset-date-time) (t/days 1)))
 
 (defn- ->snowplow-grouped-metric-info []
-  (let [qe (t2/select [:model/QueryExecution :embedding_client :context :executor_id :started_at])
-        one-day-ago (->one-day-ago)
-        ;; reuse the query data:
-        qe-24h (filter (fn [{started-at :started_at}] (t/after? started-at one-day-ago)) qe)]
-    {:query-executions (merge
-                        {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
-                        (-> (group-by categorize-query-execution qe)
-                            (update-vals count)))
-     :query-executions-24h (merge
-                            {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
-                            (-> (group-by categorize-query-execution qe-24h)
-                                (update-vals count)))
-     :eid-translations-24h (get-translation-count)}))
+  (merge (internal-stats/query-executions-all-time-and-last-24h)
+         {:eid-translations-24h (get-translation-count)}))
 
 (defn- deep-string-keywords
   "Snowplow data will not work if you pass in keywords, but this will let use use keywords all over."
@@ -635,6 +601,12 @@
   (walk/postwalk
    (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
    data))
+
+(defn- get-query-exeuction-counts
+  [executions]
+  (mapv (fn [qe-group]
+          {:group (str qe-group) :value (get executions qe-group)})
+        [:interactive_embed :internal :public_link :sdk_embed :static_embed]))
 
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
@@ -648,13 +620,10 @@
     :as _snowplow-grouped-metric-info}]
   (deep-string-keywords
    [{:name :query_executions_by_source
-     :values (mapv (fn [qe-group]
-                     {:group qe-group :value (get query-executions qe-group)})
-                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :values (get-query-exeuction-counts query-executions)
      :tags ["embedding"]}
     {:name :query_executions_by_source_24h
-     :values (mapv (fn [qe-group] {:group qe-group :value (get query-executions-24h qe-group)})
-                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :values (get-query-exeuction-counts query-executions-24h)
      :tags ["embedding"]}
     {:name :entity_id_translations_last_24h
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
@@ -776,7 +745,7 @@
 
 (defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.stats
+  metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
 
@@ -784,36 +753,36 @@
   []
   [{:name      :email
     :available true
-    :enabled   (email/email-configured?)}
+    :enabled   (setting/get :email-configured?)}
    {:name      :slack
     :available true
     :enabled   (slack/slack-configured?)}
    {:name      :sso-google
     :available true
-    :enabled   (google/google-auth-configured)}
+    :enabled   (setting/get :google-auth-configured)}
    {:name      :sso-ldap
     :available true
-    :enabled   (public-settings/ldap-enabled?)}
+    :enabled   (sso/ldap-enabled)}
    {:name      :sample-data
     :available true
     :enabled   (t2/exists? :model/Database, :is_sample true)}
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and
-                (embed.settings/enable-embedding-interactive)
-                (boolean (embed.settings/embedding-app-origins-interactive))
-                (public-settings/sso-enabled?))}
+                (setting/get :enable-embedding-interactive)
+                (boolean (setting/get :embedding-app-origins-interactive))
+                (sso/sso-enabled?))}
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (embed.settings/enable-embedding-static)
+                (setting/get :enable-embedding-static)
                 (or
                  (t2/exists? :model/Dashboard :enable_embedding true)
                  (t2/exists? :model/Card :enable_embedding true)))}
    {:name      :public-sharing
     :available true
     :enabled   (and
-                (public-settings/enable-public-sharing)
+                (setting/get :enable-public-sharing)
                 (or
                  (t2/exists? :model/Dashboard :public_uuid [:not= nil])
                  (t2/exists? :model/Card :public_uuid [:not= nil])))}
@@ -844,6 +813,11 @@
    {:name      :database-auth-providers
     :available (premium-features/enable-database-auth-providers?)
     :enabled   (premium-features/enable-database-auth-providers?)}
+   {:name      :database-routing
+    :available (premium-features/enable-database-routing?)
+    :enabled   (if (premium-features/enable-database-routing?)
+                 (t2/exists? :model/DatabaseRouter)
+                 false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -855,7 +829,7 @@
     :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
    {:name      :disable-password-login
     :available (premium-features/can-disable-password-login?)
-    :enabled   (not (public-settings/enable-password-login))}
+    :enabled   (not (session.settings/enable-password-login))}
    {:name      :email-restrict-recipients
     :available (premium-features/enable-email-restrict-recipients?)
     :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
@@ -867,7 +841,24 @@
     :enabled   (t2/exists? :model/Collection :namespace "snippets")}
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
-    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}])
+    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :metabot-v3
+    :available (premium-features/enable-metabot-v3?)
+    :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-sql-fixer
+    :available (premium-features/enable-ai-sql-fixer?)
+    :enabled   (premium-features/enable-ai-sql-fixer?)}
+   {:name      :ai-sql-generation
+    :available (premium-features/enable-ai-sql-generation?)
+    :enabled   (premium-features/enable-ai-sql-generation?)}
+   {:name      :sdk-embedding
+    :available true
+    :enabled   (setting/get :enable-embedding-sdk)}
+   {:name      :starburst-legacy-impersonation
+    :available true
+    :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")
+                    (some identity)
+                    boolean)}])
 
 (defn- snowplow-features
   []
@@ -882,20 +873,63 @@
            (walk/stringify-keys)))
      features)))
 
+(defn- bool->default-or-changed
+  [changed]
+  (if changed "changed" "default"))
+
+(def ^:private snowplow-settings-metric-defs
+  [{:key "is_embedding_app_origin_sdk_set" :value :embedding_app_origin_sdk_set :tags ["embedding"]}
+   {:key "is_embedding_app_origin_interactive_set" :value (comp boolean :embedding_app_origin_interactive_set) :tags ["embedding"]}
+   {:key "application_name" :value (comp bool->default-or-changed :appearance_site_name) :tags ["appearance"]}
+   {:key "help_link" :value (comp name :appearance_help_link) :tags ["appearance"]}
+   {:key "logo" :value (comp bool->default-or-changed :appearance_logo) :tags ["appearance"]}
+   {:key "favicon" :value (comp bool->default-or-changed :appearance_favicon) :tags ["appearance"]}
+   {:key "loading_message" :value (comp bool->default-or-changed :appearance_loading_message) :tags ["appearance"]}
+   {:key "show_metabot_greeting" :value :appearance_metabot_greeting :tags ["appearance"]}
+   {:key "show_login_page_illustration" :value :appearance_login_page_illustration :tags ["appearance"]}
+   {:key "show_landing_page_illustration" :value :appearance_landing_page_illustration :tags ["appearance"]}
+   {:key "show_no_data_illustration" :value :appearance_no_data_illustration :tags ["appearance"]}
+   {:key "show_no_object_illustration" :value :appearance_no_object_illustration :tags ["appearance"]}
+   {:key "ui_color" :value (comp bool->default-or-changed :appearance_ui_colors) :tags ["appearance"]}
+   {:key "chart_colors" :value (comp bool->default-or-changed :appearance_chart_colors) :tags ["appearance"]}
+   {:key "show_mb_links" :value :appearance_show_mb_links :tags ["appearance"]}
+   {:key "font"
+    :value (fn [_] (appearance/application-font))
+    :tags ["appearance"]}
+   {:key "samesite"
+    :value (fn [_] (str (or (setting/get :session-cookie-samesite) "lax")))
+    :tags ["embedding" "auth"]}
+   {:key "site_locale"
+    :value (fn [_] (system/site-locale))
+    :tags ["locale"]}
+   {:key "report_timezone"
+    :value (fn [_] (or (setting/get :report-timezone) (System/getProperty "user.timezone")))
+    :tags ["locale"]}
+   {:key "start_of_week"
+    :value (fn [_] (str (lib-be/start-of-week)))
+    :tags ["locale"]}])
+
+(defn- snowplow-settings
+  [stats]
+  (letfn [(update-setting-value [setting-value-getter]
+            (setting-value-getter stats))]
+    (mapv #(update % :value update-setting-value) snowplow-settings-metric-defs)))
+
 (defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
   [stats]
   (let [instance-attributes (snowplow-instance-attributes stats)
         metrics             (snowplow-metrics stats (->snowplow-metric-info))
         grouped-metrics     (snowplow-grouped-metrics (->snowplow-grouped-metric-info))
-        features            (snowplow-features)]
+        features            (snowplow-features)
+        settings            (snowplow-settings stats)]
     ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
-    {"analytics_uuid"      (snowplow/analytics-uuid)
+    {"analytics_uuid"      (analytics.settings/analytics-uuid)
      "features"            features
      "grouped_metrics"     grouped-metrics
      "instance_attributes" instance-attributes
      "metrics"             metrics
-     "settings"            []}))
+     "settings"            settings}))
 
 (defn- generate-instance-stats!
   "Generate stats for this instance as data"
@@ -914,7 +948,7 @@
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
-  (when (public-settings/anon-tracking-enabled)
+  (when (analytics.settings/anon-tracking-enabled)
     (let [start-time-ms                  (System/currentTimeMillis)
           {:keys [stats snowplow-stats]} (generate-instance-stats!)
           end-time-ms                    (System/currentTimeMillis)
@@ -928,5 +962,5 @@
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! ::snowplow/instance_stats snowplow-data)
+      (snowplow/track-event! :snowplow/instance_stats snowplow-data)
       (stats-post-cleanup))))

@@ -18,12 +18,14 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 export const DETAILS_PERMISSION_OPTIONS = {
   no: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,
     value: DataPermissionValue.NO,
     icon: "close",
     iconColor: "danger",
   },
   yes: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Yes`,
     value: DataPermissionValue.YES,
     icon: "check",

@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection-test :refer [with-collection-hierarchy!]]
    [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -33,7 +33,7 @@
                                              :models "dashboard" :models "card")
                        (dissoc :models)
                        (update :data (fn [results] (map (fn [result] (dissoc result :moderated_status)) results))))
-                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection :moderated_status)) results))))))
+                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection :moderated_status :card_schema)) results))))))
           (testing "The card and dashboard are in there"
             (is (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]}
                    (->> result

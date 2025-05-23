@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql :as driver.sql]
@@ -517,8 +517,8 @@
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
-                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
-                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
                  (mysql-test/db->fields (mt/db)))))
         (testing "Nested field columns are correct"
           (is (= #{{:name              "jsoncol → mybool"
@@ -576,7 +576,7 @@
                                                                    []
 
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
-                    metadata-queries/nested-field-sample-limit 4]
+                    table-rows-sample/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
           (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))
@@ -756,7 +756,14 @@
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
+(deftest describe-fields-are-sorted-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :describe-fields)
+    (let [returned-fields (into [] (driver/describe-fields driver/*driver* (mt/db)))
+          sorted-fields (sort-by (juxt :table-schema :table-name :database-position) returned-fields)]
+      (is (= sorted-fields
+             returned-fields)))))
+
+(defmethod driver/database-supports? [::driver/driver ::describe-materialized-view-fields]
   [_driver _feature _database]
   true)
 
@@ -783,14 +790,16 @@
                 :mongo
                 :sparksql
                 :sqlite
-                :athena]]
+                :athena
+                :starburst
+                :vertica]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
     false))
 
 (deftest describe-view-fields
-  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
-                              (mt/normal-drivers-with-feature ::describe-view-fields))
+  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields :test/dynamic-dataset-loading)
+                              (mt/normal-drivers-with-feature ::describe-view-fields :test/dynamic-dataset-loading))
     (doseq [materialized? (cond-> []
                             (driver/database-supports? driver/*driver* ::describe-view-fields nil)
                             (conj false)
@@ -804,7 +813,8 @@
           (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
           (sync/sync-database! (mt/db) {:scan :schema})
           (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
-                orders-m-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db)))
+                view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
+                orders-m-id (:id view-instance)
                 non-view-fields (t2/select-fn-vec
                                  (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                  :model/Field
@@ -815,6 +825,8 @@
                              :model/Field
                              :table_id orders-m-id
                              {:order-by [:database_position]})]
+            (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
+                           (:name view-instance)))
             (is (some? orders-m-id))
             (is (some? orders-id))
             (is (= 9 (count view-fields)))

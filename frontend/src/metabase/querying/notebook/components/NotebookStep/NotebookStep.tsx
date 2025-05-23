@@ -51,7 +51,7 @@ export function NotebookStep({
       isLastStep && step.actions.some(hasLargeButton);
 
     actions.push(
-      ...step.actions.map(action => {
+      ...step.actions.map((action) => {
         const stepUi = getStepConfig(action.type);
         const title = stepUi.title;
         return {
@@ -76,7 +76,7 @@ export function NotebookStep({
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-    return actions.map(action => action.button);
+    return actions.map((action) => action.button);
   }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
@@ -113,7 +113,7 @@ export function NotebookStep({
         </Box>
 
         <Flex align="center">
-          <Box w={`${(11 / 12) * 100}%`} maw="75rem">
+          <Box flex={`1 1 ${(11 / 12) * 100}%`} maw="75rem">
             <Step
               step={step}
               query={step.query}
@@ -126,7 +126,7 @@ export function NotebookStep({
             />
           </Box>
           {!readOnly && (
-            <Box w={`${(1 / 12) * 100}%`}>
+            <Box flex={`1 1 ${(1 / 12) * 100}%`}>
               <Box
                 className={cx(S.PreviewButton, {
                   [S.noPreviewButton]: !hasPreviewButton,

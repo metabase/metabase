@@ -1,8 +1,9 @@
 export { addOrUpdateDashboardCard } from "./addOrUpdateDashboardCard";
+export { addQuestionToDashboard } from "./addQuestionToDashboard";
 export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
 export { archiveQuestion } from "./archiveQuestion";
-export { createAlert } from "./createAlert";
+export { createQuestionAlert } from "./createNotification";
 export { createApiKey } from "./createApiKey";
 export { createCollection } from "./createCollection";
 export { createDashboard } from "./createDashboard";
@@ -21,6 +22,7 @@ export type {
 } from "./createQuestion";
 export { createQuestionAndAddToDashboard } from "./createQuestionAndAddToDashboard";
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
+export { createSnippet } from "./createSnippet";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";

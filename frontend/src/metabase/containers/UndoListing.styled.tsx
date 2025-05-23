@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
@@ -27,12 +29,8 @@ export const ToastCard = styled(Card)<{
 }>`
   padding: 10px ${space(2)};
   margin-top: ${space(1)};
-  min-width: 310px;
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  position: relative;
-  ${props =>
-    props.translateY ? `transform: translateY(${props.translateY}px)` : ""}
-  ${props => (props.color ? `background-color: ${color(props.color)}` : "")};
+  background-color: var(--mb-color-background-inverse);
   ${({ noBorder }) =>
     noBorder &&
     css`
@@ -51,11 +49,11 @@ export const CardContentSide = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   overflow: hidden;
-`;
+` as unknown as typeof Box;
 
 export const ControlsCardContent = styled(CardContentSide)`
   flex-shrink: 0;
-`;
+` as unknown as typeof Box;
 
 export const CardIcon = styled(Icon)`
   margin-right: ${space(1)};
@@ -80,7 +78,6 @@ export const UndoButton = styled(Link)`
 
 export const DismissIcon = styled(Icon)<{ color?: string }>`
   margin-left: ${space(2)};
-  color: ${({ color: iconColor = "bg-dark" }) => color(iconColor)};
   cursor: pointer;
 
   :hover {

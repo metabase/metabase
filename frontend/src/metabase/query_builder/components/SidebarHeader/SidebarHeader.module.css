@@ -1,7 +1,6 @@
 .CloseButton {
   color: var(--mb-color-text-dark);
   text-decoration: none;
-  margin-left: auto;
 
   &:hover {
     color: var(--mb-color-brand);
@@ -9,12 +8,9 @@
 }
 
 .HeaderTitleContainer {
-  display: flex;
-  align-items: center;
+  flex: 1;
   font-size: 1.17em;
   font-weight: bold;
-  margin-top: 0;
-  margin-bottom: 0;
 }
 
 .backButton {
@@ -35,4 +31,12 @@
   &:hover {
     color: var(--mb-color-brand);
   }
+}
+
+.icon {
+  flex: 0 0 auto;
+}
+
+.title {
+  word-break: break-word;
 }

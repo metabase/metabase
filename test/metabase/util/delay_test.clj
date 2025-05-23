@@ -1,6 +1,7 @@
 (ns metabase.util.delay-test
-  (:require [clojure.test :refer :all]
-            [metabase.util.delay :as delay]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.util.delay :as delay]))
 
 (set! *warn-on-reflection* true)
 

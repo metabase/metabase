@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";
 
@@ -82,7 +82,7 @@ function assertOnXYAxisLabels() {
 function assertOnXAxisTicks(values) {
   if (values) {
     H.echartsContainer().within(() => {
-      values.forEach(value => {
+      values.forEach((value) => {
         cy.findByText(value);
       });
     });

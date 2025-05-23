@@ -7,6 +7,7 @@ import type { Widget } from "../types";
 import type { BaseChartSettingsProps } from "./types";
 
 // section names are localized
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const DEFAULT_TAB_PRIORITY = [t`Data`];
 
 export const useChartSettingsSections = ({
@@ -44,10 +45,10 @@ export const useChartSettingsSections = ({
       "display",
       "axes",
       // include all section names so any forgotten sections are sorted to the end
-      ...names.map(x => x.toLowerCase()),
+      ...names.map((x) => x.toLowerCase()),
     ];
     names.sort((a, b) => {
-      const [aIdx, bIdx] = [a, b].map(x =>
+      const [aIdx, bIdx] = [a, b].map((x) =>
         sectionSortOrder.indexOf(x.toLowerCase()),
       );
       return aIdx - bIdx;
@@ -60,7 +61,7 @@ export const useChartSettingsSections = ({
     () =>
       currentSection && sections[currentSection]
         ? currentSection
-        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+        : _.find(DEFAULT_TAB_PRIORITY, (name) => name in sections) ||
           sectionNames[0],
     [currentSection, sectionNames, sections],
   );

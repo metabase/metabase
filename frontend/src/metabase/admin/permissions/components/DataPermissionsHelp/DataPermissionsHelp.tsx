@@ -23,10 +23,10 @@ import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
-    state => getSetting(state, "token-features").advanced_permissions,
+    (state) => getSetting(state, "token-features").advanced_permissions,
   );
 
-  const shouldShowLegacyNoSelfServiceInfo = useSelector(state =>
+  const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
     hasPermissionValueInGraph(
       state.admin.permissions.originalDataPermissions,
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
@@ -37,7 +37,7 @@ export const DataPermissionsHelp = () => {
   return (
     <Flex direction="column" py={rem(22)} px="1rem">
       <Box px={rem(12)}>
-        <Title order={4}>{t`Data permissions`}</Title>
+        <Title order={3}>{t`Data permissions`}</Title>
         <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
       </Box>
 
@@ -51,7 +51,7 @@ export const DataPermissionsHelp = () => {
         >
           <Accordion.Control>{t`Database ‘View data’ levels`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="eye"
                 iconColor="success"
@@ -100,7 +100,7 @@ export const DataPermissionsHelp = () => {
         >
           <Accordion.Control>{t`Schema or table ‘View data’ levels`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
                 iconColor="success"
@@ -161,7 +161,7 @@ export const DataPermissionsHelp = () => {
         >
           <Accordion.Control>{t`‘Create queries’ levels`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
                 iconColor="success"
@@ -196,7 +196,7 @@ export const DataPermissionsHelp = () => {
         <Accordion.Item value="others">
           <Accordion.Control>{t`Other data permissions`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <Text>
                 {jt`${(
                   <strong key="permission">{t`Download results (Pro):`}</strong>
@@ -223,7 +223,7 @@ export const DataPermissionsHelp = () => {
         </Accordion.Item>
       </Accordion>
 
-      <Text component="footer" align="center" py="1.5rem" weight={600}>
+      <Text component="footer" ta="center" py="1.5rem" fw={600}>
         {jt`${(
           <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
         )} about data permissions`}

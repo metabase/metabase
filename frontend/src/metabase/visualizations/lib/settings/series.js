@@ -66,7 +66,7 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
 
         // FIXME: will move to Cartesian series model further, but now this code is used by other legacy charts
         const transformedSeriesIndex = series.findIndex(
-          s => keyForSingleSeries(s) === keyForSingleSeries(single),
+          (s) => keyForSingleSeries(s) === keyForSingleSeries(single),
         );
 
         return getSeriesDefaultDisplay(
@@ -185,7 +185,7 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
       getHidden: (single, seriesSettings, { settings, series }) =>
         series.length <= 1 || // no need to show series-level control if there's only one series
         !settings["graph.show_values"] || // don't show it unless this chart has a global setting
-        settings["stackable.stack_type"], // hide series controls if the chart is stacked
+        settings["graph.show_stack_values"] === "total",
       getDefault: (single, seriesSettings, { settings }) =>
         getSeriesDefaultShowSeriesValues(settings),
       readDependencies: ["graph.show_values", "stackable.stack_type"],
@@ -211,7 +211,7 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
       component: ChartNestedSettingSeries,
       readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
       noPadding: true,
-      getExtraProps: series => ({
+      getExtraProps: (series) => ({
         seriesCardNames: series.reduce((memo, singleSeries) => {
           memo[keyForSingleSeries(singleSeries)] = getNameForCard(
             singleSeries.card,
@@ -224,7 +224,7 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
     // colors must be computed as a whole rather than individually
     [SERIES_COLORS_SETTING_KEY]: {
       getValue(series, settings) {
-        const keys = series.map(single => keyForSingleSeries(single));
+        const keys = series.map((single) => keyForSingleSeries(single));
         return getSeriesColors(keys, settings);
       },
     },

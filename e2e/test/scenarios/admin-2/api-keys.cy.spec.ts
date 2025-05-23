@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -89,24 +89,20 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.findByTestId("api-keys-table").findByText(name);
   });
 
-  it(
-    "should show an error when a previously used key name is submitted",
-    { tags: "@flaky" },
-    () => {
-      const name = "New key";
-      const group = "Administrators";
-      H.visitApiKeySettings();
-      H.tryToCreateApiKeyViaModal({ name, group });
-      H.modal().button("Done").click();
-      H.tryToCreateApiKeyViaModal({ name, group }).then(({ response }) => {
-        expect(response?.statusCode).to.equal(400);
-      });
+  it("should show an error when a previously used key name is submitted", () => {
+    const name = "New key";
+    const group = "Administrators";
+    H.visitApiKeySettings();
+    H.tryToCreateApiKeyViaModal({ name, group });
+    cy.button("Done").click();
+    H.tryToCreateApiKeyViaModal({ name, group }).then(({ response }) => {
+      expect(response?.statusCode).to.equal(400);
+    });
 
-      cy.findByTestId("create-api-key-modal")
-        .findAllByRole("alert")
-        .contains("An API key with this name already exists.");
-    },
-  );
+    cy.findByTestId("create-api-key-modal")
+      .findAllByRole("alert")
+      .contains("An API key with this name already exists.");
+  });
 
   it("should allow deleting an API key", () => {
     H.createApiKey("Test API Key One", ALL_USERS_GROUP_ID);

@@ -51,7 +51,7 @@ export const FilterableTree = ({
     return searchItems(itemGroups.flat(), trimmedFilter);
   }, [itemGroups, debouncedFilter]);
 
-  const handleFilterChange: InputProps["onChange"] = e =>
+  const handleFilterChange: InputProps["onChange"] = (e) =>
     setFilter(e.target.value);
 
   return (

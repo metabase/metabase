@@ -37,6 +37,7 @@
                               :nested-fields                 false
                               :uuid-type                     true
                               :connection/multiple-databases true
+                              :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false}]
@@ -292,7 +293,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->DateTime]
   [_driver _semantic-type expr]
-  (h2x/->timestamp expr))
+  (h2x/->timestamp [:replace expr "T" " "]))
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Date]
   [_driver _semantic-type expr]
@@ -312,11 +313,6 @@
       (:hour :minute :second)
       [:date_diff (h2x/literal unit) (h2x/->timestamp x) (h2x/->timestamp y)])))
 
-;; fix to allow integer division to be cast as double (float is not supported by athena)
-(defmethod sql.qp/->float :athena
-  [_ value]
-  (h2x/cast :double value))
-
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
   [driver [_ arg]]
@@ -329,15 +325,6 @@
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
-
-;; keyword function converts database-type variable to a symbol, so we use symbols above to map the types
-(defn- database-type->base-type-or-warn
-  "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
-  [driver database-type]
-  (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                     database-type)
-          :type/*)))
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
@@ -372,6 +359,7 @@
   (let [field-info-str (:_col0 raw-field-info)
         components (map (comp not-empty str/trim) (str/split field-info-str #"\t"))
         field-info (zipmap [:col_name :data_type :remark] components)]
+    (log/tracef "DESCRIBE result: %s" (pr-str field-info-str))
     (into {} (remove (fn [[_ v]] (nil? v))) field-info)))
 
 (defn- describe-table-fields-with-nested-fields [database schema table-name]
@@ -383,7 +371,7 @@
               (map athena.schema-parser/parse-schema))
         (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
 
-(defn- describe-table-fields-without-nested-fields [driver columns]
+(defn- describe-table-fields-without-nested-fields [driver schema table-name columns]
   (set
    (for [[idx {database-type :type_name
                column-name   :column_name
@@ -391,7 +379,9 @@
      (merge
       {:name              column-name
        :database-type     database-type
-       :base-type         (database-type->base-type-or-warn driver database-type)
+       :base-type         (sql-jdbc.sync/database-type->base-type-or-warn driver
+                                                                          [schema table-name column-name]
+                                                                          database-type)
        :database-position idx}
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))
@@ -417,12 +407,14 @@
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog]
   (try
     (let [columns (get-columns metadata catalog schema table-name)]
+      (when (empty? columns)
+        (log/trace "Falling back to DESCRIBE due to #43980"))
       (if (or (table-has-nested-fields? columns)
                 ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
                 ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
               (empty? columns))
         (describe-table-fields-with-nested-fields database schema table-name)
-        (describe-table-fields-without-nested-fields driver columns)))
+        (describe-table-fields-without-nested-fields driver schema table-name columns)))
     (catch Throwable e
       (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
       (throw e))))
@@ -486,7 +478,7 @@
   ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
   ;;
   ;; Also we're creating a set here, so even if we set "ProxyAPI", we'll miss dupe database names
-  (with-open [rs (.getSchemas metadata)]
+  (with-open [rs (if catalog (.getSchemas metadata catalog "%") (.getSchemas metadata))]
     ;; it seems like `table_catalog` is ALWAYS `AwsDataCatalog`. `table_schem` seems to correspond to the Database name,
     ;; at least for stuff we create with the test data extensions?? :thinking_face:
     (let [all-schemas (set (cond->> (jdbc/metadata-result rs)

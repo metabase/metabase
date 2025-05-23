@@ -23,6 +23,7 @@ export type EditableTextAttributes = Omit<
 export interface EditableTextProps extends EditableTextAttributes {
   initialValue?: string | null;
   placeholder?: string;
+  maxLength?: number;
   isEditing?: boolean;
   isOptional?: boolean;
   isMultiline?: boolean;
@@ -38,6 +39,7 @@ const EditableText = forwardRef(function EditableText(
   {
     initialValue,
     placeholder,
+    maxLength,
     isEditing = false,
     isOptional = false,
     isMultiline = false,
@@ -52,7 +54,7 @@ const EditableText = forwardRef(function EditableText(
   ref: Ref<HTMLDivElement>,
 ) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
-  const [submitValue, setSubmitValue] = useState(initialValue ?? "");
+  const [submitValue, setSubmitValue] = useState(initialValue);
   const [isInFocus, setIsInFocus] = useState(isEditing);
   const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);
@@ -79,7 +81,7 @@ const EditableText = forwardRef(function EditableText(
     (event: FocusEvent<HTMLTextAreaElement>) => {
       setIsInFocus(false);
 
-      if (!isOptional && !inputValue) {
+      if (!isOptional && !inputValue && submitValue) {
         setInputValue(submitValue);
       } else if (inputValue !== submitValue && submitOnBlur.current) {
         setSubmitValue(inputValue);
@@ -103,7 +105,7 @@ const EditableText = forwardRef(function EditableText(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
         event.stopPropagation(); // don't close modal
-        setInputValue(submitValue);
+        setInputValue(submitValue ?? "");
         submitOnBlur.current = false;
         event.currentTarget.blur();
       } else if (event.key === "Enter" && !isMultiline) {
@@ -155,12 +157,15 @@ const EditableText = forwardRef(function EditableText(
           ref={inputRef}
           value={inputValue}
           placeholder={placeholder}
+          maxLength={maxLength}
           disabled={isDisabled}
           data-testid={dataTestId}
           onFocus={onFocus}
           onBlur={handleBlur}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          // This is used to stop sidesheets from closing when escape is pressed
+          data-mantine-stop-propagation
         />
       )}
     </Box>

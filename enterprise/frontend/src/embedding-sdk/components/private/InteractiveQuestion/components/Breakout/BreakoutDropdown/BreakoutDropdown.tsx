@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { match } from "ts-pattern";
+import { c, t } from "ttag";
 
 import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk/components/private/util/MultiStepPopover";
-import type { QuestionStateParams } from "embedding-sdk/types/question";
 import type { PopoverProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../../context";
@@ -14,22 +14,33 @@ import { BreakoutBadgeList } from "../BreakoutBadgeList";
 import { BreakoutPicker } from "../BreakoutPicker";
 import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
 
-export const BreakoutDropdownInner = ({
-  question,
-  updateQuestion,
-  ...popoverProps
-}: QuestionStateParams &
-  Omit<PopoverProps, "children" | "onClose" | "opened">) => {
-  const items = useBreakoutData({ question, updateQuestion });
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionBreakoutDropdownProps = Omit<
+  PopoverProps,
+  "children" | "onClose" | "opened"
+>;
+
+export const BreakoutDropdownInner = (
+  popoverProps: InteractiveQuestionBreakoutDropdownProps,
+) => {
+  const items = useBreakoutData();
 
   const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
 
   const [selectedBreakout, setSelectedBreakout] = useState<SDKBreakoutItem>();
 
   const label = match(items.length)
-    .with(0, () => "Group")
-    .with(1, () => "1 grouping")
-    .otherwise(value => `${value} groupings`);
+    .with(0, () => t`Group`)
+    .with(1, () => t`1 grouping`)
+    .otherwise(
+      (value) =>
+        c(
+          "{0} refers to a number greater than 1 (i.e. 2 groupings, 10 groupings)",
+        ).t`${value} groupings`,
+    );
 
   const onSelectItem = (item?: SDKBreakoutItem) => {
     setSelectedBreakout(item);
@@ -80,17 +91,21 @@ export const BreakoutDropdownInner = ({
   );
 };
 
-export const BreakoutDropdown = () => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+/**
+ * Dropdown button for the Breakout component.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const BreakoutDropdown = (
+  props: InteractiveQuestionBreakoutDropdownProps,
+) => {
+  const { question } = useInteractiveQuestionContext();
 
   if (!question) {
     return null;
   }
 
-  return (
-    <BreakoutDropdownInner
-      question={question}
-      updateQuestion={updateQuestion}
-    />
-  );
+  return <BreakoutDropdownInner {...props} />;
 };

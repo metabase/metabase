@@ -14,22 +14,28 @@ import {
 
 const COMMON_SETTINGS = {
   "card.title": {
-    title: t`Title`,
+    get title() {
+      return t`Title`;
+    },
     widget: "input",
-    getDefault: series => (series.length === 1 ? series[0].card.name : null),
+    getDefault: (series) => (series.length === 1 ? series[0].card.name : null),
     dashboard: true,
     useRawSeries: true,
   },
   "card.description": {
-    title: t`Description`,
+    get title() {
+      return t`Description`;
+    },
     widget: "input",
-    getDefault: series =>
+    getDefault: (series) =>
       series.length === 1 ? series[0].card.description : null,
     dashboard: true,
     useRawSeries: true,
   },
   "card.hide_empty": {
-    title: t`Hide this card if there are no results`,
+    get title() {
+      return t`Hide this card if there are no results`;
+    },
     widget: "toggle",
     inline: true,
     dashboard: true,
@@ -45,7 +51,7 @@ const COMMON_SETTINGS = {
   click_behavior: {},
 };
 
-function getSettingDefintionsForSeries(series) {
+function getSettingDefinitionsForSeries(series) {
   if (!series) {
     return {};
   }
@@ -92,7 +98,7 @@ export function getComputedSettingsForSeries(series) {
   if (!series) {
     return {};
   }
-  const settingsDefs = getSettingDefintionsForSeries(series);
+  const settingsDefs = getSettingDefinitionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
   return getComputedSettings(settingsDefs, series, storedSettings);
 }
@@ -100,7 +106,7 @@ export function getComputedSettingsForSeries(series) {
 export function getPersistableDefaultSettingsForSeries(series) {
   // A complete set of settings (not only defaults) is loaded because
   // some persistable default settings need other settings as dependency for calculating the default value
-  const settingsDefs = getSettingDefintionsForSeries(series);
+  const settingsDefs = getSettingDefinitionsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
   return getPersistableDefaultSettings(settingsDefs, computedSettings);
 }
@@ -111,7 +117,7 @@ export function getSettingsWidgetsForSeries(
   isDashboard = false,
   extra = {},
 ) {
-  const settingsDefs = getSettingDefintionsForSeries(series);
+  const settingsDefs = getSettingDefinitionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
 
@@ -123,7 +129,7 @@ export function getSettingsWidgetsForSeries(
     onChangeSettings,
     { isDashboard, ...extra },
   ).filter(
-    widget =>
+    (widget) =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,
   );
 }

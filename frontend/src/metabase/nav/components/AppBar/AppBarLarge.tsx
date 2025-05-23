@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_METABOT } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -7,7 +8,6 @@ import QuestionLineage from "../../containers/QuestionLineage";
 import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
-import { SearchButton } from "../search/SearchButton";
 
 import {
   AppBarInfoContainer,
@@ -23,9 +23,10 @@ export interface AppBarLargeProps {
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isMetabotVisible?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
-  isEmbedded?: boolean;
+  isEmbeddingIframe?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
@@ -38,9 +39,10 @@ const AppBarLarge = ({
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
+  isMetabotVisible,
   isLogoVisible,
   isSearchVisible,
-  isEmbedded,
+  isEmbeddingIframe,
   isNewButtonVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
@@ -51,7 +53,7 @@ const AppBarLarge = ({
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
   return (
-    <AppBarRoot isNavBarOpen={isNavBarVisible}>
+    <AppBarRoot hasSidebarOpen={isNavBarVisible || isMetabotVisible}>
       <AppBarLeftContainer>
         <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}
@@ -74,7 +76,12 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
-          {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
+          {isSearchVisible &&
+            (isEmbeddingIframe ? (
+              <SearchBar />
+            ) : (
+              <PLUGIN_METABOT.SearchButton />
+            ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer aria-label={t`Settings menu`}>

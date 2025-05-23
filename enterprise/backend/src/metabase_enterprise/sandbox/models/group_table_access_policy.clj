@@ -3,15 +3,14 @@
   certain Table for a certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question,
   a Saved Question specified by the GTAP is instead used as the source of the query.
 
-  See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
+  See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
+   [metabase.classloader.core :as classloader]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.request.core :as request]
@@ -19,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -44,7 +44,7 @@
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
-  (into {} (for [col (request/with-current-user nil
+  (into {} (for [col (request/as-admin
                        ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                         {:database (database/table-id->database-id table-id)
                          :type     :query

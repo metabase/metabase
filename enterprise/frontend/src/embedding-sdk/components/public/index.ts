@@ -4,6 +4,7 @@ import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 export {
   CollectionBrowser,
   type CollectionBrowserProps,
+  type CollectionBrowserListColumns,
 } from "./CollectionBrowser";
 export {
   CreateDashboardModal,
@@ -12,8 +13,6 @@ export {
   type CreateDashboardValues,
 } from "./CreateDashboardModal";
 export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
-export { FlexibleSizeComponent } from "./FlexibleSizeComponent";
-export type { FlexibleSizeProps } from "./FlexibleSizeComponent";
 export {
   EditableDashboard,
   InteractiveDashboard,
@@ -22,7 +21,27 @@ export {
 } from "./InteractiveDashboard";
 export {
   InteractiveQuestion,
+  type BaseInteractiveQuestionProps,
   type InteractiveQuestionProps,
+  type InteractiveQuestionBackButtonProps,
+  type InteractiveQuestionBreakoutDropdownProps,
+  type InteractiveQuestionChartTypeDropdownProps,
+  type InteractiveQuestionChartTypeSelectorProps,
+  type InteractiveQuestionDownloadWidgetProps,
+  type InteractiveQuestionDownloadWidgetDropdownProps,
+  type InteractiveQuestionEditorProps,
+  type InteractiveQuestionEditorButtonProps,
+  type InteractiveQuestionFilterProps,
+  type InteractiveQuestionFilterDropdownProps,
+  type InteractiveQuestionQuestionSettingsProps,
+  type InteractiveQuestionQuestionSettingsDropdownProps,
+  type InteractiveQuestionQuestionVisualizationProps,
+  type InteractiveQuestionResetButtonProps,
+  type InteractiveQuestionSaveButtonProps,
+  type InteractiveQuestionSaveQuestionFormProps,
+  type InteractiveQuestionSummarizeDropdownProps,
+  type InteractiveQuestionTitleProps,
+  type DrillThroughQuestionProps,
 } from "./InteractiveQuestion";
 export {
   MetabaseProvider,
@@ -38,9 +57,22 @@ export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 // declared. `const authConfig = defineMetabaseAuthConfig({})` will have the type of
 // `MetabaseAuthConfig` and even provide autocompletion for js users depending on their
 // IDE configuration.
-
+/**
+ * Defines a Metabase auth config.
+ *
+ * @function
+ * @category MetabaseProvider
+ */
 export const defineMetabaseAuthConfig = (
   config: MetabaseAuthConfig,
 ): MetabaseAuthConfig => config;
 
 export { defineMetabaseTheme };
+
+/**
+ * Intended for debugging purposes only, so we don't want to expose it in the d.ts files.
+ * @internal
+ */
+export { SdkDebugInfo } from "./debug/SdkDebugInfo";
+
+export { MetabotQuestion } from "./MetabotQuestion";

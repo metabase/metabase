@@ -9,7 +9,7 @@ export function getTimelineEvents({
   revisions: Revision[] | undefined;
   currentUser: User | null;
 }) {
-  return revisions.map(r => {
+  return revisions.map((r) => {
     // If > 1 item's fields are changed in a single revision,
     // the changes are batched into a single string like:
     // "added a description, moved cards around and archived this"

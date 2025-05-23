@@ -3,7 +3,6 @@
    [metabase-enterprise.llm.tasks.describe-dashboard :refer [describe-dashboard]]
    [metabase-enterprise.llm.tasks.describe-question :refer [describe-question]]
    [metabase.analyze.query-results :as qr]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]))
 
@@ -32,5 +31,3 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   {:summary (describe-dashboard id)})
-
-(api/define-routes)

@@ -1,6 +1,6 @@
-/* eslint-disable jest/expect-expect */
-import { fireEvent } from "@testing-library/react";
 import { renderHook } from "@testing-library/react-hooks";
+
+import { fireEvent } from "__support__/ui";
 
 import { useListKeyboardNavigation } from "./use-list-keyboard-navigation";
 

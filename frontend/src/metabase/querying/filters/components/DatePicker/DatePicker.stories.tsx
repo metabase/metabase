@@ -11,7 +11,7 @@ import { DatePicker } from "./DatePicker";
 import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export default {
-  title: "Parameters/DatePicker",
+  title: "Components/Parameters/DatePicker",
   component: DatePicker,
 } as Meta<typeof DatePicker>;
 
@@ -44,7 +44,7 @@ type CustomStoryProps = {
 };
 const Template: StoryFn<
   ComponentProps<typeof DatePicker> & CustomStoryProps
-> = args => {
+> = (args) => {
   const isDarkTheme = args.theme === "dark";
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export const ExcludeDayOfWeekDarkTheme = merge(ExcludeDayOfWeek, {
 export const RelativeCurrent = {
   render: Template,
   args: {
-    value: { type: "relative", unit: "day", value: "current" },
+    value: { type: "relative", unit: "day", value: 0 },
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
@@ -194,7 +194,7 @@ export const RelativeNext = {
       name: "Next",
     });
     next.classList.add("pseudo-hover");
-    await userEvent.click(canvas.getByRole("searchbox", { name: "Unit" }));
+    await userEvent.click(canvas.getByRole("textbox", { name: "Unit" }));
   },
   decorators: [withMockDate],
 };

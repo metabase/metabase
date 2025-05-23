@@ -7,12 +7,12 @@ export const ChartSettingToggle = ({
 }: {
   value: boolean;
   onChange: (value: boolean) => void;
-  id: string;
+  id?: string;
 }) => (
   <Switch
     labelPosition="left"
     checked={value}
-    onChange={e => onChange(e.currentTarget.checked)}
+    onChange={(e) => onChange(e.currentTarget.checked)}
     id={id}
     role="switch"
     size="sm"

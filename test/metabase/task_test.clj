@@ -5,8 +5,8 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.task :as task]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -22,7 +22,7 @@
 
 ;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
 
-(jobs/defjob TestJob [_])
+(task/defjob TestJob [_])
 
 (defn- job ^JobDetail []
   (jobs/build

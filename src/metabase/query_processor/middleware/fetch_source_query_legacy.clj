@@ -6,12 +6,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -33,7 +33,7 @@
   "Get the query to be run from the card"
   [{dataset-query :dataset-query, card-id :id, :as card}]
   (let [dataset-query (cond-> dataset-query
-                        (:lib/type dataset-query) lib.convert/->legacy-MBQL)
+                        (:lib/type dataset-query) lib/->legacy-MBQL)
         {db-id                                           :database
          mbql-query                                      :query
          {template-tags :template-tags :as native-query} :native} dataset-query]
@@ -70,7 +70,7 @@
      (when (and persisted? log?)
        (log/infof "Found substitute cached query for card %s from %s.%s"
                   card-id
-                  (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                  (ddl.i/schema-name {:id database-id} (system/site-uuid))
                   (:table-name persisted-info)))
      ;; log the query at this point, it's useful for some purposes
      (log/debugf "Fetched source query from Card %s:\n%s" card-id (u/pprint-to-str 'yellow source-query))

@@ -9,13 +9,19 @@ import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
 } from "metabase/query_builder/actions";
-import { getUiControls } from "metabase/query_builder/selectors";
+import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
+import {
+  getIsNotebookNativePreviewShown,
+  getUiControls,
+} from "metabase/query_builder/selectors";
 import {
   Notebook,
   type NotebookProps,
 } from "metabase/querying/notebook/components/Notebook";
 import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { Box, Flex, rem } from "metabase/ui";
+
+import { canShowNativePreview } from "../../ViewHeader/utils";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
@@ -48,11 +54,14 @@ export const NotebookContainer = ({
   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
     useSelector(getUiControls);
 
+  const renderNativePreview =
+    isShowingNotebookNativePreview &&
+    canShowNativePreview({ question, queryBuilderMode: "notebook" });
+
   const minNotebookWidth = 640;
   const minSidebarWidth = 428;
   const maxSidebarWidth = windowWidth - minNotebookWidth;
   const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
-  const windowBreakpoint = 1280;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -72,6 +81,25 @@ export const NotebookContainer = ({
     dispatch(setUIControls({ notebookNativePreviewSidebarWidth: width }));
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
+
+  const screenSize = useNotebookScreenSize();
+  const isNotebookNativePreviewShown = useSelector(
+    getIsNotebookNativePreviewShown,
+  );
+
+  useEffect(() => {
+    if (screenSize === "small") {
+      dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
+    } else if (screenSize === "large") {
+      const currentSettingValue = isNotebookNativePreviewShown;
+
+      dispatch(
+        setUIControls({
+          isShowingNotebookNativePreview: currentSettingValue,
+        }),
+      );
+    }
+  }, [dispatch, isNotebookNativePreviewShown, screenSize]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
@@ -141,28 +169,32 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && windowWidth < windowBreakpoint && (
-        <Box pos="absolute" inset={0}>
-          <NotebookNativePreview />
-        </Box>
-      )}
+      {renderNativePreview && screenSize && (
+        <>
+          {screenSize === "small" && (
+            <Box pos="absolute" inset={0}>
+              <NotebookNativePreview />
+            </Box>
+          )}
 
-      {isShowingNotebookNativePreview && windowWidth >= windowBreakpoint && (
-        <ResizableBox
-          width={sidebarWidth}
-          minConstraints={[minSidebarWidth, 0]}
-          maxConstraints={[maxSidebarWidth, 0]}
-          axis="x"
-          resizeHandles={["w"]}
-          handle={<Handle />}
-          onResizeStop={handleResizeStop}
-          style={{
-            borderLeft: "1px solid var(--mb-color-border)",
-            marginInlineStart: "0.25rem",
-          }}
-        >
-          <NotebookNativePreview />
-        </ResizableBox>
+          {screenSize === "large" && (
+            <ResizableBox
+              width={sidebarWidth}
+              minConstraints={[minSidebarWidth, 0]}
+              maxConstraints={[maxSidebarWidth, 0]}
+              axis="x"
+              resizeHandles={["w"]}
+              handle={<Handle />}
+              onResizeStop={handleResizeStop}
+              style={{
+                borderLeft: "1px solid var(--mb-color-border)",
+                marginInlineStart: "0.25rem",
+              }}
+            >
+              <NotebookNativePreview />
+            </ResizableBox>
+          )}
+        </>
       )}
     </Flex>
   );

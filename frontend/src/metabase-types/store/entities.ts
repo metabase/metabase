@@ -1,5 +1,4 @@
 import type {
-  NormalizedAlert,
   NormalizedCard,
   NormalizedCollection,
   NormalizedDashboard,
@@ -10,13 +9,11 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  NormalizedUser,
   NormalizedWritebackAction,
 } from "metabase-types/api";
 
 export interface EntitiesState {
   actions: Record<string, NormalizedWritebackAction>;
-  alerts: Record<string, NormalizedAlert>;
   collections: Record<string, NormalizedCollection>;
   dashboards: Record<string, NormalizedDashboard>;
   databases: Record<string, NormalizedDatabase>;
@@ -26,6 +23,5 @@ export interface EntitiesState {
   segments: Record<string, NormalizedSegment>;
   indexedEntities: Record<string, NormalizedIndexedEntity>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
-  users: Record<string, NormalizedUser>;
   questions: Record<string, NormalizedCard>;
 }

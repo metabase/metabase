@@ -9,7 +9,9 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
@@ -17,7 +19,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
@@ -33,8 +34,7 @@
    [metabase.util.performance :as perf]
    [potemkin :as p])
   (:import
-   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException
-             Statement Types)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (javax.sql DataSource)))
 
@@ -228,7 +228,7 @@
 
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
-  metabase-enterprise.advanced-permissions.driver.impersonation
+  metabase-enterprise.impersonation.driver
   [_ _ _])
 
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)
@@ -467,13 +467,6 @@
       (set-parameter driver stmt (inc i) param))
     params)))
 
-(defsetting sql-jdbc-fetch-size
-  "Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
-  in memory."
-  :default 500
-  :type :integer
-  :visibility :internal)
-
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn
@@ -488,7 +481,7 @@
           (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
       (try
         (when (zero? (.getFetchSize stmt))
-          (.setFetchSize stmt (sql-jdbc-fetch-size)))
+          (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e "Error setting prepared statement fetch size to fetch-size")))
       (set-parameters! driver stmt params)
@@ -515,7 +508,7 @@
           (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
       (try
         (when (zero? (.getFetchSize stmt))
-          (.setFetchSize stmt (sql-jdbc-fetch-size)))
+          (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e "Error setting statement fetch size to fetch-size")))
       stmt
@@ -529,8 +522,9 @@
   (when canceled-chan
     (a/go
       (when (a/<! canceled-chan)
-        (log/debug "Query canceled, calling Statement.cancel()")
-        (.cancel stmt)))))
+        (when-not (.isClosed stmt)
+          (log/debug "Query canceled, calling Statement.cancel()")
+          (.cancel stmt))))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
@@ -594,6 +588,12 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.LocalDateTime))
 
+(defmethod read-column-thunk [:sql-jdbc Types/ARRAY]
+  [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
+  (fn []
+    (when-let [obj (.getObject rs i)]
+      (vec (.getArray ^java.sql.Array obj)))))
+
 (defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE]
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.OffsetDateTime))
@@ -644,24 +644,47 @@
         (when (.next rs)
           (thunk))))))
 
+(defn- resolve-missing-base-types
+  [driver metadatas]
+  (if (qp.store/initialized?)
+    (let [missing (keep (fn [{:keys [database_type base_type]}]
+                          (when-not base_type
+                            database_type))
+                        metadatas)
+          lookup (driver/dynamic-database-types-lookup
+                  driver (lib.metadata/database (qp.store/metadata-provider)) missing)]
+      (if (seq lookup)
+        (mapv (fn [{:keys [database_type base_type] :as metadata}]
+                (if-not base_type
+                  (m/assoc-some metadata :base_type (lookup database_type))
+                  metadata))
+              metadatas)
+        metadatas))
+    metadatas))
+
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
-  (mapv
-   (fn [^Long i]
-     (let [col-name     (.getColumnLabel rsmeta i)
-           db-type-name (.getColumnTypeName rsmeta i)
-           base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
-       (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
-                   i col-name db-type-name base-type driver)
-       {:name      col-name
-        ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
-        ;; state
-        #_:original_name #_(.getColumnName rsmeta i)
-        #_:jdbc_type #_(u/ignore-exceptions
-                         (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-        :base_type     (or base-type :type/*)
-        :database_type db-type-name}))
-   (column-range rsmeta)))
+  (->> (mapv
+        (fn [^Long i]
+          (let [col-name     (.getColumnLabel rsmeta i)
+                db-type-name (.getColumnTypeName rsmeta i)
+                base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
+            (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
+                        i col-name db-type-name base-type driver)
+            {:name      col-name
+             ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
+             ;; state
+             #_:original_name #_(.getColumnName rsmeta i)
+             #_:jdbc_type #_(u/ignore-exceptions
+                              (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
+             :base_type     base-type
+             :database_type db-type-name}))
+        (column-range rsmeta))
+       (resolve-missing-base-types driver)
+       (mapv (fn [{:keys [base_type] :as metadata}]
+               (if (nil? base_type)
+                 (assoc metadata :base_type :type/*)
+                 metadata)))))
 
 (defn reducible-rows
   "Returns an object that can be reduced to fetch the rows and columns in a `ResultSet` in a driver-specific way (e.g.

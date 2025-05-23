@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
+import { t } from "ttag";
 
 import IconWrapper from "metabase/components/IconWrapper";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
@@ -24,17 +25,27 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
       object,
       allComputedSettings,
       seriesCardNames,
+      settings: visualizationSettings,
     } = this.props;
     const objectKey = object && getObjectKey(object);
-    const isSelected = single => objectKey === getObjectKey(single);
+    const isSelected = (single) => objectKey === getObjectKey(single);
 
     return (
       <div data-testid="series-settings">
         {objects.length < 100 &&
-          objects.map(single => {
+          objects.map((single) => {
             const key = getObjectKey(single);
             const settings = allComputedSettings[key] || {};
             const seriesCardName = seriesCardNames?.[key];
+            const seriesOrderSetting = visualizationSettings[
+              "graph.series_order"
+            ]?.find((seriesOrder) => seriesOrder.key === key);
+            const isHidden =
+              seriesOrderSetting != null && !seriesOrderSetting.enabled;
+
+            if (isHidden) {
+              return null;
+            }
             return (
               <div
                 key={key}
@@ -50,7 +61,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                   <ColorSelector
                     value={settings.color}
                     colors={getAccentColors()}
-                    onChange={value =>
+                    onChange={(value) =>
                       onChangeObjectSettings(single, { color: value })
                     }
                   />
@@ -58,21 +69,23 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
-                    aria-label="series-name-input"
                     value={settings.title}
                     subtitle={
                       seriesCardName === settings.title ? "" : seriesCardName
                     }
-                    onBlurChange={e =>
-                      onChangeObjectSettings(single, { title: e.target.value })
+                    onBlurChange={(e) =>
+                      onChangeObjectSettings(single, {
+                        title: e.target.value,
+                      })
                     }
+                    data-testid="series-name-input"
                   />
                   {objects.length > 1 ? (
                     <IconWrapper className={cx(CS.ml1, CS.p1)}>
                       <OptionsIcon
                         name={isSelected(single) ? "chevronup" : "chevrondown"}
                         tooltip={
-                          isSelected(single) ? "Hide options" : "More options"
+                          isSelected(single) ? t`Hide options` : t`More options`
                         }
                         onClick={() =>
                           onChangeEditingObject(

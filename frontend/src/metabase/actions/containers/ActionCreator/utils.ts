@@ -7,7 +7,7 @@ export const syncFieldsWithParameters = (
   settings: ActionFormSettings,
   parameters: Parameter[],
 ): ActionFormSettings => {
-  const parameterIds = parameters.map(parameter => parameter.id);
+  const parameterIds = parameters.map((parameter) => parameter.id);
   const fieldIds = Object.keys(settings.fields || {});
   const addedIds = _.difference(parameterIds, fieldIds);
   const removedIds = _.difference(fieldIds, parameterIds);
@@ -21,7 +21,7 @@ export const syncFieldsWithParameters = (
     fields: {
       ..._.omit(settings.fields, removedIds),
       ...Object.fromEntries(
-        addedIds.map(id => [id, getDefaultFieldSettings({ id })]),
+        addedIds.map((id) => [id, getDefaultFieldSettings({ id })]),
       ),
     },
   };

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.cache.config
-  (:require [metabase.premium-features.core :refer [defenterprise]]))
+  (:require
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise refreshable-states
   "States of `persisted_info` records which can be refreshed."

@@ -9,30 +9,34 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
+   [iapetos.operations :as ops]
+   [iapetos.registry :as registry]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
-   [metabase.audit :as audit]
-   [metabase.config :as config]
-   [metabase.models.collection :as collection]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.timeline-event :as timeline-event]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.audit-app.core :as audit]
+   [metabase.classloader.core :as classloader]
+   [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.test-util :as perms.test-util]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
-   [metabase.task :as task]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -48,12 +52,8 @@
    (java.net ServerSocket)
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
-   (org.quartz
-    CronTrigger
-    JobDetail
-    JobKey
-    Scheduler
-    Trigger)
+   (org.eclipse.jetty.server Server)
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -182,13 +182,6 @@
             :ip_address         "0:0:0:0:0:0:0:1"
             :timestamp          (t/zoned-date-time)})
 
-   :model/LegacyMetric
-   (fn [_] (default-timestamped
-            {:creator_id  (rasta-id)
-             :definition  {}
-             :description "Lookin' for a blueberry"
-             :name        "Toucans in the rainforest"}))
-
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
@@ -199,6 +192,11 @@
    (fn [_] (default-timestamped
             {:payload_type :notification/system-event
              :active       true}))
+
+   :model/NotificationCard
+   (fn [_] (default-timestamped
+            {:send_once      false
+             :send_condition :has_result}))
 
    :model/NotificationSubscription
    (fn [_] (default-created-at-timestamped
@@ -229,6 +227,9 @@
 
    :model/PermissionsGroup
    (fn [_] {:name (u.random/random-name)})
+
+   :model/PermissionsGroupMembership
+   (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
 
    :model/Pulse
    (fn [_] (default-timestamped
@@ -443,7 +444,7 @@
                         (catch Exception e
                           (when-not raw-setting?
                             (throw e))))]
-    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+    (if (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value :model/Setting :key setting-k)
@@ -455,7 +456,7 @@
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
-              (with-redefs [setting/has-feature? (constantly true)]
+              (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                 (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
@@ -470,7 +471,7 @@
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
-                (with-redefs [setting/has-feature? (constantly true)]
+                (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                   (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
@@ -504,7 +505,7 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
-  using [[metabase.models.setting/defsetting]]."
+  using [[metabase.settings.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
@@ -617,6 +618,8 @@
                  #(u/round-to-decimals decimal-place %)
                  data))
 
+;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
+;;; context
 (defmacro let-url
   "Like normal `let`, but adds `testing` context with the `url` you've bound."
   {:style/indent 1}
@@ -648,13 +651,13 @@
 
 (defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? @task.impl/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+        (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
           (with-redefs [qs/initialize (constantly temp-scheduler)
                         ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
                         ;; after it's done, but we need the scheduler for testing
@@ -669,7 +672,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (qs/start @task/*quartz-scheduler*)
+     (qs/start @task.impl/*quartz-scheduler*)
      (thunk))))
 
 (defmacro with-temp-scheduler!
@@ -689,7 +692,7 @@
   "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler. Intended so we
   can test that things were scheduled correctly."
   []
-  (when-let [^Scheduler scheduler (#'task/scheduler)]
+  (when-let [^Scheduler scheduler (task/scheduler)]
     (vec
      (sort-by
       :key
@@ -787,9 +790,9 @@
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       [:and max-id-condition additional-conditions]})
-          ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-          (search/reindex! {:in-place? true}))))))
+            :where       [:and max-id-condition additional-conditions]}))
+        ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
+        (search/reindex! {:in-place? true})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -1021,15 +1024,15 @@
      (fn []
        (t2/delete! :model/Permissions
                    :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-                   :group_id [:not= (u/the-id (perms-group/admin))])
+                   :group_id [:not= (u/the-id (perms/admin-group))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
     ;; rewriting a few tests.
     (finally
-      (when (and (:metabase.models.collection.root/is-root? collection)
+      (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -1065,14 +1068,14 @@
   For most use cases see the macro [[with-all-users-permission]]."
   [permission-path f]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms-group/all-users))
+  (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms/all-users-group))
                                                  :object permission-path}]
     (f)))
 
 (defn do-with-all-user-data-perms-graph!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
-  (let [all-users-group-id  (u/the-id (perms-group/all-users))]
+  (let [all-users-group-id  (u/the-id (perms/all-users-group))]
     (premium-features.test-util/with-additional-premium-features #{:advanced-permissions}
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-restored-perms!
@@ -1562,7 +1565,46 @@
   [expected actual]
   (=?/=?-diff (seq expected) (seq actual)))
 
-(defn random-string
-  "Returns a string of `n` random alphanumeric characters."
-  [n]
-  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
+(defmacro with-prometheus-system!
+  "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
+  be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
+  registry and web-server."
+  [[port system] & body]
+  `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
+         (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         server#  ^Server (.web-server ~system)
+         ~port   (.. server# getURI getPort)]
+     (with-redefs [prometheus/system ~system]
+       (try ~@body
+            (finally (prometheus/stop-web-server ~system))))))
+
+(defn metric-value
+  "Return the value of `metric` in `system`'s registry."
+  ([system metric]
+   (metric-value system metric nil))
+  ([system metric labels]
+   (some-> system
+           :registry
+           (registry/get
+            {:name      (name metric)
+             :namespace (namespace metric)}
+            (#'prometheus/qualified-vals labels))
+           ops/read-value)))
+
+(defn- transitive*
+  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
+  [h child parent]
+  (let [td (:descendants h {})
+        ta (:ancestors h {})
+        tf (fn [source sources target targets]
+             (reduce (fn [ret k]
+                       (assoc ret k
+                              (reduce conj (get targets k #{}) (cons target (targets target)))))
+                     targets (cons source (sources source))))]
+    {:ancestors   (tf child td parent ta)
+     :descendants (tf parent ta child td)}))
+
+(defn transitive
+  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
+  [adj-map]
+  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))

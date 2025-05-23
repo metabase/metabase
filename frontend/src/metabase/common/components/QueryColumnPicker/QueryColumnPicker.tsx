@@ -67,10 +67,10 @@ export function QueryColumnPicker({
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
-      columnGroups.map(group => {
+      columnGroups.map((group) => {
         const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map(column => ({
+        const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
           ...Lib.displayInfo(query, stageIndex, column),
           column,
         }));

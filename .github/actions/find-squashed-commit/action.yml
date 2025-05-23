@@ -28,3 +28,5 @@ runs:
       env:
         PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
         BASE_REF: ${{ inputs.base-ref }}
+    - run: git checkout ${{ github.sha }} # return to original commit
+      shell: bash

@@ -2,7 +2,7 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref var])
+                            + - * / time abs concat replace ref var float])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -22,10 +22,12 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -59,10 +61,12 @@
          lib.field/keep-me
          lib.filter.update/keep-me
          lib.filter/keep-me
+         lib.ident/keep-me
          lib.join/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
+         lib.metadata.ident/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -92,6 +96,7 @@
   avg
   count-where
   distinct
+  distinct-where
   max
   median
   min
@@ -120,7 +125,9 @@
  [lib.common
   external-op]
  [lib.convert
-  ->pMBQL]
+  ->legacy-MBQL
+  ->pMBQL
+  without-cleaning]
  [lib.database
   database-id]
  [lib.drill-thru
@@ -140,6 +147,7 @@
   expressions-metadata
   expressionable-columns
   expression-ref
+  resolve-expression
   with-expression-name
   +
   -
@@ -155,6 +163,8 @@
   floor
   round
   power
+  date
+  datetime
   interval
   relative-datetime
   time
@@ -165,6 +175,7 @@
   get-year
   get-month
   get-day
+  get-day-of-week
   get-hour
   get-minute
   get-second
@@ -181,7 +192,11 @@
   rtrim
   upper
   lower
-  offset]
+  offset
+  text
+  split-part
+  integer
+  float]
  [lib.extraction
   column-extractions
   extract
@@ -247,6 +262,8 @@
   update-lat-lon-filter
   update-numeric-filter
   update-temporal-filter]
+ [lib.ident
+  random-ident]
  [lib.join
   available-join-strategies
   join
@@ -285,6 +302,21 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
+ [lib.metadata.ident
+  add-model-ident
+  assert-idents-present!
+  explicitly-joined-ident
+  implicit-join-clause-ident
+  implicitly-joined-ident
+  model-ident
+  native-ident
+  placeholder-card-entity-id-for-adhoc-query
+  remove-model-ident
+  replace-placeholder-idents
+  valid-basic-ident?
+  valid-model-ident?
+  valid-native-ident?
+  valid-native-model-ident?]
  [lib.native
   engine
   extract-template-tags
@@ -310,11 +342,14 @@
  [lib.normalize
   normalize]
  [lib.query
+  ->query
   can-preview
   can-run
   can-save
+  check-overwrite
   preview-query
   query
+  query-from-legacy-inner-query
   stage-count
   uses-metric?
   uses-segment?

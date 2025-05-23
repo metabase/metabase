@@ -29,14 +29,16 @@
   {:result (dissoc result :score)
    :score  (:score result)})
 
-(defmulti consume!
-  "Updates the search index by consuming the documents from the given reducible."
+(defmulti update!
+  "Updates the existing search index by consuming the documents from the given reducible.
+  Returns a map of the number of documents indexed in each model"
   {:arglists '([search-engine document-reducible])}
   (fn [search-engine _document-reducible]
     search-engine))
 
 (defmulti delete!
-  "Removes the documents from the search index."
+  "Removes the documents from the search index.
+  Returns a map of the number of documents deleted in each model"
   {:arglists '([search-engine model ids])}
   (fn [search-engine _model _ids]
     search-engine))
@@ -56,6 +58,12 @@
   "Stop tracking the current indexes. Used when resetting the appdb."
   {:arglists '([engine])}
   identity)
+
+(defn known-engines
+  "List the possible search engines defined for this version, whether this instance supports them or not."
+  []
+  ;; If we end up with more "abstract" nodes, we may want a better way to filter them out.
+  (keys (dissoc (methods supported-engine?) :default)))
 
 (defn active-engines
   "List the search engines that are supported. Does not mention the legacy in-place engine."

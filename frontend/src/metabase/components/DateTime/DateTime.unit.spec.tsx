@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import { render, screen } from "__support__/ui";
 import DateTime from "metabase/components/DateTime";
 import {
   DEFAULT_DATE_STYLE,

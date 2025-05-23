@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
-   [metabase-enterprise.task.cache :as task.cache]
-   [metabase.models.query :as query]
+   [metabase-enterprise.cache.task.refresh-cache-configs :as task.cache]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]))
@@ -159,7 +159,7 @@
             (testing "strategy = schedule"
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
-                  (is (pos? (#'task.cache/refresh-cache-configs!)))
+                  (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
                   (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
                     (is (=? {:type :schedule}
                             (:cache-strategy q)))
@@ -170,7 +170,7 @@
                               (-> (qp/process-query q) (dissoc :data)))))))
                 (testing "No cache after job ran again"
                   (mt/with-clock (t 121)
-                    (is (pos? (#'task.cache/refresh-cache-configs!)))
+                    (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
                     (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
                       (is (=? (mkres nil)
                               (-> (qp/process-query q) (dissoc :data)))))))))

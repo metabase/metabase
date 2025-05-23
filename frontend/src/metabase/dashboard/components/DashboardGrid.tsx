@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { ComponentType } from "react";
-import { Component } from "react";
+import type { ComponentType, ForwardedRef } from "react";
+import { Component, forwardRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -12,9 +12,7 @@ import {
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
-import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
@@ -22,7 +20,6 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import {
-  DEFAULT_CARD_SIZE,
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
@@ -32,20 +29,26 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
-import { getVisualizationRaw } from "metabase/visualizations";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
-  type BaseDashboardCard,
-  type Card,
-  type DashCardId,
-  type Dashboard,
-  type DashboardCard,
-  type DashboardTabId,
-  type RecentItem,
-  isRecentCollectionItem,
+  isVisualizerDashboardCard,
+  isVisualizerSupportedVisualization,
+} from "metabase/visualizer/utils";
+import type {
+  BaseDashboardCard,
+  Card,
+  CardId,
+  DashCardId,
+  Dashboard,
+  DashboardCard,
+  DashboardTabId,
+  RecentItem,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
+import { isRecentCollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
@@ -56,51 +59,61 @@ import {
   onUpdateDashCardVisualizationSettings,
   removeCardFromDashboard,
   replaceCard,
+  replaceCardWithVisualization,
   setDashCardAttributes,
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
   trashDashboardQuestion,
   undoRemoveCardFromDashboard,
 } from "../actions";
-import { getDashcardDataMap } from "../selectors";
-
-import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
-import { DashCard } from "./DashCard/DashCard";
 import {
-  DashboardCardContainer,
-  DashboardGridContainer,
-} from "./DashboardGrid.styled";
+  getInitialCardSizes,
+  getLayoutForDashCard,
+  getLayouts,
+  getVisibleCards,
+} from "../grid-utils";
+import { getDashcardDataMap, getDashcards } from "../selectors";
+
+import { DashCard } from "./DashCard/DashCard";
+import DashCardS from "./DashCard/DashCard.module.css";
+import { FIXED_WIDTH } from "./Dashboard/DashboardComponents";
+import S from "./DashboardGrid.module.css";
 import { GridLayout } from "./grid/GridLayout";
-import { generateMobileLayout } from "./grid/utils";
 
 type GridBreakpoint = "desktop" | "mobile";
-
-type LayoutItem = {
-  i: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  minW: number;
-  minH: number;
-  dashcard: BaseDashboardCard;
-};
 
 type ExplicitSizeProps = {
   width: number;
 };
 
-interface DashboardGridState {
+interface DashboardGridInnerState {
   visibleCardIds: Set<number>;
   initialCardSizes: { [key: string]: { w: number; h: number } };
-  layouts: { desktop: LayoutItem[]; mobile: LayoutItem[] };
-  addSeriesModalDashCard: BaseDashboardCard | null;
+  layouts: {
+    desktop: ReactGridLayout.Layout[];
+    mobile: ReactGridLayout.Layout[];
+  };
   replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
   isAnimationPaused: boolean;
+  dashcardCountByCardId: Record<CardId, number>;
+  _lastProps?: LastProps;
+
+  visualizerModalStatus?: {
+    dashcardId: number;
+    state: VisualizerVizDefinition;
+  };
 }
 
+/** Props from the previous render to use for comparison in getDerivedStateFromProps */
+type LastProps = {
+  dashboard: Dashboard;
+  isEditing: boolean;
+  selectedTabId: DashboardTabId | null;
+};
+
 const mapStateToProps = (state: State) => ({
+  dashcards: getDashcards(state),
   dashcardData: getDashcardDataMap(state),
 });
 
@@ -118,47 +131,55 @@ const mapDispatchToProps = {
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
+  replaceCardWithVisualization,
 };
-const connector = connect(mapStateToProps, mapDispatchToProps);
+const connector = connect(mapStateToProps, mapDispatchToProps, null, {
+  forwardRef: true,
+});
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
-type OwnProps = {
+export type DashboardGridProps = {
   dashboard: Dashboard;
   selectedTabId: DashboardTabId | null;
   slowCards: Record<DashCardId, boolean>;
-  isEditing: boolean;
-  isEditingParameter: boolean;
+  isEditing?: boolean;
+  isEditingParameter?: boolean;
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isXray?: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
+  isFullscreen?: boolean;
+  isNightMode?: boolean;
   withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
-  mode?: QueryClickActionsMode | Mode;
+  getClickActionMode?: ClickActionModeGetter;
   // public dashboard passes it explicitly
   width?: number;
   // public or embedded dashboard passes it as noop
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  onEditingChange?: (dashboard: Dashboard | null) => void;
   downloadsEnabled: boolean;
-  autoScrollToDashcardId: DashCardId | undefined;
-  reportAutoScrolledToDashcard: () => void;
+  autoScrollToDashcardId?: DashCardId;
+  reportAutoScrolledToDashcard?: () => void;
+  handleSetEditing?: (dashboard: Dashboard | null) => void;
 };
 
-type DashboardGridProps = OwnProps &
+type DashboardGridInnerProps = Required<DashboardGridProps> &
   DashboardGridReduxProps &
-  ExplicitSizeProps;
+  ExplicitSizeProps & {
+    forwardedRef?: ForwardedRef<HTMLDivElement>;
+  };
 
-class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
+class DashboardGridInner extends Component<
+  DashboardGridInnerProps,
+  DashboardGridInnerState
+> {
   static contextType = ContentViewportContext;
 
   _pauseAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(props: DashboardGridProps, context: unknown) {
+  constructor(props: DashboardGridInnerProps, context: unknown) {
     super(props, context);
 
     const visibleCardIds = getVisibleCardIds(
@@ -166,23 +187,31 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       props.dashcardData,
     );
 
+    const initialCardSizes = getInitialCardSizes(
+      props.dashboard.dashcards,
+      this.state?.initialCardSizes,
+    );
+
     this.state = {
       visibleCardIds,
-      initialCardSizes: this.getInitialCardSizes(props.dashboard.dashcards),
-      layouts: this.getLayouts(props.dashboard.dashcards),
-      addSeriesModalDashCard: null,
+      dashcardCountByCardId: this.getDashcardCountByCardId(
+        props.dashboard.dashcards,
+      ),
+      initialCardSizes,
+      layouts: getLayouts(
+        props.dashboard.dashcards,
+        this.state?.initialCardSizes,
+      ),
       replaceCardModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
+      _lastProps: {
+        dashboard: props.dashboard,
+        isEditing: props.isEditing,
+        selectedTabId: props.selectedTabId,
+      },
     };
   }
-
-  static defaultProps = {
-    width: 0,
-    isEditing: false,
-    isEditingParameter: false,
-    withCardTitle: true,
-  };
 
   componentDidMount() {
     // In order to skip the initial cards animation we must let the grid layout calculate
@@ -199,53 +228,74 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     }
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: DashboardGridProps) {
+  componentDidUpdate(prevProps: DashboardGridInnerProps) {
+    if (prevProps.dashboard.dashcards !== this.props.dashboard.dashcards) {
+      this.setState({
+        dashcardCountByCardId: this.getDashcardCountByCardId(
+          this.props.dashboard.dashcards,
+        ),
+      });
+    }
+  }
+
+  static getDerivedStateFromProps(
+    nextProps: DashboardGridInnerProps,
+    state: DashboardGridInnerState,
+  ): Partial<DashboardGridInnerState> {
     const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
+    const lastProps = state._lastProps;
 
     const visibleCardIds = !isEditing
       ? getVisibleCardIds(
           dashboard.dashcards,
           dashcardData,
-          this.state.visibleCardIds,
+          state.visibleCardIds,
         )
-      : new Set(dashboard.dashcards.map(card => card.id));
+      : new Set(dashboard.dashcards.map((card) => card.id));
 
-    const cards = this.getVisibleCards(
+    const visibleCards = getVisibleCards(
       dashboard.dashcards,
       visibleCardIds,
       isEditing,
       selectedTabId,
     );
 
-    if (!isEditing || !_.isEqual(this.getVisibleCards(), cards)) {
-      this.setState({
-        initialCardSizes: this.getInitialCardSizes(cards),
-      });
-    }
+    const lastVisibleCards = lastProps?.dashboard?.dashcards
+      ? getVisibleCards(
+          lastProps.dashboard.dashcards,
+          state.visibleCardIds,
+          lastProps.isEditing,
+          lastProps.selectedTabId,
+        )
+      : [];
 
-    this.setState({
+    const hasVisibleDashcardsChanged = !_.isEqual(
+      visibleCards,
+      lastVisibleCards,
+    );
+
+    const initialCardSizes =
+      !isEditing || hasVisibleDashcardsChanged
+        ? getInitialCardSizes(visibleCards, state.initialCardSizes)
+        : state.initialCardSizes;
+
+    return {
       visibleCardIds,
-      layouts: this.getLayouts(cards),
-    });
+      initialCardSizes,
+      layouts: getLayouts(visibleCards, state.initialCardSizes),
+      _lastProps: {
+        dashboard,
+        isEditing,
+        selectedTabId,
+      },
+    };
   }
-
-  getInitialCardSizes = (cards: BaseDashboardCard[]) => {
-    return cards
-      .map(card => this.getLayoutForDashCard(card))
-      .reduce((acc, dashcardLayout) => {
-        const dashcardId = dashcardLayout.i;
-        return {
-          ...acc,
-          [dashcardId]: _.pick(dashcardLayout, ["w", "h"]),
-        };
-      }, {});
-  };
 
   onLayoutChange = ({
     layout,
     breakpoint,
   }: {
-    layout: LayoutItem[];
+    layout: ReactGridLayout.Layout[];
     breakpoint: GridBreakpoint;
   }) => {
     const { setMultipleDashCardAttributes, isEditing } = this.props;
@@ -259,9 +309,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     const changes: SetDashCardAttributesOpts[] = [];
 
-    layout.forEach(layoutItem => {
+    layout.forEach((layoutItem) => {
       const dashboardCard = this.getVisibleCards().find(
-        card => String(card.id) === layoutItem.i,
+        (card) => String(card.id) === layoutItem.i,
       );
       if (dashboardCard) {
         const keys = ["h", "w", "x", "y"];
@@ -290,46 +340,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   getLayoutForDashCard = (dashcard: BaseDashboardCard) => {
-    const visualization = getVisualizationRaw([{ card: dashcard.card }]);
-    const initialSize = DEFAULT_CARD_SIZE;
-    const minSize = visualization?.minSize || DEFAULT_CARD_SIZE;
-
-    let minW, minH;
-    if (this.state?.initialCardSizes) {
-      minW = Math.min(
-        this.state?.initialCardSizes[dashcard.id]?.w,
-        minSize.width,
-      );
-      minH = Math.min(
-        this.state?.initialCardSizes[dashcard.id]?.h,
-        minSize.height,
-      );
-    } else {
-      minW = minSize.width;
-      minH = minSize.height;
-    }
-
-    const w = dashcard.size_x || initialSize.width;
-    const h = dashcard.size_y || initialSize.height;
-
-    if (w < minW) {
-      minW = w;
-    }
-
-    if (h < minH) {
-      minH = h;
-    }
-
-    return {
-      i: String(dashcard.id),
-      x: dashcard.col || 0,
-      y: dashcard.row || 0,
-      w,
-      h,
-      dashcard: dashcard,
-      minW,
-      minH,
-    };
+    return getLayoutForDashCard(dashcard, this.state?.initialCardSizes);
   };
 
   getVisibleCards = (
@@ -338,23 +349,24 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     isEditing = this.props.isEditing,
     selectedTabId = this.props.selectedTabId,
   ) => {
-    const tabCards = cards.filter(
-      card =>
-        !selectedTabId ||
-        card.dashboard_tab_id === selectedTabId ||
-        card.dashboard_tab_id === null,
-    );
-
-    return isEditing
-      ? tabCards
-      : tabCards.filter(card => visibleCardIds.has(card.id));
+    return getVisibleCards(
+      cards,
+      visibleCardIds,
+      isEditing,
+      selectedTabId,
+    ) as DashboardCard[];
   };
 
-  getLayouts(cards: BaseDashboardCard[]) {
-    const desktop = cards.map(this.getLayoutForDashCard);
-    const mobile = generateMobileLayout(desktop);
-    return { desktop, mobile };
-  }
+  getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
+    _.countBy(cards, "card_id");
+
+  getIsLastDashboardQuestionDashcard = (dc: BaseDashboardCard): boolean => {
+    return Boolean(
+      dc.card.dashboard_id !== null &&
+        dc.card_id &&
+        this.state.dashcardCountByCardId[dc.card_id] <= 1,
+    );
+  };
 
   getRowHeight() {
     const { width } = this.props;
@@ -370,34 +382,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     // prevent infinite re-rendering when the scroll bar appears/disappears
     // https://github.com/metabase/metabase/issues/17229
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
-  }
-
-  renderAddSeriesModal() {
-    // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    const { addSeriesModalDashCard } = this.state;
-    const isOpen =
-      !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
-    return (
-      <Modal
-        className={cx(
-          ModalS.Modal,
-          DashboardS.Modal,
-          DashboardS.AddSeriesModal,
-        )}
-        data-testid="add-series-modal"
-        isOpen={isOpen}
-      >
-        {isOpen && (
-          <AddSeriesModal
-            dashcard={addSeriesModalDashCard}
-            dashcardData={this.props.dashcardData}
-            fetchCardData={this.props.fetchCardData}
-            setDashCardAttributes={this.props.setDashCardAttributes}
-            onClose={() => this.setState({ addSeriesModalDashCard: null })}
-          />
-        )}
-      </Modal>
-    );
   }
 
   renderReplaceCardModal() {
@@ -432,7 +416,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     };
 
     const replaceCardModalRecentFilter = (items: RecentItem[]) => {
-      return items.filter(item => {
+      return items.filter((item) => {
         if (isRecentCollectionItem(item) && item.dashboard) {
           if (item.dashboard.id !== dashboard.id) {
             return false;
@@ -484,19 +468,31 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     });
 
     this.props.addUndo({
-      message: t`Removed card`,
+      message: this.getIsLastDashboardQuestionDashcard(dc)
+        ? t`Trashed and removed card`
+        : t`Removed card`,
       undo: true,
       action: () =>
         this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
     });
   };
 
-  onDashCardAddSeries = (dc: BaseDashboardCard) => {
-    this.setState({ addSeriesModalDashCard: dc });
-  };
-
   onReplaceCard = (dashcard: BaseDashboardCard) => {
     this.setState({ replaceCardModalDashCard: dashcard });
+  };
+
+  onEditVisualization = (
+    dashcard: BaseDashboardCard,
+    initialState: VisualizerVizDefinition,
+  ) => {
+    this.setState({
+      visualizerModalStatus: {
+        dashcardId: dashcard.id,
+        state: initialState,
+      },
+    });
+
+    this.handleSetEditing();
   };
 
   renderDashCard(
@@ -514,11 +510,12 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       totalNumGridCols: number;
       downloadsEnabled: boolean;
       shouldAutoScrollTo: boolean;
-      reportAutoScrolledToDashcard: () => void;
+      reportAutoScrolledToDashcard?: () => void;
     },
   ) {
     return (
       <DashCard
+        className={S.Card}
         dashcard={dashcard}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
@@ -533,7 +530,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isXray={this.props.isXray}
         withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
-        onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={
           this.props.onUpdateDashCardVisualizationSettings
@@ -541,7 +537,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
-        mode={this.props.mode}
+        getClickActionMode={this.props.getClickActionMode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
@@ -551,16 +547,68 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
         downloadsEnabled={downloadsEnabled}
         autoScroll={shouldAutoScrollTo}
+        isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dashcard)}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+        onEditVisualization={this.onEditVisualization}
       />
     );
   }
 
+  onVisualizerModalSave = (visualization: VisualizerVizDefinition) => {
+    const { visualizerModalStatus } = this.state;
+
+    if (!visualizerModalStatus) {
+      return;
+    }
+
+    this.props.replaceCardWithVisualization({
+      dashcardId: visualizerModalStatus.dashcardId,
+      visualization,
+    });
+
+    this.onVisualizerModalClose();
+  };
+
+  onVisualizerModalClose = () => {
+    this.setState({ visualizerModalStatus: undefined });
+  };
+
+  renderVisualizerModal() {
+    const { dashcards } = this.props;
+    const { visualizerModalStatus } = this.state;
+    if (!visualizerModalStatus) {
+      return null;
+    }
+
+    const dashcard = dashcards[visualizerModalStatus.dashcardId];
+
+    // We want to allow saving a visualization as is if it's initial display type
+    // isn't supported by visualizer. For example, taking a pivot table and saving
+    // it as a bar chart with several columns selected.
+    const allowSaveWhenPristine =
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard?.card.display);
+
+    return (
+      <VisualizerModal
+        onSave={this.onVisualizerModalSave}
+        onClose={this.onVisualizerModalClose}
+        initialState={{ state: visualizerModalStatus.state }}
+        saveLabel={t`Save`}
+        allowSaveWhenPristine={allowSaveWhenPristine}
+      />
+    );
+  }
+
+  handleSetEditing = () => {
+    this.props.handleSetEditing?.(this.props.dashboard);
+  };
+
   get isEditingLayout() {
     const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
       this.props;
-    return (
-      isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
+    return Boolean(
+      isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null,
     );
   }
 
@@ -585,18 +633,19 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     );
 
     return (
-      <DashboardCardContainer
+      <Box
         key={String(dc.id)}
         data-testid="dashcard-container"
         className={cx(
           DashboardS.DashCard,
           EmbedFrameS.DashCard,
           LegendS.DashCard,
+          S.DashboardCardContainer,
           {
             [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
+            [S.isAnimationDisabled]: this.state.isAnimationPaused,
           },
         )}
-        isAnimationDisabled={this.state.isAnimationPaused}
       >
         {this.renderDashCard(dc, {
           isMobile: breakpoint === "mobile",
@@ -606,19 +655,22 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           shouldAutoScrollTo,
           reportAutoScrolledToDashcard,
         })}
-      </DashboardCardContainer>
+      </Box>
     );
   };
 
   renderGrid() {
     const { width } = this.props;
-    const { layouts } = this.state;
+    const { layouts, visualizerModalStatus } = this.state;
     const rowHeight = this.getRowHeight();
     return (
-      <GridLayout
+      <GridLayout<DashboardCard>
         className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
           [DashboardS.DashDragging]: this.state.isDragging,
+          // we use this class to hide a dashcard actions
+          // panel during dragging
+          [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
@@ -630,7 +682,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         onLayoutChange={this.onLayoutChange}
         onDrag={this.onDrag}
         onDragStop={this.onDragStop}
-        isEditing={this.isEditingLayout}
+        isEditing={this.isEditingLayout && !visualizerModalStatus}
         compactType="vertical"
         items={this.getVisibleCards()}
         itemRenderer={this.renderGridItem}
@@ -639,17 +691,24 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   render() {
-    const { dashboard, width } = this.props;
-
+    const { dashboard, width, forwardedRef } = this.props;
     return (
-      <DashboardGridContainer
+      <Flex
+        align="center"
+        justify="center"
+        className={cx(S.DashboardGridContainer, {
+          [S.isFixedWidth]: dashboard?.width === "fixed",
+        })}
+        ref={forwardedRef}
         data-testid="dashboard-grid"
-        isFixedWidth={dashboard?.width === "fixed"}
+        style={{
+          "--dashboard-fixed-width": FIXED_WIDTH,
+        }}
       >
         {width > 0 ? this.renderGrid() : <div />}
-        {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
-      </DashboardGridContainer>
+        {this.renderVisualizerModal()}
+      </Flex>
     );
   }
 }
@@ -676,7 +735,33 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
   throw new Error(`Unknown card.type: ${type}`);
 };
 
+const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridInnerProps>(
+  function _DashboardGrid(
+    {
+      isEditing = false,
+      isEditingParameter = false,
+      withCardTitle = true,
+      isNightMode = false,
+      width = 0,
+      ...restProps
+    },
+    ref,
+  ) {
+    return (
+      <DashboardGridInner
+        width={width}
+        isEditing={isEditing}
+        isEditingParameter={isEditingParameter}
+        withCardTitle={withCardTitle}
+        isNightMode={isNightMode}
+        {...restProps}
+        forwardedRef={ref}
+      />
+    );
+  },
+);
+
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connector,
-)(DashboardGrid) as ComponentType<OwnProps>;
+)(DashboardGrid) as ComponentType<DashboardGridProps>;

@@ -28,7 +28,7 @@ describe("utils", () => {
         "https://localhost/test",
         "mailto:user@example.com",
         "file:///path/to/resource",
-      ].forEach(input => {
+      ].forEach((input) => {
         expect(getRelativeLandingPageUrl(input)).toStrictEqual({
           isSameOrigin: false,
           relativeUrl: "",

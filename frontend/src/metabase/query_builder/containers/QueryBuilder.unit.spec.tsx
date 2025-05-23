@@ -4,6 +4,10 @@ import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
+  setupLastDownloadFormatEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
@@ -27,6 +31,10 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   afterEach(() => {
     jest.resetAllMocks();
     setupJestCanvasMock();
@@ -88,9 +96,14 @@ describe("QueryBuilder", () => {
         createMockCard({ ...TEST_CARD_VISUALIZATION, display: "line" }),
       ];
 
+      beforeEach(() => {
+        fetchMock.put("path:/api/setting/non-table-chart-generated", 200);
+        setupSettingsEndpoints([]);
+      });
+
       it.each(cards)(
         `renders the row count in "$display" visualization`,
-        async card => {
+        async (card) => {
           await setup({
             card,
             dataset,
@@ -152,10 +165,11 @@ describe("QueryBuilder", () => {
         `path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
         {},
       );
-      const { container } = await setup({
+      await setup({
         card: TEST_NATIVE_CARD,
         dataset: TEST_NATIVE_CARD_DATASET,
       });
+      const container = screen.getByTestId("test-container");
 
       await waitForFaviconReady(container);
 
@@ -165,7 +179,9 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1");
 
-      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        screen.getByTestId("question-results-download-button"),
+      );
       await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
@@ -176,10 +192,12 @@ describe("QueryBuilder", () => {
 
     it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
       const mockDownloadEndpoint = fetchMock.post("path:/api/dataset/csv", {});
-      const { container } = await setup({
+      await setup({
         card: TEST_NATIVE_CARD,
         dataset: TEST_NATIVE_CARD_DATASET,
       });
+
+      const container = screen.getByTestId("test-container");
 
       await waitForFaviconReady(container);
 
@@ -194,7 +212,9 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
-      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        screen.getByTestId("question-results-download-button"),
+      );
       await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),

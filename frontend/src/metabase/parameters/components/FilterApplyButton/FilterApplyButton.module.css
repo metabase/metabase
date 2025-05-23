@@ -1,0 +1,11 @@
+.ApplyButton {
+  margin-left: auto;
+  margin-top: 0.5rem;
+
+  @media screen and (max-width: 40em) {
+    width: 100%;
+    /* make button same height as fields on small screens */
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+}

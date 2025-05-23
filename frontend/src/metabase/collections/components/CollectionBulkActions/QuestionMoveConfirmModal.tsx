@@ -41,7 +41,7 @@ export const QuestionMoveConfirmModal = ({
   const { currentData: cardDashboards, isFetching: isLoading } =
     useGetMultipleCardsDashboardsQuery(
       {
-        card_ids: selectedItems.map(s => s.id),
+        card_ids: selectedItems.map((s) => s.id),
       },
       {
         refetchOnMountOrArgChange: true,
@@ -50,7 +50,7 @@ export const QuestionMoveConfirmModal = ({
 
   const cardsThatAppearInOtherDashboards = useMemo(
     () =>
-      cardDashboards?.filter(cd => {
+      cardDashboards?.filter((cd) => {
         if (cd.dashboards.length === 0) {
           return false;
         }
@@ -82,7 +82,9 @@ export const QuestionMoveConfirmModal = ({
     [hasNoCardsThatAppearInOtherDashboards, onConfirmRef],
   );
 
-  const hasError = cardDashboards?.some(cd => cd.dashboards.some(d => d.error));
+  const hasError = cardDashboards?.some((cd) =>
+    cd.dashboards.some((d) => d.error),
+  );
 
   const heading = useMemo(() => {
     if (isLoading) {
@@ -115,7 +117,7 @@ export const QuestionMoveConfirmModal = ({
           py="3rem"
         >
           <Loader size="lg" />
-          <Title>{t`Checking on some things...`}</Title>
+          <Title order={2}>{t`Checking on some things...`}</Title>
         </Flex>
       );
     } else {
@@ -133,19 +135,19 @@ export const QuestionMoveConfirmModal = ({
           <>
             <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
             <List>
-              {cardsThatAppearInOtherDashboards.map(cd => {
+              {cardsThatAppearInOtherDashboards.map((cd) => {
                 const card = selectedItems.find(
-                  item => item.id === cd.card_id && item.model === "card",
+                  (item) => item.id === cd.card_id && item.model === "card",
                 );
 
                 const dashboardNames = cd.dashboards
-                  .filter(d => d.id !== destination.id)
-                  .map(d => d.name);
+                  .filter((d) => d.id !== destination.id)
+                  .map((d) => d.name);
 
                 return (
                   <List.Item key={`card-${cd.card_id}`}>
                     <Text>{jt`${(
-                      <Text span fw={700}>
+                      <Text component="span" fw={700}>
                         {card?.name}
                       </Text>
                     )} will be removed from ${(
@@ -204,7 +206,7 @@ const DashboardNames = ({ names }: { names: string[] }) => {
     return null;
   } else if (names.length === 1) {
     return (
-      <Text span fw={700}>
+      <Text component="span" fw={700}>
         {names[0]}
       </Text>
     );
@@ -214,16 +216,16 @@ const DashboardNames = ({ names }: { names: string[] }) => {
 
     return [
       ...restOfNames.map((name, i, arr) => (
-        <Text span key={`dashboard-${name}`}>
-          <Text span fw={700}>
+        <Text component="span" key={`dashboard-${name}`}>
+          <Text component="span" fw={700}>
             {name}
           </Text>
           {i < arr.length - 1 ? ", " : ""}
         </Text>
       )),
-      <Text span key={`dashboard-${lastName}`}>
+      <Text component="span" key={`dashboard-${lastName}`}>
         {t` and `}
-        <Text span fw={700}>
+        <Text component="span" fw={700}>
           {lastName}
         </Text>
       </Text>,

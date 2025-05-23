@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -52,9 +52,7 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("visualization-root").contains("8833419218504");
 
       // confirm that the table contains the right columns
-      cy.findByTestId("query-visualization-root")
-        .get(".test-TableInteractive")
-        .as("table");
+      H.tableInteractive().as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
@@ -101,14 +99,14 @@ describe("scenarios > question > settings", () => {
         .as("title")
         .should("have.text", "Products → Title");
 
-      cy.findByTestId("chartsettings-sidebar").scrollTo("top");
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").scrollTo("top");
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.eql(0);
       });
 
       H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
       });
     });
@@ -199,6 +197,7 @@ describe("scenarios > question > settings", () => {
        */
 
       function findColumnAtIndex(column_name, index) {
+        // eslint-disable-next-line no-unsafe-element-filtering
         return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
     });
@@ -253,7 +252,6 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
-      // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
 
       H.popover().icon("gear").click(); // open subtotal column settings
@@ -354,9 +352,70 @@ describe("scenarios > question > settings", () => {
         });
     });
 
+    it("should show all series settings without text overflowing (metabase#52975)", () => {
+      const regularColumnName = "regular column";
+      const longColumnName1 =
+        "very very very very very very very very very very very long column 1";
+      const longColumnName2 =
+        "very very very very very very very very very very very long column 2";
+
+      H.createNativeQuestion(
+        {
+          name: "52975",
+          native: {
+            query: `select 'foo' x, 10 "${regularColumnName}", 20 "${longColumnName1}", 20 "${longColumnName2}"`,
+          },
+          display: "bar",
+        },
+        { visitQuestion: true },
+      );
+
+      H.openVizSettingsSidebar();
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(3)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("not.exist");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.get("input").should("have.value", longColumnName2);
+          cy.findByLabelText("close icon").should("be.visible");
+
+          cy.findByTestId(`remove-${longColumnName2}`).click();
+        });
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(2)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("be.visible");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.get("input").should("have.value", longColumnName1);
+          cy.findByLabelText("close icon").should("be.visible");
+
+          cy.findByTestId(`remove-${longColumnName1}`).click();
+        });
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(1)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("be.visible");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("not.exist");
+          cy.get("input").should("have.value", regularColumnName);
+          cy.findByLabelText("close icon").should("not.exist");
+        });
+    });
+
     it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
       // products joined to orders with breakouts on 3 product columns followed by a custom column
-      cy.createQuestion(
+      H.createQuestion(
         {
           name: "repro 22563",
           query: {
@@ -423,14 +482,14 @@ describe("scenarios > question > settings", () => {
         "two",
       ];
 
-      cy.findByTestId("TableInteractive-root").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+      H.tableInteractive().within(() => {
+        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
       });
 
       H.openVizSettingsSidebar();
 
       cy.findByTestId("chartsettings-sidebar").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
         cy.findByText("More Columns").should("not.exist");
 
         cy.icon("eye_outline").first().click();
@@ -446,7 +505,7 @@ describe("scenarios > question > settings", () => {
           .should("not.exist");
       });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         // the query should not have changed
         cy.icon("play").should("not.exist");
         cy.findByText("Products → Category").should("not.exist");
@@ -461,7 +520,7 @@ describe("scenarios > question > settings", () => {
           .should("be.visible");
       });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         // the query should not have changed
         cy.icon("play").should("not.exist");
         cy.findByText("Products → Category").should("be.visible");

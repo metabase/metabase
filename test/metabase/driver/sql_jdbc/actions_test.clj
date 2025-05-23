@@ -1,6 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.actions-test
   "Most of the tests for code in [[metabase.driver.sql-jdbc.actions]] are e2e tests that live
-  in [[metabase.api.action-test]]."
+  in [[metabase.actions.api-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]

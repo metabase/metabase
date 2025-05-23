@@ -37,13 +37,15 @@ export function CoordinateColumnPicker({
   });
 
   const handleChange = (value: string | null) => {
-    const option = checkNotNull(options.find(option => option.value === value));
+    const option = checkNotNull(
+      options.find((option) => option.value === value),
+    );
     setValue(option.value);
     onChange(option.column);
   };
 
   return (
-    <Stack p="md" spacing="sm">
+    <Stack p="md" gap="sm">
       <Select
         data={options}
         value={value}

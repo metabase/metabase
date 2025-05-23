@@ -4,7 +4,7 @@ import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 
 import {
   InputClearButton,
@@ -123,7 +123,7 @@ const TimeInput = forwardRef(function TimeInput(
         </InputMeridiemContainer>
       )}
       {hasClearButton && (
-        <Tooltip tooltip={t`Remove time`}>
+        <Tooltip label={t`Remove time`}>
           <InputClearButton
             aria-label={t`Remove time`}
             onClick={handleClearClick}

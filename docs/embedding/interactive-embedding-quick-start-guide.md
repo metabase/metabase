@@ -1,41 +1,43 @@
 ---
-title: Interactive embedding quick start
+title: "Interactive embedding quickstart"
 redirect_from:
   - /learn/customer-facing-analytics/interactive-embedding-quick-start
 ---
 
-# Interactive embedding quick start
+# Interactive embedding quickstart
 
 You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
 
-{% include shared/in-page-promo.html %}
+{% include shared/in-page-promo-embedding-workshop.html %}
 
 ## Prerequisites
 
 - You have an app that you can embed Metabase in.
-- You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://www.metabase.com/product/pro). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
+- You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://store.metabase.com/checkout/embedding). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
 
 The code featured in this guide can be found in our [sample repo](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample).
 
 ## Set up SSO and interactive embedding in Metabase
 
-### Create a dashboard in Metabase
+### Have a dashboard ready to embed
 
-You'll first need to create something to embed. In the left nav, go to **Browse** > **Databases** > **Sample Database**. Hover over the `Invoices` table and click on the lightning bolt to X-ray the table. Metabase will create a bunch of questions that you can save as a dashboard. Click the button to **Save this** as a dashboard. Metabase will save this dashboard in the collection called "Automatically generated dashboards".
+You'll first need a dashboard to embed. If you don't have one yet, you can use the Example Dashboard Metabase includes on new instances or you can generate one using x-rays.
 
-Visit that dashboard in the "Automatically generated dashboards" collection and make a note of its URL. If that dashboard is the first dashboard you created, it's probably `/dashboard/1` followed by a description, e.g. `/dashboard/1-a-look-at-your-invoices-table`. You'll need to put this relative URL in your app, as you'll use the dashboard as the first page that logged-in people will see when they visit the analytics section in your app. It's enough to include the ID only and omit the rest of the URL, e.g. `/dashboard/1`.
+Visit that dashboard and make a note of its URL, e.g. `/dashboard/1-e-commerce-insights`. You'll need to put this relative URL in your app, as you'll use the dashboard as the first page that logged-in people will see when they visit the analytics section in your app. It's enough to include the ID only and omit the rest of the URL, e.g. `/dashboard/1`.
+
+You could also use the dashboard's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items). On the dashboard, click on the **info** button. On the **Overview** tab, look for the dashboard's **Entity ID**. Copy that Entity ID. You'll use that Entity ID in the iframe's `src` URL: (e.g., `src=/dashboard/entity/[Entity ID]`).
 
 ### Enable interactive embedding
 
-In Metabase, click on the **gear** icon in the upper right and go to **Admin settings** > **Settings** > **Embedding** and click on the **Enable** button.
+In Metabase, click on the **gear** icon in the upper right and go to **Admin settings** > **Settings** > **Embedding**. Look for **Interactive Embedding** and click on the **Enabled** toggle.
 
-Click on the **Interactive embedding** card. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
-
-### Set up SSO with JWT in your Metabase
+Click on the **Configure** button under **Interactive Embedding**. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 
 #### SameSite configuration
 
 If you're embedding Metabase in a different domain, you may need to [set the session cookie's SameSite value to `none`](./interactive-embedding.md#embedding-metabase-in-a-different-domain)
+
+### Set up SSO with JWT in your Metabase
 
 #### Enable authentication with JWT
 
@@ -90,7 +92,7 @@ npm install jsonwebtoken --save
 And in your app, require the library:
 
 ```javascript
-const jwt = require("jsonwebtoken");
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="jsonwebtoken-import" %}
 ```
 
 ### Restricting access to certain routes
@@ -98,15 +100,7 @@ const jwt = require("jsonwebtoken");
 Presumably, your app already has some way of making sure some routes are only accessible after having signed in. Our examples use a simple helper function named `restrict` that protects these routes:
 
 ```javascript
-function restrict(req, res, next) {
-  if (req.session.user) {
-    next();
-  } else {
-    req.session.returnTo = req.originalUrl;
-    req.session.error = "Access denied!";
-    res.redirect("/login");
-  }
-}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="restrict-helper" %}
 ```
 
 ### Add a function to sign users
@@ -114,16 +108,7 @@ function restrict(req, res, next) {
 We need to write a function to sign user JWTs, using the JWT library.
 
 ```javascript
-const signUserToken = user =>
-  jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minute expiration
-    },
-    METABASE_JWT_SHARED_SECRET,
-  );
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sign-user-token-helper" %}
 ```
 
 ### Add a `sso/metabase` route
@@ -131,13 +116,7 @@ const signUserToken = user =>
 You'll need to add a route to sign people in to your Metabase via SSO using JWT. If the person isn't signed in to your app yet, your app should redirect them through your sign-in flow. In the code below, this check and redirection is handled by the `restrict` function we introduced earlier.
 
 ```javascript
-app.get("/sso/metabase", restrict, (req, res) => {
-  const ssoUrl = new URL("/auth/sso", METABASE_SITE_URL);
-  ssoUrl.searchParams.set("jwt", signUserToken(req.session.user));
-  ssoUrl.searchParams.set("return_to", req.query.return_to ?? "/");
-
-  res.redirect(ssoUrl);
-});
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sso-route" %}
 ```
 
 If the person has never signed in to Metabase before, Metabase will create an account for them.
@@ -154,16 +133,10 @@ Now to embed your Metabase in your app. You'll want to set up a route to serve y
 
 In this route, we need to render an iframe that will load your Metabase. The `src` attribute of the iframe should point to the relative path of the SSO endpoint of your app. Once the person signs in to your app (and therefore in to your Metabase), we add the query string parameter `return_to` so that the iframe displays the requested dashboard.
 
-`METABASE_DASHBOARD_PATH` should be pointing to the relative path of the dashboard you created at the beginning of this guide.
+`METABASE_DASHBOARD_PATH` should be pointing to the relative path of the dashboard you created at the beginning of this guide (`/dashboard/[ID]`, or if you used the dashboard's Entity ID: `/dashboard/entity/[Entity ID]`).
 
 ```javascript
-app.get("/analytics", restrict, function (req, res) {
-  const METABASE_DASHBOARD_PATH = "/dashboard/1";
-  var iframeUrl = `/sso/metabase?return_to=${METABASE_DASHBOARD_PATH}`;
-  res.send(
-    `<iframe src="${iframeUrl}" frameborder="0" width="1280" height="600" allowtransparency></iframe>`,
-  );
-});
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="analytics-route" %}
 ```
 
 The `METABASE_DASHBOARD_PATH` is just the first thing people will see when they log in, but you could set that path to any Metabase URL. And since you're embedding the full Metabase, people will be able to drill through the data and view other questions, dashboards, and collections.
@@ -185,17 +158,7 @@ Now that you have SSO and interactive embedding set up, it's time to set up grou
 Recall the `signUserToken` function used to create the JWTs. Add a `groups` key to the signed token that maps to an array. Metabase will look at the values in that array to see if any of the values map to a group in Metabase (We'll walk through mapping groups in a bit).
 
 ```javascript
-const signUserToken = user =>
-  jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      groups: ["Customer-Acme"],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minute expiration
-    },
-    METABASE_JWT_SHARED_SECRET,
-  );
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-groups-sign-user-token-helper" %}
 ```
 
 ### Create a group in Metabase
@@ -247,20 +210,7 @@ You can include user attributes in the JSON web token. Metabase will pick up any
 If you're using our sample app, edit the `signUserToken` function used to create the JWT by adding a key `account_id` with value `28`.
 
 ```javascript
-const signUserToken = user =>
-  jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      // hard-coded account ID added to this object
-      // just to test sandboxing with Metabase's Sample Database: Invoices table
-      account_id: 28,
-      groups: ["Customer-Acme"],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minute expiration
-    },
-    METABASE_JWT_SHARED_SECRET,
-  );
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-attribute-sign-user-token-helper" %}
 ```
 
 That user ID will correspond to the `Account ID` column in the Sample Database's Invoices table. We'll use this `account_id` user attribute to sandbox the Invoices table, so people will only see rows in that table that contain their account ID.
@@ -300,10 +250,7 @@ For example, to hide the logo and the top navigation bar of your embedded Metaba
 In the handler of your `/sso/metabase` path, add the query parameters:
 
 ```javascript
-ssoUrl.searchParams.set(
-  "return_to",
-  `${req.query.return_to ?? "/"}?logo=false&top_nav=false`,
-);
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="hide-metabase-elements" %}
 ```
 
 ### CHECKPOINT: verify hidden UI elements

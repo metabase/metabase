@@ -4,9 +4,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
@@ -869,7 +869,7 @@
 (deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature ::is-empty-not-empty-with-not-emptyable-args-test)
     (mt/dataset test-data-null-date
-      (testing (str "nil base-type arg of :not-empty should behave as not emptyable")
+      (testing "nil base-type arg of :not-empty should behave as not emptyable"
         (is (= [[1 1]]
                (mt/formatted-rows
                 [int int]

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, SelectItem } from "metabase/ui";
+import { Box, DefaultSelectItem } from "metabase/ui";
 import type { TemporalUnit } from "metabase-types/api";
 
 const MIN_WIDTH = 180;
@@ -36,24 +36,30 @@ export function TemporalUnitPicker({
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
-      {visibleItems.map(item => (
-        <SelectItem
+      {visibleItems.map((item) => (
+        <DefaultSelectItem
           key={item.value}
           value={item.value}
           label={item.label}
           selected={item.value === value}
           onClick={() => onChange(item.value)}
+          role="option"
         />
       ))}
       {!isExpanded && (
-        <SelectItem
+        <DefaultSelectItem
           value={t`More…`}
           c="brand"
           onClick={() => setIsExpanded(true)}
+          role="option"
         />
       )}
       {isExpanded && canRemove && (
-        <SelectItem value={t`Don't bin`} onClick={onRemove} />
+        <DefaultSelectItem
+          value={t`Don't bin`}
+          onClick={onRemove}
+          role="option"
+        />
       )}
     </Box>
   );
@@ -66,7 +72,7 @@ function isInitiallyExpanded(
   return (
     availableItems.length <= INITIAL_VISIBLE_ITEMS_COUNT ||
     (value != null &&
-      availableItems.findIndex(item => item.value === value) >=
+      availableItems.findIndex((item) => item.value === value) >=
         INITIAL_VISIBLE_ITEMS_COUNT)
   );
 }

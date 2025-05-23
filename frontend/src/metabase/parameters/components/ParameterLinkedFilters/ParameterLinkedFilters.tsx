@@ -3,7 +3,11 @@ import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import { skipToken, useGetFieldQuery, useGetTableQuery } from "metabase/api";
+import { useLearnUrl } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { showAddParameterPopover } from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Switch } from "metabase/ui";
 import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
 
@@ -22,21 +26,19 @@ import {
   SectionHeader,
   SectionMessage,
   SectionMessageLink,
-} from "./ParameterLinkedFilters.styled";
+} from "./ParameterLinkedFiltersComponents";
 import useFilterFields from "./use-filter-fields";
 
 export interface ParameterLinkedFiltersProps {
   parameter: Parameter;
   otherParameters: Parameter[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
-  onShowAddParameterPopover: () => void;
 }
 
 export const ParameterLinkedFilters = ({
   parameter,
   otherParameters,
   onChangeFilteringParameters,
-  onShowAddParameterPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
   const usableParameters = useMemo(
     () => otherParameters.filter(usableAsLinkedFilter),
@@ -50,7 +52,6 @@ export const ParameterLinkedFilters = ({
         usableParameters={usableParameters}
         parameter={parameter}
         onChangeFilteringParameters={onChangeFilteringParameters}
-        onShowAddParameterPopover={onShowAddParameterPopover}
       />
     </Box>
   );
@@ -60,26 +61,23 @@ function Content({
   usableParameters,
   parameter,
   onChangeFilteringParameters,
-  onShowAddParameterPopover,
 }: {
   usableParameters: Parameter[];
   parameter: Parameter;
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
-  onShowAddParameterPopover: () => void;
 }) {
   if (usableParameters.length === 0) {
-    return (
-      <NoUsableParameters
-        onShowAddParameterPopover={onShowAddParameterPopover}
-      />
-    );
+    return <NoUsableParameters />;
   }
+
   if (parameter.values_source_type != null) {
     return <ParametersFromOtherSource />;
   }
+
   if (parameter.values_query_type === "none") {
     return <ParameterIsInputBoxType />;
   }
+
   return (
     <UsableParameters
       parameter={parameter}
@@ -89,11 +87,12 @@ function Content({
   );
 }
 
-function NoUsableParameters({
-  onShowAddParameterPopover,
-}: {
-  onShowAddParameterPopover: () => void;
-}): JSX.Element {
+function NoUsableParameters(): JSX.Element {
+  const dispatch = useDispatch();
+  const onShowAddParameterPopover = () => {
+    dispatch(showAddParameterPopover());
+  };
+
   return (
     <div>
       <SectionMessage>
@@ -119,11 +118,24 @@ function ParameterIsInputBoxType(): JSX.Element {
 }
 
 function ParametersFromOtherSource(): JSX.Element {
+  const { url: docsUrl, showMetabaseLinks } = useLearnUrl(
+    "metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters",
+  );
+
   return (
     <div>
       <SectionMessage>
         {t`If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.`}
       </SectionMessage>
+      {showMetabaseLinks && (
+        <SectionMessage>
+          {jt`For Native Questions use ${(
+            <ExternalLink key="field-filters" role="link" href={docsUrl}>
+              {t`Field Filters`}
+            </ExternalLink>
+          )} to make Linked Filters available here.`}
+        </SectionMessage>
+      )}
     </div>
   );
 }
@@ -144,7 +156,7 @@ function UsableParameters({
       const newParameters = isFiltered
         ? (parameter.filteringParameters ?? []).concat(otherParameter.id)
         : (parameter.filteringParameters ?? []).filter(
-            id => id !== otherParameter.id,
+            (id) => id !== otherParameter.id,
           );
 
       onChangeFilteringParameters(newParameters);
@@ -166,7 +178,7 @@ function UsableParameters({
           <em key="text">{t`this`}</em>
         )} filter.`}
       </SectionMessage>
-      {usableParameters.map(otherParameter => (
+      {usableParameters.map((otherParameter) => (
         <LinkedParameter
           key={otherParameter.id}
           parameter={parameter}

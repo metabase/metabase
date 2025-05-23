@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
@@ -27,14 +27,14 @@ import type { SettingKey, Settings } from "metabase-types/api";
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
   message: "Check your parentheses",
-  test: value =>
+  test: (value) =>
     (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
 };
 
 const testPort: TestConfig<string | null | undefined> = {
   name: "test-port",
   message: "That's not a valid port number",
-  test: value => Boolean((value || "").trim().match(/^\d*$/)),
+  test: (value) => Boolean((value || "").trim().match(/^\d*$/)),
 };
 
 const LDAP_SCHEMA = Yup.object({
@@ -74,7 +74,7 @@ export const SettingsLdapFormView = ({
   }, [elements]);
 
   const fields = useMemo(() => {
-    return _.mapObject(settings, setting => ({
+    return _.mapObject(settings, (setting) => ({
       name: setting.key,
       label: setting.display_name,
       description: setting.description,
@@ -161,14 +161,17 @@ export const SettingsLdapFormView = ({
             settings={settings}
           />
           <FormSection title={"Server Settings"}>
-            <Stack spacing="md">
+            <Stack gap="md">
               <FormTextInput {...fields["ldap-host"]} />
               <FormTextInput {...fields["ldap-port"]} />
               <FormRadioGroup {...fields["ldap-security"]}>
                 <Group mt={"xs"}>
-                  <Radio value="none" label="None" />
-                  <Radio value="ssl" label="SSL" />
-                  <Radio value="starttls" label="StartTLS" />
+                  <Radio value="none" label={t`None`} />
+                  <Radio
+                    value="ssl"
+                    label={c("short for 'Secure Sockets Layer'").t`SSL`}
+                  />
+                  <Radio value="starttls" label={t`StartTLS`} />
                 </Group>
               </FormRadioGroup>
               <FormTextInput {...fields["ldap-bind-dn"]} />
@@ -176,20 +179,20 @@ export const SettingsLdapFormView = ({
             </Stack>
           </FormSection>
           <FormSection title={"User Schema"}>
-            <Stack spacing="md">
+            <Stack gap="md">
               <FormTextInput {...fields["ldap-user-base"]} />
               <FormTextInput {...fields["ldap-user-filter"]} />
             </Stack>
           </FormSection>
           <FormSection title={"Attributes"} collapsible>
-            <Stack spacing="md">
+            <Stack gap="md">
               <FormTextInput {...fields["ldap-attribute-email"]} />
               <FormTextInput {...fields["ldap-attribute-firstname"]} />
               <FormTextInput {...fields["ldap-attribute-lastname"]} />
             </Stack>
           </FormSection>
           <FormSection title={"Group Schema"}>
-            <Stack spacing={"md"}>
+            <Stack gap={"md"}>
               <GroupMappingsWidget
                 isFormik
                 setting={{ key: "ldap-group-sync" }}
@@ -210,7 +213,7 @@ export const SettingsLdapFormView = ({
                 )}
             </Stack>
           </FormSection>
-          <Stack align="start" spacing="1rem" mb="1rem">
+          <Stack align="start" gap="1rem" mb="1rem">
             <FormErrorMessage />
             <FormSubmitButton
               disabled={!dirty}
@@ -231,7 +234,7 @@ const getAttributeValues = (
   defaultableAttrs: Set<string>,
 ): LdapFormValues => {
   const attributeValues = Object.fromEntries(
-    ldapAttributes.map(key => [
+    ldapAttributes.map((key) => [
       key,
       defaultableAttrs.has(key)
         ? (values[key] ?? settings[key]?.default)

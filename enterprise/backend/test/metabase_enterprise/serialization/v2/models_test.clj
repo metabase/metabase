@@ -2,11 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.models.connection-impersonation]
+   [metabase-enterprise.impersonation.model]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -14,7 +14,7 @@
    [toucan2.core :as t2]))
 
 (comment
-  metabase-enterprise.advanced-permissions.models.connection-impersonation/keep-me)
+  metabase-enterprise.impersonation.model/keep-me)
 
 (def ^:private datetime? #{"timestamptz"
                            "TIMESTAMP WITH TIME ZONE"

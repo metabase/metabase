@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_ID,
@@ -14,8 +14,6 @@ const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
-
     H.restore();
     cy.signInAsAdmin();
   });
@@ -57,7 +55,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     cy.findAllByRole("option").contains("Query builder and native").click();
 
     // stub out the PUT and save
-    cy.intercept("PUT", "/api/permissions/graph", req => {
+    cy.intercept("PUT", "/api/permissions/graph", (req) => {
       req.reply(500, "Server error");
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -392,7 +390,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           "Query builder and native",
         );
 
-        cy.get("@graph").then(data => {
+        cy.get("@graph").then((data) => {
           cy.request("PUT", "/api/permissions/graph", {
             groups: {},
             revision: data.response.body.revision,
@@ -418,7 +416,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           "Query builder and native",
         );
 
-        cy.get("@graph").then(data => {
+        cy.get("@graph").then((data) => {
           cy.request("PUT", "/api/permissions/graph", {
             groups: {},
             revision: data.response.body.revision,
@@ -434,7 +432,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -587,8 +585,8 @@ describe("scenarios > admin > permissions", () => {
     };
 
     // When the app calls for session properties, give them a modified API response
-    cy.intercept("/api/session/properties", req => {
-      req.continue(res => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
         res.body = { ...res.body, ...tempState };
       });
     }).as("sessionProps");
@@ -604,8 +602,7 @@ describe("scenarios > admin > permissions", () => {
     });
 
     cy.visit("/admin/permissions/");
-    //Both the command palette and the admin app call refresh settings
-    cy.wait(["@sessionProps", "@sessionProps"]);
+    cy.wait("@sessionProps");
 
     cy.findByRole("dialog", { name: /permissions may look different/ })
       .findByRole("button", { name: "Got it" })
@@ -639,8 +636,8 @@ describe("scenarios > admin > permissions", () => {
     };
 
     // When the app calls for session properties, give them a modified API response
-    cy.intercept("/api/session/properties", req => {
-      req.continue(res => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
         res.body = { ...res.body, ...tempState };
       });
     }).as("sessionProps");
@@ -652,8 +649,7 @@ describe("scenarios > admin > permissions", () => {
     });
 
     cy.visit("/admin/permissions/");
-    //Both the command palette and the admin app call refresh settings
-    cy.wait(["@sessionProps", "@sessionProps"]);
+    cy.wait("@sessionProps");
 
     cy.findByRole("dialog", { name: /permissions may look different/ })
       .findByRole("button", { name: "Got it" })
@@ -697,7 +693,7 @@ describe("scenarios > admin > permissions", () => {
         cy.button("Yes").click();
       });
 
-      cy.wait("@updateGraph").then(interception => {
+      cy.wait("@updateGraph").then((interception) => {
         const requestGroupIds = Object.keys(interception.request.body.groups);
         const responseGroupIds = Object.keys(interception.response.body.groups);
         expect(requestGroupIds).to.deep.equal(responseGroupIds);
@@ -731,7 +727,7 @@ describe("scenarios > admin > permissions", () => {
         cy.button("Yes").click();
       });
 
-      cy.wait("@updateGraph").then(interception => {
+      cy.wait("@updateGraph").then((interception) => {
         cy.log("should skip graph in request and response");
         expect(interception.response.body).to.not.haveOwnProperty("groups");
       });
@@ -750,7 +746,7 @@ describe("scenarios > admin > permissions", () => {
         cy.button("Yes").click();
       });
 
-      cy.wait("@updateGraph").then(interception => {
+      cy.wait("@updateGraph").then((interception) => {
         cy.log("should not send previously saved edits");
         expect(interception.request.body.groups).to.not.haveOwnProperty(
           USER_GROUPS.ALL_USERS_GROUP,

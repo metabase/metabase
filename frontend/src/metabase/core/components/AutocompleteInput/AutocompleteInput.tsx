@@ -23,7 +23,7 @@ const filterOptionsByValue = (value: string | undefined, options: string[]) => {
     return options;
   }
 
-  return options.filter(option => {
+  return options.filter((option) => {
     const optionLowerCase = option.toLowerCase().trim();
     const valueLowerCase = value.toLowerCase().trim();
     return (
@@ -38,6 +38,7 @@ const AutocompleteInput = ({
   onChange,
   options = [],
   filterOptions = filterOptionsByValue,
+  onFocus,
   onBlur,
   onOptionSelect,
   ...rest
@@ -69,7 +70,7 @@ const AutocompleteInput = ({
     }
   };
 
-  const handleChange: InputProps["onChange"] = e => {
+  const handleChange: InputProps["onChange"] = (e) => {
     onChange(e.target.value);
   };
 
@@ -84,7 +85,10 @@ const AutocompleteInput = ({
           {...rest}
           value={value}
           onClick={handleShowPopover}
-          onFocus={handleShowPopover}
+          onFocus={composeEventHandlers<React.FocusEvent<HTMLInputElement>>(
+            onFocus,
+            handleShowPopover,
+          )}
           onChange={composeEventHandlers(handleChange, handleShowPopover)}
           onBlur={composeEventHandlers<React.FocusEvent<HTMLInputElement>>(
             onBlur,
@@ -106,7 +110,7 @@ const AutocompleteInput = ({
                 key={item}
                 id={item}
                 name={item}
-                onSelect={item => {
+                onSelect={(item) => {
                   handleOptionSelect(String(item));
                   closePopover();
                 }}

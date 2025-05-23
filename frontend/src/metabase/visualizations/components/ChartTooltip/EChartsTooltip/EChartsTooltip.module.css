@@ -11,19 +11,32 @@
   min-width: 240px;
   width: 100%;
   border-collapse: collapse;
-  margin: 0.25rem 0 0.875rem 0;
+}
+
+.TableWrapper {
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  margin: 0.25rem 0 0.875rem;
+}
+
+.Header {
+  position: sticky;
+  top: 0;
+  margin: 0.75rem 1rem 0.25rem;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--mb-color-tooltip-text-secondary);
+  background: var(--mb-color-tooltip-background);
+  z-index: 1;
 }
 
 .TableNoHeader {
   margin-top: 1rem;
 }
 
-.Header {
-  display: flex;
-  margin: 1rem 1rem 0.25rem 1rem;
-  font-weight: 400;
-  font-size: 13px;
-  color: var(--mb-color-tooltip-text-secondary);
+.TableBody {
+  width: 100%;
 }
 
 .Row {
@@ -43,11 +56,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 240px;
   padding: 0.25rem 0;
   vertical-align: middle;
   text-align: right;
   font-weight: 600;
+  width: auto;
 }
 
 .Cell + .Cell:not(.NameCell) {
@@ -68,12 +81,13 @@
   text-align: left;
 }
 
-.MainValueCell {
+.MainValueCell,
+.SecondaryValueCell,
+.IndicatorCell {
   width: 1px;
 }
 
 .SecondaryValueCell {
-  width: 1px;
   font-weight: 600;
   color: var(--mb-color-tooltip-text-secondary);
 }
@@ -81,7 +95,6 @@
 .IndicatorCell {
   line-height: 12px;
   text-align: center;
-  width: 1px;
 }
 
 .Indicator {
@@ -91,8 +104,16 @@
   display: inline-block;
 }
 
+.FooterRow {
+  position: sticky;
+  bottom: 0;
+  background: var(--mb-color-tooltip-background);
+  z-index: 1;
+}
+
 .FooterRow .Cell {
   padding-top: 0.75rem;
+  position: relative;
 }
 
 .SecondaryRow .NameCell {

@@ -55,7 +55,7 @@ export const ImpersonationModalView = ({
         ? [selectedAttribute, ...attributes]
         : attributes;
 
-    return selectableAttributes.map(attribute => ({
+    return selectableAttributes.map((attribute) => ({
       name: attribute,
       value: attribute,
     }));

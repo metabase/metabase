@@ -1,25 +1,23 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button/Button";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import { Button, Icon, Text } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
-import FieldVisibilityPicker from "../FieldVisibilityPicker";
-import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
+import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 
-import {
-  ColumnContainer,
-  ColumnInput,
-  FieldSettingsLink,
-} from "./MetadataTableColumn.styled";
+import { ColumnContainer, ColumnInput } from "./MetadataTableColumn.styled";
 
 interface OwnProps {
   field: Field;
@@ -77,50 +75,53 @@ const MetadataTableColumn = ({
       data-testid={`column-${field.name}`}
     >
       <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
-        <div
-          className={cx(CS.textMonospace, CS.mb1)}
-          style={{ fontSize: "12px" }}
-        >
-          {getFieldRawName(field)}
-        </div>
         <div className={cx(CS.flex, CS.flexColumn)}>
-          <div>
-            <ColumnInput
-              style={{ minWidth: 420 }}
-              className={cx(CS.floatLeft, CS.inlineBlock)}
-              type="text"
-              value={field.displayName()}
-              onBlurChange={handleChangeName}
-            />
-            <div className={CS.clearfix}>
-              <div className={cx(CS.flex, CS.flexAuto)}>
-                <div className={cx(CS.pl1, CS.flexAuto)}>
-                  <FieldVisibilityPicker
-                    className={CS.block}
-                    field={field}
-                    onUpdateField={onUpdateField}
-                  />
-                </div>
-                <div className={cx(CS.flexAuto, CS.px1)}>
-                  <SemanticTypeAndTargetPicker
-                    className={CS.block}
-                    field={field}
-                    idFields={idFields}
-                    onUpdateField={onUpdateField}
-                  />
-                </div>
-                <FieldSettingsLink
-                  to={Urls.dataModelField(
-                    selectedDatabaseId,
-                    selectedSchemaId,
-                    selectedTableId,
-                    Number(field.id),
-                  )}
-                  aria-label={t`Field settings`}
-                >
-                  <Button icon="gear" style={{ padding: 10 }} />
-                </FieldSettingsLink>
-              </div>
+          <div className={cx(CS.flex, CS.flexAuto)}>
+            <div>
+              <Label>{getFieldRawName(field)}</Label>
+              <ColumnInput
+                style={{ minWidth: 420 }}
+                type="text"
+                value={field.displayName()}
+                onBlurChange={handleChangeName}
+              />
+            </div>
+            <div className={cx(CS.pl1, CS.flexAuto)}>
+              <LabelPlaceholder />
+              <FieldVisibilityPicker
+                className={CS.block}
+                field={field}
+                onUpdateField={onUpdateField}
+              />
+            </div>
+            <div className={cx(CS.flexAuto, CS.px1)}>
+              <Label>{field.getPlainObject().database_type}</Label>
+              <SemanticTypeAndTargetPicker
+                className={CS.block}
+                field={field}
+                idFields={idFields}
+                onUpdateField={onUpdateField}
+              />
+            </div>
+            <div>
+              <LabelPlaceholder />
+              <Button
+                aria-label={t`Field settings`}
+                component={Link}
+                flex="0 0 auto"
+                justify="center"
+                mr="sm"
+                p="10"
+                to={Urls.dataModelField(
+                  selectedDatabaseId,
+                  selectedSchemaId,
+                  selectedTableId,
+                  Number(field.id),
+                )}
+                w="40"
+              >
+                <Icon name="gear" />
+              </Button>
             </div>
           </div>
           <div
@@ -148,6 +149,18 @@ const MetadataTableColumn = ({
     </ColumnContainer>
   );
 };
+
+const Label = ({ children }: { children: ReactNode }) => {
+  const { fontFamilyMonospace } = getThemeOverrides();
+
+  return (
+    <Text ff={fontFamilyMonospace} mb="xs" mih="1em" size="sm">
+      {children}
+    </Text>
+  );
+};
+
+const LabelPlaceholder = () => <Label>&nbsp;</Label>;
 
 export const getFieldRawName = (field: Field) => {
   return field.nfc_path ? field.nfc_path.join(".") : field.name;

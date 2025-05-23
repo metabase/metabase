@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -6,7 +6,7 @@ const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/alert").as("savedAlert");
+    cy.intercept("POST", "/api/notification").as("saveAlert");
     cy.intercept("POST", "/api/card").as("saveCard");
 
     H.restore();
@@ -19,8 +19,11 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   it("should have no alerts set up initially", () => {
     cy.visit("/");
 
-    cy.request("/api/alert").then(({ body }) => {
-      expect(body).to.have.length(0);
+    cy.request("/api/notification").then(({ body }) => {
+      const questionAlerts = body.filter(
+        (notification) => notification.payload_type === "notification/card",
+      );
+      expect(questionAlerts).to.have.length(0);
     });
   });
 
@@ -32,21 +35,19 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     );
     cy.findByTestId("alert-create").within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByRole("heading", { name: "Slack" }).should("not.exist");
+      cy.findByText("Slack").should("not.exist");
     });
 
     cy.button("Done").click();
 
-    cy.wait("@savedAlert").then(({ response: { body } }) => {
-      expect(body.channels).to.have.length(1);
-      expect(body.channels[0].channel_type).to.eq("email");
-      expect(body.channels[0].enabled).to.eq(true);
+    cy.wait("@saveAlert").then(({ response: { body } }) => {
+      expect(body.handlers).to.have.length(1);
+      expect(body.handlers[0].channel_type).to.eq("channel/email");
     });
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
     H.updateSetting("report-timezone", "America/New_York");
-    H.mockSlackConfigured();
 
     //For this test, we need to pretend that slack is set up
     H.mockSlackConfigured();
@@ -54,53 +55,39 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     openAlertForQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTestId("alert-create").within(() => {
-      cy.findByText(/Emails will be sent at 12:00 AM ET/).should("exist");
+    H.removeNotificationHandlerChannel("Email");
 
-      // Turn off email
-      H.toggleAlertChannel("Email");
-      cy.findByText(/Emails will be sent/).should("not.exist");
-      cy.findByText(/Slack messages will be sent/).should("not.exist");
+    H.addNotificationHandlerChannel("Slack", { hasNoChannelsAdded: true });
 
-      // Turn on Slack
-      H.toggleAlertChannel("Slack");
-      cy.findByPlaceholderText(/Pick a user or channel/).click();
-    });
+    H.modal()
+      .findByPlaceholderText(/Pick a user or channel/)
+      .click();
 
     H.popover().findByText("#work").click();
 
-    cy.findByTestId("alert-create").within(() => {
-      cy.findByText(/Slack messages will be sent at 12:00 AM ET/).should(
-        "exist",
-      );
+    H.addNotificationHandlerChannel("Email");
 
-      H.toggleAlertChannel("Email");
-      cy.findByText(
-        /Emails and Slack messages will be sent at 12:00 AM ET/,
-      ).should("exist");
-      H.toggleAlertChannel("Email");
+    H.removeNotificationHandlerChannel("Email");
 
+    H.modal().within(() => {
       cy.button("Done").click();
     });
 
-    cy.wait("@savedAlert").then(({ response: { body } }) => {
-      expect(body.channels).to.have.length(2);
-      expect(body.channels[0].channel_type).to.eq("email");
-      expect(body.channels[0].enabled).to.eq(false);
+    cy.wait("@saveAlert").then(({ response: { body } }) => {
+      expect(body.handlers).to.have.length(1);
+      expect(body.handlers[0].channel_type).to.eq("channel/slack");
     });
 
     cy.log(
       "ensure that when the alert is deleted, the delete modal is correct metabase#48402",
     );
     H.openSharingMenu("Edit alerts");
-    H.popover().within(() => {
-      cy.findByText("You set up an alert").should("be.visible");
-      cy.findByText("Edit").click();
+    H.modal().within(() => {
+      cy.findByText("Edit alerts").should("be.visible");
+      cy.findByText(/Created by you/).realHover();
     });
 
     cy.findByRole("button", { name: "Delete this alert" }).click();
-    cy.findByRole("checkbox", { name: /be emailed to / }).should("not.exist");
-    cy.findByRole("checkbox", { name: /Slack channel / }).should("exist");
   });
 
   it("should set up an email alert for newly created question", () => {
@@ -114,9 +101,8 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .findByText("Your alert is all set up.")
       .should("be.visible");
 
-    cy.wait("@savedAlert").then(({ response: { body } }) => {
-      expect(body.channels[0].channel_type).to.eq("email");
-      expect(body.channels[0].enabled).to.eq(true);
+    cy.wait("@saveAlert").then(({ response: { body } }) => {
+      expect(body.handlers[0].channel_type).to.eq("channel/email");
     });
   });
 
@@ -136,23 +122,17 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     H.openSharingMenu("Edit alerts");
 
-    H.popover().within(() => {
-      cy.findByText("You set up an alert").should("be.visible");
-      cy.findByText("Edit").click();
+    H.modal().within(() => {
+      cy.findByText("Edit alerts").should("be.visible");
+      cy.findByText(/Created by you/).click();
     });
 
     cy.log("Change the frequency of the alert to weekly");
 
-    cy.findByTestId("alert-edit")
-      .findByText("How often should we check for results?")
-      .parent()
-      .parent()
-      .findAllByTestId("select-button")
-      .should("have.length", 2)
-      .eq(0)
-      .click();
+    H.modal().findByTestId("select-frequency").click();
 
-    cy.findByRole("option", { name: "Weekly" })
+    cy.findByRole("option", { name: /weekly/i })
+      .should("have.attr", "value", "weekly")
       .should("have.attr", "aria-selected", "false")
       .click();
     cy.button("Save changes").click();
@@ -160,11 +140,48 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.log("Check that /api/card has still only been called once");
     cy.get("@saveCard.all").should("have.length", 1);
   });
+
+  describe("branding", () => {
+    const questionName = "Fourty Two";
+
+    it("should include branding for OSS instances", { tags: "@OSS" }, () => {
+      sendTestAlertForQuestion(questionName);
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("contain", "Metabase")
+        .and(
+          "have.attr",
+          "href",
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=alert",
+        );
+    });
+
+    it("should include branding for Starter instances", () => {
+      H.setTokenFeatures("none");
+      sendTestAlertForQuestion(questionName);
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("contain", "Metabase")
+        .and(
+          "have.attr",
+          "href",
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=alert",
+        );
+    });
+
+    it("should not include branding on Pro/Enterprise instances", () => {
+      H.setTokenFeatures("all");
+      sendTestAlertForQuestion(questionName);
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("not.exist");
+    });
+  });
 });
 
 function openAlertForQuestion(id) {
   H.visitQuestion(id);
-  H.openSharingMenu("Create alert");
+  H.openSharingMenu("Create an alert");
 }
 
 function saveAlert() {
@@ -176,6 +193,20 @@ function saveAlert() {
   });
   cy.wait("@saveCard");
 
-  H.openSharingMenu("Create alert");
+  H.openSharingMenu("Create an alert");
   H.modal().button("Done").click();
+}
+
+function sendTestAlertForQuestion(name) {
+  H.createNativeQuestion(
+    {
+      name,
+      native: { query: "select 42" },
+    },
+    { visitQuestion: true },
+  );
+
+  H.openSharingMenu("Create an alert");
+  H.sendAlertAndVisitIt();
+  cy.findAllByRole("link").filter(`:contains(${name})`).should("be.visible");
 }

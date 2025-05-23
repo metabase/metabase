@@ -58,7 +58,7 @@ jobs:
 
       - name: Run Loki Visual Tests
         run: |
-          yarn loki --requireReference --reactUri file:./storybook-static --chromeFlags='--headless --disable-gpu'
+          yarn loki --requireReference --reactUri file:./storybook-static --chromeFlags='--headless --disable-gpu' --verboseRenderer
 
       - name: Generate Visual Report on Failure
         if: failure()

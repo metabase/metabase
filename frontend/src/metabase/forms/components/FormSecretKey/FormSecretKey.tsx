@@ -1,9 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useField } from "formik";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
-import Confirm from "metabase/components/Confirm";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { UtilApi } from "metabase/services";
 import type { TextInputProps } from "metabase/ui";
@@ -30,6 +31,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
   }: FormSecretKeyProps,
   ref: Ref<HTMLInputElement>,
 ) {
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);
 
@@ -59,32 +61,41 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
   };
 
   return (
-    <Flex align="end" gap="1rem">
-      <TextInput
-        {...props}
-        ref={ref}
-        name={name}
-        value={value ?? ""}
-        error={touched ? error : null}
-        onChange={handleChange}
-        onBlur={handleBlur}
+    <>
+      <Flex align="end" gap="1rem">
+        <TextInput
+          {...props}
+          ref={ref}
+          name={name}
+          value={value ?? ""}
+          error={touched ? error : null}
+          onChange={handleChange}
+          onBlur={handleBlur}
+        />
+        {value ? (
+          <Button
+            variant="filled"
+            onClick={openModal}
+            className={CS.flexNoShrink}
+          >{t`Regenerate key`}</Button>
+        ) : (
+          <Button
+            className={CS.flexNoShrink}
+            variant="filled"
+            onClick={generateToken}
+          >{t`Generate key`}</Button>
+        )}
+      </Flex>
+      <ConfirmModal
+        opened={modalOpened}
+        title={t`Regenerate JWT signing key?`}
+        content={t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
+        onConfirm={() => {
+          generateToken();
+          closeModal();
+        }}
+        onClose={closeModal}
       />
-      {value ? (
-        <Confirm
-          triggerClasses={CS.fullHeight}
-          title={confirmation.header}
-          content={confirmation.dialog}
-          action={generateToken}
-        >
-          <Button variant="filled">{t`Regenerate key`}</Button>
-        </Confirm>
-      ) : (
-        <Button
-          className={CS.flexNoShrink}
-          variant="filled"
-          onClick={generateToken}
-        >{t`Generate key`}</Button>
-      )}
-    </Flex>
+    </>
   );
 });

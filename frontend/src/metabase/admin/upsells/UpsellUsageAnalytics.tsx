@@ -6,6 +6,7 @@ import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, type BoxProps, Text } from "metabase/ui";
 
 import { UpsellCard, type UpsellCardProps } from "./components";
+import { UPGRADE_URL } from "./constants";
 
 const usageAnalyticsIllustrationSource = "app/assets/img/usage-analytics.png";
 
@@ -16,7 +17,7 @@ export const UpsellUsageAnalytics = (
       "children" | "title" | "buttonText" | "buttonLink" | "campaign"
     >,
 ) => {
-  const usageAnalyticsUrl = useSelector(state =>
+  const usageAnalyticsUrl = useSelector((state) =>
     getDocsUrl(state, {
       page: "usage-and-performance-tools/usage-analytics",
     }),
@@ -27,7 +28,7 @@ export const UpsellUsageAnalytics = (
       large
       title={t`See who’s doing what, when`}
       buttonText={t`Try for free`}
-      buttonLink="https://www.metabase.com/upgrade"
+      buttonLink={UPGRADE_URL}
       campaign="usage_analytics"
       illustrationSrc={usageAnalyticsIllustrationSource}
       lh="1.5rem"

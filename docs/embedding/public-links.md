@@ -49,7 +49,7 @@ https://www.example.com/public/question/cf347ce0-90bb-4669-b73b-56c73edd10cb.csv
 
 By default, Metabase will export the results of a question that include any formatting you added (for example, if you formatted a column with floats to display as a percentage (0.42 -> 42%)).
 
-See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api/public#get-apipubliccarduuidqueryexport-format).
+See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api#tag/public/GET/public/card/{uuid}/query/{export-format}).
 
 ## Simulating drill-through with public links
 
@@ -82,7 +82,7 @@ If you want to embed your question or dashboard as an iframe in a simple web pag
 
 1. Click on the **Sharing** icon for your question or dashboard.
 2. Click **Embed**.
-3. Click **Public embed**.
+3. In the bottom of the embedding popup, click on **Get embedding code**.
 4. Copy the iframe snippet Metabase generates for you.
 5. Paste the iframe snippet in your destination of choice.
 

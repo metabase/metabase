@@ -5,11 +5,11 @@ import { useState } from "react";
 import TimeInput from "./TimeInput";
 
 export default {
-  title: "Core/TimeInput",
+  title: "Components/Ask Before Using/TimeInput",
   component: TimeInput,
 };
 
-const Template: StoryFn<typeof TimeInput> = args => {
+const Template: StoryFn<typeof TimeInput> = (args) => {
   const [value, setValue] = useState(moment("2020-01-01T10:20"));
 
   return (

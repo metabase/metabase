@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
@@ -12,13 +11,15 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
+const { H } = cy;
+const { IS_ENTERPRISE } = Cypress.env();
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe(
   "admin > database > external databases > enable actions",
   { tags: ["@external", "@actions"] },
   () => {
-    ["mysql", "postgres"].forEach(dialect => {
+    ["mysql", "postgres"].forEach((dialect) => {
       it(`should show ${dialect} writable_db with actions enabled`, () => {
         H.restore(`${dialect}-writable`);
         cy.signInAsAdmin();
@@ -33,11 +34,7 @@ describe(
           expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
-        cy.get("#model-actions-toggle").should(
-          "have.attr",
-          "aria-checked",
-          "true",
-        );
+        cy.findByLabelText("Model actions").should("be.checked");
       });
     });
   },
@@ -60,7 +57,7 @@ describe("admin > database > add", () => {
   function mockUploadServiceAccountJSON(fileContents) {
     // create blob to act as selected file
     cy.get("input[type=file]")
-      .then(async input => {
+      .then(async (input) => {
         const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
         const file = new File([blob], "service-account.json");
         const dataTransfer = new DataTransfer();
@@ -74,7 +71,7 @@ describe("admin > database > add", () => {
   }
 
   function mockSuccessfulDatabaseSave() {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({ statusCode: 200, body: { id: 42 }, delay: 100 });
     }).as("createDatabase");
 
@@ -89,7 +86,7 @@ describe("admin > database > add", () => {
     }
     cy.wait("@getDatabases").then(({ response }) => {
       if (
-        response.body.data.some(db => db.initial_sync_status !== "complete")
+        response.body.data.some((db) => db.initial_sync_status !== "complete")
       ) {
         waitForDbSync(maxRetries - 1);
       }
@@ -102,6 +99,7 @@ describe("admin > database > add", () => {
 
     cy.intercept("POST", "/api/database").as("createDatabase");
     cy.intercept("GET", "/api/database").as("getDatabases");
+    cy.intercept("GET", "/api/database/:id").as("getDatabase");
 
     cy.visit("/admin/databases/create");
     // should display a setup help card
@@ -115,14 +113,14 @@ describe("admin > database > add", () => {
     describe("postgres", () => {
       beforeEach(() => {
         H.popover().within(() => {
-          if (H.isEE) {
+          if (IS_ENTERPRISE) {
             // EE should ship with Oracle and Vertica as options
             cy.findByText("Oracle");
             cy.findByText("Vertica");
           }
         });
 
-        H.popover().contains("PostgreSQL").click({ force: true });
+        H.popover().contains("PostgreSQL").click();
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Show advanced options").click();
@@ -137,16 +135,20 @@ describe("admin > database > add", () => {
           cy.findByLabelText("Choose when syncs and scans happen")
             .click()
             .should("have.attr", "aria-checked", "true");
+
           cy.findByLabelText(
             "Never, I'll do this manually if I need to",
           ).should("have.attr", "aria-selected", "true");
 
           // make sure tooltips behave as expected
-          cy.findByLabelText("Host").parent().icon("info").realHover();
+          cy.findByLabelText("Host")
+            .parent()
+            .icon("info")
+            .trigger("mouseenter");
         });
 
         H.tooltip()
-          .findByText(/your databases ip address/i)
+          .findByText(/your database's ip address/i)
           .should("be.visible");
 
         cy.findByTestId("database-form").within(() => {
@@ -157,17 +159,17 @@ describe("admin > database > add", () => {
             });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-          H.typeAndBlurUsingLabel("Display name", "QA Postgres12");
-          H.typeAndBlurUsingLabel("Host", "localhost");
-          H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-          H.typeAndBlurUsingLabel("Database name", "sample");
-          H.typeAndBlurUsingLabel("Username", "metabase");
-          H.typeAndBlurUsingLabel("Password", "metasample123");
+          H.typeAndBlurUsingLabel(/Display name/, "QA Postgres12");
+          H.typeAndBlurUsingLabel(/Host/, "localhost");
+          H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
+          H.typeAndBlurUsingLabel(/Database name/, "sample");
+          H.typeAndBlurUsingLabel(/Username/, "metabase");
+          H.typeAndBlurUsingLabel(/Password/, "metasample123");
         });
 
         const confirmSSLFields = (visible, hidden) => {
-          visible.forEach(field => cy.findByText(field));
-          hidden.forEach(field => cy.findByText(field).should("not.exist"));
+          visible.forEach((field) => cy.findByText(field));
+          hidden.forEach((field) => cy.findByText(field).should("not.exist"));
         };
 
         const ssl = "Use a secure connection (SSL)",
@@ -220,15 +222,12 @@ describe("admin > database > add", () => {
           expect(request.body.details.user).to.equal("metabase");
         });
 
-        cy.url().should(
-          "match",
-          /\/admin\/databases\?created=true&createdDbId=\d$/,
-        );
+        cy.url().should("match", /\/admin\/databases\/\d/);
 
         waitForDbSync();
       });
 
-      it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
+      it("should add Postgres database and redirect to db info page (metabase#12972, metabase#14334, metabase#17450)", () => {
         cy.findByRole("dialog").within(() => {
           cy.findByText(
             "Your database was added! Want to configure permissions?",
@@ -240,9 +239,16 @@ describe("admin > database > add", () => {
           cy.findByText("Done!");
         });
 
-        cy.findByRole("table").within(() => {
-          cy.findByText("QA Postgres12").click();
-        });
+        cy.findByTestId("database-header-section").should(
+          "contain.text",
+          "QA Postgres12",
+        );
+        editDatabase();
+
+        cy.findAllByTestId("database-connection-info-section").should(
+          "contain.text",
+          "Connected",
+        );
 
         cy.findByLabelText("Choose when syncs and scans happen").should(
           "have.attr",
@@ -265,18 +271,18 @@ describe("admin > database > add", () => {
           cy.findByRole("link", { name: "Configure permissions" }).click();
         });
 
-        cy.findByTestId("permissions-editor").findByText(/QA Postgres12/);
+        cy.findByTestId("permissions-editor")
+          .findByText(/QA Postgres12/)
+          .should("exist");
       });
     });
 
     it(
-      "should add Mongo database and redirect to listing",
+      "should add Mongo database and redirect to db info page",
       { tags: "@mongo" },
       () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("MongoDB").click({ force: true });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Show advanced options").click();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Additional connection string options");
 
@@ -289,14 +295,14 @@ describe("admin > database > add", () => {
         H.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Show advanced options").click();
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save").should("not.be.disabled").click();
 
         cy.wait("@createDatabase");
 
-        cy.url().should(
-          "match",
-          /\/admin\/databases\?created=true&createdDbId=\d$/,
-        );
+        cy.url().should("match", /\/admin\/databases\/\d/);
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(
@@ -305,9 +311,10 @@ describe("admin > database > add", () => {
           cy.button("Maybe later").click();
         });
 
-        cy.findByRole("table").within(() => {
-          cy.findByText("QA Mongo");
-        });
+        cy.findByTestId("database-header-section").should(
+          "contain.text",
+          "QA Mongo",
+        );
 
         cy.findByRole("status").within(() => {
           cy.findByText("Syncing…");
@@ -359,10 +366,7 @@ describe("admin > database > add", () => {
 
         cy.wait("@createDatabase");
 
-        cy.url().should(
-          "match",
-          /\/admin\/databases\?created=true&createdDbId=\d$/,
-        );
+        cy.url().should("match", /\/admin\/databases\/\d/);
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(
@@ -371,9 +375,10 @@ describe("admin > database > add", () => {
           cy.button("Maybe later").click();
         });
 
-        cy.findByRole("table").within(() => {
-          cy.findByText("QA Mongo");
-        });
+        cy.findByTestId("database-header-section").should(
+          "contain.text",
+          "QA Mongo",
+        );
 
         cy.findByRole("status").within(() => {
           cy.findByText("Syncing…");
@@ -382,7 +387,7 @@ describe("admin > database > add", () => {
       },
     );
 
-    it("should add MySQL database and redirect to listing", () => {
+    it("should add MySQL database and redirect to db info page", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -409,12 +414,7 @@ describe("admin > database > add", () => {
 
       cy.wait("@createDatabase");
 
-      cy.url().should(
-        "match",
-        /\/admin\/databases\?created=true&createdDbId=\d$/,
-      );
-
-      cy.findByRole("status").findByText("Syncing…").should("be.visible");
+      cy.url().should("match", /\/admin\/databases\/\d/);
 
       cy.findByRole("dialog").within(() => {
         cy.findByText(
@@ -423,7 +423,11 @@ describe("admin > database > add", () => {
         cy.button("Maybe later").click();
       });
 
-      cy.findByRole("table").findByText("QA MySQL8").should("be.visible");
+      cy.findByTestId("database-header-section").should(
+        "contain.text",
+        "QA MySQL8",
+      );
+      cy.findByRole("status").findByText("Syncing…").should("be.visible");
       cy.findByRole("status").findByText("Syncing…").should("not.exist");
       cy.findByRole("status").findByText("Done!").should("be.visible");
     });
@@ -457,8 +461,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle malformed (null) database details (metabase#25715)", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
       });
     }).as("loadDatabase");
@@ -478,8 +482,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle is_attached_dwh databases", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
         res.body.is_attached_dwh = true;
       });
@@ -490,12 +494,21 @@ describe("scenarios > admin > databases > exceptions", () => {
 
     cy.findByTestId("main-logo");
     cy.findByTestId("breadcrumbs").findByText("Sample Database");
-    cy.findByRole("main").findByText("This database cannot be modified.");
+    cy.findByTestId("database-connection-info-section")
+      .findByRole("button", { name: "Edit connection details" })
+      .should("be.disabled");
+    cy.findByTestId("database-connection-info-section")
+      .findByRole("button", { name: "Edit connection details" })
+      .should("be.disabled")
+      .trigger("mouseenter", { force: true });
+    H.tooltip().findByText(
+      "This database is managed by Metabase Cloud and cannot be modified.",
+    );
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
   it("should show error upon a bad request", () => {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({
         statusCode: 400,
         body: "DATABASE CONNECTION ERROR",
@@ -529,19 +542,19 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    H.isEE && H.setTokenFeatures("all");
+    IS_ENTERPRISE && H.setTokenFeatures("all");
 
     cy.intercept(
       {
         method: "GET",
         pathname: "/api/database",
-        query: H.isEE
+        query: IS_ENTERPRISE
           ? {
               exclude_uneditable_details: "true",
             }
           : null,
       },
-      req => {
+      (req) => {
         req.reply({
           statusCode: 500,
           body: { message: errorMessage },
@@ -577,6 +590,14 @@ describe("scenarios > admin > databases > sample database", () => {
 
   it("database settings", () => {
     visitDatabase(SAMPLE_DB_ID);
+
+    cy.findAllByTestId("database-connection-info-section").should(
+      "contain.text",
+      "Connected",
+    );
+
+    editDatabase();
+
     // should not display a setup help card
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?").should("not.exist");
@@ -635,18 +656,19 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      editDatabase();
       expect(body.details["let-user-control-scheduling"]).to.equal(true);
       expect(body.schedules.metadata_sync.schedule_type).to.equal("daily");
       expect(body.schedules.cache_field_values.schedule_type).to.equal(
         "weekly",
       );
     });
-    cy.button("Success");
 
     // "lets you change the cache_field_values to 'Only when adding a new filter widget'"
     cy.findByLabelText("Only when adding a new filter widget").click();
     cy.button("Save changes", { timeout: 10000 }).click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      editDatabase();
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(true);
     });
@@ -655,12 +677,50 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.findByLabelText("Never, I'll do this manually if I need to").click();
     cy.button("Save changes", { timeout: 10000 }).click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      editDatabase();
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(false);
     });
   });
 
-  it("database actions sidebar", () => {
+  it("allows to save the default schedule (metabase#57198)", () => {
+    visitDatabase(SAMPLE_DB_ID);
+    editDatabase();
+    H.modal().findByText("Show advanced options").click();
+    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(false);
+      // frontend sends wrong value but backend automatically corrects it for us:
+      expect(response.body.schedules.cache_field_values).to.equal(null);
+    });
+
+    editDatabase();
+    cy.findByLabelText("Regularly, on a schedule").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(true);
+      expect(body.is_on_demand).to.equal(false);
+      expect(body.schedules.cache_field_values).to.deep.eq({
+        schedule_day: "mon",
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      });
+    });
+
+    editDatabase();
+    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(true);
+      expect(body.schedules.cache_field_values).to.equal(null);
+    });
+  });
+
+  it("database actions", () => {
     cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
       "sync_schema",
     );
@@ -689,7 +749,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // metric
-    cy.createQuestion({
+    H.createQuestion({
       name: "Revenue",
       description: "Sum of orders subtotal",
       type: "metric",
@@ -702,22 +762,20 @@ describe("scenarios > admin > databases > sample database", () => {
     visitDatabase(SAMPLE_DB_ID);
 
     // lets you trigger the manual database schema sync
-    cy.button("Sync database schema now").click();
+    cy.button("Sync database schema").click();
     cy.wait("@sync_schema");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");
 
     // lets you trigger the manual rescan of field values
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Re-scan field values now").click();
+    cy.findByText("Re-scan field values").click();
     cy.wait("@rescan_values");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Scan triggered!");
 
     // lets you discard saved field values
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Danger Zone")
-      .parent()
+    cy.findByTestId("database-danger-zone-section")
       .as("danger")
       .within(() => {
         cy.button("Discard saved field values").click();
@@ -865,6 +923,7 @@ H.describeWithSnowplow("add database card", () => {
   it("should track the click on the card", () => {
     cy.visit("/browse/databases");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("database-browser")
       .findAllByRole("link")
       .last()
@@ -872,9 +931,15 @@ H.describeWithSnowplow("add database card", () => {
 
     cy.get("@addDatabaseCard").findByText("Add a database").click();
     cy.location("pathname").should("eq", "/admin/databases/create");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "database_add_clicked",
       triggered_from: "db-list",
     });
   });
 });
+
+function editDatabase() {
+  cy.findByTestId("database-connection-info-section")
+    .findByRole("button", { name: "Edit connection details" })
+    .click();
+}

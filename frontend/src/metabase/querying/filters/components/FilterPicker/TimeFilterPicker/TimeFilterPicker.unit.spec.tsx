@@ -13,12 +13,6 @@ import {
 
 import { TimeFilterPicker } from "./TimeFilterPicker";
 
-type SetupOpts = {
-  query?: Lib.Query;
-  column?: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
-};
-
 const EXPECTED_OPERATORS = [
   "Before",
   "After",
@@ -38,10 +32,18 @@ const typeTime = async (input: HTMLInputElement, text: string) => {
   });
 };
 
+type SetupOpts = {
+  query?: Lib.Query;
+  column?: Lib.ColumnMetadata;
+  filter?: Lib.FilterClause;
+  withAddButton?: boolean;
+};
+
 function setup({
   query = createQuery(),
   column = findTimeColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -53,27 +55,34 @@ function setup({
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,
   );
 
-  function getNextFilterParts() {
+  const getNextFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
     return Lib.timeFilterParts(query, 0, filter);
-  }
+  };
 
-  function getNextFilterColumnName() {
+  const getNextFilterColumnName = () => {
     const parts = getNextFilterParts();
     const column = checkNotNull(parts?.column);
     return Lib.displayInfo(query, 0, column).longDisplayName;
-  }
+  };
+
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
 
   return {
     query,
     column,
     getNextFilterParts,
     getNextFilterColumnName,
+    getNextFilterChangeOpts,
     onChange,
     onBack,
   };
@@ -110,7 +119,7 @@ describe("TimeFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
@@ -269,6 +278,18 @@ describe("TimeFilterPicker", () => {
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it.each([
+      { label: "Apply filter", run: true },
+      { label: "Add another filter", run: false },
+    ])(
+      'should add a filter via the "$label" button when the add button is enabled',
+      async ({ label, run }) => {
+        const { getNextFilterChangeOpts } = setup({ withAddButton: true });
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        expect(getNextFilterChangeOpts()).toMatchObject({ run });
+      },
+    );
   });
 
   describe("existing filter", () => {
@@ -413,7 +434,7 @@ describe("TimeFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });

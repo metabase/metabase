@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -83,7 +83,7 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 
   it("shows recently created collection in entity picker", () => {
-    cy.createCollection({
+    H.createCollection({
       name: "My Fresh Collection",
     });
 
@@ -125,7 +125,7 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 });
 
-H.describeEE("search > recently viewed > enterprise features", () => {
+describe("search > recently viewed > enterprise features", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -152,8 +152,10 @@ H.describeEE("search > recently viewed > enterprise features", () => {
 });
 
 const assertRecentlyViewedItem = (index, title, type) => {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("recently-viewed-item-title")
     .eq(index)
     .should("have.text", title);
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("result-link-wrapper").eq(index).should("have.text", type);
 };

@@ -1,0 +1,3 @@
+.focus:focus-visible {
+  outline-color: var(--mb-color-focus);
+}

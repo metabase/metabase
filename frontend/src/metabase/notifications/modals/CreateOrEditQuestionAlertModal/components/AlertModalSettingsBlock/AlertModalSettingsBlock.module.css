@@ -1,0 +1,9 @@
+.contentContainer {
+  padding: var(
+    --alert-modal-content-padding,
+    var(--mantine-spacing-lg) var(--mantine-spacing-xl)
+  );
+  background-color: var(--mb-base-color-orion-5);
+  overflow: hidden;
+  border-radius: var(--mantine-radius-md);
+}

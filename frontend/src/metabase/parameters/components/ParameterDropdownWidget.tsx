@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import { TextWidget } from "metabase/components/TextWidget";
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
-import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
-import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
+import { BooleanWidget } from "metabase/querying/parameters/components/BooleanWidget";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
@@ -15,20 +13,22 @@ import type {
   FieldFilterUiParameter,
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
-import {
-  getNumberParameterArity,
-  getStringParameterArity,
-} from "metabase-lib/v1/parameters/utils/operators";
+import { getNumberParameterArity } from "metabase-lib/v1/parameters/utils/operators";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
+  isBooleanParameter,
   isDateParameter,
   isNumberParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { NumberInputWidget } from "./widgets/NumberInputWidget";
+import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { StringInputWidget } from "./widgets/StringInputWidget";
 import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
+import { TextWidget } from "./widgets/TextWidget";
 
 type ParameterDropdownWidgetProps = {
   onFocusChanged: (focused: boolean) => void;
@@ -52,7 +52,7 @@ export const ParameterDropdownWidget = ({
 }: ParameterDropdownWidgetProps) => {
   const normalizedValue = Array.isArray(value)
     ? value
-    : [value].filter(v => v != null);
+    : [value].filter((v) => v != null);
 
   // TODO this is due to some widgets not supporting focusChanged callback.
   const setValueOrDefault = (value: any) => {
@@ -80,7 +80,7 @@ export const ParameterDropdownWidget = ({
           value={value}
           availableOperators={["=", ">", "<", "between", "!="]}
           submitButtonLabel={value ? t`Update filter` : t`Add filter`}
-          onChange={value => {
+          onChange={(value) => {
             setValue?.(value);
             onPopoverClose?.();
           }}
@@ -98,6 +98,19 @@ export const ParameterDropdownWidget = ({
         value={value}
         setValue={setValue}
         onClose={() => onPopoverClose?.()}
+      />
+    );
+  }
+
+  if (isBooleanParameter(parameter)) {
+    return (
+      <BooleanWidget
+        value={value}
+        submitButtonLabel={value ? t`Update filter` : t`Add filter`}
+        onChange={(value) => {
+          setValue?.(value);
+          onPopoverClose?.();
+        }}
       />
     );
   }
@@ -150,14 +163,14 @@ export const ParameterDropdownWidget = ({
 
   return (
     <StringInputWidget
+      className={className}
+      parameter={parameter}
       value={normalizedValue}
       setValue={setValueOrDefault}
-      className={className}
-      autoFocus
-      placeholder={isEditing ? t`Enter a default value…` : undefined}
-      arity={getStringParameterArity(parameter)}
       label={getParameterWidgetTitle(parameter)}
-      parameter={parameter}
+      placeholder={isEditing ? t`Enter a default value…` : undefined}
+      autoFocus
+      isMultiSelect={getIsMultiSelect(parameter)}
     />
   );
 };

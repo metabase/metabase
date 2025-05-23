@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { GridItem } from "metabase/components/Grid";
@@ -51,6 +52,6 @@ export const OptionsGridItem = styled(GridItem)<OptionsGridItemProps>`
   }
 
   ${breakpointMinMedium} {
-    width: ${props => getPercentage(1 / props.itemsCount)};
+    width: ${(props) => getPercentage(1 / props.itemsCount)};
   }
 `;

@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const Root = styled.div<{
@@ -8,32 +10,32 @@ export const Root = styled.div<{
   marginBottom?: string;
   borderBottom?: boolean;
 }>`
-  ${props =>
+  ${(props) =>
     !props.noPadding &&
     css`
       margin-left: 2rem;
       margin-right: 2rem;
     `}
 
-  ${props =>
+  ${(props) =>
     props.hidden &&
     css`
       display: none;
     `}
 
-  ${props =>
+  ${(props) =>
     !props.hidden &&
     css`
       margin-bottom: ${props.marginBottom || "1.5em"};
     `}
 
-  ${props =>
+  ${(props) =>
     props.disabled &&
     css`
       pointer-events: none;
       opacity: 0.4;
     `}
-  ${props =>
+  ${(props) =>
     props.inline &&
     !props.hidden &&
     css`
@@ -43,7 +45,7 @@ export const Root = styled.div<{
       align-items: center;
     `}
 
-    ${props =>
+    ${(props) =>
     props.borderBottom &&
     css`
       padding-bottom: 1rem;

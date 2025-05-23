@@ -1,7 +1,6 @@
 (ns metabase.util.markdown-test
   (:require
    [clojure.test :refer :all]
-   [metabase.public-settings :as public-settings]
    [metabase.test.util :as tu]
    [metabase.util.markdown :as markdown]))
 
@@ -89,7 +88,7 @@
 
 (deftest process-markdown-slack-test-9
   (testing "Relative links are resolved to the current site URL"
-    (tu/with-temporary-setting-values [public-settings/site-url "https://example.com"]
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
       (is (= "<https://example.com/foo|Metabase>"   (slack "[Metabase](/foo)"))))))
 
 (deftest ^:parallel process-markdown-slack-test-10

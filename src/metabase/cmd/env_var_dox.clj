@@ -7,8 +7,8 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader.edn :as edn]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]))
 
 (defn prep-settings
@@ -65,9 +65,13 @@
            :else (str "`" d "`")))))
 
 (defn- format-prefix
-  "Used to build an environment variable, like `MB_ENV_VAR_NAME`"
+  "Formats an environment variable name with the 'MB_' prefix
+   Example: MB_ENV_VAR_NAME or MB_OLD_SETTING [DEPRECATED]"
   [env-var]
-  (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var))))
+  (let [base-name (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var)))]
+    (if (:deprecated env-var)
+      (str base-name " [DEPRECATED]")
+      base-name)))
 
 (defn- format-heading
   "Takes an integer and a string and creates a Markdown heading of level n."
@@ -81,6 +85,14 @@
        u/add-period
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
+
+(defn- format-deprecated
+  "Tags a deprecated environment variable."
+  [env-var]
+  (when-let [deprecated (:deprecated env-var)]
+    (if (string? deprecated)
+      (str "> DEPRECATED: " deprecated)
+      "> DEPRECATED")))
 
 (def paid-message
   "Used to mark an env var that requires a paid plan."
@@ -132,6 +144,7 @@
   (str/join "\n\n" (remove str/blank?
                            [(format-heading 3 (format-prefix env-var))
                             (format-paid env-var)
+                            (format-deprecated env-var)
                             ;; metadata we should format as a list
                             ;; Like `- Default: 100`
                             (format-list [(format-type env-var)
@@ -160,11 +173,6 @@
   [env-var]
   (not= :none (:setter env-var)))
 
-(defn active?
-  "Used to filter our deprecated enviroment variables."
-  [env-var]
-  (nil? (:deprecated env-var)))
-
 (defn- only-local?
   "Used to filter out environment variables that are only local."
   [env-var]
@@ -177,8 +185,7 @@
   (->> settings
        (remove avoid?)
        (remove only-local?)
-       (filter setter?)
-       (filter active?)))
+       (filter setter?)))
 
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."

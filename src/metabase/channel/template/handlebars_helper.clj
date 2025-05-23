@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [hash])
   (:require
    [java-time.api :as t]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.urls :as urls])
+   [metabase.channel.urls :as urls]
+   [metabase.util.date-2 :as u.date])
   (:import
    (com.github.jknack.handlebars
     Options Handlebars Helper Handlebars$SafeString)))
@@ -106,6 +106,11 @@
   ;; => \"http://localhost:3000/question/10\""
   [id _params _kparams _options]
   (urls/card-url id))
+
+(defhelper trash-url
+  "Return the URL to trash page."
+  [_ _params _kparams _options]
+  (urls/trash-url))
 
 (defhelper dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.

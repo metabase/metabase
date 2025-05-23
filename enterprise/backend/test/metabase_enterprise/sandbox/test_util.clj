@@ -3,7 +3,7 @@
   (:require
    [malli.core :as mc]
    [mb.hawk.parallel]
-   [metabase.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]

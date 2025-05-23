@@ -10,19 +10,30 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.public-settings :as public-settings]
+   [metabase.query-analysis.models.query-analysis]
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
+   [metabase.query-analysis.settings :as query-analysis.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.namespaces :as shared.ns]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(shared.ns/import-fns
+ [metabase.query-analysis.models.query-analysis
+  cards-with-reference-errors
+  reference-errors]
+ [nqa
+  tables-for-native]
+ [query-analysis.settings
+  query-analysis-enabled])
 
 (def ^:private realtime-queue-capacity
   "The maximum number of cards which can be queued for async analysis. When exceeded, additional cards will be dropped."
@@ -78,9 +89,9 @@
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
   [query-type]
-  (and (public-settings/query-analysis-enabled)
+  (and (query-analysis-enabled)
        (case query-type
-         :native     (public-settings/sql-parsing-enabled)
+         :native     (query-analysis.settings/sql-parsing-enabled)
          :query      true
          :mbql/query true
          false)))
@@ -226,7 +237,7 @@
   (if (every? #(some? (% card-or-id)) [:id :dataset_query])
     card-or-id
     ;; If we need to query the database though, find out for sure.
-    (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
+    (t2/select-one [:model/Card :id :archived :dataset_query :card_schema] (u/the-id card-or-id))))
 
 (defn analyze!*
   "Update the analysis for a given card if it is active. Should only be called

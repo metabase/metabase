@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import { without } from "underscore";
 
-import { useUserListQuery } from "metabase/common/hooks";
+import { useListUserRecipientsQuery } from "metabase/api";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import {
   SearchUserItemContainer,
@@ -23,11 +23,9 @@ export const SearchUserPicker = ({
   value: UserId[];
   onChange: (value: UserId[]) => void;
 }) => {
-  const { isLoading, data } = useUserListQuery({
-    query: { recipients: true },
-  });
+  const { isLoading, data } = useListUserRecipientsQuery();
 
-  const users = data ?? [];
+  const users = data?.data ?? [];
 
   const [userFilter, setUserFilter] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState(value);
@@ -35,7 +33,7 @@ export const SearchUserPicker = ({
   const isSelected = (user: UserListResult) =>
     selectedUserIds.includes(user.id);
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user) => {
     return (
       user.common_name.toLowerCase().includes(userFilter.toLowerCase()) &&
       !isSelected(user)
@@ -61,7 +59,7 @@ export const SearchUserPicker = ({
   };
 
   const generateUserListElements = (userList: UserListResult[]) => {
-    return userList.map(user => (
+    return userList.map((user) => (
       <UserListElement
         key={user.id}
         isSelected={isSelected(user)}
@@ -76,16 +74,16 @@ export const SearchUserPicker = ({
       isLoading={isLoading}
       onApply={() => onChange(selectedUserIds)}
     >
-      <SearchUserPickerContainer p="sm" spacing="xs">
-        <SearchUserSelectBox spacing={0}>
+      <SearchUserPickerContainer p="sm" gap="xs">
+        <SearchUserSelectBox gap={0}>
           <SearchUserItemContainer
             data-testid="search-user-select-box"
-            spacing="xs"
+            gap="xs"
             p="xs"
             mah="30vh"
           >
-            {selectedUserIds.map(userId => {
-              const user = users.find(user => user.id === userId);
+            {selectedUserIds.map((userId) => {
+              const user = users.find((user) => user.id === userId);
               return (
                 <SelectedUserButton
                   data-testid="selected-user-button"
@@ -94,23 +92,23 @@ export const SearchUserPicker = ({
                   px="md"
                   py="sm"
                   maw="100%"
-                  rightIcon={<Icon name="close" />}
+                  rightSection={<Icon name="close" />}
                   onClick={() => removeUser(user)}
                 >
-                  <Text align="left" w="100%" truncate c="inherit">
+                  <Text ta="left" w="100%" truncate c="inherit">
                     {user?.common_name}
                   </Text>
                 </SelectedUserButton>
               );
             })}
             <UserPickerInput
-              variant="unstyled"
+              variant="subtle"
               pl="sm"
               size="md"
               placeholder={t`Search for someone…`}
               value={userFilter}
               tabIndex={0}
-              onChange={event => setUserFilter(event.currentTarget.value)}
+              onChange={(event) => setUserFilter(event.currentTarget.value)}
               mt="-0.25rem"
               miw="18ch"
             />
@@ -119,14 +117,14 @@ export const SearchUserPicker = ({
         <SearchUserPickerContent
           data-testid="search-user-list"
           h="100%"
-          spacing="xs"
+          gap="xs"
           p="xs"
         >
           {filteredUsers.length > 0 ? (
             generateUserListElements(filteredUsers)
           ) : (
             <Center py="md">
-              <Text size="md" weight={700}>{t`No results`}</Text>
+              <Text size="md" fw={700}>{t`No results`}</Text>
             </Center>
           )}
         </SearchUserPickerContent>

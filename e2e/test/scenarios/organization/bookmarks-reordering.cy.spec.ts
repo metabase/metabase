@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,

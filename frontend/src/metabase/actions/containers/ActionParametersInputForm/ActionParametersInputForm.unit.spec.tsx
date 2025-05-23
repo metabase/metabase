@@ -1,9 +1,8 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, render, screen, waitFor } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockFieldSettings,
@@ -210,7 +209,7 @@ describe("Actions > ActionParametersInputForm", () => {
 
       await userEvent.hover(editActionTrigger);
 
-      expect(screen.getByText("Edit this action")).toBeInTheDocument();
+      expect(await screen.findByText("Edit this action")).toBeInTheDocument();
 
       await userEvent.click(editActionTrigger);
 

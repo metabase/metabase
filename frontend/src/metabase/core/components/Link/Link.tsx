@@ -1,4 +1,4 @@
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 
 import { LinkRoot } from "./Link.styled";
 import type { LinkProps } from "./types";
@@ -27,11 +27,11 @@ const Link = ({
   const tooltipProps =
     typeof tooltip === "string"
       ? {
-          tooltip,
+          label: tooltip,
         }
       : tooltip;
 
-  return tooltip ? (
+  return tooltip && tooltipProps != null ? (
     <Tooltip {...tooltipProps}>
       <span>{link}</span>
     </Tooltip>

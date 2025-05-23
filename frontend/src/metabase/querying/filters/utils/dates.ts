@@ -55,7 +55,7 @@ export function getDatePickerOperators(
   column: Lib.ColumnMetadata,
 ): DatePickerOperator[] {
   return Lib.filterableColumnOperators(column)
-    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
+    .map((operator) => Lib.displayInfo(query, stageIndex, operator).shortName)
     .filter(isDatePickerOperator);
 }
 
@@ -65,7 +65,7 @@ export function getDatePickerUnits(
   column: Lib.ColumnMetadata,
 ): DatePickerUnit[] {
   return Lib.availableTemporalBuckets(query, stageIndex, column)
-    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
+    .map((operator) => Lib.displayInfo(query, stageIndex, operator).shortName)
     .filter(isDatePickerUnit);
 }
 
@@ -284,16 +284,14 @@ export function getDateFilterDisplayName(
       if (offsetValue != null && offsetUnit != null) {
         const prefix = Lib.describeTemporalInterval(value, unit);
         const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
-        return c(
-          "Describes a relative date interval. Example: Previous 2 months, starting 1 year ago.",
-        ).t`${prefix}, starting ${suffix}`;
+        return `${prefix}, ${suffix}`;
       } else {
         return Lib.describeTemporalInterval(value, unit);
       }
     })
     .with({ type: "exclude", operator: "!=" }, ({ values, unit }) => {
       if (values.length <= 2 && unit != null) {
-        const parts = values.map(value => formatExcludeUnit(value, unit));
+        const parts = values.map((value) => formatExcludeUnit(value, unit));
         return t`Exclude ${parts.join(", ")}`;
       } else {
         const count = values.length;

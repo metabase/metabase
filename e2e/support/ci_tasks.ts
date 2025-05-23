@@ -41,10 +41,10 @@ const githubApi = ({
 };
 
 function extractTestsFromCommentText(body: string) {
-  const tableLines = body.split("\n").filter(line => line.includes("|"));
+  const tableLines = body.split("\n").filter((line) => line.includes("|"));
   const testLines = tableLines.slice(2);
-  const testData = testLines.map(line => {
-    const [fileName, testName] = line.split("|").map(cell => cell.trim());
+  const testData = testLines.map((line) => {
+    const [fileName, testName] = line.split("|").map((cell) => cell.trim());
     return { fileName, testName };
   });
 
@@ -89,7 +89,7 @@ async function addOrUpdateComment({
 }
 
 function getExistingCommentSha(commentBody: string): string | undefined {
-  const hash = commentBody.match(/failed on `([a-f0-9]+)`/);
+  const hash = commentBody.match(/failed on `([a-f0-9\-]+)`/);
   return hash?.[1];
 }
 

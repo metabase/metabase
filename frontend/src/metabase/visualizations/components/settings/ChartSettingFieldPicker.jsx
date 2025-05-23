@@ -16,6 +16,8 @@ import {
 } from "./ChartSettingFieldPicker.styled";
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
+const RIGHT_SECTION_BUTTON_WIDTH = 22;
+
 export const ChartSettingFieldPicker = ({
   value,
   options,
@@ -65,7 +67,7 @@ export const ChartSettingFieldPicker = ({
 
   let seriesKey;
   if (series && columnKey && showColorPicker) {
-    const seriesForColumn = series.find(single => {
+    const seriesForColumn = series.find((single) => {
       const metricColumn = single.data.cols[1];
       return getColumnKey(metricColumn) === columnKey;
     });
@@ -77,6 +79,12 @@ export const ChartSettingFieldPicker = ({
   const disabled =
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
+
+  const hasLeftSection = showDragHandle || (showColorPicker && seriesKey);
+
+  const rightSectionWidth =
+    [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
+    RIGHT_SECTION_BUTTON_WIDTH;
 
   return (
     <ChartSettingFieldPickerRoot
@@ -90,18 +98,18 @@ export const ChartSettingFieldPicker = ({
         pl="sm"
         pr="xs"
         w="100%"
-        isInitiallyOpen={autoOpenWhenUnset && value === undefined}
+        defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
         options={options}
         value={value}
         onChange={onChange}
-        icon={
-          showDragHandle || (showColorPicker && seriesKey) ? (
-            <Group noWrap spacing="sm" p="xs" ml="sm">
+        leftSection={
+          hasLeftSection ? (
+            <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
                   noMargin
-                  onClick={e => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                   c="text-medium"
                   className={CS.pointerEventsAll}
                 />
@@ -110,7 +118,7 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
-                  onChange={value => {
+                  onChange={(value) => {
                     onChangeSeriesColor(seriesKey, value);
                   }}
                   className={CS.pointerEventsAll}
@@ -121,10 +129,9 @@ export const ChartSettingFieldPicker = ({
         }
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
-        iconWidth="auto"
-        rightSectionWidth="auto"
+        rightSectionWidth={`${rightSectionWidth}px`}
         rightSection={
-          <Group noWrap spacing="sm" p="xs" mr="sm">
+          <>
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
@@ -134,7 +141,7 @@ export const ChartSettingFieldPicker = ({
               <ChartSettingActionIcon
                 icon="ellipsis"
                 data-testid={`settings-${value}`}
-                onClick={e => onShowWidget(menuWidgetInfo, e.currentTarget)}
+                onClick={(e) => onShowWidget(menuWidgetInfo, e.currentTarget)}
               />
             )}
             {onRemove && (
@@ -144,31 +151,32 @@ export const ChartSettingFieldPicker = ({
                 onClick={onRemove}
               />
             )}
-          </Group>
+          </>
         }
         styles={{
-          wrapper: {
-            display: "flex",
+          root: {
+            overflow: "visible",
+            padding: "0px",
           },
-          icon: {
-            position: "static",
-            width: "auto",
+          wrapper: {
+            marginTop: "0px",
+          },
+          section: {
+            backgroundColor: "unset",
           },
           input: {
-            "&[data-with-icon]": {
-              paddingLeft: 0,
-            },
             marginLeft: theme.spacing.xs,
             textOverflow: "ellipsis",
             fontWeight: "bold",
-            "&[data-disabled]": {
-              backgroundColor: "var(--mb-color-bg-white) !important",
-            },
+
+            backgroundColor: disabled ? "var(--mb-color-bg-white)" : "inherit",
+
             border: "none",
             width: "100%",
-          },
-          rightSection: {
-            pointerEvents: "none",
+            color: "var(--mb-color-text-primary)",
+            cursor: "pointer",
+            pointerEvents: "unset",
+            paddingRight: `${rightSectionWidth + 8}px`,
           },
         }}
       />

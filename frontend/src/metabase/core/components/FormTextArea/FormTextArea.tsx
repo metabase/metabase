@@ -23,6 +23,9 @@ export interface FormTextAreaProps
   inputClassName?: string;
 }
 
+/**
+ * @deprecated: use FormTextArea from "metabase/forms"
+ */
 const FormTextArea = forwardRef(function FormTextArea(
   {
     name,

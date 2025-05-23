@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { space } from "metabase/styled-components/theme";
@@ -17,6 +18,7 @@ export const ActionSettingsHeader = styled.h2`
 `;
 
 // make strolling nicer by fading out the top and bottom of the column
+// eslint-disable-next-line no-color-literals
 const fade = (side: "top" | "bottom") => `
   content  : "";
   position : absolute;

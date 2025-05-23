@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { alpha } from "metabase/lib/colors";
@@ -67,10 +69,10 @@ interface ButtonContentProps {
 
 export const ButtonContent = styled.div<ButtonContentProps>`
   display: flex;
-  flex-direction: ${props => (props.iconVertical ? "column" : "row")};
+  flex-direction: ${(props) => (props.iconVertical ? "column" : "row")};
   align-items: center;
   justify-content: center;
-  min-width: ${props => (props.iconVertical ? "60px" : "")};
+  min-width: ${(props) => (props.iconVertical ? "60px" : "")};
 `;
 
 interface ButtonTextContainerProps {
@@ -100,13 +102,13 @@ export const ButtonTextContainer = styled.div<ButtonTextContainerProps>`
   overflow: hidden;
   white-space: nowrap;
 
-  ${props => {
+  ${(props) => {
     if (props.hasIcon) {
       return props.iconVertical ? verticalTopIconCSS : horizontalLeftIconCSS;
     }
   }}
 
-  ${props => {
+  ${(props) => {
     if (props.hasRightIcon) {
       return props.iconVertical
         ? verticalBottomIconCSS

@@ -2,8 +2,6 @@ import _ from "underscore";
 
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import { singularize } from "metabase/lib/formatting";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { getAggregationOperators } from "metabase-lib/v1/operators/utils";
 import type { NormalizedTable } from "metabase-types/api";
 
 import Question from "../Question";
@@ -37,10 +35,6 @@ class Table {
 
   constructor(table: NormalizedTable) {
     this._plainObject = table;
-    this.aggregationOperators = _.memoize(this.aggregationOperators);
-    this.aggregationOperatorsLookup = _.memoize(
-      this.aggregationOperatorsLookup,
-    );
     this.fieldsLookup = _.memoize(this.fieldsLookup);
     Object.assign(this, table);
   }
@@ -51,10 +45,6 @@ class Table {
 
   getFields() {
     return this.fields ?? [];
-  }
-
-  isVirtualCard() {
-    return isVirtualCardId(this.id);
   }
 
   hasSchema() {
@@ -80,10 +70,6 @@ class Table {
     });
   }
 
-  dimensions() {
-    return this.getFields().map(field => field.dimension());
-  }
-
   displayName({ includeSchema }: { includeSchema?: boolean } = {}) {
     return (
       (includeSchema && this.schema ? this.schema.displayName() + "." : "") +
@@ -101,23 +87,14 @@ class Table {
   }
 
   dateFields() {
-    return this.getFields().filter(field => field.isDate());
-  }
-
-  // AGGREGATIONS
-  aggregationOperators() {
-    return getAggregationOperators(this.db, this.fields);
-  }
-
-  aggregationOperatorsLookup() {
-    return Object.fromEntries(
-      this.aggregationOperators().map(op => [op.short, op]),
-    );
+    return this.getFields().filter((field) => field.isDate());
   }
 
   // FIELDS
   fieldsLookup() {
-    return Object.fromEntries(this.getFields().map(field => [field.id, field]));
+    return Object.fromEntries(
+      this.getFields().map((field) => [field.id, field]),
+    );
   }
 
   // @deprecated: use fieldsLookup
@@ -132,8 +109,8 @@ class Table {
   connectedTables(): Table[] {
     const fks = this.fks || [];
     return fks
-      .map(fk => fk.origin?.table)
-      .filter(table => table != null) as Table[];
+      .map((fk) => fk.origin?.table)
+      .filter((table) => table != null) as Table[];
   }
 
   foreignTables(): Table[] {
@@ -142,8 +119,8 @@ class Table {
       return [];
     }
     return fields
-      .filter(field => field.isFK() && field.fk_target_field_id)
-      .map(field => this.metadata?.field(field.fk_target_field_id)?.table)
+      .filter((field) => field.isFK() && field.fk_target_field_id)
+      .map((field) => this.metadata?.field(field.fk_target_field_id)?.table)
       .filter(Boolean) as Table[];
   }
 

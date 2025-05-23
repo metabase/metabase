@@ -187,6 +187,17 @@
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
+(declare field-options)
+
+(defn- emptyable?
+  [clause]
+  (if (is-clause? #{:field :expression :aggregation} clause)
+    (-> clause
+        field-options
+        :base-type
+        (isa? :metabase.lib.schema.expression/emptyable))
+    (mbql.preds/Emptyable? clause)))
+
 (defn desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
 
@@ -194,15 +205,15 @@
    non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [m]
   (lib.util.match/replace m
-    [:is-empty field]
-    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
-      [:or [:= field nil] [:= field ""]]
-      [:= field nil])
+    [:is-empty clause]
+    (if (emptyable? clause)
+      [:or [:= clause nil] [:= clause ""]]
+      [:= clause nil])
 
-    [:not-empty field]
-    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
-      [:and [:!= field nil] [:!= field ""]]
-      [:!= field nil])))
+    [:not-empty clause]
+    (if (emptyable? clause)
+      [:and [:!= clause nil] [:!= clause ""]]
+      [:!= clause nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
@@ -788,17 +799,6 @@
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 
-(defn- safe-min [& args]
-  (transduce
-   (filter some?)
-   (completing
-    (fn [acc n]
-      (if acc
-        (min acc n)
-        n)))
-   nil
-   args))
-
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
@@ -820,12 +820,12 @@
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]
   (let [mbql-limit        (when (= query-type :query)
-                            (safe-min items limit))
+                            (u/safe-min items limit))
         constraints-limit (or
                            (when-not aggregations
                              max-results-bare-rows)
                            max-results)]
-    (safe-min mbql-limit constraints-limit)))
+    (u/safe-min mbql-limit constraints-limit)))
 
 (defn- remove-empty [x]
   (cond

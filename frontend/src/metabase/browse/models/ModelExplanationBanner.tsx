@@ -44,25 +44,25 @@ export const ModelExplanationBanner = () => {
       mb="xl"
     >
       <Flex>
-        <ModelsVideoThumbnail onClick={() => setOpened(true)} />
-        <Stack spacing="md">
+        {showMetabaseLinks && (
+          <ModelsVideoThumbnail onClick={() => setOpened(true)} />
+        )}
+        <Stack gap="md">
           <Title
-            order={2}
-            size="md"
-            lh={1}
+            order={6}
             m={0}
           >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
           <Text size="md" lh="1.5">
             {t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}
           </Text>
-          <Group spacing="md">
+          <Group gap="md">
             {showMetabaseLinks && (
               <Button variant="subtle" p={0}>
                 <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
               </Button>
             )}
             <Button variant="subtle" p={0} onClick={dismissBanner}>
-              Dismiss
+              {t`Dismiss`}
             </Button>
           </Group>
         </Stack>

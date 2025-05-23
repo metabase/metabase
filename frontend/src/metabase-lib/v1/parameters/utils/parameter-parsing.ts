@@ -1,6 +1,12 @@
 import type { Query } from "history";
 
-import { normalizeNumberParameterValue } from "metabase/querying/parameters/utils/normalize";
+import {
+  normalizeBooleanParameterValue,
+  normalizeDateParameterValue,
+  normalizeNumberParameterValue,
+  normalizeStringParameterValue,
+  normalizeTemporalUnitParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
@@ -40,7 +46,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   const type = getParameterType(parameter);
   if (type === "temporal-unit") {
     const availableUnits = Lib.availableTemporalUnits();
-    return availableUnits.some(unit => unit === value) ? value : null;
+    return availableUnits.some((unit) => unit === value) ? value : null;
   }
 
   const coercedValue =
@@ -52,8 +58,21 @@ export function parseParameterValue(value: any, parameter: Parameter) {
     return parseParameterValueForFields(coercedValue, fields);
   }
 
-  if (type === "number") {
-    return parseParameterValueForNumber(coercedValue);
+  // Note:
+  // - "string" parameters can be mapped to anything (string, number, boolean)
+  // - "category" and "id" parameters can be mapped to anything
+  // We cannot properly deserialize their values by checking the parameter type only
+  switch (type) {
+    case "number":
+      return parseParameterValueForNumber(coercedValue);
+    case "location":
+      return normalizeStringParameterValue(coercedValue);
+    case "date":
+      return normalizeDateParameterValue(coercedValue);
+    case "boolean":
+      return normalizeBooleanParameterValue(coercedValue);
+    case "temporal-unit":
+      return normalizeTemporalUnitParameterValue(coercedValue);
   }
 
   return coercedValue;
@@ -64,14 +83,14 @@ function parseParameterValueForNumber(value: ParameterValueOrArray) {
   // https://github.com/metabase/metabase/issues/25374#issuecomment-1272520560
   if (typeof value === "string") {
     // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
-    const splitValues = value.split(",").filter(item => item.trim() !== "");
+    const splitValues = value.split(",").filter((item) => item.trim() !== "");
     if (splitValues.length === 0) {
       return null;
     }
 
     if (splitValues.length > 1) {
-      const numbers = splitValues.map(number => parseFloat(number));
-      if (numbers.every(number => !isNaN(number))) {
+      const numbers = splitValues.map((number) => parseFloat(number));
+      if (numbers.every((number) => !isNaN(number))) {
         return numbers.join(",");
       }
 
@@ -86,22 +105,17 @@ function parseParameterValueForFields(
   value: ParameterValueOrArray,
   fields: Field[],
 ): ParameterValueOrArray {
-  if (Array.isArray(value)) {
-    return value.flatMap(v => parseParameterValueForFields(v, fields));
-  }
-
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
-  if (fields.every(f => f.isNumeric() && !f.isDate())) {
-    const number = parseFloat(String(value));
-    return isNaN(number) ? [] : number;
+  if (fields.every((f) => f.isNumeric() && !f.isDate())) {
+    return normalizeNumberParameterValue(value);
   }
 
-  if (fields.every(f => f.isBoolean())) {
-    return value === "true" ? true : value === "false" ? false : [];
+  if (fields.every((f) => f.isBoolean())) {
+    return normalizeBooleanParameterValue(value);
   }
 
-  if (fields.every(f => f.isString() || f.isStringLike())) {
-    return String(value);
+  if (fields.every((f) => f.isString() || f.isStringLike())) {
+    return normalizeStringParameterValue(value);
   }
 
   return value;
@@ -130,7 +144,7 @@ export function getParameterValuesByIdFromQueryParams(
   lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   return Object.fromEntries(
-    parameters.map(parameter => [
+    parameters.map((parameter) => [
       parameter.id,
       getParameterValueFromQueryParams(
         parameter,

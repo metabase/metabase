@@ -1,5 +1,3 @@
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectErrorMessage"] }] */
-
 import { render, screen, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
@@ -54,8 +52,8 @@ let consoleErrorSpy: jest.SpyInstance;
  */
 const expectErrorMessage = async (message: string) => {
   try {
-    const errors = consoleErrorSpy.mock.calls.map(call => call[2]);
-    const errorMessages = errors.map(error =>
+    const errors = consoleErrorSpy.mock.calls.map((call) => call[2]);
+    const errorMessages = errors.map((error) =>
       error instanceof Error ? error.message : error,
     );
     expect(errorMessages).toContainEqual(expect.stringContaining(message));

@@ -23,7 +23,7 @@ const DefaultRenderInput = ({
   <TextInput
     value={value || ""}
     placeholder={placeholder}
-    onChange={e => onChange(e.target.value)}
+    onChange={(e) => onChange(e.target.value)}
     error={error}
   />
 );
@@ -68,7 +68,7 @@ const buildMapping = (entries: Entry[]): MappingType =>
   }, {});
 
 const entryError = (entries: Entry[], key: string) =>
-  entries.filter(e => e.key === key).length > 1
+  entries.filter((e) => e.key === key).length > 1
     ? t`Attribute keys can't have the same name`
     : false;
 
@@ -125,14 +125,14 @@ export const MappingEditor = ({
           const keyInput = renderKeyInput({
             value: key,
             placeholder: keyPlaceholder,
-            onChange: newKey =>
+            onChange: (newKey) =>
               handleChange(replaceEntryKey(entries, index, newKey)),
             error: entryError(entries, key),
           });
           const valueInput = renderValueInput({
             value: value,
             placeholder: valuePlaceholder,
-            onChange: newValue =>
+            onChange: (newValue) =>
               handleChange(replaceEntryValue(entries, index, newValue)),
           });
           return (
@@ -152,7 +152,7 @@ export const MappingEditor = ({
               {canDelete && (
                 <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                   <Button
-                    leftIcon={<Icon name="close" />}
+                    leftSection={<Icon name="close" />}
                     variant="subtle"
                     onClick={() => handleChange(removeEntry(entries, index))}
                     color={"text"}
@@ -163,12 +163,12 @@ export const MappingEditor = ({
             </tr>
           );
         })}
-        {_.every(entries, entry => entry.value !== "" && entry.key !== "") &&
+        {_.every(entries, (entry) => entry.value !== "" && entry.key !== "") &&
           canAdd && (
             <tr>
               <td colSpan={2}>
                 <Button
-                  leftIcon={<Icon name="add" />}
+                  leftSection={<Icon name="add" />}
                   variant="subtle"
                   onClick={() => handleChange(addEntry(entries))}
                   {...addButtonProps}

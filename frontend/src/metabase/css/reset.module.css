@@ -1,0 +1,60 @@
+/** CSS reset scoped to the .mb-wrapper class so we can use it in the SDK */
+
+:where(:global(.mb-wrapper)) {
+  /*
+  override default padding and margin on lists
+  in most cases we won't be using list-style so
+  the padding isn't necessary
+  */
+  ul,
+  ol {
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+  }
+
+  /*
+  explicitly set the th text alignment to left. this is required for IE
+  which follows the suggested rendering and defaults to center, whereas
+  chrome and others do not
+  */
+  th {
+    text-align: left;
+  }
+
+  /* reset button element */
+  button {
+    font-size: 100%;
+    -webkit-appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    background-color: transparent;
+  }
+
+  a {
+    color: inherit;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    &:focus-visible {
+      outline: 2px solid var(--mb-color-focus);
+    }
+  }
+
+  button,
+  input,
+  textarea {
+    font-family: var(--mb-default-font-family), "Helvetica Neue", Helvetica,
+      sans-serif;
+  }
+
+  textarea {
+    min-height: 110px;
+  }
+}

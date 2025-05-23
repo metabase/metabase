@@ -8,7 +8,6 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
-
 export function FieldMappingSelect({
   tag,
   hasSelectedDimensionField,
@@ -33,7 +32,7 @@ export function FieldMappingSelect({
       <ContainerLabel>
         {t`Field to map to`}
         {tag.dimension == null && (
-          <Text c="error" span={true} ml="sm">
+          <Text c="error" component="span" ml="sm">
             {t`(required)`}
           </Text>
         )}

@@ -8,7 +8,7 @@ type Args = ComponentProps<typeof EmbedHomepageView> & {
 };
 
 const meta: Meta<Args> = {
-  title: "FEATURES/EmbedHomepage",
+  title: "App/FEATURES/EmbedHomepage",
   component: EmbedHomepageView,
   parameters: {
     controls: {
@@ -21,7 +21,7 @@ export default meta;
 type Story = StoryObj<Args>;
 
 export const Default: Story = {
-  render: args => {
+  render: (args) => {
     return (
       <EmbedHomepageView
         {...args}

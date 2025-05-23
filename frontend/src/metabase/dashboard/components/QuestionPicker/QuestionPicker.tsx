@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,11 +10,11 @@ import type { BaseSelectListItemProps } from "metabase/components/SelectList/Bas
 import Input from "metabase/core/components/Input";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { isEmbeddingSdk } from "metabase/env";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Flex, Icon, type IconProps } from "metabase/ui";
@@ -23,6 +22,7 @@ import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
+import { addDashboardQuestion } from "./actions";
 
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
@@ -50,9 +50,9 @@ function QuestionPickerInner({
   const collection = collectionsById[currentCollectionId];
   const crumbs = getCrumbs(collection, collectionsById, setCurrentCollectionId);
 
-  const handleSearchTextChange: React.ChangeEventHandler<
-    HTMLInputElement
-  > = e => setSearchText(e.target.value);
+  const handleSearchTextChange: React.ChangeEventHandler<HTMLInputElement> = (
+    e,
+  ) => setSearchText(e.target.value);
 
   const allCollections = (collection && collection.children) || [];
   const showOnlyPublicCollections = isPublicCollection(dashboardCollection);
@@ -68,32 +68,8 @@ function QuestionPickerInner({
     [databases],
   );
 
-  const onNewQuestion = (type: "native" | "notebook") => {
-    const newQuestionParams =
-      type === "notebook"
-        ? ({
-            mode: "notebook",
-            creationType: "custom_question",
-          } as const)
-        : ({
-            mode: "query",
-            type: "native",
-            creationType: "native_question",
-          } as const);
-
-    if (dashboard) {
-      dispatch(
-        push(
-          Urls.newQuestion({
-            ...newQuestionParams,
-            collectionId: dashboard.collection_id || undefined,
-            cardType: "question",
-            dashboardId: dashboard.id,
-          }),
-        ),
-      );
-    }
-  };
+  const onNewQuestion = (type: "native" | "notebook") =>
+    dispatch(addDashboardQuestion(type));
 
   return (
     <div className={S.questionPickerRoot}>
@@ -108,13 +84,13 @@ function QuestionPickerInner({
         onChange={handleSearchTextChange}
       />
 
-      {(hasDataAccess || hasNativeWrite) && (
+      {(hasDataAccess || hasNativeWrite) && !isEmbeddingSdk && (
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
               variant="outline"
               className={S.newButton}
-              leftIcon={<Icon name="insight" />}
+              leftSection={<Icon name="insight" />}
               onClick={() => onNewQuestion("notebook")}
             >
               {t`New Question`}
@@ -124,7 +100,7 @@ function QuestionPickerInner({
             <Button
               variant="outline"
               className={S.newButton}
-              leftIcon={<Icon name="sql" />}
+              leftSection={<Icon name="sql" />}
               onClick={() => onNewQuestion("native")}
             >
               {t`New SQL query`}
@@ -141,7 +117,7 @@ function QuestionPickerInner({
 
           {collections.length > 0 && (
             <SelectList>
-              {collections.map(collection => {
+              {collections.map((collection) => {
                 const icon = getCollectionIcon(collection);
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
@@ -158,7 +134,7 @@ function QuestionPickerInner({
                       color: iconColor,
                     }}
                     rightIcon="chevronright"
-                    onSelect={collectionId =>
+                    onSelect={(collectionId) =>
                       setCurrentCollectionId(collectionId as CollectionId)
                     }
                   />

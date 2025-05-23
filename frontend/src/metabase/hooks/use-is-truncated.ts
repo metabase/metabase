@@ -65,7 +65,7 @@ export const useAreAnyTruncated = <E extends Element>({
     [...elementsMap.entries()].forEach(([elementKey, element]) => {
       const handleResize = () => {
         const isTruncated = getIsTruncated(element);
-        setTruncationStatusByKey(statuses => {
+        setTruncationStatusByKey((statuses) => {
           const newStatuses = new Map(statuses);
           newStatuses.set(elementKey, isTruncated);
           return newStatuses;
@@ -79,7 +79,7 @@ export const useAreAnyTruncated = <E extends Element>({
     });
 
     return () => {
-      unsubscribeFns.forEach(fn => fn());
+      unsubscribeFns.forEach((fn) => fn());
     };
   }, [disabled]);
 

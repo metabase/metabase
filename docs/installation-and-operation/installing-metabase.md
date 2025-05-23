@@ -10,7 +10,7 @@ Metabase is built and packaged as a Java JAR file and can be run anywhere that J
 
 ## Metabase Cloud (Recommended)
 
-[Metabase Cloud](https://www.metabase.com/cloud) is the easiest way to run Metabase. All you need to do is [sign up for a free trial](https://store.metabase.com/checkout), and you're off to the races.
+[Metabase Cloud](https://www.metabase.com/cloud/) is the easiest way to run Metabase. All you need to do is [sign up for a free trial](https://store.metabase.com/checkout), and you're off to the races.
 
 ## Self-hosting Metabase
 
@@ -50,6 +50,8 @@ See [Upgrading Metabase](upgrading-metabase.md).
 - [Building Metabase from source](../developers-guide/start.md)
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
+
+We currently do not distribute Metabase on AWS Marketplace or Azure Marketplace.
 
 ## Connect with a Metabase Expert
 

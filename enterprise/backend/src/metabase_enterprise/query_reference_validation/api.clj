@@ -3,10 +3,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.models.collection :as collection]
-   [metabase.models.query-analysis :as query-analysis]
-   [metabase.public-settings :as public-settings]
+   [metabase.collections.models.collection :as collection]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -118,11 +118,14 @@
 (defn +check-setting
   "Middleware that gates this API behind the associated feature flag"
   [handler]
-  (with-meta
+  (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (if (public-settings/query-analysis-enabled)
+     (if (query-analysis/query-analysis-enabled)
        (handler request respond raise)
        (respond {:status 429 :body "Query Analysis must be enabled to use the Query Reference Validator"})))
-   (meta handler)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
-(api/define-routes api/+check-superuser +auth +check-setting)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/query-reference-validation` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser +auth +check-setting))

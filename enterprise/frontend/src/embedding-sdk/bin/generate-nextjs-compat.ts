@@ -1,10 +1,12 @@
 import fs from "fs";
-
 import path from "path";
+
 import prettier from "prettier";
 import { match } from "ts-pattern";
 
-type ComponentDefinition = {
+import { getPublicComponents } from "./get-public-components";
+
+export type ComponentDefinition = {
   mainComponent: string;
   subComponents: string[];
 };
@@ -12,41 +14,13 @@ type ComponentDefinition = {
 // START OF CONFIGURATION
 // Note: this list needs to be updated when new components are added
 
-const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
-  // MetabaseProvider is added manually because it needs to render children while loading
-  // we may have other components that need to render children while loading, in that case we can add a flag here
-  // { mainComponent: "MetabaseProvider", subComponents: [] },
-  { mainComponent: "StaticQuestion", subComponents: [] },
-  {
-    mainComponent: "InteractiveQuestion",
-    subComponents: [
-      "BackButton",
-      "FilterBar",
-      "Filter",
-      "FilterButton",
-      "FilterPicker",
-      "ResetButton",
-      "Title",
-      "Summarize",
-      "SummarizeButton",
-      "Editor",
-      "Notebook",
-      "NotebookButton",
-      "EditorButton",
-      "QuestionVisualization",
-      "SaveQuestionForm",
-      "SaveButton",
-      "ChartTypeSelector",
-      "EditorViewControl",
-      "QuestionSettings",
-    ],
-  },
-  {
-    mainComponent: "StaticDashboard",
-    subComponents: [],
-  },
-  { mainComponent: "InteractiveDashboard", subComponents: [] },
-];
+// MetabaseProvider is added manually because it needs to render children while loading
+// we may have other components that need to render children while loading, in that case we can add a flag here
+// { mainComponent: "MetabaseProvider", subComponents: [] },
+const COMPONENTS_TO_EXPORT: ComponentDefinition[] =
+  getPublicComponents().filter(
+    (component) => component.mainComponent !== "MetabaseProvider",
+  );
 
 // END OF CONFIGURATION
 
@@ -117,7 +91,7 @@ const ${mainComponent} = dynamic(
 
 ${subComponents
   .map(
-    subComponent => `${mainComponent}.${subComponent} = dynamic(
+    (subComponent) => `${mainComponent}.${subComponent} = dynamic(
 () =>
   import("./main.bundle.js").then((m) => {
     return { default: m.${mainComponent}.${subComponent} };
@@ -135,7 +109,7 @@ ${match(type)
 };
 
 const generateAllComponents = (type: "cjs" | "js") => {
-  return COMPONENTS_TO_EXPORT.map(component =>
+  return COMPONENTS_TO_EXPORT.map((component) =>
     generateCodeFor({ component, type }),
   ).join("\n");
 };
@@ -194,7 +168,4 @@ writeToFile("nextjs.js", nextjs_js);
 writeToFile("nextjs-no-ssr.cjs", nextjs_no_ssr_cjs);
 writeToFile("nextjs-no-ssr.js", nextjs_no_ssr_js);
 
-writeToFile(
-  "nextjs.d.ts",
-  `export * from "./enterprise/frontend/src/embedding-sdk/index.d.ts";`,
-);
+writeToFile("nextjs.d.ts", `export * from "./index.d.ts";`);

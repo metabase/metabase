@@ -25,7 +25,7 @@ export const PermissionHelpDescription = ({
   iconColor,
   hasUpgradeNotice,
 }: PermissionHelpDescriptionProps) => {
-  const upgradeUrl = useSelector(state =>
+  const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "admin_permissions" }),
   );
 
@@ -49,7 +49,7 @@ export const PermissionHelpDescription = ({
       {hasUpgradeNotice ? (
         <>
           <Text mt="1rem">{getLimitedPermissionAvailabilityMessage()}</Text>{" "}
-          <Text weight="bold">
+          <Text fw="bold">
             <ExternalLink href={upgradeUrl}>{t`Upgrade to Pro`}</ExternalLink>
           </Text>
         </>

@@ -275,7 +275,7 @@ describe("IFrameViz", () => {
       const dashcard = createMockIFrameDashboardCard({
         dashboard_id: dashboard.id,
         visualization_settings: { iframe: iframeContent },
-        parameter_mappings: parameters.map(param => ({
+        parameter_mappings: parameters.map((param) => ({
           parameter_id: param.id,
           target: ["text-tag", param.slug],
         })),

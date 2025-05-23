@@ -22,21 +22,28 @@ import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
 const TextEditorMock = ({
+  highlightRanges,
   value,
-  highlightedTexts,
 }: {
+  highlightRanges?: { start: number; end: number }[];
   value: string;
-  highlightedTexts?: string[];
-}) => (
-  <>
-    <div data-testid="text-editor-mock">{value}</div>
-    <div data-testid="text-editor-mock-highlighted-code">
-      {highlightedTexts}
-    </div>
-  </>
-);
+}) => {
+  const highlightedTexts = highlightRanges?.map((range) =>
+    value.slice(range.start, range.end),
+  );
+  return (
+    <>
+      <div data-testid="text-editor-mock">{value}</div>
+      <div data-testid="text-editor-mock-highlighted-code">
+        {highlightedTexts}
+      </div>
+    </>
+  );
+};
 
-jest.mock("metabase/components/TextEditor", () => TextEditorMock);
+jest.mock("metabase/components/CodeEditor", () => ({
+  CodeEditor: TextEditorMock,
+}));
 
 export const FONTS_MOCK_VALUES = [
   "My Awesome Font",

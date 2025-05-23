@@ -64,9 +64,12 @@ const Questions = createEntity({
         cardApi.endpoints.getCard,
       ),
     create: (entityQuery, dispatch) => {
-      const { dashboard_id, collection_id, ...rest } = entityQuery;
+      const { collection_id, dashboard_id, dashboard_tab_id, ...rest } =
+        entityQuery;
 
-      const destination = dashboard_id ? { dashboard_id } : { collection_id };
+      const destination = dashboard_id
+        ? { dashboard_id, dashboard_tab_id }
+        : { collection_id };
 
       return entityCompatibleQuery(
         { ...rest, ...destination },
@@ -95,7 +98,7 @@ const Questions = createEntity({
       }),
     )(
       ({ id } = {}) =>
-        dispatch =>
+        (dispatch) =>
           entityCompatibleQuery(
             id,
             dispatch,
@@ -111,7 +114,7 @@ const Questions = createEntity({
         fields: [FieldSchema],
       }),
     )(
-      query => dispatch =>
+      (query) => (dispatch) =>
         entityCompatibleQuery(
           query,
           dispatch,
@@ -132,7 +135,7 @@ const Questions = createEntity({
     // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
     // this function name is incorrect but maintained for consistency with other entities.
     setCollection: (card, destination, opts) => {
-      return async dispatch => {
+      return async (dispatch) => {
         const archived =
           destination.model === "collection" &&
           isRootTrashCollection(destination);
@@ -199,27 +202,29 @@ const Questions = createEntity({
     getListUnfiltered: (state, { entityQuery }) => {
       const entityIds =
         Questions.selectors.getEntityIds(state, { entityQuery }) ?? [];
-      return entityIds.map(entityId =>
+      return entityIds.map((entityId) =>
         Questions.selectors.getObjectUnfiltered(state, { entityId }),
       );
     },
   },
 
   objectSelectors: {
-    getName: card => card && card.name,
+    getName: (card) => card && card.name,
     getUrl: (card, opts) => card && Urls.question(card, opts),
     getColor: () => color("text-medium"),
-    getCollection: card => card && normalizedCollection(card.collection),
+    getCollection: (card) => card && normalizedCollection(card.collection),
     getIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
     if (type === SOFT_RELOAD_CARD) {
       const { id } = payload;
-      const latestReview = payload.moderation_reviews?.find(x => x.most_recent);
+      const latestReview = payload.moderation_reviews?.find(
+        (x) => x.most_recent,
+      );
 
       if (latestReview) {
-        return updateIn(state, [id], question => ({
+        return updateIn(state, [id], (question) => ({
           ...question,
           moderated_status: latestReview.status,
         }));
@@ -229,12 +234,12 @@ const Questions = createEntity({
     if (type === INJECT_RTK_QUERY_QUESTION_VALUE) {
       const { id } = payload;
 
-      return updateIn(state, [id], question => ({ ...question, ...payload }));
+      return updateIn(state, [id], (question) => ({ ...question, ...payload }));
     }
     return state;
   },
 
-  // NOTE: keep in sync with src/metabase/api/card.clj
+  // NOTE: keep in sync with src/metabase/queries/api/card.clj
   writableProperties: [
     "name",
     "cache_ttl",
@@ -250,6 +255,7 @@ const Questions = createEntity({
     "embedding_params",
     "collection_id",
     "dashboard_id",
+    "dashboard_tab_id",
     "collection_position",
     "collection_preview",
     "result_metadata",

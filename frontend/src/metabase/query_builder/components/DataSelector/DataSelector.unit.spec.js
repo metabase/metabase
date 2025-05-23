@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
@@ -30,22 +29,6 @@ const OTHER_MULTI_SCHEMA_TABLE2_ID = 201;
 const EMPTY_DB_ID = 4;
 
 describe("DataSelector", () => {
-  beforeEach(() => {
-    fetchMock.get(
-      {
-        url: "path:/api/search",
-        query: { models: "dataset", limit: 1 },
-      },
-      {
-        data: [],
-        limit: 1,
-        models: ["dataset"],
-        offset: 0,
-        total: 0,
-      },
-    );
-  });
-
   const databases = [
     createSampleDatabase(),
     createMockDatabase({
@@ -113,8 +96,6 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE, ANOTHER_DATABASE]}
-        models={[]}
-        metrics={[]}
         metadata={metadata}
         isOpen={true}
         setSourceTableFn={setTable}
@@ -165,8 +146,6 @@ describe("DataSelector", () => {
       combineDatabaseSchemaSteps: true,
       triggerElement: <div />,
       databases: [],
-      models: [],
-      metrics: [],
       metadata: emptyMetadata,
       isOpen: true,
       fetchDatabases,
@@ -177,7 +156,7 @@ describe("DataSelector", () => {
     const { rerender } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = nextMetadata => {
+    const rerenderWith = (nextMetadata) => {
       rerender(
         <DataSelector
           {...props}
@@ -190,7 +169,7 @@ describe("DataSelector", () => {
     // on initial load, we fetch databases
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
-    rerender(<DataSelector {...props} allLoading />);
+    rerender(<DataSelector {...props} loading />);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
     // select a db
@@ -233,8 +212,6 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[SAMPLE_DATABASE]}
-        models={[]}
-        metrics={[]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -251,8 +228,6 @@ describe("DataSelector", () => {
         triggerElement={<div>button</div>}
         metadata={emptyMetadata}
         databases={[]}
-        models={[]}
-        metrics={[]}
         fetchDatabases={fetchDatabases}
       />,
     );
@@ -269,8 +244,6 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        models={[]}
-        metrics={[]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -290,8 +263,6 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        models={[]}
-        metrics={[]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -321,8 +292,6 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        models={[]}
-        metrics={[]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -354,8 +323,6 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        models={[]}
-        metrics={[]}
         metadata={metadata}
         isOpen={true}
       />,
@@ -386,8 +353,6 @@ describe("DataSelector", () => {
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
         databases={[SAMPLE_DATABASE]}
-        models={[]}
-        metrics={[]}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
@@ -404,8 +369,6 @@ describe("DataSelector", () => {
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
         databases={[MULTI_SCHEMA_DATABASE]}
-        models={[]}
-        metrics={[]}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
@@ -422,8 +385,6 @@ describe("DataSelector", () => {
         steps={["DATABASE"]}
         databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
-        models={[]}
-        metrics={[]}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
@@ -440,8 +401,6 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[MULTI_SCHEMA_DATABASE, OTHER_MULTI_SCHEMA_DATABASE]}
-        models={[]}
-        metrics={[]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         metadata={metadata}
@@ -463,8 +422,6 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
-        models={[]}
-        metrics={[]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         metadata={metadata}
@@ -492,8 +449,6 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[]}
-        models={[]}
-        metrics={[]}
         triggerElement={<div />}
         isOpen={true}
       />,
@@ -507,13 +462,11 @@ describe("DataSelector", () => {
   it("should show 'Saved Questions' option when there are saved questions", async () => {
     renderWithProviders(
       <DataSelector
+        availableModels={[]}
         steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE, SAVED_QUESTIONS_DATABASE]}
-        models={[]}
-        metrics={[]}
         hasNestedQueriesEnabled
-        hasTableSearch
         loaded
         search={[{}]}
         triggerElement={<div />}
@@ -528,13 +481,11 @@ describe("DataSelector", () => {
   it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", () => {
     renderWithProviders(
       <DataSelector
+        availableModels={[]}
         steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE]}
-        models={[]}
-        metrics={[]}
         hasNestedQueriesEnabled
-        hasTableSearch
         loaded
         search={[{}]}
         triggerElement={<div />}

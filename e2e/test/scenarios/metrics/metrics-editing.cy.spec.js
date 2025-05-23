@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -73,27 +73,6 @@ describe("scenarios > metrics > editing", () => {
   });
 
   describe("organization", () => {
-    it("should be able to create a new metric from the homepage", () => {
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Metric").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      saveMetric({ name: "my new metric" });
-      verifyScalarValue("18,760");
-
-      cy.log(
-        "newly created metric should be visible in recents (metabase#44223)",
-      );
-      H.appBar()
-        .findByText(/search/i)
-        .click();
-      H.commandPalette().findByText("my new metric").should("be.visible");
-    });
-
     it("should be able to rename a metric", () => {
       const newTitle = "New metric name";
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
@@ -135,9 +114,11 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should pin new metrics automatically", () => {
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Metric").click();
+      cy.visit("/browse/metrics");
+      cy.findByTestId("browse-metrics-header")
+        .findByLabelText("Create a new metric")
+        .click();
+
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
@@ -407,8 +388,9 @@ describe("scenarios > metrics > editing", () => {
       H.enterCustomColumnDetails({
         formula: `[${ORDERS_SCALAR_METRIC.name}] / 2`,
         name: "",
+        blur: true,
       });
-      H.popover().button("Update").click();
+      H.popover().button("Update").should("not.be.disabled").click();
       saveMetric();
       verifyScalarValue("9,380");
     });
@@ -511,6 +493,7 @@ function getActionButton(title) {
 }
 
 function getPlusButton() {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
@@ -551,7 +534,7 @@ function addStringCategoryFilter({ tableName, columnName, values }) {
       cy.findByText(tableName).click();
     }
     cy.findByText(columnName).click();
-    values.forEach(value => cy.findByText(value).click());
+    values.forEach((value) => cy.findByText(value).click());
     cy.button("Add filter").click();
   });
 }
@@ -569,17 +552,6 @@ function addNumberBetweenFilter({ tableName, columnName, minValue, maxValue }) {
   });
 }
 
-function addAggregation({ operatorName, columnName, stageIndex }) {
-  startNewAggregation({ stageIndex });
-
-  H.popover().within(() => {
-    cy.findByText(operatorName).click();
-    if (columnName) {
-      cy.findByText(columnName).click();
-    }
-  });
-}
-
 function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   startNewBreakout({ stageIndex });
   if (tableName) {
@@ -587,6 +559,7 @@ function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   }
   if (bucketName) {
     H.popover().findByLabelText(columnName).findByText("by month").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(bucketName).click();
   } else {
     H.popover().findByText(columnName).click();

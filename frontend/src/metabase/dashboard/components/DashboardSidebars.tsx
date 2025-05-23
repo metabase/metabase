@@ -8,9 +8,10 @@ import {
   getParameters,
 } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
+import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
-import SharingSidebar from "metabase/sharing/components/SharingSidebar";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import type {
   CardId,
   DashCardId,
@@ -36,7 +37,6 @@ import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
-  showAddParameterPopover: () => void;
   removeParameter: (id: ParameterId) => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -93,7 +93,6 @@ interface DashboardSidebarsProps {
 
 export function DashboardSidebars({
   dashboard,
-  showAddParameterPopover,
   removeParameter,
   addCardToDashboard,
   clickBehaviorSidebarDashcard,
@@ -185,7 +184,7 @@ export function DashboardSidebars({
       const { id: editingParameterId } = editingParameter || {};
       const [[parameter], otherParameters] = _.partition(
         parameters,
-        p => p.id === editingParameterId,
+        (p) => p.id === editingParameterId,
       );
       return (
         <ParameterSidebar
@@ -200,7 +199,6 @@ export function DashboardSidebars({
           onChangeSourceConfig={setParameterSourceConfig}
           onChangeFilteringParameters={setParameterFilteringParameters}
           onRemoveParameter={removeParameter}
-          onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
           onChangeRequired={setParameterRequired}
           onChangeTemporalUnits={setParameterTemporalUnits}
@@ -216,12 +214,25 @@ export function DashboardSidebars({
         />
       );
     case SIDEBAR_NAME.sharing:
-      return <SharingSidebar dashboard={dashboard} onCancel={onCancel} />;
+      return (
+        <DashboardSubscriptionsSidebar
+          dashboard={dashboard}
+          onCancel={onCancel}
+        />
+      );
     case SIDEBAR_NAME.info:
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
           setDashboardAttribute={setDashboardAttribute}
+          onClose={closeSidebar}
+        />
+      );
+    case SIDEBAR_NAME.analyze:
+      return (
+        <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar
+          dashcardId={sidebar.props?.dashcardId}
+          dashboard={dashboard}
           onClose={closeSidebar}
         />
       );

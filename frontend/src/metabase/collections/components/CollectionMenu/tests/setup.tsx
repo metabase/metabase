@@ -1,8 +1,15 @@
 /* istanbul ignore file */
+import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDashboardQuestionCandidatesEndpoint } from "__support__/server-mocks";
+import {
+  setupDashboardQuestionCandidatesEndpoint,
+  setupStaleItemsEndpoint,
+  setupUserKeyValueEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   Collection,
   DashboardQuestionCandidate,
@@ -24,6 +31,9 @@ export interface SetupOpts {
   isPersonalCollectionChild?: boolean;
   hasEnterprisePlugins?: boolean;
   dashboardQuestionCandidates?: DashboardQuestionCandidate[];
+  moveToDashboard?: boolean;
+  numberOfCollectionItems?: number;
+  numberOfStaleItems?: number;
 }
 
 export const setup = ({
@@ -33,8 +43,33 @@ export const setup = ({
   isPersonalCollectionChild = false,
   hasEnterprisePlugins = false,
   dashboardQuestionCandidates = [],
+  moveToDashboard = false,
+  numberOfCollectionItems = 10,
+  numberOfStaleItems = 0,
 }: SetupOpts) => {
+  // We need a mock to get the total number of items in a collection, but we don't need to
+  // access the data - only the total
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, {
+    total: numberOfCollectionItems,
+  });
   setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
+  setupUserKeyValueEndpoints({
+    namespace: "indicator-menu",
+    key: "collection-menu",
+    value: [],
+  });
+
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "move-to-dashboard",
+    value: moveToDashboard,
+  });
+
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "clean-stale-items",
+    value: moveToDashboard,
+  });
 
   const state = createMockState({
     settings: mockSettings({ "token-features": tokenFeatures }),
@@ -44,18 +79,48 @@ export const setup = ({
   const onUpdateCollection = jest.fn();
 
   if (hasEnterprisePlugins) {
+    setupStaleItemsEndpoint(numberOfStaleItems);
     setupEnterprisePlugins();
   }
 
   renderWithProviders(
-    <CollectionMenu
-      collection={collection}
-      isAdmin={isAdmin}
-      isPersonalCollectionChild={isPersonalCollectionChild}
-      onUpdateCollection={onUpdateCollection}
-    />,
-    { storeInitialState: state },
+    <>
+      <Route
+        path="/"
+        component={() => (
+          <CollectionMenu
+            collection={collection}
+            isAdmin={isAdmin}
+            isPersonalCollectionChild={isPersonalCollectionChild}
+            onUpdateCollection={onUpdateCollection}
+          />
+        )}
+      />
+    </>,
+    { storeInitialState: state, initialRoute: "/", withRouter: true },
   );
 
   return { onUpdateCollection };
+};
+
+export const assertIndicatorVisible = async () => {
+  await waitFor(async () =>
+    expect(
+      (await screen.findByTestId("menu-indicator-root")).querySelector(
+        "[class*=indicator]",
+      ),
+    ).toBeInTheDocument(),
+  );
+};
+
+export const assertIndicatorHidden = async () => {
+  await fetchMock.flush();
+  await waitFor(() =>
+    expect(screen.queryByTestId("thing-is-loading")).not.toBeInTheDocument(),
+  );
+  expect(
+    (await screen.findByTestId("menu-indicator-root")).querySelector(
+      "[class*=indicator]",
+    ),
+  ).not.toBeInTheDocument();
 };

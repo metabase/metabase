@@ -15,6 +15,7 @@ const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
+const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
@@ -23,6 +24,7 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
+const PORT = process.env.PORT || 8080;
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
@@ -65,7 +67,7 @@ const SWC_LOADER = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: devMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -76,12 +78,12 @@ const CSS_CONFIG = {
 
 class OnScriptError {
   apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", compilation => {
+    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
         "OnScriptError",
         (data, cb) => {
           // Manipulate the content
-          data.assetTags.scripts.forEach(script => {
+          data.assetTags.scripts.forEach((script) => {
             script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
           });
           // Tell webpack to move on
@@ -207,7 +209,6 @@ const config = {
       __support__: TEST_SUPPORT_PATH,
       e2e: E2E_PATH,
       style: SRC_PATH + "/css/core/index",
-      ace: __dirname + "/node_modules/ace-builds/src-noconflict",
       // NOTE @kdoh - 7/24/18
       // icepick 2.x is es6 by defalt, to maintain backwards compatability
       // with ie11 point to the minified version
@@ -221,6 +222,7 @@ const config = {
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
+      embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
     },
   },
@@ -286,14 +288,10 @@ const config = {
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
+      ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({ process: "process/browser.js" }),
-    // https://github.com/metabase/metabase/issues/35374
-    new rspack.NormalModuleReplacementPlugin(
-      /.\/use-popover.js/,
-      `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
-    ),
   ],
 };
 
@@ -309,9 +307,10 @@ if (shouldEnableHotRefresh) {
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
-    "http://localhost:8080/" + config.output.publicPath;
+    `http://localhost:${PORT}/` + config.output.publicPath;
 
   config.devServer = {
+    port: PORT, // make the port explicit so it errors if it's already in use
     hot: true,
     client: {
       progress: false,

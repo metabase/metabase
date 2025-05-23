@@ -40,7 +40,7 @@ export function AnotherColumnForm({
 
   const columnOptions = useMemo(
     () =>
-      columns.map(column => ({
+      columns.map((column) => ({
         label: column.display_name,
         value: column.name,
       })),
@@ -49,7 +49,7 @@ export function AnotherColumnForm({
 
   const handleChangeColumnKey = (value: string) => {
     setColumn(value);
-    const option = columnOptions.find(option => option.value === value);
+    const option = columnOptions.find((option) => option.value === value);
     setLabel(option?.label || "");
   };
 
@@ -73,7 +73,7 @@ export function AnotherColumnForm({
         <PopoverBackButton
           onClick={onBack}
         >{t`Value from another column`}</PopoverBackButton>
-        <Stack pos="relative" w="100%" spacing="md">
+        <Stack pos="relative" w="100%" gap="md">
           <Select
             autoFocus={!column}
             value={column}
@@ -82,7 +82,10 @@ export function AnotherColumnForm({
             searchable
             onChange={handleChangeColumnKey}
             styles={{ dropdown: { width: "100%" } }}
-            withinPortal={false}
+            comboboxProps={{
+              withinPortal: false,
+              floatingStrategy: "fixed",
+            }}
           />
           <TextInput
             value={label}

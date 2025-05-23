@@ -75,6 +75,7 @@
   --mb-color-warning: #f9cf48;
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
+  --mb-color-text-secondary-inverse: #b7bcbf;
   --mb-color-text-tertiary: var(--mb-color-text-light);
   --mb-color-text-selected: var(--mb-base-color-white);
   --mb-color-text-hover: var(--mb-base-color-brand-40);
@@ -102,8 +103,8 @@
     var(--mb-color-tooltip-background) 50%,
     #000
   );
-  --mb-color-syntax-parameters: var(--mb-base-color-mango-30);
-  --mb-color-notebook-step-bg: var(--mb-base-color-orion-10);
+  --mb-color-syntax-parameters: var(--mb-base-color-mango-40);
+  --mb-color-syntax-parameters-active: var(--mb-base-color-mango-10);
   --mb-color-switch-off: var(--mb-base-color-orion-10);
 
   /**

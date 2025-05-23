@@ -5,10 +5,9 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { ErrorMessage } from "metabase/components/ErrorMessage";
-import Modal from "metabase/components/Modal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
+import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
@@ -21,7 +20,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "hasMetadataPopovers",
   "tableHeaderHeight",
   "scrollToColumn",
-  "renderTableHeaderWrapper",
+  "renderTableHeader",
   "mode",
   "renderEmptyMessage",
 ];
@@ -39,7 +38,7 @@ export default class VisualizationResult extends Component {
     this.setState({ showCreateAlertModal: false });
   };
 
-  getObjectDetailData = series => {
+  getObjectDetailData = (series) => {
     return [
       {
         ...series[0],
@@ -61,6 +60,8 @@ export default class VisualizationResult extends Component {
       onNavigateBack,
       className,
       isRunning,
+      isShowingSummarySidebar,
+      onEditSummary,
       renderEmptyMessage,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -103,12 +104,10 @@ export default class VisualizationResult extends Component {
             }
           />
           {showCreateAlertModal && (
-            <Modal medium onClose={this.onCloseCreateAlertModal}>
-              <CreateAlertModalContent
-                onCancel={this.onCloseCreateAlertModal}
-                onAlertCreated={this.onCloseCreateAlertModal}
-              />
-            </Modal>
+            <CreateOrEditQuestionAlertModal
+              onClose={this.onCloseCreateAlertModal}
+              onAlertCreated={this.onCloseCreateAlertModal}
+            />
           )}
         </div>
       );
@@ -130,6 +129,8 @@ export default class VisualizationResult extends Component {
             isEditing={true}
             isObjectDetail={false}
             isQueryBuilder={true}
+            isShowingSummarySidebar={isShowingSummarySidebar}
+            onEditSummary={onEditSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}
             canToggleSeriesVisibility
@@ -143,9 +144,11 @@ export default class VisualizationResult extends Component {
             onOpenChartSettings={this.props.onOpenChartSettings}
             onUpdateQuestion={this.props.onUpdateQuestion}
             onUpdateWarnings={this.props.onUpdateWarnings}
+            onHeaderColumnReorder={this.props.onHeaderColumnReorder}
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
+            onVisualizationRendered={this.props.onVisualizationRendered}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (

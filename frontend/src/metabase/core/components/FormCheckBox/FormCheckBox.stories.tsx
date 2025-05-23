@@ -5,11 +5,11 @@ import { Form, FormProvider } from "metabase/forms";
 import FormCheckBox from "./FormCheckBox";
 
 export default {
-  title: "Core/FormCheckBox",
+  title: "Components/Ask Before Using/FormCheckBox",
   component: FormCheckBox,
 };
 
-const Template: StoryFn<typeof FormCheckBox> = args => {
+const Template: StoryFn<typeof FormCheckBox> = (args) => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 

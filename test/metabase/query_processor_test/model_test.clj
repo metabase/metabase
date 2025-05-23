@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
@@ -34,7 +34,8 @@
                                                         (m/find-first (comp #{"Price"} :display-name)))))
                         (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
                                                            (lib/breakoutable-columns $q))
-                                             (lib/with-temporal-bucket :month))))
+                                             (lib/with-temporal-bucket :month)))
+                        (lib.convert/->legacy-MBQL $q))
                       :database_id (mt/id)
                       :name "Products+Reviews Summary"
                       :type :model}]
@@ -57,7 +58,8 @@
                                                                                (lib/breakoutable-columns
                                                                                 (lib/query mp (lib.metadata/card mp (:id consumer-model)))))
                                                                  (lib/with-temporal-bucket :month)))])
-                                          (lib/with-join-fields :all))))]
+                                          (lib/with-join-fields :all)))
+                         (lib/->legacy-MBQL $q))]
           (is (= ["Reviews → Created At: Month"
                   "Average of Rating"
                   "Products+Reviews Summary - Reviews → Created At: Month → Created At"

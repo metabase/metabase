@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -40,7 +41,7 @@ export const StatusBody = styled.div`
 
 export const StatusCardRoot = styled.div<{ hasBody?: boolean }>`
   display: flex;
-  align-items: ${props => (props.hasBody ? "flex-start" : "center")};
+  align-items: ${(props) => (props.hasBody ? "flex-start" : "center")};
   margin: 0.75rem;
 `;
 
@@ -98,6 +99,6 @@ export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
   height: 1.5rem;
   border-radius: 1rem;
   color: var(--mb-color-text-white);
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isError ? color("error") : color("success")};
 `;

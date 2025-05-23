@@ -28,10 +28,10 @@ export const getJoinedTablesWithIcons = (question: Question) => {
 
   const stageIndexes = Lib.stageIndexes(query);
 
-  const joinedTables = stageIndexes.flatMap(stageIndex => {
+  const joinedTables = stageIndexes.flatMap((stageIndex) => {
     const joins = Lib.joins(query, stageIndex);
 
-    const joinedThings = joins.map(join => {
+    const joinedThings = joins.map((join) => {
       const thing = Lib.joinedThing(query, join);
       const url = getUrl({ query, table: thing, stageIndex }) as string;
       const { displayName } = Lib.displayInfo(query, stageIndex, thing);
@@ -40,7 +40,7 @@ export const getJoinedTablesWithIcons = (question: Question) => {
     return joinedThings;
   });
 
-  return joinedTables.map(source => ({
+  return joinedTables.map((source) => ({
     ...source,
     iconProps: getIconPropsForSource(source),
   }));

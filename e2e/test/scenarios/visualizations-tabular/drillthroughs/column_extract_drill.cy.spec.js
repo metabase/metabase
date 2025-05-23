@@ -1,11 +1,11 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -69,6 +69,10 @@ const URL_CASES = [
     value: "yahoo.com",
     example: "example.com, online.com",
   },
+  {
+    option: "Path",
+    example: "/en/docs/feature",
+  },
 ];
 
 const DATE_QUESTION = {
@@ -130,7 +134,7 @@ H.describeWithSnowplow("extract action", () => {
       });
 
       it("saved question with viz settings", () => {
-        cy.createQuestion(
+        H.createQuestion(
           {
             query: {
               "source-table": ORDERS_ID,
@@ -177,7 +181,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should add an expression based on a breakout column", () => {
-      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      H.createQuestion(DATE_QUESTION, { visitQuestion: true });
       extractColumnAndCheck({
         column: "Created At: Month",
         option: "Month of year",
@@ -187,7 +191,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should add an expression based on an aggregation column", () => {
-      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      H.createQuestion(DATE_QUESTION, { visitQuestion: true });
       extractColumnAndCheck({
         column: "Min of Created At",
         option: "Year",
@@ -222,8 +226,11 @@ H.describeWithSnowplow("extract action", () => {
       });
       H.openNotebook();
       H.getNotebookStep("expression").findByText("Year").click();
-      H.enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
-      H.popover().button("Update").click();
+      H.enterCustomColumnDetails({
+        formula: "year([Created At]) + 2",
+        format: true,
+      });
+      H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
     });
@@ -235,9 +242,9 @@ H.describeWithSnowplow("extract action", () => {
       H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
-        option: "Tag der Woche",
+        option: "Tag in der Woche",
         value: "Dienstag",
-        extraction: "Extract day, month…",
+        extraction: "Auszug Tag, Monat…",
       });
     });
   });
@@ -286,6 +293,71 @@ H.describeWithSnowplow("extract action", () => {
         });
       });
     });
+
+    it("should be able to extract path from URL column", () => {
+      function assertTableData({ title, value }) {
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.tableInteractive()
+          .findAllByTestId("header-cell")
+          .last()
+          .should("have.text", title);
+
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.tableInteractiveBody()
+          .findAllByTestId("cell-data")
+          .last()
+          .should("have.text", value);
+      }
+
+      const CC_NAME = "URL_URL";
+      const questionDetails = {
+        name: "path from url",
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+          expressions: {
+            [CC_NAME]: [
+              "concat",
+              "http://",
+              ["domain", ["field", PEOPLE.EMAIL, null]],
+              ".com/my/path",
+            ],
+          },
+        },
+        type: "model",
+      };
+
+      H.createQuestion(questionDetails).then(({ body: { id: modelId } }) => {
+        // set semantic type to URL
+        H.setModelMetadata(modelId, (field) => {
+          if (field.name === CC_NAME) {
+            return { ...field, semantic_type: "type/URL" };
+          }
+
+          return field;
+        });
+
+        // this is the way to open model definition with columns
+        cy.visit(`/model/${modelId}/query`);
+        cy.findByTestId("dataset-edit-bar").findByText("Cancel").click();
+      });
+
+      cy.findByTestId("table-scroll-container").scrollTo("right");
+
+      const urlCase = URL_CASES.find((c) => c.option === "Path");
+      extractColumnAndCheck({
+        column: CC_NAME,
+        option: urlCase.option,
+        example: urlCase.example,
+        extraction: "Extract domain, subdomain…",
+      });
+
+      const extractedValue = "/my/path";
+      assertTableData({
+        title: "Path",
+        value: extractedValue,
+      });
+    });
   });
 });
 
@@ -300,7 +372,7 @@ function extractColumnAndCheck({
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   H.tableHeaderClick(column);
-  // cy.findByRole("columnheader", { name: column }).click();
+
   H.popover().findByText(extraction).click();
   cy.wait(1);
 
@@ -311,6 +383,7 @@ function extractColumnAndCheck({
   H.popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
     .should("have.text", newColumn)
@@ -344,7 +417,7 @@ H.describeWithSnowplow("extract action", () => {
       extraction: "Extract day, month…",
     });
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "column_extract_via_column_header",
       custom_expressions_used: ["get-year"],
       database_id: SAMPLE_DB_ID,

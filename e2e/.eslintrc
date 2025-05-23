@@ -8,6 +8,9 @@
     "cypress/no-async-tests": "error",
     "cypress/no-pause": "error",
     "quotes": ["error", "double", { "avoidEscape": true }],
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
@@ -44,7 +47,10 @@
           "@metabase/embedding-sdk-react"
         ]
       }
-    ]
+    ],
+    "no-direct-helper-import": 2,
+    "no-unsafe-element-filtering": ["warn"],
+    "no-unordered-test-helpers": 2
   },
   "env": {
     "cypress/globals": true,

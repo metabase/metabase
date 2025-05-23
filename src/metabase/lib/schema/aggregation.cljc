@@ -21,6 +21,10 @@
 (mbql-clause/define-tuple-mbql-clause :distinct :- :type/Integer
   [:schema [:ref ::expression/expression]])
 
+(mbql-clause/define-tuple-mbql-clause :distinct-where :- :type/Integer
+  [:schema [:ref ::expression/expression]]
+  [:schema [:ref ::expression/boolean]])
+
 (mbql-clause/define-tuple-mbql-clause :count-where :- :type/Integer
   [:schema [:ref ::expression/boolean]])
 
@@ -97,6 +101,7 @@
              :cum-count
              :count-where
              :distinct
+             :distinct-where
              :max
              :median
              :min
@@ -108,7 +113,6 @@
              :cum-sum
              :sum-where
              :var
-             ;; legacy metric ref
              :metric]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
@@ -118,7 +122,11 @@
   [x]
   (when-let [[tag _opts & args] (and (vector? x) x)]
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
-        (some aggregation-expression? args))))
+        ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
+        (if (= :case tag)
+          (or (some aggregation-expression? (ffirst args))
+              (some aggregation-expression? (fnext args)))
+          (some aggregation-expression? args)))))
 
 (mr/def ::aggregation
   [:and

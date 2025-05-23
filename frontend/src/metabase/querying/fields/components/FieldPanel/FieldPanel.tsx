@@ -47,7 +47,7 @@ export const FieldPanel = ({
     <div>
       <TextInput
         value={searchValue}
-        onChange={e => setSearchValue(e.target.value)}
+        onChange={(e) => setSearchValue(e.target.value)}
         rightSection={<Icon name="search" />}
         placeholder={t`Search for a column…`}
         mb="1rem"
@@ -84,7 +84,7 @@ export const FieldPanel = ({
                   label={
                     <Flex ml="0.25rem" align="center">
                       <Icon name={getColumnIcon(columnItem.column)} />
-                      <Text span ml="0.5rem" lh="1rem" fw={400}>
+                      <Text component="span" ml="0.5rem" lh="1rem" fw={400}>
                         {columnItem.displayName}
                       </Text>
                     </Flex>

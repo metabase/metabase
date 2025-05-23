@@ -1,41 +1,11 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
-import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
+import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
+import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineTheme } from "metabase/ui";
-
-/** Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme. */
-const CSS_VARIABLES_TO_SDK_THEME_MAP = {
-  "--mb-color-tooltip-text": "tooltip.textColor",
-  "--mb-color-tooltip-background": "tooltip.backgroundColor",
-  "--mb-color-tooltip-background-focused": "tooltip.focusedBackgroundColor",
-  "--mb-color-tooltip-text-secondary": "tooltip.secondaryTextColor",
-  "--mb-color-bg-dashboard": "dashboard.backgroundColor",
-  "--mb-color-bg-dashboard-card": "dashboard.card.backgroundColor",
-  "--mb-color-bg-question": "question.backgroundColor",
-  "--mb-color-text-collection-browser-expand-button":
-    "collectionBrowser.breadcrumbs.expandButton.textColor",
-  "--mb-color-bg-collection-browser-expand-button":
-    "collectionBrowser.breadcrumbs.expandButton.backgroundColor",
-  "--mb-color-text-collection-browser-expand-button-hover":
-    "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
-  "--mb-color-bg-collection-browser-expand-button-hover":
-    "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
-  "--mb-overlay-z-index": "popover.zIndex",
-} satisfies Record<string, MetabaseComponentThemeKey>;
-
-// https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
-type FlattenObjectKeys<
-  T extends Record<string, unknown>,
-  Key = keyof T,
-> = Key extends string
-  ? T[Key] extends Record<string, unknown> | undefined
-    ? `${Key}.${FlattenObjectKeys<Exclude<T[Key], undefined>>}`
-    : `${Key}`
-  : never;
-
-type MetabaseComponentThemeKey = FlattenObjectKeys<MetabaseComponentTheme>;
 
 /**
  * Defines the CSS variables used across Metabase.
@@ -44,12 +14,14 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
   return css`
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
+      --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      --mb-color-brand: ${theme.fn.themeColor("brand")};
-      --mb-color-summarize: ${theme.fn.themeColor("summarize")};
-      --mb-color-filter: ${theme.fn.themeColor("filter")};
+      --mb-color-brand: ${theme.colors.brand[0]};
+      --mb-color-summarize: ${theme.colors.summarize[0]};
+      --mb-color-filter: ${theme.colors.filter[0]};
       ${getThemeSpecificCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
     }
   `;
 }
@@ -59,6 +31,7 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
     :root {
       --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
     }
   `;
@@ -77,8 +50,8 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
     /* Semantic colors */
     /* Dynamic colors from SDK */
     ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
-      ([_, metabaseColorNames]) => {
-        return metabaseColorNames.map(metabaseColorName => {
+      ([_key, metabaseColorNames]) => {
+        return metabaseColorNames.map((metabaseColorName) => {
           /**
            * Prevent returning the primary color when color is not found,
            * so we could add a logic to fallback to the default color ourselves.
@@ -88,11 +61,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
            *
            * @see SDK_TO_MAIN_APP_COLORS_MAPPING
            */
-          const color = theme.fn.themeColor(
-            metabaseColorName,
-            undefined,
-            false,
-          );
+          const color = theme.fn.themeColor(metabaseColorName);
           const colorExist = color !== metabaseColorName;
 
           if (colorExist) {

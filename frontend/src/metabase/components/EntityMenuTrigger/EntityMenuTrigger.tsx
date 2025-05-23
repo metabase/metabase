@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 
 import type { EntityMenuIconButtonProps } from "./EntityMenuTrigger.styled";
 import { EntityMenuIconButton } from "./EntityMenuTrigger.styled";
@@ -39,7 +39,7 @@ const EntityMenuTrigger = ({
     />
   );
   return tooltip ? (
-    <Tooltip tooltip={tooltip} isEnabled={!open} placement={tooltipPlacement}>
+    <Tooltip label={tooltip} disabled={open} position={tooltipPlacement}>
       {triggerContent}
     </Tooltip>
   ) : (

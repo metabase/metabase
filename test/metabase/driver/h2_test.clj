@@ -5,9 +5,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.actions.error :as actions.error]
-   [metabase.config :as config]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
@@ -208,8 +208,19 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
+(deftest ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
+  (mt/test-driver :h2
+    (testing "Don't cast date binned by week"
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!week.date]})
+              compiled (some-> (qp.compile/compile query) :query pretty-sql)]
+          (is (not (re-find #"CAST\([^)]+\s+AS\s+datetime\)" compiled))))))))
+
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
       "select 1"
       "update venues set name = 'bill'"
@@ -261,10 +272,10 @@
 (deftest ^:parallel check-read-only-test
   (testing "read only statements should pass"
     (are [query] (nil?
-                  (#'h2/check-read-only-statements
-                   {:database (u/the-id (mt/db))
-                    :engine :h2
-                    :native {:query query}}))
+                  (mt/with-metadata-provider (mt/id)
+                    (#'h2/check-read-only-statements
+                     {:engine :h2
+                      :native {:query query}})))
       "select * from orders"
       "select 1; select 2;"
       "explain select * from orders"
@@ -280,11 +291,11 @@
     (are [query] (thrown?
                   clojure.lang.ExceptionInfo
                   #"Only SELECT statements are allowed in a native query."
-                  (#'h2/check-read-only-statements
-                   {:database (u/the-id (mt/db))
-                    :engine :h2
-                    :native {:query query}}))
-      "update venues set name = 'bill'"
+                  (mt/with-metadata-provider (mt/id)
+                    (#'h2/check-read-only-statements
+                     {:engine :h2
+                      :native {:query query}}))
+                  "update venues set name = 'bill'")
       "insert into venues (name) values ('bill')"
       "delete venues"
       "select 1; update venues set name = 'bill'; delete venues;"
@@ -349,7 +360,7 @@
             (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
-;; API tests are in [[metabase.api.action-test]]
+;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type    :metabase.actions.error/violate-not-null-constraint

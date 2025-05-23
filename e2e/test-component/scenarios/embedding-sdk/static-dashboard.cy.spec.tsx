@@ -1,10 +1,11 @@
+const { H } = cy;
 import { StaticDashboard } from "@metabase/embedding-sdk-react";
 
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, getTextCardDetails } from "e2e/support/helpers";
+import { createDashboard, getTextCardDetails } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -12,7 +13,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -29,7 +30,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard({
+    createDashboard({
       name: "Embedding SDK Test Dashboard",
       dashcards: [questionCard, textCard],
     }).then(({ body: dashboard }) => {
@@ -48,7 +49,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
   });
 
   it("should render dashboard content", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
 
@@ -66,8 +67,8 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
     });
   });
 
-  it("should show fullscreen mode control by default", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+  it("should not show fullscreen mode control", () => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
 
@@ -76,7 +77,8 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.icon("expand").should("be.visible"); // enter full screen control
+      cy.log("fullscreen mode icon should not show up");
+      cy.icon("expand").should("not.exist");
     });
   });
 
@@ -109,14 +111,14 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
 
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
         });
 
         getSdkRoot().within(() => {
           cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
           cy.findByText("Test question card").should("be.visible");
-          cy.findByText("Rows 1-6 of first 2000").should("be.visible");
+          H.assertTableRowsCount(2000);
           cy.findByText("Test text card").should("be.visible");
         });
       });
@@ -132,7 +134,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText("Rows 1-6 of first 2000").should("not.exist");
+          H.tableInteractiveBody().should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });

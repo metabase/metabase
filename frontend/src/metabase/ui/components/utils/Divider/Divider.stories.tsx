@@ -22,7 +22,7 @@ const VerticalTemplate = (args: DividerProps) => (
 );
 
 export default {
-  title: "Utils/Divider",
+  title: "Components/Utils/Divider",
   component: Divider,
   args,
   argTypes,

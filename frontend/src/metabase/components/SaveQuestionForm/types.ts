@@ -5,7 +5,7 @@ import type {
   DashboardTabId,
 } from "metabase-types/api";
 
-export type SaveQuestionProps = {
+export type SaveQuestionProps<C = CollectionId> = {
   question: Question;
   originalQuestion: Question | null;
   onCreate: (
@@ -28,14 +28,17 @@ export type SaveQuestionProps = {
    * When this is defined, the collection picker will be hidden and
    * the question will be saved to this collection.
    **/
-  saveToCollectionId?: CollectionId;
+  targetCollection?: C;
 };
 
 export type FormValues = {
   saveType: "overwrite" | "create";
   collection_id: CollectionId | null | undefined;
   dashboard_id: DashboardId | null | undefined;
-  tab_id: DashboardTabId | null | undefined;
+  // specifically not using DashboardTabId type here, so that
+  // if that type is ever extended to be something beyond number
+  // we type error to avoid parsing a string as an int
+  dashboard_tab_id: `${number}` | null | undefined;
   name: string;
   description: string;
 };
@@ -55,7 +58,7 @@ export type CreateQuestionOptions = {
       dashboardTabId?: DashboardTabId | undefined;
     },
   ) => Promise<Question>;
-} & Pick<SaveQuestionProps, "saveToCollectionId">;
+} & Pick<SaveQuestionProps, "targetCollection">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
   originalQuestion: Question | null;

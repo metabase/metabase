@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -10,7 +10,7 @@ describe("scenarios > question > null", () => {
   });
 
   it("should display rows whose value is `null` (metabase#13571)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13571",
       query: {
         "source-table": ORDERS_ID,
@@ -28,7 +28,7 @@ describe("scenarios > question > null", () => {
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
-    cy.findByTestId("detail-shortcut").click();
+    H.openObjectDetail(0);
     cy.findByRole("dialog").within(() => {
       cy.findByText(/Discount/i);
       cy.findByText("Empty");
@@ -37,7 +37,7 @@ describe("scenarios > question > null", () => {
 
   it("pie chart should handle `0`/`null` values (metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "13626",
         query: {
@@ -98,17 +98,17 @@ describe("scenarios > question > null", () => {
   });
 
   it("dashboard should handle cards with null values (metabase#13801)", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "13801_Q1",
       native: { query: "SELECT null", "template-tags": {} },
       display: "scalar",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "13801_Q2",
         native: { query: "SELECT 0", "template-tags": {} },
         display: "scalar",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+        H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
           H.updateDashboardCards({
@@ -136,7 +136,8 @@ describe("scenarios > question > null", () => {
     // Total of "39.72", and the next cell is the `discount` (which is empty)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72")
-      .closest(".test-TableInteractive-cellWrapper")
+      .closest("[role=gridcell]")
+      .parent()
       .next()
       .find("div")
       .should("be.empty")

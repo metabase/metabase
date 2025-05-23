@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -13,7 +13,7 @@ const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
 
-H.describeEE("scenarios > admin > permissions > application", () => {
+describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -81,7 +81,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
         H.setupSMTP();
         cy.signInAsNormalUser();
 
-        cy.log("Create a dashboard subscription");
+        cy.log("Set up a dashboard subscription");
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         H.openSharingMenu(/subscriptions/i);
         H.sidebar().findByText("Email this dashboard").should("exist");
@@ -89,7 +89,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
         cy.log("Create a question alert");
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.openSharingMenu(/alert/i);
-        H.modal().findByText("The wide world of alerts").should("be.visible");
+        H.modal().findByText("New alert").should("be.visible");
       });
     });
   });
@@ -109,7 +109,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
           cy.button("Yes").click();
         });
 
-        cy.createNativeQuestion(
+        H.createNativeQuestion(
           {
             name: "broken_question",
             native: { query: "select * from broken_question" },
@@ -183,32 +183,29 @@ H.describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("allows editing settings as a non-admin user", () => {
-        cy.visit("/");
-        cy.icon("gear").click();
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Admin settings").click();
-
+        cy.visit("/admin/settings");
         cy.url().should("include", "/admin/settings/general");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("License and Billing").should("not.exist");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Setup").should("not.exist");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Updates").should("not.exist");
+        cy.findByTestId("admin-layout-content").within(() => {
+          cy.findByText("License and Billing").should("not.exist");
+          cy.findByLabelText("Updates").should("not.exist");
+          cy.findByLabelText("Site Name")
+            .should("be.visible")
+            .clear()
+            .type("NewName")
+            .blur();
+        });
 
-        // General smoke test
-        cy.get("#setting-site-name").clear().type("new name").blur();
-
-        H.undoToast().findByText("Changes saved").should("be.visible");
+        H.undoToast()
+          .findByText(/changes saved/i)
+          .should("be.visible");
       });
     });
   });
 });
 
 function createSubscription(user_id) {
-  cy.createQuestionAndDashboard({
+  H.createQuestionAndDashboard({
     questionDetails: {
       name: "Test Question",
       query: {

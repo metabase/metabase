@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import _LoadingSpinner from "metabase/components/LoadingSpinner";

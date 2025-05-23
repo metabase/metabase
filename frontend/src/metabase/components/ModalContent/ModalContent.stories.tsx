@@ -27,7 +27,7 @@ export default {
   },
 };
 
-const Template: StoryFn<ModalContentProps> = args => {
+const Template: StoryFn<ModalContentProps> = (args) => {
   return (
     <div
       style={{

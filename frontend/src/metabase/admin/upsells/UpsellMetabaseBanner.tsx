@@ -2,11 +2,13 @@ import { t } from "ttag";
 
 import { UpsellCard } from "metabase/admin/upsells/components";
 
+import { UPGRADE_URL } from "./constants";
+
 export function UpsellMetabaseBanner() {
   return (
     <UpsellCard
       title={t`Removing the banner`}
-      buttonLink="https://www.metabase.com/upgrade"
+      buttonLink={UPGRADE_URL}
       buttonText={t`Upgrade plan`}
       campaign="remove-mb-branding"
       source="static-embed-settings-look-and-feel"

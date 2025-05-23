@@ -20,9 +20,9 @@ export const ToggleFullList = ({
   }
 
   return (
-    <Group spacing="sm" mt="sm" lh={1}>
+    <Group gap="sm" mt="sm" lh={1}>
       {
-        <Text color="text-light" lh={1}>
+        <Text c="text-light" lh={1}>
           {isExpanded
             ? c("{0} is a number").t`Showing all ${fullLength} questions`
             : c("The variables are numbers")

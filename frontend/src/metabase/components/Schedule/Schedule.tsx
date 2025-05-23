@@ -1,10 +1,24 @@
-import { type HTMLAttributes, type ReactNode, useCallback } from "react";
-import { c } from "ttag";
+import cx from "classnames";
+import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
+import { match } from "ts-pattern";
+import { c, msgid, ngettext } from "ttag";
+import _ from "underscore";
 
+import {
+  cronToScheduleSettings,
+  scheduleSettingsToCron,
+} from "metabase/admin/performance/utils";
+import { CronExpressionInput } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput";
+import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
-import { Box, type BoxProps } from "metabase/ui";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
+import {
+  GROUP_ATTRIBUTES,
+  GroupControlsTogether,
+} from "./GroupControlsTogether";
+import S from "./Schedule.module.css";
 import {
   SelectFrame,
   SelectFrequency,
@@ -13,261 +27,274 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import { defaultDay, defaultHour, getScheduleStrings } from "./constants";
-import type {
-  ScheduleChangeProp,
-  ScheduleDefaults,
-  UpdateSchedule,
-} from "./types";
-import { fillScheduleTemplate, getLongestSelectLabel } from "./utils";
-
-type ScheduleProperty = keyof ScheduleSettings;
+import { byTheMinuteIntervals } from "./strings";
+import type { UpdateSchedule } from "./types";
+import { getScheduleDefaults } from "./utils";
 
 export interface ScheduleProps {
-  schedule: ScheduleSettings;
+  className?: string;
+  cronString: string;
   scheduleOptions: ScheduleType[];
   onScheduleChange: (
+    nextCronString: string,
     nextSchedule: ScheduleSettings,
-    change: ScheduleChangeProp,
   ) => void;
   timezone?: string;
   verb?: string;
-  textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
+  labelAlignment?: "compact" | "left";
+  isCustomSchedule?: boolean;
+  renderScheduleDescription?: (
+    schedule: ScheduleSettings,
+    cronString: string,
+  ) => JSX.Element | string | null;
 }
 
-const defaults: ScheduleDefaults = {
-  hourly: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: null,
-    schedule_minute: 0,
-  },
-  daily: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: defaultHour,
-    schedule_minute: 0,
-  },
-  weekly: {
-    schedule_day: defaultDay,
-    schedule_frame: null,
-    schedule_hour: defaultHour,
-    schedule_minute: 0,
-  },
-  monthly: {
-    schedule_day: defaultDay,
-    schedule_frame: "first",
-    schedule_hour: defaultHour,
-    schedule_minute: 0,
-  },
-};
-
 export const Schedule = ({
-  schedule,
+  className,
+  cronString: initialCronString,
   scheduleOptions,
   timezone,
   verb,
   minutesOnHourPicker,
   onScheduleChange,
-  ...boxProps
-}: {
-  schedule: ScheduleSettings;
-  scheduleOptions: ScheduleType[];
-  timezone?: string;
-  verb?: string;
-  minutesOnHourPicker?: boolean;
-  onScheduleChange: (
-    nextSchedule: ScheduleSettings,
-    change: ScheduleChangeProp,
-  ) => void;
-} & BoxProps &
-  HTMLAttributes<HTMLDivElement>) => {
+  labelAlignment = "compact",
+  isCustomSchedule,
+  renderScheduleDescription,
+  ...flexProps
+}: ScheduleProps & FlexProps & HTMLAttributes<HTMLDivElement>) => {
+  const [internalCronString, setInternalCronString] = useState(() =>
+    formatCronExpressionForUI(initialCronString),
+  );
+  const schedule = useMemo(() => {
+    return (
+      cronToScheduleSettings(initialCronString, isCustomSchedule) ?? {
+        schedule_type: "hourly" as ScheduleType,
+        schedule_minute: 0,
+      }
+    );
+  }, [initialCronString, isCustomSchedule]);
+
   const updateSchedule: UpdateSchedule = useCallback(
-    (field: ScheduleProperty, value: ScheduleSettings[typeof field]) => {
+    (
+      updatedField: keyof ScheduleSettings,
+      newValue: ScheduleSettings[typeof updatedField],
+    ) => {
       let newSchedule: ScheduleSettings = {
         ...schedule,
-        [field]: value,
+        [updatedField]: newValue,
       };
+      const defaults = getScheduleDefaults(newSchedule);
 
-      newSchedule = removeNullAndUndefinedValues(newSchedule);
-
-      if (field === "schedule_type") {
+      if (updatedField === "schedule_type") {
+        // When a new schedule type is selected, use the default values for that type
         newSchedule = {
-          ...newSchedule,
-          ...defaults[value as ScheduleType],
+          schedule_type: newValue as ScheduleType,
+          ...defaults,
         };
-      } else if (field === "schedule_frame") {
-        // when the monthly schedule frame is the 15th, clear out the schedule_day
-        if (value === "mid") {
-          newSchedule = { ...newSchedule, schedule_day: null };
-        } else {
-          // first or last, needs a day of the week
-          newSchedule = {
-            schedule_day: newSchedule.schedule_day || defaultDay,
-            ...newSchedule,
-          };
+        if (newValue === "cron") {
+          setInternalCronString(formatCronExpressionForUI(initialCronString));
         }
+      } else {
+        newSchedule = _.defaults(
+          removeNullAndUndefinedValues(newSchedule),
+          defaults,
+        );
       }
 
-      onScheduleChange(newSchedule, { name: field, value });
+      // when the monthly schedule frame is the 15th, clear out the schedule_day
+      if (newSchedule.schedule_frame === "mid") {
+        newSchedule.schedule_day = null;
+      }
+
+      const newCronString = scheduleSettingsToCron(newSchedule);
+      onScheduleChange(newCronString, newSchedule);
     },
-    [onScheduleChange, schedule],
+    [initialCronString, onScheduleChange, schedule],
   );
+
+  const renderedSchedule = useMemo(() => {
+    // Merge default values into the schedule
+    const scheduleWithDefaults: ScheduleSettings = _.defaults(
+      schedule,
+      getScheduleDefaults(schedule),
+    );
+
+    const {
+      schedule_type,
+      schedule_frame,
+      schedule_day,
+      schedule_hour,
+      schedule_minute,
+    } = scheduleWithDefaults;
+
+    const selectFrequency = (
+      <SelectFrequency
+        key="frequency"
+        updateSchedule={updateSchedule}
+        scheduleType={schedule_type}
+        scheduleOptions={scheduleOptions}
+      />
+    );
+
+    const selectMinute = (
+      <SelectMinute
+        key="minute"
+        schedule_minute={schedule_minute}
+        updateSchedule={updateSchedule}
+      />
+    );
+
+    const selectEveryMinute = (
+      <SelectMinute
+        key="minute"
+        schedule_minute={schedule_minute}
+        updateSchedule={updateSchedule}
+        range={byTheMinuteIntervals}
+      />
+    );
+
+    const selectTime = (
+      <SelectTime
+        key="time"
+        schedule_hour={schedule_hour}
+        updateSchedule={updateSchedule}
+        timezone={timezone}
+      />
+    );
+
+    const selectWeekday = (
+      <SelectWeekday
+        key="weekday"
+        schedule_day={schedule_day}
+        updateSchedule={updateSchedule}
+      />
+    );
+
+    const selectFrame = (
+      <SelectFrame
+        key="frame"
+        schedule_frame={schedule_frame}
+        updateSchedule={updateSchedule}
+      />
+    );
+
+    const selectWeekdayOfMonth = (
+      <SelectWeekdayOfMonth
+        key="wom"
+        schedule_day={schedule_day}
+        updateSchedule={updateSchedule}
+      />
+    );
+
+    const selectCron = (
+      <CronExpressionInput
+        data-group={GROUP_ATTRIBUTES.separate}
+        key="cron"
+        value={internalCronString}
+        onChange={(value: string) => {
+          setInternalCronString(value);
+        }}
+        onBlurChange={(value) =>
+          onScheduleChange(value, {
+            schedule_type: "cron",
+          })
+        }
+        showExplainer={false}
+      />
+    );
+
+    return match(schedule_type)
+      .with(
+        "every_n_minutes",
+        () =>
+          // Converting to lowercase here, because 'minute` is used without pluralization on the backend,
+          // and it's impossible to have both pluralized and single form for the same string.
+          c(
+            "{0} is a verb like 'Check', {1} is an adverb like 'by the minute', {2} is a number of minutes.",
+          )
+            .jt`${verb} ${selectFrequency} every ${selectEveryMinute} ${ngettext(msgid`Minute`, "Minutes", schedule_minute as number).toLocaleLowerCase()}`,
+      )
+      .with("hourly", () => {
+        return minutesOnHourPicker ? (
+          // For example, "Send hourly at 15 minutes past the hour"
+          c(
+            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
+          )
+            .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
+        ) : (
+          // For example, "Send hourly"
+          // NOTE: babel-ttag-plugin prevents us from localizing this JSX because it consists only of placeholders
+          <>
+            {verb} {selectFrequency}
+          </>
+        );
+      })
+      .with(
+        "daily",
+        () =>
+          // For example, "Send daily at 12:00pm"
+          c(
+            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
+          ).jt`${verb} ${selectFrequency} at ${selectTime}`,
+      )
+      .with(
+        "weekly",
+        () =>
+          // For example, "Send weekly on Tuesday at 12:00pm"
+          c(
+            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
+          ).jt`${verb} ${selectFrequency} on ${selectWeekday} at ${selectTime}`,
+      )
+      .with("monthly", () =>
+        schedule_frame === "mid"
+          ? // For example, "Send monthly on the 15th at 12:00pm"
+            c(
+              "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
+            )
+              .jt`${verb} ${selectFrequency} on the ${selectFrame} at ${selectTime}`
+          : // For example, "Send monthly on the first Tuesday at 12:00pm"
+            c(
+              "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
+            ).jt`${verb} ${selectFrequency} on the ${selectFrame} ${
+              selectWeekdayOfMonth
+            } at ${selectTime}`,
+      )
+      .with("cron", () => [verb, selectFrequency, selectCron])
+      .with(null, () => null)
+      .with(undefined, () => null)
+      .exhaustive();
+  }, [
+    minutesOnHourPicker,
+    schedule,
+    scheduleOptions,
+    timezone,
+    updateSchedule,
+    verb,
+    internalCronString,
+    onScheduleChange,
+  ]);
+
+  const scheduleDescription = useMemo(() => {
+    return renderScheduleDescription?.(schedule, internalCronString) || null;
+  }, [renderScheduleDescription, schedule, internalCronString]);
 
   return (
-    <Box
-      lh="40px"
-      display="grid"
-      style={{
-        gridTemplateColumns: "fit-content(100%) auto",
-        gap: ".5rem",
-        rowGap: ".35rem",
-      }}
-      {...boxProps}
-    >
-      {renderSchedule({
-        fillScheduleTemplate,
-        schedule,
-        updateSchedule,
-        scheduleOptions,
-        timezone,
-        verb,
-        minutesOnHourPicker,
-      })}
-    </Box>
+    <Flex direction="column" gap="1rem" {...flexProps}>
+      <Box
+        className={cx(
+          S.Schedule,
+          {
+            [S.CompactLabels]: labelAlignment === "compact",
+          },
+          className,
+        )}
+      >
+        <GroupControlsTogether>{renderedSchedule}</GroupControlsTogether>
+      </Box>
+      {scheduleDescription && (
+        <Box style={{ gridColumn: "span 2" }}>{scheduleDescription}</Box>
+      )}
+    </Flex>
   );
-};
-
-const renderSchedule = ({
-  fillScheduleTemplate,
-  schedule,
-  updateSchedule,
-  scheduleOptions,
-  timezone,
-  verb,
-  minutesOnHourPicker,
-}: Omit<ScheduleProps, "onScheduleChange"> & {
-  updateSchedule: UpdateSchedule;
-  fillScheduleTemplate: (
-    template: string,
-    components: ReactNode[],
-  ) => ReactNode;
-}) => {
-  const { frames, weekdayOfMonthOptions } = getScheduleStrings();
-
-  const itemProps = {
-    schedule,
-    updateSchedule,
-  };
-  const frequencyProps = {
-    ...itemProps,
-    scheduleType: schedule.schedule_type,
-    scheduleOptions,
-  };
-  const timeProps = {
-    ...itemProps,
-    timezone,
-  };
-  const minuteProps = itemProps;
-  const weekdayProps = itemProps;
-  const frameProps = {
-    ...itemProps,
-    longestLabel: getLongestSelectLabel(frames),
-  };
-  const weekdayOfMonthProps = {
-    ...itemProps,
-    longestLabel: getLongestSelectLabel(weekdayOfMonthOptions),
-  };
-
-  const scheduleType = schedule.schedule_type;
-  if (scheduleType === "hourly") {
-    if (minutesOnHourPicker) {
-      // e.g. "Send hourly at 15 minutes past the hour"
-      return fillScheduleTemplate(
-        c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
-        ).t`${"{0}"} ${"{1}"} at ${"{2}"} minutes past the hour`,
-        // NOTE: Expressions like ${"{0}"} do two things: they put a placeholder
-        // into the string shown to translators (a.k.a. the "msgid" string), and
-        // they put a placeholder in the translated string (a.k.a. the "msgstr" string),
-        // so that we can insert components into the translated string in the right places
-        [
-          verb,
-          <SelectFrequency key="frequency" {...frequencyProps} />,
-          <SelectMinute key="minute" {...minuteProps} />,
-        ],
-      );
-    } else {
-      // e.g. "Send hourly"
-      return fillScheduleTemplate(
-        // We cannot use "{0} {1}" as an argument to the t function, since it only has placeholders.
-        // So, as a workaround, we include square brackets in the string, and then remove them.
-        c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
-          .t`[${"{0}"} ${"{1}"}]`
-          .replace(/^\[/, "")
-          .replace(/\]$/, ""),
-        [verb, <SelectFrequency key="frequency" {...frequencyProps} />],
-      );
-    }
-  } else if (scheduleType === "daily") {
-    // e.g. "Send daily at 12:00pm"
-    return fillScheduleTemplate(
-      c(
-        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
-      ).t`${"{0}"} ${"{1}"} at ${"{2}"}`,
-      [
-        verb,
-        <SelectFrequency key="frequency" {...frequencyProps} />,
-        <SelectTime key="time" {...timeProps} />,
-      ],
-    );
-  } else if (scheduleType === "weekly") {
-    // e.g. "Send weekly on Tuesday at 12:00pm"
-    return fillScheduleTemplate(
-      c(
-        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
-      ).t`${"{0}"} ${"{1}"} on ${"{2}"} at ${"{3}"}`,
-      [
-        verb,
-        <SelectFrequency key="frequency" {...frequencyProps} />,
-        <SelectWeekday key="weekday" {...weekdayProps} />,
-        <SelectTime key="time" {...timeProps} />,
-      ],
-    );
-  } else if (scheduleType === "monthly") {
-    // e.g. "Send monthly on the 15th at 12:00pm"
-    if (schedule.schedule_frame === "mid") {
-      return fillScheduleTemplate(
-        c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
-        ).t`${"{0}"} ${"{1}"} on the ${"{2}"} at ${"{3}"}`,
-        [
-          verb,
-          <SelectFrequency key="frequency" {...frequencyProps} />,
-          <SelectFrame key="frame" {...frameProps} />,
-          <SelectTime key="time" {...timeProps} />,
-        ],
-      );
-    } else {
-      // e.g. "Send monthly on the first Tuesday at 12:00pm"
-      return fillScheduleTemplate(
-        c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
-        ).t`${"{0}"} ${"{1}"} on the ${"{2}"} ${"{3}"} at ${"{4}"}`,
-        [
-          verb,
-          <SelectFrequency key="frequency" {...frequencyProps} />,
-          <SelectFrame key="frame" {...frameProps} />,
-          <SelectWeekdayOfMonth
-            key="weekday-of-month"
-            {...weekdayOfMonthProps}
-          />,
-          <SelectTime key="time" {...timeProps} />,
-        ],
-      );
-    }
-  } else {
-    return null;
-  }
 };

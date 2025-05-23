@@ -1,5 +1,4 @@
 import type { WritebackAction } from "./actions";
-import type { Alert } from "./alert";
 import type { Card, CardId } from "./card";
 import type { Collection, CollectionId, CollectionItemId } from "./collection";
 import type { Dashboard } from "./dashboard";
@@ -16,12 +15,9 @@ import type {
   TableId,
 } from "./table";
 import type { Timeline, TimelineEventId } from "./timeline";
-import type { User } from "./user";
 
 export type NormalizedWritebackAction = WritebackAction;
-export type NormalizedAlert = Alert;
 export type NormalizedDashboard = Dashboard;
-export type NormalizedUser = User;
 export type NormalizedCard = Card;
 export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
 

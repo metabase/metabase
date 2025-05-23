@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -175,7 +175,7 @@ const nativeTimeQuestionDetails = {
   },
 };
 
-const getNativeTimeQuestionBasedQuestionDetails = card => ({
+const getNativeTimeQuestionBasedQuestionDetails = (card) => ({
   query: {
     "source-table": `card__${card.id}`,
     aggregation: [["count"]],
@@ -191,7 +191,7 @@ const parameterDetails = {
   sectionId: "temporal-unit",
 };
 
-const getParameterMapping = card => ({
+const getParameterMapping = (card) => ({
   card_id: card.id,
   parameter_id: parameterDetails.id,
   target: [
@@ -211,6 +211,11 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "cardQuery",
+    );
+    cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
   });
 
   describe("mapping targets", () => {
@@ -222,7 +227,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.createQuestion(expressionBreakoutQuestionDetails);
       H.createQuestion(binningBreakoutQuestionDetails);
       H.createNativeQuestion(nativeQuestionWithDateParameterDetails);
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
       H.editDashboard();
@@ -230,10 +235,15 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       cy.log("single breakout");
       addQuestion(singleBreakoutQuestionDetails.name);
+      H.ensureDashboardCardHasText("April 2022");
+      cy.wait("@queryMetadata");
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
       H.popover().findByText("Created At").click();
       H.saveDashboard();
+
+      cy.wait("@cardQuery");
+      H.ensureDashboardCardHasText("April 2022");
       H.filterWidget().click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
@@ -255,6 +265,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .eq(0)
         .click();
       H.saveDashboard();
+      cy.wait("@cardQuery");
+      H.ensureDashboardCardHasText("Created At: Year");
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
@@ -329,7 +341,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should connect a parameter to a model", () => {
       H.createQuestion({ ...singleBreakoutQuestionDetails, type: "model" });
       H.createNativeQuestion({ ...nativeQuestionDetails, type: "model" });
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
       H.editDashboard();
@@ -345,7 +357,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should connect a parameter to a metric", () => {
       H.createQuestion({ ...singleBreakoutQuestionDetails, type: "metric" });
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
       H.editDashboard();
@@ -369,7 +381,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should connect multiple parameters to a card with multiple breakouts and drill thru", () => {
       H.createQuestion(multiBreakoutQuestionDetails);
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -404,7 +416,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should connect multiple parameters to the same column in a card and drill thru, with the last parameter taking priority", () => {
       H.createQuestion(singleBreakoutQuestionDetails);
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -437,7 +449,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should connect a parameter to multiple questions within a dashcard and drill thru", () => {
-      createDashboardWithMultiSeriesCard().then(dashboard =>
+      createDashboardWithMultiSeriesCard().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -484,7 +496,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
         extraQuestions: [nativeUnitQuestionDetails],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         cy.wrap(dashboard.id).as("dashboardId");
         H.visitDashboard(dashboard.id);
       });
@@ -518,7 +530,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText(parameterDetails.name).click();
       });
       H.popover().findByText("UNIT").click();
-      H.saveDashboard();
+      H.saveDashboard({ waitMs: 250 });
 
       cy.log("verify click behavior with a valid temporal unit");
 
@@ -528,9 +540,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       H.getDashboardCard(1).findByText("year").click();
 
-      H.getDashboardCard(0)
-        .findByText("Created At: Year", { timeout: 10000 })
-        .should("be.visible");
+      H.getDashboardCard(0).within(() => {
+        H.tableHeaderColumn("Created At: Year");
+      });
 
       H.filterWidget().findByText("Year").should("be.visible");
 
@@ -539,14 +551,16 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget()
         .findByText(/invalid/i)
         .should("not.exist");
-      H.getDashboardCard(0)
-        .findByText("Created At: Month")
-        .should("be.visible");
+      H.getDashboardCard().within(() => {
+        H.tableHeaderColumn("Created At: Month");
+      });
 
       cy.log("verify that recovering from an invalid temporal unit works");
       H.getDashboardCard(1).findByText("year").click();
       H.filterWidget().findByText("Year").should("be.visible");
-      H.getDashboardCard(0).findByText("Created At: Year").should("be.visible");
+      H.getDashboardCard(0).within(() => {
+        H.tableHeaderColumn("Created At: Year");
+      });
     });
 
     it("should pass a temporal unit 'custom destination -> dashboard' click behavior", () => {
@@ -555,7 +569,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           name: "Target dashboard",
         },
       });
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           name: "Source dashboard",
         },
@@ -599,8 +613,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         dashboardDetails: {
           name: "Target dashboard",
         },
-      }).then(dashboard => cy.wrap(dashboard.id).as("targetDashboardId"));
-      cy.createDashboardWithQuestions({
+      }).then((dashboard) => cy.wrap(dashboard.id).as("targetDashboardId"));
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           name: "Source dashboard",
         },
@@ -623,7 +637,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("UNIT").should("be.visible");
         cy.findByText(parameterDetails.name).should("not.exist");
       });
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         H.modal().within(() => {
           cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
             `http://localhost:4000/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
@@ -652,7 +666,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should not allow to use temporal unit parameter values with SQL queries", () => {
       H.createNativeQuestion(nativeQuestionWithTextParameterDetails);
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -689,7 +703,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("auto-wiring", () => {
     it("should not auto-wire to cards without breakout columns", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [noBreakoutQuestionDetails, singleBreakoutQuestionDetails],
       }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
@@ -706,7 +720,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should auto-wire to cards with breakouts on column selection", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [
           noBreakoutQuestionDetails,
@@ -729,7 +743,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should auto-wire to cards with breakouts after a new card is added", () => {
       H.createQuestion(multiBreakoutQuestionDetails);
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [noBreakoutQuestionDetails, singleBreakoutQuestionDetails],
       }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
@@ -749,7 +763,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should not overwrite parameter mappings for a card when doing auto-wiring", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [
           noBreakoutQuestionDetails,
@@ -770,7 +784,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("add a temporal unit parameter");
       addTemporalUnitParameter();
       H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
-      H.undoToastList().last().button("Auto-connect").click();
+      // eslint-disable-next-line no-unsafe-element-filtering
+      H.undoToastList().last().findByText("Auto-connect").click();
       H.saveDashboard();
 
       cy.log("verify data with 2 parameters");
@@ -797,7 +812,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("parameter settings", () => {
     it("should be able to set available temporal units", () => {
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -805,7 +820,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       editParameter(parameterDetails.name);
       H.dashboardParameterSidebar().findByText("All").click();
       H.popover().within(() => {
-        cy.findByLabelText("Select none").click();
+        cy.findByLabelText("Select all").click();
         cy.findByLabelText("Month").click();
         cy.findByLabelText("Year").click();
         cy.findByLabelText("Minute").click();
@@ -824,7 +839,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should clear the default value if it is no longer within the allowed unit list", () => {
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -849,7 +864,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should be able to set the default value and make it required", () => {
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         cy.wrap(dashboard.id).as("dashboardId"),
       );
       H.visitDashboard("@dashboardId");
@@ -894,7 +909,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("setup dashboard with a time column");
       H.createNativeQuestion(nativeTimeQuestionDetails).then(
         ({ body: card }) => {
-          cy.createDashboardWithQuestions({
+          H.createDashboardWithQuestions({
             questions: [getNativeTimeQuestionBasedQuestionDetails(card)],
           }).then(({ dashboard }) => {
             H.visitDashboard(dashboard.id);
@@ -923,14 +938,14 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("query string parameters", () => {
     it("should be able to parse the parameter value from the url", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         H.visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
       });
       H.getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
 
     it("should ignore invalid temporal unit values from the url", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         H.visitDashboard(dashboard.id, { params: { unit_of_time: "invalid" } });
       });
       H.filterWidget().within(() => {
@@ -950,7 +965,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
             },
           ],
         },
-      }).then(dashboard => {
+      }).then((dashboard) => {
         H.visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
       });
       H.filterWidget().findByText("Year").should("be.visible");
@@ -960,7 +975,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("permissions", () => {
     it("should add a temporal unit parameter and connect it to a card and drill thru", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         cy.signIn("nodata");
         H.visitDashboard(dashboard.id);
       });
@@ -970,9 +985,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Created At: Year").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
       });
-      cy.findByTestId("TableInteractive-root")
-        .findByText("Created At: Year")
-        .should("be.visible");
+      H.tableInteractive().findByText("Created At: Year").should("be.visible");
     });
   });
 
@@ -983,7 +996,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         cy.request("POST", `/api/dashboard/${dashboard.id}/public_link`).then(
           ({ body: { uuid } }) => {
             cy.signOut();
@@ -1005,7 +1018,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
             [parameterDetails.slug]: "enabled",
           },
         },
-      }).then(dashboard => {
+      }).then((dashboard) => {
         H.visitEmbeddedPage({
           resource: { dashboard: dashboard.id },
           params: {},
@@ -1046,30 +1059,28 @@ function createDashboardWithMappedQuestion({
   dashboardDetails = {},
   extraQuestions = [],
 } = {}) {
-  return cy
-    .createDashboardWithQuestions({
-      dashboardDetails: {
-        parameters: [parameterDetails],
-        ...dashboardDetails,
-      },
-      questions: [singleBreakoutQuestionDetails, ...extraQuestions],
-    })
-    .then(({ dashboard, questions: [card, ...extraCards] }) => {
-      return H.updateDashboardCards({
-        dashboard_id: dashboard.id,
-        cards: [
-          {
-            card_id: card.id,
-            parameter_mappings: [getParameterMapping(card)],
-          },
-          ...extraCards.map(({ id }) => ({ card_id: id })),
-        ],
-      }).then(() => dashboard);
-    });
+  return H.createDashboardWithQuestions({
+    dashboardDetails: {
+      parameters: [parameterDetails],
+      ...dashboardDetails,
+    },
+    questions: [singleBreakoutQuestionDetails, ...extraQuestions],
+  }).then(({ dashboard, questions: [card, ...extraCards] }) => {
+    return H.updateDashboardCards({
+      dashboard_id: dashboard.id,
+      cards: [
+        {
+          card_id: card.id,
+          parameter_mappings: [getParameterMapping(card)],
+        },
+        ...extraCards.map(({ id }) => ({ card_id: id })),
+      ],
+    }).then(() => dashboard);
+  });
 }
 
 function createDashboardWithMultiSeriesCard() {
-  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+  return H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
     return H.createQuestion({
       ...singleBreakoutQuestionDetails,
       name: "Question 1",

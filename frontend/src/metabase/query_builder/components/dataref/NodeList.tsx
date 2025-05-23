@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { AnchorHTMLAttributes } from "react";
+import type React from "react";
 
 import {
   Box,
@@ -12,6 +13,8 @@ import {
 
 import S from "./NodeList.module.css";
 
+type BoxPropsWithChildren = BoxProps & { children: React.ReactNode };
+
 const NodeListTitle = ({ children, ...rest }: FlexProps) => {
   return (
     <Flex align="center" fw={700} p="0.5rem 0.5rem 0.5rem 6px" {...rest}>
@@ -20,7 +23,7 @@ const NodeListTitle = ({ children, ...rest }: FlexProps) => {
   );
 };
 
-const NodeListContainer = ({ children, ...rest }: BoxProps) => {
+const NodeListContainer = ({ children, ...rest }: BoxPropsWithChildren) => {
   return (
     <Box component="ul" pt="md" {...rest}>
       {children}
@@ -28,7 +31,7 @@ const NodeListContainer = ({ children, ...rest }: BoxProps) => {
   );
 };
 
-const NodeListTitleText = ({ children, ...rest }: BoxProps) => {
+const NodeListTitleText = ({ children, ...rest }: BoxPropsWithChildren) => {
   return (
     <Box component="span" ml="sm" {...rest}>
       {children}
@@ -36,7 +39,7 @@ const NodeListTitleText = ({ children, ...rest }: BoxProps) => {
   );
 };
 
-const NodeListItemId = ({ children, ...rest }: BoxProps) => {
+const NodeListItemId = ({ children, ...rest }: BoxPropsWithChildren) => {
   return (
     <Box
       component="span"
@@ -50,7 +53,7 @@ const NodeListItemId = ({ children, ...rest }: BoxProps) => {
   );
 };
 
-const NodeListItemName = ({ children, ...rest }: BoxProps) => {
+const NodeListItemName = ({ children, ...rest }: BoxPropsWithChildren) => {
   return (
     <Box component="span" fw={700} ml="sm" {...rest}>
       {children}

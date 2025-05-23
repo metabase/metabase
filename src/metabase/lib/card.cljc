@@ -5,8 +5,10 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -57,10 +59,16 @@
           (fallback-display-name source-card)))))
 
 (mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card-query            :- :map]
+  [metadata-providerable                :- ::lib.schema.metadata/metadata-providerable
+   {card-query :dataset-query :as card} :- :map]
   (when (some? card-query)
-    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
+    (let [cols      (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
+          model-eid (when (= (:type card) :model)
+                      (or (:entity-id card)
+                          (throw (ex-info "Cannot infer columns for a model with no :entity-id!"
+                                          {:card card}))))]
+      (cond->> cols
+        model-eid (map #(lib.metadata.ident/add-model-ident % model-eid))))))
 
 (def ^:private Card
   [:map
@@ -111,7 +119,7 @@
                    (not= (:semantic-type col) :type/FK)
                    (assoc :fk-target-field-id nil))]
     ;; :effective-type is required, but not always set, see e.g.,
-    ;; metabase.api.table/card-result-metadata->virtual-fields
+    ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
     (u/assoc-default col-meta :effective-type (:base-type col-meta))))
 
 (mu/defn ->card-metadata-columns :- [:sequential ::lib.schema.metadata/column]
@@ -152,13 +160,21 @@
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
       (when-let [result-metadata (or (:fields card)
                                      (:result-metadata card)
-                                     (infer-returned-columns metadata-providerable (:dataset-query card)))]
+                                     (infer-returned-columns metadata-providerable card))]
         ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
         ;; contains` :columns` as well.
         (when-let [cols (not-empty (cond
                                      (map? result-metadata)        (:columns result-metadata)
                                      (sequential? result-metadata) result-metadata))]
-          (->card-metadata-columns metadata-providerable card cols))))))
+          (let [cols (->card-metadata-columns metadata-providerable card cols)]
+            (when-let [invalid-idents (and lib.metadata.ident/*enforce-idents-present*
+                                           (= (:type card) :model)
+                                           (seq (remove #(lib.metadata.ident/valid-model-ident? % (:entity-id card))
+                                                        cols)))]
+              (throw (ex-info "Model columns do not have model[...]__ idents"
+                              {:card       card
+                               :bad-idents invalid-idents})))
+            cols))))))
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."
@@ -183,3 +199,15 @@
                         (lib.util/query-stage metric-query -1)
                         options)))
           (card-metadata-columns query card))))
+
+(mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
+  "The type of the query's source-card, if it has one."
+  [query :- ::lib.schema/query]
+  (when-let [card-id (lib.util/source-card-id query)]
+    (when-let [card (lib.metadata/card query card-id)]
+      (:type card))))
+
+(mu/defn source-card-is-model? :- :boolean
+  "Is the query's source-card a model?"
+  [query :- ::lib.schema/query]
+  (= (source-card-type query) :model))

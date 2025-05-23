@@ -10,13 +10,13 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.sync :refer [sync-survives-crash?!]]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
@@ -51,7 +51,7 @@
     ;; fields *SHOULD* have semantic types now
     (is (= #{{:name "LATITUDE", :semantic_type :type/Latitude, :last_analyzed true}
              {:name "ID", :semantic_type :type/PK, :last_analyzed false}
-             {:name "PRICE", :semantic_type :type/Category, :last_analyzed true}
+             {:name "PRICE", :semantic_type nil, :last_analyzed true}
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
              {:name "CATEGORY_ID", :semantic_type :type/FK, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
@@ -89,7 +89,7 @@
 (deftest survive-classify-fields-errors
   (testing "Make sure we survive field classification failing"
     (sync-survives-crash?! classifiers.name/semantic-type-for-name-and-base-type)
-    (sync-survives-crash?! classifiers.category/infer-is-category-or-list)
+    (sync-survives-crash?! classifiers.category/infer-is-category)
     (sync-survives-crash?! classifiers.no-preview-display/infer-no-preview-display)
     (sync-survives-crash?! classifiers.text-fingerprint/infer-semantic-type)))
 
@@ -232,13 +232,13 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
+    (with-redefs [quick-task/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")
         (set-table-visibility-type-via-api! table nil)
-        (is (= true
-               (fake-field-was-analyzed? field)))))))
+        (is (true?
+             (fake-field-was-analyzed? field)))))))
 
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"
@@ -253,3 +253,30 @@
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))
+
+(defn- not-category [x] (not= :type/Category (:semantic_type x)))
+
+(deftest classify-numeric-values-test
+  (testing "Make sure Integer fields are not classified as Category"
+    (let [field (mi/instance :model/Field {:base_type :type/Integer :name "foo_type"})
+          fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
+          threshold classifiers.category/category-cardinality-threshold]
+
+      (are [card]
+
+           (->
+            (classifiers.category/infer-is-category field (fingerprint card))
+            :semantic_type
+            (not= :type/Category))
+
+        (dec threshold)
+        threshold
+        (inc threshold))
+
+      (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))
+
+(deftest classify-bool-values-test
+  (testing "Make sure Boolean fields are not classified as Category"
+    (let [field (mi/instance :model/Field {:base_type :type/Boolean :name "active"})]
+      (is (not-category (classifiers.category/infer-is-category field {})))
+      (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))

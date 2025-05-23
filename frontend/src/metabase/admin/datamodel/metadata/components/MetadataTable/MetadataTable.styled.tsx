@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -49,7 +50,7 @@ export const VisibilityBadge = styled.span<VisibilityBadgeProps>`
   margin: 0 0.5rem;
   font-weight: bold;
   cursor: pointer;
-  color: ${props => (props.isChecked ? color("brand") : color("text-dark"))};
+  color: ${(props) => (props.isChecked ? color("brand") : color("text-dark"))};
 
   &:hover {
     color: var(--mb-color-brand);

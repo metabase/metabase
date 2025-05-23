@@ -1,8 +1,7 @@
-import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 
 import { defaultPermissionsGraph, setup } from "./setup";
 
@@ -120,7 +119,7 @@ describe("Admin > CollectionPermissionsPage", () => {
       // should also change permissions on nested one from no access to curate
       const otherUsersRow = await screen
         .findAllByRole("row")
-        .then(rows => rows[3]);
+        .then((rows) => rows[3]);
 
       expect(within(otherUsersRow).getByText("Other Users")).toBeVisible();
       await userEvent.click(within(otherUsersRow).getByText("View"));

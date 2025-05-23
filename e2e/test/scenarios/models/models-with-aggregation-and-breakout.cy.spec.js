@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { turnIntoModel } from "./helpers/e2e-models-helpers";
@@ -11,7 +11,7 @@ describe("scenarios > models with aggregation and breakout", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "model with aggregation & breakout",
         display: "line",

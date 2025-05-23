@@ -8,7 +8,6 @@ import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module
 
 import {
   LegendItemLabel,
-  LegendItemRemoveIcon,
   LegendItemRoot,
   LegendItemTitle,
 } from "./LegendItem.styled";
@@ -24,7 +23,6 @@ const propTypes = {
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onToggleSeriesVisibility: PropTypes.func,
-  onRemoveSeries: PropTypes.func,
 };
 
 const LegendItem = ({
@@ -37,26 +35,21 @@ const LegendItem = ({
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
-  onRemoveSeries,
 }) => {
-  const handleDotClick = event => {
+  const handleDotClick = (event) => {
     onToggleSeriesVisibility?.(event, index);
   };
 
-  const handleItemClick = event => {
+  const handleItemClick = (event) => {
     onSelectSeries && onSelectSeries(event, index, isReversed);
   };
 
-  const handleItemMouseEnter = event => {
+  const handleItemMouseEnter = (event) => {
     onHoverChange && onHoverChange({ index, element: event.currentTarget });
   };
 
   const handleItemMouseLeave = () => {
     onHoverChange && onHoverChange();
-  };
-
-  const handleRemoveClick = event => {
-    onRemoveSeries && onRemoveSeries(event, index);
   };
 
   return (
@@ -83,7 +76,6 @@ const LegendItem = ({
           <Ellipsified>{item.name}</Ellipsified>
         </LegendItemTitle>
       </LegendItemLabel>
-      {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
 };

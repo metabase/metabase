@@ -1,12 +1,11 @@
-import type {
-  ComponentType,
-  Dispatch,
-  HTMLAttributes,
-  ReactNode,
-  SetStateAction,
+import React, {
+  type ComponentType,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
+  useMemo,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -34,13 +33,23 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
+import type { MetabotContext } from "metabase/metabot";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
+import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  BaseEntityId,
   BaseUser,
   Bookmark,
   CacheableDashboard,
@@ -50,17 +59,27 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  DashCardId,
   Dashboard,
+  DashboardId,
+  DatabaseId,
   Database as DatabaseType,
   Dataset,
+  DatasetError,
+  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  ParameterId,
+  Pulse,
   Revision,
+  TableId,
+  Timeline,
+  TimelineEvent,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, State } from "metabase-types/store";
+import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -71,8 +90,10 @@ import type {
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
-// function to determine the landing page
-export const PLUGIN_LANDING_PAGE = [];
+export const PLUGIN_LANDING_PAGE = {
+  getLandingPage: () => "/",
+  LandingPageWidget: PluginPlaceholder,
+};
 
 export const PLUGIN_REDUX_MIDDLEWARES = [];
 
@@ -87,9 +108,11 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
 ) => AdminPathKey[])[] = [];
 
 export const PLUGIN_ADMIN_TOOLS = {
-  INDEX_ROUTE: "model-caching",
-  EXTRA_ROUTES_INFO: [],
-  EXTRA_ROUTES: [],
+  COMPONENT: null,
+};
+
+export const PLUGIN_WHITELABEL = {
+  WhiteLabelSettingsPage: PluginPlaceholder,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -173,21 +196,19 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 };
 
 // menu items in people management tab
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
+  (user: User) => React.ReactNode
+>;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
-
-// auth settings
-interface AuthTabs {
-  name: string;
-  key: string;
-  to: string;
-}
-
-export const PLUGIN_ADMIN_SETTINGS_AUTH_TABS: AuthTabs[] = [];
 
 // authentication providers
 
-export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
+export const PLUGIN_AUTH_PROVIDERS = {
+  isEnabled: () => false,
+  AuthSettingsPage: PluginPlaceholder,
+  UserProvisioningSettings: PluginPlaceholder,
+  providers: [] as GetAuthProviders[],
+};
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
   formFieldAttributes: [] as string[],
@@ -197,7 +218,6 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
     settings: {
       [setting: string]: {
         display_name?: string | undefined;
-        warningMessage?: string | undefined;
         description?: string | ReactNode | undefined;
         note?: string | undefined;
       };
@@ -263,9 +283,20 @@ export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
 export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
-export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
-  Component: undefined,
-};
+interface PluginDashboardSubscriptionParametersSectionOverride {
+  Component?: ComponentType<{
+    className?: string;
+    parameters: UiParameter[];
+    hiddenParameters?: string;
+    dashboard: Dashboard;
+    pulse: Pulse;
+    setPulseParameters: (parameters: UiParameter[]) => void;
+  }>;
+}
+export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride =
+  {
+    Component: undefined,
+  };
 
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
   isEnabled: () => false,
@@ -274,20 +305,10 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
-  name: t`Regular`,
+  get name() {
+    return t`Regular`;
+  },
   icon: "folder",
-};
-
-type AuthorityLevelMenuItem = {
-  title: string;
-  icon: string;
-  action: () => void;
-};
-
-type CleanUpMenuItem = {
-  title: string;
-  icon: string;
-  link: string;
 };
 
 export type ItemWithCollection = { collection: CollectionEssentials };
@@ -308,27 +329,28 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
   getCollectionType: (
-    _: Partial<Collection>,
+    _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ): AuthorityLevelMenuItem[] => [],
+  ): React.ReactNode[] => [],
   getIcon: getIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
   canCleanUp: (_collection: Collection) => false as boolean,
-  getCleanUpMenuItems: (
+  useGetCleanUpMenuItems: (
     _collection: Collection,
-    _itemCount: number,
-  ): CleanUpMenuItem[] => [],
+  ): { menuItems: JSX.Element[] } => ({
+    menuItems: [],
+  }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
@@ -407,7 +429,7 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
-} & GroupProps;
+} & StackProps;
 
 export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
@@ -439,10 +461,12 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
+  metabotPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
+  metabotPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -490,6 +514,15 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   },
 };
 
+// Comes with PLUGIN_APPLICATION_PERMISSIONS
+export interface UserWithApplicationPermissions extends User {
+  permissions?: {
+    can_access_monitoring: boolean;
+    can_access_setting: boolean;
+    can_access_subscription: boolean;
+  };
+}
+
 export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   UserTypeToggle: () => null as any,
   UserTypeCell: null,
@@ -516,7 +549,18 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
+  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
+  DataSourceSelector: (_props: DataSourceSelectorProps) => null,
 };
+
+export interface SimpleDataPickerProps {
+  filterByDatabaseId: number | null;
+  selectedEntity?: TableId;
+  isInitiallyOpen: boolean;
+  triggerElement: ReactNode;
+  setSourceTableFn: (tableId: TableId) => void;
+  entityTypes: EmbeddingEntityType[];
+}
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
@@ -558,8 +602,22 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
+type GdriveConnectionModalProps = {
+  isModalOpen: boolean;
+  onClose: () => void;
+  reconnect: boolean;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
+  FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
+  GdriveSyncStatus: PluginPlaceholder,
+  GdriveConnectionModal:
+    PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
+  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
+    onClick: () => void;
+  }>,
+  GdriveDbMenu: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
@@ -570,8 +628,140 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: {
-    hide_download_button?: boolean | null;
-    downloads?: boolean | null;
-  }) => true,
+  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+    pdf: true,
+    results: true,
+  }),
+};
+
+const defaultMetabotContextValue: MetabotContext = {
+  getChatContext: () => ({}) as any,
+  registerChatContextProvider: () => () => {},
+};
+
+export type FixSqlQueryButtonProps = {
+  query: Lib.Query;
+  queryError: DatasetError;
+  queryErrorType: DatasetErrorType | undefined;
+  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
+  onHighlightLines: (fixedLineNumbers: number[]) => void;
+};
+
+export type PluginAiSqlFixer = {
+  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+};
+
+export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
+  FixSqlQueryButton: PluginPlaceholder,
+};
+
+export type GenerateSqlQueryButtonProps = {
+  className?: string;
+  prompt: string;
+  databaseId: DatabaseId;
+  onGenerateQuery: (queryText: string) => void;
+};
+
+export type PluginAiSqlGeneration = {
+  GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+  isEnabled: () => boolean;
+  getPlaceholderText: () => string;
+};
+
+export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
+  GenerateSqlQueryButton: PluginPlaceholder,
+  isEnabled: () => false,
+  getPlaceholderText: () => "",
+};
+
+export interface AIDashboardAnalysisSidebarProps {
+  dashboard: Dashboard;
+  onClose?: () => void;
+  dashcardId?: DashCardId;
+}
+
+export interface AIQuestionAnalysisSidebarProps {
+  question: Question;
+  className?: string;
+  onClose?: () => void;
+  timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
+}
+
+export type PluginAIEntityAnalysis = {
+  AIQuestionAnalysisButton: ComponentType<any>;
+  AIDashboardAnalysisButton: ComponentType<any>;
+  AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
+  AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
+  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
+  canAnalyzeQuestion: (question: Question) => boolean;
+};
+
+export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
+  AIQuestionAnalysisButton: PluginPlaceholder,
+  AIDashboardAnalysisButton: PluginPlaceholder,
+  AIQuestionAnalysisSidebar: PluginPlaceholder,
+  AIDashboardAnalysisSidebar: PluginPlaceholder,
+  canAnalyzeDashboard: () => false,
+  canAnalyzeQuestion: () => false,
+};
+
+export const PLUGIN_METABOT = {
+  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
+  defaultMetabotContextValue,
+  MetabotContext: React.createContext(defaultMetabotContextValue),
+  getMetabotProvider: () => {
+    return ({ children }: { children: React.ReactNode }) =>
+      React.createElement(
+        PLUGIN_METABOT.MetabotContext.Provider,
+        { value: PLUGIN_METABOT.defaultMetabotContextValue },
+        children,
+      );
+  },
+  useMetabotPalletteActions: (_searchText: string) =>
+    useMemo(() => [] as PaletteAction[], []),
+  getMetabotVisible: (_state: State) => false,
+  SearchButton: SearchButton,
+};
+
+type DashCardMenuItemGetter = (
+  question: Question,
+  dashcardId: DashCardId | undefined,
+  dispatch: Dispatch,
+) => (DashCardMenuItem & { key: string }) | null;
+
+export type PluginDashcardMenu = {
+  dashcardMenuItemGetters: DashCardMenuItemGetter[];
+};
+
+export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
+  dashcardMenuItemGetters: [],
+};
+
+export const PLUGIN_DB_ROUTING = {
+  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+  getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
+  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    null as React.ReactElement | null,
+  useRedirectDestinationDatabase: (
+    _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
+  ): void => {},
+  getPrimaryDBEngineFieldState: (
+    _database: Pick<Database, "router_user_attribute">,
+  ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_API = {
+  getRemappedCardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/card/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+  getRemappedDashboardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };

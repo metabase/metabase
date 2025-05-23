@@ -50,12 +50,15 @@
   - Put it in `:skip` if this column shouldn't be synchronized
   - You have to make decisions inside `:transform` column `:export` function (or `:import`)
   - To prevent value being serialized, return `::serdes/skip` instead of `nil` (the reason being that serialization
-    format distinguishes between `nil` and absence)"
+    format distinguishes between `nil` and absence)
+  - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -168,7 +171,9 @@
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
-  Don't call this outside a test, use [[identity-hash]] instead."
+
+  Don't call this outside a test, use [[identity-hash]] instead. Exception: [[metabase-enterprise.audit-app.audit]]
+  uses this because it needs reproducible `:entity_id`s that differ from the usual [[hash-fields]] ones."
   [target]
   (when (sequential? target)
     (assert (seq target) "target cannot be an empty sequence"))
@@ -180,6 +185,13 @@
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
 
+(defn- increment-hash-values
+  "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
+  [values increment]
+  (if (= increment 0)
+    values
+    (conj values (str "metabase-increment-" increment))))
+
 (defn identity-hash
   "Returns an identity hash string (8 hex digits) from an `entity` map.
 
@@ -188,36 +200,67 @@
   - passing the `entity` to each function it returns
   - calling [[hash]] on that list
   - converting to an 8-character hex string"
-  [entity]
-  {:pre [(some? entity)]}
-  (-> (for [f (hash-fields entity)]
-        (f entity))
-      raw-hash))
+  ([entity]
+   (identity-hash entity 0))
+  ([entity increment]
+   {:pre [(some? entity)]}
+   (-> (for [f (hash-fields entity)]
+         (f entity))
+       (increment-hash-values increment)
+       raw-hash)))
 
 (defn backfill-entity-id
   "Given an entity with a (possibly empty) `:entity_id` field:
   - Return the `:entity_id` if it's set.
   - Compute the backfill `:entity_id` based on the [[identity-hash]]."
-  [entity]
-  (or (:entity_id entity)
-      (:entity-id entity)
-      (u/generate-nano-id (identity-hash entity))))
+  ([entity]
+   (backfill-entity-id entity 0))
+  ([entity increment]
+   (or (:entity_id entity)
+       (:entity-id entity)
+       (u/generate-nano-id (identity-hash entity increment)))))
 
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
   [s]
   (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
 
+;; ## Memoizing `hydrated-hash`
+;;
+;; Hashing a Field requires its Table; hashing a Table requires its Database.
+;; Letting each of those hit the appdb for every Field lookup (when it lacks an `entity_id`) is too costly,
+;; so we cache any that have to be looked up right here.
+;;
+;; Memory use is not a serious concern here, for two reasons:
+;; 1. This is caching the `hydrated-hash` lookups, so it doesn't cache Fields but only Tables and Databases.
+;; 2. This is called only when [[backfill-entity-id]] needs to generate an `entity_id` by hashing. Once the background
+;;    job populates that column everywhere, this will always be empty.
+;;
+;; NOTE: To support Metabase upgrades where the new `entity_id`s might still be blank, this code will have to live on.
+;; But in practice once `entity_id`s are populated this cache will never be needed.
+(def ^:private hydrated-hash-cache
+  (atom {}))
+
 (defn hydrated-hash
   "Returns a function which accepts an entity and returns the identity hash of
    the value of the hydrated property under key k.
 
   This is a helper for writing [[hash-fields]] implementations."
-  [k]
-  (fn [entity]
-    (or
-     (some-> entity (t2/hydrate k) (get k) identity-hash)
-     "<none>")))
+  ([k]
+   (fn [entity]
+     (or
+      (some-> entity (t2/hydrate k) (get k) identity-hash)
+      "<none>")))
+  ([hydration-key cache-key]
+   (let [inner-fn (hydrated-hash hydration-key)]
+     (fn [entity]
+       (let [the-key (cache-key entity)
+             cached  (swap! hydrated-hash-cache
+                            (fn [cache]
+                              (cond-> cache
+                                (-> cache hydration-key (get the-key) not)
+                                (assoc-in [hydration-key the-key] (delay (inner-fn entity))))))]
+         (-> cached hydration-key (get the-key) deref))))))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
@@ -276,6 +319,13 @@
 (defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
   (maybe-labeled model-name entity :name))
+
+(defn log-path-str
+  "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
+  [elements]
+  (->> elements
+       (map #(str (:model %) " " (:id %)))
+       (str/join " > ")))
 
 ;;; # Export Process
 ;;; An *export* (writing a Metabase instance's entities to disk) happens in two stages: *extraction* and *storage*.
@@ -357,19 +407,20 @@
 ;;; *Note:* "descendants" and "dependencies" are quite different things!
 
 (defmulti make-spec
-  "Return specification for serialization. This should be a map of three keys: `:copy`, `:skip`, `:transform`.
+  "Return specification for serialization, should be a map of:
 
-  `:copy` and `:skip` are vectors of field names. `:skip` is only used in tests to check that all fields were
-  mentioned. `:transform` is a map from field name to an `{:import (fn [v] ...) :export (fn [v] ...)}` map.
+  - `:copy`: a vector of field names, to directly copy from db into output and ingest back with no changes.
+  - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
+    are always skipped, no need to mention them).
+  - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
+    on `extract-one` and `xform-one`. There are a number of transfomers, see this field for `fk` and similar.
+  - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
 
-  For behavior, see `extract-one` and `xform-one`. Two fields - `id` and `updated_at` - are always skipped, no need to
-  mention them in `:skip`.
-
-  Example:
+  Example (search codebase for more examples):
 
   (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
     {:copy [:name :description]
-     :skip [;; it's nice to comment why it's skipped
+     :skip [;; please leave a comment why a field is skipped
             :internal_data]
      :transform {:card_id (serdes/fk :model/Card)}})"
   {:arglists '([model-name opts])}
@@ -451,7 +502,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/infof "Extracting %s %s %s" model (:id instance) (entity-id model instance))
+  (log/info "Extracting" {:path (log-path-str (generate-path model instance))})
   (try
     (extract-one model opts instance)
     (catch Exception e
@@ -709,12 +760,19 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
+(defn- coerce-keys [data schemas]
+  (reduce (fn [data [k schema]] (update data k #(mc/coerce schema % mtx/string-transformer)))
+          data
+          schemas))
+
 (defn- xform-one [model-name ingested]
   (let [spec (make-spec model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
     (-> (select-keys ingested (:copy spec))
         (into (for [[k transform] (:transform spec)
-                    :when (not (::nested transform))
+                    :when (and (not (::nested transform))
+                               ;; handling circuit-breaking
+                               (not (contains? (::strip ingested) k)))
                     :let [_         (assert-one-defined transform :import :import-with-context)
                           import-k  (:as transform k)
                           input     (get ingested import-k)
@@ -724,12 +782,15 @@
                     :when (and (not= res ::skip)
                                (or (some? res)
                                    (contains? ingested import-k)))]
-                [k res])))))
+                [k res]))
+        (coerce-keys (:coerce spec)))))
 
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (make-spec model-name nil)]
     (doseq [[k transform] (:transform spec)
-            :when (::nested transform)
+            :when (and (::nested transform)
+                       ;; handling circuit-breaking
+                       (not (contains? (::strip ingested) k)))
             :let [_         (assert-one-defined transform :import :import-with-context)
                   input     (get ingested k)
                   f         (:import transform)
@@ -825,13 +886,6 @@
                                   :let [parents (rest (str/split location #"/"))]]
                               [entity_id (map coll-names (concat parents [(str id)]))]))]
     {:collections coll->path}))
-
-(defn log-path-str
-  "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
-  [elements]
-  (->> elements
-       (map #(str (:model %) " " (:id %)))
-       (str/join " > ")))
 
 ;;; # Utilities for implementing serdes
 ;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
@@ -929,7 +983,7 @@
   (when email
     (or (*import-fk-keyed* email 'User :email)
         ;; Need to break a circular dependency here.
-        (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
+        (:id ((resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
 
 ;;; ## Tables
 
@@ -1311,7 +1365,7 @@
 
   Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
 
-  It's here instead of [[metabase.models.dashboard-card]] to avoid cyclic deps."
+  It's here instead of [[metabase.dashboards.models.dashboard-card]] to avoid cyclic deps."
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :model/Collection
@@ -1448,6 +1502,40 @@
         (update-keys #(-> % json/decode export-visualizations json/encode))
         (update-vals export-viz-click-behavior))))
 
+(defn- export-card-dimension-ref
+  [s]
+  (if-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:(\d+)_name$" s))]
+    (str "$_card:" (*export-fk* (parse-long card-id) :model/Card) "_name")
+    s))
+
+(defn- export-visualizer-source-id
+  [source-id]
+  (when (string? source-id)
+    (if-let [card-id (second (re-matches #"^card:(\d+)$" source-id))]
+      (str "card:" (*export-fk* (parse-long card-id) :model/Card))
+      source-id)))
+
+(defn export-visualizer-settings
+  "Update embedded card ids to entity ids in visualizer dashcard settings"
+  [settings]
+  (m/update-existing-in
+   settings
+   [:visualization :columnValuesMapping]
+   (fn [mapping]
+     (into {}
+           (for [[k cols] mapping]
+             (let [updated-cols (cond
+                                  ;; e.g. [{:sourceId "card:119"} ...]
+                                  (and (coll? cols) (map? (first cols)))
+                                  (mapv #(update % :sourceId export-visualizer-source-id) cols)
+
+                                  ;; e.g. ["$_card:119_name"] for funnel dimensions
+                                  (and (coll? cols) (string? (first cols)))
+                                  (mapv export-card-dimension-ref cols)
+
+                                  :else cols)]
+               [k updated-cols]))))))
+
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
   [settings]
@@ -1456,6 +1544,7 @@
         export-visualizations
         export-viz-link-card
         export-viz-click-behavior
+        export-visualizer-settings
         export-pivot-table
         (update :column_settings export-column-settings))))
 
@@ -1496,6 +1585,40 @@
         (update-keys #(-> % name json/decode import-visualizations json/encode))
         (update-vals import-viz-click-behavior))))
 
+(defn- import-card-dimension-ref
+  [s]
+  (if-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:([A-Za-z0-9_\-]{21})_name$" s))]
+    (str "$_card:" (*import-fk* card-id :model/Card) "_name")
+    s))
+
+(defn- import-visualizer-source-id
+  [source-id]
+  (when (string? source-id)
+    (if-let [card-entity-id (second (re-matches #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
+      (str "card:" (*import-fk* card-entity-id :model/Card))
+      source-id)))
+
+(defn import-visualizer-settings
+  "Update embedded entity ids to card ids in visualizer dashcard settings"
+  [settings]
+  (m/update-existing-in
+   settings
+   [:visualization :columnValuesMapping]
+   (fn [mapping]
+     (into {}
+           (for [[k cols] mapping]
+             (let [updated-cols (cond
+                                   ;; e.g. [{:sourceId "card:..."} ...]
+                                  (and (coll? cols) (map? (first cols)))
+                                  (mapv #(update % :sourceId import-visualizer-source-id) cols)
+
+                                   ;; e.g. ["$_card:<id>_name"] for funnel dimensions
+                                  (and (coll? cols) (string? (first cols)))
+                                  (mapv import-card-dimension-ref cols)
+
+                                  :else cols)]
+               [k updated-cols]))))))
+
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
@@ -1505,6 +1628,7 @@
         import-visualizations
         import-viz-link-card
         import-viz-click-behavior
+        import-visualizer-settings
         import-pivot-table
         (update :column_settings import-column-settings))))
 
@@ -1657,6 +1781,13 @@
   "Serialize this field under the given key instead, typically because it has been logically transformed."
   [k xform]
   (assoc xform :as k))
+
+(def backfill-entity-id-transformer
+  "Backfills a missing `:entity_id` before export, and imports it as-is."
+  (constantly
+   {:export-with-context (fn [instance _key _eid]
+                           (backfill-entity-id instance))
+    :import              identity}))
 
 (defn- compose*
   "Given two functions that transform the value at `k` within `x`, return their composition."

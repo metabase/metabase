@@ -36,12 +36,14 @@
                               :standard-deviation-aggregations        false
                               :schemas                                false
                               :datetime-diff                          true
+                              :expression-literals                    true
                               :now                                    true
                               :identifiers-with-spaces                true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
                               :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
@@ -200,7 +202,7 @@
 (defmethod sql.qp/date [:sqlite :week-of-year-iso]
   [driver _ expr]
   ;; Maybe we can follow the algorithm here https://en.wikipedia.org/wiki/ISO_week_date#Algorithms
-  (throw (ex-info (tru "Sqlite doesn't support extract isoweek")
+  (throw (ex-info (tru "Sqlite doesn''t support extract isoweek")
                   {:driver driver
                    :form   expr
                    :type   qp.error-type/invalid-query})))
@@ -272,6 +274,10 @@
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (->time expr))
+
+(defmethod sql.qp/->date :sqlite
+  [_driver value]
+  (->date value))
 
 ;; SQLite doesn't like Temporal values getting passed in as prepared statement args, so we need to convert them to
 ;; date literal strings instead to get things to work
@@ -474,3 +480,7 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (sqlite-handle-timestamp rs i)))
+
+(defmethod sql.qp/->integer :sqlite
+  [driver value]
+  (sql.qp/->integer-with-round driver value))

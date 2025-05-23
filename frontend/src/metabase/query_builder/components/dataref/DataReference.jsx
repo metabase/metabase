@@ -21,7 +21,8 @@ const DataReferencePropTypes = {
   dataReferenceStack: PropTypes.array.isRequired,
   popDataReferenceStack: PropTypes.func.isRequired,
   pushDataReferenceStack: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
+  onClose: PropTypes.func,
+  onBack: PropTypes.func,
 };
 
 const DataReference = ({
@@ -29,6 +30,7 @@ const DataReference = ({
   popDataReferenceStack,
   pushDataReferenceStack,
   onClose,
+  onBack,
 }) => {
   const onItemClick = useCallback(
     (type, item) => pushDataReferenceStack({ type, item }),
@@ -47,7 +49,9 @@ const DataReference = ({
       />
     );
   } else {
-    return <MainPane onItemClick={onItemClick} onClose={onClose} />;
+    return (
+      <MainPane onItemClick={onItemClick} onClose={onClose} onBack={onBack} />
+    );
   }
 };
 

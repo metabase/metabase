@@ -3,11 +3,11 @@ import type { StoryFn } from "@storybook/react";
 import StaticSkeleton from "./StaticSkeleton";
 
 export default {
-  title: "Visualizations/StaticSkeleton",
+  title: "Viz/Static Viz/StaticSkeleton",
   component: StaticSkeleton,
 };
 
-const Template: StoryFn<typeof StaticSkeleton> = args => {
+const Template: StoryFn<typeof StaticSkeleton> = (args) => {
   return (
     <div style={{ padding: 8, height: 250, backgroundColor: "white" }}>
       <StaticSkeleton {...args} />

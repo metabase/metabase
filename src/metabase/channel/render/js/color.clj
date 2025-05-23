@@ -4,12 +4,10 @@
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.js.engine :as js.engine]
-   [metabase.formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu])
-  (:import
-   (metabase.formatter NumericWrapper)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +54,13 @@
   `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
   for more info."
   ^String [color-selector cell-value column-name row-index]
-  (let [cell-value (if (instance? NumericWrapper cell-value)
+  (let [cell-value (cond
+                     (formatter/NumericWrapper? cell-value)
                      (:num-value cell-value)
+
+                     (formatter/TextWrapper? cell-value)
+                     (:original-value cell-value)
+
+                     :else
                      cell-value)]
     (.asString (js.engine/execute-fn color-selector cell-value row-index column-name))))

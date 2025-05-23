@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -106,7 +106,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "10511",
         query: {
@@ -147,12 +147,12 @@ describe("scenarios > question > nested", () => {
     };
 
     cy.log("Create a metric with a filter");
-    cy.createQuestion(metric, {
+    H.createQuestion(metric, {
       wrapId: true,
       idAlias: "metricId",
     });
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const baseQuestionDetails = {
         name: "12507",
@@ -207,7 +207,7 @@ describe("scenarios > question > nested", () => {
       query: ordersJoinProductsQuery,
     };
 
-    ["default", "remapped"].forEach(scenario => {
+    ["default", "remapped"].forEach((scenario) => {
       if (scenario === "remapped") {
         cy.log("Remap Product ID's display value to `title`");
         H.remapDisplayValueToFK({
@@ -223,7 +223,7 @@ describe("scenarios > question > nested", () => {
       cy.contains("37.65");
 
       // should handle multi-level nesting
-      cy.get("@nestedQuestionId").then(id => {
+      cy.get("@nestedQuestionId").then((id) => {
         visitNestedQueryAdHoc(id);
         cy.contains("37.65");
       });
@@ -283,7 +283,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "15397",
       native: {
         query:
@@ -347,7 +347,7 @@ describe("scenarios > question > nested", () => {
     });
 
     function assertOnFilter({ name, filter, value } = {}) {
-      cy.createQuestion({
+      H.createQuestion({
         name,
         query: {
           "source-table": ORDERS_ID,
@@ -369,7 +369,7 @@ describe("scenarios > question > nested", () => {
   describe("should not remove user defined metric when summarizing based on saved question (metabase#15725)", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "15725",
         native: { query: "select 'A' as cat, 5 as val" },
       });
@@ -395,6 +395,7 @@ describe("scenarios > question > nested", () => {
     });
 
     it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("add").last().click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
@@ -430,7 +431,7 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
       H.popover().findByText("VAL").click();
-      cy.wait("@dataset").then(xhr => {
+      cy.wait("@dataset").then((xhr) => {
         expect(xhr.response.body.error).not.to.exist;
       });
       cy.get("@consoleWarn").should(
@@ -477,11 +478,12 @@ describe("scenarios > question > nested", () => {
       "Should be able to use integer filter on a nested query based on a saved native question (metabase#15808)",
     );
     H.filter();
-    H.filterField("RATING", {
-      operator: "Equal to",
-      value: "4",
+    H.popover().findByText("RATING").click();
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("4");
+      cy.button("Apply filter").click();
     });
-    cy.findByTestId("apply-filters").click();
 
     cy.findAllByTestId("cell-data")
       .should("contain", "Murray, Watsica and Wunsch")
@@ -513,27 +515,25 @@ describe("scenarios > question > nested", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summaries").click();
-    H.filterField("Count", {
-      operator: "Equal to",
-      value: "5",
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Count").click();
     });
-    cy.button("Apply filters").click();
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("5");
+      cy.button("Apply filter").click();
+    });
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count is equal to 5");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 100 rows");
+    H.queryBuilderFiltersPanel().findByText("Count is equal to 5");
+    H.assertQueryBuilderRowCount(100);
 
     H.saveQuestionToCollection();
 
     reloadQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 100 rows");
+    H.assertQueryBuilderRowCount(100);
 
     H.openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
@@ -568,7 +568,7 @@ function createNestedQuestion(
       ...details,
     };
 
-    return cy.createQuestion(composite, {
+    return H.createQuestion(composite, {
       visitQuestion: visitNestedQuestion,
       wrapId: true,
       idAlias: "nestedQuestionId",
@@ -577,8 +577,8 @@ function createNestedQuestion(
 
   function createBaseQuestion(query) {
     return query.native
-      ? cy.createNativeQuestion(query)
-      : cy.createQuestion(query);
+      ? H.createNativeQuestion(query)
+      : H.createQuestion(query);
   }
 }
 

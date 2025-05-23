@@ -20,7 +20,7 @@ const tests: { name: string; measurer: TextWidthMeasurer }[] = [
   },
 ];
 
-tests.map(test => {
+tests.map((test) => {
   describe(test.name, () => {
     it("should not truncate text with ellipses if there is no overflow", () => {
       expect(truncateText("John Doe", 48, test.measurer, fontStyle)).toBe(

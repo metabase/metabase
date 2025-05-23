@@ -28,7 +28,7 @@ export type UseChartSettingsStateReturned = {
   chartSettings?: VisualizationSettings;
   handleChangeSettings: (
     changedSettings: VisualizationSettings,
-    question: Question,
+    question?: Question,
   ) => void;
   chartSettingsRawSeries: Series;
   transformedSeries?: RawSeries | TransformedSeries;
@@ -45,7 +45,7 @@ export const useChartSettingsState = ({
   );
 
   const handleChangeSettings = useCallback(
-    (changedSettings: VisualizationSettings, question: Question) => {
+    (changedSettings: VisualizationSettings, question?: Question) => {
       onChange?.(updateSettings(chartSettings, changedSettings), question);
     },
     [chartSettings, onChange],

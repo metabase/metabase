@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import {
@@ -14,8 +15,10 @@ export const fkFilterDrill: Drill<Lib.FKFilterDrillThruInfo> = ({
   applyDrill,
 }) => {
   const { tableName, columnName } = drillInfo;
-  const tableTitle = pluralize(tableName);
-  const columnTitle = singularize(stripId(columnName));
+  const locale = dayjs.locale();
+  const tableTitle = locale === "en" ? pluralize(tableName) : tableName;
+  const columnTitle =
+    locale === "en" ? singularize(stripId(columnName)) : stripId(columnName);
 
   return [
     {

@@ -95,6 +95,14 @@
   When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
   true)
 
+(defn without-cleaning
+  "Runs the provided function with cleaning of queries disabled.
+
+  This is preferred over directly cleaning the query."
+  [f]
+  (binding [*clean-query* false]
+    (f)))
+
 (defn- clean [almost-query]
   (if-not *clean-query*
     almost-query
@@ -152,7 +160,7 @@
   Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
   aliases and truncate them or anything like that."
   [joins]
-  (let [unique-name-fn (lib.util/unique-name-generator nil)]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
     (mapv (fn [join]
             (cond-> join
               (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
@@ -282,7 +290,15 @@
         ;; but on the off chance it did not, get the type from value so the schema doesn't fail entirely.
         opts (assoc opts :effective-type (or (:effective-type opts)
                                              (:base-type opts)
-                                             (lib.schema.expression/type-of value)))]
+                                             ;; [[lib.schema.expression/type-of]] can return a set of types in some
+                                             ;; cases, e.g. #{:type/Text :type/Date} for date literals. Since
+                                             ;; `:effective-type` can be just one value, prefer string, numeric, and
+                                             ;; boolean types over others.
+                                             (let [types (lib.schema.expression/type-of value)]
+                                               (if (set? types)
+                                                 (or (m/find-first (fn [t] (some #(isa? t %) [:type/Text :type/Number :type/Boolean])) types)
+                                                     (first types))
+                                                 types))))]
     (lib.options/ensure-uuid [:value opts value])))
 
 (doseq [tag [:case :if]]
@@ -443,9 +459,10 @@
 (doseq [tag [::aggregation ::expression]]
   (lib.hierarchy/derive tag ::aggregation-or-expression))
 
-(doseq [tag [:count :avg :count-where :distinct
+(doseq [tag [:count :avg :count-where :distinct :distinct-where
              :max :median :min :percentile
-             :share :stddev :sum :sum-where]]
+             :share :stddev :sum :sum-where
+             :cum-sum :cum-count]]
   (lib.hierarchy/derive tag ::aggregation))
 
 (doseq [tag [:+ :- :* :/
@@ -454,9 +471,9 @@
              :relative-datetime :time :absolute-datetime :now :convert-timezone
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
-             :datetime-add :datetime-subtract
-             :concat :substring :replace :regex-match-first
-             :length :trim :ltrim :rtrim :upper :lower]]
+             :datetime-add :datetime-subtract :date :datetime
+             :concat :substring :replace :regex-match-first :split-part
+             :length :trim :ltrim :rtrim :upper :lower :text :integer]]
   (lib.hierarchy/derive tag ::expression))
 
 (defmethod ->legacy-MBQL ::aggregation-or-expression
@@ -583,11 +600,10 @@
         (for [expression expressions
               :let [legacy-clause (->legacy-MBQL expression)]]
           [(lib.util/expression-name expression)
-           ;; We wrap literals in :value ->pMBQL so unwrap this
-           ;; direction. Also, `:aggregation-options` is not allowed
-           ;; inside `:expressions` in legacy, we'll just have to toss
-           ;; the extra info.
-           (if (#{:value :aggregation-options} (first legacy-clause))
+           ;; `:aggregation-options` is not allowed inside
+           ;; `:expressions` in legacy, we'll just have to toss the
+           ;; extra info.
+           (if (#{:aggregation-options} (first legacy-clause))
              (second legacy-clause)
              legacy-clause)])))
 

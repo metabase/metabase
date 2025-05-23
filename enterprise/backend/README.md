@@ -1,34 +1,17 @@
 ### EE Code Structure Notes
 
-EE namespaces follow the pattern work like this.
-
-EE namespace = take the equivalent OSS namespace and replace `metabase.` with `metabase-enterprise.<feature>` where
-`<feature>` is the premium token feature that one must have to use this feature.
-
-For example, Sandboxing-related API endpoints for Tables go in `metabase-enterprise.sandboxes.api.table` and
-Sandboxing-related models (e.g. GTAP) go in `metabase-enterprise.sandboxes.models`. Sandboxing-specific code for
-existing models follow this same pattern, e.g. Sandboxing-specific code for Tables goes in
-`metabase-enterprise.sandboxes.models.table`.
-
-Groups of API routes should be defined in namespaces like we do in OSS, for example
-`metabase-enterprise.content-verification.api.review` for ModerationReview-related endpoints. All endpoints for a
-specific feature are combined into a single `routes` handler in a `metabase-enterprise.<feature>.api.routes` namespace
-similar to how OSS routes are combined in `metabase.api.routes`. Finally, all EE routes are combined into a single
-handler in `metabase-enterprise.api.routes`; this handler is included in `metabase.api.routes/routes` if EE code is
-available.
-
-Please keep these rules in mind when adding new EE namespaces. In general, new namespaces **SHOULD NOT** be added
-directly under `metabase-enterprise` unless they apply to the Enterprise codebase as a whole; put them under the
-appropriate `metabase-enterprise.<feature>` directory instead.
+Refer to the [Backend Module Organization
+Guide](https://www.notion.so/metabase/Guide-to-Backend-Module-Organization-19169354c9018046ab46e4234aace905) for tips
+on how to organize EE code.
 
 ### Naming EE API routes
 
-To make things consistent EE-only API routes should follow the same pattern and be given route names that correspond
-to their namespaces (i.e., are prefixed with `ee/<feature>`). For example, an `:advanced-config`-only
-route to delete User subscriptions should be named something like
+To make things consistent EE-only API routes should be given `/ee/` route names that correspond to their module (i.e.,
+are prefixed with `/ee/<module>/`). For example, an `:subscription-management`-only route to delete User subscriptions
+should be named something like
 
 ```
-DELETE /api/ee/advanced-config/user/:id/subscriptions
+DELETE /api/ee/subscription-management/user/:id/subscriptions
 ```
 
 rather than
@@ -42,4 +25,4 @@ I don't get to it first.
 
 ### Questions :interrobang:
 
-Ping me (`@cam`) if you have any questions.
+Ping me (`@camsaul`) if you have any questions.

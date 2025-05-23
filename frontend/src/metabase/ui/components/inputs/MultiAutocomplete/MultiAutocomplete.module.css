@@ -1,0 +1,21 @@
+.pill {
+  cursor: default;
+
+  &:hover {
+    background-color: var(--mb-color-brand-alpha-88);
+  }
+}
+
+@supports (field-sizing: content) {
+  .field {
+    flex: 0 1 auto;
+    min-width: auto;
+    /* stylelint-disable-next-line property-no-unknown */
+    field-sizing: content;
+
+    &:not(:last-child) {
+      padding-left: 0.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+}

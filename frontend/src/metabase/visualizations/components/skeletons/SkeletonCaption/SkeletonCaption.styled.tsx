@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -19,8 +20,8 @@ interface SkeletonTitleProps {
 
 export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
   color: var(--mb-color-text-dark);
-  font-size: ${props => (props.size === "large" ? "1rem" : "")};
-  line-height: ${props => (props.size === "large" ? "1.375rem" : "")};
+  font-size: ${(props) => (props.size === "large" ? "1rem" : "")};
+  line-height: ${(props) => (props.size === "large" ? "1.375rem" : "")};
   font-weight: bold;
   overflow: hidden;
 `;

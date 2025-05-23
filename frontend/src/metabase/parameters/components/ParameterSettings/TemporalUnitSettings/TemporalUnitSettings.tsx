@@ -36,7 +36,7 @@ export function TemporalUnitSettings({
       <Popover.Target>
         <Button
           fw="normal"
-          rightIcon={<Icon name="chevrondown" />}
+          rightSection={<Icon name="chevrondown" />}
           fullWidth
           px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
           styles={{ inner: { justifyContent: "space-between" } }} // justify prop in mantine v7
@@ -84,7 +84,7 @@ function TemporalUnitDropdown({
   };
 
   const handleUnitToggle = (selectedUnit: TemporalUnit) => {
-    const newSelectedUnits = availableUnits.filter(availableUnit => {
+    const newSelectedUnits = availableUnits.filter((availableUnit) => {
       if (availableUnit === selectedUnit) {
         return !selectedUnitsSet.has(selectedUnit);
       } else {
@@ -104,10 +104,10 @@ function TemporalUnitDropdown({
           variant="stacked"
           onChange={handleAllToggle}
         />
-        <Text ml="sm">{isAll ? t`Select none` : t`Select all`}</Text>
+        <Text c="text-secondary" ml="sm">{t`Select all`}</Text>
       </label>
       <Divider />
-      {availableUnits.map(unit => {
+      {availableUnits.map((unit) => {
         const isSelected = selectedUnitsSet.has(unit);
         const isDisabled = isSelected && isDisabledDeselection;
 
@@ -145,7 +145,7 @@ function getSelectedText(
 
   return selectedUnits
     .slice(0, visibleUnitCount)
-    .map(unit => Lib.describeTemporalUnit(unit))
+    .map((unit) => Lib.describeTemporalUnit(unit))
     .concat(hiddenUnitCount > 0 ? [`+${hiddenUnitCount}`] : [])
     .join(", ");
 }

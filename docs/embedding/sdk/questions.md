@@ -1,89 +1,73 @@
 ---
-title: "Embedded analytics SDK - components"
+title: "Embedded analytics SDK - questions"
+description: How to embed charts in your app with the Embedded analytics SDK.
 ---
 
 # Embedded analytics SDK - questions
 
-{% include beta-blockquote.html %}
-
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 There are different ways you can embed questions:
 
-- [Static question](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
-- [Interactive question](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
-- [Query builder](#embedding-the-query-builder). Embeds the graphical query builder without a pre-defined query.
+- [Static question](#staticquestion). Embeds a chart. Clicking on the chart doesn't do anything.
+- [Interactive question](#interactivequestion). Clicking on the chart gives you the drill-through menu.
+- [Query builder](#embedding-the-query-builder-for-creating-new-questions). Embeds the graphical query builder without a pre-defined query.
 
-## Embedding a static question
+## Embedding a question
 
-You can embed a static question using the `StaticQuestion` component.
+You can embed a question using the one of the question components:
+
+### `StaticQuestion`
+
+A lightweight question component. Use this component when you want to display results without letting people interact with the data.
+
+![Static question](../images/static-question.png)
 
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
-```typescript
-import React from "react";
-import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
+#### API Reference
+- [Component](./api/StaticQuestion.html)
+- [Props](./api/StaticQuestionProps.html)
 
-const authConfig = {...}
-
-export default function App() {
-    const questionId = 1; // This is the question ID you want to embed
-
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <StaticQuestion questionId={questionId} withChartTypeSelector={false}/>
-        </MetabaseProvider>
-    );
-}
-```
-
-## Embedding an interactive question
-
-You can embed an interactive question using the `InteractiveQuestion` component.
+#### Example
 
 ```typescript
-import React from "react";
-import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
-
-const authConfig = {...}
-
-export default function App() {
-    const questionId = 1; // This is the question ID you want to embed
-
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId={questionId}/>
-        </MetabaseProvider>
-    );
-}
+{% include_file "{{ dirname }}/snippets/questions/static-question.tsx" %}
 ```
 
-## Question props
+#### Props
 
-| Prop                  | Type                                                                 | Description                                                                                                                                                                                                                                                                                                        |
-| --------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| questionId            | number or string                                                     | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's entity ID in the info panel when viewing a question. |
-| plugins               | `{ mapQuestionClickActions: Function }` or null                      | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
-| height                | number or string                                                     | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
-| entityTypeFilter      | string array; options include "table", "question", "model", "metric" | (optional) An array that specifies which entity types are available in the data picker                                                                                                                                                                                                                             |
-| isSaveEnabled         | boolean                                                              | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
-| withResetButton       | boolean                                                              | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                            |
-| withChartTypeSelector | boolean                                                              | (optional, default: `true`) Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.                                                                                                                                                   |
-| title                 | boolean or string or `ReactNode` or `() => ReactNode`                | (optional) Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only Only applicable to interactive questions when using the default layout.                                                                     |
-| onBeforeSave          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
-| onSave                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
-| saveToCollectionId    | number                                                               | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.                                                                                                                                                      |
-| initialSqlParameters  | `Record<string, string \| string[]>`                                 | (optional) A mapping of [SQL parameters names](../../questions/native-editor/sql-parameters.md) to parameter values, such as `{ product_id: "42" }`.                                                                                                                                                               |
+{% include_file "{{ dirname }}/api/snippets/StaticQuestionProps.md" snippet="properties" %}
 
-## Passing SQL parameters to questions
+### `InteractiveQuestion`
+
+Use this component when you want to allow people to explore their data and customize question layout.
+
+![Interactive question](../images/interactive-question.png)
+
+#### API Reference
+- [Component](./api/InteractiveQuestion.html)
+- [Props](./api/InteractiveQuestionProps.html)
+
+#### Example
+
+```typescript
+{% include_file "{{ dirname }}/snippets/questions/interactive-question.tsx" %}
+```
+
+#### Props
+
+{% include_file "{{ dirname }}/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
+
+## Pass SQL parameters to SQL questions with `initialSqlParameters`
 
 You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
 
 ```typescript
-{% raw %}
-<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/questions/initial-sql-parameters.tsx" snippet="example" %}
 ```
+
+`initialSqlParameters` can't be used with questions built using the query builder.
 
 ## Customizing interactive questions
 
@@ -92,76 +76,44 @@ By default, the Embedded analytics SDK provides a default layout for interactive
 Here's an example of using the `InteractiveQuestion` component with its default layout:
 
 ```typescript
-<InteractiveQuestion questionId={95} />
+{% include_file "{{ dirname }}/snippets/questions/customize-interactive-question.tsx" snippet="example-default-interactive-question" %}
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion` component. For example:
 
 ```typescript
-{% raw %}
-<InteractiveQuestion questionId={95}>
-  <div
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <div style={{ display: "grid", placeItems: "center" }}>
-      <InteractiveQuestion.Title />
-      <InteractiveQuestion.ResetButton />
-    </div>
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ width: "100%" }}>
-        <InteractiveQuestion.QuestionVisualization />
-      </div>
-      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
-        <InteractiveQuestion.Summarize />
-      </div>
-    </div>
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <InteractiveQuestion.Filter />
-    </div>
-  </div>
-</InteractiveQuestion>
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
 ```
 
-## Interactive question components
+### Interactive question components
 
 These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
 
-| Component                  | Info                                                                                                                         |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `BackButton`               | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
-| `Filter`                   | A set of badges for adding, viewing, and editing the filters of the current question                                         |
-| `FilterPicker`             | Picker for adding a new filter to the question                                                                               |
-| `FilterDropdown`           | A button which has a dropdown for adding, viewing, and editing the filters of the current question                           |
-| `ResetButton`              | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
-| `Title`                    | The question's title                                                                                                         |
-| `SaveButton`               | Button for saving the question.                                                                                              |
-| `Breakout`                 | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
-| `BreakoutDropdown`         | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
-| `Summarize`                | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
-| `SummarizeDropdown`        | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
-| `Notebook`                 | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
-| `NotebookButton`           | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
-| `QuestionVisualization`    | The chart visualization for the question                                                                                     |
-| `QuestionSettings`         | The settings for the current visualization                                                                                   |
-| `QuestionSettingsDropdown` | A settings button that contains the `QuestionSettings` component in the dropdown                                             |
-| `ChartTypeDropdown`        | A dropdown containing the possible visualization options for the current question                                            |
+#### API Reference:
+- [InteractiveQuestion.BackButton](./api/InteractiveQuestion.html#backbutton)
+- [InteractiveQuestion.Breakout](./api/InteractiveQuestion.html#breakout)
+- [InteractiveQuestion.BreakoutDropdown](./api/InteractiveQuestion.html#breakoutdropdown)
+- [InteractiveQuestion.ChartTypeDropdown](./api/InteractiveQuestion.html#charttypedropdown)
+- [InteractiveQuestion.ChartTypeSelector](./api/InteractiveQuestion.html#charttypeselector)
+- [InteractiveQuestion.Editor](./api/InteractiveQuestion.html#editor)
+- [InteractiveQuestion.EditorButton](./api/InteractiveQuestion.html#editorbutton)
+- [InteractiveQuestion.Filter](./api/InteractiveQuestion.html#filter)
+- [InteractiveQuestion.FilterDropdown](./api/InteractiveQuestion.html#filterdropdown)
+- [InteractiveQuestion.QuestionSettings](./api/InteractiveQuestion.html#questionsettings)
+- [InteractiveQuestion.QuestionSettingsDropdown](./api/InteractiveQuestion.html#questionsettingsdropdown)
+- [InteractiveQuestion.QuestionVisualization](./api/InteractiveQuestion.html#questionvisualization)
+- [InteractiveQuestion.ResetButton](./api/InteractiveQuestion.html#resetbutton)
+- [InteractiveQuestion.SaveButton](./api/InteractiveQuestion.html#savebutton)
+- [InteractiveQuestion.SaveQuestionForm](./api/InteractiveQuestion.html#savequestionform)
+- [InteractiveQuestion.Summarize](./api/InteractiveQuestion.html#summarize)
+- [InteractiveQuestion.SummarizeDropdown](./api/InteractiveQuestion.html#summarizedropdown)
+- [InteractiveQuestion.DownloadWidget](./api/InteractiveQuestion.html#downloadwidget)
+- [InteractiveQuestion.DownloadWidgetDropdown](./api/InteractiveQuestion.html#downloadwidgetdropdown)
+- [InteractiveQuestion.Title](./api/InteractiveQuestion.html#title)
 
 ## Interactive question plugins
 
-You can use plugins to add custom functionality to your questions.
+You can use [plugins](./plugins.md) to add custom functionality to your questions.
 
 ### `mapQuestionClickActions`
 
@@ -169,99 +121,25 @@ This plugin allows you to add custom actions to the click-through menu of an int
 customize the appearance and behavior of the custom actions.
 
 ```typescript
-// You can provide a custom action with your own `onClick` logic.
-const createCustomAction = clicked => ({
-  buttonType: "horizontal",
-  name: "client-custom-action",
-  section: "custom",
-  type: "custom",
-  icon: "chevronright",
-  title: "Hello from the click app!!!",
-  onClick: ({ closePopover }) => {
-    alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
-    closePopover();
-  },
-});
-
-// Or customize the appearance of the custom action to suit your need.
-const createCustomActionWithView = clicked => ({
-  name: "client-custom-action-2",
-  section: "custom",
-  type: "custom",
-  view: ({ closePopover }) => (
-    <button
-      className="tw-text-base tw-text-yellow-900 tw-bg-slate-400 tw-rounded-lg"
-      onClick={() => {
-        alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
-        closePopover();
-      }}
-    >
-      Custom element
-    </button>
-  ),
-});
-
-const plugins = {
-  /**
-   * You will have access to default `clickActions` that Metabase renders by default.
-   * So you could decide if you want to add custom actions, remove certain actions, etc.
-   */
-  mapQuestionClickActions: (clickActions, clicked) => {
-    return [
-      ...clickActions,
-      createCustomAction(clicked),
-      createCustomActionWithView(clicked),
-    ];
-  },
-};
-
-const questionId = 1; // This is the question ID you want to embed
-
-return (
-  <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>
-    <InteractiveQuestion questionId={questionId} />
-  </MetabaseProvider>
-);
+{% include_file "{{ dirname }}/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}
 ```
 
-## Embedding an editable interactive question
+## Prevent people from saving changes to an `InteractiveQuestion`
 
-You can edit an existing question using the query builder by passing the `isSaveEnabled` prop on the `InteractiveQuestion` component.
+To prevent people from saving changes to an interactive question, or from saving changes as a new question, you can set `isSaveEnabled={false}`:
 
 ```tsx
-import React from "react";
-import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
-
-const authConfig = {...}
-
-export default function App() {
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId={1} isSaveEnabled />
-        </MetabaseProvider>
-    );
-}
+{% include_file "{{ dirname }}/snippets/questions/disable-question-save.tsx" %}
 ```
 
-## Embedding the query builder
+## Embedding the query builder for creating new questions
 
-With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
+![Query builder](../images/query-builder.png)
 
-This component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). It [shares the same props as InteractiveQuestion](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
+You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
+
+```tsx
+{% include_file "{{ dirname }}/snippets/questions/new-question.tsx" %}
+```
 
 To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
-
-```tsx
-import React from "react";
-import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
-
-const authConfig = {...}
-
-export default function App() {
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <CreateQuestion />
-        </MetabaseProvider>
-    );
-}
-```

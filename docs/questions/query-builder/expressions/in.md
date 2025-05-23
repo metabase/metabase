@@ -18,13 +18,19 @@ in(value1, value2, ...)
 
 Metabase will return rows where the `value1` equals `value2` OR `value3`, etc. Matches must be exact (e.g., strings are case sensitive).
 
-You can choose multiple columns. For example, let's say you wanted to look for the string `Gadget` in both the `[Title]` and `[Category]` columns. You could write:
+For example,
+
+```
+in([Category], "Gadget", "Widget")
+```
+would return rows where `[Category]` is either `Gadget` or `Widget`. 
+
+
+You can choose multiple columns. For example, let's say you wanted to find records where `[Title]` or `[Category]` fields are equal to `Gadget`. You could write:
 
 ```
 in("Gadget", [Title], [Category])
 ```
-
-which would return rows where either the title or the category columns were equal to "Gadget".
 
 ## Related functions
 

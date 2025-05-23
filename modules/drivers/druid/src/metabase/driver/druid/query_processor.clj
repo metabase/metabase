@@ -10,8 +10,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -143,7 +143,7 @@
     :context     {:queryId (random-query-id)}}
    (case query-type
      ::scan               {:queryType :scan
-                           :limit     qp.i/absolute-max-results}
+                           :limit     limit/absolute-max-results}
      ::total              {:queryType :timeseries}
      ::grouped-timeseries {:queryType :timeseries}
      ::topN               {:queryType :topN
@@ -1120,7 +1120,7 @@
   #15414, adjust it back to the old known working value. had to work around."
   [limit]
   (cond-> limit
-    (= limit qp.i/absolute-max-results) inc))
+    (= limit limit/absolute-max-results) inc))
 
 (defmethod handle-limit ::scan
   [_ {limit :limit} druid-query]

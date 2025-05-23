@@ -13,6 +13,7 @@
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
@@ -75,14 +76,12 @@
          (markdown/process-markdown (:text dashboard-result) :html)])
        (cellfn nil)])))
 
-(def ^:private execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
-
 (defn- render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard (:id dashboard) (:id user) nil)
+        dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr
                                        [:th {:style (style/style table-style-map)} "Card Name"]
@@ -157,13 +156,11 @@
   a style tag with an attribute 'nonce=%NONCE%'. Specifcally, this was designed to be used with the
   endpoint `api/pulse/preview_dashboard/:id`."
   [only-this-uri handler]
-  (with-meta
-   (fn [request respond raise]
-     (let [{:keys [uri]} request]
-       (handler
-        request
-        (if (str/starts-with? uri only-this-uri)
-          (comp respond (partial add-style-nonce request))
-          respond)
-        raise)))
-   (meta handler)))
+  (fn [request respond raise]
+    (let [{:keys [uri]} request]
+      (handler
+       request
+       (if (str/starts-with? uri only-this-uri)
+         (comp respond (partial add-style-nonce request))
+         respond)
+       raise))))

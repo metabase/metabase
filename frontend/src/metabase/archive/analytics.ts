@@ -24,11 +24,11 @@ export const archiveAndTrack = async ({
     });
 
   return archive()
-    .then(result => {
+    .then((result) => {
       logAnalytics(true);
       return result;
     })
-    .catch(error => {
+    .catch((error) => {
       logAnalytics(false);
       throw error;
     });

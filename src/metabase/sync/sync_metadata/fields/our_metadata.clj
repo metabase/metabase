@@ -5,11 +5,11 @@
   comparing the differences in the two sets of Metadata."
   (:require
    [medley.core :as m]
-   [metabase.models.table :as table]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -34,7 +34,8 @@
           :position                  (:position field)
           :database-position         (:database_position field)
           :database-partitioned      (:database_partitioned field)
-          :database-required         (:database_required field)})
+          :database-required         (:database_required field)
+          :visibility-type           (:visibility_type field)})
        ;; make a map of parent-id -> set of child Fields
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set

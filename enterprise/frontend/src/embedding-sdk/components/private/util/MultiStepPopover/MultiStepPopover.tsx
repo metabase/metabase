@@ -58,7 +58,7 @@ const MultiStepPopoverContent = ({
     <Popover
       position="bottom-start"
       opened={currentStep !== null}
-      onClose={onClose}
+      onDismiss={onClose}
       {...popoverProps}
     >
       <Popover.Target>{targetElement}</Popover.Target>

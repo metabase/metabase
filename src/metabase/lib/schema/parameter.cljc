@@ -90,7 +90,7 @@
    ;;
    ;; TODO FIXME -- actually, it turns out the the FE client passes parameter type `:category` for parameters in
    ;; public Cards. Who knows why! For now, we'll continue allowing it. But we should fix it soon. See
-   ;; [[metabase.api.public-test/execute-public-card-with-parameters-test]]
+   ;; [[metabase.public-sharing.api-test/execute-public-card-with-parameters-test]]
    :id       {:allowed-for #{:id}}
    :category {:allowed-for #{:category #_FIXME :number :text :date :boolean}}
 
@@ -137,7 +137,8 @@
    :string/contains         {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/contains}}
    :string/does-not-contain {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/ends-with}}
-   :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}})
+   :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}
+   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean/=}}})
 
 (mr/def ::type
   (into [:enum {:error/message    "valid parameter type"

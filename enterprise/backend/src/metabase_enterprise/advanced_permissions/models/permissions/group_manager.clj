@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -23,6 +24,15 @@
   [user-group-memberships]
   (into {} (map (fn [x] [(:id x) (dissoc x :id)]) user-group-memberships)))
 
+(defn- complete-membership-info
+  "Fill in missing :is_group_manager values to be based on existing values, or 'false' if not set"
+  [new-user-info old-user-info]
+  (map #(cond-> %
+          (nil? (:is_group_manager %))
+          (assoc :is_group_manager
+                 (boolean (-> % :id old-user-info :is_group_manager))))
+       new-user-info))
+
 (defn set-user-group-memberships!
   "Update Groups Memberships of a User when `advanced-permissions` is enabled.
   It can be used to adds/removes a user from groups and promote/demote Group Manager."
@@ -30,7 +40,7 @@
   (let [user-id                       (u/the-id user-or-id)
         old-user-group-memberships    (user-group-memberships user-id)
         old-group-id->membership-info (user-group-memberships->map old-user-group-memberships)
-        new-group-id->membership-info (user-group-memberships->map new-user-group-memberships)
+        new-group-id->membership-info (user-group-memberships->map (complete-membership-info new-user-group-memberships old-group-id->membership-info))
         [to-remove to-add]            (data/diff old-group-id->membership-info new-group-id->membership-info)
         to-remove-group-ids           (keys to-remove)
         to-add-group-ids              (keys to-add)]
@@ -46,12 +56,6 @@
           (throw (ex-info (tru "Not allowed to edit group memberships")
                           {:status-code 403}))))
       (t2/with-transaction [_conn]
-        (when (seq to-remove-group-ids)
-          (t2/delete! :model/PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
-        (when (seq to-add-group-ids)
-          ;; do multiple single inserts because insert-many! does not call post-insert! hook
-          (doseq [group-id to-add-group-ids]
-            (t2/insert! :model/PermissionsGroupMembership
-                        {:user_id          user-id
-                         :group_id         group-id
-                         :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))})))))))
+        (perms/remove-user-from-groups! user-id to-remove-group-ids)
+        (doseq [group-id to-add-group-ids]
+          (perms/add-user-to-group! user-id group-id (:is_group_manager (new-group-id->membership-info group-id))))))))

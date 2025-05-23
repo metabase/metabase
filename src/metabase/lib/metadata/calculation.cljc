@@ -1,7 +1,8 @@
 (ns metabase.lib.metadata.calculation
   (:require
-   #?(:clj [metabase.config :as config])
+   #?(:clj [metabase.config.core :as config])
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -445,12 +446,13 @@
 (def ReturnedColumnsOptions
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:map
+   [:include-remaps? {:optional true} :boolean]
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 
 (mu/defn- default-returned-columns-options :- ReturnedColumnsOptions
-  [metadata-providerable]
-  {:unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))})
+  []
+  {:unique-name-fn (lib.util/unique-name-generator)})
 
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
@@ -504,9 +506,13 @@
     stage-number   :- :int
     x
     options        :- [:maybe ReturnedColumnsOptions]]
-   (let [options (merge (default-returned-columns-options query) options)]
+   (let [options (merge (default-returned-columns-options) options)]
      (binding [*propagate-binning-and-bucketing* true]
-       (returned-columns-method query stage-number x options)))))
+       (u/prog1 (returned-columns-method query stage-number x options)
+         (lib.metadata.ident/assert-idents-present! <> {:query        query
+                                                        :stage-number stage-number
+                                                        :target       x
+                                                        :options      options}))))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
@@ -520,9 +526,9 @@
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
 (mu/defn- default-visible-columns-options :- VisibleColumnsOptions
-  [metadata-providerable]
+  []
   (merge
-   (default-returned-columns-options metadata-providerable)
+   (default-returned-columns-options)
    {:include-joined?                              true
     :include-expressions?                         true
     :include-implicitly-joinable?                 true
@@ -589,8 +595,28 @@
     stage-number   :- :int
     x
     options        :- [:maybe VisibleColumnsOptions]]
-   (let [options (merge (default-visible-columns-options query) options)]
-     (visible-columns-method query stage-number x options))))
+   (let [options (merge (default-visible-columns-options) options)]
+     (u/prog1 (visible-columns-method query stage-number x options)
+       (lib.metadata.ident/assert-idents-present! <> {:query        query
+                                                      :stage-number stage-number
+                                                      :target       x
+                                                      :options      options})))))
+
+(defn remapped-columns
+  "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
+  [query stage-number source-cols {:keys [include-remaps? unique-name-fn] :as _options}]
+  (when (and include-remaps?
+             (= (lib.util/canonical-stage-index query stage-number) 0))
+    (for [column source-cols
+          :let [remapped (lib.metadata/remapped-field query column)]
+          :when remapped]
+      (assoc remapped
+             :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
+             :lib/source-column-alias  (column-name query stage-number remapped)
+             :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
+                                           (:name remapped))
+             :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
+             :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -610,37 +636,41 @@
 
   Does not include columns that would be implicitly joinable via multiple hops."
   [query stage-number column-metadatas unique-name-fn]
-  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
-    (into []
-          (comp (filter :fk-target-field-id)
-                (filter :id)
-                (filter (comp number? :id))
-                (map (fn [{source-field-id :id
-                           fk-ident       :ident
-                           :keys [fk-target-field-id]
-                           :as   source}]
-                       (-> (lib.metadata/field query fk-target-field-id)
-                           (assoc ::source-field-id   source-field-id
-                                  ::source-field-name ((some-fn :lib/desired-column-alias :name) source)
+  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)
+        fk-fields (into [] (filter (every-pred :fk-target-field-id (comp number? :id))) column-metadatas)
+        id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
+                                           query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
+        target-fields (into []
+                            (comp (map (fn [{source-field-id :id
+                                             fk-ident       :ident
+                                             :keys [fk-target-field-id]
+                                             :as   source}]
+                                         (-> (id->target-fields fk-target-field-id)
+                                             (assoc ::source-field-id   source-field-id
+                                                    ::source-field-name ((some-fn :lib/desired-column-alias :name) source)
                                   ::source-join-alias (:metabase.lib.join/join-alias source)
-                                  ::fk-ident          fk-ident))))
-                (remove #(contains? existing-table-ids (:table-id %)))
-                (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-field-name source-join-alias]}]
-                          (let [table-metadata (lib.metadata/table query table-id)
-                                options        {:unique-name-fn               unique-name-fn
-                                                :include-implicitly-joinable? false}]
-                            (for [field (visible-columns-method query stage-number table-metadata options)
-                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident fk-ident (:ident field))
-                                         field (assoc field
-                                                      :ident                    ident
-                                                      :fk-field-id              source-field-id
+                                                    ::fk-ident          fk-ident))))
+                                  (remove #(contains? existing-table-ids (:table-id %))))
+                            fk-fields)
+        id->table (m/index-by :id (lib.metadata/bulk-metadata
+                                   query :metadata/table (into #{} (map :table-id) target-fields)))]
+    (into []
+          (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-field-name source-join-alias]}]
+                    (let [table-metadata (id->table table-id)
+                          options        {:unique-name-fn               unique-name-fn
+                                          :include-implicitly-joinable? false}]
+                      (for [field (visible-columns-method query stage-number table-metadata options)
+                            :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
+                                   field (assoc field
+                                                :ident                    ident
+                                                :fk-field-id              source-field-id
                                                       :fk-field-name            source-field-name
-                                                      :fk-join-alias            source-join-alias
-                                                      :lib/source               :source/implicitly-joinable
-                                                      :lib/source-column-alias  (:name field))]]
-                              (assoc field :lib/desired-column-alias (unique-name-fn
-                                                                      (lib.join.util/desired-alias query field))))))))
-          column-metadatas)))
+                                                :fk-join-alias            source-join-alias
+                                                :lib/source               :source/implicitly-joinable
+                                                :lib/source-column-alias  (:name field))]]
+                        (assoc field :lib/desired-column-alias (unique-name-fn
+                                                                (lib.join.util/desired-alias query field)))))))
+          target-fields)))
 
 (mu/defn default-columns-for-stage :- ColumnsWithUniqueAliases
   "Given a query and stage, returns the columns which would be selected by default.

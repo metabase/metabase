@@ -3,14 +3,11 @@
     {
       "name": "Querying",
       "label": ".Team/Querying",
-      "projectUrl": "https://github.com/orgs/metabase/projects/97/views/1",
       "members": [
         "ranquild",
-        "kamilmielnik",
         "romeovs",
         "bshepherdson",
         "metamben",
-        "lbrdnk",
         "appleby",
         "uladzimirdev",
         "wzimrin",
@@ -18,9 +15,17 @@
       ]
     },
     {
+      "name": "Semantic Layer",
+      "label": ".Team/SemanticLayer",
+      "members": [
+        "kamilmielnik",
+        "lbrdnk",
+        "bronsa"
+      ]
+    },
+    {
       "name": "Drivers",
       "label": ".Team/Drivers",
-      "projectUrl": "https://github.com/orgs/metabase/projects/98/views/1",
       "members": [
         "snoe",
         "rileythomp"
@@ -29,7 +34,6 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
-      "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
       "members": [
         "WiNloSt",
         "oisincoveney",
@@ -41,27 +45,28 @@
     {
       "name": "Workflows",
       "label": ".Team/Workflows",
-      "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
       "members": [
         "qnkhuat",
         "piranha",
         "crisptrutski",
         "deniskaber",
-        "wotbrew"
+        "wotbrew",
+        "spalt08",
+        "stasgavrylov"
       ]
     },
     {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "noahmoss",
-        "escherize",
         "npfitz",
         "johnswanson",
         "rafpaf",
         "sloansparger",
         "iethree",
-        "nvoxland"
+        "nvoxland",
+        "fraserdrops",
+        "edpaget"
       ]
     },
     {
@@ -70,17 +75,31 @@
       "members": [
         "alxnddr",
         "kulyk",
-        "adam-james-v",
         "tsplude",
-        "lorem--ipsum"
+        "lorem--ipsum",
+        "noahmoss",
+        "bpander"
       ]
     },
     {
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul"
+        "camsaul",
+        "escherize"
       ]
+    },
+     {
+      "name": "Metabot",
+      "label": ".Team/Metabot",
+      "members": [
+        "somtom"
+      ]
+    },
+    {
+      "name": "Product Growth",
+      "label": ".Team/ProductGrowth",
+      "members": ["nemanjaglumac"]
     }
   ]
 }

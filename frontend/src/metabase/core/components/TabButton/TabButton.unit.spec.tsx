@@ -1,7 +1,6 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
 import { TabRow } from "../TabRow";
 
@@ -45,7 +44,6 @@ describe("TabButton", () => {
     const { action, value } = setup();
 
     await userEvent.click(getIcon("chevrondown"));
-
     await userEvent.click(
       await screen.findByRole("option", { name: "first item" }),
     );
@@ -127,7 +125,8 @@ describe("TabButton", () => {
 
     const inputEl = await screen.findByRole("textbox");
     await userEvent.clear(inputEl);
-    await userEvent.type(inputEl, `${newLabel}{enter}`);
+    await userEvent.paste(newLabel);
+    await userEvent.type(inputEl, `{enter}`, { delay: 0 });
 
     expect(onRename).toHaveBeenCalledWith(expectedLabel);
     expect(await screen.findByDisplayValue(expectedLabel)).toBeInTheDocument();

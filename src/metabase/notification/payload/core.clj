@@ -1,29 +1,39 @@
 (ns metabase.notification.payload.core
   (:require
-   [metabase.channel.render.core :as channel.render]
-   [metabase.models.notification :as models.notification]
+   [metabase.appearance.core :as appearance]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
-   [metabase.public-settings :as public-settings]
+   [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.system.core :as system]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
 (p/import-vars
  [notification.payload.execute
-  process-virtual-dashcard])
+  execute-dashboard
+  process-virtual-dashcard]
+ [notification.payload.temp-storage
+  cleanup!
+  is-cleanable?])
 
-(def Notification
+(mr/def ::Notification
   "Schema for the notification."
   ;; TODO: how do we make this schema closed after :merge?
   [:merge #_{:closed true}
    [:map
-    [:payload_type                  (into [:enum] models.notification/notification-types)]
+    [:payload_type                   (into [:enum] models.notification/notification-types)]
     ;; allow unsaved notification to be sent
-    [:id           {:optional true} [:maybe ms/PositiveInt]]
-    [:active       {:optional true} :boolean]
-    [:created_at   {:optional true} :any]
-    [:updated_at   {:optional true} :any]]
+    [:id                      {:optional true} [:maybe ms/PositiveInt]]
+    [:active                  {:optional true} :boolean]
+    [:created_at              {:optional true} :any]
+    [:updated_at              {:optional true} :any]
+    [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
+    ;;  the subscription that triggered this notification
+    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
@@ -35,18 +45,8 @@
         [:event_info  [:maybe :map]]]]]]
     [:notification/card
      [:map
-      ;; replacement of pulse
-      [:alert      [:map
-                    [:card_id                           ms/PositiveInt]
-                    [:schedule                          :map]
-                    [:alert_condition  {:optional true} [:enum "rows" "goal"]]
-                    [:alert_above_goal {:optional true} [:maybe ms/BooleanValue]]
-                    [:alert_first_only {:optional true} [:maybe ms/BooleanValue]]
-                    [:include_csv      {:optional true} [:maybe ms/BooleanValue]]
-                    [:include_xls      {:optional true} [:maybe ms/BooleanValue]]
-                    [:format_rows      {:optional true} [:maybe ms/BooleanValue]]
-                    [:pivot_results    {:optional true} [:maybe ms/BooleanValue]]]]
-      [:creator_id ms/PositiveInt]]]
+      [:payload    {:optional true} ::models.notification/NotificationCard]
+      [:creator_id                  ms/PositiveInt]]]
     [:notification/dashboard
      [:map
       [:creator_id ms/PositiveInt]
@@ -65,7 +65,7 @@
     ;; for testing only
     [:notification/testing :map]]])
 
-(def NotificationPayload
+(mr/def ::NotificationPayload
   "Schema for the notification payload."
   ;; TODO: how do we make this schema closed after :merge?
   [:merge
@@ -85,7 +85,7 @@
     [:notification/dashboard
      [:map
       [:payload [:map
-                 [:dashboard_parts             [:sequential notification.payload.execute/Part]]
+                 [:dashboard_parts             [:sequential ::notification.payload.execute/Part]]
                  [:dashboard                   :map]
                  [:dashboard_subscription      :map]
                  [:style                       :map]
@@ -93,16 +93,17 @@
     [:notification/card
      [:map
       [:payload [:map
-                 [:card_part [:maybe notification.payload.execute/Part]]
-                 [:card      :map]
-                 [:style     :map]
-                 [:alert     :map]]]]]
+                 [:card_part         [:maybe ::notification.payload.execute/Part]]
+                 [:card              :map]
+                 [:style             :map]
+                 [:notification_card ::models.notification/NotificationCard]
+                 [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
   []
-  (let [url (public-settings/application-logo-url)]
+  (let [url (appearance/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
@@ -128,32 +129,33 @@
 (defn- default-context
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
-  {:application_name     (public-settings/application-name)
-   :application_color    (public-settings/application-color)
+  {:application_name     (appearance/application-name)
+   :application_color    (appearance/application-color)
    :application_logo_url (logo-url)
-   :site_name            (public-settings/site-name)
-   :site_url             (public-settings/site-url)
-   :admin_email          (public-settings/admin-email)
-   :style                {:button (button-style (channel.render/primary-color))}})
+   :include_branding     (not (premium-features/enable-whitelabeling?))
+   :site_name            (appearance/site-name)
+   :site_url             (system/site-url)
+   :admin_email          (system/admin-email)
+   :style                {:button (button-style (appearance/application-color))}})
 
 (defmulti payload
   "Given a notification info, return the notification payload."
   {:arglists '([notification-info])}
   :payload_type)
 
-(mu/defn notification-payload :- NotificationPayload
+(mu/defn notification-payload :- ::NotificationPayload
   "Realize notification-info with :context and :payload."
-  [notification :- Notification]
+  [notification :- ::Notification]
   (assoc (select-keys notification [:payload_type])
          :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
          :payload (payload notification)
          :context (default-context)))
 
-(defmulti should-send-notification?
+(defmulti skip-reason
   "Determine whether a notification should be sent. Default to true."
   {:arglists '([notification-payload])}
   :payload_type)
 
-(defmethod should-send-notification? :default
+(defmethod skip-reason :default
   [_notification-payload]
-  true)
+  nil)

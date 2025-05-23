@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs float])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
@@ -42,13 +42,13 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
-    :month :month-of-year :quarter :quarter-of-year :year})
+    :month :month-of-year :quarter :quarter-of-year :year :year-of-era})
 
 (def ^:private time-bucketing-units
   "Set of valid units for bucketing or comparing against a *time* Field."
@@ -144,9 +144,9 @@
                "datetime" ::lib.schema.literal/datetime
                "unit"     ::DateTimeUnit)]])
 
-(def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
+(def ^:internal absolute-datetime
   "Schema for an `:absolute-datetime` clause."
-  [:ref ::absolute-datetime])
+  (with-meta [:ref ::absolute-datetime] {:clause-name :absolute-datetime}))
 
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
@@ -204,7 +204,9 @@
 ;; treat certain objects. For example, a string compared against a Postgres UUID Field needs to be parsed into a UUID
 ;; object, since text <-> UUID comparison doesn't work in Postgres. For this reason, raw literals in `:filter`
 ;; clauses are wrapped in `:value` clauses and given information about the type of the Field they will be compared to.
-(defclause ^:internal value
+;;
+;; :value clauses are also used to wrap top-level literal values in expression clauses.
+(defclause value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
 
@@ -328,18 +330,20 @@
     {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
     ::require-base-type-for-field-name]])
 
-(def ^{:clause-name :field, :added "0.39.0"} field
+(def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
-  [:ref ::field])
+  (with-meta [:ref ::field] {:clause-name :field}))
 
-(def ^{:clause-name :field, :added "0.39.0"} field:id
+(def ^{:added "0.39.0"} field:id
   "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
-  [:and
-   field
-   [:fn
-    {:error/message "Must be a :field with an integer Field ID."}
-    (fn [[_ id-or-name]]
-      (integer? id-or-name))]])
+  (with-meta
+   [:and
+    field
+    [:fn
+     {:error/message "Must be a :field with an integer Field ID."}
+     (fn [[_ id-or-name]]
+       (integer? id-or-name))]]
+   {:clause-name :field}))
 
 (mr/def ::Field
   [:schema
@@ -389,7 +393,7 @@
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :month-name :quarter-name :day-name})
+    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -413,7 +417,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer :float
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -426,11 +430,11 @@
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :metric :aggregation-options :count :offset})
+    :distinct-where :metric :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -499,16 +503,16 @@
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
                        :else                             :else))}
-   [:number              number?]
-   [:boolean             :boolean]
-   [:boolean-expression  BooleanExpression]
-   [:numeric-expression  NumericExpression]
-   [:datetime-expression DatetimeExpression]
-   [:aggregation         Aggregation]
-   [:string              :string]
-   [:string-expression   StringExpression]
-   [:value               value]
-   [:else                Field]])
+   [:number               number?]
+   [:boolean              :boolean]
+   [:boolean-expression   BooleanExpression]
+   [:numeric-expression   NumericExpression]
+   [:datetime-expression  DatetimeExpression]
+   [:aggregation          Aggregation]
+   [:string               :string]
+   [:string-expression    StringExpression]
+   [:value                value]
+   [:else                 Field]])
 
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
@@ -542,6 +546,9 @@
 (defclause ^{:requires-features #{:expressions}} substring
   s StringExpressionArg, start IntGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
+(defclause ^{:requires-features #{:expressions :split-part}} split-part
+  text StringExpressionArg, delimiter [:string {:min 1}], position IntGreaterThanZeroOrNumericExpression)
+
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)
 
@@ -563,6 +570,9 @@
 (defclause ^{:requires-features #{:expressions}} replace
   s StringExpressionArg, match :string, replacement :string)
 
+(defclause ^{:requires-features #{:expressions :expressions/text}} text
+  x :any)
+
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
 ;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
 (defclause ^{:requires-features #{:expressions}} concat
@@ -578,6 +588,9 @@
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :regex}} subdomain
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :regex}} path
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} month-name
@@ -622,6 +635,12 @@
 
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :expressions/integer}} integer
+  x [:or NumericExpressionArg StringExpressionArg])
+
+(defclause ^{:requires-features #{:expressions :expressions/float}} float
+  x StringExpressionArg)
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
@@ -693,8 +712,25 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
+(defclause ^{:requires-features #{:expressions :expressions/date}} date
+  string [:or StringExpressionArg DateTimeExpressionArg])
+
+(def ^:private LiteralDatetimeModeString
+  [:enum {:error/message "datetime mode string"
+          :decode/normalize lib.schema.common/normalize-keyword-lower}
+   :iso
+   :simple
+   :unixmilliseconds
+   :unixseconds
+   :unixmicroseconds
+   :unixnanoseconds])
+
+(defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
+  value  StringExpressionArg ;; normally a string, number, or bytes
+  mode   (optional LiteralDatetimeModeString))
+
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -801,10 +837,14 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+(def Emptyable
+  "Schema for a valid is-empty or not-empty argument."
+  [:or StringExpressionArg Field])
+
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
-(defclause ^:sugar is-empty,  field Field)
-(defclause ^:sugar not-empty, field Field)
+(defclause ^:sugar is-empty  field Emptyable)
+(defclause ^:sugar not-empty field Emptyable)
 
 (def ^:private StringFilterOptions
   [:map
@@ -821,28 +861,26 @@
                      "options" [:optional StringFilterOptions])
      ;; Multi-arg form
      (helpers/clause (keyword (name clause-keyword))
-                     "options" StringFilterOptions
+                     "options" [:maybe StringFilterOptions]
                      "field" StringExpressionArg
                      "string-or-field" StringExpressionArg
                      "second-string-or-field" StringExpressionArg
                      "more-strings-or-fields" [:rest StringExpressionArg])]))
 
-(def ^{:clause-name :starts-with} starts-with
+(def starts-with
   "Schema for a valid :starts-with clause."
-  [:ref ::starts-with])
-(def ^{:clause-name :ends-with} ends-with
+  (with-meta [:ref ::starts-with] {:clause-name :starts-with}))
+(def ends-with
   "Schema for a valid :ends-with clause."
-  [:ref ::ends-with])
-(def ^{:clause-name :contains} contains
+  (with-meta [:ref ::ends-with] {:clause-name :ends-with}))
+(def contains
   "Schema for a valid :contains clause."
-  [:ref ::contains])
+  (with-meta [:ref ::contains] {:clause-name :contains}))
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
-(def ^{:sugar       true
-       :clause-name :does-not-contain}
-  does-not-contain
+(def ^:sugar does-not-contain
   "Schema for a valid :does-not-contain clause."
-  [:ref ::does-not-contain])
+  (with-meta [:ref ::does-not-contain] {:clause-name :does-not-contain}))
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
@@ -910,12 +948,16 @@
                        (is-clause? numeric-functions x)  :numeric
                        (is-clause? string-functions x)   :string
                        (is-clause? boolean-functions x)  :boolean
+                       (is-clause? :value x)             :value
+                       (is-clause? :segment x)           :segment
                        :else                             :else))}
    [:datetime DatetimeExpression]
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
-   [:else     (one-of segment)]])
+   [:value    value]
+   [:segment  segment]
+   [:else     Field]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -935,17 +977,17 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
-          subdomain month-name quarter-name day-name))
+          subdomain path month-name quarter-name day-name text split-part))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a `:field` clause."
+  `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
     :doc/title     "expression definition"
@@ -958,6 +1000,7 @@
                        (is-clause? :case x)              :case
                        (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
+                       (is-clause? :value x)             :value
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
@@ -966,6 +1009,7 @@
    [:case     case]
    [:if       case:if]
    [:offset   offset]
+   [:value    value]
    [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
@@ -992,6 +1036,9 @@
 (defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression [:ref ::FieldOrExpressionDef])
 (defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression [:ref ::FieldOrExpressionDef])
 
+(defclause ^{:requires-features #{:distinct-where}} distinct-where
+  field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
+
 (defclause ^{:requires-features #{:basic-aggregations}} sum-where
   field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
 
@@ -1013,10 +1060,9 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
-;; expanded to other aggregations/etc. in the expand-macros middleware
+;;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric
-  metric-id ::lib.schema.id/metric)
+  metric-id ::lib.schema.id/card)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;
@@ -1030,7 +1076,7 @@
                        :numeric-expression
                        :else))}
    [:numeric-expression NumericExpression]
-   [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
+   [:else (one-of avg cum-sum distinct distinct-where stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
@@ -1551,9 +1597,9 @@
     [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
     [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
 
-(def ^{:clause-name :dimension} dimension
+(def dimension
   "Schema for a valid dimension clause."
-  [:ref ::dimension])
+  (with-meta [:ref ::dimension] {:clause-name :dimension}))
 
 (defclause variable
   target template-tag)

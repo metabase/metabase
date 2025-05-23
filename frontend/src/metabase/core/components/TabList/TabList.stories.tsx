@@ -6,7 +6,7 @@ import Tab from "../Tab";
 import TabList from "./TabList";
 
 export default {
-  title: "Core/TabList",
+  title: "Deprecated/Components/TabList",
   component: TabList,
 };
 
@@ -16,7 +16,7 @@ const sampleStyle = {
   border: "1px solid #ccc",
 };
 
-const Template: StoryFn<typeof TabList> = args => {
+const Template: StoryFn<typeof TabList> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 

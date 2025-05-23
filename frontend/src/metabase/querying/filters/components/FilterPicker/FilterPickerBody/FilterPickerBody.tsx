@@ -7,6 +7,7 @@ import { DefaultFilterPicker } from "../DefaultFilterPicker";
 import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
+import type { FilterChangeOpts } from "../types";
 
 interface FilterPickerBodyProps {
   query: Lib.Query;
@@ -14,7 +15,8 @@ interface FilterPickerBodyProps {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew?: boolean;
-  onChange: (filter: Lib.ExpressionClause) => void;
+  withAddButton?: boolean;
+  onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
 }
 
@@ -24,6 +26,7 @@ export function FilterPickerBody({
   column,
   filter,
   isNew = filter == null,
+  withAddButton = false,
   onChange,
   onBack,
 }: FilterPickerBodyProps) {
@@ -39,6 +42,7 @@ export function FilterPickerBody({
       column={column}
       filter={filter}
       isNew={isNew}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />

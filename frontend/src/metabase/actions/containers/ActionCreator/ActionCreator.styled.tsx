@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import SidebarContentS from "metabase/query_builder/components/SidebarContent/SidebarContent.module.css";

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -14,7 +14,7 @@ describe("issue 10803", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "10803",
         native: {
@@ -26,9 +26,9 @@ describe("issue 10803", () => {
     );
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it(`should format the date properly for ${fileType} in saved questions (metabase#10803)`, () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.downloadAndAssert(
           { fileType, questionId, logResults: true, raw: true },
           testWorkbookDatetimes,
@@ -40,7 +40,7 @@ describe("issue 10803", () => {
       // Add a space at the end of the query to make it "dirty"
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      H.focusNativeEditor().type("{movetoend} ");
+      H.NativeEditor.focus().type("{movetoend} ");
 
       H.runNativeQuery();
       H.downloadAndAssert({ fileType, raw: true }, testWorkbookDatetimes);
@@ -82,19 +82,17 @@ describe.skip("issue 18219", () => {
     cy.signInAsAdmin();
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it("should format temporal units on export (metabase#18219)", () => {
-      cy.createQuestion(questionDetails).then(
-        ({ body: { id: questionId } }) => {
-          H.visitQuestion(questionId);
+      H.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+        H.visitQuestion(questionId);
 
-          cy.findByText("Created At: Year");
-          cy.findByText("2022");
-          cy.findByText("744");
+        cy.findByText("Created At: Year");
+        cy.findByText("2022");
+        cy.findByText("744");
 
-          H.downloadAndAssert({ fileType, questionId, raw: true }, assertion);
-        },
-      );
+        H.downloadAndAssert({ fileType, questionId, raw: true }, assertion);
+      });
     });
 
     function assertion(sheet) {
@@ -211,7 +209,7 @@ describe("issue 18382", () => {
     H.visitQuestionAdhoc(questionDetails);
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {
       // TODO: Please remove this line when issue gets fixed
       cy.skipOn(fileType === "csv");
@@ -253,7 +251,7 @@ describe("issue 18440", () => {
     });
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
       H.visitQuestionAdhoc(questionDetails);
 
@@ -266,7 +264,7 @@ describe("issue 18440", () => {
     });
 
     it(`export should include a column with remapped values for ${fileType} for a saved question (metabase#18440-2)`, () => {
-      cy.createQuestion({ query }).then(({ body: { id } }) => {
+      H.createQuestion({ query }).then(({ body: { id } }) => {
         H.visitQuestion(id);
 
         cy.findByText("Product ID");
@@ -360,7 +358,7 @@ describe("issue 18729", () => {
     cy.signInAsAdmin();
   });
 
-  ["csv", "xlsx"].forEach(fileType => {
+  ["csv", "xlsx"].forEach((fileType) => {
     it(`should properly format the 'X of Y'dates in ${fileType} exports (metabase#18729)`, () => {
       H.visitQuestionAdhoc(questionDetails);
 
@@ -381,7 +379,7 @@ describe("issue 19889", () => {
 
   function saveAndOverwrite() {
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
   }
@@ -392,7 +390,7 @@ describe("issue 19889", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });
@@ -416,9 +414,9 @@ describe("issue 19889", () => {
     cy.findByText("Started from").click(); // Give DOM some time to update
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it("should order columns correctly in unsaved native query exports", () => {
-      H.downloadAndAssert({ fileType, raw: true }, sheet => {
+      H.downloadAndAssert({ fileType, raw: true }, (sheet) => {
         expect(sheet["A1"].v).to.equal("column b");
         expect(sheet["B1"].v).to.equal("column a");
         expect(sheet["C1"].v).to.equal("column c");
@@ -428,8 +426,8 @@ describe("issue 19889", () => {
     it("should order columns correctly in saved native query exports", () => {
       saveAndOverwrite();
 
-      cy.get("@questionId").then(questionId => {
-        H.downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
+      cy.get("@questionId").then((questionId) => {
+        H.downloadAndAssert({ fileType, questionId, raw: true }, (sheet) => {
           expect(sheet["A1"].v).to.equal("column b");
           expect(sheet["B1"].v).to.equal("column a");
           expect(sheet["C1"].v).to.equal("column c");
@@ -440,16 +438,16 @@ describe("issue 19889", () => {
     it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      H.focusNativeEditor().type(
+      H.NativeEditor.focus().type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
       );
 
       saveAndOverwrite();
 
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
-        H.downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
+        H.downloadAndAssert({ fileType, questionId, raw: true }, (sheet) => {
           expect(sheet["A1"].v).to.equal("column x");
           expect(sheet["B1"].v).to.equal("column y");
           expect(sheet["C1"].v).to.equal("column c");
@@ -477,18 +475,18 @@ describe("metabase#28834", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });
 
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(', select 2 "column b"');
+    H.NativeEditor.focus().type(', select 2 "column b"');
   });
 
   it("should be able to export unsaved native query results as CSV even after the query has changed", () => {
     const fileType = "csv";
-    H.downloadAndAssert({ fileType, raw: true }, sheet => {
+    H.downloadAndAssert({ fileType, raw: true }, (sheet) => {
       expect(sheet["A1"].v).to.equal("column a");
       expect(sheet["A2"].v).to.equal("1");
       expect(sheet["A3"]).to.be.undefined;
@@ -497,7 +495,7 @@ describe("metabase#28834", () => {
 
   it("should be able to export unsaved native query results as XLSX even after the query has changed", () => {
     const fileType = "xlsx";
-    H.downloadAndAssert({ fileType, raw: true }, sheet => {
+    H.downloadAndAssert({ fileType, raw: true }, (sheet) => {
       expect(sheet["A1"].v).to.equal("column a");
       expect(sheet["A2"].v).to.equal(1);
       expect(sheet["A3"]).to.be.undefined;

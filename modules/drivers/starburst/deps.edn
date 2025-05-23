@@ -1,0 +1,5 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {io.trino/trino-jdbc {:mvn/version "475"}}}

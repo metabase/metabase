@@ -1,13 +1,14 @@
 (ns metabase.notification.payload.impl.system-event-test
   (:require
    [clojure.test :refer :all]
-   [metabase.events :as events]
-   [metabase.models.notification :as models.notification]
+   [metabase.channel.urls :as urls]
+   [metabase.events.core :as events]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.public-settings :as public-settings]
+   [metabase.session.settings :as session.settings]
+   [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -23,7 +24,7 @@
 
 (deftest system-event-e2e-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-text
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
@@ -43,8 +44,8 @@
                              :user_id (mt/user->id :crowberto)}
                             {:type                 :notification-recipient/group
                              :permissions_group_id group-id}
-                            {:type    :notification-recipient/external-email
-                             :details {:email "hi@metabase.com"}}]}])
+                            {:type    :notification-recipient/raw-value
+                             :details {:value "hi@metabase.com"}}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox
@@ -60,7 +61,7 @@
 
 (deftest system-event-resouce-template-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-resource
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
@@ -80,8 +81,8 @@
                              :user_id (mt/user->id :crowberto)}
                             {:type                 :notification-recipient/group
                              :permissions_group_id group-id}
-                            {:type    :notification-recipient/external-email
-                             :details {:email "hi@metabase.com"}}]}])
+                            {:type    :notification-recipient/raw-value
+                             :details {:value "hi@metabase.com"}}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox
@@ -131,8 +132,8 @@
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"])
 
       (testing "with sso enabled"
-        (with-redefs [public-settings/sso-enabled? (constantly true)
-                      public-settings/enable-password-login (constantly false)]
+        (with-redefs [sso.settings/sso-enabled? (constantly true)
+                      session.settings/enable-password-login (constantly false)]
           (check false
                  "You're invited to join SuperStar's Metabase"
                  [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]))))
@@ -150,20 +151,20 @@
               #"Ngoc could use your help setting up Metabase"
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>"]))))
 
-(deftest alert-create-email-test
-  (mt/with-temp [:model/Card card {:name "A Card"}]
-    (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-      (let [rasta (mt/fetch-user :rasta)
-            check (fn [alert-condition condition-regex]
-                    (let [regexes [#"This is just a confirmation"
+(deftest notification-create-email-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+    (let [rasta (mt/fetch-user :rasta)
+          check (fn [send-condition condition-regex]
+                  (notification.tu/with-card-notification [notification {:card              {:name "A Card"}
+                                                                         :notification-card {:send_condition send-condition}
+                                                                         :notification      {:creator_id (:id rasta)}}]
+                    (let [card    (-> notification :payload :card)
+                          regexes [#"This is just a confirmation"
                                    (re-pattern (format "<a href=\"%s\"*>%s</a>" (urls/card-url (:id card)) (:name card)))
                                    condition-regex]
                           email   (-> (notification.tu/with-captured-channel-send!
-                                        (events/publish-event! :event/alert-create {:object (t2/instance :model/Pulse
-                                                                                                         (merge {:name "A Pulse"
-                                                                                                                 :card card}
-                                                                                                                alert-condition))
-                                                                                    :user-id (:id rasta)}))
+                                        (events/publish-event! :event/notification-create {:object notification
+                                                                                           :user-id (:id rasta)}))
                                       :channel/email
                                       first)]
                       (is (= {:recipients     #{(:email rasta)}
@@ -171,18 +172,16 @@
                               :subject        "You set up an alert"
                               :message        [(zipmap (map str regexes) (repeat true))]
                               :recipient-type :cc}
-                             (apply mt/summarize-multipart-single-email email regexes)))))]
+                             (apply mt/summarize-multipart-single-email email regexes))))))]
 
-        (doseq [[alert-condition condition-regex]
-                [[{:alert_condition "rows"}
-                  #"This alert will be sent\s+whenever this question has any results"]
-                 [{:alert_condition "goal"
-                   :alert_above_goal true}
-                  #"This alert will be sent\s+when this question meets its goal"]
-                 [{:alert_condition "goal"
-                   :alert_above_goal false}
-                  #"This alert will be sent\s+when this question goes below its goal"]]]
-          (check alert-condition condition-regex))))))
+      (doseq [[send-condition condition-regex]
+              [[:has_result
+                #"This alert will be sent\s+whenever this question has any results"]
+               [:goal_above
+                #"This alert will be sent\s+when this question meets its goal"]
+               [:goal_below
+                #"This alert will be sent\s+when this question goes below its goal"]]]
+        (check send-condition condition-regex)))))
 
 (deftest slack-error-token-email-test
   (let [check (fn [recipients regexes]

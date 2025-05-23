@@ -10,8 +10,8 @@ const SEPARATOR = " · ";
 const updateDocumentTitle = _.debounce(() => {
   document.title = componentStack
     .sort((a, b) => (a._titleIndex || 0) - (b._titleIndex || 0))
-    .map(component => component._documentTitle)
-    .filter(title => title)
+    .map((component) => component._documentTitle)
+    .filter((title) => title)
     .reverse()
     .join(SEPARATOR);
 });
@@ -19,7 +19,7 @@ const updateDocumentTitle = _.debounce(() => {
 /**
  * @deprecated HOCs are deprecated
  */
-const title = documentTitleOrGetter => ComposedComponent =>
+const title = (documentTitleOrGetter) => (ComposedComponent) =>
   class extends Component {
     static displayName =
       "Title[" +
@@ -80,7 +80,7 @@ export default title;
  * Component version of the title HOC
  * @param {string} props.title
  */
-export const SetTitle = props => {
+export const SetTitle = (props) => {
   const Component = title(props.title)(() => null);
   return <Component />;
 };

@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { forwardRef, useState } from "react";
+
+import { render, screen } from "__support__/ui";
 
 import Tooltip from "./Tooltip";
 
@@ -135,7 +136,7 @@ describe("Tooltip", () => {
         <div>
           <Tooltip reference={eventTarget} tooltip="reference tooltip" isOpen />
           <div
-            onClick={event => {
+            onClick={(event) => {
               setEventTarget(event.target);
             }}
             style={{ width: 100, height: 100 }}

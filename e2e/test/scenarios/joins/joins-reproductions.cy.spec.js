@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -78,8 +78,8 @@ describe("issue 12928", () => {
   });
 
   it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    cy.createQuestion(SOURCE_QUESTION_DETAILS);
-    cy.createQuestion(JOINED_QUESTION_DETAILS, {
+    H.createQuestion(SOURCE_QUESTION_DETAILS);
+    H.createQuestion(JOINED_QUESTION_DETAILS, {
       wrapId: true,
       idAlias: "joinedQuestionId",
     });
@@ -91,7 +91,7 @@ describe("issue 12928", () => {
 
     H.visualize();
 
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+    cy.get("@joinedQuestionId").then((joinedQuestionId) => {
       H.assertJoinValid({
         lhsTable: SOURCE_QUESTION_NAME,
         rhsTable: JOINED_QUESTION_NAME,
@@ -149,7 +149,7 @@ describe("issue 14793", () => {
     H.popover().findByText("Automatic insights…").click();
     H.popover().findByText("X-ray").click();
 
-    cy.wait("@xray").then(xhr => {
+    cy.wait("@xray").then((xhr) => {
       for (let i = 0; i < XRAY_DATASETS; ++i) {
         cy.wait("@postDataset");
       }
@@ -195,6 +195,7 @@ describe("issue 15342", { tags: "@external" }, () => {
     H.getNotebookStep("join").findByLabelText("Right column").click();
     H.popover().findByText("Product ID").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.icon("join_left_outer").last().click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
@@ -228,7 +229,7 @@ describe("issue 15578", () => {
       human_readable_field_id: PRODUCTS.TITLE,
     });
 
-    cy.createQuestion({
+    H.createQuestion({
       name: JOINED_QUESTION_NAME,
       query: { "source-table": ORDERS_ID },
     });
@@ -312,7 +313,7 @@ describe("issue 17767", () => {
   });
 
   it("should be able to do subsequent joins on question with the aggregation that uses implicit joins (metabase#17767)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.openNotebook();
 
@@ -325,7 +326,7 @@ describe("issue 17767", () => {
       cy.findByText("Reviews").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -351,6 +352,7 @@ describe("issue 17968", () => {
       .click();
     H.popover().findByText("Created At").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
@@ -390,8 +392,8 @@ describe("issue 18502", () => {
   it("should be able to join two saved questions based on the same table (metabase#18502)", () => {
     cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
 
-    cy.createQuestion(question1);
-    cy.createQuestion(question2);
+    H.createQuestion(question1);
+    H.createQuestion(question2);
 
     H.startNewQuestion();
     H.selectSavedQuestionsToJoin("18502#1", "18502#2");
@@ -401,7 +403,7 @@ describe("issue 18502", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Birth Date: Month").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -458,8 +460,8 @@ describe("issue 18512", () => {
   });
 
   it("should join two saved questions with the same implicit/explicit grouped field (metabase#18512)", () => {
-    cy.createQuestion(question1);
-    cy.createQuestion(question2);
+    H.createQuestion(question1);
+    H.createQuestion(question2);
 
     H.startNewQuestion();
     H.selectSavedQuestionsToJoin("18512#1", "18512#2");
@@ -467,7 +469,7 @@ describe("issue 18512", () => {
     H.popover().findByText("Products → Created At: Month").click();
     H.popover().findByText("Products → Created At: Month").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -564,7 +566,7 @@ describe("issue 18630", () => {
   };
 
   it("should normally open queries with field literals in joins (metabase#18630)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     // The query runs and we assert the page is not blank,
     // which was caused by an infinite loop and a stack overflow.
@@ -582,7 +584,7 @@ describe("issue 18818", () => {
   });
 
   it("should normally open notebook editor for queries joining on custom columns (metabase#18818)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -641,12 +643,13 @@ describe("issue 20519", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
   });
 
   // Tightly related issue: metabase#17767
   it("should allow subsequent joins and nested query after summarizing on the implicit joins (metabase#20519)", () => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByLabelText("Custom column").last().click();
 
     H.enterCustomColumnDetails({
@@ -660,7 +663,7 @@ describe("issue 20519", () => {
       .contains("Two")
       .should("exist");
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).not.to.exist;
     });
 
@@ -692,7 +695,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
   };
 
   function getJoinedTableColumnHeader() {
-    cy.get("@q1Id").then(id => {
+    cy.get("@q1Id").then((id) => {
       cy.findByText(`Question ${id} → ID`);
     });
   }
@@ -701,10 +704,10 @@ describe("issue 22859 - multiple levels of nesting", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { wrapId: true, idAlias: "q1Id" });
+    H.createQuestion(questionDetails, { wrapId: true, idAlias: "q1Id" });
 
     // Join Orders table with the previously saved question and save it again
-    cy.get("@q1Id").then(id => {
+    cy.get("@q1Id").then((id) => {
       const nestedQuestionDetails = {
         name: "22859-Q2",
         query: {
@@ -732,7 +735,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
         },
       };
 
-      cy.createQuestion(nestedQuestionDetails, {
+      H.createQuestion(nestedQuestionDetails, {
         wrapId: true,
         idAlias: "q2Id",
       });
@@ -740,7 +743,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
   });
 
   it("model based on multi-level nested saved question should work (metabase#22859-1)", () => {
-    cy.get("@q2Id").then(id => {
+    cy.get("@q2Id").then((id) => {
       // Convert the second question to a model
       cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
@@ -830,7 +833,7 @@ describe("issue 23293", () => {
         display: "bar",
       };
 
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },
@@ -846,10 +849,12 @@ describe("issue 23293", () => {
         "contain",
         "Product → Category is Doohickey",
       );
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
         .last()
         .should("have.text", "Product → Category");
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByRole("grid")
         .last()
         .as("tableResults")
@@ -882,13 +887,14 @@ describe("issue 27380", () => {
       },
       display: "line",
     };
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
       },
     );
 
     // Doesn't really matter which 'circle" we click on the graph
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().last().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
@@ -960,7 +966,7 @@ describe("issue 29795", () => {
   it("should allow join based on native query (metabase#29795)", () => {
     const NATIVE_QUESTION = "native question";
     const LIMIT = 5;
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: NATIVE_QUESTION,
         native: { query: `SELECT * FROM "PUBLIC"."ORDERS" LIMIT ${LIMIT}` },
@@ -1078,8 +1084,8 @@ describe("issue 31769", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion({ name: "Q1", query: Q1 }).then(() => {
-      cy.createQuestion({ name: "Q2", query: Q2 }).then(response => {
+    H.createQuestion({ name: "Q1", query: Q1 }).then(() => {
+      H.createQuestion({ name: "Q2", query: Q2 }).then((response) => {
         cy.wrap(response.body.id).as("card_id_q2");
         H.startNewQuestion();
       });
@@ -1097,15 +1103,13 @@ describe("issue 31769", () => {
     // Asserting there're two columns from Q1 and two columns from Q2
     cy.findAllByTestId("header-cell").should("have.length", 4);
 
-    cy.get("@card_id_q2").then(cardId => {
-      cy.findByTestId("TableInteractive-root")
+    cy.get("@card_id_q2").then((cardId) => {
+      H.tableInteractive()
         .findByText("Q2 - Products → Category → Category")
         .should("exist");
     });
 
-    cy.findByTestId("TableInteractive-root")
-      .findByText("Products → Category")
-      .should("exist");
+    H.tableInteractive().findByText("Products → Category").should("exist");
   });
 });
 
@@ -1147,7 +1151,7 @@ describe.skip("issue 27521", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -1163,7 +1167,7 @@ describe.skip("issue 27521", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -1184,7 +1188,7 @@ describe.skip("issue 27521", () => {
     });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -1224,6 +1228,7 @@ describe.skip("issue 27521", () => {
   });
 
   function assertTableHeader(index, name) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 });
@@ -1288,7 +1293,7 @@ describe("issue 45300", () => {
     cy.signInAsNormalUser();
   });
 
-  it("joins using the foreign key only should not break the filter modal (metabase#45300)", () => {
+  it("joins using the foreign key only should not break the filter picker (metabase#45300)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -1321,23 +1326,13 @@ describe("issue 45300", () => {
     });
 
     H.filter();
-
-    H.modal().within(() => {
-      // sidebar
-      cy.findByRole("tablist").within(() => {
-        cy.findAllByRole("tab", { name: "Product" }).eq(0).click();
-      });
-
-      // main panel
-      cy.findAllByTestId("filter-column-Category")
-        .should("have.length", 1)
-        .within(() => {
-          cy.findByText("Doohickey").click();
-        });
-
-      cy.button("Apply filters").click();
-      cy.wait("@dataset");
+    H.popover().within(() => {
+      cy.findAllByText("Product").should("have.length", 2).first().click();
+      cy.findByText("Category").click();
+      cy.findByText("Doohickey").click();
+      cy.button("Apply filter").click();
     });
+    cy.wait("@dataset");
 
     cy.findByTestId("filter-pill").should(
       "have.text",

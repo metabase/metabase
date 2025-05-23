@@ -40,4 +40,5 @@
       (download-jar! version dir))))
 
 (when (= *file* (System/getProperty "babashka.file"))
+  (println "DEPRECATED: please use ./bin/mage download-jar instead. This will be removed at a later date.")
   (apply -main *command-line-args*))

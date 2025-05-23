@@ -27,10 +27,10 @@ export const ChartTypeOption = ({
     <Center pos="relative" data-testid="chart-type-option">
       <Stack
         align="center"
-        spacing="xs"
+        gap="xs"
         role="option"
         aria-selected={isSelected}
-        data-testid={`${visualization.uiName}-container`}
+        data-testid={`${visualization.getUiName()}-container`}
       >
         <ActionIcon
           w="3.125rem"
@@ -50,7 +50,7 @@ export const ChartTypeOption = ({
             ChartTypeOptionS.BorderedButton,
             ChartTypeOptionS.VisualizationButton,
           )}
-          data-testid={`${visualization.uiName}-button`}
+          data-testid={`${visualization.getUiName()}-button`}
         >
           <Icon
             name={visualization.iconName}
@@ -80,13 +80,13 @@ export const ChartTypeOption = ({
 
         <Text
           lh="unset"
-          align="center"
+          ta="center"
           fw="bold"
           fz="sm"
           color={isSelected ? "brand" : "text-medium"}
           data-testid="chart-type-option-label"
         >
-          {visualization.uiName}
+          {visualization.getUiName()}
         </Text>
       </Stack>
     </Center>

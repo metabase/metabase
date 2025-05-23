@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactElement, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
@@ -11,7 +11,7 @@ import { DataSourceCrumbs } from "./DataSourceCrumbs";
 import { SourceDatasetBreadcrumbs } from "./SourceDatasetBreadcrumbs";
 
 interface Props {
-  divider: ReactNode;
+  divider?: ReactElement | string;
   question: Question;
   variant: "head" | "subhead";
 }

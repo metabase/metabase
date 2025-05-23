@@ -3,14 +3,15 @@
   Currently supports Dashboards and Cards."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.stale :as stale]
-   [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.collection :as api.collection]
+   [metabase-enterprise.stale.impl :as stale]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -67,6 +68,7 @@
                                :database_id
                                [nil :location]
                                :dataset_query
+                               :card_schema
                                :last_used_at
                                [{:select   [:status]
                                  :from     [:moderation_review]
@@ -84,7 +86,7 @@
        present-collections
        (map (fn [card]
               (-> card
-                  (assoc :model (if (card/model? card) "dataset" "card"))
+                  (assoc :model (if (queries/model? card) "dataset" "card"))
                   (assoc :fully_parameterized (api.collection/fully-parameterized-query? card))
                   (dissoc :dataset_query))))))
 
@@ -163,10 +165,12 @@
                           :total_stale_items_found total
                           ;; convert before-date to a date-time string before sending it.
                           :cutoff_date             (format "%sT00:00:00Z" (str before-date))}]
-    (snowplow/track-event! ::snowplow/cleanup snowplow-payload)
+    (analytics/track-event! :snowplow/cleanup snowplow-payload)
     {:total  total
      :data   (api/present-items present-model-items rows)
      :limit  (request/limit)
      :offset (request/offset)}))
 
-(api/define-routes)
+(def ^{:arglists '([request respond raise])} routes
+  "Ring routes for Stale API"
+  (api.macros/ns-handler *ns* +auth))

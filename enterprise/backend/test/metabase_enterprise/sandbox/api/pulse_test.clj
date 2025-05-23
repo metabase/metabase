@@ -1,12 +1,10 @@
 (ns metabase-enterprise.sandbox.api.pulse-test
-  "Tests that would logically be included in `metabase.api.pulse-test` but are separate as they are enterprise only."
+  "Tests that would logically be included in [[metabase.pulse.api.pulse-test]] but are separate as they are enterprise
+  only."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.integrations.slack]
    [metabase.test :as mt]))
-
-(comment metabase.integrations.slack/keep-me) ; so the Setting exists
 
 (deftest segmented-users-pulse-test
   (testing "GET /api/pulse/form_input"

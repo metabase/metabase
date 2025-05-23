@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -32,7 +32,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     H.getDraggableElements()
       .first()
       .invoke("text")
-      .then(name => {
+      .then((name) => {
         cy.log(`mode row ${name} down 2`);
         cy.findAllByTestId("funnel-chart-header")
           .first()
@@ -74,23 +74,13 @@ describe("scenarios > visualizations > funnel chart", () => {
         cy.icon("eye_outline").click({ force: true });
       });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-
-    cy.findByTestId("filter-column-Source").within(() => {
-      cy.findByLabelText("Filter operator").click();
-    });
-
+    H.filter();
+    H.popover().findByText("Source").click();
+    H.selectFilterOperator("Is not");
     H.popover().within(() => {
-      cy.findByText("Is not").click();
-    });
-
-    cy.findByTestId("filter-column-Source").within(() => {
       cy.findByText("Facebook").click();
+      cy.button("Apply filter").click();
     });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Apply filters").click();
 
     H.getDraggableElements().should("have.length", 4);
 

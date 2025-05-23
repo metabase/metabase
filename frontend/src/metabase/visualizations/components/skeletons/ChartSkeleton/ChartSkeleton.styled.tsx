@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import { css, keyframes } from "@emotion/react";
 
 const fadingKeyframes = keyframes`

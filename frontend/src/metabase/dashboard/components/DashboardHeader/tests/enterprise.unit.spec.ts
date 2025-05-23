@@ -1,5 +1,4 @@
-import { screen } from "@testing-library/react";
-
+import { screen } from "__support__/ui";
 import {
   createMockCollection,
   createMockDashboard,

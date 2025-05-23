@@ -2,21 +2,39 @@ name: Embedding SDK
 
 on:
   push:
-    branches:
-      - "master"
-      - "release-**"
+
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  sdk-build:
-    if: contains(github.event.pull_request.labels.*.name, 'embedding-sdk-build')
+  files-changed:
+    name: Check which files changed
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 3
+    outputs:
+      documentation: ${{ steps.changes.outputs.documentation }}
+      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  build:
+    needs: [files-changed]
+    if: |
+      !cancelled() &&
+      (needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
+      needs.files-changed.outputs.documentation == 'true')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -25,15 +43,146 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
-      - name: Generate SDK package.json
-        run: yarn run embedding-sdk:generate-package "$GITHUB_SHA"
-      - name: Generate .npmrc for Github npm registry
-        uses: actions/setup-node@v4
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v4
         with:
-          registry-url: "https://npm.pkg.github.com"
-      - name: Publish package
-        run: yarn run embedding-sdk:publish
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk
+
+  embedding-sdk-cli-snippets-type-check:
+    needs: [files-changed, build]
+    if: |
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+      - name: Run frontend embedding SDK snippets type check
+        run: yarn run embedding-sdk:cli-snippets:type-check
+
+  embedding-sdk-docs-snippets-type-check:
+    needs: [files-changed, build]
+    if: |
+      needs.files-changed.outputs.documentation == 'true' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+      - name: Run frontend embedding SDK snippets type check
+        run: yarn run embedding-sdk:docs-snippets:type-check
+
+  embedding-sdk-no-exposed-internal-types-validate:
+    needs: [files-changed, build]
+    if: |
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+      - name: Run no exposed internal types validation
+        run: |
+          output="$(yarn embedding-sdk:docs:generate:pure --emit none 2>&1)" || {
+            if [[ "$output" == *"not included in the documentation"* ]]; then
+              echo "$output"
+              exit 1
+            fi
+          }
+      - name: Comment on PR if docs need update
+        uses: ./.github/actions/notify-pull-request
+        if: success() || failure()
+        with:
+          remove-previous-comment: true
+          add-new-comment: ${{ job.status == 'failure' }}
+          message: "📝 One or more internal Metabase types were accidentally exported from the `@metabase/embedding‑sdk‑react` package in this pull request.<br/><br/>Publishing these types would change the public API and may drastically change generated SDK documentation.<br/><br/>Please update the code so internal types remain private and the public API stays unchanged."
+          include-log: true
+
+  sdk-e2e-tests:
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
+    needs: [build]
+    secrets: inherit
+    with:
+      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+
+  e2e-component-tests-embedding-sdk-cross-version:
+    # run on: every push on release branches, and every pr that targets a release branch
+    if: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
+    secrets: inherit
+
+  cross-version-for-breaking-changes:
+    # run on: every pr that targets a release branch
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
+    uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
+    secrets: inherit
+    with:
+      fe-ref: ${{ github.base_ref }}
+      be-ref: ${{ github.head_ref }}
+
+  embedding-sdk-tests-result:
+    needs:
+      - embedding-sdk-cli-snippets-type-check
+      - embedding-sdk-docs-snippets-type-check
+      - embedding-sdk-no-exposed-internal-types-validate
+      - sdk-e2e-tests
+      - e2e-component-tests-embedding-sdk-cross-version
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      needs: ${{ toJson(needs) }}
+    steps:
+      - name: Check embedding SDK job status
+        uses: actions/github-script@v7
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some embedding SDK jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);

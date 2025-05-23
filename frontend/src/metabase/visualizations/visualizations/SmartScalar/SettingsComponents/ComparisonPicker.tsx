@@ -100,7 +100,7 @@ export function ComparisonPicker({
               : undefined
           }
           columns={comparableColumns}
-          onChange={nextValue => {
+          onChange={(nextValue) => {
             handleEditedValueChange(
               { id: selectedValue.id, ...nextValue },
               true,
@@ -118,7 +118,7 @@ export function ComparisonPicker({
               ? selectedValue
               : undefined
           }
-          onChange={nextValue => {
+          onChange={(nextValue) => {
             handleEditedValueChange(
               { id: selectedValue.id, ...nextValue },
               true,
@@ -129,8 +129,8 @@ export function ComparisonPicker({
       );
     }
     return (
-      <Stack spacing="sm">
-        {options.map(optionArgs =>
+      <Stack gap="sm">
+        {options.map((optionArgs) =>
           renderMenuOption({
             editedValue,
             selectedValue,
@@ -154,8 +154,8 @@ export function ComparisonPicker({
       <Menu.Target>
         <ComparisonPickerButton
           disabled={isDisabled}
-          leftIcon={isDraggable && <DragHandleIcon name="grabber" />}
-          rightIcon={
+          leftSection={isDraggable && <DragHandleIcon name="grabber" />}
+          rightSection={
             isRemovable && (
               <IconButtonWrapper
                 aria-label={t`Remove`}

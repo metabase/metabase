@@ -7,13 +7,15 @@
    [metabase.driver.druid.execute :as druid.execute]
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.driver.druid.sync :as druid.sync]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.util.json :as json]
-   [metabase.util.ssh :as ssh]))
+   [metabase.util.json :as json]))
 
 (driver/register! :druid)
 
 (doseq [[feature supported?] {:expression-aggregations        true
+                              :expression-literals            true
                               :schemas                        false
                               :set-timezone                   true
                               :temporal/requires-default-unit true}]
@@ -54,7 +56,7 @@
   [_driver query _context respond]
   (druid.execute/execute-reducible-query
    (partial druid.client/do-query-with-cancellation qp.pipeline/*canceled-chan*)
-   (update-in query [:native :query] add-timeout-to-query qp.pipeline/*query-timeout-ms*)
+   (update-in query [:native :query] add-timeout-to-query driver.settings/*query-timeout-ms*)
    respond))
 
 (defmethod driver/db-start-of-week :druid

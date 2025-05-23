@@ -2,10 +2,10 @@
   "Permisisons tests for API that needs to be enforced by Application Permissions to access Admin/Setting pages."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.geojson-test :as geojson-test]
    [metabase.channel.email :as email]
-   [metabase.integrations.slack :as slack]
-   [metabase.models.permissions :as perms]
+   [metabase.channel.slack :as slack]
+   [metabase.geojson.api-test :as geojson-test]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 

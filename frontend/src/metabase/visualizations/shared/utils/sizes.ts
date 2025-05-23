@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { CARD_SIZE_DEFAULTS_JSON } from "cljs/metabase.models.dashboard.constants";
+import { CARD_SIZE_DEFAULTS_JSON } from "cljs/metabase.dashboards.constants";
 import { DEFAULT_CARD_SIZE } from "metabase/lib/dashboard_grid";
 import type { VisualizationDisplay } from "metabase-types/api";
 
@@ -39,7 +39,7 @@ export const MOBILE_HEIGHT_BY_DISPLAY_TYPE: Record<
 > = {
   action: 1,
   link: 1,
-  text: desktopHeight => Math.max(2, desktopHeight),
+  text: (desktopHeight) => Math.max(2, desktopHeight),
   heading: 2,
   scalar: 4,
 };

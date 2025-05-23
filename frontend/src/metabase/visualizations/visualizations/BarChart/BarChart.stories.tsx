@@ -9,7 +9,15 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { createMockCard } from "metabase-types/api/mocks";
+import type { Series } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { BarChart } from "./BarChart";
 
@@ -35,7 +43,7 @@ const MOCK_SERIES = [
       ],
     },
   },
-];
+] as Series;
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
@@ -60,3 +68,19 @@ export const EmbeddingHugeFont: StoryFn = () => {
     </SdkVisualizationWrapper>
   );
 };
+
+export const Watermark: StoryFn = () => (
+  <VisualizationWrapper
+    initialStore={createMockState({
+      settings: createMockSettingsState({
+        "token-features": createMockTokenFeatures({
+          "development-mode": true,
+        }),
+      }),
+    })}
+  >
+    <Box h={500}>
+      <Visualization rawSeries={MOCK_SERIES} width={500} />
+    </Box>
+  </VisualizationWrapper>
+);

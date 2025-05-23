@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { InputSettingType } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 
 import type { SettingValues } from "./SettingsLdapForm";
@@ -26,7 +27,7 @@ const elements = [
     default: false,
     originalValue: null,
     display_name: "LDAP Authentication",
-    type: "boolean",
+    type: "boolean" as InputSettingType,
   },
   {
     placeholder: "ldap.yourdomain.org",
@@ -38,7 +39,7 @@ const elements = [
     default: null,
     originalValue: null,
     display_name: "LDAP Host",
-    type: "string",
+    type: "string" as InputSettingType,
     required: true,
     autoFocus: true,
   },
@@ -52,7 +53,7 @@ const elements = [
     default: 389,
     originalValue: null,
     display_name: "LDAP Port",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     placeholder: "none",
@@ -64,7 +65,7 @@ const elements = [
     default: "none",
     originalValue: null,
     display_name: "LDAP Security",
-    type: "radio",
+    type: "radio" as InputSettingType,
     defaultValue: "none",
   },
   {
@@ -78,7 +79,7 @@ const elements = [
     default: null,
     originalValue: null,
     display_name: "Username or DN",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     // placeholder: null,
@@ -90,7 +91,7 @@ const elements = [
     default: null,
     originalValue: null,
     display_name: "Password",
-    type: "password",
+    type: "password" as InputSettingType,
   },
   {
     // placeholder: null,
@@ -102,7 +103,7 @@ const elements = [
     default: null,
     originalValue: null,
     display_name: "User search base",
-    type: "string",
+    type: "string" as InputSettingType,
     required: true,
   },
   {
@@ -116,7 +117,7 @@ const elements = [
     default: "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))",
     originalValue: null,
     display_name: "User filter",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     placeholder: "mail",
@@ -129,7 +130,7 @@ const elements = [
     default: "mail",
     originalValue: null,
     display_name: "Email attribute",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     placeholder: "givenName",
@@ -142,7 +143,7 @@ const elements = [
     default: "givenName",
     originalValue: "givenname",
     display_name: "First name attribute",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     placeholder: "sn",
@@ -154,7 +155,7 @@ const elements = [
     default: "sn",
     originalValue: null,
     display_name: "Last name attribute",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     // placeholder: false,
@@ -177,7 +178,7 @@ const elements = [
     default: null,
     originalValue: null,
     display_name: "Group search base",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     // placeholder: {},
@@ -200,12 +201,12 @@ const elements = [
     default: "(member={dn})",
     originalValue: null,
     display_name: "Group membership filter",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     key: "ldap-sync-admin-group",
     display_name: "Sync Administrator group",
-    type: "boolean",
+    type: "boolean" as InputSettingType,
   },
 ];
 

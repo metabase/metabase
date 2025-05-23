@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 /**
@@ -147,7 +147,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 });
 
 function waitAndAssertOnRequest(requestAlias) {
-  cy.wait(requestAlias).then(xhr => {
+  cy.wait(requestAlias).then((xhr) => {
     expect(xhr.response.body.error).to.not.exist;
   });
 }

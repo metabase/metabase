@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -188,6 +188,27 @@ describe("CollectionHeader", () => {
     });
   });
 
+  describe("new collection button", () => {
+    it("should have a new collection button with the curate permissions", async () => {
+      const collection = { can_write: true };
+      setup({ collection });
+
+      expect(
+        await screen.findByLabelText("Create a new collection"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not have a new collection button without the curate permissions", async () => {
+      const collection = { can_write: false };
+      setup({ collection });
+
+      expect(await screen.findByLabelText("bookmark icon")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Create a new collection"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("uploads", () => {
     it("should show the upload button if uploads are enabled and the user has write permissions", () => {
       setup({
@@ -272,7 +293,7 @@ describe("CollectionHeader", () => {
       await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      await userEvent.click(getIcon("close"));
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 

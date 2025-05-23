@@ -15,7 +15,7 @@ describe("setDirection", () => {
       "month",
       "quarter",
       "year",
-    ])('should remove the value for "%s" unit', unit => {
+    ])('should remove the value for "%s" unit', (unit) => {
       const value: RelativeDatePickerValue = {
         type: "relative",
         value: 1,
@@ -29,7 +29,7 @@ describe("setDirection", () => {
     it("should convert a current value", () => {
       const value: RelativeDatePickerValue = {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "week",
       };
       expect(setDirection(value, "last")).toEqual({
@@ -75,7 +75,7 @@ describe("setDirection", () => {
     it("should convert a current value", () => {
       const value: RelativeDatePickerValue = {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "week",
       };
       expect(setDirection(value, "next")).toEqual({

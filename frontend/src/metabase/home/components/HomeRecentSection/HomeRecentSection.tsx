@@ -45,5 +45,5 @@ export const HomeRecentSection = () => {
 };
 
 export const recentsFilter = (results: RecentItem[]): RecentItem[] => {
-  return results.filter(item => item.model !== "collection").slice(0, 5);
+  return results.filter((item) => item.model !== "collection").slice(0, 5);
 };

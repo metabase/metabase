@@ -1,11 +1,10 @@
 (ns metabase.lib.metadata
   (:require
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -47,10 +46,7 @@
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table]
-  (let [prefix (lib.metadata.ident/table-prefix (:name (database metadata-providerable))
-                                                (table metadata-providerable table-id))]
-    (->> (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id)
-         (lib.metadata.ident/attach-idents (constantly prefix)))))
+  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
 (mu/defn metadatas-for-table :- [:sequential [:or
                                               ::lib.schema.metadata/column
@@ -78,7 +74,8 @@
 
   Generally that is an error and we should throw, but there are a few tests explicitly checking broken fields that
   don't want to get hung up on this error."
-  true)
+  ;; TODO: Fix the metadata APIs to include `:ident` or `:entity_id` so the JS side has proper idents.
+  #?(:clj true :cljs false))
 
 (mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
@@ -93,48 +90,19 @@
                                                           :field                 fieldd})))
     fieldd))
 
+(mu/defn remapped-field :- [:maybe ::lib.schema.metadata/column]
+  "Given a metadata source and a column's metadata, return the metadata for the field it's being remapped to, if any."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (when (lib.types.isa/foreign-key? column)
+    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+      (field metadata-providerable remap-field-id))))
+
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     setting-key           :- [:or string? keyword?]]
    (lib.metadata.protocols/setting (->metadata-provider metadata-providerable) setting-key)))
-
-;;;; Stage metadata
-
-(mu/defn stage :- [:maybe ::lib.schema.metadata/stage]
-  "Get metadata associated with a particular `stage-number` of the query, if any. `stage-number` can be a negative
-  index.
-
-  Currently, only returns metadata if it is explicitly attached to a stage; in the future we will probably dynamically
-  calculate this stuff if possible based on DatabaseMetadata and previous stages. Stay tuned!"
-  [query        :- :map
-   stage-number :- :int]
-  (:lib/stage-metadata (lib.util/query-stage query stage-number)))
-
-(mu/defn stage-column :- [:maybe ::lib.schema.metadata/column]
-  "Metadata about a specific column returned by a specific stage of the query, e.g. perhaps the first stage of the
-  query has an expression `num_cans`, then
-
-    (lib.metadata/stage-column query stage \"num_cans\")
-
-  should return something like
-
-    {:name \"num_cans\", :base-type :type/Integer, ...}
-
-  This is currently a best-effort thing and will only return information about columns if stage metadata is attached
-  to a particular stage. In the near term future this should be better about calculating that metadata dynamically and
-  returning correct info here."
-  ([query       :- :map
-    column-name :- ::lib.schema.common/non-blank-string]
-   (stage-column query -1 column-name))
-
-  ([query        :- :map
-    stage-number :- :int
-    column-name  :- ::lib.schema.common/non-blank-string]
-   (some (fn [column]
-           (when (= (:name column) column-name)
-             column))
-         (:columns (stage query stage-number)))))
 
 (mu/defn card :- [:maybe ::lib.schema.metadata/card]
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
@@ -149,10 +117,10 @@
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
 
 (mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
-  "Get metadata for the Metric with `metric-id`, if it can be found."
+  "Get metadata for the Metric with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metric-id             :- ::lib.schema.id/metric]
-  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) metric-id)]
+   card-id               :- ::lib.schema.id/card]
+  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)]
     (when (= (:type card-meta) :metric)
       (assoc card-meta :lib/type :metadata/metric))))
 
@@ -199,6 +167,18 @@
   (let [stages (:stages query)]
     (mu/disable-enforcement
       (editable-stages? query stages))))
+
+(mu/defn database-supports? :- :boolean
+  "Does `metadata-providerable`'s [[database]] support the given `feature`?
+
+  Minimize the use of this function. Using it is often a code smell. The lib should not normally be concerned with
+  driver features. See https://github.com/metabase/metabase/pull/55206#discussion_r2017378181"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   feature               :- :keyword]
+  (-> metadata-providerable
+      database
+      :features
+      (contains? feature)))
 
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use

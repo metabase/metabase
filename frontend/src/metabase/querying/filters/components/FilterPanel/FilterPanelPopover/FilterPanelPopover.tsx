@@ -10,6 +10,7 @@ interface FilterPanelPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause;
+  filterIndex: number;
   onChange: (query: Lib.Query) => void;
 }
 
@@ -17,6 +18,7 @@ export function FilterPanelPopover({
   query,
   stageIndex,
   filter,
+  filterIndex,
   onChange,
 }: FilterPanelPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -45,17 +47,18 @@ export function FilterPanelPopover({
     >
       <Popover.Target>
         <FilterPill
-          onClick={() => setIsOpened(isOpened => !isOpened)}
+          onClick={() => setIsOpened((isOpened) => !isOpened)}
           onRemoveClick={handleRemove}
         >
           {filterInfo.longDisplayName}
         </FilterPill>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown data-testid="filter-picker-dropdown">
         <FilterPicker
           query={query}
           stageIndex={stageIndex}
           filter={filter}
+          filterIndex={filterIndex}
           onSelect={handleChange}
         />
       </Popover.Dropdown>

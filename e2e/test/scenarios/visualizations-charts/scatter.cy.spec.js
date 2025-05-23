@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -167,8 +167,8 @@ select 10 as size, 2 as x, 5 as y`,
       cy.wrap(width).as("radius" + index);
     });
 
-    cy.get("@radius0").then(r0 => {
-      cy.get("@radius1").then(r1 => {
+    cy.get("@radius0").then((r0) => {
+      cy.get("@radius1").then((r1) => {
         assert.notEqual(r0, r1);
       });
     });
@@ -209,13 +209,14 @@ select 10 as size, 2 as x, 5 as y`,
     // Resizing animation due to the sidebar
     cy.wait(200);
 
-    const columnsToRemove = allTooltipRows.slice(2).map(row => row.name);
+    const columnsToRemove = allTooltipRows.slice(2).map((row) => row.name);
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
 
-      columnsToRemove.map(columnName => {
-        cy.findByRole("combobox")
+      columnsToRemove.map((columnName) => {
+        cy.findByRole("textbox", { name: "Enter column names" })
+          .parent()
           .findByText(columnName)
           .siblings("button")
           .click();
@@ -240,6 +241,7 @@ function triggerPopoverForBubble(index = 13, force = false) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove", { force });

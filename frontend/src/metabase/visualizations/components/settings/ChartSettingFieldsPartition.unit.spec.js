@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { render, screen } from "__support__/ui";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { ChartSettingFieldsPartition } from "./ChartSettingFieldsPartition";
@@ -9,7 +8,7 @@ describe("ChartSettingFieldsPartition", () => {
     render(
       <ChartSettingFieldsPartition
         partitions={[
-          { name: "rows", title: "Rows", columnFilter: x => Boolean(x) },
+          { name: "rows", title: "Rows", columnFilter: (x) => Boolean(x) },
         ]}
         columns={[createMockColumn()]}
       />,
@@ -22,7 +21,7 @@ describe("ChartSettingFieldsPartition", () => {
     render(
       <ChartSettingFieldsPartition
         partitions={[
-          { name: "rows", title: "Rows", columnFilter: x => Boolean(x) },
+          { name: "rows", title: "Rows", columnFilter: (x) => Boolean(x) },
         ]}
         columns={[
           createMockColumn({
@@ -30,7 +29,7 @@ describe("ChartSettingFieldsPartition", () => {
             display_name: fieldName,
           }),
         ]}
-        getColumnTitle={column => column.display_name}
+        getColumnTitle={(column) => column.display_name}
         value={{ rows: [fieldName] }}
       />,
     );

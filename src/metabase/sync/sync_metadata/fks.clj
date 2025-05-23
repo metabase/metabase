@@ -2,15 +2,15 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
    [honey.sql :as sql]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
-   [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (defn ^:private mark-fk-sql
@@ -53,12 +53,16 @@
                        [:= :f.fk_target_field_id nil]
                        [:not= :f.fk_target_field_id :pk.id]]]
              :set    {:fk_target_field_id :pk.id
+                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
+                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
                       :semantic_type      "type/FK"}}
             :postgres
             {:update [:metabase_field :f]
              :from   [[fk-field-id-query :fk]]
              :join   [[pk-field-id-query :pk] true]
              :set    {:fk_target_field_id :pk.id
+                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
+                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
                       :semantic_type      "type/FK"}
              :where  [:and
                       [:= :fk.id :f.id]
@@ -68,6 +72,8 @@
             :h2
             {:update [:metabase_field :f]
              :set    {:fk_target_field_id pk-field-id-query
+                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
+                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
                       :semantic_type      "type/FK"}
              :where  [:and
                       [:= :f.id fk-field-id-query]

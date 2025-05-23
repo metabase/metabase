@@ -11,7 +11,7 @@ import { Box, Center, Stack, Text } from "metabase/ui";
 import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
     getDocsUrl(state, {
       page: "embedding/interactive-embedding",
@@ -28,7 +28,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
     authorizedOriginsContainsNonInstanceDomain(embeddingAuthorizedOrigins);
 
   return (
-    <Stack spacing="sm">
+    <Stack gap="sm">
       {shouldDisplayNote && <AuthorizedOriginsNote />}
       {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
       <Text>{t`Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.`}</Text>
@@ -47,7 +47,7 @@ function AuthorizedOriginsNote() {
       <SameSiteAlert variant="warning" hasBorder>
         <Center>
           <Text>{jt`You should probably change this setting to ${(
-            <Text key="inner" span fw="bold">
+            <Text key="inner" component="span" fw="bold">
               {t`None`}
             </Text>
           )}.`}</Text>
@@ -70,5 +70,5 @@ function authorizedOriginsContainsNonInstanceDomain(
   }
 
   const origins = authorizedOriginsString.split(" ");
-  return origins.some(origin => !isSameOrigin(origin));
+  return origins.some((origin) => !isSameOrigin(origin));
 }

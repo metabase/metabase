@@ -3,9 +3,9 @@
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]
    [metabase.actions.execution :as actions.execution]
+   [metabase.actions.models :as action]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
-   [metabase.models.action :as action]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -247,7 +247,7 @@
 (defmacro ^:private is-ex-data [expected-schema actual-call]
   `(try
      ~actual-call
-     (is (= true false))
+     (is (true? false))
      (catch clojure.lang.ExceptionInfo e#
        (is (~'=?
             ~expected-schema

@@ -1,4 +1,5 @@
-import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
+import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -41,6 +42,7 @@ export const DASHBOARD_ACTION = {
   DASHBOARD_INFO: "DASHBOARD_INFO",
   DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
   FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
+  ANALYZE_DASHBOARD: "ANALYZE_DASHBOARD",
 } as const;
 
 export const dashboardActionButtons: Record<
@@ -145,12 +147,35 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
-    component: DashboardActionMenu,
+    component: ({
+      canResetFilters,
+      onResetFilters,
+      onFullscreenChange,
+      isFullscreen,
+      dashboard,
+      canEdit,
+      openSettingsSidebar,
+    }) => (
+      <DashboardActionMenu
+        dashboard={dashboard}
+        canResetFilters={canResetFilters}
+        canEdit={canEdit}
+        onResetFilters={onResetFilters}
+        isFullscreen={isFullscreen}
+        onFullscreenChange={onFullscreenChange}
+        openSettingsSidebar={openSettingsSidebar}
+      />
+    ),
     enabled: ({ isFullscreen, isEditing, isAnalyticsDashboard, dashboard }) =>
       !isFullscreen &&
       !isEditing &&
       !isAnalyticsDashboard &&
       !dashboard.archived,
+  },
+  [DASHBOARD_ACTION.ANALYZE_DASHBOARD]: {
+    component: () => <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisButton />,
+    enabled: ({ isEditing, dashboard }) =>
+      PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeDashboard(dashboard) && !isEditing,
   },
 
   // ACTIONS WHEN DASHBOARD IS ANALYTICS DASHBOARD

@@ -3,11 +3,11 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.audit :as audit]
-   [metabase.db :as mdb]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.plugins :as plugins]
+   [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -27,10 +27,10 @@
 
   More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
   []
-  (-> (Thread/currentThread)
-      (.getContextClassLoader)
-      (.getResource "")
-      (str/starts-with? "jar:")))
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
 
 (defn- get-jar-path
   "Returns the path to the currently running jar file.
@@ -159,15 +159,6 @@
                       {:replace-existing true})
         (log/info "Copying complete.")))))
 
-(defsetting load-analytics-content
-  "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
-  :type       :boolean
-  :default    true
-  :visibility :internal
-  :setter     :none
-  :audit      :never
-  :doc        "Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.")
-
 (def ^:constant SKIP_CHECKSUM_FLAG
   "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
   analytics data."
@@ -207,7 +198,7 @@
     (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
-      (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
+      (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
@@ -227,6 +218,10 @@
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (cond
+      (not (audit-app.settings/install-analytics-database))
+      (u/prog1 ::blocked
+        (log/info "Not installing Audit DB - install-analytics-database setting is false"))
+
       (nil? audit-db)
       (u/prog1 ::installed
         (log/info "Installing Audit DB...")
@@ -246,7 +241,7 @@
   :feature :none
   []
   (u/prog1 (maybe-install-audit-db)
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; prevent sync while loading
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db

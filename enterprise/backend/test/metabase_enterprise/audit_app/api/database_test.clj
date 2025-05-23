@@ -2,14 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.test :as mt]))
 
 (deftest audit-db-unmodifiable-test
   (mt/with-premium-features #{:audit-app}
     (audit-test/with-audit-db-restoration
       (testing "Neither admin nor regular users can modify the audit database"
-        (doseq [[verb path] [[:post "database/%d/unpersist"]
+        (doseq [[verb path] [[:post "persist/database/%d/unpersist"]
                              [:put "database/%d"]
                              [:get "database/%d/syncable_schemas"]
                              [:delete "database/%d"]]

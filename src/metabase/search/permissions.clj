@@ -1,8 +1,8 @@
 (ns metabase.search.permissions
   (:require
-   [metabase.models.collection :as collection]
-   [metabase.models.permissions :as perms]
-   [metabase.permissions.util :as perms-util]
+   [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
 
@@ -15,14 +15,14 @@
       ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
       (when (nil? is-impersonated-user?)
         (assert-current-user! :is-impersonated-user?)
-        (perms-util/impersonated-user?))))
+        (perms/impersonated-user?))))
 
 (defn- sandboxed-user? [{:keys [is-sandboxed-user?] :as _search-ctx}]
   (or is-sandboxed-user?
       ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
       (when (nil? is-sandboxed-user?)
         (assert-current-user! :is-sandboxed-user?)
-        (perms-util/sandboxed-user?))))
+        (perms/sandboxed-user?))))
 
 (defn sandboxed-or-impersonated-user?
   "Is the current user sandboxed or impersonated?"
@@ -41,3 +41,14 @@
     {:current-user-id current-user-id
      :is-superuser?   is-superuser?})
    (perms/audit-namespace-clause :collection.namespace nil)])
+
+(mu/defn permitted-tables-clause
+  "Build the WHERE clause corresponding to which tables the given user has access to."
+  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
+  (mi/visible-filter-clause
+   :model/Table
+   table-id-col
+   {:user-id current-user-id
+    :is-superuser? is-superuser?}
+   {:perms/view-data :unrestricted
+    :perms/create-queries :query-builder}))

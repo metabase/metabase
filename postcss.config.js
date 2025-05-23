@@ -17,9 +17,11 @@ module.exports = {
         "custom-media-queries": true,
         "custom-properties": true,
         "focus-visible-pseudo-class": false,
+        "has-pseudo-class": false,
       },
     },
     "postcss-discard-comments": {},
-    "postcss-nested": {},
+    "postcss-nesting": {},
+    "postcss-preset-mantine": {},
   },
 };

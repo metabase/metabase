@@ -4,34 +4,36 @@
    [clojure.tools.trace :as trace]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.config :as config]
+   [metabase.analytics.core :as analytics]
+   [metabase.api-routes.core :as api-routes]
+   [metabase.app-db.core :as mdb]
+   [metabase.classloader.core :as classloader]
+   [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.initialization-status :as init-status]
-   [metabase.db :as mdb]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.events :as events]
-   [metabase.logger :as logger]
-   [metabase.models.cloud-migration :as cloud-migration]
-   [metabase.models.database :as database]
-   [metabase.models.setting :as settings]
-   [metabase.models.user-key-value.types :as user-kv.types]
+   [metabase.embedding.settings :as embed.settings]
+   [metabase.events.core :as events]
+   [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
-   [metabase.plugins :as plugins]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
-   [metabase.sample-data :as sample-data]
+   [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
+   [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
-   [metabase.task :as task]
+   [metabase.startup.core :as startup]
+   [metabase.system.core :as system]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.system-info :as u.system-info])
+   [metabase.util.queue :as queue]
+   [metabase.util.system-info :as u.system-info]
+   [metabase.warehouses.models.database :as database])
   (:import
    (java.lang.management ManagementFactory)))
 
@@ -58,6 +60,17 @@
              "See https://www.metabase.com/license/commercial/ for details.")
         "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
+;;; --------------------------------------------------- Info Metric---------------------------------------------------
+
+(defmethod analytics/known-labels :metabase-info/build
+  [_]
+  ;; We need to update the labels configured for this metric before we expose anything new added to `mb-version-info`
+  [(merge (select-keys config/mb-version-info [:tag :hash :date])
+          {:version       config/mb-version-string
+           :major-version (config/current-major-version)})])
+
+(defmethod analytics/initial-value :metabase-info/build [_ _] 1)
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- print-setup-url
@@ -65,7 +78,7 @@
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
-        site-url  (or (public-settings/site-url)
+        site-url  (or (system/site-url)
                       (str "http://"
                            hostname
                            (when-not (= 80 port) (str ":" port))))
@@ -86,9 +99,10 @@
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info "Metabase Shutting Down ...")
+  (queue/stop-listeners!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
-  (prometheus/shutdown!)
+  (analytics/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
@@ -108,10 +122,12 @@
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
   (init-status/set-progress! 0.2)
+  ;; Ensure the classloader is installed as soon as possible.
+  (classloader/the-classloader)
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-  (settings/validate-settings-formatting!)
+  (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
   ;; Cal 2024-04-03:
@@ -119,20 +135,19 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
-
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
-
   (init-status/set-progress! 0.4)
   ;; Set up Prometheus
   (log/info "Setting up prometheus metrics")
-  (prometheus/setup!)
+  (analytics/setup!)
   (init-status/set-progress! 0.5)
-
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.55)
+  (task/init-scheduler!)
+  (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
@@ -154,32 +169,29 @@
         ;; otherwise update if appropriate
         (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.8))
-
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
-  (init-status/set-progress! 0.9)
 
+  (init-status/set-progress! 0.9)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.95)
-
-  (settings/migrate-encrypted-settings!)
-   ;; start scheduler at end of init!
+  (setting/migrate-encrypted-settings!)
+  (database/check-health!)
+  (startup/run-startup-logic!)
   (task/start-scheduler!)
-   ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
-  (database/check-and-schedule-tasks!)
+  (queue/start-listeners!)
   (init-status/set-complete!)
-  (user-kv.types/load-and-watch-schemas)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]
     (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
 
 (defn init!
-  "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
+  "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
   (let [start-time (t/zoned-date-time)]
     (init!*)
-    (public-settings/startup-time-millis!
+    (system/startup-time-millis!
      (.toMillis (t/duration start-time (t/zoned-date-time))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
@@ -187,8 +199,10 @@
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
-    ;; launch embedded webserver async
-    (server/start-web-server! (server/handler))
+    ;; launch embedded webserver
+    (let [server-routes (server/make-routes #'api-routes/routes)
+          handler       (server/make-handler server-routes)]
+      (server/start-web-server! handler))
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing
@@ -199,8 +213,7 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
-  (classloader/require 'metabase.cmd)
-  ((resolve 'metabase.cmd/run-cmd) cmd init-fn args))
+  ((requiring-resolve 'metabase.cmd.core/run-cmd) cmd init-fn args))
 
 ;;; -------------------------------------------------- Tracing -------------------------------------------------------
 

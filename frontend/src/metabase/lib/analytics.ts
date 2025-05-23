@@ -21,7 +21,7 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   dashboard: "1-1-5",
   database: "1-0-1",
   downloads: "1-0-0",
-  embed_flow: "1-0-2",
+  embed_flow: "1-0-3",
   embed_share: "1-0-1",
   embedding_homepage: "1-0-0",
   simple_event: "1-0-0",
@@ -47,6 +47,7 @@ export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {
       // eslint-disable-next-line no-console
       console.log(
         `%c[SNOWPLOW EVENT]%c, ${type}`,
+        // eslint-disable-next-line no-color-literals
         "background: #222; color: #bada55",
         "color: ",
         other,

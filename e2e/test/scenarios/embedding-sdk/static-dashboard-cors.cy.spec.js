@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -16,7 +16,7 @@ import {
 
 const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
 
-H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signIn("admin", { skipCache: true });
@@ -36,7 +36,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard(
+    H.createDashboard(
       {
         name: "Embedding Sdk Test Dashboard",
         dashcards: [questionCard, textCard],
@@ -56,7 +56,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
         exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
       },
       secret: JWT_SHARED_SECRET,
-    }).then(jwtToken => {
+    }).then((jwtToken) => {
       const ssoUrl = new URL("/auth/sso", Cypress.config().baseUrl);
       ssoUrl.searchParams.set("jwt", jwtToken);
       ssoUrl.searchParams.set("token", "true");
@@ -64,7 +64,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
         cy.wrap(body).as("metabaseSsoResponse");
       });
     });
-    cy.get("@metabaseSsoResponse").then(ssoResponse => {
+    cy.get("@metabaseSsoResponse").then((ssoResponse) => {
       cy.intercept("GET", "/sso/metabase", ssoResponse);
     });
   });
@@ -75,11 +75,11 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
     });
     cy.signOut();
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
         qs: { id: STORYBOOK_ID, viewMode: "story" },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
@@ -98,11 +98,11 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       "enable-embedding-sdk": true,
     });
     cy.signOut();
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
         qs: { id: STORYBOOK_ID, viewMode: "story" },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
@@ -132,14 +132,14 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       "enable-embedding-sdk": true,
     });
     cy.signOut();
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: "http://my-site.local:6006/iframe.html",
         qs: {
           id: STORYBOOK_ID,
           viewMode: "story",
         },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
@@ -159,11 +159,11 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       "embedding-app-origins-sdk": "my-site.local:6006",
     });
     cy.signOut();
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: "http://my-site.local:6006/iframe.html",
         qs: { id: STORYBOOK_ID, viewMode: "story" },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },

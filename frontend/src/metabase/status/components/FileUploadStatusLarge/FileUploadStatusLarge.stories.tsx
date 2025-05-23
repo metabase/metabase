@@ -7,11 +7,11 @@ import FileUploadStatusLarge, {
 } from "./FileUploadStatusLarge";
 
 export default {
-  title: "Status/FileUploadStatusLarge",
+  title: "Components/Feedback/FileUploadStatusLarge",
   component: FileUploadStatusLarge,
 };
 
-const Template: StoryFn<FileUploadLargeProps> = args => {
+const Template: StoryFn<FileUploadLargeProps> = (args) => {
   return <FileUploadStatusLarge {...args} />;
 };
 

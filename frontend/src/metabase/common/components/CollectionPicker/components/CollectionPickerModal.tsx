@@ -45,7 +45,7 @@ const canSelectItem = (
 
 const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
   return searchResults.filter(
-    result => result.can_write && result.collection.type !== "trash",
+    (result) => result.can_write && result.collection.type !== "trash",
   );
 };
 
@@ -94,7 +94,7 @@ export const CollectionPickerModal = ({
   }>();
 
   const handleInit = useCallback((item: CollectionPickerItem) => {
-    setSelectedItem(current => current ?? item);
+    setSelectedItem((current) => current ?? item);
   }, []);
 
   const handleItemSelect = useCallback(
@@ -121,7 +121,7 @@ export const CollectionPickerModal = ({
             key="dashboard-on-the-go"
             miw="9.5rem"
             onClick={openCreateDashboardDialog}
-            leftIcon={<Icon name="add_to_dash" />}
+            leftSection={<Icon name="add_to_dash" />}
             disabled={selectedItem?.can_write === false}
           >
             {t`New dashboard`}
@@ -131,7 +131,7 @@ export const CollectionPickerModal = ({
           key="collection-on-the-go"
           miw="9.5rem"
           onClick={openCreateCollectionDialog}
-          leftIcon={<Icon name="collection" />}
+          leftSection={<Icon name="collection" />}
           disabled={selectedItem?.can_write === false}
         >
           {t`New collection`}
@@ -149,7 +149,7 @@ export const CollectionPickerModal = ({
   >[] = [
     {
       id: "collections-tab",
-      displayName: models.some(model => model !== "collection")
+      displayName: models.some((model) => model !== "collection")
         ? t`Browse`
         : t`Collections`,
       models,
@@ -220,6 +220,9 @@ export const CollectionPickerModal = ({
         recentFilter={recentFilter}
         actionButtons={modalActions}
         trapFocus={!isCreateCollectionDialogOpen}
+        disableCloseOnEscape={
+          isCreateCollectionDialogOpen || isCreateDashboardDialogOpen
+        }
       />
       <NewCollectionDialog
         isOpen={isCreateCollectionDialogOpen}

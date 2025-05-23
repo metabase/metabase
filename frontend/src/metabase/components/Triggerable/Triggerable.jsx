@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import cx from "classnames";
 import { Children, Component, cloneElement, createRef } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
+import { Tooltip } from "metabase/ui";
 
 const Trigger = styled.a``;
 
@@ -15,7 +16,7 @@ const Trigger = styled.a``;
  *
  * @deprecated HOCs are deprecated - use Modal + useState
  */
-const Triggerable = ComposedComponent =>
+const Triggerable = (ComposedComponent) =>
   class extends Component {
     static displayName =
       "Triggerable[" +
@@ -124,7 +125,7 @@ const Triggerable = ComposedComponent =>
       if (triggerElement && triggerElement.type === Tooltip) {
         // Disables tooltip when open:
         triggerElement = cloneElement(triggerElement, {
-          isEnabled: triggerElement.props.isEnabled && !isOpen,
+          disabled: !triggerElement.props.isEnabled || isOpen,
         });
       }
 
@@ -147,7 +148,7 @@ const Triggerable = ComposedComponent =>
             as={as}
             id={triggerId}
             ref={this.trigger}
-            onClick={event => {
+            onClick={(event) => {
               event.preventDefault();
               !this.props.disabled && this.toggle();
             }}

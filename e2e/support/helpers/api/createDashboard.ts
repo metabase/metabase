@@ -41,7 +41,7 @@ export const createDashboard = (
 
   cy.log(`Create a dashboard: ${name}`);
 
-  // For all the possible keys, refer to `src/metabase/api/dashboard.clj`
+  // For all the possible keys, refer to `src/metabase/dashboards/api.clj`
   return cy
     .request<Dashboard>("POST", "/api/dashboard", {
       name,
@@ -56,7 +56,7 @@ export const createDashboard = (
         auto_apply_filters != null ||
         Array.isArray(dashcards)
       ) {
-        cy.request<Dashboard>("PUT", `/api/dashboard/${body.id}`, {
+        return cy.request<Dashboard>("PUT", `/api/dashboard/${body.id}`, {
           auto_apply_filters,
           enable_embedding,
           embedding_params,

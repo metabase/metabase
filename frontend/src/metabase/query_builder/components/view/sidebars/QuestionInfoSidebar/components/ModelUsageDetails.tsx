@@ -51,8 +51,8 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
   }
 
   return (
-    <Stack spacing="sm">
-      {filtered.map(card => {
+    <Stack gap="sm">
+      {filtered.map((card) => {
         return (
           <Link
             to={Urls.question(card)}
@@ -60,7 +60,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
             variant="brand"
             key={card.id}
           >
-            <Group spacing="sm">
+            <Group gap="sm">
               <Icon c="text-dark" name={getIcon(card).name as IconName} />
               <Text lh="1.25rem" color="inherit">
                 {card.name}

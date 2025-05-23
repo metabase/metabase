@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import {
@@ -14,7 +15,7 @@ export const TableBody = styled.tbody<{
   hasBottomSpacing?: boolean;
 }>`
   &:after {
-    ${props => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
+    ${(props) => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
   }
 `;
 

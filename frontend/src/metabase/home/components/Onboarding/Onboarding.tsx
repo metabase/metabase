@@ -93,7 +93,7 @@ export const Onboarding = () => {
     cardType: "question",
   });
 
-  const lastUsedDatabaseId = useSelector(state =>
+  const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
 
@@ -155,40 +155,40 @@ export const Onboarding = () => {
     utm_content: "getting-started",
   };
 
-  const docsLink = useSelector(state =>
+  const docsLink = useSelector((state) =>
     getDocsUrl(state, {
       utm: utmTags,
     }),
   );
 
-  const sqlParamsDocsLink = useSelector(state =>
+  const sqlParamsDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/native-editor/sql-parameters",
       utm: utmTags,
     }),
   );
-  const dashboardTabsDocsLink = useSelector(state =>
+  const dashboardTabsDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "dashboards/introduction",
       anchor: "dashboard-tabs",
       utm: utmTags,
     }),
   );
-  const goalLineAlertDocsLink = useSelector(state =>
+  const goalLineAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "goal-line-alerts",
       utm: utmTags,
     }),
   );
-  const progressBarAlertDocsLink = useSelector(state =>
+  const progressBarAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "progress-bar-alerts",
       utm: utmTags,
     }),
   );
-  const resultAlertDocsLink = useSelector(state =>
+  const resultAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "results-alerts",
@@ -222,14 +222,14 @@ export const Onboarding = () => {
             item: S.item,
             label: S.label,
           }}
-          onChange={(value: ChecklistItemValue | null) =>
-            handleValueChange(value)
+          onChange={(value: string | null) =>
+            handleValueChange(value as ChecklistItemValue | null)
           }
         >
           {isAdmin && (
             <Box mb={64}>
               <Title
-                order={2}
+                order={3}
                 mb="lg"
               >{t`Set up your ${applicationName}`}</Title>
               <Accordion.Item
@@ -241,7 +241,7 @@ export const Onboarding = () => {
                   {t`Connect to your database`}
                 </Accordion.Control>
                 <Accordion.Panel>
-                  <Stack spacing="lg">
+                  <Stack gap="lg">
                     <img
                       alt={`${applicationName} ${t`data stack`}`}
                       className={S.image}
@@ -274,7 +274,7 @@ export const Onboarding = () => {
                   {t`Invite people`}
                 </Accordion.Control>
                 <Accordion.Panel>
-                  <Stack spacing="lg">
+                  <Stack gap="lg">
                     <img
                       alt={t`Admin panel with the "Invite someone" button`}
                       className={S.image}
@@ -291,7 +291,7 @@ export const Onboarding = () => {
                       <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
                     )}
 
-                    <Group spacing={0} data-testid="invite-cta">
+                    <Group gap={0} data-testid="invite-cta">
                       <Link
                         to="/admin/people"
                         onClick={() =>
@@ -316,7 +316,7 @@ export const Onboarding = () => {
           )}
 
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
+            <Title order={3} mb="lg">{t`Start visualizing your data`}</Title>
             <Accordion.Item
               value="x-ray"
               data-testid="x-ray-item"
@@ -326,7 +326,7 @@ export const Onboarding = () => {
                 {t`Create automatic dashboards`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="FOAXF4p1AL0"
                     si="COmu2w0SqGagUoVp"
@@ -373,7 +373,7 @@ export const Onboarding = () => {
                 {t`Make an interactive chart with the query builder`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="N9pR8KyaWzY"
                     si="EQbwmOGt733oWkXF"
@@ -409,7 +409,7 @@ export const Onboarding = () => {
                 {t`Query with SQL`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="_iiG_MoxdAE"
                     si="QInRPzkHpFamjsHw"
@@ -453,7 +453,7 @@ export const Onboarding = () => {
                 {t`Create and filter a dashboard`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="FAst1nabBck"
                     si="yVMfXeh0tkr1Yt8_"
@@ -493,7 +493,7 @@ export const Onboarding = () => {
             </Accordion.Item>
           </Box>
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Get email updates and alerts`}</Title>
+            <Title order={3} mb="lg">{t`Get email updates and alerts`}</Title>
             <Accordion.Item
               value="subscription"
               data-testid="subscription-item"
@@ -503,7 +503,7 @@ export const Onboarding = () => {
                 {t`Subscribe to a dashboard by email or Slack`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="IustSQH6bfQ"
                     si="GYTUdFsXfpc2QL8S"
@@ -567,7 +567,7 @@ export const Onboarding = () => {
                 {t`Get alerts when metrics behave unexpectedly`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="pbkECx-1Cos"
                     si="r1KRkR0CJ3BmHOOE"
@@ -603,7 +603,7 @@ export const Onboarding = () => {
                         key="alert-icon"
                         name="alert"
                       />
-                    )} ${(<b key="create-alert">{t`Create alert`}</b>)}.`}
+                    )} ${(<b key="create-alert">{t`Create an alert`}</b>)}.`}
                   </Text>
                   <Text>
                     {t`There are three kinds of things you can get alerted about in ${applicationName}:`}
@@ -666,7 +666,7 @@ export const Onboarding = () => {
             {showMetabaseLinks && (
               <Box data-testid="learning-section" mb="xl">
                 <Title
-                  order={2}
+                  order={3}
                   mb={12}
                 >{t`Get the most out of ${applicationName}`}</Title>
                 <Text>
@@ -680,7 +680,7 @@ export const Onboarding = () => {
             )}
             {helpLink.visible && (
               <Box className={S.support} data-testid="help-section" p="lg">
-                <Stack spacing="xs">
+                <Stack gap="xs">
                   <Title order={4}>{t`Need to talk with someone?`}</Title>
                   <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
                 </Stack>

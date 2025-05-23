@@ -9,7 +9,8 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.number :as u.number])
   #?(:clj (:import [java.time DayOfWeek Month])))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -25,6 +26,7 @@
          (u/add-period "   "))))
 
 (deftest ^:parallel url?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected] (= expected
                        (u/url? s))
     "http://google.com"                                                                      true
@@ -59,7 +61,18 @@
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
 
+#?(:clj
+   (deftest ^:parallel domain?-test
+     #_{:clj-kondo/ignore [:equals-true]}
+     (are [s expected] (= expected (u/domain? s))
+       "metabase.com"         true
+       "metabase.co.uk"       true
+       "sub.metabase.com"     true
+       "https://metabase.com" false
+       "email@metabase.com"   false)))
+
 (deftest ^:parallel state?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/state? x))
     "louisiana"            true
@@ -158,6 +171,7 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected]    (= expected
                           (u/base64-string? s))
     "ABc="         true
@@ -295,6 +309,7 @@
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [in-domain? email domain] (= in-domain?
                                     (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
@@ -359,6 +374,7 @@
     "x"                                   :dispatch-type/string
     :x                                    :dispatch-type/keyword
     1                                     :dispatch-type/integer
+    (u.number/bigint "10")                :dispatch-type/integer
     1.1                                   :dispatch-type/number
     {:a 1}                                :dispatch-type/map
     [1]                                   :dispatch-type/sequential
@@ -419,11 +435,11 @@
   (testing "classify correctly"
     (is (= {:to-update [{:id 2 :name "c3"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]
+            :to-create [{:name "c5"} {:id -1 :name "-c1"}]
             :to-skip   [{:id 4 :name "c4"}]}
            (u/row-diff
             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"} {:name "c5"}])))
     (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
             :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
             :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
@@ -438,6 +454,7 @@
                         :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [xs expected] (= expected
                         (u/empty-or-distinct? xs))
     nil     true
@@ -575,3 +592,24 @@
     (let [acc (volatile! [])]
       (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
       (is (= [1 2 3] @acc)))))
+
+(deftest ^:parallel safe-min-test
+  (testing "safe min behaves like clojure.core/min"
+    (is (= nil (u/safe-min nil)))
+    (is (= 2 (u/safe-min nil 2 nil 3)))))
+
+(deftest ^:parallel find-first-map-indexed-test
+  (testing "find-first-map-indexed"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map-indexed nil [:a :b] 1)))
+      (is (= [1 {:a {:b 2}}]
+             (u/find-first-map-indexed test-maps [:a :b] 2)))
+      (is (nil? (u/find-first-map-indexed test-maps [:a :b] 5))))))
+
+(deftest ^:parallel find-first-map-test
+  (testing "find-first-map"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map nil [:a :b] 1)))
+      (is (nil? (u/find-first-map test-maps [:a :b] 5)))
+      (is (= {:a {:b 2}}
+             (u/find-first-map test-maps [:a :b] 2))))))

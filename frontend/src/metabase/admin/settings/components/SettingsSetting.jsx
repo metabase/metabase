@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-use";
 import scrollIntoView from "scroll-into-view-if-needed";
 import { jt } from "ttag";
 
@@ -10,7 +9,7 @@ import { Box } from "metabase/ui";
 
 import { settingToFormFieldId, useGetEnvVarDocsUrl } from "../utils";
 
-import SettingHeader from "./SettingHeader";
+import { SettingHeader } from "./SettingHeader";
 import {
   SettingContent,
   SettingEnvVarMessage,
@@ -37,22 +36,22 @@ const SETTING_WIDGET_MAP = {
   hidden: () => null,
 };
 
-export const SettingsSetting = props => {
-  const { hash } = useLocation();
+export const SettingsSetting = (props) => {
   const [fancyStyle, setFancyStyle] = useState({});
   const thisRef = useRef();
+
+  // we don't want to pass down autoScrollIntoView to the widget
+  const { autoScrollIntoView, ...propsToPassDown } = props;
 
   const { setting, settingValues, errorMessage } = props;
 
   useEffect(() => {
-    if (hash === `#${setting.key}` && thisRef.current) {
+    if (autoScrollIntoView && thisRef.current) {
       scrollIntoView(thisRef.current, {
         behavior: "smooth",
         block: "center",
         scrollMode: "if-needed",
       });
-
-      thisRef.current.focus();
 
       setFancyStyle({
         background: alpha("brand", 0.1),
@@ -63,7 +62,7 @@ export const SettingsSetting = props => {
         setFancyStyle({});
       }, 1500);
     }
-  }, [hash, setting.key]);
+  }, [autoScrollIntoView]);
 
   const settingId = settingToFormFieldId(setting);
 
@@ -80,7 +79,7 @@ export const SettingsSetting = props => {
   const widgetProps = {
     ...setting.getProps?.(setting, settingValues),
     ...setting.props,
-    ...props,
+    ...propsToPassDown,
   };
 
   return (
@@ -93,7 +92,13 @@ export const SettingsSetting = props => {
         ...fancyStyle,
       }}
     >
-      {!setting.noHeader && <SettingHeader id={settingId} setting={setting} />}
+      {!setting.noHeader && (
+        <SettingHeader
+          id={settingId}
+          title={setting.display_name}
+          description={setting.description}
+        />
+      )}
       <SettingContent>
         {setting.is_env_setting && !setting.forceRenderWidget ? (
           <SetByEnvVar setting={setting} />
@@ -111,6 +116,10 @@ export const SettingsSetting = props => {
   );
 };
 
+/**
+ * @deprecated
+ * use SetByEnvVar from metabase/admin/settings/components/widgets/AdminSettingInput instead
+ */
 export const SetByEnvVar = ({ setting }) => {
   const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
 
@@ -129,7 +138,11 @@ export const SetByEnvVarWrapper = ({ setting, children }) => {
   if (setting.is_env_setting) {
     return (
       <Box mb="lg">
-        <SettingHeader id={setting.key} setting={setting} />
+        <SettingHeader
+          id={setting.key}
+          title={setting.display_name}
+          description={setting.description}
+        />
         <SetByEnvVar setting={setting} />
       </Box>
     );

@@ -3,20 +3,16 @@ import {
   entityPickerModalLevel,
   entityPickerModalTab,
   getFullName,
+  navigationSidebar,
   popover,
 } from "e2e/support/helpers";
 import type { CollectionId } from "metabase-types/api";
 
-/**
- * Clicks the "+" icon on the collection page and selects one of the menu options
- *
- * @deprecated Use newButton helper
- */
-export function openNewCollectionItemFlowFor(
-  type: "question" | "dashboard" | "collection",
-) {
-  cy.findByText("New").click();
-  popover().findByText(new RegExp(type, "i")).click();
+export function startNewCollectionFromSidebar() {
+  return navigationSidebar()
+    .findByLabelText("Create a new collection")
+    .should("be.visible")
+    .click();
 }
 
 export function getCollectionActions() {
@@ -48,6 +44,7 @@ export function getPersonalCollectionName(
 }
 
 export function openCollectionItemMenu(item: string, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(item).eq(index).closest("tr").icon("ellipsis").click();
 }
 
@@ -60,6 +57,8 @@ export const getUnpinnedSection = () => {
 };
 
 export const openPinnedItemMenu = (name: string) => {
+  cy.log(`open pinned item menu: ${name}`);
+
   getPinnedSection().within(() => {
     cy.findByText(name)
       .closest("a")

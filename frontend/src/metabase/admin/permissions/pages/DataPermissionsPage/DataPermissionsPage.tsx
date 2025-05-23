@@ -12,11 +12,10 @@ import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, Group } from "metabase-types/api";
+import type { DatabaseId, Group, PermissionsGraph } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
-import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
-import ToolbarUpsell from "../../components/ToolbarUpsell";
+import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import {
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
   restoreLoadedPermissions,
@@ -34,10 +33,6 @@ type DataPermissionsPageProps = {
   groups: Group[];
 };
 
-export const DATA_PERMISSIONS_TOOLBAR_CONTENT = [
-  <ToolbarUpsell key="upsell" />,
-];
-
 function DataPermissionsPage({
   children,
   route,
@@ -46,8 +41,8 @@ function DataPermissionsPage({
   groups,
 }: DataPermissionsPageProps) {
   const isDirty = useSelector(getIsDirty);
-  const diff = useSelector(state => getDiff(state, { databases, groups }));
-  const showSplitPermsModal = useSelector(state =>
+  const diff = useSelector((state) => getDiff(state, { databases, groups }));
+  const showSplitPermsModal = useSelector((state) =>
     getSetting(state, "show-updated-permission-modal"),
   );
 
@@ -95,10 +90,9 @@ function DataPermissionsPage({
       tab="data"
       onLoad={resetPermissions}
       onSave={savePermissions}
-      diff={diff}
+      diff={diff as PermissionsGraph}
       isDirty={isDirty}
       route={route}
-      toolbarRightContent={DATA_PERMISSIONS_TOOLBAR_CONTENT}
       helpContent={<DataPermissionsHelp />}
       showSplitPermsModal={showSplitPermsModal}
     >

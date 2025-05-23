@@ -5,11 +5,11 @@ import { Form, FormProvider } from "metabase/forms";
 import FormTextArea from "./FormTextArea";
 
 export default {
-  title: "Core/FormTextArea",
+  title: "Components/Ask Before Using/FormTextArea",
   component: FormTextArea,
 };
 
-const Template: StoryFn<typeof FormTextArea> = args => {
+const Template: StoryFn<typeof FormTextArea> = (args) => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 

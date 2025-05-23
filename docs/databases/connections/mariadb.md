@@ -4,13 +4,17 @@ title: MariaDB
 
 # MariaDB
 
-> We recommend using MariaDB version 10.4 or higher.
+> This page covers connecting to MariaDB as a _data warehouse_. For using MariaDB as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 MariaDB shares a driver with MySQL, so select the **MySQL** driver.
 
-## Settings
+## Supported versions
+
+Metabase supports the oldest supported version of Maria DB through the latest stable version. See [MariaDB Server releases](https://mariadb.com/kb/en/mariadb-server-release-dates/).
+
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -52,13 +56,13 @@ You can append options to the connection string that Metabase uses to connect to
 
 ### Re-run queries for simple explorations
 
-Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/editor.md#grouping-your-metrics) or filter selections.
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [summarize](../../questions/query-builder/summarizing-and-grouping.md)) or [filter](../../questions/query-builder/filters.md) selections.
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
-### Choose when Metabase syncs and scans
+### Choose when syncs and scans happen
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md).
+See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 
 #### Database syncing
 
@@ -75,7 +79,7 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 
 - **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### Periodically refingerprint tables
 
@@ -88,6 +92,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Syncing records that include JSON
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

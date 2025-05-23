@@ -80,18 +80,4 @@ describe("Table", () => {
       expect(destinationTable?.connectedTables()).toEqual([originTable]);
     });
   });
-
-  describe("isVirtualCard", () => {
-    it("should return false when the Table is not a virtual card table", () => {
-      const metadata = setup();
-      const table = metadata.table(TABLE_ORIGIN_ID);
-      expect(table?.isVirtualCard()).toBe(false);
-    });
-
-    it("should return true when the Table is a virtual card table", () => {
-      const metadata = setup();
-      const table = metadata.table(TABLE_VIRTUAL_ID);
-      expect(table?.isVirtualCard()).toBe(true);
-    });
-  });
 });

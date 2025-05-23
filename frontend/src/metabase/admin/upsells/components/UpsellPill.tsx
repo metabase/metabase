@@ -1,11 +1,12 @@
 import { useMount } from "react-use";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
+
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import { UpsellPillComponent } from "./Upsells.styled";
+import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
-
 export function _UpsellPill({
   children,
   link,
@@ -28,14 +29,15 @@ export function _UpsellPill({
   });
 
   return (
-    <UpsellPillComponent
+    <ExternalLink
       href={url}
       onClickCapture={() => trackUpsellClicked({ source, campaign })}
       data-testid="upsell-pill"
+      className={S.UpsellPillComponent}
     >
       <UpsellGem />
       {children}
-    </UpsellPillComponent>
+    </ExternalLink>
   );
 }
 

@@ -17,7 +17,7 @@ import {
 } from "./tags";
 
 export const segmentApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listSegments: builder.query<Segment[], void>({
       query: () => ({
         method: "GET",
@@ -26,14 +26,14 @@ export const segmentApi = Api.injectEndpoints({
       providesTags: (segments = []) => provideSegmentListTags(segments),
     }),
     getSegment: builder.query<Segment, SegmentId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/segment/${id}`,
       }),
-      providesTags: segment => (segment ? provideSegmentTags(segment) : []),
+      providesTags: (segment) => (segment ? provideSegmentTags(segment) : []),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/segment",
         body,

@@ -91,7 +91,10 @@ export const ParameterValueWidget = ({
           className={S.widgetStatus}
           highlighted={fieldHasValueOrFocus}
           status="reset"
-          onClick={() => setParameterValueToDefault?.(parameter.id)}
+          onClick={() => {
+            close();
+            setParameterValueToDefault?.(parameter.id);
+          }}
         />
       );
     }
@@ -237,6 +240,7 @@ export const ParameterValueWidget = ({
       opened={isOpen}
       onChange={toggle}
       position="bottom-start"
+      trapFocus
       {...popoverProps}
     >
       <Popover.Target>
@@ -273,6 +277,8 @@ export const ParameterValueWidget = ({
                 <FormattedParameterValue
                   parameter={parameter}
                   value={value}
+                  cardId={question?.id()}
+                  dashboardId={dashboard?.id}
                   placeholder={placeholderText}
                   isPopoverOpen={isOpen}
                 />
@@ -282,7 +288,12 @@ export const ParameterValueWidget = ({
           </Sortable>
         </Box>
       </Popover.Target>
-      <Popover.Dropdown data-testid="parameter-value-dropdown">
+      <Popover.Dropdown
+        // Removes `maxWidth` so that `floating-ui` can detect the new element size. See metabase#52918 for details.
+        // Use `size` middleware options when we upgrade to mantine v7.
+        maw={isDateParameter(parameter) ? "100vw !important" : undefined}
+        data-testid="parameter-value-dropdown"
+      >
         <ParameterDropdownWidget
           parameter={parameter}
           parameters={parameters}

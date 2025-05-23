@@ -36,6 +36,14 @@ driver:
       type: boolean
       visible-if:
         advanced-options: true
+    - name: host
+      display-name: Alternate hostname
+      helper-text: Alternate hostname used to connect to BigQuery
+      placeholder: https://<hostname>:<port>
+      required: false
+      type: string
+      visible-if:
+        advanced-options: true
     - default-advanced-options
 init:
   - step: load-namespace

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 interface SwapperElementProps {
@@ -9,7 +10,7 @@ export const SwapperRoot = styled.div`
 `;
 
 export const SwapperDefaultElement = styled.div<SwapperElementProps>`
-  transform: scale(${props => (props.isVisible ? 1 : 0)});
+  transform: scale(${(props) => (props.isVisible ? 1 : 0)});
 `;
 
 export const SwapperLayeredElement = styled.div<SwapperElementProps>`
@@ -18,5 +19,5 @@ export const SwapperLayeredElement = styled.div<SwapperElementProps>`
   left: 0;
   right: 0;
   bottom: 0;
-  transform: scale(${props => (props.isVisible ? 1 : 0)});
+  transform: scale(${(props) => (props.isVisible ? 1 : 0)});
 `;

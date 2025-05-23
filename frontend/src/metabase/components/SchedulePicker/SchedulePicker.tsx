@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Component } from "react";
+import { type CSSProperties, Component } from "react";
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/components/SegmentedControl";
@@ -16,6 +16,7 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Box, type BoxProps } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -24,18 +25,25 @@ import type {
 } from "metabase-types/api";
 
 import {
-  PickerRoot,
   PickerRow,
   PickerSpacedRow,
   PickerText,
   ScheduleDescriptionContainer,
 } from "./SchedulePicker.styled";
 
-const optionNameTranslations = {
-  hourly: t`Hourly`,
-  daily: t`Daily`,
-  weekly: t`Weekly`,
-  monthly: t`Monthly`,
+const optionNameTranslations: Partial<Record<ScheduleType, string>> = {
+  get hourly() {
+    return t`Hourly`;
+  },
+  get daily() {
+    return t`Daily`;
+  },
+  get weekly() {
+    return t`Weekly`;
+  },
+  get monthly() {
+    return t`Monthly`;
+  },
 };
 
 export type ScheduleProperty = keyof ScheduleSettings;
@@ -48,14 +56,22 @@ export interface SchedulePickerProps {
   textBeforeInterval?: string;
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
+  className?: string;
+  style?: CSSProperties;
+
   onScheduleChange: (
     nextSchedule: ScheduleSettings,
     change: ScheduleChangeProp,
   ) => void;
+
+  mt?: BoxProps["mt"];
 }
 
 const DEFAULT_DAY = "mon";
 
+/**
+ * @deprecated use "metabase/components/Schedule" instead
+ */
 class SchedulePicker extends Component<SchedulePickerProps> {
   handleChangeProperty(
     name: ScheduleProperty,
@@ -226,7 +242,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           />
           <SegmentedControl
             value={amPm}
-            onChange={value =>
+            onChange={(value) =>
               this.handleChangeProperty("schedule_hour", hour + value * 12)
             }
             options={AM_PM_OPTIONS}
@@ -244,12 +260,19 @@ class SchedulePicker extends Component<SchedulePickerProps> {
   }
 
   render() {
-    const { schedule, scheduleOptions, textBeforeInterval } = this.props;
+    const {
+      schedule,
+      scheduleOptions,
+      textBeforeInterval,
+      className,
+      style,
+      mt = "lg",
+    } = this.props;
 
     const scheduleType = schedule.schedule_type;
 
     return (
-      <PickerRoot>
+      <Box mt={mt} className={className} style={style}>
         <PickerRow>
           <PickerText>{textBeforeInterval}</PickerText>
           <Select
@@ -273,7 +296,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           scheduleType === "weekly" ||
           scheduleType === "monthly") &&
           this.renderHourPicker()}
-      </PickerRoot>
+      </Box>
     );
   }
 }

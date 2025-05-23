@@ -1,14 +1,14 @@
 (ns metabase.query-analysis.core-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.persisted-info :as persisted-info]
-   [metabase.public-settings :as public-settings]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.init]
+   [metabase.query-analysis.settings :as query-analysis.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -17,13 +17,17 @@
 
 (comment metabase.query-analysis.init/keep-me)
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [query-analysis-enabled true]
+                        (thunk))))
+
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]
     (testing "sql parsing enabled"
-      (public-settings/sql-parsing-enabled! true)
+      (query-analysis.settings/sql-parsing-enabled! true)
       (is (true? (query-analysis/enabled-type? :native))))
     (testing "sql parsing disabled"
-      (public-settings/sql-parsing-enabled! false)
+      (query-analysis.settings/sql-parsing-enabled! false)
       (is (false? (query-analysis/enabled-type? :native))))))
 
 (deftest ^:parallel non-native-query-enabled-test

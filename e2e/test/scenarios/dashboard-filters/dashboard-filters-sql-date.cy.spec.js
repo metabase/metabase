@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -16,7 +16,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -40,6 +40,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
 
     Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         dateFilterSelector({
           filterType: filter,

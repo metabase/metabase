@@ -6,11 +6,11 @@ import { color } from "metabase/lib/colors";
 import { ColorSelector, type ColorSelectorProps } from "./ColorSelector";
 
 export default {
-  title: "Core/ColorSelector",
+  title: "Components/Ask Before Using/ColorSelector",
   component: ColorSelector,
 };
 
-const Template: StoryFn<ColorSelectorProps> = args => {
+const Template: StoryFn<ColorSelectorProps> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value: string) => {

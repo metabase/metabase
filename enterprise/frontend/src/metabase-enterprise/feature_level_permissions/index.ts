@@ -1,4 +1,3 @@
-import { DATA_PERMISSIONS_TOOLBAR_CONTENT } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -37,6 +36,4 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps = {
     exclude_uneditable_details: true,
   };
-
-  DATA_PERMISSIONS_TOOLBAR_CONTENT.length = 0;
 }

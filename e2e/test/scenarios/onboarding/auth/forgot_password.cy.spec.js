@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
@@ -19,7 +19,7 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Send password reset email").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Check your email/);
+    cy.findByText(/If the email exists/);
 
     H.getInbox().then(({ body: [{ html }] }) => {
       cy.visit(getResetLink(html));
@@ -41,7 +41,7 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
   });
 });
 
-const getResetLink = html => {
+const getResetLink = (html) => {
   const [, anchor] = html.match(/<a (.*)>/);
   const [, href] = anchor.match(/href="([^"]+)"/);
   return href;

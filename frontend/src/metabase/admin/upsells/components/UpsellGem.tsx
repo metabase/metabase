@@ -1,7 +1,7 @@
-import { FixedSizeIcon, type IconProps } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
-import { upsellColors } from "./Upsells.styled";
+import S from "./Upsells.module.css";
 
 export const UpsellGem = (props: Omit<IconProps, "name" | "color">) => (
-  <FixedSizeIcon size={16} name="gem" color={upsellColors.gem} {...props} />
+  <Icon size={16} name="gem" className={S.UpsellGem} {...props} />
 );

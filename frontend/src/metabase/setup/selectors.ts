@@ -9,7 +9,6 @@ import type {
 } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
-import { isNotFalsy } from "./../lib/types";
 import type { SetupStep } from "./types";
 
 const DEFAULT_LOCALES: LocaleData[] = [];
@@ -42,6 +41,10 @@ export const getInvite = (state: State): InviteInfo | undefined => {
   return state.setup.invite;
 };
 
+export const getIsEmbeddingUseCase = (state: State): boolean => {
+  return state.setup.isEmbeddingUseCase;
+};
+
 export const getIsLocaleLoaded = (state: State): boolean => {
   return state.setup.isLocaleLoaded;
 };
@@ -57,7 +60,8 @@ export const getIsStepActive = (state: State, step: SetupStep): boolean => {
 export const getIsStepCompleted = (state: State, step: SetupStep): boolean => {
   const steps = getSteps(state);
   return (
-    steps.findIndex(s => s.key === step) < steps.findIndex(s => s.isActiveStep)
+    steps.findIndex((s) => s.key === step) <
+    steps.findIndex((s) => s.isActiveStep)
   );
 };
 
@@ -96,11 +100,18 @@ export const getSteps = createSelector(
     (state: State) => getStep(state),
     (state: State) => getSetting(state, "token-features"),
     (state: State) => state.setup.licenseToken,
+    (state: State) => getIsEmbeddingUseCase(state),
   ],
-  (usageReason, activeStep, tokenFeatures, licenseToken) => {
+  (
+    usageReason,
+    activeStep,
+    tokenFeatures,
+    licenseToken,
+    isEmbeddingUseCase,
+  ) => {
     const isPaidPlan =
       tokenFeatures &&
-      Object.values(tokenFeatures).some(value => value === true);
+      Object.values(tokenFeatures).some((value) => value === true);
     const hasAddedPaidPlanInPreviousStep = Boolean(licenseToken);
 
     const shouldShowDBConnectionStep = usageReason !== "embedding";
@@ -119,30 +130,33 @@ export const getSteps = createSelector(
       !hasAddedPaidPlanInPreviousStep;
     const shouldShowDataUsageStep = !isHosted;
 
-    const steps: { key: SetupStep; isActiveStep: boolean }[] = [
-      { key: "welcome" as const },
-      { key: "language" as const },
-      { key: "user_info" as const },
-      { key: "usage_question" as const },
-      shouldShowDBConnectionStep && {
-        key: "db_connection" as const,
-      },
-      shouldShowLicenseStep && { key: "license_token" as const },
-      shouldShowDataUsageStep ? { key: "data_usage" as const } : null,
-      { key: "completed" as const },
-    ]
-      .filter(isNotFalsy)
-      .map(({ key }) => ({
-        key,
-        isActiveStep: activeStep === key,
-      }));
+    const maybeAddStep = (step: SetupStep, condition: boolean): SetupStep[] =>
+      condition ? [step] : [];
 
-    return steps;
+    const regularSteps: SetupStep[] = [
+      "welcome",
+      "language",
+      "user_info",
+      "usage_question",
+      ...maybeAddStep("db_connection", shouldShowDBConnectionStep),
+      ...maybeAddStep("license_token", shouldShowLicenseStep),
+      ...maybeAddStep("data_usage", shouldShowDataUsageStep),
+      "completed",
+    ];
+
+    const embeddingSteps: SetupStep[] = ["user_info", "completed"];
+
+    const steps = isEmbeddingUseCase ? embeddingSteps : regularSteps;
+
+    return steps.map((key) => ({
+      key,
+      isActiveStep: activeStep === key,
+    }));
   },
 );
 
 export const getNextStep = (state: State) => {
   const steps = getSteps(state);
-  const activeStepIndex = steps.findIndex(step => step.isActiveStep);
+  const activeStepIndex = steps.findIndex((step) => step.isActiveStep);
   return steps[activeStepIndex + 1].key;
 };

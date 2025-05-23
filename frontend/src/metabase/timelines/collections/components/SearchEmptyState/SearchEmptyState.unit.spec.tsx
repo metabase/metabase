@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "__support__/ui";
 
 import SearchEmptyState from "./SearchEmptyState";
 
@@ -6,6 +6,6 @@ describe("SearchEmptyState", () => {
   it("should render correctly", () => {
     render(<SearchEmptyState />);
 
-    expect(screen.getByLabelText("star icon")).toBeInTheDocument();
+    expect(screen.getByText("No events found")).toBeInTheDocument();
   });
 });

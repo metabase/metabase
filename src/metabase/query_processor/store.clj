@@ -14,9 +14,9 @@
   those Fields potentially dozens of times in a single query execution."
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -38,9 +38,14 @@
   "Dynamic var used as the QP store for a given query execution."
   uninitialized-store)
 
-(def ^:dynamic *TESTS-ONLY-allow-replacing-metadata-provider*
-  "This is only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
-  provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time."
+(def ^:dynamic *DANGER-allow-replacing-metadata-provider*
+  "This is (almost) only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
+  provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time.
+
+  We use this in production in exactly one place and don't expect to use it more: to enable 'router databases' that
+  redirect users to a mirror database based on a user attribute, we swap out the metadata provider immediately before
+  the query processor executes the query against the driver. But generally speaking we should never need to use this
+  in production."
   false)
 
 ;; TODO -- rename this to something like `store-bound?` because the store is not really initialized until the Database
@@ -152,27 +157,26 @@
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable
    thunk                                :- [:=> [:cat] :any]]
   (cond
-    (or (not (initialized?))
-        *TESTS-ONLY-allow-replacing-metadata-provider*)
-    (binding [*store*                                        (atom {})
-              *TESTS-ONLY-allow-replacing-metadata-provider* false]
+    (not (initialized?))
+    (binding [*store* (atom {})]
       (do-with-metadata-provider database-id-or-metadata-providerable thunk))
 
-    ;; existing provider
-    (miscellaneous-value [::metadata-provider])
-    (do
-      (validate-existing-provider database-id-or-metadata-providerable)
+    (or *DANGER-allow-replacing-metadata-provider*
+        (not (miscellaneous-value [::metadata-provider])))
+    ;; Allow replacing the metadata provider once, but it shouldn't affect later calls.
+    (binding [*DANGER-allow-replacing-metadata-provider* false]
+      (set-metadata-provider! database-id-or-metadata-providerable)
       (thunk))
 
     :else
     (do
-      (set-metadata-provider! database-id-or-metadata-providerable)
+      (validate-existing-provider database-id-or-metadata-providerable)
       (thunk))))
 
 (defmacro with-metadata-provider
   "Execute `body` with an initialized QP store and metadata provider bound. You can either pass
   a [[metabase.lib.metadata.protocols/MetadataProvider]] directly, or pass a Database ID, for which we will create
-  a [[metabase.lib.metadata.jvm/application-database-metadata-provider]].
+  a [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]].
 
   If a MetadataProvider is already bound, this is a no-op."
   {:style/indent [:defn]}
@@ -200,4 +204,6 @@
         (dissoc :lib/type)
         (update-keys u/->snake_case_en)
         (vary-meta assoc :type model)
-        (m/update-existing :field_ref lib.convert/->legacy-MBQL))))
+        ;; TODO: This is converting a freestanding field ref into legacy form. Then again, the `:field_ref` on MLv2
+        ;; metadata is already in legacy form.
+        (m/update-existing :field_ref lib/->legacy-MBQL))))
