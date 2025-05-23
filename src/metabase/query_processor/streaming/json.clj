@@ -63,19 +63,21 @@
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to
-             (zipmap
-              @col-names
-              (map (fn [formatter r]
-                     ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
-                     ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
-                     ;; does mean that all JSON values are strings. Any other strategy requires some level of
-                     ;; inference to know if we should or should not parse a string (or not stringify an object).
-                     (let [res (formatter (streaming.common/format-value r))]
-                       (cond
-                         (formatter/NumericWrapper? res) (:num-str res)
-                         (formatter/TextWrapper? res)    (:text-str res)
-                         :else                          res)))
-                   @ordered-formatters cleaned-row))
+             ;; #12247 Use array-map instead of zipmap for preserving order in json export
+             (apply array-map
+                    (interleave
+                     @col-names
+                     (map (fn [formatter r]
+                            ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
+                            ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
+                            ;; does mean that all JSON values are strings. Any other strategy requires some level of
+                            ;; inference to know if we should or should not parse a string (or not stringify an object).
+                            (let [res (formatter (streaming.common/format-value r))]
+                              (cond
+                                (formatter/NumericWrapper? res) (:num-str res)
+                                (formatter/TextWrapper? res)    (:text-str res)
+                                :else                          res)))
+                          @ordered-formatters cleaned-row)))
              writer {})
             (.flush writer))))
 
