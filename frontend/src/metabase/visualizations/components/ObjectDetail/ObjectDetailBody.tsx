@@ -1,3 +1,5 @@
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { maybeTranslateDisplayNames } from "metabase/i18n/utils";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type {
   DatasetData,
@@ -37,10 +39,13 @@ export function ObjectDetailBody({
   tableForeignKeyReferences,
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
+  const tc = useTranslateContent();
+  const maybeTranslatedData = maybeTranslateDisplayNames(data, tc);
+
   return (
     <ObjectDetailBodyWrapper>
       <DetailsTable
-        data={data}
+        data={maybeTranslatedData}
         zoomedRow={zoomedRow}
         settings={settings}
         onVisualizationClick={onVisualizationClick}
