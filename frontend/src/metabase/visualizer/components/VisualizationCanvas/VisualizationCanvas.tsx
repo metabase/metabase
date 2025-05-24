@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import metabot from "assets/img/metabot-96x96.svg";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
@@ -116,7 +117,17 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           style={{ gridArea: "bottom-left" }}
         >
           <Tooltip label={t`View as table`}>
-            <ActionIcon onClick={() => setTabularPreviewOpen(true)}>
+            <ActionIcon
+              data-testid="visualizer-view-as-table-button"
+              onClick={() => {
+                trackSimpleEvent({
+                  event: "visualizer_view_as_table_clicked",
+                  triggered_from: "visualizer-modal",
+                });
+
+                setTabularPreviewOpen(true);
+              }}
+            >
               <Icon name="table" />
             </ActionIcon>
           </Tooltip>
