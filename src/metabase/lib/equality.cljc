@@ -126,10 +126,11 @@
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
 (mu/defn- matching-join? :- :boolean
-  [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
-   column                                                :- ::lib.schema.metadata/column]
+  [[_ref-kind {:keys [join-alias source-field source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
+   column                                                                        :- ::lib.schema.metadata/column]
   (if source-field
-    (clojure.core/= source-field (:fk-field-id column))
+    (and (clojure.core/= source-field (:fk-field-id column))
+         (clojure.core/= source-field-join-alias (:fk-join-alias column)))
     ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
     ;; an own column.
     (clojure.core/= (column-join-alias column) join-alias)))
@@ -187,19 +188,6 @@
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
-(mu/defn- disambiguate-matches-find-match-with-same-fk-join-alias :- [:maybe ::lib.schema.metadata/column]
-  "If there are multiple matching columns and `a-ref` has a `source-field-join-alias`, check if only one column has that
-   same alias."
-  [a-ref   :- ::lib.schema.ref/ref
-   columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
-  (let [{:keys [source-field-join-alias]} (lib.options/options a-ref)]
-    (or (when source-field-join-alias
-          (let [matching-columns (filter #(= (:fk-join-alias %) source-field-join-alias)
-                                         columns)]
-            (when (= (count matching-columns) 1)
-              (first matching-columns))))
-        (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns))))
-
 (mu/defn- disambiguate-matches-find-match-with-same-binning :- [:maybe ::lib.schema.metadata/column]
   "If there are multiple matching columns and `a-ref` has a binning value, check if only one column has that same
   binning."
@@ -210,7 +198,7 @@
                                        columns)]
           (when (= (count matching-columns) 1)
             (first matching-columns))))
-      (disambiguate-matches-find-match-with-same-fk-join-alias a-ref columns)))
+      (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
 
 (mu/defn- disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
   "If there are multiple matching columns and `a-ref` has a temporal bucket, check if only one column has that same
