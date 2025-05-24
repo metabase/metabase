@@ -52,20 +52,18 @@ export const FkTargetPicker = ({
     return option?.field;
   };
 
-  const getValue = (fieldId: string | null) => {
+  const getValue = (fieldId: string | null): FieldId => {
     const field = getField(fieldId);
     if (field?.id === undefined || typeof field.id === "object") {
       // this code is unreachable since we don't expect field references here
-      return;
+      throw new Error("unreachable");
     }
     return field.id;
   };
 
   const handleChange = (value: string) => {
     const fieldId = getValue(value);
-    if (fieldId) {
-      onChange(fieldId);
-    }
+    onChange(fieldId);
   };
 
   return (
