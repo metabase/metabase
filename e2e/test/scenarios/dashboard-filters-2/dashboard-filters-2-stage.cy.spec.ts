@@ -675,7 +675,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
@@ -687,7 +687,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
@@ -1070,7 +1070,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
@@ -1082,7 +1082,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
