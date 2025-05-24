@@ -38,8 +38,8 @@
                              [:field (meta/id :orders :product-id) nil]
                              [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
               :fk-field-id  (meta/id :orders :product-id)}]
-            (#'qp.add-implicit-joins/fk-field-infos->join-infos [{:fk-field-id (meta/id :orders :id)}
-                                                                 {:fk-field-id (meta/id :orders :product-id)}])))))
+            (#'qp.add-implicit-joins/fk-field-infos->join-infos #{{:fk-field-id (meta/id :orders :id)}
+                                                                  {:fk-field-id (meta/id :orders :product-id)}})))))
 
 (deftest ^:parallel resolve-implicit-joins-test
   (let [query (mt/nest-query
@@ -149,7 +149,69 @@
                                 :strategy     :left-join
                                 :fields       :none}]
                 :fields       [[:field %products.category {:source-field %product-id
-                                                           :source-field-join-alias "Orders"}]]}))))))
+                                                           :source-field-join-alias "Orders"}]]})))))
+  (testing "make sure that implicit joins are properly deduplicated when done via `:source-table` and different `:joins`"
+    (is (=? (lib.tu.macros/mbql-query orders
+              {:source-table $$orders
+               :joins       [{:source-table $$orders
+                              :alias        "Orders"
+                              :condition    [:= $product-id  [:field %product-id {:join-alias "Orders"}]]
+                              :strategy     :left-join
+                              :fields       :none}
+                             {:source-table $$orders
+                              :alias        "Orders_2"
+                              :condition    [:= $product-id  [:field %product-id {:join-alias "Orders_2"}]]
+                              :strategy     :left-join
+                              :fields       :none}
+                             {:source-table  $$products
+                              :alias         "PRODUCTS__via__PRODUCT_ID"
+                              :condition     [:= $product-id
+                                              &PRODUCTS__via__PRODUCT_ID.products.id]
+                              :fk-field-id   %product-id}
+                             {:source-table  $$products
+                              :alias         "PRODUCTS__via__PRODUCT_ID_2"
+                              :condition     [:= [:field %orders.product-id {:join-alias "Orders"}]
+                                              &PRODUCTS__via__PRODUCT_ID_2.products.id]
+                              :fk-field-id   %product-id
+                              :fk-join-alias "Orders"}
+                             {:source-table  $$products
+                              :alias         "PRODUCTS__via__PRODUCT_ID_3"
+                              :condition     [:= [:field %orders.product-id {:join-alias "Orders_2"}]
+                                              &PRODUCTS__via__PRODUCT_ID_3.products.id]
+                              :fk-field-id   %product-id
+                              :fk-join-alias "Orders_2"}]
+               :fields [[:field
+                         %products.category
+                         {:join-alias "PRODUCTS__via__PRODUCT_ID",
+                          :source-field %product-id}]
+                        [:field
+                         %products.category
+                         {:join-alias "PRODUCTS__via__PRODUCT_ID_2",
+                          :source-field %product-id,
+                          :source-field-join-alias "Orders"}]
+                        [:field
+                         %products.category
+                         {:join-alias "PRODUCTS__via__PRODUCT_ID_3",
+                          :source-field %product-id,
+                          :source-field-join-alias "Orders_2"}]]})
+            (add-implicit-joins
+             (lib.tu.macros/mbql-query orders
+               {:source-table $$orders
+                :joins        [{:source-table $$orders
+                                :alias        "Orders"
+                                :condition    [:= $product-id  [:field %product-id {:join-alias "Orders"}]]
+                                :strategy     :left-join
+                                :fields       :none}
+                               {:source-table $$orders
+                                :alias        "Orders_2"
+                                :condition    [:= $product-id  [:field %product-id {:join-alias "Orders_2"}]]
+                                :strategy     :left-join
+                                :fields       :none}]
+                :fields       [[:field %products.category {:source-field %product-id}]
+                               [:field %products.category {:source-field %product-id
+                                                           :source-field-join-alias "Orders"}]
+                               [:field %products.category {:source-field %product-id
+                                                           :source-field-join-alias "Orders_2"}]]}))))))
 
 (deftest ^:parallel already-has-join?-test
   (is (#'qp.add-implicit-joins/already-has-join?
