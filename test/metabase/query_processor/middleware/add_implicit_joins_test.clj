@@ -130,14 +130,14 @@
                               :strategy     :left-join
                               :fields       :none}
                              {:source-table  $$products
-                              :alias         "PRODUCTS__via__PRODUCT_ID__via__Orders"
+                              :alias         "PRODUCTS__via__PRODUCT_ID"
                               :condition     [:= [:field %orders.product-id {:join-alias "Orders"}]
-                                              &PRODUCTS__via__PRODUCT_ID__via__Orders.products.id]
+                                              &PRODUCTS__via__PRODUCT_ID.products.id]
                               :fk-field-id   %product-id
                               :fk-join-alias "Orders"}]
                :fields [[:field
                          %products.category
-                         {:join-alias "PRODUCTS__via__PRODUCT_ID__via__Orders",
+                         {:join-alias "PRODUCTS__via__PRODUCT_ID",
                           :source-field %product-id,
                           :source-field-join-alias "Orders"}]]})
             (add-implicit-joins
