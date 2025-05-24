@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
