@@ -1,7 +1,7 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
-import { renderToString } from "react-dom/server";
 import { t } from "ttag";
 
+import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import {
   EChartsTooltip,
@@ -101,7 +101,7 @@ export const getTooltipOption = (
         return "";
       }
 
-      return renderToString(
+      return reactNodeToHtmlString(
         <ChartItemTooltip params={params} chartModel={chartModel} />,
       );
     },
