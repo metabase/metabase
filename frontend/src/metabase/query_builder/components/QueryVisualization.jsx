@@ -155,7 +155,7 @@ export function VisualizationRunningState({ className = "" }) {
       align="center"
     >
       <LoadingSpinner />
-      <Title className={CS.textUppercase} c="brand" order={3} mt="lg">
+      <Title c="brand" order={3} mt="lg">
         {message}
       </Title>
     </Flex>
