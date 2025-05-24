@@ -193,7 +193,7 @@
                :source_alias (let [table-name (if (qp.store/initialized?)
                                                 (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
                                                 (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
-                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
+                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col) nil))))))
 
 (declare cols)
 
