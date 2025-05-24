@@ -61,18 +61,25 @@
 
     CATEGORIES__via__CATEGORY_ID
 
+  For an implicit join made via a join, the join alias is appended to the name:
+
+    CATEGORIES__via__CATEGORY_ID__via__CATEGORIES
+
   You should make sure this gets ran thru a unique-name fn e.g. one returned
   by [[metabase.lib.util/unique-name-generator]]."
-  [table-name           :- ::lib.schema.common/non-blank-string
-   source-field-id-name :- ::lib.schema.common/non-blank-string]
-  (lib.util/format "%s__via__%s" table-name source-field-id-name))
+  [table-name              :- ::lib.schema.common/non-blank-string
+   source-field-id-name    :- ::lib.schema.common/non-blank-string
+   source-field-join-alias :- [:maybe ::lib.schema.common/non-blank-string]]
+  (if source-field-join-alias
+    (lib.util/format "%s__via__%s__via__%s" table-name source-field-id-name source-field-join-alias)
+    (lib.util/format "%s__via__%s" table-name source-field-id-name)))
 
-(defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
+(defn- implicit-join-name [query {:keys [fk-field-id fk-join-alias table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
     (when-let [table (lib.metadata/table-or-card query table-id)]
       (let [table-name           (:name table)
             source-field-id-name (:name (lib.metadata/field query fk-field-id))]
-        (format-implicit-join-name table-name source-field-id-name)))))
+        (format-implicit-join-name table-name source-field-id-name fk-join-alias)))))
 
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field e.g.

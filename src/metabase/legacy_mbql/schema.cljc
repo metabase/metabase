@@ -270,6 +270,10 @@
   If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
   `:source-field` should be for information purposes only."} ::lib.schema.id/field]
 
+    [:source-field-join-alias
+     {:optional true :description "The join alias of the source field used for an implicit join."}
+     ::lib.schema.common/non-blank-string]
+
     [:temporal-unit
      {:optional true
       :description
