@@ -35,8 +35,8 @@
          (when-not (some #{:source-metadata} &parents)
            &match))))
 
-(defn- join-alias [dest-table-name source-fk-field-name]
-  (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name))
+(defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
+  (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name source-fk-join-alias))
 
 (def ^:private FkFieldInfo
   [:map
@@ -63,8 +63,7 @@
           target-field-ids   (into #{} (keep :fk-target-field-id) fk-fields)
           target-fields      (when (seq target-field-ids)
                                (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column target-field-ids))
-          target-table-ids   (into #{} (keep :table-id) target-fields)
-          unique-name-fn     (mbql.u/unique-name-generator)]
+          target-table-ids   (into #{} (keep :table-id) target-fields)]
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
         (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table target-table-ids))
@@ -75,7 +74,7 @@
             :when pk-id]
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
-              alias-for-join           (unique-name-fn (join-alias table-name fk-name))]
+              alias-for-join           (join-alias table-name fk-name fk-join-alias)]
           (-> (merge {:source-table  source-table
                       :alias         alias-for-join
                       :ident         (lib/implicit-join-clause-ident fk-ident)
