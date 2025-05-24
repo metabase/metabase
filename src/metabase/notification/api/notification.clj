@@ -221,6 +221,7 @@
   "Send an unsaved notification."
   [_route _query body :- ::models.notification/FullyHydratedNotification]
   (api/create-check :model/Notification body)
+  (models.notification/validate-email-handlers! (:handlers body))
   (-> body
       (assoc :creator_id api/*current-user-id*)
       promote-to-t2-instance

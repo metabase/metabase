@@ -11,6 +11,7 @@ import {
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import CS from "metabase/css/core/index.css";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import {
   alertIsValid,
   getAlertTriggerOptions,
@@ -192,7 +193,8 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: t`An error occurred`,
+            message:
+              getResponseErrorMessage(result.error) ?? t`An error occurred`,
           }),
         );
 
@@ -227,7 +229,8 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: t`An error occurred`,
+            message:
+              getResponseErrorMessage(result.error) ?? t`An error occurred`,
           }),
         );
       }
