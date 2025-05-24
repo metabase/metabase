@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import * as EnterpriseContentTranslationUtilsModule from "metabase-enterprise/content_translation/utils";
 import type { DictionaryResponse } from "metabase-types/api";
 
 export function setupContentTranslationEndpoints({
@@ -23,3 +24,23 @@ export function setupContentTranslationEndpoints({
     success: uploadSuccess,
   }));
 }
+
+/** To check that no content translation was performed, use this spy to assert
+ * that the translateContentString utility function was not invoked */
+export const setupTranslateContentStringSpy = () => {
+  let translateContentStringSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    translateContentStringSpy = jest.spyOn(
+      EnterpriseContentTranslationUtilsModule,
+      "translateContentString",
+    );
+  });
+
+  afterEach(() => {
+    translateContentStringSpy?.mockClear();
+    translateContentStringSpy?.mockRestore();
+  });
+
+  return () => translateContentStringSpy;
+};
