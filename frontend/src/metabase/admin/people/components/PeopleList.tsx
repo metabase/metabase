@@ -19,7 +19,7 @@ import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { GroupId, GroupInfo, Member, User } from "metabase-types/api";
 
-import { USER_STATUS, type UserStatus } from "../constants";
+import { ACTIVE_STATUS, type ActiveStatus } from "../constants";
 
 import { PeopleListRow } from "./PeopleListRow";
 
@@ -28,7 +28,7 @@ const defaultUsersValue: User[] = [];
 interface PeopleListQueryProps {
   query: {
     searchText: string;
-    status: UserStatus;
+    status: ActiveStatus;
     page: number;
     pageSize: number;
   };
@@ -74,7 +74,7 @@ export const PeopleList = ({
   const { page, pageSize, status } = query;
 
   const isCurrentUser = (u: User) => currentUser.id === u.id;
-  const showDeactivated = status === USER_STATUS.deactivated;
+  const showDeactivated = status === ACTIVE_STATUS.deactivated;
   const hasUsers = users.length > 0;
 
   const handleChange = async (

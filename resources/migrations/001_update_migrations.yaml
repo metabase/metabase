@@ -11554,6 +11554,82 @@ databaseChangeLog:
                     nullable: true
                     unique: true
 
+  - changeSet:
+      id: v55.2025-05-20T12:28:56
+      author: johnswanson
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
+      comment: Add All External Users group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name, magic_group_type, is_tenant_group)
+              VALUES
+              ('All External Users', 'all-external-users', true);
+
+
+  - changeSet:
+      id: v55.2025-05-20T12:29:00
+      author: johnswanson
+      comment: Create `tenant` table
+      preConditions: # not needed
+      changes:
+        - createTable:
+            tableName: tenant
+            remarks: |
+              Tenants (collections of external users). A user can be in exactly zero or one tenants.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: the ID of the tenant
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "name"
+                  type: varchar(254)
+                  remarks: the unique name of the tenant
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: "slug"
+                  type: varchar(254)
+                  remarks: "the slugified version of this tenant's name"
+                  constraints:
+                    nullable: false
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T12:29:03
+      author: johnswanson
+      comment: add an index for `core_user.tenant_id`
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_unique_core_user_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+
+  - changeSet:
+      id: v55.2025-05-20T12:29:07
+      author: johnswanson
+      comment: Add foreign key for `core_user.tenant_id`
+      preConditions: # not needed
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: tenant_id
+            referencedTableName: tenant
+            referencedColumnNames: id
+            constraintName: fk_core_user_tenant_id
+            onDelete: RESTRICT
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

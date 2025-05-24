@@ -129,6 +129,7 @@ export const createMockTokenFeatures = (
   ai_sql_generation: false,
   database_routing: false,
   "development-mode": false,
+  tenants: false,
   ...opts,
 });
 
@@ -306,5 +307,6 @@ export const createMockSettings = (
   "check-for-updates": true,
   "update-channel": "latest",
   "trial-banner-dismissal-timestamp": null,
+  "use-tenants": false,
   ...opts,
 });

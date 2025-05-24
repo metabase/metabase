@@ -34,6 +34,7 @@
   prime-db-cache
   schema-permission-for-user
   set-database-permission!
+  set-external-group-permissions!
   set-new-database-permissions!
   set-new-table-permissions!
   set-table-permission!
@@ -95,3 +96,6 @@
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.permissions.models.permissions-group/admin admin-group)
+
+#_{:clj-kondo/ignore [:missing-docstring]}
+(p/import-def metabase.permissions.models.permissions-group/all-external-users all-external-users-group)

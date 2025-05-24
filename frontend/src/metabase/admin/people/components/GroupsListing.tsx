@@ -18,6 +18,7 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+import { regexpEscape } from "metabase/lib/string";
 import {
   Box,
   Button,
@@ -32,6 +33,7 @@ import type { ApiKey, GroupInfo } from "metabase-types/api";
 import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
+import { SearchFilter } from "./SearchFilter";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -379,6 +381,7 @@ interface GroupsListingState {
   showAddGroupRow: boolean;
   groupBeingEdited: GroupInfo | null;
   alertMessage: string | null;
+  searchInputValue: string;
 }
 
 export class GroupsListing extends Component<
@@ -392,6 +395,7 @@ export class GroupsListing extends Component<
       showAddGroupRow: false,
       groupBeingEdited: null,
       alertMessage: null,
+      searchInputValue: "",
     };
   }
 
@@ -506,23 +510,43 @@ export class GroupsListing extends Component<
     }
   }
 
+  updateSearchInputValue(value: string) {
+    this.setState({ searchInputValue: value });
+  }
+
   render() {
     const { groups, isAdmin } = this.props;
-    const { alertMessage } = this.state;
+    const { alertMessage, searchInputValue } = this.state;
+
+    const groupNameFilter = new RegExp(
+      `\\b${regexpEscape(searchInputValue)}`,
+      "i",
+    );
+    const filteredGroups = groups.filter((g) => groupNameFilter.test(g.name));
 
     return (
       <AdminPaneLayout
         title={t`Groups`}
-        buttonText={isAdmin ? t`Create a group` : undefined}
-        buttonAction={
-          this.state.showAddGroupRow
-            ? undefined
-            : this.onCreateAGroupButtonClicked.bind(this)
+        titleActions={
+          isAdmin &&
+          !this.state.showAddGroupRow && (
+            <Button
+              variant="filled"
+              onClick={this.onCreateAGroupButtonClicked.bind(this)}
+            >{t`Create a group`}</Button>
+          )
         }
         description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
+        headerContent={
+          <SearchFilter
+            value={this.state.searchInputValue}
+            onChange={this.updateSearchInputValue.bind(this)}
+            placeholder={t`Find a group`}
+          />
+        }
       >
         <GroupsTable
-          groups={groups}
+          groups={filteredGroups}
           text={this.state.text}
           showAddGroupRow={this.state.showAddGroupRow}
           groupBeingEdited={this.state.groupBeingEdited}
