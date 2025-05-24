@@ -1,0 +1,62 @@
+import fetchMock from "fetch-mock";
+
+import { screen } from "__support__/ui";
+
+import {
+  type MetabaseConfigProps,
+  setup,
+  setupMockAuthSsoEndpoints,
+} from "./setup";
+
+const setupCommon = (method: "jwt" | "saml", config?: MetabaseConfigProps) => {
+  setupMockAuthSsoEndpoints(method);
+  setup(config);
+};
+
+describe.each(["jwt", "saml"] as const)(
+  "useInitData - %s authentication",
+  (method) => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+      fetchMock.restore();
+    });
+
+    it("start loading data if authProviderUri/instance URL and auth type are valid", async () => {
+      setupCommon(method);
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-login-status",
+        "loading",
+      );
+    });
+
+    it("should set isLoggedIn to true if login is successful", async () => {
+      setupCommon(method);
+
+      expect(await screen.findByTestId("test-component")).toHaveAttribute(
+        "data-is-logged-in",
+        "true",
+      );
+
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-login-status",
+        "success",
+      );
+    });
+
+    it("should provide a useful error if the SDK instance can't be found", async () => {
+      setupCommon(method, {
+        metabaseInstanceUrl: "http://oisin-is-really-cool",
+      });
+
+      expect(await screen.findByTestId("test-component")).toHaveAttribute(
+        "data-login-status",
+        "error",
+      );
+
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-error-message",
+        "Unable to connect to instance at http://oisin-is-really-cool",
+      );
+    });
+  },
+);

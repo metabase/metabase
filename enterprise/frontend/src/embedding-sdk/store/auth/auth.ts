@@ -3,7 +3,6 @@ import * as Yup from "yup";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -16,33 +15,52 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { Settings } from "metabase-types/api";
 
-import { getOrRefreshSession } from "./reducer";
-import { getFetchRefreshTokenFn } from "./selectors";
+import { getOrRefreshSession } from "../reducer";
+import { getFetchRefreshTokenFn } from "../selectors";
+
+import { jwtDefaultRefreshTokenFunction } from "./jwt";
+import { openSamlLoginPopup } from "./saml";
+import { samlTokenStorage } from "./saml-token-storage";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
+    // remove any stale tokens that might be there from a previous session=
+    samlTokenStorage.remove();
+
     // Setup JWT or API key
-    const isValidAuthProviderUri =
-      authConfig.authProviderUri && authConfig.authProviderUri?.length > 0;
+    const isValidInstanceUrl =
+      authConfig.metabaseInstanceUrl &&
+      authConfig.metabaseInstanceUrl?.length > 0;
     const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
 
-    if (isValidAuthProviderUri) {
-      // JWT setup
-      api.onBeforeRequest = async () => {
-        const session = await dispatch(
-          getOrRefreshSession(authConfig.authProviderUri!),
-        ).unwrap();
-        if (session?.id) {
-          api.sessionToken = session.id;
-        }
-      };
-      // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(authConfig.authProviderUri!)).unwrap();
-    } else if (isValidApiKeyConfig) {
+    if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = authConfig.apiKey;
+    } else if (isValidInstanceUrl) {
+      try {
+        // SSO setup
+        api.onBeforeRequest = async () => {
+          const session = await dispatch(
+            getOrRefreshSession(authConfig.metabaseInstanceUrl),
+          ).unwrap();
+          if (session?.id) {
+            api.sessionToken = session.id;
+          }
+        };
+        // verify that the session is actually valid before proceeding
+        await dispatch(
+          getOrRefreshSession(authConfig.metabaseInstanceUrl),
+        ).unwrap();
+      } catch (e) {
+        // TODO: make this more specific to whatever status code we receive:
+        // this is good for a 400
+        throw new Error(
+          `Unable to connect to instance at ${authConfig.metabaseInstanceUrl}`,
+        );
+      }
     }
+
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
       dispatch(refreshCurrentUser()),
@@ -89,15 +107,12 @@ export const initAuth = createAsyncThunk(
 export const refreshTokenAsync = createAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
   async (
-    url: string,
+    url: MetabaseAuthConfig["metabaseInstanceUrl"],
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     // The SDK user can provide a custom function to refresh the token.
-    const customGetRefreshToken = getFetchRefreshTokenFn(
-      getState() as SdkStoreState,
-    );
-
-    const getRefreshToken = customGetRefreshToken ?? defaultGetRefreshTokenFn;
+    const customGetRefreshToken =
+      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -105,12 +120,18 @@ export const refreshTokenAsync = createAsyncThunk(
     // In this way we also support standard thrown Errors in the custom fetchRequestToken user provided function
 
     try {
-      const session = await getRefreshToken(url);
+      const session = await getRefreshToken(url, customGetRefreshToken);
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
         : "authProviderUri endpoint";
 
       if (!session || typeof session !== "object") {
+        if (customGetRefreshToken) {
+          throw new Error(
+            `If you are using a custom fetchRefreshToken function, you must return an object with the shape of { jwt: string } containing your JWT. Custom fetchRefreshToken functions are not supported with SAML authentication.`,
+          );
+        }
+
         throw new Error(
           `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
         );
@@ -152,30 +173,33 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-/**
- * The default implementation of the function to get the refresh token.
- * Only supports sessions by default.
- */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
-  url,
+const getRefreshToken = async (
+  url: MetabaseAuthConfig["metabaseInstanceUrl"],
+  customFetchRequestToken:
+    | MetabaseAuthConfig["fetchRequestToken"]
+    | null = null,
 ) => {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
+  // GET /auth/sso with headers
+  const urlResponse = await fetch(`${url}/auth/sso`, getSdkRequestHeaders());
+  const urlResponseJson = await urlResponse.json();
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${response.status}`,
-    );
+  // For the SDK, both SAML and JWT endpoints return {url: [...], method: "saml" | "jwt"}
+  // when the headers are passed
+  const { method, url: responseUrl, hash } = urlResponseJson;
+
+  if (method === "saml") {
+    // The URL should point to the SAML IDP
+    await openSamlLoginPopup(responseUrl);
+    return samlTokenStorage.get();
   }
 
-  const asText = await response.text();
-
-  try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
+  if (method === "jwt") {
+    return jwtDefaultRefreshTokenFunction(
+      responseUrl,
+      url,
+      hash,
+      customFetchRequestToken,
+    );
   }
 };
 
@@ -185,3 +209,16 @@ const sessionSchema = Yup.object({
   // We should also receive `iat` and `status` in the response, but we don't actually need them
   // as we don't use them, so we don't throw an error if they are missing
 });
+
+export function getSdkRequestHeaders(hash?: string) {
+  return {
+    headers: {
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client": "embedding-sdk-react",
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
+    },
+  };
+}

@@ -26,24 +26,18 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
   cy.intercept("GET", AUTH_PROVIDER_URL, async (req) => {
     try {
       const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
-      const token = await new jose.SignJWT({
+      const jwt = await new jose.SignJWT({
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
         exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
       })
         .setProtectedHeader({ alg: "HS256" })
-
         .sign(secret);
-
-      const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
-
-      const response = await fetch(ssoUrl, { method: "GET" });
-      const session = await response.text();
 
       req.reply({
         statusCode: 200,
-        body: session,
+        body: { jwt },
       });
     } catch (error: any) {
       console.warn("SDK auth error:", error);
