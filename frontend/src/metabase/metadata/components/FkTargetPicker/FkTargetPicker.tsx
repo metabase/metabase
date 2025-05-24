@@ -44,7 +44,7 @@ export const FkTargetPicker = ({
       return { comparableIdFields, hasIdFields, data, optionsByFieldId };
     }, [field, idFields]);
 
-  const getField = (fieldId: string | null) => {
+  const getFieldFromValue = (fieldId: string | null) => {
     if (fieldId == null) {
       return null;
     }
@@ -52,8 +52,8 @@ export const FkTargetPicker = ({
     return option?.field;
   };
 
-  const getValue = (fieldId: string | null): FieldId => {
-    const field = getField(fieldId);
+  const getFieldIdFromValue = (fieldId: string | null): FieldId => {
+    const field = getFieldFromValue(fieldId);
     if (field?.id === undefined || typeof field.id === "object") {
       // this code is unreachable since we don't expect field references here
       throw new Error("unreachable");
@@ -62,7 +62,7 @@ export const FkTargetPicker = ({
   };
 
   const handleChange = (value: string) => {
-    const fieldId = getValue(value);
+    const fieldId = getFieldIdFromValue(value);
     onChange(fieldId);
   };
 
@@ -90,7 +90,7 @@ export const FkTargetPicker = ({
             return false;
           }
 
-          const field = getField(option.value);
+          const field = getFieldFromValue(option.value);
           if (!field) {
             return false;
           }
@@ -105,8 +105,8 @@ export const FkTargetPicker = ({
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
       renderOption={(item) => {
-        const field = getField(item.option.value);
-        const selected = getValue(item.option.value) === value;
+        const field = getFieldFromValue(item.option.value);
+        const selected = getFieldIdFromValue(item.option.value) === value;
 
         return (
           <SelectItem selected={selected}>
