@@ -38,8 +38,8 @@
                              [:field (meta/id :orders :product-id) nil]
                              [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
               :fk-field-id  (meta/id :orders :product-id)}]
-            (#'qp.add-implicit-joins/fk-field-infos->join-infos #{{:fk-field-id (meta/id :orders :id)}
-                                                                  {:fk-field-id (meta/id :orders :product-id)}})))))
+            (#'qp.add-implicit-joins/fk-field-infos->join-infos [{:fk-field-id (meta/id :orders :id)}
+                                                                 {:fk-field-id (meta/id :orders :product-id)}])))))
 
 (deftest ^:parallel resolve-implicit-joins-test
   (let [query (mt/nest-query
@@ -134,7 +134,12 @@
                               :condition     [:= [:field %orders.product-id {:join-alias "Orders"}]
                                               &PRODUCTS__via__PRODUCT_ID.products.id]
                               :fk-field-id   %product-id
-                              :fk-join-alias "Orders"}]})
+                              :fk-join-alias "Orders"}]
+               :fields [[:field
+                         %products.category
+                         {:join-alias "PRODUCTS__via__PRODUCT_ID",
+                          :source-field %product-id,
+                          :source-field-join-alias "Orders"}]]})
             (add-implicit-joins
              (lib.tu.macros/mbql-query orders
                {:source-table $$orders
