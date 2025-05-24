@@ -280,7 +280,7 @@ describe("issue 47793", () => {
   };
 
   beforeEach(() => {
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
   });
 

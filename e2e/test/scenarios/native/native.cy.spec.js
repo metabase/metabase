@@ -376,7 +376,7 @@ describe("scenarios > question > native", () => {
   it("should use the correct indentation for mongo", { tags: "@mongo" }, () => {
     const MONGO_DB_NAME = "QA Mongo";
 
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
 
     H.startNewNativeQuestion();
@@ -401,7 +401,7 @@ describe("scenarios > question > native", () => {
     () => {
       const MONGO_DB_NAME = "QA Mongo";
 
-      H.restore("mongo-5");
+      H.restore("mongo-6");
       cy.signInAsAdmin();
 
       H.startNewNativeQuestion();
@@ -540,7 +540,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       cy.intercept("POST", "/api/card").as("createQuestion");
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      H.restore("mongo-5");
+      H.restore("mongo-6");
       cy.signInAsNormalUser();
 
       H.startNewNativeQuestion();
