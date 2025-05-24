@@ -154,17 +154,26 @@ export function QueryModals({
       },
     ) => {
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+      const isModel = newQuestion.type() === "model";
 
       if (isDashboardQuestion) {
         navigateToDashboardQuestionDashboard(
           newQuestion,
           options?.dashboardTabId,
         );
+      } else if (isModel) {
+        onCloseModal();
+        setQueryBuilderMode("view");
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, navigateToDashboardQuestionDashboard],
+    [
+      onOpenModal,
+      navigateToDashboardQuestionDashboard,
+      setQueryBuilderMode,
+      onCloseModal,
+    ],
   );
 
   switch (modal) {
