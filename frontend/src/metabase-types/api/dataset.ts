@@ -94,6 +94,7 @@ export interface DatasetData {
     query: string;
   };
   is_sandboxed?: boolean;
+  pivot_cols?: DatasetColumn[];
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -128,9 +129,9 @@ export interface Dataset {
 export type DatasetError =
   | string
   | {
-      status: number; // HTTP status code
-      data?: string;
-    };
+    status: number; // HTTP status code
+    data?: string;
+  };
 
 export type DatasetErrorType =
   | "invalid-query"

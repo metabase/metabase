@@ -10,6 +10,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
@@ -588,6 +589,105 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
+(defn- original-cols
+  [query]
+  (or (-> (qp.store/with-metadata-provider (:database query)
+            (lib/query (qp.store/metadata-provider) query))
+          lib/returned-columns
+          seq)
+      (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+        (-> (qp/process-query (dissoc query :info))
+            :data
+            :cols))))
+
+(defn- add-breakouts
+  [query breakout-cols]
+  (reduce lib/breakout query breakout-cols))
+
+(defn- add-aggregations
+  [query aggregations]
+  (reduce lib/aggregate query aggregations))
+
+(defn- find-col-by-name
+  [cols name]
+  (u/seek #(= (:name %) name) cols))
+
+(defn- generate-breakouts
+  "Generates the breakout columns to add to the query, for a given split setting (row or column)"
+  [query cols split-setting]
+  (reduce
+   (fn [breakouts {:keys [name binning]}]
+     (let [col                (find-col-by-name cols name)
+           binning-strategy   (keyword (:strategy binning))
+           available-binnings (lib/available-binning-strategies query 0 col)
+           available-temporal-buckets (lib/available-temporal-buckets query 0 col)
+           binning-setting   (u/seek (fn [{:keys [mbql]}]
+                                       (and (= binning-strategy (:strategy mbql))
+                                            (or (not= binning-strategy :num-bins)
+                                                (= (:numBins binning) (:num-bins mbql)))))
+                                     available-binnings)
+           bucketing-setting (u/seek (fn [available-bucket]
+                                       (= (keyword binning)
+                                          (keyword (:unit available-bucket))))
+                                     available-temporal-buckets)]
+       (conj breakouts
+             (cond
+               binning-setting
+               (lib/with-binning col binning-setting)
+
+               bucketing-setting
+               (lib/with-temporal-bucket col bucketing-setting)
+
+               :else col))))
+   []
+   split-setting))
+
+(defn- generate-aggregations
+  "Generates the aggregation clauses to add to the query, based on the split setting for the pivot table values."
+  [query cols value-split-setting]
+  (let [available-operators (lib/available-aggregation-operators query)]
+    (reduce
+     (fn [aggregations {:keys [name column]}]
+       (let [col (find-col-by-name cols (:name column))
+             op  (u/seek (fn [op] (= (:short op) (keyword name)))
+                         available-operators)]
+         (conj aggregations
+               (lib/aggregation-clause op col))))
+     []
+     value-split-setting)))
+
+(defn- nest-mbql-query
+  "Given an unaggregated query, and the column split from the pivot settings, adds a new stage
+  to the query that includes the necessary breakouts & aggregations to generate the pivot."
+  [base-query {:keys [rows columns values]}]
+  (let [query             (-> (lib/query (qp.store/metadata-provider) base-query)
+                              lib/append-stage)
+        breakoutable-cols (lib/breakoutable-columns query)
+        row-breakouts     (generate-breakouts query breakoutable-cols rows)
+        col-breakouts     (generate-breakouts query breakoutable-cols columns)
+        aggregations      (generate-aggregations query breakoutable-cols values)]
+    (-> query
+        (add-breakouts row-breakouts)
+        (add-breakouts col-breakouts)
+        (add-aggregations aggregations))))
+
+(defn- is-preaggregated-query?
+  "Is this a preaggregated pivot query, with the pivot breakouts/aggregation defined by the query itself rather than
+  the viz settings?"
+  [query]
+  (boolean
+   (let [col-split (:pivot_preagg_column_split query)]
+     (and
+      (not-empty (:pivot_cols col-split))
+      (not-empty (:pivot_rows col-split))))))
+
+(defn- is-unaggregated-query?
+  "Is this query an unaggregated query with no pivot rows/cols set yet? If so, we run it as-is, not as a pivot."
+  [query]
+  (or (= (select-keys (:pivot_unagg_column_split query) [:rows :columns])
+         {:rows [] :columns []})
+      (= (:pivot_unagg_column_split query) [])))
+
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
@@ -599,14 +699,40 @@
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
-       (let [rff               (or rff qp.reducible/default-rff)
-             query             (lib/query (qp.store/metadata-provider) query)
-             pivot-opts        (or
-                                (pivot-options query (get query :viz-settings))
-                                (pivot-options query (get-in query [:info :visualization-settings]))
-                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
-             query             (-> query
-                                   (assoc-in [:middleware :pivot-options] pivot-opts))
-             all-queries       (generate-queries query pivot-opts)
-             column-mapping-fn (make-column-mapping-fn query)]
-         (process-multiple-queries all-queries rff column-mapping-fn))))))
+       (cond
+         (is-preaggregated-query? query)
+         (let [rff               (or rff qp.reducible/default-rff)
+               query             (lib/query (qp.store/metadata-provider) query)
+               pivot-opts        (or
+                                  (pivot-options query (get query :viz-settings))
+                                  (pivot-options query (get-in query [:info :visualization-settings]))
+                                  (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
+               query             (-> query
+                                     (assoc-in [:middleware :pivot-options] pivot-opts))
+               all-queries       (generate-queries query pivot-opts)
+               column-mapping-fn (make-column-mapping-fn query)]
+           (process-multiple-queries all-queries rff column-mapping-fn))
+
+         (is-unaggregated-query? query)
+         (qp/process-query (dissoc query :info)
+                           (or rff qp.reducible/default-rff))
+
+         :else
+         (let [rff (or rff qp.reducible/default-rff)
+               unagg-column-split (:pivot_unagg_column_split query)
+               new-pivot-rows     (or (map :name (:rows unagg-column-split))
+                                      (:pivot_rows query))
+               new-pivot-cols     (or (map :name (:columns unagg-column-split))
+                                      (:pivot_cols query))
+               base-query         (dissoc query :info :pivot_unagg_column_split)
+               query2 (nest-mbql-query base-query unagg-column-split)
+               query3             (-> query2
+                                      (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
+                                                                              :pivot-cols new-pivot-cols
+                                                                              :pivot-measures ["count"]})
+                                      (assoc :non-pivoted-cols (original-cols base-query)))
+               query4             (qp.store/with-metadata-provider (:database query)
+                                    (lib/query (qp.store/metadata-provider) query3))
+               all-queries        (generate-queries query4 {})
+               column-mapping-fn  (make-column-mapping-fn query4)]
+           (process-multiple-queries all-queries rff column-mapping-fn)))))))

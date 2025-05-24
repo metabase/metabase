@@ -4,13 +4,14 @@ import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  ColumnNameAndBinningSplitSetting,
   ColumnNameCollapsedRowsSetting,
-  ColumnNameColumnSplitSetting,
+  ColumnNameSplitSetting,
   DatasetColumn,
   FieldRefColumnSplitSetting,
   FieldReference,
+  MaybeLegacyPivotTableColumnSplitSetting,
   PivotTableCollapsedRowsSetting,
-  PivotTableColumnSplitSetting,
 } from "metabase-types/api";
 
 type PivotOptions = {
@@ -18,14 +19,25 @@ type PivotOptions = {
   pivot_cols: number[];
 };
 
-export function isColumnNameColumnSplitSetting(
-  setting: PivotTableColumnSplitSetting,
-): setting is ColumnNameColumnSplitSetting {
+export function isColumnNameSplitSetting(
+  setting: MaybeLegacyPivotTableColumnSplitSetting,
+): setting is ColumnNameSplitSetting {
   const { rows = [], columns = [], values = [] } = setting;
   return (
     rows.every((value) => typeof value === "string") &&
     columns.every((value) => typeof value === "string") &&
     values.every((value) => typeof value === "string")
+  );
+}
+
+export function isColumnNameAndBinningSplitSetting(
+  setting: MaybeLegacyPivotTableColumnSplitSetting,
+): setting is ColumnNameAndBinningSplitSetting {
+  const { rows = [], columns = [], values = [] } = setting;
+  return (
+    rows.every((value) => typeof value === "object") &&
+    columns.every((value) => typeof value === "object") &&
+    values.every((value) => typeof value === "object")
   );
 }
 
@@ -39,8 +51,8 @@ export function isColumnNameCollapsedRowsSetting(
 function getColumnNamePivotOptions(
   query: Lib.Query,
   stageIndex: number,
-  setting: ColumnNameColumnSplitSetting,
-): PivotOptions {
+  setting: ColumnNameSplitSetting,
+): { pivot_preagg_column_split: PivotOptions } {
   const returnedColumns = Lib.returnedColumns(query, stageIndex);
   const breakoutColumnNames = returnedColumns
     .map((column) => Lib.displayInfo(query, stageIndex, column))
@@ -53,14 +65,19 @@ function getColumnNamePivotOptions(
       .filter((columnIndex) => columnIndex >= 0);
   });
 
-  return { pivot_rows: rows ?? [], pivot_cols: columns ?? [] };
+  return {
+    pivot_preagg_column_split: {
+      pivot_rows: rows ?? [],
+      pivot_cols: columns ?? [],
+    },
+  };
 }
 
 function getFieldRefPivotOptions(
   query: Lib.Query,
   stageIndex: number,
   setting: FieldRefColumnSplitSetting,
-): PivotOptions {
+): { pivot_preagg_column_split: PivotOptions } {
   const returnedColumns = Lib.returnedColumns(query, stageIndex);
   const breakoutColumns = returnedColumns.filter(
     (column) => Lib.displayInfo(query, stageIndex, column).isBreakout,
@@ -81,16 +98,29 @@ function getFieldRefPivotOptions(
     return breakoutIndexes.filter((breakoutIndex) => breakoutIndex >= 0);
   });
 
-  return { pivot_rows: rows ?? [], pivot_cols: columns ?? [] };
+  return {
+    pivot_preagg_column_split: {
+      pivot_rows: rows ?? [],
+      pivot_cols: columns ?? [],
+    },
+  };
+}
+
+export function getUnaggregatedPivotOptions(question: Question) {
+  const settings = question.settings();
+  return {
+    pivot_unagg_column_split:
+      settings?.["pivot_table.unaggregated_column_split"] ?? [],
+  };
 }
 
 export function getPivotOptions(question: Question) {
   const query = question.query();
   const stageIndex = -1;
-  const setting: PivotTableColumnSplitSetting =
+  const setting: MaybeLegacyPivotTableColumnSplitSetting =
     question.setting("pivot_table.column_split") ?? {};
 
-  if (isColumnNameColumnSplitSetting(setting)) {
+  if (isColumnNameSplitSetting(setting)) {
     return getColumnNamePivotOptions(query, stageIndex, setting);
   } else {
     return getFieldRefPivotOptions(query, stageIndex, setting);
@@ -119,10 +149,10 @@ function migratePivotSetting(
 // the settings when they are modified, and all code that reads the settings
 // runs the migration without storing the new value.
 export function migratePivotColumnSplitSetting(
-  setting: PivotTableColumnSplitSetting,
+  setting: MaybeLegacyPivotTableColumnSplitSetting,
   columns: DatasetColumn[],
-): ColumnNameColumnSplitSetting {
-  if (isColumnNameColumnSplitSetting(setting)) {
+): ColumnNameSplitSetting {
+  if (isColumnNameSplitSetting(setting)) {
     return setting;
   }
 
