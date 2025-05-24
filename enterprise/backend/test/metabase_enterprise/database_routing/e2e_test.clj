@@ -39,7 +39,7 @@
    (fn [^java.sql.Connection conn]
      (jdbc/execute! {:connection conn} [statement]))))
 
-(deftest mirror-databases-get-used
+(deftest destination-databases-get-used
   (mt/with-premium-features #{:database-routing}
     (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
       (met/with-user-attributes!

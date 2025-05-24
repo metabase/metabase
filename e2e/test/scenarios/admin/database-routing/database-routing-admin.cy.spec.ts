@@ -9,7 +9,7 @@ import {
 import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performance-helpers";
 
 import {
-  BASE_POSTGRES_MIRROR_DB_INFO,
+  BASE_POSTGRES_DESTINATION_DB_INFO,
   configurDbRoutingViaAPI,
   createDestinationDatabasesViaAPI,
 } from "./helpers/e2e-database-routing-helpers";
@@ -24,7 +24,7 @@ describe("admin > database > database routing", () => {
 
     cy.intercept(
       "POST",
-      "/api/ee/database-routing/mirror-database?check_connection_details=true",
+      "/api/ee/database-routing/destination-database?check_connection_details=true",
     ).as("createDestinationDatabase");
     cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
     cy.intercept("DELETE", "/api/database/*").as("deleteDatabase");
@@ -130,7 +130,7 @@ describe("admin > database > database routing", () => {
       createDestinationDatabasesViaAPI({
         router_database_id: 2,
         databases: _.range(2, 7).map((i) => ({
-          ...BASE_POSTGRES_MIRROR_DB_INFO,
+          ...BASE_POSTGRES_DESTINATION_DB_INFO,
           name: `Destination DB ${i}`,
         })),
       });
@@ -218,30 +218,30 @@ describe("admin > database > database routing", () => {
       });
       createDestinationDatabasesViaAPI({
         router_database_id: 2,
-        databases: [BASE_POSTGRES_MIRROR_DB_INFO],
+        databases: [BASE_POSTGRES_DESTINATION_DB_INFO],
       });
 
       cy.log("validate setup was successful");
       cy.reload();
       cy.findByLabelText("Enable database routing").should("be.checked");
       dbRoutingSection()
-        .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
         .should("exist");
 
       cy.log("should not see destination databases in admin list of database");
       cy.visit("/admin/databases");
       cy.findAllByTestId("database-list")
-        .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
         .should("not.exist");
 
       cy.log("should not see destination databases in database browser");
       cy.visit("/browse/databases");
       cy.findAllByTestId("database-browser")
-        .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
         .should("not.exist");
 
       cy.log("should not see destination databases in search");
-      H.commandPaletteSearch(BASE_POSTGRES_MIRROR_DB_INFO.name, false);
+      H.commandPaletteSearch(BASE_POSTGRES_DESTINATION_DB_INFO.name, false);
       H.commandPalette()
         .findByText("No results for “DestinationDB”")
         .should("exist");
@@ -250,20 +250,22 @@ describe("admin > database > database routing", () => {
       cy.visit("/admin/datamodel");
       cy.findByTestId("selected-database").click();
       H.popover()
-        .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
         .should("not.exist");
 
       cy.log("should not see database in permissions pages");
       cy.visit("/admin/permissions/data/database");
       cy.get("aside")
-        .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
         .should("not.exist");
 
       cy.log("should not see database in data picker");
       cy.visit("/question/notebook");
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Tables").click();
-        cy.findByText(BASE_POSTGRES_MIRROR_DB_INFO.name).should("not.exist");
+        cy.findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name).should(
+          "not.exist",
+        );
       });
 
       cy.log("shoudl not see database in data reference");
@@ -274,7 +276,7 @@ describe("admin > database > database routing", () => {
         "Data Reference",
       );
       cy.findByTestId("sidebar-header-title")
-        .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
         .should("not.exist");
     });
 
@@ -430,7 +432,7 @@ describe("admin > database > database routing", () => {
         });
         createDestinationDatabasesViaAPI({
           router_database_id: 2,
-          databases: [BASE_POSTGRES_MIRROR_DB_INFO],
+          databases: [BASE_POSTGRES_DESTINATION_DB_INFO],
         });
 
         cy.log("normal user should not see db routing");
