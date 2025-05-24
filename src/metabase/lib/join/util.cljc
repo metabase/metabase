@@ -61,7 +61,7 @@
 
     CATEGORIES__via__CATEGORY_ID
 
-  For an implicit join made via a join, the join alias is prefixed with the join alias:
+  For an implicit join made via a join, the join alias is appended to the name:
 
     CATEGORIES__via__CATEGORY_ID__via__CATEGORIES
 
