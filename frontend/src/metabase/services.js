@@ -202,12 +202,6 @@ export const AutoApi = {
   }),
 };
 
-export const EmailApi = {
-  updateSettings: PUT("/api/email"),
-  sendTest: POST("/api/email/test"),
-  clear: DELETE("/api/email"),
-};
-
 export const SlackApi = {
   getManifest: GET("/api/slack/manifest"),
   updateSettings: PUT("/api/slack/settings"),
