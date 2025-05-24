@@ -601,9 +601,8 @@
                (:name (lib.equality/find-matching-column query -1 (lib/ref col) returned)))))))
   (testing "implicitly joinable columns via joins should be matched correctly"
     (let [query         (lib.tu/query-with-self-join)
-          visible-cols  (lib/visible-columns query)
-          implicit-cols (filter (comp #{:source/implicitly-joinable} :lib/source) visible-cols)]
-      (doseq [col implicit-cols]
+          visible-cols  (lib/visible-columns query)]
+      (doseq [col visible-cols]
         (is (= col (lib/find-matching-column (lib/ref col) visible-cols)))))))
 
 (deftest ^:parallel field-refs-to-custom-expressions-test
