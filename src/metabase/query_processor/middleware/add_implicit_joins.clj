@@ -30,10 +30,12 @@
   `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
   [[metabase.parameters.custom-values-test/with-mbql-card-test]]."
   [x]
-  (set (lib.util.match/match x
+  (->> (lib.util.match/match x
          [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
          (when-not (some #{:source-metadata} &parents)
-           &match))))
+           &match))
+       distinct
+       (into [])))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
   (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name source-fk-join-alias))
@@ -56,7 +58,7 @@
 (mu/defn- fk-field-infos->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-infos`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
-  [fk-field-infos :- [:maybe [:set FkFieldInfo]]]
+  [fk-field-infos :- [:maybe [:sequential FkFieldInfo]]]
   (when (seq fk-field-infos)
     (let [fk-field-ids       (into #{} (map :fk-field-id) fk-field-infos)
           fk-fields          (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids)
@@ -90,15 +92,16 @@
 (mu/defn- implicitly-joined-fields->joins :- [:maybe [:sequential JoinInfo]]
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
   [field-clauses-with-source-field]
-  (distinct
-   (let [k-field-infos (->> field-clauses-with-source-field
-                            (map (fn [clause]
-                                   (lib.util.match/match-one clause
-                                     [:field (id :guard integer?) (opts :guard (every-pred :source-field (complement :join-alias)))]
-                                     {:fk-field-id (:source-field opts), :fk-join-alias (:source-field-join-alias opts)})))
-                            set
-                            not-empty)]
-     (fk-field-infos->join-infos k-field-infos))))
+  (let [k-field-infos (->> field-clauses-with-source-field
+                           (map (fn [clause]
+                                  (lib.util.match/match-one clause
+                                    [:field (id :guard integer?) (opts :guard (every-pred :source-field (complement :join-alias)))]
+                                    {:fk-field-id (:source-field opts), :fk-join-alias (:source-field-join-alias opts)})))
+                           distinct
+                           not-empty)]
+    (->> (fk-field-infos->join-infos k-field-infos)
+         distinct
+         (into []))))
 
 (defn- visible-joins
   "Set of all joins that are visible in the current level of the query or in a nested source query."
