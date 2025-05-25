@@ -34,6 +34,13 @@ export const nonAsciiFieldNames: DictionaryArray = [
 
 export const columnNamesWithTypeText = ["Title", "Category", "Vendor"];
 
+export const invalidLocaleXX = structuredClone(germanFieldNames);
+invalidLocaleXX[0].locale = "xx";
+
+export const multipleInvalidLocales = structuredClone(germanFieldNames);
+multipleInvalidLocales[0].locale = "ze";
+multipleInvalidLocales[3].locale = "qe";
+
 export const stringTranslatedTwice = structuredClone(germanFieldNames);
 stringTranslatedTwice.push({
   locale: "de",

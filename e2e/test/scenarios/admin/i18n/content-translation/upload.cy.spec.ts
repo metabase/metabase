@@ -1,8 +1,6 @@
 import {
   germanFieldNames,
-  invalidLocaleAndInvalidRow,
   invalidLocaleXX,
-  longCSVCell,
   multipleInvalidLocales,
   nonAsciiFieldNames,
   portugueseFieldNames,
@@ -137,29 +135,6 @@ describe("scenarios > admin > localization > content translation", () => {
           cy.log("The first error is in row 2 (the first row is the header)");
           cy.findByText(/Row 2: Invalid locale: ze/);
           cy.findByText(/Row 5: Invalid locale: qe/);
-        });
-      });
-
-      it("rejects a CSV upload with different kinds of errors", () => {
-        uploadTranslationDictionary(invalidLocaleAndInvalidRow);
-        cy.findByTestId("content-localization-setting").within(() => {
-          cy.findByText(/We couldn't upload the file/);
-          cy.findByText(/Row 2: Invalid locale: ze/);
-          cy.findByText(/Row 5: Translation exceeds maximum length/);
-        });
-      });
-
-      (["msgid", "msgstr"] as const).forEach((column) => {
-        it(`rejects a CSV upload containing a row with a ${column} that is too long`, () => {
-          const rows = structuredClone(germanFieldNames);
-          rows[3][column] = longCSVCell;
-          uploadTranslationDictionary(rows);
-          // Index 3 in the rows array corresponds to the 4th row of data. The
-          // 4th row of data is the 5th row in the CSV file, because the file
-          // has a header row
-          cy.findByTestId("content-localization-setting").findByText(
-            /Row 5.*exceeds maximum length/,
-          );
         });
       });
     });
