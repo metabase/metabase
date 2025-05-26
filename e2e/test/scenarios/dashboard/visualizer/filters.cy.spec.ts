@@ -41,8 +41,12 @@ describe("scenarios > dashboard > visualizer > filters", () => {
       H.switchToAddMoreData();
       H.addDataset(PRODUCTS_AVERAGE_BY_CATEGORY.name);
 
-      cy.button("Add to dashboard").click();
+      H.assertWellItemsCount({
+        vertical: 2,
+      });
     });
+
+    H.saveDashcardVisualizerModal("create");
 
     H.setFilter("Text or Category", "Is");
 

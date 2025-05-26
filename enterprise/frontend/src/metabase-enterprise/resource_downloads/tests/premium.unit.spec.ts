@@ -13,11 +13,10 @@ describe("[EE - with token features] resource downloads plugin", () => {
     });
 
     it.each(downloadsEnabledTestData)(
-      `with { downloads:$downloads, hide_download_button:$hide_download_button } it should return $downloadsEnabled`,
-      ({ hide_download_button, downloads, downloadsEnabled }) => {
+      `with { downloads:$downloads } it should return $downloadsEnabled`,
+      ({ downloads, downloadsEnabled }) => {
         expect(
           PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
-            hide_download_button,
             downloads,
           }),
         ).toStrictEqual(downloadsEnabled);
