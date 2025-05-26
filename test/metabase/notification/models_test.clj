@@ -375,13 +375,14 @@
                                (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
        (testing "schedule types"
          (doseq [[schedule-type cron-schedule ui-display-type]
-                 [["by the minute" "0 * * * * ? *"   :cron/builder] ;; every minute
+                 [["by the minute" "0 * * * * ? *"    :cron/builder] ;; every minute
                   ["by the minute" "0 0/10 * * * ? *" :cron/builder] ;; every 10 minutes
                   ["hourly"        "0 8 * * * ? *"    :cron/builder] ;; every hour
                   ["daily"         "0 0 2 * * ? *"    :cron/builder] ;; every day
-                  ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every montly
+                  ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every first day of the month
                   ["custom"        "0 * * * * ? *"    :cron/raw]]]
-           (testing (str schedule-type " schedule")
+           (testing (str schedule-type " schedule with cron " cron-schedule (-> (t2/query "select pg_get_viewdef('v_alerts', true)")
+                                                                                first :pg_get_viewdef))
              (update-subscription! {:cron_schedule   cron-schedule
                                     :ui_display_type ui-display-type})
              (is (= schedule-type (get-schedule-type))))))))))

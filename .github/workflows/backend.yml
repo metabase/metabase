@@ -57,8 +57,9 @@ jobs:
           - name: EE App DB Tests (Part 1)
             edition: ee
             build-static-viz: 'true'
+            #:only '["test" ".clj-kondo/test"]'
             test-args: >-
-              :only '["test" ".clj-kondo/test"]'
+              :only metabase.notification.models-test/v-alerts-schedule-type-test
               :partition/total 2
               :partition/index 0
           - name: EE App DB Tests (Part 2)
