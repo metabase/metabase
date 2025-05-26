@@ -1,20 +1,26 @@
 (ns metabase.actions.types
   (:require
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 ;; Maybe we want to add an origin? e.g., CRUD API versus action execute API versus v2 API. YAGNI for now.
 
+(mr/def ::missing-id
+  [:int {:min -1, :max -1}])
+
+(mr/def ::fk-or-missing-id [:or ::missing-id ms/PositiveInt])
+
 (def ^:private raw-scope-types
-  [[:map [:dashboard-id pos-int?]]
-   [:map [:dashcard-id pos-int?]]
-   [:map [:card-id pos-int?]]
+  [[:map [:dashboard-id ms/PositiveInt]]
+   [:map [:dashcard-id ms/PositiveInt]]
+   [:map [:card-id ms/PositiveInt]]
   ;; We represent legacy-actions, which get called against a model, distinctly.
   ;; Treated the same as card-id, mostly.
   ;; Might end up always assigning the key according to the card type, or always use card-id, but either way we would
   ;; then need some way to tell legacy-action invocations apart.
-   [:map [:model-id pos-int?]]
-   [:map [:table-id pos-int?]]
-   [:map [:webhook-id pos-int?]]
+   [:map [:model-id ms/PositiveInt]]
+   [:map [:table-id ms/PositiveInt]]
+   [:map [:webhook-id ms/PositiveInt]]
    [:map [:unknown [:enum :legacy-action]]]])
 
 ;; Relaxed, as we support it being
@@ -36,31 +42,31 @@
    [:dashboard
     [:map {:closed true}
      [:type          [:enum :dashboard]]
-     [:dashboard-id  pos-int?]
-     [:collection-id pos-int?]]]
+     [:dashboard-id  ms/PositiveInt]
+     [:collection-id ::fk-or-missing-id]]]
    ;; table - unified type that handles both regular and CRUD cases
    [:table
     [:map {:closed true}
      [:type                         [:enum :table]]
-     [:table-id                     pos-int?]
-     [:database-id                  pos-int?]
+     [:table-id                     ms/PositiveInt]
+     [:database-id                  ::fk-or-missing-id]
      [:rest-api    {:optional true} [:enum :table]]]]
    ;; card - unified type that handles both with and without table cases
    [:card
     [:map {:closed true}
      [:type                           [:enum :card]]
-     [:card-id                        pos-int?]
-     [:collection-id {:optional true} pos-int?]
-     [:table-id      {:optional true} pos-int?]
-     [:database-id                    pos-int?]]]
+     [:card-id                        ms/PositiveInt]
+     [:collection-id {:optional true} ::fk-or-missing-id]
+     [:table-id      {:optional true} ::fk-or-missing-id]
+     [:database-id                    ::fk-or-missing-id]]]
    ;; model - unified type that handles both with and without table cases
    [:model
     [:map {:closed true}
      [:type                           [:enum :model]]
-     [:model-id                       pos-int?]
-     [:collection-id {:optional true} pos-int?]
-     [:table-id      {:optional true} pos-int?]
-     [:database-id                    pos-int?]]]
+     [:model-id                       ms/PositiveInt]
+     [:collection-id {:optional true} ::fk-or-missing-id]
+     [:table-id      {:optional true} ::fk-or-missing-id]
+     [:database-id                    ::fk-or-missing-id]]]
    ;; dashcard - unified type that handles all cases:
    ;; 1. dashcard with both card and table (has card-id, table-id, database-id)
    ;; 2. dashcard with card but no table (has card-id, no table-id)
@@ -68,17 +74,17 @@
    [:dashcard
     [:map {:closed true}
      [:type                           [:enum :dashcard]]
-     [:dashcard-id                    pos-int?]
-     [:dashboard-id                   pos-int?]
-     [:collection-id                  pos-int?]
-     [:card-id       {:optional true} pos-int?]
-     [:table-id      {:optional true} pos-int?]
-     [:database-id   {:optional true} pos-int?]]]
+     [:dashcard-id                    ms/PositiveInt]
+     [:dashboard-id                   ::fk-or-missing-id]
+     [:collection-id                  ::fk-or-missing-id]
+     [:card-id       {:optional true} ::fk-or-missing-id]
+     [:table-id      {:optional true} ::fk-or-missing-id]
+     [:database-id   {:optional true} ::fk-or-missing-id]]]
    ;; for now, webhooks can only point at tables, not editables
    [:webhook
     [:map {:closed false}
      [:type        [:enum :webhook]]
-     [:webhook-id  pos-int?]
-     [:table-id    pos-int?]
-     [:database-id pos-int?]]]
+     [:webhook-id  ms/PositiveInt]
+     [:table-id    ::fk-or-missing-id]
+     [:database-id ::fk-or-missing-id]]]
    [:unknown any?]])
