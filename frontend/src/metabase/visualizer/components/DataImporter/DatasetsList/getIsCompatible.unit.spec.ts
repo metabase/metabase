@@ -211,6 +211,7 @@ describe("getIsCompatible", () => {
       id: categoryDimensionColumn.id,
     });
     const otherCategoryDimensionField = createMockCategoryField({ id: 5 });
+    const numericField = createMockNumericField({ id: 6 });
 
     it("should return false if current chart doesn't have dimensions", () => {
       const settings = { "graph.metrics": [metricColumn.name] };
@@ -227,6 +228,34 @@ describe("getIsCompatible", () => {
           },
           datasets: {
             "1": defaultDataset,
+          },
+        }),
+      ).toBe(false);
+    });
+
+    it("should return false if a data source doesn't have dimensions", () => {
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [timeDimensionColumn.name],
+      };
+      expect(
+        getIsCompatible({
+          currentDataset: {
+            display: "line",
+            columns: [metricColumn, timeDimensionColumn],
+            settings,
+            computedSettings: settings,
+          },
+          targetDataset: { fields: [numericField] },
+          datasets: {
+            "1": defaultDataset,
+            "2": createMockDataset({
+              data: {
+                cols: [
+                  createMockNumericColumn({ id: numericField.id as number }),
+                ],
+              },
+            }),
           },
         }),
       ).toBe(false);
