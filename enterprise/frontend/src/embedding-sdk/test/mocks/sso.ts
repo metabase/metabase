@@ -9,6 +9,7 @@ export const MOCK_INSTANCE_URL = "http://localhost";
 export const MOCK_JWT_PROVIDER_URI = "http://test_uri/sso/metabase";
 export const MOCK_SESSION_TOKEN_ID = "TEST_SESSION_TOKEN";
 export const MOCK_VALID_JWT_RESPONSE = "TEST_JWT_TOKEN";
+export const MOCK_API_KEY = "TEST_API_KEY";
 
 /** Timestamps - exp set to 2032 to avoid token expiration during tests, iat set to past */
 export const MOCK_TOKEN_EXP = 1965805007;

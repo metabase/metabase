@@ -30,7 +30,7 @@ export type {
   LoginStatus,
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,
-  MetabaseAuthConfigWithProvider,
+  MetabaseAuthConfigWithSSO,
   MetabaseClickActionPluginsConfig,
   MetabaseColors,
   MetabaseClickAction,

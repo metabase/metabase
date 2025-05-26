@@ -8,7 +8,7 @@ import { MOCK_INSTANCE_URL } from "./sso";
 export const createMockSdkConfig = (
   opts: Partial<MetabaseAuthConfig> = {},
 ): MetabaseAuthConfig => ({
-  metabaseInstanceUrl: "http://localhost",
+  metabaseInstanceUrl: MOCK_INSTANCE_URL,
   ...opts,
 });
 

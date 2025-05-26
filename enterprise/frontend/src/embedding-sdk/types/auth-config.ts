@@ -16,6 +16,13 @@ type BaseMetabaseAuthConfig = {
 /**
  * @category MetabaseProvider
  */
+export type MetabaseAuthConfigWithSSO = BaseMetabaseAuthConfig & {
+  apiKey?: never;
+};
+
+/**
+ * @category MetabaseProvider
+ */
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
 };
@@ -23,4 +30,6 @@ export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
 /**
  * @category MetabaseProvider
  */
-export type MetabaseAuthConfig = MetabaseAuthConfigWithApiKey;
+export type MetabaseAuthConfig =
+  | MetabaseAuthConfigWithSSO
+  | MetabaseAuthConfigWithApiKey;

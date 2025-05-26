@@ -99,7 +99,7 @@ describe("SDK auth errors", () => {
       await waitForRequest(() => getLastAuthProviderApiCall());
 
       await expectErrorMessage(
-        "Your JWT server endpoint must return an object with the shape {jwt:string}",
+        "Your JWT server endpoint must return an object with the shape { jwt: string }",
       );
     });
 
@@ -111,7 +111,7 @@ describe("SDK auth errors", () => {
       await waitForRequest(() => getLastAuthProviderApiCall());
 
       await expectErrorMessage(
-        "Your JWT server endpoint must return an object with the shape {jwt:string}",
+        "Your JWT server endpoint must return an object with the shape { jwt: string }",
       );
     });
 
@@ -125,7 +125,7 @@ describe("SDK auth errors", () => {
       await setup(authConfig);
 
       await expectErrorMessage(
-        'Your JWT server endpoint must return an object with the shape {jwt:string}, but instead received "not a json object"',
+        'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received "not a json object"',
       );
     });
 
