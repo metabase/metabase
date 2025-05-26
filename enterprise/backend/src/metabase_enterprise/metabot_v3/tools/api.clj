@@ -4,6 +4,7 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clj-time.core :as time]
+   [clojure.set :as set]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -322,6 +323,19 @@
 
 (mr/def ::tool-request [:map [:conversation_id ms/UUIDString]])
 
+(mr/def ::answer-sources-arguments
+  [:and
+   [:map
+    [:with_model_fields                     {:optional true, :default true} :boolean]
+    [:with_model_metrics                    {:optional true, :default true} :boolean]
+    [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]
+    [:with_metric_queryable_dimensions      {:optional true, :default true} :boolean]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:with_model_fields                     :with-fields?
+                               :with_model_metrics                    :with-metrics?
+                               :with_metric_default_temporal_breakout :with-default-temporal-breakout?
+                               :with_metric_queryable_dimensions      :with-queryable-dimensions?})}]])
+
 (mr/def ::subscription-schedule
   (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
     [:and
@@ -388,7 +402,7 @@
   [:merge
    ::basic-metric
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:queryable_dimensions ::columns]]])
+    [:queryable_dimensions {:optional true} ::columns]]])
 
 (mr/def ::find-metric-result
   [:or
@@ -535,18 +549,22 @@
    [:map [:output :string]]])
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
-  "Create a dashboard subscription."
+  "Return top level meta information about available information sources."
   [_route-params
    _query-params
-   {:keys [conversation_id] :as body} :- ::tool-request
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::answer-sources-arguments]]
+                                                    ::tool-request]
    {:keys [metabot-v3/metabot-id]}]
   (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
   (if-let [collection-name (get-in metabot-v3.config/metabot-config [metabot-id :collection-name])]
-    (doto (-> (mc/decode ::answer-sources-result
-                         (metabot-v3.dummy-tools/answer-sources collection-name)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))
+    (let [options (mc/encode ::answer-sources-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+      (doto (-> (mc/decode ::answer-sources-result
+                           (metabot-v3.dummy-tools/answer-sources collection-name options)
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
