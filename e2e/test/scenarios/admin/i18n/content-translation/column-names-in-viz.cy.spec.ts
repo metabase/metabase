@@ -19,7 +19,6 @@ describe("scenarios > admin > localization > content translation of column names
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
 
-      interceptContentTranslationRoutes();
       uploadTranslationDictionary(germanFieldNames);
       H.snapshot("translations-uploaded");
     });
@@ -67,23 +66,27 @@ describe("scenarios > admin > localization > content translation of column names
     };
 
     const visitEmbeddedViz = (questionDetails: StructuredQuestionDetails) => {
-      questionDetails.enable_embedding = true;
-      questionDetails.name = questionDetails.display;
       cy.signInAsAdmin();
-      return H.createQuestion(questionDetails, {
-        visitQuestion: true,
-      }).then(() => {
-        if (questionDetails.display === "pivot") {
-          H.saveSavedQuestion();
-        }
-        H.openStaticEmbeddingModal({
-          acceptTerms: false,
-          activeTab: "parameters",
-        });
-        return H.getIframeUrl().then((iframeUrl) => {
-          cy.signOut();
-          cy.visit(`${iframeUrl}&locale=de`);
-        });
+      H.createQuestion(
+        {
+          name: questionDetails.display,
+          ...questionDetails,
+          enable_embedding: true,
+        },
+        { wrapId: true },
+      );
+      cy.get<number>("@questionId").then((questionId) => {
+        H.visitEmbeddedPage(
+          {
+            resource: { question: questionId },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "de",
+            },
+          },
+        );
       });
     };
 
@@ -136,7 +139,7 @@ describe("scenarios > admin > localization > content translation of column names
         display: "line",
       });
       assertColumnNamesAreTranslated();
-      H.cartesianChartCircle().eq(3).realHover();
+      H.cartesianChartCircle().eq(3).trigger("mousemove", { force: true });
       cy.findByRole("tooltip").findByText(/Durchschnittspreis/);
       tested.push("line");
     });
@@ -157,9 +160,10 @@ describe("scenarios > admin > localization > content translation of column names
         display: "row",
       });
       assertColumnNamesAreTranslated();
+      cy.findByTestId("visualization-root").findAllByText(/50/);
       cy.findByTestId("visualization-root")
         .findAllByRole("graphics-symbol")
-        .eq(0)
+        .eq(3)
         .realHover();
       cy.findByRole("tooltip").findByText(/Bewertung/);
       tested.push("row");
@@ -254,16 +258,15 @@ describe("scenarios > admin > localization > content translation of column names
           "map.type": "region",
           "map.region": "us_states",
         },
-      }).then(() => {
-        cy.wait("@geojson");
+      });
+      cy.wait("@geojson");
 
-        cy.get(".CardVisualization svg path").eq(22).as("texas");
-        cy.get("@texas").should("be.visible");
-        cy.get("@texas").trigger("mousemove");
+      cy.get(".CardVisualization svg path").eq(22).as("texas");
+      cy.get("@texas").should("be.visible");
+      cy.get("@texas").trigger("mousemove");
 
-        H.tooltip().within(() => {
-          cy.findByText("Staat:").should("be.visible");
-        });
+      H.tooltip().within(() => {
+        cy.findByText("Staat:").should("be.visible");
       });
       tested.push("map");
     });
