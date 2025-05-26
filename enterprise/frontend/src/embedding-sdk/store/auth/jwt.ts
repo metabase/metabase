@@ -69,7 +69,7 @@ const runFetchRequestToken = async (
     ) {
       const actualResponse = JSON.stringify(clientBackendResponse);
       if (customFetchRequestToken) {
-        throw MetabaseError.CUSTOM_FETCH_ERROR({
+        throw MetabaseError.CUSTOM_FETCH_REQUEST_TOKEN_ERROR({
           expected: "{ jwt: string }",
           actual: actualResponse,
         });

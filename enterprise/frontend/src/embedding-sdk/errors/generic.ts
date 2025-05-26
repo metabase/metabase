@@ -4,7 +4,6 @@ export function USER_FETCH_FAILED() {
   return new MetabaseError(
     "USER_FETCH_FAILED",
     "Failed to fetch the user, the session might be invalid.",
-    {},
   );
 }
 

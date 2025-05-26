@@ -22,15 +22,7 @@ export function INVALID_SESSION_SCHEMA(params: {
   );
 }
 
-export function JWT_ENDPOINT_NON_OK(params: { status: string }) {
-  return new MetabaseError(
-    "JWT_ENDPOINT_NON_OK",
-    `Failed to fetch the session from JWT endpoint, HTTP status: ${params.status}`,
-    params,
-  );
-}
-
-export function BACKEND_ERROR_STATUS(params: {
+export function REFRESH_TOKEN_BACKEND_ERROR(params: {
   status?: string;
   message?: string;
 }) {
@@ -41,13 +33,13 @@ export function BACKEND_ERROR_STATUS(params: {
   );
 }
 
-export function CUSTOM_FETCH_ERROR(params: {
+export function CUSTOM_FETCH_REQUEST_TOKEN_ERROR(params: {
   expected?: string;
   actual?: string;
 }) {
   return new MetabaseError(
     "CUSTOM_FETCH_ERROR",
-    `Your JWT server endpoint must return an object with the shape {jwt:string}` +
+    `Your JWT server endpoint must return an object with the shape { jwt: string }` +
       (params.actual ? `, but instead received ${params.actual}` : ``),
     params,
   );
@@ -59,7 +51,7 @@ export function DEFAULT_ENDPOINT_ERROR(params: {
 }) {
   return new MetabaseError(
     "DEFAULT_ENDPOINT_ERROR",
-    `Your JWT server endpoint must return an object with the shape {jwt:string}` +
+    `Your JWT server endpoint must return an object with the shape { jwt: string }` +
       (params.actual ? `, but instead received ${params.actual}` : ``),
     params,
   );
