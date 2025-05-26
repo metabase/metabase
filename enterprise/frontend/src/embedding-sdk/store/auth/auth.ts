@@ -53,6 +53,8 @@ export const initAuth = createAsyncThunk(
           getOrRefreshSession(authConfig.metabaseInstanceUrl),
         ).unwrap();
       } catch (e) {
+        // TODO: Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
+        // but due to time constraints this is what we have to do to make sure tests pass.
         // eslint-disable-next-line no-literal-metabase-strings -- error checking for better errors. should be improved in the future.
         if ((e as Error).name === "MetabaseError") {
           throw e;
