@@ -1,3 +1,19 @@
+## [0.54.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.11...embedding-sdk-0.54.12) (2025-05-26)
+
+
+### Bug Fixes
+
+* **sdk:** fix tooltip crash by migrating away from renderToString ([#58394](https://github.com/metabase/metabase/issues/58394)) ([#58411](https://github.com/metabase/metabase/issues/58411)) ([59ae357](https://github.com/metabase/metabase/commit/59ae3577a958613e5391222bcbeaf8774a8b2796))
+* **sdk:** questions shows an error while loading on strict mode ([#58183](https://github.com/metabase/metabase/issues/58183)) ([#58219](https://github.com/metabase/metabase/issues/58219)) ([52476b8](https://github.com/metabase/metabase/commit/52476b8380ff0bd3c5cdc9aa08cf76c056344b9c))
+
+
+### Features
+
+* **sdk:** Reduce bundle size by avoiding the usage of `jsrsasign` dependency ([#58009](https://github.com/metabase/metabase/issues/58009)) ([#58078](https://github.com/metabase/metabase/issues/58078)) ([ae5a2bc](https://github.com/metabase/metabase/commit/ae5a2bc5a00328ac8745c4fe3decd213816b4d27))
+* **sdk:** remove question and metric from entity type filters in the sdk's data picker ([#58339](https://github.com/metabase/metabase/issues/58339)) ([#58350](https://github.com/metabase/metabase/issues/58350)) ([a6ead61](https://github.com/metabase/metabase/commit/a6ead61f57575ba19687f877903cdb1758a885c2))
+
+
+
 ## [0.54.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.10...embedding-sdk-0.54.11) (2025-05-16)
 
 
