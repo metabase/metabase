@@ -392,8 +392,8 @@ H.describeWithSnowplowEE(
             },
             (sheet) => {
               expect(sheet["A2"].v).to.eq(FIRST_ROW[0]);
-              expect(sheet["B2"].w).to.eq(FIRST_ROW[1]);
-              expect(sheet["C2"].w).to.eq(FIRST_ROW[2]);
+              expect(sheet["B2"].v).to.eq(FIRST_ROW[1]);
+              expect(sheet["C2"].v).to.eq(FIRST_ROW[2]);
             },
           );
 
