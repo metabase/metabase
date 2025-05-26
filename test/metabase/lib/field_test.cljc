@@ -27,8 +27,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [lib.card/*force-broken-card-refs* false]
-                        (thunk))))
+                      (thunk)))
 
 (defn- grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
