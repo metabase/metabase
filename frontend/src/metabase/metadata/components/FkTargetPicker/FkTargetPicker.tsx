@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -28,21 +29,41 @@ export const FkTargetPicker = ({
   onChange,
   ...props
 }: Props) => {
-  const comparableIdFields = idFields.filter((idField) => {
-    return idField.isComparableWith(field);
-  });
-  const hasIdFields = comparableIdFields.length > 0;
-  const includeSchema = hasMultipleSchemas(comparableIdFields);
-  const data = getData(comparableIdFields, includeSchema);
+  const { comparableIdFields, hasIdFields, data, optionsByFieldId } =
+    useMemo(() => {
+      const comparableIdFields = idFields.filter((idField) => {
+        return idField.isComparableWith(field);
+      });
+      const hasIdFields = comparableIdFields.length > 0;
+      const includeSchema = hasMultipleSchemas(comparableIdFields);
+      const data = getData(comparableIdFields, includeSchema);
+      const optionsByFieldId = Object.fromEntries(
+        data.map((option) => [option.value, option]),
+      );
 
-  const getField = (fieldId: FieldId | null) => {
-    const option = data.find((option) => parseValue(option.value) === fieldId);
+      return { comparableIdFields, hasIdFields, data, optionsByFieldId };
+    }, [field, idFields]);
+
+  const getFieldFromValue = (fieldId: string | null) => {
+    if (fieldId == null) {
+      return null;
+    }
+    const option = optionsByFieldId[fieldId];
     return option?.field;
   };
 
+  const getFieldIdFromValue = (fieldId: string | null): FieldId => {
+    const field = getFieldFromValue(fieldId);
+    if (field?.id === undefined || typeof field.id === "object") {
+      // this code is unreachable since we don't expect field references here
+      throw new Error("unreachable");
+    }
+    return field.id;
+  };
+
   const handleChange = (value: string) => {
-    const parsedValue = parseValue(value);
-    onChange(parsedValue);
+    const fieldId = getFieldIdFromValue(value);
+    onChange(fieldId);
   };
 
   return (
@@ -69,8 +90,7 @@ export const FkTargetPicker = ({
             return false;
           }
 
-          const field = getField(parseValue(option.value));
-
+          const field = getFieldFromValue(option.value);
           if (!field) {
             return false;
           }
@@ -85,8 +105,8 @@ export const FkTargetPicker = ({
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
       renderOption={(item) => {
-        const field = getField(parseValue(item.option.value));
-        const selected = parseValue(item.option.value) === value;
+        const field = getFieldFromValue(item.option.value);
+        const selected = getFieldIdFromValue(item.option.value) === value;
 
         return (
           <SelectItem selected={selected}>
@@ -125,10 +145,6 @@ function getData(comparableIdFields: Field[], includeSchema: boolean) {
           : stringifyValue(field.id),
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
-}
-
-function parseValue(value: string): FieldId | null {
-  return value === "" ? null : JSON.parse(value);
 }
 
 function stringifyValue(value: FieldId | null): string {
