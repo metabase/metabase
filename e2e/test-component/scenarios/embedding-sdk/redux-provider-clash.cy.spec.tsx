@@ -7,7 +7,6 @@ import { Provider, useDispatch, useSelector } from "react-redux";
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,

@@ -14,15 +14,6 @@ type BaseMetabaseAuthConfig = {
 };
 
 /**
- * @deprecated
- * @category MetabaseProvider
- */
-export type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {
-  // authProviderUri: string;
-  apiKey?: never;
-};
-
-/**
  * @category MetabaseProvider
  */
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
@@ -32,6 +23,4 @@ export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
 /**
  * @category MetabaseProvider
  */
-export type MetabaseAuthConfig =
-  | MetabaseAuthConfigWithProvider
-  | MetabaseAuthConfigWithApiKey;
+export type MetabaseAuthConfig = MetabaseAuthConfigWithApiKey;

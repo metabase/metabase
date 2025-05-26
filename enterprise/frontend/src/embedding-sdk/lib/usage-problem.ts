@@ -20,7 +20,7 @@ export const USAGE_PROBLEM_MESSAGES = {
   API_KEYS_WITH_LICENSE: `The embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.`,
   SSO_WITHOUT_LICENSE: `Usage without a valid license for this feature is only allowed for evaluation purposes, using API keys and only on localhost. Attempting to use this in other ways is in breach of our usage policy.`,
   CONFLICTING_AUTH_METHODS: `You cannot use both an Auth Provider URI and API key authentication at the same time.`,
-  JWT_PROVIDER_URI_DEPRECATED: `The jwtProviderUri and authProviderUri config properties has been deprecated. Configure your authProviderUri within your instance settings.`,
+  JWT_PROVIDER_URI_DEPRECATED: `The jwtProviderUri and authProviderUri config properties have been removed. Configure your authProviderUri within your instance settings.`,
   NO_AUTH_METHOD_PROVIDED: `You must provide either an Auth Provider URI or an API key for authentication.`,
 
   // This message only works on localhost at the moment, as we cannot detect if embedding is disabled due to CORS restrictions on /api/session/properties.
