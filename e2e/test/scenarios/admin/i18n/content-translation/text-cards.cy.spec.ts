@@ -1,21 +1,17 @@
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
-import type { DictionaryArray } from "metabase/i18n/types";
+import type { DictionaryArray } from "metabase-types/api";
 
 import { uploadTranslationDictionary } from "./helpers/e2e-content-translation-helpers";
 
 const { H } = cy;
 
+const textCardTranslations: DictionaryArray = [
+  { locale: "de", msgid: "Sample Text", msgstr: "Beispieltext" },
+  { locale: "de", msgid: "Sample Heading", msgstr: "Beispielüberschrift" },
+];
+
 describe("scenarios > dashboard > content translation of text cards and headings", () => {
   describe("ee", () => {
-    const textCardTranslations: DictionaryArray = [
-      { locale: "de", msgid: "Sample Text", msgstr: "Beispieltext" },
-      { locale: "de", msgid: "Sample Heading", msgstr: "Beispielüberschrift" },
-      {
-        locale: "de",
-        msgid: "Category is {{category}}",
-        msgstr: "Kategorie ist {{category}}",
-      },
-    ];
     before(() => {
       H.restore();
       cy.intercept("POST", "api/ee/content-translation/upload-dictionary").as(
