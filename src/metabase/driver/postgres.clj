@@ -1187,7 +1187,8 @@
   "NONE")
 
 (defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
-  (= (sql-jdbc/get-sql-state e) "57014"))
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (mdb/query-canceled-exception? :postgres e))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
   [_ e]

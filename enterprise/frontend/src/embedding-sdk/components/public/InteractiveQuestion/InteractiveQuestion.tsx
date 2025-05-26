@@ -49,7 +49,7 @@ export type BaseInteractiveQuestionProps =
       InteractiveQuestionProviderProps,
       | "onBeforeSave"
       | "onSave"
-      | "entityTypeFilter"
+      | "entityTypes"
       | "isSaveEnabled"
       | "initialSqlParameters"
       | "withDownloads"
@@ -90,7 +90,7 @@ export const _InteractiveQuestion = ({
   children = null,
   onBeforeSave,
   onSave,
-  entityTypeFilter,
+  entityTypes,
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
@@ -103,7 +103,7 @@ export const _InteractiveQuestion = ({
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
-    entityTypeFilter={entityTypeFilter}
+    entityTypes={entityTypes}
     isSaveEnabled={isSaveEnabled}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}

@@ -6,7 +6,7 @@
    [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.settings.core :as setting]
+   [metabase.notification.settings :as notification.settings]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -25,23 +25,6 @@
   (if channel_id
     (str (u/qualified-name channel_type) " " channel_id)
     (u/qualified-name channel_type)))
-
-(setting/defsetting notification-thread-pool-size
-  "The size of the thread pool used to send notifications."
-  :default    3
-  :export?    false
-  :type       :integer
-  :visibility :internal
-  :doc "If Metabase stops sending notifications like alerts, it may be because long-running
-  queries are clogging the notification queue. You may be able to unclog the queue by
-  increasing the size of the thread pool dedicated to notifications.")
-
-(setting/defsetting notification-system-event-thread-pool-size
-  "The size of the thread pool used to send system event notifications."
-  :default    5
-  :export?    false
-  :type       :integer
-  :visibility :internal)
 
 (def ^:private default-blocking-queue-size 1000)
 
@@ -394,10 +377,10 @@
       (put-notification! queue notification))))
 
 (defonce ^:private dedup-priority-dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size) (create-dedup-priority-queue))))
+  (delay (create-notification-dispatcher (notification.settings/notification-thread-pool-size) (create-dedup-priority-queue))))
 
 (defonce ^:private simple-blocking-dispatcher
-  (delay (create-notification-dispatcher (notification-system-event-thread-pool-size) (create-blocking-queue))))
+  (delay (create-notification-dispatcher (notification.settings/notification-system-event-thread-pool-size) (create-blocking-queue))))
 
 (defn- dispatch!
   [notification]

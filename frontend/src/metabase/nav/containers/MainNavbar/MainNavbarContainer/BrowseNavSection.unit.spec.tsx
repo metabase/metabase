@@ -1,11 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import * as domUtils from "metabase/lib/dom";
-import {
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseNavSection } from "./BrowseNavSection";
 
@@ -114,11 +110,9 @@ function setup({ isEmbeddingIframe, entityTypes }: SetupOpts = {}) {
     entityTypes
       ? {
           storeInitialState: createMockState({
-            embed: createMockEmbedState({
-              options: createMockEmbedOptions({
-                entity_types: entityTypes,
-              }),
-            }),
+            embeddingDataPicker: {
+              entityTypes,
+            },
           }),
         }
       : undefined,

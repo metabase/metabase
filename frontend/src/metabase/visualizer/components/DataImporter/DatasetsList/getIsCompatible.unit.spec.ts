@@ -19,6 +19,7 @@ describe("getIsCompatible", () => {
         display: "bar",
         columns: [createMockNumericColumn(), createMockCategoryColumn()],
         settings: {},
+        computedSettings: {},
       },
       targetDataset: { fields: [] },
       datasets: {},
@@ -39,6 +40,7 @@ describe("getIsCompatible", () => {
             display: "pie",
             columns: columns,
             settings: {},
+            computedSettings: {},
           },
           targetDataset: {
             fields: [
@@ -60,6 +62,7 @@ describe("getIsCompatible", () => {
         display: "funnel" as const,
         columns: [],
         settings: {},
+        computedSettings: {},
       };
       const dataset = createMockDataset({ data: { cols: [] } });
 
@@ -93,12 +96,14 @@ describe("getIsCompatible", () => {
     });
 
     it("should return true if a data source has one metric column and funnel has only a dimension", () => {
+      const settings = {
+        "funnel.dimension": "COLUMN_1",
+      };
       const currentDataset = {
         display: "funnel" as const,
         columns: [createMockCategoryColumn({ id: 10, name: "COLUMN_1" })],
-        settings: {
-          "funnel.dimension": "COLUMN_1",
-        },
+        settings,
+        computedSettings: settings,
       };
       const dataset = createMockDataset({
         data: {
@@ -121,12 +126,14 @@ describe("getIsCompatible", () => {
     });
 
     it("should return true if a data source has one dimension column and funnel has only a metric", () => {
+      const settings = {
+        "funnel.metric": "COLUMN_1",
+      };
       const currentDataset = {
         display: "funnel" as const,
         columns: [createMockNumericColumn({ id: 10, name: "COLUMN_1" })],
-        settings: {
-          "funnel.metric": "COLUMN_1",
-        },
+        settings,
+        computedSettings: settings,
       };
       const dataset = createMockDataset({
         data: { cols: [createMockNumericColumn({ id: 10, name: "COLUMN_1" })] },
@@ -153,6 +160,7 @@ describe("getIsCompatible", () => {
             display: "funnel",
             columns: [],
             settings: {},
+            computedSettings: {},
           },
           targetDataset: {
             fields: [
@@ -203,14 +211,17 @@ describe("getIsCompatible", () => {
       id: categoryDimensionColumn.id,
     });
     const otherCategoryDimensionField = createMockCategoryField({ id: 5 });
+    const numericField = createMockNumericField({ id: 6 });
 
     it("should return false if current chart doesn't have dimensions", () => {
+      const settings = { "graph.metrics": [metricColumn.name] };
       expect(
         getIsCompatible({
           currentDataset: {
             display: "line",
             columns: [metricColumn],
-            settings: { "graph.metrics": [metricColumn.name] },
+            settings,
+            computedSettings: settings,
           },
           targetDataset: {
             fields: [dateField, sameCategoryDimensionField],
@@ -222,16 +233,46 @@ describe("getIsCompatible", () => {
       ).toBe(false);
     });
 
-    it("should return true if a data source has a matching time dimension", () => {
+    it("should return false if a data source doesn't have dimensions", () => {
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [timeDimensionColumn.name],
+      };
       expect(
         getIsCompatible({
           currentDataset: {
             display: "line",
             columns: [metricColumn, timeDimensionColumn],
-            settings: {
-              "graph.metrics": [metricColumn.name],
-              "graph.dimensions": [timeDimensionColumn.name],
-            },
+            settings,
+            computedSettings: settings,
+          },
+          targetDataset: { fields: [numericField] },
+          datasets: {
+            "1": defaultDataset,
+            "2": createMockDataset({
+              data: {
+                cols: [
+                  createMockNumericColumn({ id: numericField.id as number }),
+                ],
+              },
+            }),
+          },
+        }),
+      ).toBe(false);
+    });
+
+    it("should return true if a data source has a matching time dimension", () => {
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [timeDimensionColumn.name],
+      };
+      expect(
+        getIsCompatible({
+          currentDataset: {
+            display: "line",
+            columns: [metricColumn, timeDimensionColumn],
+            settings,
+            computedSettings: settings,
           },
           targetDataset: { fields: [dateField] },
           datasets: {
@@ -255,16 +296,18 @@ describe("getIsCompatible", () => {
       const dataset = createMockDataset({
         data: { cols: [metricColumn, temporalDimensionColumn] },
       });
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [temporalDimensionColumn.name],
+      };
 
       expect(
         getIsCompatible({
           currentDataset: {
             display: "line",
             columns: [metricColumn, temporalDimensionColumn],
-            settings: {
-              "graph.metrics": [metricColumn.name],
-              "graph.dimensions": [temporalDimensionColumn.name],
-            },
+            settings,
+            computedSettings: settings,
           },
           targetDataset: { fields: [dateField] },
           datasets: {
@@ -282,15 +325,17 @@ describe("getIsCompatible", () => {
     });
 
     it("should return false if a data source doesn't have a matching time dimension", () => {
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [timeDimensionColumn.name],
+      };
       expect(
         getIsCompatible({
           currentDataset: {
             display: "line",
             columns: [metricColumn, timeDimensionColumn],
-            settings: {
-              "graph.metrics": [metricColumn.name],
-              "graph.dimensions": [timeDimensionColumn.name],
-            },
+            settings,
+            computedSettings: settings,
           },
           targetDataset: { fields: [sameCategoryDimensionField] },
           datasets: {
@@ -310,15 +355,17 @@ describe("getIsCompatible", () => {
     });
 
     it("should return true if a data source has a matching category dimension", () => {
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [categoryDimensionColumn.name],
+      };
       expect(
         getIsCompatible({
           currentDataset: {
             display: "line",
             columns: [metricColumn, categoryDimensionColumn],
-            settings: {
-              "graph.metrics": [metricColumn.name],
-              "graph.dimensions": [categoryDimensionColumn.name],
-            },
+            settings,
+            computedSettings: settings,
           },
           targetDataset: { fields: [sameCategoryDimensionField] },
           datasets: {
@@ -338,15 +385,17 @@ describe("getIsCompatible", () => {
     });
 
     it("should return false if a data source doesn't have a matching category dimension", () => {
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [categoryDimensionColumn.name],
+      };
       expect(
         getIsCompatible({
           currentDataset: {
             display: "line",
             columns: [metricColumn, categoryDimensionColumn],
-            settings: {
-              "graph.metrics": [metricColumn.name],
-              "graph.dimensions": [categoryDimensionColumn.name],
-            },
+            settings,
+            computedSettings: settings,
           },
           targetDataset: { fields: [otherCategoryDimensionField] },
           datasets: {
