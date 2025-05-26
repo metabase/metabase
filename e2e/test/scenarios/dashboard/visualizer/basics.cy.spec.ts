@@ -229,6 +229,29 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     cy.url().should("contain", "10-test-dashboard");
   });
 
+  it("should open underlying questions in the ellipsis menu if the card has not title", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // This card HAS a title, so it should NOT have the "View question(s)" option
+    H.getDashboardCard(0).realHover();
+    H.getDashboardCardMenu(0).click();
+    H.popover().findByText("View question(s)").should("not.exist");
+
+    // This card has NO title, so it SHOULD have the "View question(s)" option
+    H.getDashboardCard(2).realHover();
+    H.getDashboardCardMenu(2).click();
+    H.popover().within(() => {
+      cy.findByText("View question(s)").should("exist");
+      cy.findByText("View question(s)").realHover();
+    });
+
+    cy.findByTestId("dashcard-menu-open-underlying-question").within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CATEGORY.name).click();
+    });
+
+    cy.url().should("contain", "83-products-by-category");
+  });
+
   it("should rename a dashboard card", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();

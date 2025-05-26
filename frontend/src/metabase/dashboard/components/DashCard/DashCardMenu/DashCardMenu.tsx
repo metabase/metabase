@@ -159,13 +159,7 @@ export const DashCardMenu = ({
           onEditVisualization={onEditVisualization}
         />
         {openUnderlyingQuestionItems && (
-          <Menu
-            trigger="click-hover"
-            key="open-questions"
-            shadow="md"
-            position="right"
-            width={200}
-          >
+          <Menu trigger="click-hover" shadow="md" position="right" width={200}>
             <Menu.Target>
               <Menu.Item
                 fw="bold"
@@ -187,7 +181,9 @@ export const DashCardMenu = ({
                 {t`View question(s)`}
               </Menu.Item>
             </Menu.Target>
-            <Menu.Dropdown>{openUnderlyingQuestionItems}</Menu.Dropdown>
+            <Menu.Dropdown data-testid="dashcard-menu-open-underlying-question">
+              {openUnderlyingQuestionItems}
+            </Menu.Dropdown>
           </Menu>
         )}
       </>

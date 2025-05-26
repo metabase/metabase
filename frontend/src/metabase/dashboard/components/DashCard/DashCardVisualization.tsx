@@ -20,6 +20,7 @@ import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
   createDataSource,
@@ -396,6 +397,10 @@ export function DashCardVisualization({
       );
     }
 
+    // We only show the titleMenuItems if the card has no title.
+    const settings = getComputedSettingsForSeries(series) as any;
+    const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+
     return (
       <DashCardMenu
         downloadsEnabled={downloadsEnabled}
@@ -406,7 +411,7 @@ export function DashCardVisualization({
         token={token}
         uuid={uuid}
         onEditVisualization={onEditVisualization}
-        openUnderlyingQuestionItems={titleMenuItems}
+        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
       />
     );
   }, [
