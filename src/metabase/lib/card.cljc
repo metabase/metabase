@@ -80,7 +80,6 @@
   accept both `card-id` and `card`."
   [col
    card-id
-   card
    field]
   (let [col (-> col
                 (update-keys u/->kebab-case-en))
@@ -116,11 +115,10 @@
     cols                  :- [:sequential :map]]
    (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
          card-id           (when card-or-id (u/the-id card-or-id))
-         card              (when card-id (lib.metadata/card metadata-providerable card-id))
          field-ids         (keep :id cols)
          fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
          field-id->field   (m/index-by :id fields)]
-     (mapv #(->card-metadata-column % card-id card (get field-id->field (:id %))) cols))))
+     (mapv #(->card-metadata-column % card-id (get field-id->field (:id %))) cols))))
 
 (def ^:private CardColumnMetadata
   [:merge
