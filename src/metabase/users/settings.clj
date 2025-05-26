@@ -21,18 +21,18 @@
             (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
               (when (t2/exists? :model/Database :id id) id))))
 
-(defsetting dismissed-custom-dashboard-toast
-  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+(defsetting dismissed-excel-pivot-exports-banner
+  (deferred-tru "Toggle which is true after a user has dismissed the excel pivot exports banner.")
   :user-local :only
+  :export?    false
   :visibility :authenticated
   :type       :boolean
   :default    false
   :audit      :never)
 
-(defsetting dismissed-onboarding-sidebar-link
-  (deferred-tru "Whether the user has dismissed the onboarding link from the main sidebar.")
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only
-  :export?    false
   :visibility :authenticated
   :type       :boolean
   :default    false

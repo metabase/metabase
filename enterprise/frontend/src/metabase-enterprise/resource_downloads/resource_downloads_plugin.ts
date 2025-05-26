@@ -9,15 +9,12 @@ if (hasPremiumFeature("whitelabel")) {
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
   PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled = ({
-    hide_download_button,
     downloads,
   }: {
-    hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
   }): EmbedResourceDownloadOptions => {
     return (
-      match({ hide_download_button, downloads })
-        // `downloads` has priority over `hide_download_button`
+      match({ downloads })
         .with({ downloads: true }, () => ({ pdf: true, results: true }))
         .with({ downloads: false }, () => ({ pdf: false, results: false }))
         // supports `downloads=pdf`, `downloads=results` and `downloads=pdf,results`
@@ -34,11 +31,6 @@ if (hasPremiumFeature("whitelabel")) {
             };
           },
         )
-        // but we still support the old `hide_download_button` option
-        .with({ hide_download_button: true }, () => ({
-          pdf: false,
-          results: false,
-        }))
         // by default downloads are enabled
         .otherwise(() => ({ pdf: true, results: true }))
     );
