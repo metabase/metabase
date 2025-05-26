@@ -16,6 +16,9 @@ export const LegendCaptionRoot = styled.div`
 export const LegendLabel = styled(BaseLegendLabel)`
   overflow: hidden;
   margin-top: 2px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 `;
 
 export const LegendLabelIcon = styled(Icon)`
