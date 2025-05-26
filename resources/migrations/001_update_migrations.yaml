@@ -11555,7 +11555,7 @@ databaseChangeLog:
                     unique: true
 
   - changeSet:
-      id: v55.2025-05-26T9:00:00
+      id: v55.2025-05-21T15:00:00
       author: rafpaf
       comment: Create content translation table
       preConditions:
