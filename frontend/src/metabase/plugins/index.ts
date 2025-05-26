@@ -739,9 +739,7 @@ export const PLUGIN_CONTENT_TRANSLATION = {
   translateDisplayNames: <T extends object>(
     obj: T,
     _tc: ContentTranslationFunction,
-  ) => ({
-    ...obj,
-  }),
+  ) => obj,
 };
 
 export const PLUGIN_DB_ROUTING = {
