@@ -39,7 +39,7 @@ export function CUSTOM_FETCH_REQUEST_TOKEN_ERROR(params: {
 }) {
   return new MetabaseError(
     "CUSTOM_FETCH_ERROR",
-    `Your JWT server endpoint must return an object with the shape { jwt: string }` +
+    `Your fetchRefreshToken function must return an object with the shape { jwt: string }` +
       (params.actual ? `, but instead received ${params.actual}` : ``),
     params,
   );
