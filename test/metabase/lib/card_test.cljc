@@ -254,7 +254,6 @@
                :name "count"
                :lib/source :source/aggregations}
           card-id 176
-          card {:type :model}
           field nil
           expected-col {:lib/type :metadata/column
                         :base-type :type/Integer
@@ -266,7 +265,7 @@
                         :lib/source-column-alias "count"
                         :fk-target-field-id nil}]
       (is (=? expected-col
-              (#'lib.card/->card-metadata-column col card-id card field))))))
+              (#'lib.card/->card-metadata-column col card-id field))))))
 
 (deftest ^:parallel source-card-type-test
   (is (= :model (lib.card/source-card-type (lib.tu/query-with-source-model))))
