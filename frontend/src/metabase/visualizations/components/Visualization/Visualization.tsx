@@ -737,6 +737,24 @@ class Visualization extends PureComponent<
     const canSelectTitle =
       this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
 
+    const titleMenuItems = visualizerRawSeries ? (
+      <>
+        <Menu.Label>{t`Questions in this card`}</Menu.Label>
+        {visualizerRawSeries.map((series, index) => (
+          <Menu.Item
+            key={index}
+            onClick={() => {
+              this.handleOnChangeCardAndRun({
+                nextCard: series.card,
+              });
+            }}
+          >
+            {series.card.name}
+          </Menu.Item>
+        ))}
+      </>
+    ) : undefined;
+
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -759,6 +777,7 @@ class Visualization extends PureComponent<
                 icon={headerIcon}
                 actionButtons={extra}
                 hasInfoTooltip={!isDashboard || !isEditing}
+                titleMenuItems={titleMenuItems}
                 width={width}
                 getHref={getHref}
                 onChangeCardAndRun={
@@ -878,9 +897,7 @@ class Visualization extends PureComponent<
                     onUpdateWarnings={onUpdateWarnings}
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
-                    titleMenuItems={
-                      visualizerRawSeries ? titleMenuItems : undefined
-                    }
+                    titleMenuItems={hasHeader ? undefined : titleMenuItems}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}
