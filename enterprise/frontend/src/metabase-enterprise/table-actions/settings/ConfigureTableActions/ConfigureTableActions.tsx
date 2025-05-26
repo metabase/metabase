@@ -2,7 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListActionsQuery } from "metabase/api";
+import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack } from "metabase/ui";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
   RowActionFieldSettings,
   TableActionDisplaySettings,
@@ -12,7 +14,6 @@ import type {
 
 import { RowActionItem } from "./RowActionItem";
 import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
-import type { BasicTableViewColumn } from "./types";
 import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 
 type ConfigureTableActionsProps = {
@@ -36,10 +37,15 @@ export const ConfigureTableActions = ({
 
   const { tableActions, tableActionsMap } = useMemo(() => {
     const tableActions = inputTableActions || [];
-    const tableActionsMap = (inputTableActions || []).reduce((result, item) => {
-      result.set(item.id, item);
-      return result;
-    }, new Map<TableActionId, TableActionDisplaySettings>());
+
+    const tableActionsMap = new Map<
+      TableActionId,
+      TableActionDisplaySettings
+    >();
+
+    tableActions.forEach((item) => {
+      tableActionsMap.set(item.actionId, item);
+    });
 
     return { tableActions, tableActionsMap };
   }, [inputTableActions]);
@@ -64,7 +70,8 @@ export const ConfigureTableActions = ({
       parameterMappings: RowActionFieldSettings[];
     }) => {
       const newItem: TableActionDisplaySettings = {
-        id: action.id,
+        id: uuid(),
+        actionId: action.id,
         actionType: "data-grid/row-action",
         parameterMappings,
       };
@@ -82,16 +89,19 @@ export const ConfigureTableActions = ({
 
   const handleEditAction = useCallback(
     ({
+      id,
       action,
       name,
       parameterMappings,
     }: {
+      id?: string;
       action: WritebackAction;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
       const newItem: TableActionDisplaySettings = {
-        id: action.id,
+        id: id || uuid(),
+        actionId: action.id,
         actionType: "data-grid/row-action",
         parameterMappings,
       };
@@ -101,7 +111,7 @@ export const ConfigureTableActions = ({
       }
 
       const newArray = tableActions.map((action) => {
-        return action.id !== newItem.id ? action : newItem;
+        return action.actionId !== newItem.actionId ? action : newItem;
       });
 
       onChange(newArray);
@@ -110,8 +120,8 @@ export const ConfigureTableActions = ({
   );
 
   const handleRemoveAction = useCallback(
-    (actionId: number) => {
-      const newArray = tableActions.filter(({ id }) => id !== actionId);
+    (id: number) => {
+      const newArray = tableActions.filter(({ actionId }) => actionId !== id);
 
       onChange(newArray);
     },

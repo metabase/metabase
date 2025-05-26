@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
   PartialRowActionFieldSettings,
   RowActionFieldSettings,
 } from "metabase-types/api";
-
-import type { BasicTableViewColumn } from "./types";
 
 export const isValidMapping = (
   mapping: PartialRowActionFieldSettings,
@@ -19,7 +18,7 @@ export const isValidMapping = (
     return (
       "sourceValueTarget" in mapping &&
       !!mapping.sourceValueTarget &&
-      !!tableColumns.find(({ id }) => id === mapping.sourceValueTarget) // TODO: add tuple notation for field ref
+      !!tableColumns.find(({ name }) => name === mapping.sourceValueTarget)
     );
   }
 
@@ -40,4 +39,20 @@ export const getFieldFlagsCaption = ({
   return [isRequired ? t`required` : "", isHidden ? t`hidden` : ""]
     .filter(Boolean)
     .join(", ");
+};
+
+export const cleanEmptyVisibility = (
+  parameters: RowActionFieldSettings[],
+): RowActionFieldSettings[] => {
+  return parameters.map((parameter) => {
+    if (parameter.sourceType === "ask-user" && "visibility" in parameter) {
+      const copy = { ...parameter };
+
+      delete copy.visibility;
+
+      return copy;
+    }
+
+    return parameter;
+  });
 };

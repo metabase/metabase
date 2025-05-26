@@ -174,15 +174,16 @@ export type ColumnFormattingSetting =
   | ColumnRangeFormattingSetting;
 
 export type TableRowActionDisplaySettings = {
-  id: WritebackActionId; // TODO: rename to actionId, add real "id" (as uuid)
+  id: string;
+  actionId: WritebackActionId;
   name?: string;
   actionType: "data-grid/row-action";
   parameterMappings?: RowActionFieldSettings[];
 };
 
-// TODO: move EditableTable stuff to enterprise folder
 export type EditableTableBuiltInActionDisplaySettings = {
-  id: "data-grid.row/create" | "data-grid.row/delete";
+  id: string;
+  actionId: "data-grid.row/create" | "data-grid.row/delete";
   enabled: boolean;
   actionType: "data-grid/built-in";
 };
@@ -193,7 +194,7 @@ export type EditableTableActionsDisplaySettings =
 
 export type TableActionDisplaySettings = TableRowActionDisplaySettings;
 
-export type TableActionId = TableActionDisplaySettings["id"];
+export type TableActionId = TableActionDisplaySettings["actionId"];
 
 export type ColumnNameColumnSplitSetting = {
   rows: string[];

@@ -11,6 +11,7 @@ import {
   type DispatchFn as Dispatch,
   createThunkAction,
 } from "metabase/lib/redux";
+import { uuid } from "metabase/lib/uuid";
 import {
   loadMetadataForCard,
   loadMetadataForTable,
@@ -226,12 +227,14 @@ export const addEditableTableDashCardToDashboard =
             table_id: tableId,
             "editableTable.enabledActions": [
               {
-                id: "data-grid.row/create",
+                id: uuid(),
+                actionId: "data-grid.row/create",
                 enabled: true,
                 actionType: "data-grid/built-in",
               },
               {
-                id: "data-grid.row/delete",
+                id: uuid(),
+                actionId: "data-grid.row/delete",
                 enabled: true,
                 actionType: "data-grid/built-in",
               },

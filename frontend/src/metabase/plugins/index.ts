@@ -46,7 +46,10 @@ import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
-import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
+import type {
+  BasicTableViewColumn,
+  SelectedTableActionState,
+} from "metabase/visualizations/types/table-actions";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -816,7 +819,7 @@ export const PLUGIN_TABLE_ACTIONS = {
   }>,
   ConfigureTableActions: PluginPlaceholder as ComponentType<{
     value: TableActionDisplaySettings[] | undefined;
-    cols: { id: number; name: string }[];
+    cols: BasicTableViewColumn[];
     onChange: (newValue: TableActionDisplaySettings[]) => void;
   }>,
 };

@@ -1,9 +1,9 @@
-import { useCallback } from "react";
+import { useField } from "formik";
+import { type FocusEvent, useCallback } from "react";
 import { t } from "ttag";
 
-import { FormSelect } from "metabase/forms";
-
-import type { BasicTableViewColumn } from "./types";
+import { Select } from "metabase/ui";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 
 type TableColumnsSelectProps = {
   name: string;
@@ -14,14 +14,14 @@ export const TableColumnsSelect = ({
   name,
   columns,
 }: TableColumnsSelectProps) => {
-  const options = columns.map(({ id, name }) => ({
-    value: String(id),
-    label: name,
+  const options = columns.map(({ name, display_name }) => ({
+    value: name,
+    label: display_name,
   }));
 
-  const validateValue = useCallback(
-    (newValue: null | string | number) => {
-      const isValidColumnRef = !!columns.find(({ id }) => id === newValue);
+  const validate = useCallback(
+    (newValue: null | string) => {
+      const isValidColumnRef = !!columns.find(({ name }) => name === newValue);
 
       if (!isValidColumnRef) {
         return t`Please pick a column to get data from`;
@@ -30,13 +30,38 @@ export const TableColumnsSelect = ({
     [columns],
   );
 
+  const [{ value }, { error, touched }, { setValue, setTouched }] = useField({
+    name,
+    validate,
+  });
+
+  const handleChange = useCallback(
+    (newValue: string | null) => {
+      if (newValue === null) {
+        setValue(undefined);
+      } else {
+        setValue(newValue);
+      }
+    },
+    [setValue],
+  );
+
+  const handleBlur = useCallback(
+    (_event: FocusEvent<HTMLInputElement>) => {
+      setTouched(true);
+    },
+    [setTouched],
+  );
+
   return (
-    <FormSelect
+    <Select
       label={t`Pick column`}
       name={name}
       data={options}
-      shouldCastValueToNumber
-      validate={validateValue}
+      value={value ?? null}
+      error={touched ? error : null}
+      onChange={handleChange}
+      onBlur={handleBlur}
     />
   );
 };

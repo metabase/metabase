@@ -15,13 +15,13 @@ import type {
 
 const DEFAULT_ACTIONS = [
   {
-    id: "data-grid.row/create" as const,
+    actionId: "data-grid.row/create" as const,
     get label() {
       return t`Create a new record`;
     },
   },
   {
-    id: "data-grid.row/delete" as const,
+    actionId: "data-grid.row/delete" as const,
     get label() {
       return t`Delete a record`;
     },
@@ -42,7 +42,7 @@ export const ConfigureDashcardEditableTableActions = ({
       dashcard.visualization_settings?.["editableTable.enabledActions"] ?? [];
 
     const builtInActionsMap = new Map<
-      EditableTableBuiltInActionDisplaySettings["id"],
+      EditableTableBuiltInActionDisplaySettings["actionId"],
       EditableTableBuiltInActionDisplaySettings
     >();
 
@@ -54,7 +54,7 @@ export const ConfigureDashcardEditableTableActions = ({
       ) {
         const typed =
           tableActionSettings as EditableTableBuiltInActionDisplaySettings;
-        builtInActionsMap.set(typed.id, typed);
+        builtInActionsMap.set(typed.actionId, typed);
       } else {
         tableActions.push(tableActionSettings as TableRowActionDisplaySettings);
       }
@@ -75,15 +75,18 @@ export const ConfigureDashcardEditableTableActions = ({
     return fields;
   }, [dashcard.card.result_metadata]);
 
-  const handleToggleAction = useCallback(
+  const handleToggleBuiltInAction = useCallback(
     ({
-      id,
+      actionId,
       enabled,
-    }: Pick<EditableTableBuiltInActionDisplaySettings, "id" | "enabled">) => {
+    }: Pick<
+      EditableTableBuiltInActionDisplaySettings,
+      "actionId" | "enabled"
+    >) => {
       const newArray = [...enabledActions];
 
       const actionIndex = enabledActions.findIndex(
-        (action) => action.id === id,
+        (action) => action.actionId === actionId,
       );
 
       if (actionIndex > -1) {
@@ -91,12 +94,6 @@ export const ConfigureDashcardEditableTableActions = ({
           ...enabledActions[actionIndex],
           enabled,
         } as EditableTableBuiltInActionDisplaySettings;
-      } else {
-        newArray.push({
-          id,
-          enabled,
-          actionType: "data-grid/built-in",
-        });
       }
 
       dispatch(
@@ -128,15 +125,17 @@ export const ConfigureDashcardEditableTableActions = ({
   return (
     <>
       <Stack gap="xs">
-        {DEFAULT_ACTIONS.map(({ id, label }) => {
-          const isEnabled = builtInActionsMap.get(id)?.enabled || false;
+        {DEFAULT_ACTIONS.map(({ actionId, label }) => {
+          const isEnabled = builtInActionsMap.get(actionId)?.enabled || false;
 
           return (
             <Checkbox
-              key={id}
+              key={actionId}
               label={label}
               checked={isEnabled}
-              onChange={() => handleToggleAction({ id, enabled: !isEnabled })}
+              onChange={() =>
+                handleToggleBuiltInAction({ actionId, enabled: !isEnabled })
+              }
             />
           );
         })}

@@ -10,10 +10,10 @@ export const useBuiltInActions = (
     let hasDeleteAction = false;
 
     actionsVizSettings?.forEach((action) => {
-      if (action.id === "data-grid.row/create" && action.enabled) {
+      if (action.actionId === "data-grid.row/create" && action.enabled) {
         hasCreateAction = true;
       }
-      if (action.id === "data-grid.row/delete" && action.enabled) {
+      if (action.actionId === "data-grid.row/delete" && action.enabled) {
         hasDeleteAction = true;
       }
     });

@@ -17,3 +17,5 @@ export type SelectedTableActionState = {
   rowData: ActionFormInitialValues;
   actionOverrides?: TableActionsExecuteFormVizOverride;
 };
+
+export type BasicTableViewColumn = { name: string; display_name: string };

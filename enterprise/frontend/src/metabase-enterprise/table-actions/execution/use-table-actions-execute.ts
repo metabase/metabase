@@ -35,13 +35,13 @@ export const useTableActionsExecute = ({
 
   const { tableActions, tableActionsVizSettingsSet } = useMemo(() => {
     const tableActionsVizSettingsSet = new Map<
-      TableRowActionDisplaySettings["id"],
+      TableRowActionDisplaySettings["actionId"],
       TableRowActionDisplaySettings
     >();
 
     actionsVizSettings?.forEach((action) => {
       if (!isBuiltInEditableTableAction(action)) {
-        tableActionsVizSettingsSet.set(action.id, action);
+        tableActionsVizSettingsSet.set(action.actionId, action);
       }
     });
 
@@ -86,11 +86,19 @@ export const useTableActionsExecute = ({
             if (mappingSettings) {
               if (mappingSettings.sourceType === "row-data") {
                 const targetColumnIndex = datasetData?.cols.findIndex((col) => {
-                  return col.id === mappingSettings.sourceValueTarget;
+                  if (mappingSettings.sourceValueTarget) {
+                    return col.name === mappingSettings.sourceValueTarget;
+                  }
+                  return false;
                 });
 
                 if (targetColumnIndex > -1) {
                   result[parameter.id] = rowData[targetColumnIndex];
+                } else {
+                  console.warn(
+                    "Failed to apply column mapping for table action",
+                    { action, actionMappingSettings: actionVizSettings },
+                  );
                 }
               }
 

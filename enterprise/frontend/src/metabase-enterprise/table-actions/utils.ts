@@ -47,6 +47,6 @@ export const isBuiltInEditableTableAction = (
     | EditableTableBuiltInActionDisplaySettings,
 ): action is EditableTableBuiltInActionDisplaySettings => {
   return ["data-grid.row/create", "data-grid.row/delete"].includes(
-    (action as EditableTableBuiltInActionDisplaySettings).id,
+    (action as EditableTableBuiltInActionDisplaySettings).actionId,
   );
 };

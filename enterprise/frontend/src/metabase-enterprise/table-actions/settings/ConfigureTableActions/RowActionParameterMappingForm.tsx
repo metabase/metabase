@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { t } from "ttag";
 
 import {
@@ -12,15 +13,16 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Box, Group, Radio, Stack, Text } from "metabase/ui";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
   RowActionFieldSettings,
+  RowActionFieldSourceType,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 
 import S from "./RowActionSettingsModalContent.module.css";
 import { TableColumnsSelect } from "./TableColumnsSelect";
-import type { BasicTableViewColumn } from "./types";
 import { getFieldFlagsCaption } from "./utils";
 
 interface ActionParameterMappingProps {
@@ -30,24 +32,27 @@ interface ActionParameterMappingProps {
   tableColumns: BasicTableViewColumn[];
 }
 
-const SOURCE_TYPE_OPTIONS = [
+const SOURCE_TYPE_OPTIONS: {
+  label: string;
+  value: RowActionFieldSourceType;
+}[] = [
   {
     get label() {
       return t`Ask the user`;
     },
-    value: "ask-user",
+    value: "ask-user" as const,
   },
   {
     get label() {
       return t`Get data from a row`;
     },
-    value: "row-data",
+    value: "row-data" as const,
   },
   {
     get label() {
       return t`Use constant value`;
     },
-    value: "constant",
+    value: "constant" as const,
   },
 ];
 
@@ -57,6 +62,8 @@ export const RowActionParameterMappingForm = ({
   values,
   tableColumns,
 }: ActionParameterMappingProps) => {
+  const { setFieldValue } = useFormikContext();
+
   return (
     <Form role="form" data-testid="table-action-parameters-mapping-form">
       <Stack gap="lg" mt="md">
@@ -77,10 +84,14 @@ export const RowActionParameterMappingForm = ({
               <FormSelect
                 name={`parameters.${index}.sourceType`}
                 data={SOURCE_TYPE_OPTIONS}
+                onChange={(newValue) => {
+                  if (newValue === "ask-user") {
+                    setFieldValue(`parameters.${index}.visibility`, "");
+                  }
+                }}
               />
               {values.parameters[index]?.sourceType === "row-data" && (
                 <Box mt="1rem">
-                  {/* TODO: use tuple notaion for field id */}
                   <TableColumnsSelect
                     name={`parameters.${index}.sourceValueTarget`}
                     columns={tableColumns}

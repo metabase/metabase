@@ -151,7 +151,7 @@ export const updateDashboardAndCards = createThunkAction(
       // with 3g simulation is an example of such race condition
       await dispatch(
         fetchDashboard({
-          dashId: dashboard.id,
+          dashId: dashboard.actionId,
           queryParams: null,
           options: { preserveParameters: false },
         }),
