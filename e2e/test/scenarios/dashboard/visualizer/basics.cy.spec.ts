@@ -240,7 +240,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     cy.findByLabelText("Back to Test Dashboard").click();
   });
 
-  it("should open underlying questions in the ellipsis menu if the card has not title", () => {
+  it("should open underlying questions in the ellipsis menu if the card has no title", () => {
     createDashboardWithVisualizerDashcards();
 
     // This card HAS a title, so it should NOT have the "View question(s)" option
@@ -249,6 +249,14 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.popover().findByText("View question(s)").should("not.exist");
 
     // This card has NO title, so it SHOULD have the "View question(s)" option
+    H.editDashboard();
+    H.showDashcardVisualizerModal(2);
+    H.modal().within(() => {
+      cy.findByTestId("visualizer-title").clear().blur();
+    });
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
     H.getDashboardCard(2).realHover();
     H.getDashboardCardMenu(2).click();
     H.popover().within(() => {
