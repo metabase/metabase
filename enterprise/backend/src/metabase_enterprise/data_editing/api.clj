@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.api
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -290,7 +289,7 @@
         [row]     (data-editing/query-db-rows table-id pk-fields [pk])
         _         (api/check-404 row)
         ;; TODO handle custom mapping
-        input     (merge row (merge input row))]
+        input     (merge row input)]
     (actions/perform-action! action-kw scope [input])))
 
 (api.macros/defendpoint :post "/row-action/:action-id/execute"
@@ -428,7 +427,7 @@
           saved-id
           (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pk input mapping)
           action-kw
-          (let [table-id (:table-id)]
+          (let [table-id (:table-id input)]
             ;; Weird magic currying we've been doing implicitly.
             (if (and table-id (isa? action-kw :table.row/common))
               (let [input {:table-id table-id, :row input}

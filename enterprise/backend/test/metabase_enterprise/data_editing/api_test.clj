@@ -787,7 +787,7 @@
                                                  :status "approved"}})
                                (select-keys [:status :body]))))))
                 (testing "dashcard row action modifying a row"
-                  (let [action-id (str "dashcard:unknown:abcdef")]
+                  (let [action-id "dashcard:unknown:abcdef"]
                     (testing "underlying row does not exist, action not executed"
                       (is (= 404 (:status (req {:action-id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
