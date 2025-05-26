@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.api
   (:require
+   [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -289,8 +290,11 @@
         [row]     (data-editing/query-db-rows table-id pk-fields [pk])
         _         (api/check-404 row)
         ;; TODO handle custom mapping
-        input     (merge row input)]
-    (actions/perform-action! action-kw scope [input])))
+        input     (if (:row input)
+                    (assoc input :row (merge row (:row input)))
+                    (merge row input))]
+    ;; TODO collapse if multiple outputs
+    (first (:outputs (actions/perform-action! action-kw scope [input])))))
 
 (api.macros/defendpoint :post "/row-action/:action-id/execute"
   "Executes an action as a row action. The allows action parameters sharing a name with column names to be derived from a specific row.
@@ -417,21 +421,25 @@
       (:row-action unified)
       ;; use flat namespace for now, probably want to separate form inputs from pks
       (let [row-action  (:row-action unified)
+            mapping     (:mapping unified)
             ;; will need to generalize this once we can use actions on fullscreen tables / editables / questions.
             dashcard-id (:dashcard-id unified)
-            pk          input
             saved-id    (:action-id row-action)
             action-kw   (:action-kw row-action)
-            mapping     (:mapping row-action)]
+            ;; TODO probably take the row separately from inputs
+            pk          input
+            input       (if (seq mapping)
+                          (walk/postwalk-replace {"::root" input} mapping)
+                          input)]
         (cond
           saved-id
           (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pk input mapping)
           action-kw
-          (let [table-id (:table-id input)]
+          (let [table-id (:table-id row-action)]
             ;; Weird magic currying we've been doing implicitly.
             (if (and table-id (isa? action-kw :table.row/common))
-              (let [input {:table-id table-id, :row input}
-                    pk    input]
+              (let [pk    input
+                    input {:table-id table-id, :row input}]
                 (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pk input mapping))
               (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pk input mapping)))))
       :else
