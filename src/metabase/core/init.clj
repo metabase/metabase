@@ -28,6 +28,7 @@
    [metabase.geojson.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
+   [metabase.lib.init]
    [metabase.logger.init]
    [metabase.login-history.init]
    [metabase.model-persistence.init]
