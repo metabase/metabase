@@ -170,3 +170,5 @@ If you're running Metabase in a cluster:
 1. Reduce the number of nodes to a single node. You can't upgrade all nodes at the same time because the ugprade process works by acquiring a migration lock on the application database from a single client, which performs the migration. If you keep more than one node active when you do a major version upgrade, the application won't behave correctly, as schema changes to the application database could cause problems for nodes that are still running the older version of Metabase.
 2. Perform the upgrade as normal (as outlined above).
 3. Raise the number of nodes to the same number you had before.
+
+Please ensure that the container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, or you'll otherwise end up with a corrupted application database and you'll need to restore from a backup.
