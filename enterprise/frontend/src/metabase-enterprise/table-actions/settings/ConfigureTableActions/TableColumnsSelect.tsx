@@ -1,5 +1,6 @@
 import { useField } from "formik";
 import { type FocusEvent, useCallback } from "react";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { Select } from "metabase/ui";
@@ -20,8 +21,8 @@ export const TableColumnsSelect = ({
   }));
 
   const validate = useCallback(
-    (newValue: null | string) => {
-      const isValidColumnRef = !!columns.find(({ name }) => name === newValue);
+    (value: null | string) => {
+      const isValidColumnRef = !!columns.find(({ name }) => name === value);
 
       if (!isValidColumnRef) {
         return t`Please pick a column to get data from`;
@@ -33,6 +34,12 @@ export const TableColumnsSelect = ({
   const [{ value }, { error, touched }, { setValue, setTouched }] = useField({
     name,
     validate,
+  });
+
+  useMount(() => {
+    if (value && validate(value)) {
+      setTouched(true);
+    }
   });
 
   const handleChange = useCallback(

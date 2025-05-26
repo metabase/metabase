@@ -680,6 +680,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return undefined;
   }, [height, settings]);
 
+  const rowActionsColumn = useMemo(() => {
+    return tableActions?.length && handleTableActionRun
+      ? { actions: tableActions, onActionRun: handleTableActionRun }
+      : undefined;
+  }, [handleTableActionRun, tableActions]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -691,11 +697,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
     pageSize,
-
-    rowActionsColumn:
-      tableActions?.length && handleTableActionRun
-        ? { actions: tableActions, onActionRun: handleTableActionRun }
-        : undefined,
+    rowActionsColumn,
   });
   const { virtualGrid } = tableProps;
 
@@ -783,12 +785,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
       />
-      {
-        <TableActionExecuteModal
-          selectedTableActionState={selectedTableActionState}
-          onClose={handleExecuteActionModalClose}
-        />
-      }
+      <TableActionExecuteModal
+        selectedTableActionState={selectedTableActionState}
+        onClose={handleExecuteActionModalClose}
+      />
     </div>
   );
 });

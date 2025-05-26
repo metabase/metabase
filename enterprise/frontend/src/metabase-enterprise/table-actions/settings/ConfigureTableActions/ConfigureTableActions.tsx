@@ -50,10 +50,12 @@ export const ConfigureTableActions = ({
     return { tableActions, tableActionsMap };
   }, [inputTableActions]);
 
-  const { data: actions } = useListActionsQuery({}); // TODO: we should have an api to optimize this
+  const { data: actions } = useListActionsQuery({}); // TODO: we should have an api to load only needed actions, or have it hydrated along with dashboard
 
-  const addedTableActions =
-    actions?.filter(({ id }) => tableActionsMap.get(id)) || [];
+  const addedTableActions = useMemo(
+    () => actions?.filter(({ id }) => tableActionsMap.get(id)) || [],
+    [actions, tableActionsMap],
+  );
 
   const editingActionSetting = editingAction
     ? tableActionsMap.get(editingAction.id)
