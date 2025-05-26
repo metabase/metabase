@@ -19,6 +19,24 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(defn- all-fields-for-table [table-id]
+  (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
+       (remove #(#{:sensitive :retired} (:visibility-type %)))
+       (map (fn [field]
+              [:field (u/the-id field) nil]))))
+
+(defn- add-all-fields
+  [{{source-table-id :source-table, :keys [fields]} :query, :as outer-query}]
+  (if source-table-id
+    (let [all-fields (all-fields-for-table source-table-id)
+          existing-fields (into #{} (map second) fields)]
+      (assoc-in outer-query [:query :fields]
+                (into fields
+                      (filter (fn [[_ field-id]]
+                                (not (existing-fields field-id))))
+                      all-fields)))
+    outer-query))
+
 (defn- joined-fields [inner-query]
   (m/distinct-by
    add/normalize-clause
@@ -95,6 +113,7 @@
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query
                      :query    source}))
+                 (add-all-fields source)
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
