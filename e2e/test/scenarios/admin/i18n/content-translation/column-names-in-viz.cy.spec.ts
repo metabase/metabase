@@ -14,17 +14,19 @@ const { H } = cy;
 
 describe("scenarios > admin > localization > content translation of column names in static-embedded visualizations", () => {
   describe("ee", () => {
-    beforeEach(() => {
-      interceptContentTranslationRoutes();
-    });
-
     before(() => {
       H.restore();
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
 
+      interceptContentTranslationRoutes();
       uploadTranslationDictionary(germanFieldNames);
       H.snapshot("translations-uploaded");
+    });
+
+    beforeEach(() => {
+      interceptContentTranslationRoutes();
+      H.restore("translations-uploaded" as any);
     });
 
     const columnX = "PRICE";
