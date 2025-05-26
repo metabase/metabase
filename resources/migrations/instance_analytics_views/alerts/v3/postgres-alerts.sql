@@ -20,7 +20,7 @@ schedule_info as (
         id,
         case
             when ui_display_type = 'cron/raw' then 'custom'
-            when trim(minutes) = '*' or minutes ~ '^0/\d+$' then 'by the minute'
+            when minutes = '*' or minutes like '0/%' then 'by the minute'
             when day_of_month != '*' and
                  (day_of_week = '?' or
                   day_of_week ~ '^\d#1$' or
@@ -49,13 +49,10 @@ agg_recipients as (
     select
         nr.notification_handler_id,
         string_agg(cu.email, ',') as recipients,
-        string_agg(
-            case
-                when nr.type = 'notification-recipient/raw-value' then nr.details
-                else null
-            end,
-            ','
-        ) filter (where nr.type = 'notification-recipient/raw-value') as recipient_external
+        (select string_agg(nr2.details, ',')
+         from notification_recipient nr2
+         where nr2.notification_handler_id = nr.notification_handler_id
+         and nr2.type = 'notification-recipient/raw-value') as recipient_external
     FROM notification_recipient nr
     left join core_user cu on nr.user_id = cu.id and nr.type = 'notification-recipient/user'
     group by nr.notification_handler_id
