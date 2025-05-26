@@ -107,13 +107,15 @@ With X being the latest version available for each release.
 
 Check out a list of [Metabase releases](https://github.com/metabase/metabase/releases).
 
+NOTE: when upgrading between major versions (e.g. v53.x to v54.x), please always use the latest minor version available for that major version. E.g. if you want to upgrade from v50 to v51, use v51.14 since .14 it's the latest minor version of the v51 major version.
+
 ## Upgrading Metabase on other platforms
 
 - [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
 
 ## What happens during an upgrade or downgrade?
 
-During a **major version** upgrade (e.g., 53.1 5o 54.1), Metabase will:
+During a **major version** upgrade (e.g., 53.1 or 54.1), Metabase will:
 
 - Perform all the migrations needed to upgrade to the new version, such as any schema changes to the application database between the two versions.
 - Keep all the metadata it needs to work on the application database.
