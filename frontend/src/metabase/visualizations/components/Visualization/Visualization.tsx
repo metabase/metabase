@@ -737,24 +737,6 @@ class Visualization extends PureComponent<
     const canSelectTitle =
       this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
 
-    const titleMenuItems = visualizerRawSeries ? (
-      <>
-        <Menu.Label>{t`Questions in this card`}</Menu.Label>
-        {visualizerRawSeries.map((series, index) => (
-          <Menu.Item
-            key={index}
-            onClick={() => {
-              this.handleOnChangeCardAndRun({
-                nextCard: series.card,
-              });
-            }}
-          >
-            {series.card.name}
-          </Menu.Item>
-        ))}
-      </>
-    ) : undefined;
-
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -783,7 +765,6 @@ class Visualization extends PureComponent<
                 onChangeCardAndRun={
                   canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
-                titleMenuItems={titleMenuItems}
               />
             </VisualizationHeader>
           )}
