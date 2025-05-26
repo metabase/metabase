@@ -80,7 +80,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.findByText(
-        "Failed to fetch the user, the session might be invalid.",
+        "Unable to connect to instance at http://localhost:4000 (status: 402)",
       ).should("be.visible");
     });
   });
