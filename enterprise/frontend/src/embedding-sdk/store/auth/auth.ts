@@ -53,6 +53,10 @@ export const initAuth = createAsyncThunk(
           getOrRefreshSession(authConfig.metabaseInstanceUrl),
         ).unwrap();
       } catch (e) {
+        // eslint-disable-next-line no-literal-metabase-strings -- error checking for better errors. should be improved in the future.
+        if ((e as Error).name === "MetabaseError") {
+          throw e;
+        }
         throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(e as Error);
       }
     }
