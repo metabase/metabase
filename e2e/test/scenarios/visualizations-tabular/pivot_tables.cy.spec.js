@@ -711,12 +711,32 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
   });
 
-  it("should open the download popover (metabase#14750)", () => {
+  it("should show a download widget with a hint about pivoted xlsx exports (metabase#14750)", () => {
+    const HINT_TEXT =
+      "Trying to pivot this data in Excel? You should download the raw data instead.";
     createTestQuestion();
     cy.icon("download").click();
-    H.popover().within(() =>
-      cy.findAllByText("Download").should("have.length", 2),
-    );
+
+    H.popover().within(() => {
+      cy.findByText(".xlsx").click();
+      cy.findByText(HINT_TEXT);
+      cy.findByText("Read the docs").should(
+        "have.attr",
+        "href",
+        "https://www.metabase.com/docs/latest/questions/exporting-results.html#exporting-pivot-tables",
+      );
+
+      cy.findByLabelText("Close hint").click();
+      cy.findByText(HINT_TEXT).should("not.exist");
+
+      cy.findByText("Download");
+    });
+
+    // Ensure the hint is not visible after a page reload
+    cy.reload();
+
+    cy.icon("download").click();
+    H.popover().findByText(HINT_TEXT).should("not.exist");
   });
 
   it.skip("should work for user without data permissions (metabase#14989)", () => {
