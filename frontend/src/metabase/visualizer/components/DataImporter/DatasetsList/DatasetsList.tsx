@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, Loader } from "metabase/ui";
@@ -14,7 +15,6 @@ import {
 import type {
   DashboardId,
   SearchResult,
-  VisualizerCardDataSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
@@ -49,17 +49,29 @@ export function DatasetsList({
   );
 
   const handleAddDataSource = useCallback(
-    (source: VisualizerCardDataSource) => {
-      dispatch(
-        addDataSource({ cardId: source.cardId, cardEntityId: source.sourceId }),
-      );
-      setDataSourceCollapsed(source.id, false);
+    (id: VisualizerDataSourceId) => {
+      trackSimpleEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_added",
+        triggered_from: "visualizer-modal",
+        event_data: id,
+      });
+
+      dispatch(addDataSource(id));
+      setDataSourceCollapsed(id, false);
     },
     [dispatch, setDataSourceCollapsed],
   );
 
   const handleRemoveDataSource = useCallback(
     (source: VisualizerDataSource) => {
+      trackSimpleEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_removed",
+        triggered_from: "visualizer-modal",
+        event_data: source.id,
+      });
+
       dispatch(removeDataSource(source));
       setDataSourceCollapsed(source.id, true);
     },
@@ -67,22 +79,29 @@ export function DatasetsList({
   );
 
   const handleToggleDataSource = useCallback(
-    (item: VisualizerCardDataSource) => {
+    (item: VisualizerDataSource) => {
       if (dataSourceIds.has(item.id)) {
         handleRemoveDataSource(item);
       } else {
-        handleAddDataSource(item);
+        handleAddDataSource(item.id);
       }
     },
     [dataSourceIds, handleAddDataSource, handleRemoveDataSource],
   );
 
   const handleSwapDataSources = useCallback(
-    (item: VisualizerCardDataSource) => {
+    (item: VisualizerDataSource) => {
+      trackSimpleEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_replaced",
+        triggered_from: "visualizer-modal",
+        event_data: item.id,
+      });
+
       dataSources.forEach((dataSource) => {
         handleRemoveDataSource(dataSource);
       });
-      handleAddDataSource(item);
+      handleAddDataSource(item.id);
     },
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
@@ -119,29 +138,20 @@ export function DatasetsList({
         .filter((maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model),
         )
-        .map((card) => {
-          const entityId = "entity_id" in card ? card.entity_id : null;
-          if (!entityId) {
-            return null;
-          }
-          return {
-            ...createDataSource("card", entityId, card.name),
-            cardId: card.id,
-            display: card.display,
-            result_metadata: card.result_metadata,
-          };
-        })
-        .filter(isNotNull);
+        .map((card) => ({
+          ...createDataSource("card", card.id, card.name),
+          display: card.display,
+          result_metadata: card.result_metadata,
+        }));
     }
     return result.data
       .map((item) =>
-        typeof item.entity_id === "string" &&
+        typeof item.id === "number" &&
         shouldIncludeDashboardQuestion(item, dashboardId)
           ? {
-              ...createDataSource("card", item.entity_id, item.name),
-              cardId: Number(item.id),
-              display: item.display,
+              ...createDataSource("card", item.id, item.name),
               result_metadata: item.result_metadata,
+              display: item.display,
             }
           : null,
       )

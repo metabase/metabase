@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-app.audit :as ee-audit]
+   [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit-app.core :as audit]
@@ -26,6 +27,7 @@
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
   `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
+     (clojure.pprint/print-table (t2/select [:model/Database :id :name]))
      (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
        (mbc/ensure-audit-db-installed!)
        (try
@@ -75,7 +77,7 @@
         (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
 
     (testing "Audit DB doesn't get re-installed unless the engine changes"
-      (with-redefs [ee-audit/load-analytics-content (constantly nil)]
+      (with-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
@@ -110,10 +112,11 @@
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
+  ;; clear out the old audit-db instance so that a new one can setup triggers with the temp scheduler
+  (t2/delete! :model/Database :id audit/audit-db-id)
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
     (with-audit-db-restoration
-      (ee-audit/ensure-audit-db-installed!)
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")

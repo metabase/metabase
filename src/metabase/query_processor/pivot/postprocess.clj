@@ -92,25 +92,32 @@
      cols)))
 
 (defn- build-top-headers
-  [top-left-header top-header-items]
-  (if (empty? top-header-items)
-    [(vec top-left-header)]  ;; Return just the top-left header for empty input
-    (let [max-depth   (apply max (map :depth top-header-items))
-          left-width  (count top-left-header)
-          ;; Initialize rows - all rows except the last one are filled with nil
-          header-rows (-> (vec (repeat max-depth (vec (repeat left-width nil))))
-                          (conj (vec top-left-header)))]
-      ;; Fill in the header values for each item
-      (reduce
-       (fn [rows {:keys [depth value span]}]
-         (let [current-row (get rows depth)
-               ;; Add the value and repeat it for the span
-               new-row     (-> current-row
-                               (conj value)
-                               (into (repeat (dec span) value)))]
-           (assoc rows depth new-row)))
-       header-rows
-       top-header-items))))
+  [top-header-items left-header-items row-indexes display-name-for-col]
+  (let [left-header-depth (->> left-header-items
+                               (map :maxDepthBelow)
+                               (reduce max 0)
+                               inc)
+        top-left-header   (sequence (comp (map display-name-for-col)
+                                          (take left-header-depth))
+                                    row-indexes)]
+    (if (empty? top-header-items)
+      [(vec top-left-header)]  ;; Return just the top-left header for empty input
+      (let [max-depth   (apply max (map :depth top-header-items))
+            left-width  (count top-left-header)
+            ;; Initialize rows - all rows except the last one are filled with nil
+            header-rows (-> (vec (repeat max-depth (vec (repeat left-width nil))))
+                            (conj (vec top-left-header)))]
+        ;; Fill in the header values for each item
+        (reduce
+         (fn [rows {:keys [depth value span]}]
+           (let [current-row (get rows depth)
+                 ;; Add the value and repeat it for the span
+                 new-row     (-> current-row
+                                 (conj value)
+                                 (into (repeat (dec span) value)))]
+             (assoc rows depth new-row)))
+         header-rows
+         top-header-items)))))
 
 (defn- build-left-headers
   [left-header-items]
@@ -181,10 +188,7 @@
                                                             format-rows?
                                                             settings
                                                             col-settings)
-        top-left-header          (map (fn [i] (pivot/display-name-for-col (nth columns i)
-                                                                          (nth col-settings i)
-                                                                          format-rows?))
-                                      row-indexes)
-        top-headers              (build-top-headers top-left-header topHeaderItems)
+        display-name-for-col-idx #(pivot/display-name-for-col (nth columns %) (nth col-settings %) format-rows?)
+        top-headers              (build-top-headers topHeaderItems leftHeaderItems row-indexes display-name-for-col-idx)
         left-headers             (build-left-headers leftHeaderItems)]
     (build-full-pivot getRowSection left-headers top-headers (count (:values column-split)))))

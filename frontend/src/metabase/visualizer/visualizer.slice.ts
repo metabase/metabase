@@ -11,6 +11,7 @@ import { cardApi } from "metabase/api";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { copy } from "metabase/lib/utils";
 import { isCartesianChart } from "metabase/visualizations";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
@@ -41,6 +42,7 @@ import {
   getColumnVizSettings,
   getDataSourceIdFromNameRef,
   getInitialStateForCardDataSource,
+  parseDataSourceId,
 } from "./utils";
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
@@ -91,16 +93,15 @@ function getInitialState(): VisualizerState {
 type InitVisualizerPayload =
   | {
       state?: Partial<VisualizerVizDefinitionWithColumns>;
-      cardByEntityId: Record<string, Card>;
     }
-  | { card: Card };
+  | { cardId: CardId };
 
 export const initializeVisualizer = createAsyncThunk(
   "visualizer/initializeVisualizer",
   async (payload: InitVisualizerPayload, { dispatch, getState }) => {
-    if ("card" in payload) {
+    if ("cardId" in payload) {
       const initState = await initializeFromCard(
-        payload.card,
+        payload.cardId,
         dispatch,
         getState,
       );
@@ -114,10 +115,8 @@ export const initializeVisualizer = createAsyncThunk(
 const initializeFromState = async (
   {
     state: initialState = {},
-    cardByEntityId,
   }: {
     state?: Partial<VisualizerVizDefinitionWithColumns>;
-    cardByEntityId: Record<string, Card>;
   },
   dispatch: Dispatch,
 ) => {
@@ -130,17 +129,10 @@ const initializeFromState = async (
   await Promise.all(
     dataSourceIds
       .map((sourceId) => {
-        const [, cardEntityId] = sourceId.split(":");
-        const cardId = cardByEntityId[cardEntityId].id;
-
+        const [, cardId] = sourceId.split(":");
         return [
-          dispatch(fetchCard({ cardId: Number(cardId), cardEntityId })),
-          dispatch(
-            fetchCardQuery({
-              cardId: Number(cardId),
-              cardEntityId: cardEntityId,
-            }),
-          ),
+          dispatch(fetchCard(Number(cardId))),
+          dispatch(fetchCardQuery(Number(cardId))),
         ];
       })
       .flat(),
@@ -149,55 +141,55 @@ const initializeFromState = async (
 };
 
 const initializeFromCard = async (
-  card: Card,
+  cardId: number,
   dispatch: Dispatch,
   getState: GetState,
 ) => {
-  await dispatch(fetchCard({ cardId: card.id, cardEntityId: card.entity_id }));
-  await dispatch(
-    fetchCardQuery({ cardId: card.id, cardEntityId: card.entity_id }),
-  );
-  const { datasets } = getState().visualizer.present;
-  const dataset = datasets[`card:${card?.entity_id}`];
+  await Promise.all([
+    dispatch(fetchCard(cardId)),
+    dispatch(fetchCardQuery(cardId)),
+  ]);
+  const { cards, datasets } = getState().visualizer.present;
+  const card = cards.find((card) => card.id === cardId);
+  const dataset = datasets[`card:${cardId}`];
   if (!card || !dataset) {
-    throw new Error(`Card or dataset not found for ID: ${card.id}`);
+    throw new Error(`Card or dataset not found for ID: ${cardId}`);
   }
   return getInitialStateForCardDataSource(card, dataset);
 };
 
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
-  async (
-    { cardId, cardEntityId }: { cardId: number; cardEntityId: string },
-    { dispatch, getState },
-  ) => {
+  async (id: VisualizerDataSourceId, { dispatch, getState }) => {
+    const { type, sourceId } = parseDataSourceId(id);
+
     const state = getCurrentVisualizerState(getState());
 
     let dataSource: VisualizerDataSource | null = null;
     let dataset: Dataset | null = null;
 
-    // TODO handle rejected requests
-    const cardAction = await dispatch(fetchCard({ cardId, cardEntityId }));
-    const card = cardAction.payload as Card;
-    const cardQueryAction = await dispatch(
-      fetchCardQuery({ cardId: card.id, cardEntityId: card.entity_id }),
-    );
+    if (type === "card") {
+      // TODO handle rejected requests
+      const cardAction = await dispatch(fetchCard(sourceId));
+      const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
 
-    dataset = cardQueryAction.payload as Dataset;
+      const card = cardAction.payload as Card;
+      dataset = cardQueryAction.payload as Dataset;
 
-    if (
-      !state.display ||
-      (card.display === state.display && state.columns.length === 0)
-    ) {
-      return getInitialStateForCardDataSource(card, dataset);
+      if (
+        !state.display ||
+        (card.display === state.display && state.columns.length === 0)
+      ) {
+        return getInitialStateForCardDataSource(card, dataset);
+      }
+
+      dataSource = createDataSource("card", card.id, card.name);
+    } else {
+      throw new Error(`Unsupported data source type: ${type}`);
     }
 
-    dataSource = createDataSource("card", card.entity_id, card.name);
-
     if (!dataSource || !dataset) {
-      throw new Error(
-        `Could not get data source or dataset for card id: ${cardId}`,
-      );
+      throw new Error(`Could not get data source or dataset for: ${sourceId}`);
     }
 
     // Computed settings include all settings with their default values, including derived settings
@@ -220,6 +212,7 @@ export const addDataSource = createAsyncThunk(
         ...copy(state),
         settings,
       },
+      settings,
       state.datasets,
       dataSource,
       dataset,
@@ -227,31 +220,61 @@ export const addDataSource = createAsyncThunk(
   },
 );
 
-const fetchCard = createAsyncThunk<
-  Card,
-  { cardId: CardId; cardEntityId: string }
->("visualizer/fetchCard", async ({ cardId }, { dispatch }) => {
-  const result = await dispatch(
-    cardApi.endpoints.getCard.initiate({ id: cardId }),
-  );
-  if (result.data != null) {
-    return result.data;
-  }
-  throw new Error("Failed to fetch card");
-});
+export const addColumn = createAsyncThunk(
+  "visualizer/addColumn",
+  async (
+    payload: { column: DatasetColumn; dataSource: VisualizerDataSource },
+    { dispatch, getState },
+  ) => {
+    const settings = getVisualizerComputedSettingsForFlatSeries(getState());
+    dispatch(_addColumn({ ...payload, settings }));
+  },
+);
 
-const fetchCardQuery = createAsyncThunk<
-  Dataset,
-  { cardId: CardId; cardEntityId: string }
->("visualizer/fetchCardQuery", async ({ cardId }, { dispatch }) => {
-  const result = await dispatch(
-    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-  );
-  if (result.data != null) {
-    return result.data;
-  }
-  throw new Error("Failed to fetch card query");
-});
+export const removeColumn = createAsyncThunk(
+  "visualizer/removeColumn",
+  async (
+    payload: { name: string; well?: "bubble" | "all" },
+    { dispatch, getState },
+  ) => {
+    const settings = getVisualizerComputedSettingsForFlatSeries(getState());
+    dispatch(_removeColumn({ ...payload, settings }));
+  },
+);
+
+export const handleDrop = createAsyncThunk(
+  "visualizer/handleDrop",
+  async (event: DragEndEvent, { dispatch, getState }) => {
+    const settings = getVisualizerComputedSettingsForFlatSeries(getState());
+    dispatch(_handleDrop({ event, settings }));
+  },
+);
+
+const fetchCard = createAsyncThunk<Card, CardId>(
+  "visualizer/fetchCard",
+  async (cardId, { dispatch }) => {
+    const result = await dispatch(
+      cardApi.endpoints.getCard.initiate({ id: cardId }),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch card");
+  },
+);
+
+const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
+  "visualizer/fetchCardQuery",
+  async (cardId, { dispatch }) => {
+    const result = await dispatch(
+      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch card query");
+  },
+);
 
 export const undo = createAction("visualizer/undo");
 export const redo = createAction("visualizer/redo");
@@ -303,14 +326,15 @@ const visualizerSlice = createSlice({
         ...action.payload,
       };
     },
-    addColumn: (
+    _addColumn: (
       state,
       action: PayloadAction<{
         column: DatasetColumn;
         dataSource: VisualizerDataSource;
+        settings: ComputedVisualizationSettings;
       }>,
     ) => {
-      const { column: originalColumn, dataSource } = action.payload;
+      const { column: originalColumn, dataSource, settings } = action.payload;
 
       if (!state.display) {
         return;
@@ -320,11 +344,7 @@ const visualizerSlice = createSlice({
 
       const dataSourceMap = Object.fromEntries(
         state.cards.map((card) => {
-          const dataSource = createDataSource(
-            "card",
-            card.entity_id,
-            card.name,
-          );
+          const dataSource = createDataSource("card", card.id, card.name);
           return [dataSource.id, dataSource];
         }),
       );
@@ -344,6 +364,7 @@ const visualizerSlice = createSlice({
       if (state.display === "funnel") {
         addColumnToFunnel(
           state,
+          settings,
           state.datasets as Record<string, Dataset>,
           column,
           columnRef,
@@ -357,6 +378,7 @@ const visualizerSlice = createSlice({
       if (isCartesianChart(state.display)) {
         addColumnToCartesianChart(
           state,
+          settings,
           state.datasets as Record<string, Dataset>,
           dataset.data.cols,
           column,
@@ -374,6 +396,7 @@ const visualizerSlice = createSlice({
           >;
           maybeImportDimensionsFromOtherDataSources(
             state,
+            settings,
             column,
             datasetMap,
             dataSourceMap,
@@ -382,6 +405,7 @@ const visualizerSlice = createSlice({
       } else if (state.display === "pie") {
         addColumnToPieChart(
           state,
+          settings,
           state.datasets as Record<string, Dataset>,
           dataset.data.cols,
           column,
@@ -389,67 +413,71 @@ const visualizerSlice = createSlice({
         );
       }
     },
-    removeColumn: (
+    _removeColumn: (
       state,
-      action: PayloadAction<{ name: string; well?: "bubble" | "all" }>,
+      action: PayloadAction<{
+        name: string;
+        settings: ComputedVisualizationSettings;
+        well?: "bubble" | "all";
+      }>,
     ) => {
-      const { name, well } = action.payload;
+      const { name, well, settings } = action.payload;
       if (!state.display) {
         return;
       }
 
       if (isCartesianChart(state.display)) {
         if (well === "all") {
-          removeColumnFromCartesianChart(state, name);
+          removeColumnFromCartesianChart(state, settings, name);
           removeBubbleSizeFromCartesianChart(state, name);
         } else if (well === "bubble") {
           removeBubbleSizeFromCartesianChart(state, name);
         } else {
-          removeColumnFromCartesianChart(state, name);
+          removeColumnFromCartesianChart(state, settings, name);
         }
       } else if (state.display === "funnel") {
-        removeColumnFromFunnel(state, name);
+        removeColumnFromFunnel(state, settings, name);
       } else if (state.display === "pie") {
-        removeColumnFromPieChart(state, name);
+        removeColumnFromPieChart(state, settings, name);
       }
     },
-    handleDrop: (state, action: PayloadAction<DragEndEvent>) => {
+    _handleDrop: (
+      state,
+      action: PayloadAction<{
+        event: DragEndEvent;
+        settings: ComputedVisualizationSettings;
+      }>,
+    ) => {
       state.draggedItem = null;
 
       if (!state.display) {
         return;
       }
 
-      const event = action.payload;
+      const { event, settings } = action.payload;
 
       if (isCartesianChart(state.display)) {
-        cartesianDropHandler(state, event, {
+        cartesianDropHandler(state, settings, event, {
           // Prevents "Type instantiation is excessively deep" error
           datasetMap: state.datasets as Record<VisualizerDataSourceId, Dataset>,
           dataSourceMap: Object.fromEntries(
             state.cards.map((card) => {
-              const dataSource = createDataSource(
-                "card",
-                card.entity_id,
-                card.name,
-              );
+              const dataSource = createDataSource("card", card.id, card.name);
               return [dataSource.id, dataSource];
             }),
           ),
         });
       } else if (state.display === "funnel") {
-        funnelDropHandler(state, event);
+        funnelDropHandler(state, settings, event);
       } else if (state.display === "pie") {
-        pieDropHandler(state, event);
+        pieDropHandler(state, settings, event);
       }
     },
     removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
       const source = action.payload;
       if (source.type === "card") {
-        const cardEntityId = source.sourceId;
-        state.cards = state.cards.filter(
-          (card) => card.entity_id !== cardEntityId,
-        );
+        const cardId = source.sourceId;
+        state.cards = state.cards.filter((card) => card.id !== cardId);
       }
       delete state.loadingDataSources[source.id];
       delete state.datasets[source.id];
@@ -528,8 +556,8 @@ const visualizerSlice = createSlice({
         }
       })
       .addCase(fetchCard.pending, (state, action) => {
-        const cardEntityId = action.meta.arg.cardEntityId;
-        state.loadingDataSources[`card:${cardEntityId}`] = true;
+        const cardId = action.meta.arg;
+        state.loadingDataSources[`card:${cardId}`] = true;
         state.error = null;
       })
       .addCase(fetchCard.fulfilled, (state, action: PayloadAction<Card>) => {
@@ -543,32 +571,36 @@ const visualizerSlice = createSlice({
           state.cards.push(card as any);
         }
 
-        state.loadingDataSources[`card:${card.entity_id}`] = false;
+        state.loadingDataSources[`card:${card.id}`] = false;
       })
       .addCase(fetchCard.rejected, (state, action) => {
-        const cardEntityId = action.meta.arg.cardEntityId;
-        if (cardEntityId) {
-          state.loadingDataSources[`card:${cardEntityId}`] = false;
+        const cardId = action.meta.arg;
+        if (cardId) {
+          state.loadingDataSources[`card:${cardId}`] = false;
         }
         state.error = action.error.message || "Failed to fetch card";
       })
       .addCase(fetchCardQuery.pending, (state, action) => {
-        const cardEntityId = action.meta.arg.cardEntityId;
-        state.loadingDatasets[`card:${cardEntityId}`] = true;
+        const cardId = action.meta.arg;
+        state.loadingDatasets[`card:${cardId}`] = true;
         state.error = null;
       })
-      .addCase(fetchCardQuery.fulfilled, (state, action) => {
-        const cardEntityId = action.meta.arg.cardEntityId;
-        const dataset = action.payload;
+      .addCase(
+        fetchCardQuery.fulfilled,
+        (state, action: { payload: Dataset; meta: { arg: CardId } }) => {
+          const cardId = action.meta.arg;
+          const dataset = action.payload;
 
-        // `any` prevents the "Type instantiation is excessively deep" error
-        state.datasets[`card:${cardEntityId}`] = dataset as any;
-        state.loadingDatasets[`card:${cardEntityId}`] = false;
-      })
+          // `any` prevents the "Type instantiation is excessively deep" error
+          state.datasets[`card:${cardId}`] = dataset as any;
+
+          state.loadingDatasets[`card:${cardId}`] = false;
+        },
+      )
       .addCase(fetchCardQuery.rejected, (state, action) => {
-        const cardEntityId = action.meta.arg.cardEntityId;
-        if (cardEntityId) {
-          state.loadingDatasets[`card:${cardEntityId}`] = false;
+        const cardId = action.meta.arg;
+        if (cardId) {
+          state.loadingDatasets[`card:${cardId}`] = false;
         }
         state.error = action.error.message || "Failed to fetch card query";
       });
@@ -577,6 +609,7 @@ const visualizerSlice = createSlice({
 
 function maybeCombineDataset(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   datasets: Record<string, Dataset>,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
@@ -586,42 +619,40 @@ function maybeCombineDataset(
   }
 
   if (isCartesianChart(state.display)) {
-    combineWithCartesianChart(state, datasets, dataset, dataSource);
+    combineWithCartesianChart(state, settings, datasets, dataset, dataSource);
   }
 
   if (state.display === "pie") {
-    combineWithPieChart(state, datasets, dataset, dataSource);
+    combineWithPieChart(state, settings, datasets, dataset, dataSource);
   }
 
   if (state.display === "funnel") {
-    combineWithFunnel(state, dataset, dataSource);
+    combineWithFunnel(state, settings, dataset, dataSource);
   }
 
   return state;
 }
 
-const { _resetVisualizer } = visualizerSlice.actions;
+const { _addColumn, _handleDrop, _removeColumn, _resetVisualizer } =
+  visualizerSlice.actions;
 
 export const {
-  addColumn,
   setTitle,
   updateSettings,
-  removeColumn,
   removeDataSource,
   setDisplay,
   setDraggedItem,
-  handleDrop,
 } = visualizerSlice.actions;
 
 export const reducer = undoable(visualizerSlice.reducer, {
   filter: includeAction([
     initializeVisualizer.fulfilled.type,
-    addColumn.type,
+    _addColumn.type,
     setTitle.type,
     updateSettings.type,
-    removeColumn.type,
+    _removeColumn.type,
     setDisplay.type,
-    handleDrop.type,
+    _handleDrop.type,
     removeDataSource.type,
     addDataSource.fulfilled.type,
   ]),

@@ -94,7 +94,7 @@ export const getReferencedColumns = createSelector(
  * Returns a list of data sources that are used in the current visualization.
  */
 export const getDataSources = createSelector([getCards], (cards) =>
-  cards.map((card) => createDataSource("card", card.entity_id, card.name)),
+  cards.map((card) => createDataSource("card", card.id, card.name)),
 );
 
 export const getUsedDataSources = createSelector(
@@ -205,6 +205,9 @@ export const getVisualizerComputedSettings = createSelector(
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
 );
 
+// When computing viz settings for a multi-series chart,
+// the final object only references columns from the first series
+// Which can cause issues in certain cases
 export const getVisualizerComputedSettingsForFlatSeries = createSelector(
   [getVisualizerFlatRawSeries],
   (series): ComputedVisualizationSettings =>
