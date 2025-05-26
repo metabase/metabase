@@ -20,7 +20,6 @@ export interface CollectionHeaderProps {
   collection: Collection;
   isAdmin: boolean;
   isBookmarked: boolean;
-  isPersonalCollectionChild: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
@@ -33,7 +32,6 @@ const CollectionHeader = ({
   collection,
   isAdmin,
   isBookmarked,
-  isPersonalCollectionChild,
   onUpdateCollection,
   onCreateBookmark,
   onDeleteBookmark,
@@ -82,7 +80,6 @@ const CollectionHeader = ({
             <CollectionMenu
               collection={collection}
               isAdmin={isAdmin}
-              isPersonalCollectionChild={isPersonalCollectionChild}
               onUpdateCollection={onUpdateCollection}
             />
           )}
