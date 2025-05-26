@@ -134,7 +134,7 @@ export default class CustomGeoJSONWidget extends Component {
         geoJsonError: null,
       });
       const geoJson = await GeoJSONApi.load({
-        url: encodeURIComponent(map.url),
+        url: map.url,
       });
       this._validateGeoJson(geoJson);
       this.setState({
@@ -279,7 +279,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => {
   );
 };
 
-const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
+const GeoJsonPropertySelect = ({ value, onChange, geoJson, dataTestId }) => {
   const options = {};
   if (geoJson) {
     if (geoJson.type === "FeatureCollection") {
@@ -298,30 +298,32 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
   }
 
   return (
-    <Select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={t`Select…`}
-    >
-      {Object.entries(options).map(([name, values]) => (
-        <Option key={name} value={name}>
-          <div>
-            <div style={{ textAlign: "left" }}>{name}</div>
-            <div
-              className={cx(CS.mt1, CS.h6)}
-              style={{
-                maxWidth: 250,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {t`Sample values:`} {values.join(", ")}
+    <div data-testid={dataTestId}>
+      <Select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t`Select…`}
+      >
+        {Object.entries(options).map(([name, values]) => (
+          <Option key={name} value={name}>
+            <div>
+              <div style={{ textAlign: "left" }}>{name}</div>
+              <div
+                className={cx(CS.mt1, CS.h6)}
+                style={{
+                  maxWidth: 250,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {t`Sample values:`} {values.join(", ")}
+              </div>
             </div>
-          </div>
-        </Option>
-      ))}
-    </Select>
+          </Option>
+        ))}
+      </Select>
+    </div>
   );
 };
 
@@ -413,6 +415,7 @@ const EditMap = ({
               value={map.region_key}
               onChange={(value) => onMapChange({ ...map, region_key: value })}
               geoJson={geoJson}
+              dataTestId={"map-region-key-select"}
             />
           </SettingContainer>
           <SettingContainer
@@ -422,6 +425,7 @@ const EditMap = ({
               value={map.region_name}
               onChange={(value) => onMapChange({ ...map, region_name: value })}
               geoJson={geoJson}
+              dataTestId={"map-region-name-select"}
             />
           </SettingContainer>
         </div>
