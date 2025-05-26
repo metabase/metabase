@@ -18,6 +18,7 @@ export * from "./dataset";
 export * from "./email";
 export * from "./field";
 export * from "./gdrive";
+export * from "./geojson";
 export * from "./google";
 export * from "./group";
 export * from "./impersonation";

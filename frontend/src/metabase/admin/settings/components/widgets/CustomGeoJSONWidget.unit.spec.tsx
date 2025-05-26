@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupGeoJSONEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -8,7 +9,9 @@ import {
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { findRequests } from "__support__/utils";
 import { UndoListing } from "metabase/containers/UndoListing";
+import type { CustomGeoJSONMap } from "metabase-types/api";
 import {
+  createMockGeoJSONFeatureCollection,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
@@ -51,6 +54,11 @@ const setup = ({ isEnvVar }: { isEnvVar?: boolean }) => {
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([geoJSONDefinition]);
+
+  setupGeoJSONEndpoint({
+    featureCollection: createMockGeoJSONFeatureCollection(),
+    url: "https://test.com/download/GeoJSON.json",
+  });
 
   return renderWithProviders(
     <div>
@@ -101,34 +109,71 @@ describe("CustomGeoJSONWIdget", () => {
 
     const addButton = screen.getByRole("button", { name: "Add a map" });
     await userEvent.click(addButton);
+    const modal = screen.getByRole("dialog");
+    expect(modal).toBeInTheDocument();
+
+    // Save only becomes enabled when all the fields are filled in
+    const saveButton = screen.getByRole("button", { name: /Add map/i });
+    expect(saveButton).toBeDisabled();
+
+    // Add Map Name
     const nameInput = screen.getByPlaceholderText(
       /e.g. United Kingdom, Brazil, Mars/i,
     );
     await userEvent.type(nameInput, "Test Map");
 
+    // Load is disabled until URL is added
     expect(await screen.findByRole("button", { name: /Load/i })).toBeDisabled();
+
+    // Add Map URL
     const urlInput = screen.getByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     );
+    const loadButton = await screen.findByRole("button", { name: /Load/i });
+    expect(loadButton).toBeDisabled();
     await userEvent.type(urlInput, "https://test.com/download/GeoJSON.json");
-    expect(await screen.findByRole("button", { name: /Load/i })).toBeEnabled();
+    expect(loadButton).toBeEnabled();
 
-    expect(
-      await screen.findByRole("button", { name: /Add map/i }),
-    ).toBeDisabled();
+    // Load Map
+    await userEvent.click(loadButton);
+
+    // Still more fields required
+    expect(saveButton).toBeDisabled();
+
+    // Select map features for key and name
+    const keySelect = within(screen.getByTestId("map-region-key-select"));
+    await userEvent.click(await keySelect.findByTestId("select-button"));
+    await userEvent.click(await screen.findByText("scalerank"));
+
+    const nameSelect = within(screen.getByTestId("map-region-name-select"));
+    await userEvent.click(await nameSelect.findByTestId("select-button"));
+    await userEvent.click(screen.getByText("featureclass"));
+
+    // Save and check body contains data
+    expect(saveButton).toBeEnabled();
+    await userEvent.click(saveButton);
+    expect(modal).not.toBeInTheDocument();
+
+    const puts = await findRequests("PUT");
+    const { body } = puts[0];
+    const testMapEntry = Object.values(body.value).find(
+      (item) => (item as CustomGeoJSONMap).name === "Test Map",
+    );
+    expect(testMapEntry).toEqual({
+      name: "Test Map",
+      region_key: "scalerank",
+      region_name: "featureclass",
+      url: "https://test.com/download/GeoJSON.json",
+    });
   });
 
-  it("should display a notice instead of input set by an environment variable", async () => {
+  it("should not render the widget if set by an environment variable", async () => {
     setup({
       isEnvVar: true,
     });
 
     expect(
-      await screen.findByText(/This has been set by the/),
-    ).toBeInTheDocument();
-    expect(screen.getByText("MB_EMAIL_REPLY_TO")).toBeInTheDocument();
-    expect(screen.getByText(/environment variable./)).toBeInTheDocument();
-
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+      screen.queryByRole("button", { name: "Add a map" }),
+    ).not.toBeInTheDocument();
   });
 });

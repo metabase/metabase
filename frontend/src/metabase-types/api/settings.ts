@@ -298,16 +298,15 @@ export interface UploadsSettings {
   table_prefix: string | null;
 }
 
-type CustomGeoJSONSetting = Record<
-  string,
-  {
-    name: string;
-    url: string;
-    region_key: string;
-    region_name: string;
-    builtin?: boolean;
-  }
->;
+export type CustomGeoJSONMap = {
+  name: string;
+  url: string;
+  region_key: string;
+  region_name: string;
+  builtin?: boolean;
+};
+
+type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
   "admin-email": string;
