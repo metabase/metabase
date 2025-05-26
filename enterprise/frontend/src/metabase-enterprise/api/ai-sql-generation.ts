@@ -7,7 +7,7 @@ import { EnterpriseApi } from "./api";
 
 export const aiSqlGenerationApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    generateSqlQuery: builder.mutation<
+    generateSqlQuery: builder.query<
       GenerateSqlQueryResponse,
       GenerateSqlQueryRequest
     >({
@@ -20,4 +20,5 @@ export const aiSqlGenerationApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useGenerateSqlQueryMutation } = aiSqlGenerationApi;
+export const { useGenerateSqlQueryQuery, useLazyGenerateSqlQueryQuery } =
+  aiSqlGenerationApi;
