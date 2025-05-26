@@ -3,13 +3,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { GoogleAuthForm } from "metabase/admin/settings/auth/components/GoogleAuthForm";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
-import { newVersionAvailable } from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_SETTINGS,
-  PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
@@ -17,25 +15,21 @@ import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { CloudPanel } from "../components/CloudPanel";
-import { BccToggleWidget } from "../components/Email/BccToggleWidget";
-import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
 import {
   EmbeddingSdkSettings,
   EmbeddingSettings,
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
+import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
+import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
+import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
-import FormattingWidget from "../components/widgets/FormattingWidget";
-import {
-  PublicLinksActionListing,
-  PublicLinksDashboardListing,
-  PublicLinksQuestionListing,
-} from "../components/widgets/PublicLinksListing";
-import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
@@ -83,47 +77,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   email: {
     name: t`Email`,
     order: 40,
-    component: SettingsEmailForm,
-    settings: [
-      {
-        key: "email-from-name",
-        display_name: t`From Name`,
-        placeholder: "Metabase",
-        type: "string",
-        required: false,
-      },
-      {
-        key: "email-from-address",
-        display_name: t`From Address`,
-        placeholder: "metabase@yourcompany.com",
-        type: "string",
-        required: true,
-        validations: [["email", t`That's not a valid email address`]],
-      },
-      {
-        key: "email-reply-to",
-        display_name: t`Reply-To Address`,
-        placeholder: "metabase-replies@yourcompany.com",
-        type: "string",
-        required: false,
-        widget: SettingCommaDelimitedInput,
-        validations: [["email_list", t`That's not a valid email address`]],
-      },
-      {
-        key: "bcc-enabled?",
-        display_name: t`Add Recipients as CC or BCC`,
-        description: t`Control the visibility of alerts and subscriptions recipients.`,
-        options: [
-          { value: true, name: t`BCC - Hide recipients` },
-          {
-            value: false,
-            name: t`CC - Disclose recipients`,
-          },
-        ],
-        defaultValue: true,
-        widget: BccToggleWidget,
-      },
-    ],
+    component: EmailSettingsPage,
+    settings: [],
   },
   "email/smtp": {
     component: SMTPConnectionForm,
@@ -189,16 +144,28 @@ export const ADMIN_SETTINGS_SECTIONS = {
   authentication: {
     name: t`Authentication`,
     order: 60,
-    key: "authentication",
-    tabs:
-      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
-        ? undefined
-        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map((tab) => ({
-            ...tab,
-            isActive: tab.key === "authentication",
-          })),
-    settings: [], // added by plugins
+    component: () => <AuthenticationSettingsPage tab="authentication" />,
+    settings: [],
     adminOnly: true,
+  },
+  "authentication/user-provisioning": {
+    name: t`Authentication`,
+    order: 61,
+    component: () => <AuthenticationSettingsPage tab="user-provisioning" />,
+    settings: [],
+    adminOnly: true,
+  },
+  "authentication/api-keys": {
+    name: t`Authentication`,
+    order: 62,
+    component: () => <AuthenticationSettingsPage tab="api-keys" />,
+    settings: [],
+    adminOnly: true,
+  },
+  "authentication/google": {
+    component: GoogleAuthForm,
+    order: 63,
+    settings: [],
   },
   maps: {
     name: t`Maps`,
@@ -229,62 +196,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   localization: {
     name: t`Localization`,
     order: 80,
-    settings: [
-      {
-        display_name: t`Instance language`,
-        key: "site-locale",
-        type: "select",
-        options: _.sortBy(
-          MetabaseSettings.get("available-locales") || [],
-          ([code, name]) => name,
-        ).map(([code, name]) => ({ name, value: code })),
-        defaultValue: "en",
-        onChanged: (oldLocale, newLocale) => {
-          if (oldLocale !== newLocale) {
-            window.location.reload();
-          }
-        },
-      },
-      {
-        key: "report-timezone",
-        display_name: t`Report Timezone`,
-        type: "select",
-        options: [
-          { name: t`Database Default`, value: "" },
-          ...(MetabaseSettings.get("available-timezones") || []),
-        ],
-        description: (
-          <>
-            <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
-            <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
-          </>
-        ),
-        allowValueCollection: true,
-        searchProp: "name",
-        defaultValue: "",
-      },
-      {
-        key: "start-of-week",
-        display_name: t`First day of the week`,
-        type: "select",
-        options: [
-          { value: "sunday", name: t`Sunday` },
-          { value: "monday", name: t`Monday` },
-          { value: "tuesday", name: t`Tuesday` },
-          { value: "wednesday", name: t`Wednesday` },
-          { value: "thursday", name: t`Thursday` },
-          { value: "friday", name: t`Friday` },
-          { value: "saturday", name: t`Saturday` },
-        ],
-        defaultValue: "sunday",
-      },
-      {
-        display_name: t`Localization options`,
-        description: "",
-        key: "custom-formatting",
-        widget: FormattingWidget,
-      },
-    ],
+    component: LocalizationSettingsPage,
+    settings: [],
   },
   uploads: {
     name: t`Uploads`,
@@ -293,39 +206,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: UploadSettingsPage,
     settings: [],
   },
-
   "public-sharing": {
     name: t`Public Sharing`,
     order: 90,
-    settings: [
-      {
-        key: "enable-public-sharing",
-        display_name: t`Enable Public Sharing`,
-        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
-        type: "boolean",
-      },
-      {
-        key: "-public-sharing-dashboards",
-        display_name: t`Shared Dashboards`,
-        widget: PublicLinksDashboardListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-      {
-        key: "-public-sharing-questions",
-        display_name: t`Shared Questions`,
-        widget: PublicLinksQuestionListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-      {
-        key: "-public-sharing-actions",
-        display_name: t`Shared Action Forms`,
-        widget: PublicLinksActionListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-    ],
+    component: PublicSharingSettingsPage,
+    settings: [],
   },
   "embedding-in-other-applications": {
     key: "enable-embedding",
@@ -382,23 +267,40 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
+  appearance: {
+    // OSS Version
+    name: t`Appearance`,
+    getHidden: (settings) => settings["token-features"]?.whitelabel,
+    order: 133,
+    component: () => <AppearanceSettingsPage />,
+    isUpsell: true,
+    settings: [],
+  },
+  whitelabel: {
+    // EE Version
+    name: t`Appearance`,
+    getHidden: (settings) => !settings["token-features"]?.whitelabel,
+    order: 134,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/branding": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/conceal-metabase": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="conceal-metabase" />,
+    settings: [],
+  },
   cloud: {
     name: t`Cloud`,
     getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
-    order: 132,
+    order: 140,
     component: CloudPanel,
-    settings: [],
-    isUpsell: true,
-  },
-  whitelabel: {
-    name: t`Appearance`,
-    getHidden: (settings) => settings["token-features"]?.whitelabel === true,
-    order: 133,
-    component: (props) => (
-      <UpsellWhitelabel {...props} source="settings-appearance" />
-    ),
     settings: [],
     isUpsell: true,
   },
@@ -436,25 +338,6 @@ export const getCurrentVersion = createSelector(
   getDerivedSettingValues,
   (settings) => {
     return settings.version?.tag;
-  },
-);
-
-export const getLatestVersion = createSelector(
-  getDerivedSettingValues,
-  (settings) => {
-    const updateChannel = settings["update-channel"] ?? "latest";
-    return settings["version-info"]?.[updateChannel]?.version;
-  },
-);
-
-export const getNewVersionAvailable = createSelector(
-  getCurrentVersion,
-  getLatestVersion,
-  (currentVersion, latestVersion) => {
-    return newVersionAvailable({
-      currentVersion,
-      latestVersion,
-    });
   },
 );
 

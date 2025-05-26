@@ -19,9 +19,9 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defn- resolve-metric [query metric-id]
-  (when (integer? metric-id)
-    (lib.metadata/metric query metric-id)))
+(defn- resolve-metric [query card-id]
+  (when (pos-int? card-id)
+    (lib.metadata/metric query card-id)))
 
 (mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
@@ -123,6 +123,9 @@
              metrics (if source-table
                        (lib.metadata/metadatas-for-table query :metadata/metric source-table)
                        (lib.metadata/metadatas-for-card query :metadata/metric (lib.util/source-card-id query)))]
+         (when (seq metrics)
+           ;; "pre-warm" the metadata provider
+           (lib.metadata/bulk-metadata query :metadata/card (into #{} (map :id) metrics)))
          (not-empty
           (into []
                 (comp (filter (fn [metric-card]

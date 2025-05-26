@@ -7,13 +7,13 @@
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
-   [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.task.send :as task.notification]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -63,12 +63,13 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
-  (with-send-notification-sync
-    (let [channel-messages (atom {})]
-      (with-redefs [channel/send! (fn [channel message]
-                                    (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+  (with-javascript-visualization-stub
+    (with-send-notification-sync
+      (let [channel-messages (atom {})]
+        (with-redefs [channel/send! (fn [channel message]
+                                      (swap! channel-messages update (:type channel) u/conjv message))]
+          (thunk)
+          @channel-messages)))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -267,7 +268,7 @@
   ([subscription-id cron-schedule]
    (subscription->trigger-info subscription-id cron-schedule "UTC"))
   ([subscription-id cron-schedule timezone]
-   {:key      (.getName (#'task.notification/send-notification-trigger-key subscription-id))
+   {:key      (.getName ^org.quartz.TriggerKey (#'task.notification/send-notification-trigger-key subscription-id))
     :schedule cron-schedule
     :data     {"subscription-id" subscription-id}
     :timezone timezone}))

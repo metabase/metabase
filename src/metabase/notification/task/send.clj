@@ -8,8 +8,8 @@
    [metabase.driver :as driver]
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
    [metabase.task-history.core :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -141,9 +141,8 @@
                                [:= :ns.type "notification-subscription/cron"]
                                [:= :n.active true]]}))
 
-;; called in [driver/report-timezone] setter
 (defn update-send-notification-triggers-timezone!
-  "Update the timezone of all SendPulse triggers if the report timezone changes."
+  "Update the timezone of all SendNotification triggers if the report timezone changes."
   []
   (let [triggers              (-> send-notification-job-key task/job-info :triggers)
         new-timezone          (send-notification-timezone)
@@ -166,7 +165,7 @@
 
   Called when starting the instance."
   []
-  (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
+  (assert (task/scheduler) "Scheduler must be started before initializing SendNotification triggers")
 
   ;; Get all existing triggers and subscription IDs
   (let [existing-triggers                  (:triggers (task/job-info send-notification-job-key))
@@ -182,7 +181,12 @@
 (task/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup."
+    Run once on startup.
+
+    Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
+    This job is needed to create triggers for all existing notification subscriptions after the migration.
+    The fact that it runs on every startup is because we have no way to have it run only once.
+    Ideally this should be a migration."
     DisallowConcurrentExecution true}
   InitNotificationTriggers
   [_context]

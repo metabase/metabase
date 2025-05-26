@@ -10,9 +10,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.tx]
@@ -85,7 +85,7 @@
                                  "LIMIT"
                                  "  2000"]]
                        (-> line
-                           (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
+                           (str/replace #"\Q{{site-uuid}}\E" (system/site-uuid))
                            (str/replace #"\Q{{schema}}\E" (redshift.tx/unique-session-schema))))]
         (is (= expected
                (sql->lines
@@ -495,3 +495,13 @@
                               :target [:variable [:template-tag "date"]]
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel dont-query-pg-enum-test
+  (testing "Make sure redshift doesn't try to grab postgres enums. (#56992)"
+    (mt/test-driver
+      :redshift
+      (is (= 1
+             (->> (mt/native-query {:query "SELECT usename FROM pg_user limit 1;"})
+                  qp/process-query
+                  mt/rows
+                  count))))))

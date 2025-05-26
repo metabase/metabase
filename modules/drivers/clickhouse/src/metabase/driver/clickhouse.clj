@@ -3,7 +3,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
@@ -18,10 +18,10 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.log :as log])
-  (:import  [com.clickhouse.client.api.query QuerySettings]))
+  (:import  [com.clickhouse.client.api.query QuerySettings]
+            [java.sql SQLException]))
 
 (set! *warn-on-reflection* true)
 
@@ -195,14 +195,14 @@
 (defmethod driver/upload-type->database-type :clickhouse
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              "Nullable(String)"
-    ::upload/text                     "Nullable(String)"
-    ::upload/int                      "Nullable(Int64)"
-    ::upload/float                    "Nullable(Float64)"
-    ::upload/boolean                  "Nullable(Boolean)"
-    ::upload/date                     "Nullable(Date32)"
-    ::upload/datetime                 "Nullable(DateTime64(3))"
-    ::upload/offset-datetime          nil))
+    :metabase.upload/varchar-255              "Nullable(String)"
+    :metabase.upload/text                     "Nullable(String)"
+    :metabase.upload/int                      "Nullable(Int64)"
+    :metabase.upload/float                    "Nullable(Float64)"
+    :metabase.upload/boolean                  "Nullable(Boolean)"
+    :metabase.upload/date                     "Nullable(Date32)"
+    :metabase.upload/datetime                 "Nullable(DateTime64(3))"
+    :metabase.upload/offset-datetime          nil))
 
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
@@ -291,3 +291,8 @@
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
   "NONE")
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
+  [_ ^SQLException e]
+  ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
+  (str/starts-with? (.getMessage e) "Code: 60."))

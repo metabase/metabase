@@ -4,9 +4,10 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -19,8 +20,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
-   [metabase.upload :as upload]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -28,12 +28,7 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    Types)))
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -57,6 +52,11 @@
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [driver database & args]
   (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
+
+;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/dynamic-database-types-lookup :redshift
+  [driver database database-types]
+  ((get-method driver/dynamic-database-types-lookup :sql-jdbc) driver database database-types))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
@@ -209,8 +209,8 @@
    :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
-  [_]
-  :%getdate)
+  [_driver]
+  :%getdate) ; TODO -- this should include type info
 
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
@@ -466,7 +466,7 @@
        (json/encode {:dashboard_id        dashboard-id
                      :chart_id            card-id
                      :optional_user_id    executed-by
-                     :optional_account_id (public-settings/site-uuid)
+                     :optional_account_id (system/site-uuid)
                      :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))
@@ -478,16 +478,16 @@
 (defmethod driver/upload-type->database-type :redshift
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [[:varchar 65535]]
-    ::upload/int                      [:bigint]
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [[:varchar 65535]]
+    :metabase.upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
-    ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
-    ::upload/float                    [(keyword "double precision")]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]
-    ::upload/offset-datetime          [:timestamp-with-time-zone]))
+    :metabase.upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
+    :metabase.upload/float                    [(keyword "double precision")]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp]
+    :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/allowed-promotions :redshift [_] {})
 
@@ -568,3 +568,7 @@
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:from_varbyte expr (h2x/literal "UTF8")]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

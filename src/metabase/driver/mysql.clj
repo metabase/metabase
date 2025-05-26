@@ -9,8 +9,8 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
@@ -30,7 +30,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -64,7 +64,8 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
@@ -210,8 +211,8 @@
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
-  [_]
-  (h2x/with-database-type-info [:now [:inline 6]] "timestamp"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -346,10 +347,6 @@
 (defmethod sql.qp/->honeysql [:mysql :text]
   [driver [_ value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:mysql :date]
-  [driver [_ value]]
-  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -736,21 +733,21 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    ::upload/float                    [:double]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:datetime]
-    ::upload/offset-datetime          [:timestamp]))
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:datetime]
+    :metabase.upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/allowed-promotions :mysql
   [_driver]
-  {::upload/int     #{::upload/float}
-   ::upload/boolean #{::upload/int
-                      ::upload/float}})
+  {:metabase.upload/int     #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int
+                              :metabase.upload/float}})
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
@@ -1027,18 +1024,9 @@
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
-  ;; MariaDB and MySQL report different error codes for the timeout caused by using .setQueryTimeout. This happens because they
-  ;; use different mechanisms for causing this timeout. MySQL timesout and terminates the connection externally. MariaDB uses the
-  ;; max_statement_time configuration that can be passed to a SQL statement to set its.
-  ;;
-  ;; Docs for MariaDB:
-  ;; https://mariadb.com/kb/en/e1317/
-  ;; https://mariadb.com/kb/en/e1969/
-  ;; https://mariadb.com/kb/en/e3024/
-  ;;
-  ;; Docs for MySQL:
-  ;; https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-  ;;
-  ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
-  ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
-  (contains? #{1317 1969 3024} (.getErrorCode e)))
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (mdb/query-canceled-exception? :mysql e))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42S02"))

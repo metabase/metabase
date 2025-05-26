@@ -24,21 +24,20 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.secrets.core :as secret]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [pangloss.transducers :as transducers]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -55,7 +54,7 @@
                               :connection-impersonation-requires-role true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :describe-fields                        true
+                              :describe-fields                        false
                               :expression-literals                    true
                               :expressions/integer                    true
                               :expressions/text                       true
@@ -83,7 +82,7 @@
 (defn- start-of-week-setting->snowflake-offset
   "Value to use for the `WEEK_START` connection parameter -- see
   https://docs.snowflake.com/en/sql-reference/parameters.html#label-week-start -- based on
-  the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting. Snowflake considers `:monday` to be `1`, through `:sunday`
+  the [[metabase.lib-be.core/start-of-week]] Setting. Snowflake considers `:monday` to be `1`, through `:sunday`
   as `7`."
   []
   (inc (driver.common/start-of-week->int)))
@@ -152,7 +151,7 @@
                              (-> details
                                  ;; Setting private-key-value to nil will delete the secret
                                  (assoc :use-password true :private-key-value nil)
-                                 (dissoc :private-key-id :private-key-value :private-key-path :private-key-options)
+                                 (dissoc :private-key-id :private-key-path :private-key-options)
                                  ;; Add meta for testing
                                  (with-meta {:auth :password})))
           private-key-path-details (when private-key-path
@@ -209,7 +208,7 @@
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
                 :timezone                                   "UTC"
                 ;; tell Snowflake to use the same start of week that we have set for the
-                ;; [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting.
+                ;; [[metabase.lib-be.core/start-of-week]] Setting.
                 :week_start                                 (start-of-week-setting->snowflake-offset)}
                (-> details
                    ;; see https://github.com/metabase/metabase/issues/22133
@@ -472,10 +471,6 @@
   [driver [_ value]]
   [:to_char (sql.qp/->honeysql driver value)])
 
-(defmethod sql.qp/->honeysql [:snowflake :date]
-  [driver [_ value]]
-  [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
-
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
   tests (and Snowflake itself) expected `details.db`. This has since been fixed, but for legacy support we'll still
@@ -582,9 +577,12 @@
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
-  (sql-jdbc/query driver database {:select [:*]
-                                   :from   [[(qp.store/with-metadata-provider (u/the-id database)
-                                               (sql.qp/->honeysql driver table))]]}))
+  (qp.store/with-metadata-provider (u/the-id database)
+    (let [table-metadata   (lib.metadata/table (qp.store/metadata-provider) (:id table))
+          table-identifier (sql.qp/->honeysql driver table-metadata)
+          query            {:select [:*]
+                            :from   [[table-identifier]]}]
+      (sql-jdbc/query driver database query))))
 
 (defmethod driver/describe-database :snowflake
   [driver database]
@@ -821,7 +819,7 @@
                 :dashboardId dashboard-id
                 :databaseId  database-id
                 :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                :serverId    (public-settings/site-uuid)}))
+                :serverId    (system/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
@@ -836,99 +834,6 @@
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (-> database :details :role))
-
-(defn- normalize-type*
-  [data-type]
-  (let [info (json/decode data-type)
-        raw-type (get info "type")]
-    (get {"FIXED" "NUMBER"
-          "TIMESTAMP_TZ" "TIMESTAMPTZ"
-          "TIMESTAMP_LTZ" "TIMESTAMPLTZ"
-          "TIMESTAMP_NTZ" "TIMESTAMPNTZ"
-          "TEXT" "VARCHAR"
-          "REAL" "DOUBLE"
-          "FLOAT" "DOUBLE"}
-         raw-type
-         raw-type)))
-
-(defn- assoc-database-required
-  [row]
-  (let [is-nullable? (= (:null? row) "true")
-        has-default? (boolean (:default row))
-        autoincrement? (:autoincrement row)
-        required? (not (or is-nullable? has-default? autoincrement?))]
-    (assoc row :database-required required?)))
-
-(defn- normalize-describe-fields-row
-  [row normalize-type]
-  (-> (m/remove-vals str/blank? row)
-      (m/update-existing :data_type normalize-type)
-      (update :autoincrement boolean)
-      (assoc-database-required)
-      (dissoc :kind :null? :database_name)
-      (set/rename-keys {:schema_name :table-schema
-                        :data_type :database-type
-                        :table_name :table-name
-                        :column_name :name
-                        :comment :field-comment
-                        :autoincrement :database-is-auto-increment})))
-
-(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :snowflake
-  [driver db & {:keys [schema-names table-names] :as _args}]
-  (let [schema-names (set schema-names)
-        table-names (set table-names)
-        position-counter (volatile! {})
-        positioner (map (fn [{:keys [schema-name table-name] :as row}]
-                          (let [idx [schema-name table-name]
-                                pos (inc (get @position-counter idx -1))]
-                            (vswap! position-counter assoc idx pos)
-                            (assoc row :database-position pos))))
-        normalize-type (memoize normalize-type*)
-        pks (sql-jdbc.execute/do-with-connection-with-options
-             driver db nil
-             (fn [^java.sql.Connection conn]
-               (with-open [stmt (.prepareStatement conn (format "show primary keys in database \"%s\";" (get-in db [:details :db])))
-                           rset (.executeQuery stmt)]
-                 (into #{} (map (juxt :schema_name :table_name :column_name)) (resultset-seq rset)))))
-        normalize-row (comp
-                       (remove #(= (:schema_name %) "INFORMATION_SCHEMA"))
-                       (map #(normalize-describe-fields-row % normalize-type))
-                       positioner
-                       (map (fn [col]
-                              (let [lookup ((juxt :table-schema :table-name :name) col)
-                                    pk? (contains? pks lookup)]
-                                (assoc col :pk? pk?))))
-                       (transducers/sorted-by (juxt :table-schema :table-name :database-position)))]
-    (cond-> identity
-      ;; Add pre-filter to schemas and tables (schemas are checked first)
-      (seq schema-names)
-      (comp (filter #(contains? schema-names (:schema_name %))))
-
-      (seq table-names)
-      (comp (filter #(contains? table-names (:table_name %))))
-
-      :always
-      (comp normalize-row))))
-
-(defmethod sql-jdbc.sync/describe-fields-sql :snowflake
-  [driver {:keys [schema-names table-names details]}]
-  (let [has-one-schema? (= (count schema-names) 1)
-        has-one-table? (= (count table-names) 1)]
-    (cond
-      (and has-one-schema? has-one-table?)
-      [(format "show columns in table %s.%s.%s"
-               (sql.u/quote-name driver :database (:db details))
-               (sql.u/quote-name driver :schema (first schema-names))
-               (sql.u/quote-name driver :table (first table-names)))]
-
-      has-one-schema?
-      [(format "show columns in schema %s.%s"
-               (sql.u/quote-name driver :database (:db details))
-               (sql.u/quote-name driver :schema (first schema-names)))]
-
-      :else
-      [(format "show columns in database %s"
-               (sql.u/quote-name driver :database (:db details)))])))
 
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))

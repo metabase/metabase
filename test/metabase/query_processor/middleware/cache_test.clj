@@ -9,9 +9,10 @@
    [medley.core :as m]
    [metabase.cache.core]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
-   [metabase.models.query :as query]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -22,7 +23,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
@@ -142,10 +142,10 @@
                   [:osprey      72]
                   [:flamingo    70]]
         query    (test-query query-kvs)]
-    (binding [qp.pipeline/*query-timeout-ms* 2000
-              qp.pipeline/*execute*          (fn [_driver _query respond]
-                                               (Thread/sleep *query-execution-delay-ms*)
-                                               (respond metadata rows))]
+    (binding [driver.settings/*query-timeout-ms* 2000
+              qp.pipeline/*execute*             (fn [_driver _query respond]
+                                                  (Thread/sleep *query-execution-delay-ms*)
+                                                  (respond metadata rows))]
       (driver/with-driver :h2
         (-> (qp query qp.reducible/default-rff)
             (assoc :data {}))))))

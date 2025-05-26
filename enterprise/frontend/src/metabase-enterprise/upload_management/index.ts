@@ -2,6 +2,7 @@ import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
+  FileUploadErrorModal,
   GdriveConnectionModal,
   GdriveDbMenu,
   GdriveSidebarMenuItem,
@@ -15,6 +16,7 @@ if (hasPremiumFeature("upload_management")) {
 }
 
 if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
+  PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal = FileUploadErrorModal;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveConnectionModal = GdriveConnectionModal;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveSidebarMenuItem = GdriveSidebarMenuItem;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus = GdriveSyncStatus;

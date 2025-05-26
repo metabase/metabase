@@ -1,8 +1,8 @@
 (ns metabase.search.appdb.index-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -12,12 +12,15 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- index-hits [term]
   (count (search.index/search term)))
@@ -143,7 +146,7 @@
 (deftest phrase-test
   (with-index
     (with-fulltext-filtering
-    ;; Less matches without an english dictionary
+      ;; Less matches without an english dictionary
       (is (= #_2 3 (index-hits "projected")))
       (is (= 2 (index-hits "revenue")))
       (is (= #_1 2 (index-hits "projected revenue")))
@@ -589,4 +592,28 @@
             (is (= pending-new (#'search.index/pending-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
+          (#'search.index/delete-obsolete-tables!))))))
+
+(deftest when-index-created
+  (when (search/supports-index?)
+    (binding [search.index/*index-version-id* "index-age-test"]
+      (try
+        (let [table-name (search.index/gen-table-name)
+              version @#'search.index/*index-version-id*]
+
+          (testing "Nil age if no active table"
+            (is (nil? (#'search.index/when-index-created))))
+
+          (testing "Returns age of active table"
+            (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
+              (search.index/create-table! table-name)
+              (search-index-metadata/create-pending! :appdb version table-name)
+              (search-index-metadata/active-pending! :appdb version)
+              (t2/update! :model/SearchIndexMetadata
+                          :index_name  (name table-name)
+                          {:created_at  update-time})
+
+              (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
           (#'search.index/delete-obsolete-tables!))))))

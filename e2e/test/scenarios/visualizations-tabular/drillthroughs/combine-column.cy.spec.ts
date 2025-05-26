@@ -82,7 +82,7 @@ H.describeWithSnowplow(
         .last()
         .should("have.text", "Combined Email, Name, ID");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "column_combine_via_column_header",
         custom_expressions_used: ["concat"],
         database_id: SAMPLE_DB_ID,

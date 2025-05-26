@@ -5,10 +5,9 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -131,6 +130,11 @@
   :type :string
   :encryption :no
   :default "the default value")
+
+(defsetting test-setting-that-is-not-included-when-listing-in-api
+  "Setting to test that a setting can marked as excluded from API list operations"
+  :encryption :no
+  :include-in-list? false)
 
 ;; ## HELPER FUNCTIONS
 
@@ -600,9 +604,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (mdb.query/query {:select [:value]
-                        :from   [:setting]
-                        :where  [:= :key (name setting-key)]})
+  (-> (mdb/query {:select [:value]
+                  :from   [:setting]
+                  :where  [:= :key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test
@@ -1617,3 +1621,21 @@
   (testing "You can set them normally though"
     (test-setting-that-doesnt-allow-env! "this works")
     (is (= "this works" (test-setting-that-doesnt-allow-env)))))
+
+(deftest hide-settings-from-list-test
+  ;; we'll use `::not-present` below to signify that the Setting isn't returned AT ALL (as opposed to being returned
+  ;; with a `nil` value)
+  (mt/with-test-user :crowberto
+    (doseq [[fn-name f] {`setting/writable-settings
+                         (fn [k]
+                           (let [m (into {} (map (juxt :key :value)) (setting/writable-settings))]
+                             (get m k ::not-present)))
+
+                         `setting/user-readable-values-map
+                         (fn [k]
+                           (get (setting/user-readable-values-map #{:authenticated}) k ::not-present))}]
+      (testing fn-name
+        (testing "should not return settings that are excluded from being listed"
+          (mt/with-temporary-setting-values [test-setting-that-is-not-included-when-listing-in-api "fun-times"]
+            (is (= ::not-present
+                   (f :test-setting-that-is-not-included-when-listing-in-api)))))))))

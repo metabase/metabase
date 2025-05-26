@@ -6,19 +6,68 @@ title: Driver interface changelog
 
 ## Metabase 0.55.0
 
+- Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
+
+- Add the multi-method `date-dbtype` that allows the driver to control which types dates are cast to.
+
+- Extend `date()` to accept a DateTime (or DB equivalent) in addition to an ISO string. When given a DateTime, it will truncate it to a date.
+
+- Added a feature `:expressions/datetime` for drivers that support converting iso strings to datetimes
+
 - Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
 
 - Added a feature `:multi-level-schema` for drivers that support hierarchical levels between database and schema. Such as databricks' catalog. Defaults to false.
 
 - Added the multi-method `adjust-schema-qualification` that allows drivers to to qualify, or unqualify table schemas based on enabling or disabling multi-level-schema support. Drivers may need to implement `sql.qp/->honeysql [driver ::h2x/identifier]` to properly quote fully qualified schemas.
 
-- Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
-
 - Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
 
 - Added a feature `:expressions/float` for drivers that support casting text to floats.
 
 - Added the multi-method `integer-dbtype` that allows the driver to control which type integers are cast to.
+
+- The `metabase.upload` namespace has been replaced with `metabase.upload.core`, but upload type keywords e.g.
+  `:metabase.upload/varchar-255` remain unchanged. Make sure you weren't using `::` keywords inside methods like
+  `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
+  `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
+
+- The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
+  update your usages.
+
+- The namespace `metabase.public-settings` has been removed, and settings have been moved to appropriate modules, e.g.
+  `site-uuid` now lives in `metabase.system.core`. If you were using this namespace, please update your code
+  accordingly. You should be able to find the correct one by looking at how those settings are used in our first-party
+  drivers.
+
+- The namespaces `metabase.models.field`, `metabase.models.field-values`, and `metabase.models.table` have been moved
+  to `metabase.warehouse-schema.field`, `metabase.warehouse-schema.field-values`, and
+  `metabase.warehouse-schema.table` respectively. You shouldn't use these namespaces directly in your drivers, but if
+  you did, please update your references.
+
+- `metabase.driver.sql.query-processor/->honeysql` is no longer supported for `:model/Table` (support for this was
+  deprecated in 0.48.0) -- methods for this will no longer be used; if you have such a method, migrate it to
+  `:metadata/table` instead. If you have a `:model/Table` and need a `:metadata/table` instead (such as in
+  implementations of `metabase.driver/table-rows-seq`) you can use `metabase.lib.metadata/table`.
+
+- `metabase.db.metadata-queries` has been removed; the parts meant for usage by drivers have been moved to
+  `metabase.driver.common.table-rows-sample`.
+
+- `metabase.util.ssh` has been moved to `metabase.driver.sql-jdbc.connection.ssh-tunnel`.
+
+- `metabase.query-processor.pipeline/*query-timeout-ms*` has been moved to
+  `metabase.driver.settings/*query-timeout-ms*`.
+
+- The namespace `metabase.query-processor.context`, deprecated in 0.50.0, has been removed.
+
+- All settings formerly in a `metabase.driver.*` namespace have been moved to `metabase.driver.settings`, and all
+  settings formerly in a `metabase.query-processor.*` namespace have been moved to
+  `metabase.query-processor.settings`.
+
+## Metabase 0.54.10
+
+- Add `metabase.driver/table-known-to-not-exist?` for drivers to test if an exception is due to a query on a table that no longer exists
+- Add `metabase.driver.sql-jdbc/impl-table-known-to-not-exist?` for JDBC drivers. This is the implemenation of table-known-to-not-exist for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
+
 
 ## Metabase 0.54.0
 

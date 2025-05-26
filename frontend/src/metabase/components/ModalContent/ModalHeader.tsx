@@ -39,6 +39,7 @@ export const ModalHeader = ({
     >
       <Flex
         align="center"
+        gap="sm"
         className={cx(S.HeaderTextContainer, {
           [S.clickable]: !!onBack,
         })}
@@ -47,7 +48,7 @@ export const ModalHeader = ({
         {onBack && <ModalHeaderBackIcon name="chevronleft" />}
 
         <Title
-          order={2}
+          order={3}
           w="100%"
           className={cx(S.HeaderText, {
             [S.HeaderTextCentered]: fullPageModal || centeredTitle,

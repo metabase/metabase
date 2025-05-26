@@ -22,6 +22,8 @@ export function getParameterIconName(
       return "number";
     case "temporal-unit":
       return "clock";
+    case "boolean":
+      return "io";
     case "id":
     default:
       return "label";

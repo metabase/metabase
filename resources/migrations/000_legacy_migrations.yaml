@@ -10162,7 +10162,7 @@ databaseChangeLog:
 
 
   #
-  # The next few migrations replace metabase.db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
+  # The next few migrations replace metabase.app-db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
   #
 
   # Create the magic Permissions Groups if they don't already exist.
@@ -10259,7 +10259,7 @@ databaseChangeLog:
                   AND pgm.id IS NULL;
 
   #
-  # This migration replaces metabase.db.data-migrations/add-admin-group-root-entry, added 0.20.0
+  # This migration replaces metabase.app-db.data-migrations/add-admin-group-root-entry, added 0.20.0
   #
   # Create root permissions entry for admin magic Permissions Group. Admin Group has a single entry that lets it
   # access to everything
@@ -10286,7 +10286,7 @@ databaseChangeLog:
               WHERE p.object IS NULL;
 
   #
-  # The following migration replaces metabase.db.data-migrations/add-databases-to-magic-permissions-groups, added 0.20.0
+  # The following migration replaces metabase.app-db.data-migrations/add-databases-to-magic-permissions-groups, added 0.20.0
   #
 
   # Add permissions entries for 'All Users' for all Databases created BEFORE we created the 'All Users' Permissions
@@ -10326,7 +10326,7 @@ databaseChangeLog:
               WHERE p.object IS NULL;
 
   #
-  # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
+  # The following migration replaces metabase.app-db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
   #
   # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
   # internally as `-site-url`; this was confusing, see #4188 for details.) Make sure `site-url` has no trailing slashes
@@ -10396,7 +10396,7 @@ databaseChangeLog:
               WHERE `key` = '-site-url';
 
   #
-  # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
+  # The following migration replaces metabase.app-db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
   #
   # There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
   # specified. Other areas of the application expect that site-url will always include http/https. This migration
@@ -10431,7 +10431,7 @@ databaseChangeLog:
                 AND value NOT LIKE 'http%';
 
   #
-  # The following migrations replace metabase.db.migrations/migrate-humanization-setting, added in 0.28.0
+  # The following migrations replace metabase.app-db.migrations/migrate-humanization-setting, added in 0.28.0
   #
   # Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
   # `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
@@ -10521,7 +10521,7 @@ databaseChangeLog:
               DELETE FROM setting WHERE `key` = 'enable-advanced-humanization';
 
   #
-  # The following migration replaces metabase.db.migrations/mark-category-fields-as-list, added in 0.29.0
+  # The following migration replaces metabase.app-db.migrations/mark-category-fields-as-list, added in 0.29.0
   #
   # Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
   # would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
@@ -10567,7 +10567,7 @@ databaseChangeLog:
                 );
 
   #
-  # The following migrations replace metabase.db.migrations/add-migrated-collections, added in 0.30.0
+  # The following migrations replace metabase.app-db.migrations/add-migrated-collections, added in 0.30.0
   #
   # In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
   # will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
@@ -11034,7 +11034,7 @@ databaseChangeLog:
             columnDataType: varchar(254)
 
   #
-  # The following migration replaces metabase.db.data-migrations/clear-ldap-user-local-passwords, added 0.30.0
+  # The following migration replaces metabase.app-db.data-migrations/clear-ldap-user-local-passwords, added 0.30.0
   #
   # Before 0.30.0, we were storing the LDAP user's password in the core_user table (though it wasn't used). This
   # migration clears those passwords out, disabling password-based login.

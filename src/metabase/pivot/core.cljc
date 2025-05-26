@@ -127,7 +127,9 @@
          (sequential? collapsed-subtotal)
          (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
                               :isCollapsed)]
-           (assoc-in tree key-path true))))
+           (if-not (nil? (get-in tree key-path))
+             (assoc-in tree key-path true)
+             tree))))
      tree
      parsed-collapsed-subtotals)))
 
@@ -337,11 +339,13 @@
 (defn- create-subtotal-node
   "Creates a subtotal node for the given row item."
   [row-item]
-  {:value (i18n/tru "Totals for {0}" (:value row-item))
-   :rawValue (:rawValue row-item)
-   :span 1
-   :isSubtotal true
-   :children []})
+  (let [subtotal-val (or (get-in row-item [:value :xlsx-formatted-value])
+                         (:value row-item))]
+    {:value (i18n/tru "Totals for {0}" subtotal-val)
+     :rawValue (:rawValue row-item)
+     :span 1
+     :isSubtotal true
+     :children []}))
 
 (defn- subtotal-permitted?
   "Returns true if subtotals are enabled for this column and visible for this row."
@@ -351,9 +355,11 @@
 (defn- subtotal-visible?
   "Determines whether a subtotal should be shown for a given row."
   [row-item settings]
-  (let [condense? (true? (:pivot.condense_duplicate_totals settings))
+  (let [condense? (true? (:pivot.condense_duplicate_totals settings true))
         child-count (count (:children row-item))]
-    (or (not condense?) (> child-count 1) (:isCollapsed row-item))))
+    (or (> child-count 1)
+        (not condense?)
+        (:isCollapsed row-item))))
 
 (declare add-subtotal)
 
@@ -369,7 +375,8 @@
                              acc
                              settings)
                (conj! acc child)))
-           (transient []) children)))
+           (transient [])
+           children)))
 
 (defn- add-subtotal
   "Adds subtotal nodes to a row item based on subtotal settings.
@@ -409,7 +416,8 @@
                                (subtotal-visible? row-item settings)
                                acc
                                settings))
-               (transient []) row-tree)))))
+               (transient [])
+               row-tree)))))
 
 (defn display-name-for-col
   "Translated from frontend/src/metabase/lib/formatting/column.ts"

@@ -12,16 +12,17 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common]
-   [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
-   [metabase.config :as config]
-   [metabase.events :as events]
-   [metabase.integrations.slack :as slack]
-   [metabase.models.collection :as collection]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as channel.slack]
+   [metabase.channel.urls :as urls]
+   [metabase.classloader.core :as classloader]
+   [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.notification.send :as notification.send]
+   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
@@ -31,7 +32,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -246,8 +246,8 @@
   []
   (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types
-                       (assoc-in [:slack :configured] (slack/slack-configured?))
-                       (assoc-in [:email :configured] (email/email-configured?))
+                       (assoc-in [:slack :configured] (channel.slack/slack-configured?))
+                       (assoc-in [:email :configured] (channel.settings/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
                  (perms/sandboxed-or-impersonated-user?)
@@ -260,10 +260,10 @@
                  ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (future (slack/refresh-channels-and-usernames-when-needed!))
+                   (future (channel.slack/refresh-channels-and-usernames-when-needed!))
                    (assoc-in chan-types
                              [:slack :fields 0 :options]
-                             (->> (slack/slack-cached-channels-and-usernames)
+                             (->> (channel.settings/slack-cached-channels-and-usernames)
                                   :channels
                                   (map :display-name)))
                    (catch Throwable e
@@ -374,7 +374,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (binding [notification.send/*default-options* {:notification/sync? true}]
+  (notification/with-default-options {:notification/sync? true}
     (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 

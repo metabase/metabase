@@ -1,9 +1,8 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as collection.root]
-   [metabase.models.database :as database]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -20,6 +19,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
@@ -54,6 +54,8 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
+;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.

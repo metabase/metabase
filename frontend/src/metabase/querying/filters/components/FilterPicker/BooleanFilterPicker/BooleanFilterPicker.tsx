@@ -1,11 +1,11 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
-import { t } from "ttag";
 
-import { useBooleanOptionFilter } from "metabase/querying/filters/hooks/use-boolean-option-filter";
-import { Box, Button, Icon, Radio, Stack } from "metabase/ui";
+import { BooleanPicker } from "metabase/querying/filters/components/BooleanPicker";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { useBooleanFilter } from "../../../hooks/use-boolean-filter";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
@@ -26,26 +26,12 @@ export function BooleanFilterPicker({
     [query, stageIndex, column],
   );
 
-  const {
-    optionType,
-    isExpanded,
-    visibleOptions,
-    getFilterClause,
-    setOptionType,
-    setIsExpanded,
-  } = useBooleanOptionFilter({
+  const { value, getFilterClause, setValue } = useBooleanFilter({
     query,
     stageIndex,
     column,
     filter,
   });
-
-  const handleOptionChange = (optionValue: string) => {
-    const option = visibleOptions.find(({ type }) => type === optionValue);
-    if (option) {
-      setOptionType(option.type);
-    }
-  };
 
   const handleFilterChange = (opts: FilterChangeOpts) => {
     onChange(getFilterClause(), opts);
@@ -73,38 +59,13 @@ export function BooleanFilterPicker({
           onBack={onBack}
         />
       )}
-      <div>
-        <Radio.Group value={optionType} onChange={handleOptionChange}>
-          <Stack p="md" pb={isExpanded ? "md" : 0} gap="sm">
-            {visibleOptions.map((option) => (
-              <Radio
-                key={option.type}
-                value={option.type}
-                label={option.name}
-                pb={6}
-                size="xs"
-              />
-            ))}
-          </Stack>
-        </Radio.Group>
-        {!isExpanded && (
-          <Button
-            c="text-medium"
-            variant="subtle"
-            aria-label={t`More options`}
-            rightSection={<Icon name="chevrondown" />}
-            onClick={() => setIsExpanded(true)}
-          >
-            {t`More options`}
-          </Button>
-        )}
-        <FilterPickerFooter
-          isNew={isNew}
-          isValid
-          withAddButton={withAddButton}
-          onAddButtonClick={handleAddButtonClick}
-        />
-      </div>
+      <BooleanPicker value={value} withEmptyOptions onChange={setValue} />
+      <FilterPickerFooter
+        isNew={isNew}
+        isValid
+        withAddButton={withAddButton}
+        onAddButtonClick={handleAddButtonClick}
+      />
     </Box>
   );
 }

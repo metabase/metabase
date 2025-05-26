@@ -1,7 +1,7 @@
 (ns metabase.server.auth-wrapper
   (:require
    [metabase.api.util.handlers :as handlers]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [ring.util.response :as response]))
 
 (let [bad-req (response/bad-request {:message "The auth/sso endpoint only exists in enterprise builds"
@@ -18,7 +18,7 @@
    {"/auth" {"/sso"  not-enabled}
     "/api"  {"/saml" not-enabled}}))
 
-;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
+;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api-routes.core/routes]] !!!
 ;;
 ;; TODO -- should we make a `metabase-enterprise.routes` namespace where this can live instead of injecting it
 ;; directly?

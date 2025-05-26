@@ -4,9 +4,10 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
@@ -104,7 +105,6 @@
                :where [:and
                        (when-not multi-level-schema [:= :t.table_catalog catalog])
                        [:<> :t.table_schema [:inline "information_schema"]]
-                       [:!= :t.table_catalog [:inline "system"]]
                        [:not [:startswith :t.table_catalog [:inline "__databricks"]]]]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -182,7 +182,6 @@
                        ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
                        ;; is resolved by Databricks in underlying jdbc driver.
                        [:not= :c.full_data_type [:inline "timestamp_ntz"]]
-                       [:!= :c.table_catalog [:inline "system"]]
                        [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
                        [:not [:in :c.table_schema [[:inline "information_schema"]]]]
                        (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
@@ -217,7 +216,6 @@
                         [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
                :where [:and
                        (when-not multi-level-schema [:= :fk_kcu.table_catalog [:inline catalog]])
-                       [:!= :fk_kcu.table_catalog [:inline "system"]]
                        [:not [:startswith :fk_kcu.table_catalog [:inline "__databricks"]]]
                        [:not [:in :fk_kcu.table_schema ["information_schema"]]]
                        (schema-names-filter schema-names multi-level-schema :fk_kcu.table_catalog :fk_kcu.table_schema)
@@ -394,3 +392,11 @@
 (defmethod sql.qp/->integer :databricks
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

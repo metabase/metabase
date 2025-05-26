@@ -4,8 +4,8 @@
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.driver.settings :as driver.settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -60,7 +60,7 @@
     (qp.streaming/do-with-streaming-rff
      export-format os
      (fn [rff]
-       (binding [qp.pipeline/*query-timeout-ms* (u/seconds->ms 15)]
+       (binding [driver.settings/*query-timeout-ms* (u/seconds->ms 15)]
          (is (=? {:status :completed}
                  (qp/process-query query rff))))))
     (.flush os)

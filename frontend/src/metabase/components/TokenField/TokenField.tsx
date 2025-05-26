@@ -273,9 +273,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     const { filteredOptions, selectedOptionValue } = this.state;
 
-    // enter, tab, comma
-    if (
-      keyCode === KEYCODE_ESCAPE ||
+    if (keyCode === KEYCODE_ESCAPE) {
+      event.preventDefault();
+      this.inputRef.current?.blur();
+      this.setState({ isFocused: false });
+    } else if (
+      // enter, tab, comma
       keyCode === KEYCODE_TAB ||
       // We check event.key for comma presses because some keyboard layouts
       // (e.g. Russian) have a letter on that key and require a modifier to type
@@ -679,7 +682,7 @@ const DefaultTokenFieldLayout = ({
   <div>
     <TippyPopover
       visible={isFocused && !!optionsList}
-      content={<div>{optionsList}</div>}
+      content={<div data-testid="token-field-popover">{optionsList}</div>}
       placement="bottom-start"
     >
       <div>{valuesList}</div>

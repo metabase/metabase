@@ -3,8 +3,9 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.analytics.core :as analytics]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
@@ -13,6 +14,7 @@
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -255,13 +257,16 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [entries          (map document->entry documents)
+  (let [active-table (active-table)
+        entries (map document->entry documents)
         ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated?  (when-not (= context :search/reindexing) (safe-batch-upsert! (active-table) entries))
+        active-updated? (when-not (and active-table (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (log/trace "indexed documents for " <>)))))
+        (log/trace "indexed documents for " <>)
+        (when active-updated?
+          (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
@@ -276,8 +281,28 @@
   (index-docs! :search/updating document-reducible))
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
-  (doseq [table-name [(active-table) (pending-table)] :when table-name]
-    (t2/delete! table-name :model search-model :model_id [:in ids])))
+  (when (seq ids)
+    (u/prog1 (->> [(active-table) (pending-table)]
+                  (keep (fn [table-name]
+                          (when table-name
+                            {search-model (t2/delete! table-name :model search-model :model_id [:in (set ids)])})))
+                  (apply merge-with +)
+                  (into {}))
+      (when (active-table)
+        (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
+                                                                                 :from   [(active-table)]
+                                                                                 :limit  1})))))))
+
+(defn when-index-created
+  "Return creation time of the active index, or nil if there is none."
+  []
+  (t2/select-one-fn :created_at
+                    :model/SearchIndexMetadata
+                    :engine :appdb
+                    :version *index-version-id*
+                    :lang_code (i18n/site-locale-string)
+                    :status :active
+                    {:order-by [[:created_at :desc]]}))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
