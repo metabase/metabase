@@ -55,7 +55,7 @@ export const translateDisplayNames = <T>(
 ): T => {
   const traverse = (o: T): T => {
     if (Array.isArray(o)) {
-      return I.map(traverse, o) as T;
+      return o.map((item) => traverse(item)) as T;
     }
     if (isRecord(o)) {
       return Object.entries(o).reduce((acc, [key, value]) => {

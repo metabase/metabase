@@ -13,15 +13,6 @@ export const useTranslateContent = <
   return PLUGIN_CONTENT_TRANSLATION.useTranslateContent<T>();
 };
 
-/** In EE, translate displayName fields in the object. Otherwise return the
- * object unchanged. */
-export const maybeTranslateDisplayNames = <T extends object>(
-  obj: T,
-  tc: ContentTranslationFunction,
-) => {
-  return PLUGIN_CONTENT_TRANSLATION.translateDisplayNames(obj, tc);
-};
-
 /** Returns a function that can be used to sort user-generated strings in an
  * array by their translations. */
 export const useSortByContentTranslation = () => {
