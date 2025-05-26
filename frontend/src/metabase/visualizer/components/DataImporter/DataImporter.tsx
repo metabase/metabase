@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -69,7 +70,16 @@ export const DataImporter = ({ className }: { className?: string }) => {
           size="xs"
           variant="transparent"
           ml="auto"
-          onClick={handlers.toggle}
+          onClick={() => {
+            trackSimpleEvent({
+              event: showDatasets
+                ? "visualizer_show_columns_clicked"
+                : "visualizer_add_more_data_clicked",
+              triggered_from: "visualizer-modal",
+            });
+
+            handlers.toggle();
+          }}
           className={S.ToggleButton}
           aria-label={showDatasets ? t`Done` : t`Add more data`}
         >

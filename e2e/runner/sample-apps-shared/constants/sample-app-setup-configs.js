@@ -1,6 +1,8 @@
 const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed as an ENV variable.
 
 const BASE_ENV = {
+  WATCH:
+    process.env.SAMPLE_APP_ENVIRONMENT === "development" ? "true" : "false",
   PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
   MB_PORT: 4300,
   CLIENT_PORT: 4400,
@@ -25,6 +27,7 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nextjs-sdk-embedding-sample",
     env: {
+      WATCH: BASE_ENV.WATCH,
       PREMIUM_EMBEDDING_TOKEN: BASE_ENV.PREMIUM_EMBEDDING_TOKEN,
       MB_PORT: BASE_ENV.MB_PORT,
       CLIENT_PORT_APP_ROUTER: BASE_ENV.CLIENT_PORT,
