@@ -5,6 +5,7 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
@@ -77,6 +78,16 @@
   [query llm-filter]
   (let [{:keys [operation value values]} llm-filter
         expr (filter-bucketed-column llm-filter)
+        with-values-or-value (fn with-values-or-value
+                               ([f]
+                                (with-values-or-value f expr))
+                               ([f expr]
+                                (if values
+                                  (apply f expr values)
+                                  (f expr value))))
+        string-match (fn [match-fn]
+                       (-> (with-values-or-value match-fn)
+                           (lib.options/update-options assoc :case-sensitive false)))
         filter
         (case operation
           :is-null                      (lib/is-null expr)
@@ -85,92 +96,40 @@
           :string-is-not-empty          (lib/not-empty expr)
           :is-true                      (lib/= expr true)
           :is-false                     (lib/= expr false)
-          :equals                       (if values
-                                          (apply lib/= expr values)
-                                          (lib/= expr value))
-          :not-equals                   (if values
-                                          (apply lib/!= expr values)
-                                          (lib/!= expr value))
+          :equals                       (with-values-or-value lib/=)
+          :not-equals                   (with-values-or-value lib/!=)
           :greater-than                 (lib/> expr value)
           :greater-than-or-equal        (lib/>= expr value)
           :less-than                    (lib/< expr value)
           :less-than-or-equal           (lib/<= expr value)
-          :year-equals                  (if values
-                                          (apply lib/= (lib/get-year expr) values)
-                                          (lib/= (lib/get-year expr) value))
-          :year-not-equals              (if values
-                                          (apply lib/!= (lib/get-year expr) values)
-                                          (lib/!= (lib/get-year expr) value))
-          :quarter-equals               (if values
-                                          (apply lib/= (lib/get-quarter expr) values)
-                                          (lib/= (lib/get-quarter expr) value))
-          :quarter-not-equals           (if values
-                                          (apply lib/!= (lib/get-quarter expr) values)
-                                          (lib/!= (lib/get-quarter expr) value))
-          :month-equals                 (if values
-                                          (apply lib/= (lib/get-month expr) values)
-                                          (lib/= (lib/get-month expr) value))
-          :month-not-equals             (if values
-                                          (apply lib/!= (lib/get-month expr) values)
-                                          (lib/!= (lib/get-month expr) value))
-          :day-of-week-equals           (if values
-                                          (apply lib/= (lib/get-day-of-week expr :iso) values)
-                                          (lib/= (lib/get-day-of-week expr :iso) value))
-          :day-of-week-not-equals       (if values
-                                          (apply lib/!= (lib/get-day-of-week expr :iso) values)
-                                          (lib/!= (lib/get-day-of-week expr :iso) value))
-          :hour-equals                  (if values
-                                          (apply lib/= (lib/get-hour expr) values)
-                                          (lib/= (lib/get-hour expr) value))
-          :hour-not-equals              (if values
-                                          (apply lib/!= (lib/get-hour expr) values)
-                                          (lib/!= (lib/get-hour expr) value))
-          :minute-equals                (if values
-                                          (apply lib/= (lib/get-minute expr) values)
-                                          (lib/= (lib/get-minute expr) value))
-          :minute-not-equals            (if values
-                                          (apply lib/!= (lib/get-minute expr) values)
-                                          (lib/!= (lib/get-minute expr) value))
-          :second-equals                (if values
-                                          (apply lib/= (lib/get-second expr) values)
-                                          (lib/= (lib/get-second expr) value))
-          :second-not-equals            (if values
-                                          (apply lib/!= (lib/get-second expr) values)
-                                          (lib/!= (lib/get-second expr) value))
-          :date-equals                  (if values
-                                          (apply lib/= expr values)
-                                          (lib/= expr value))
-          :date-not-equals              (if values
-                                          (apply lib/!= expr values)
-                                          (lib/!= expr value))
+          :year-equals                  (with-values-or-value lib/=  (lib/get-year expr))
+          :year-not-equals              (with-values-or-value lib/!= (lib/get-year expr))
+          :quarter-equals               (with-values-or-value lib/=  (lib/get-quarter expr))
+          :quarter-not-equals           (with-values-or-value lib/!= (lib/get-quarter expr))
+          :month-equals                 (with-values-or-value lib/=  (lib/get-month expr))
+          :month-not-equals             (with-values-or-value lib/!= (lib/get-month expr))
+          :day-of-week-equals           (with-values-or-value lib/=  (lib/get-day-of-week expr :iso))
+          :day-of-week-not-equals       (with-values-or-value lib/!= (lib/get-day-of-week expr :iso))
+          :hour-equals                  (with-values-or-value lib/=  (lib/get-hour expr))
+          :hour-not-equals              (with-values-or-value lib/!= (lib/get-hour expr))
+          :minute-equals                (with-values-or-value lib/=  (lib/get-minute expr))
+          :minute-not-equals            (with-values-or-value lib/!= (lib/get-minute expr))
+          :second-equals                (with-values-or-value lib/=  (lib/get-second expr))
+          :second-not-equals            (with-values-or-value lib/!= (lib/get-second expr))
+          :date-equals                  (with-values-or-value lib/=)
+          :date-not-equals              (with-values-or-value lib/!=)
           :date-before                  (lib/< expr value)
           :date-on-or-before            (lib/<= expr value)
           :date-after                   (lib/> expr value)
           :date-on-or-after             (lib/>= expr value)
-          :string-equals                (if values
-                                          (apply lib/= expr values)
-                                          (lib/= expr value))
-          :string-not-equals            (if values
-                                          (apply lib/!= expr values)
-                                          (lib/!= expr value))
-          :string-contains              (if values
-                                          (apply lib/contains expr values)
-                                          (lib/contains expr value))
-          :string-not-contains          (if values
-                                          (apply lib/not (lib/contains expr values))
-                                          (lib/not (lib/contains expr value)))
-          :string-starts-with           (if values
-                                          (apply lib/starts-with expr values)
-                                          (lib/starts-with expr value))
-          :string-ends-with             (if values
-                                          (apply lib/ends-with expr values)
-                                          (lib/ends-with expr value))
-          :number-equals                (if values
-                                          (apply lib/= expr values)
-                                          (lib/= expr value))
-          :number-not-equals            (if values
-                                          (apply lib/!= expr values)
-                                          (lib/!= expr value))
+          :string-equals                (with-values-or-value lib/=)
+          :string-not-equals            (with-values-or-value lib/!=)
+          :string-contains              (string-match lib/contains)
+          :string-not-contains          (string-match lib/does-not-contain)
+          :string-starts-with           (string-match lib/starts-with)
+          :string-ends-with             (string-match lib/ends-with)
+          :number-equals                (with-values-or-value lib/=)
+          :number-not-equals            (with-values-or-value lib/!=)
           :number-greater-than          (lib/> expr value)
           :number-greater-than-or-equal (lib/>= expr value)
           :number-less-than             (lib/< expr value)
@@ -331,30 +290,22 @@
                           (-> (lib/query mp query) lib/append-stage)]))]
     (cond
       model-id
-      (if-let [model (metabot-v3.tools.u/get-card model-id)]
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id model))]
-          [(metabot-v3.tools.u/card-field-id-prefix model-id)
-           (lib/query mp (lib.metadata/card mp model-id))])
+      (if-let [model-query (metabot-v3.tools.u/card-query model-id)]
+        [(metabot-v3.tools.u/card-field-id-prefix model-id) model-query]
         (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
                                                                         :data-source data-source})))
 
       table-id
       (let [table-id (cond-> table-id
                        (string? table-id) parse-long)]
-        (if-let [table (metabot-v3.tools.u/get-table table-id :db_id)]
-          (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
-            [(metabot-v3.tools.u/table-field-id-prefix table-id)
-             (lib/query mp (lib.metadata/table mp table-id))])
+        (if-let [table-query (metabot-v3.tools.u/table-query table-id)]
+          [(metabot-v3.tools.u/table-field-id-prefix table-id) table-query]
           (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
                                                                           :data-source data-source}))))
 
       report-id
-      (if-let [card (metabot-v3.tools.u/get-card report-id)]
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
-          [(metabot-v3.tools.u/card-field-id-prefix report-id)
-           (lib/query mp (cond-> (lib.metadata/card mp report-id)
-                           ;; pivot questions have strange result-columns so we work with the dataset-query
-                           (#{:question} (:type card)) (get :dataset-query)))])
+      (if-let [query (metabot-v3.tools.u/card-query report-id)]
+        [(metabot-v3.tools.u/card-field-id-prefix report-id) query]
         (throw (ex-info (str "No report found with report_id " report-id) {:agent-error? true
                                                                            :data-source data-source})))
 

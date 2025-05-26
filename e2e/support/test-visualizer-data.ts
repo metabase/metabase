@@ -626,6 +626,7 @@ export function createVisualizerPieChartDashcard(
           ],
         },
         settings: {
+          "card.title": "My pie chart",
           "pie.metric": "COLUMN_2",
           "pie.dimension": ["COLUMN_1"],
         },

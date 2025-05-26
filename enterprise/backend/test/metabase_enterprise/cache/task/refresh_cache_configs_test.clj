@@ -95,7 +95,7 @@
                                           :card_id      card-id-2}
                  :model/DashboardCard {} {:dashboard_id dashboard-id
                                           :card_id      card-id-2}]
-    (testing "Returns the card ID directly for a question cahce config"
+    (testing "Returns the card ID directly for a question cache config"
       (is (= [card-id-1] (@#'task.cache/schedule-cache-config->card-ids {:model_id card-id-1 :model "question"}))))
 
     (testing "Fetches card IDs associated with a dashboard cache config"

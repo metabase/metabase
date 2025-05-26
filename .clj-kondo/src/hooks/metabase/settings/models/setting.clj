@@ -3,7 +3,13 @@
    [clj-kondo.hooks-api :as hooks]
    [hooks.common :as common]))
 
-;;; TODO -- move this into
+(defn lint-defsetting-namespace [node context]
+  (when-not (re-matches #"^metabase(?:-enterprise)?\.[^\.]+\.settings$" (name (:ns context)))
+    (hooks/reg-finding! (assoc (meta node)
+                               :message "All defsettings should live in metabase[-enterprise].<module>.settings namespaces"
+                               :type :metabase/defsetting-namespace))))
+
+;;; TODO -- move this into a Kondo config file in `.clj-kondo/config/`
 (def ^:private ignored-implicit-export?
   '#{active-users-count
      admin-email
@@ -22,7 +28,6 @@
      database-enable-actions
      deprecation-notice-version
      dismissed-custom-dashboard-toast
-     dismissed-onboarding-sidebar-link
      email-configured?
      email-from-address
      email-from-name
@@ -170,8 +175,17 @@
      version-info
      version-info-last-checked})
 
-(defn- defsetting-lint [node setting-name docstring options-list]
-  (let [anon-binding (common/with-macro-meta (hooks/token-node '_) node)
+(defn- lint-defsetting-export [node]
+  (let [[_defsetting setting-name _docstring & options] (:children node)]
+    (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options)))
+      (when-not (contains? ignored-implicit-export? (:value setting-name))
+        (hooks/reg-finding! (assoc (meta node)
+                                   :message "Setting definition must provide an explicit value for :export? indicating whether the setting should be exported or not with serialization."
+                                   :type :metabase/defsetting-must-specify-export))))))
+
+(defn- defsetting-replacement-node [node]
+  (let [[_defsetting setting-name docstring & options-list] (:children node)
+        anon-binding (common/with-macro-meta (hooks/token-node '_) node)
         ;; (defn my-setting [] ...)
         getter-node (-> (list
                          (hooks/token-node 'defn)
@@ -191,26 +205,19 @@
                         hooks/list-node
                         (with-meta (meta node))
                         common/add-lsp-ignore-unused-public-var-metadata)]
-
-    (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options-list)))
-      (when-not (contains? ignored-implicit-export? (:value setting-name))
-        (hooks/reg-finding! (assoc (meta node)
-                                   :message "Setting definition must provide an explicit value for :export? indicating whether the setting should be exported or not with serialization."
-                                   :type :metabase/defsetting-must-specify-export))))
-
-    {:node (-> (hooks/list-node
-                (list
-                 (hooks/token-node 'let)
-                 ;; include description and the options map so they can get validated as well.
-                 (hooks/vector-node
-                  [anon-binding docstring
-                   anon-binding (hooks/map-node options-list)])
-                 (hooks/reg-keyword! (-> (hooks/keyword-node (keyword (hooks/sexpr setting-name)))
-                                         (with-meta (meta setting-name)))
-                                     'metabase.settings.models.setting/defsetting)
-                 getter-node
-                 setter-node))
-               (with-meta (meta node)))}))
+    (-> (hooks/list-node
+         (list
+          (hooks/token-node 'let)
+          ;; include description and the options map so they can get validated as well.
+          (hooks/vector-node
+           [anon-binding docstring
+            anon-binding (hooks/map-node options-list)])
+          (hooks/reg-keyword! (-> (hooks/keyword-node (keyword (hooks/sexpr setting-name)))
+                                  (with-meta (meta setting-name)))
+                              'metabase.settings.models.setting/defsetting)
+          getter-node
+          setter-node))
+        (with-meta (meta node)))))
 
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
@@ -226,10 +233,21 @@
 
   for linting purposes."
   [{:keys [node], :as context}]
-  (let [[setting-name docstring & options] (rest (:children node))]
-    (merge
-     context
-     (defsetting-lint node setting-name docstring options))))
+  (lint-defsetting-namespace node context)
+  (lint-defsetting-export node)
+  (update context :node defsetting-replacement-node))
+
+(defn define-multi-setting-replacement-node [node]
+  (let [[defsetting setting-name docstring thunk & options] (:children node)]
+    (-> (hooks/list-node
+         (list*
+          defsetting
+          setting-name
+          docstring
+          (hooks/token-node :multi-thunk) thunk
+          options))
+        (with-meta (meta node))
+        defsetting-replacement-node)))
 
 (defn define-multi-setting
   "Rewrite a [[metabase.models.define-multi-setting]] form like
@@ -245,10 +263,7 @@
 
   for linting purposes."
   [{:keys [node], :as context}]
-  (let [[setting-name docstring thunk & options] (rest (:children node))]
-    (merge
-     context
-     (defsetting-lint node setting-name docstring (concat options [(hooks/token-node :multi-thunk) thunk])))))
+  (update context :node define-multi-setting-replacement-node))
 
 (defn define-multi-setting-impl
   [context]

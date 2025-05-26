@@ -14,6 +14,7 @@
    [metabase.users.api :as api.user]
    [metabase.users.models.user :as user]
    [metabase.users.models.user-test :as user-test]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as string]
@@ -183,7 +184,7 @@
             (doseq [visibility-value [:all :group :none]]
               (mt/with-temporary-setting-values [user-visibility visibility-value]
                 (testing "`user-visibility` setting returns the default value"
-                  (is (= :all (api.user/user-visibility))))
+                  (is (= :all (users.settings/user-visibility))))
 
                 (testing "return all user by default"
                   (is (= [crowberto lucky rasta]

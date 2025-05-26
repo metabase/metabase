@@ -3,12 +3,12 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -94,23 +94,19 @@
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
-  (when (contains? #{:mysql :h2} (mdb/db-type))
-    (t2/update! :model/Database audit-db-id {:engine "postgres"})
-    (when (= :mysql (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema "public"}))
-    (when (= :h2 (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :schema] :name [:lower :name]})
-      (t2/update! :model/Field
-                  {:table_id
-                   [:in
-                    {:select [:id]
-                     :from [(t2/table-name :model/Table)]
-                     :where [:= :db_id audit-db-id]}]}
-                  {:name [:lower :name]}))
-    (log/info "Adjusted Audit DB for loading Analytics Content")))
+  (t2/update! :model/Database audit-db-id {:engine "postgres"})
+  (t2/update! :model/Table {:db_id audit-db-id} {:schema "public" :name [:lower :name]})
+  (t2/update! :model/Field
+              {:table_id
+               [:in
+                {:select [:id]
+                 :from [(t2/table-name :model/Table)]
+                 :where [:= :db_id audit-db-id]}]}
+              {:name [:lower :name]})
+  (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- adjust-audit-db-to-host!
-  [{audit-db-id :id :keys [engine]}]
+  [{audit-db-id :id :keys [engine] :as audit-db}]
   (when (not= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
@@ -125,6 +121,9 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:upper :name]}))
+    (when (= :postgres (mdb/db-type))
+      ;; in postgresql the data should look just like the source
+      (adjust-audit-db-to-source! audit-db))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name (mdb/db-type)))))
 
 (def ^:private analytics-dir-resource
@@ -158,25 +157,6 @@
                       (u.files/relative-path ia-dir)
                       {:replace-existing true})
         (log/info "Copying complete.")))))
-
-(defsetting install-analytics-database
-  "Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled via environmment variable."
-  :type       :boolean
-  :default    true
-  :visibility :internal
-  :setter     :none
-  :audit      :never
-  :export?    false
-  :doc        "Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.")
-
-(defsetting load-analytics-content
-  "Whether or not we should load Metabase analytics content on startup. Defaults to match `install-analytics-database`, which defaults to true, but can be disabled via environment variable."
-  :type       :boolean
-  :default    (install-analytics-database)
-  :visibility :internal
-  :setter     :none
-  :audit      :never
-  :doc        "Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.")
 
 (def ^:constant SKIP_CHECKSUM_FLAG
   "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
@@ -214,10 +194,10 @@
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
-      (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
+      (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
+        (adjust-audit-db-to-source! audit-db)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
@@ -229,15 +209,15 @@
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-              (audit/last-analytics-checksum! current-checksum))))))
-    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (adjust-audit-db-to-host! audit-db))))
+              (audit/last-analytics-checksum! current-checksum))))
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+          (adjust-audit-db-to-host! audit-db))))))
 
 (defn- maybe-install-audit-db
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (cond
-      (not (install-analytics-database))
+      (not (audit-app.settings/install-analytics-database))
       (u/prog1 ::blocked
         (log/info "Not installing Audit DB - install-analytics-database setting is false"))
 

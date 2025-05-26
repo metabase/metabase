@@ -36,3 +36,10 @@
   :doc "The user login session will always expire after the amount of time defined in MAX_SESSION_AGE (by default 2 weeks).
         This overrides the “Remember me” checkbox when logging in.
         Also see the Changing session expiration documentation page.")
+
+(defsetting reset-token-ttl-hours
+  (deferred-tru "Number of hours a password reset is considered valid.")
+  :visibility :internal
+  :type       :integer
+  :default    48
+  :audit      :getter)

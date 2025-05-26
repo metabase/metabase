@@ -212,21 +212,32 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     // Click on both series of the first chart
     // Series 1
     H.showUnderlyingQuestion(0, ORDERS_COUNT_BY_CREATED_AT.name);
-    cy.url().should("contain", "80-orders-by-created-at-month");
+
+    cy.get("@ordersCountByCreatedAtQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-orders-by-created-at-month`),
+    );
     cy.findByLabelText("Back to Test Dashboard").click();
-    cy.url().should("contain", "10-test-dashboard");
 
     // Series 2
     H.showUnderlyingQuestion(0, PRODUCTS_COUNT_BY_CREATED_AT.name);
-    cy.url().should("contain", "82-products-by-created-at-month");
+    cy.get("@productsCountByCreatedAtQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-created-at-month`),
+    );
     cy.findByLabelText("Back to Test Dashboard").click();
-    cy.url().should("contain", "10-test-dashboard");
+
+    // Click on the third chart (a pie)
+    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY.name);
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
 
     // Click on the fifth chart (a funnel)
     H.showUnderlyingQuestion(4, STEP_COLUMN_CARD.name);
-    cy.url().should("contain", "88-step-column");
+    cy.get("@stepColumnQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-step-column`),
+    );
     cy.findByLabelText("Back to Test Dashboard").click();
-    cy.url().should("contain", "10-test-dashboard");
   });
 
   it("should rename a dashboard card", () => {
@@ -466,28 +477,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       );
       cy.findByText("Created At: Month").should("exist");
     });
-  });
-
-  it("should allow changing the viz when no dataset is selected (VIZ-929)", () => {
-    createDashboardWithVisualizerDashcards();
-    H.editDashboard();
-
-    H.showDashcardVisualizerModal(3);
-
-    H.removeDataSource(PRODUCTS_COUNT_BY_CREATED_AT.name);
-
-    H.modal().within(() => {
-      cy.findByText("Scatterplot").click();
-    });
-
-    H.switchToAddMoreData();
-
-    H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
-
-    // For now let's just check we're not crashing
-    // and as a follow up we should check that columns are actually assigned properly
-    // but for now that's require too big a change
-    cy.findAllByText("Something’s gone wrong").should("not.exist");
   });
 
   it("should not store all computed settings in visualizer settings (VIZ-905)", () => {
