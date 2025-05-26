@@ -69,7 +69,7 @@
     (not-empty (filterv #(lib.underlying/breakout-sourced? query (:column %))
                         row))))
 
-(mu/defn- nested-name-based-breakout-column? :- :boolean
+(mu/defn- card-sourced-name-based-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
   (let [breakout-sourced? (= :source/breakouts (:lib/source column))
@@ -147,7 +147,7 @@
   ;; this function once the field refs overhaul lands.
   ;;
   ;; https://github.com/metabase/metabase/issues/53604
-  (if-not (or (nested-name-based-breakout-column? query column)
+  (if-not (or (card-sourced-name-based-breakout-column? query column)
               (possible-model-mapped-breakout-column? query column)
               (day-bucketed-breakout-column? column))
     column
