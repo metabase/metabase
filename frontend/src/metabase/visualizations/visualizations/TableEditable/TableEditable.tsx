@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { Flex, Loader, Title } from "metabase/ui";
@@ -103,16 +104,16 @@ export class TableEditable extends Component<
       return <LoadingView isSlow={false} />;
     }
 
-    const visualizationSettings = mergeSettings(
+    const visualizationSettings = getMergedVisualizationSettings(
       card.visualization_settings,
       dashcard.visualization_settings,
     );
 
-    // This is a potential bottleneck, however there's no straightforward optimization inside a class component
-    // However based on props and state configuration it shouldn't be a problem for now
     const hasVisibleColumns =
       !visualizationSettings?.["table.columns"] ||
-      visualizationSettings?.["table.columns"].some((column) => column.enabled);
+      visualizationSettings?.["table.columns"].some(
+        (column: { enabled: boolean }) => column.enabled,
+      );
 
     if (!hasVisibleColumns) {
       return (
@@ -139,3 +140,13 @@ export class TableEditable extends Component<
     );
   }
 }
+
+const getMergedVisualizationSettings = _.memoize(
+  (cardSettings: any, dashcardSettings: any) => {
+    return mergeSettings(cardSettings, dashcardSettings);
+  },
+  (cardSettings: any, dashcardSettings: any) => {
+    // Create a cache key from both settings objects
+    return JSON.stringify([cardSettings, dashcardSettings]);
+  },
+);

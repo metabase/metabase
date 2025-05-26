@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
@@ -59,305 +59,310 @@ type EditTableDashcardVisualizationProps = {
   isEditing?: boolean;
 };
 
-export const EditTableDashcardVisualization = ({
-  title,
-  dashcardId,
-  cardId,
-  tableId,
-  data,
-  className,
-  visualizationSettings,
-  question,
-  withLeaveUnsavedConfirmation = true,
-  isEditing,
-}: EditTableDashcardVisualizationProps) => {
-  const dispatch = useDispatch();
-
-  const location = useLocation();
-  const objectIdParam = useMemo(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const objectIdParam = searchParams.get("objectId");
-    const parsedParams = parseModalCompositeObjectId(objectIdParam);
-
-    if (parsedParams?.dashcardId === dashcardId) {
-      return parsedParams.objectId ?? undefined;
-    }
-
-    return undefined;
-  }, [location.search, dashcardId]);
-
-  const handleCurrentObjectIdChange = useCallback(
-    (objectId?: string) => {
-      const searchParams = new URLSearchParams(location.search);
-
-      if (objectId) {
-        searchParams.set(
-          "objectId",
-          getModalCompositeObjectId(objectId, dashcardId),
-        );
-      } else {
-        searchParams.delete("objectId");
-      }
-
-      dispatch(
-        push({
-          ...location,
-          search: "?" + searchParams.toString(),
-        }),
-      );
-    },
-    [location, dispatch, dashcardId],
-  );
-
-  const {
-    state: modalState,
-    openCreateRowModal,
-    openEditRowModal,
-    closeModal,
-  } = useTableEditingModalControllerWithObjectId({
-    currentObjectId: objectIdParam,
-    datasetData: data,
-    onObjectIdChange: handleCurrentObjectIdChange,
-  });
-
-  const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
+export const EditTableDashcardVisualization = memo(
+  ({
+    title,
     dashcardId,
     cardId,
-  );
-
-  const editingScope = useMemo(() => {
-    return { "dashcard-id": dashcardId };
-  }, [dashcardId]);
-
-  const {
-    isInserting,
-    isDeleting,
-    isUpdating,
-    tableFieldMetadataMap,
-    cellsWithFailedUpdatesMap,
-
-    handleCellValueUpdate,
-    handleRowCreate,
-    handleRowUpdate,
-    handleRowDelete,
-    handleRowDeleteBulk,
-  } = useTableCRUD({
     tableId,
-    scope: editingScope,
-    datasetData: data,
-    stateUpdateStrategy,
-  });
+    data,
+    className,
+    visualizationSettings,
+    question,
+    withLeaveUnsavedConfirmation = true,
+    isEditing,
+  }: EditTableDashcardVisualizationProps) => {
+    const dispatch = useDispatch();
 
-  const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
-    useTableEditingUndoRedo({
+    const location = useLocation();
+    const objectIdParam = useMemo(() => {
+      const searchParams = new URLSearchParams(location.search);
+      const objectIdParam = searchParams.get("objectId");
+      const parsedParams = parseModalCompositeObjectId(objectIdParam);
+
+      if (parsedParams?.dashcardId === dashcardId) {
+        return parsedParams.objectId ?? undefined;
+      }
+
+      return undefined;
+    }, [location.search, dashcardId]);
+
+    const handleCurrentObjectIdChange = useCallback(
+      (objectId?: string) => {
+        const searchParams = new URLSearchParams(location.search);
+
+        if (objectId) {
+          searchParams.set(
+            "objectId",
+            getModalCompositeObjectId(objectId, dashcardId),
+          );
+        } else {
+          searchParams.delete("objectId");
+        }
+
+        dispatch(
+          push({
+            ...location,
+            search: "?" + searchParams.toString(),
+          }),
+        );
+      },
+      [location, dispatch, dashcardId],
+    );
+
+    const {
+      state: modalState,
+      openCreateRowModal,
+      openEditRowModal,
+      closeModal,
+    } = useTableEditingModalControllerWithObjectId({
+      currentObjectId: objectIdParam,
+      datasetData: data,
+      onObjectIdChange: handleCurrentObjectIdChange,
+    });
+
+    const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
+      dashcardId,
+      cardId,
+    );
+
+    const editingScope = useMemo(() => {
+      return { "dashcard-id": dashcardId };
+    }, [dashcardId]);
+
+    const {
+      isInserting,
+      isDeleting,
+      isUpdating,
+      tableFieldMetadataMap,
+      cellsWithFailedUpdatesMap,
+
+      handleCellValueUpdate,
+      handleRowCreate,
+      handleRowUpdate,
+      handleRowDelete,
+      handleRowDeleteBulk,
+    } = useTableCRUD({
       tableId,
       scope: editingScope,
+      datasetData: data,
       stateUpdateStrategy,
     });
 
-  const columnsConfig = useEditableTableColumnConfigFromVisualizationSettings(
-    visualizationSettings,
-  );
+    const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
+      useTableEditingUndoRedo({
+        tableId,
+        scope: editingScope,
+        stateUpdateStrategy,
+      });
 
-  const {
-    hasCreateAction,
-    hasDeleteAction,
-    enabledRowActions,
-    handleRowActionRun,
-    activeActionState,
-    handleExecuteModalClose,
-  } = useTableActions({
-    visualizationSettings,
-    datasetData: data,
-  });
+    const columnsConfig = useEditableTableColumnConfigFromVisualizationSettings(
+      visualizationSettings,
+    );
 
-  const { rowSelection, selectedRowIndices, setRowSelection } =
-    useEditingTableRowSelection();
+    const {
+      hasCreateAction,
+      hasDeleteAction,
+      enabledRowActions,
+      handleRowActionRun,
+      activeActionState,
+      handleExecuteModalClose,
+    } = useTableActions({
+      visualizationSettings,
+      datasetData: data,
+    });
 
-  const {
-    isDeleteBulkRequested,
-    requestDeleteBulk,
-    cancelDeleteBulk,
-    onDeleteBulkConfirmation,
-  } = useTableBulkDeleteConfirmation({
-    handleRowDeleteBulk,
-    selectedRowIndices,
-    setRowSelection,
-  });
+    const { rowSelection, selectedRowIndices, setRowSelection } =
+      useEditingTableRowSelection();
 
-  const isActionExecuteModalOpen = !!activeActionState;
+    const {
+      isDeleteBulkRequested,
+      requestDeleteBulk,
+      cancelDeleteBulk,
+      onDeleteBulkConfirmation,
+    } = useTableBulkDeleteConfirmation({
+      handleRowDeleteBulk,
+      selectedRowIndices,
+      setRowSelection,
+    });
 
-  const { getColumnSortDirection } = useTableSorting({
-    question,
-  });
+    const isActionExecuteModalOpen = !!activeActionState;
 
-  const shouldDisableActions = isUndoLoading || isRedoLoading;
+    const { getColumnSortDirection } = useTableSorting({
+      question,
+    });
 
-  return (
-    <Stack className={cx(S.container, className)} gap={0}>
-      <Flex
-        p="0.5rem"
-        px="1rem"
-        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-        justify="space-between"
-        align="center"
-      >
-        <Text fw="bold">{title}</Text>
+    const shouldDisableActions = isUndoLoading || isRedoLoading;
 
-        {!isEditing && (
-          <Group gap="sm" align="center">
-            {hasDeleteAction && (
-              <>
-                <ActionIcon
-                  size="md"
-                  onClick={requestDeleteBulk}
-                  disabled={shouldDisableActions || !selectedRowIndices.length}
-                >
-                  <Icon
-                    name="trash"
-                    tooltip={
-                      selectedRowIndices.length
-                        ? t`Delete`
-                        : t`Select rows for deletion`
-                    }
-                  />
-                </ActionIcon>
-                <Box h={rem(16)}>
-                  <Divider orientation="vertical" h="100%" />
-                </Box>
-              </>
-            )}
-            <ActionIcon
-              size="md"
-              onClick={undo}
-              disabled={shouldDisableActions}
-              loading={isUndoLoading}
-            >
-              <Icon name="undo" tooltip={t`Undo changes`} />
-            </ActionIcon>
-            <ActionIcon
-              size="md"
-              onClick={redo}
-              disabled={shouldDisableActions}
-              loading={isRedoLoading}
-            >
-              <Icon name="redo" tooltip={t`Redo changes`} />
-            </ActionIcon>
-            {hasCreateAction && (
-              <>
-                <Box h={rem(16)}>
-                  <Divider orientation="vertical" h="100%" />
-                </Box>
-                <ActionIcon
-                  size="md"
-                  onClick={openCreateRowModal}
-                  disabled={shouldDisableActions}
-                >
-                  <Icon name="add" tooltip={t`New record`} />
-                </ActionIcon>
-              </>
-            )}
-          </Group>
-        )}
-      </Flex>
-      {data.rows.length === 0 ? (
-        <Stack
-          h="100%"
-          justify="center"
+    return (
+      <Stack className={cx(S.container, className)} gap={0}>
+        <Flex
+          p="0.5rem"
+          px="1rem"
+          style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+          justify="space-between"
           align="center"
-          c="var(--mb-color-text-tertiary)"
         >
-          <NoDataError data-testid="no-results-image" />
-          <ShortMessage>{t`No results!`}</ShortMessage>
-          <Button
-            leftSection={<Icon name="add" />}
-            variant="filled"
-            onClick={openCreateRowModal}
-            disabled={shouldDisableActions}
-          >{t`New Record`}</Button>
-        </Stack>
-      ) : (
-        <>
-          <Box pos="relative" className={S.gridWrapper}>
-            <EditTableDataOverlay
-              show={shouldDisableActions}
-              message={currentActionLabel ?? ""}
-            />
-            <EditTableDataGrid
-              data={data}
-              fieldMetadataMap={tableFieldMetadataMap}
-              cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
-              onCellValueUpdate={handleCellValueUpdate}
-              onRowExpandClick={openEditRowModal}
-              columnsConfig={columnsConfig}
-              getColumnSortDirection={getColumnSortDirection}
-              rowActions={enabledRowActions}
-              onActionRun={handleRowActionRun}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-            />
-          </Box>
+          <Text fw="bold">{title}</Text>
 
-          <Flex
-            p="xs"
-            px="1rem"
-            justify="flex-end"
+          {!isEditing && (
+            <Group gap="sm" align="center">
+              {hasDeleteAction && (
+                <>
+                  <ActionIcon
+                    size="md"
+                    onClick={requestDeleteBulk}
+                    disabled={
+                      shouldDisableActions || !selectedRowIndices.length
+                    }
+                  >
+                    <Icon
+                      name="trash"
+                      tooltip={
+                        selectedRowIndices.length
+                          ? t`Delete`
+                          : t`Select rows for deletion`
+                      }
+                    />
+                  </ActionIcon>
+                  <Box h={rem(16)}>
+                    <Divider orientation="vertical" h="100%" />
+                  </Box>
+                </>
+              )}
+              <ActionIcon
+                size="md"
+                onClick={undo}
+                disabled={shouldDisableActions}
+                loading={isUndoLoading}
+              >
+                <Icon name="undo" tooltip={t`Undo changes`} />
+              </ActionIcon>
+              <ActionIcon
+                size="md"
+                onClick={redo}
+                disabled={shouldDisableActions}
+                loading={isRedoLoading}
+              >
+                <Icon name="redo" tooltip={t`Redo changes`} />
+              </ActionIcon>
+              {hasCreateAction && (
+                <>
+                  <Box h={rem(16)}>
+                    <Divider orientation="vertical" h="100%" />
+                  </Box>
+                  <ActionIcon
+                    size="md"
+                    onClick={openCreateRowModal}
+                    disabled={shouldDisableActions}
+                  >
+                    <Icon name="add" tooltip={t`New record`} />
+                  </ActionIcon>
+                </>
+              )}
+            </Group>
+          )}
+        </Flex>
+        {data.rows.length === 0 ? (
+          <Stack
+            h="100%"
+            justify="center"
             align="center"
-            className={S.gridFooterDashcardVisualization}
+            c="var(--mb-color-text-tertiary)"
           >
-            <Text fz="sm" fw="bold">
-              {getEditTableRowCountMessage(data)}
-            </Text>
-          </Flex>
-        </>
-      )}
-      <EditingBaseRowModal
-        modalState={modalState}
-        onClose={closeModal}
-        hasDeleteAction={hasDeleteAction}
-        onEdit={handleRowUpdate}
-        onRowCreate={handleRowCreate}
-        onRowDelete={handleRowDelete}
-        datasetColumns={data.cols}
-        currentRowData={
-          modalState.rowIndex !== undefined
-            ? data.rows[modalState.rowIndex]
-            : undefined
-        }
-        fieldMetadataMap={tableFieldMetadataMap}
-        isLoading={isInserting}
-        columnsConfig={columnsConfig}
-      />
-      <Modal
-        isOpen={isActionExecuteModalOpen}
-        onClose={handleExecuteModalClose}
-      >
-        {activeActionState && (
-          <TableActionExecuteModal
-            actionId={activeActionState.actionId}
-            initialValues={activeActionState.rowData}
-            actionOverrides={activeActionState.actionOverrides}
-            onClose={handleExecuteModalClose}
+            <NoDataError data-testid="no-results-image" />
+            <ShortMessage>{t`No results!`}</ShortMessage>
+            <Button
+              leftSection={<Icon name="add" />}
+              variant="filled"
+              onClick={openCreateRowModal}
+              disabled={shouldDisableActions}
+            >{t`New Record`}</Button>
+          </Stack>
+        ) : (
+          <>
+            <Box pos="relative" className={S.gridWrapper}>
+              <EditTableDataOverlay
+                show={shouldDisableActions}
+                message={currentActionLabel ?? ""}
+              />
+              <EditTableDataGrid
+                data={data}
+                fieldMetadataMap={tableFieldMetadataMap}
+                cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
+                onCellValueUpdate={handleCellValueUpdate}
+                onRowExpandClick={openEditRowModal}
+                columnsConfig={columnsConfig}
+                getColumnSortDirection={getColumnSortDirection}
+                rowActions={enabledRowActions}
+                onActionRun={handleRowActionRun}
+                rowSelection={rowSelection}
+                onRowSelectionChange={setRowSelection}
+              />
+            </Box>
+
+            <Flex
+              p="xs"
+              px="1rem"
+              justify="flex-end"
+              align="center"
+              className={S.gridFooterDashcardVisualization}
+            >
+              <Text fz="sm" fw="bold">
+                {getEditTableRowCountMessage(data)}
+              </Text>
+            </Flex>
+          </>
+        )}
+        <EditingBaseRowModal
+          modalState={modalState}
+          onClose={closeModal}
+          hasDeleteAction={hasDeleteAction}
+          onEdit={handleRowUpdate}
+          onRowCreate={handleRowCreate}
+          onRowDelete={handleRowDelete}
+          datasetColumns={data.cols}
+          currentRowData={
+            modalState.rowIndex !== undefined
+              ? data.rows[modalState.rowIndex]
+              : undefined
+          }
+          fieldMetadataMap={tableFieldMetadataMap}
+          isLoading={isInserting}
+          columnsConfig={columnsConfig}
+        />
+        <Modal
+          isOpen={isActionExecuteModalOpen}
+          onClose={handleExecuteModalClose}
+        >
+          {activeActionState && (
+            <TableActionExecuteModal
+              actionId={activeActionState.actionId}
+              initialValues={activeActionState.rowData}
+              actionOverrides={activeActionState.actionOverrides}
+              onClose={handleExecuteModalClose}
+            />
+          )}
+        </Modal>
+        <DeleteBulkRowConfirmationModal
+          opened={isDeleteBulkRequested}
+          rowCount={selectedRowIndices.length}
+          isLoading={isDeleting}
+          onConfirm={onDeleteBulkConfirmation}
+          onClose={cancelDeleteBulk}
+        />
+        {withLeaveUnsavedConfirmation && (
+          <UnsavedLeaveConfirmationModal
+            isUpdating={isUpdating}
+            isDeleting={isDeleting}
+            isInserting={isInserting}
           />
         )}
-      </Modal>
-      <DeleteBulkRowConfirmationModal
-        opened={isDeleteBulkRequested}
-        rowCount={selectedRowIndices.length}
-        isLoading={isDeleting}
-        onConfirm={onDeleteBulkConfirmation}
-        onClose={cancelDeleteBulk}
-      />
-      {withLeaveUnsavedConfirmation && (
-        <UnsavedLeaveConfirmationModal
-          isUpdating={isUpdating}
-          isDeleting={isDeleting}
-          isInserting={isInserting}
-        />
-      )}
-    </Stack>
-  );
-};
+      </Stack>
+    );
+  },
+);
+EditTableDashcardVisualization.displayName = "EditTableDashcardVisualization";
 
 function getEditTableRowCountMessage(data: DatasetData): string {
   const rowCount = data.rows.length;
