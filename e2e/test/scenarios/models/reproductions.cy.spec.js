@@ -1383,7 +1383,7 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
     });
   }
 
-  function testUnderlyingRecordsDrillThrough() {
+  function testUnderlyingRecordsDrillThru() {
     cy.intercept("POST", "/api/dataset").as("dataset");
     H.visitQuestion("@nestedQuestionId");
 
@@ -1412,12 +1412,12 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
 
   it("Underlying records drill-through should work on nested native question (metabase#53604)", () => {
     createNestedQuestion();
-    testUnderlyingRecordsDrillThrough();
+    testUnderlyingRecordsDrillThru();
   });
 
   it("Underlying records drill-through should work on nested native model (metabase#53604)", () => {
     createNestedQuestion({ turnIntoModel: true });
-    testUnderlyingRecordsDrillThrough();
+    testUnderlyingRecordsDrillThru();
   });
 });
 
