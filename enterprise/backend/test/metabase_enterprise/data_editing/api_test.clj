@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.api :as data-editing.api]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
+   [metabase.actions.models :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.models.field-values :as field-values]
@@ -762,7 +763,16 @@
                                                              [{:actual_id #_:id "dashcard:unknown:abcdef"
                                                                :id #_:action_id (:id action)
                                                                :type            "row-action"
-                                                               :mapping         {}
+                                                               :enabled         true}
+                                                              {:actual_id #_:id   "dashcard:unknown:fedcba"
+                                                               :id #_:action_id   "table.row/update"
+                                                               :type              "row-action"
+                                                               :parameterMappings {:table-id @test-table
+                                                                                   :row      "::root"}
+                                                               :enabled           true}
+                                                              {:actual_id #_:id "dashcard:unknown:xyzabc"
+                                                               :id #_:action_id (#'actions/encoded-action-id :table.row/update @test-table)
+                                                               :type            "row-action"
                                                                :enabled         true}]}}]
                 (testing "no access to the model"
                   (is (= 403 (:status (req {:user      :rasta
@@ -785,7 +795,7 @@
                                      :input     {:id     1
                                                  :status "approved"}})
                                (select-keys [:status :body]))))))
-                (testing "dashcard row action modifying a row"
+                (testing "dashcard row action modifying a row - implicit action"
                   (let [action-id "dashcard:unknown:abcdef"]
                     (testing "underlying row does not exist, action not executed"
                       (is (= 404 (:status (req {:action-id action-id
@@ -800,6 +810,44 @@
                              (-> (req {:action-id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
                                        :input     {:id     2
+                                                   :status "approved"}})
+                                 (select-keys [:status :body])))))))
+                (testing "dashcard row action modifying a row - primitive action"
+                  (let [action-id "dashcard:unknown:fedcba"]
+                    (testing "underlying row does not exist, action not executed"
+                      (is (= 404 (:status (req {:action-id action-id
+                                                :scope     {:dashcard-id (:id dashcard)}
+                                                :input     {:id     3
+                                                            :status "approved"}})))))
+                    (testing "underlying row exists, action executed"
+                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                            {:rows [{:name "Braai tongs", :status "waiting"}]})
+                      (is (= {:status 200
+                              :body   {:table-id @test-table
+                                       :op "updated"
+                                       :row {:id 3, :name "Braai tongs", :status "approved"}}}
+                             (-> (req {:action-id action-id
+                                       :scope     {:dashcard-id (:id dashcard)}
+                                       :input     {:id     3
+                                                   :status "approved"}})
+                                 (select-keys [:status :body])))))))
+                (testing "dashcard row action modifying a row - encoded action"
+                  (let [action-id "dashcard:unknown:xyzabc"]
+                    (testing "underlying row does not exist, action not executed"
+                      (is (= 404 (:status (req {:action-id action-id
+                                                :scope     {:dashcard-id (:id dashcard)}
+                                                :input     {:id     4
+                                                            :status "approved"}})))))
+                    (testing "underlying row exists, action executed"
+                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                            {:rows [{:name "Salad spinners", :status "waiting"}]})
+                      (is (= {:status 200
+                              :body   {:table-id @test-table
+                                       :op "updated"
+                                       :row {:id 4, :name "Salad spinners", :status "approved"}}}
+                             (-> (req {:action-id action-id
+                                       :scope     {:dashcard-id (:id dashcard)}
+                                       :input     {:id     4
                                                    :status "approved"}})
                                  (select-keys [:status :body])))))))))))))))
 
