@@ -106,12 +106,12 @@ describe("QuestionDownloadWidget", () => {
       const { onDownload } = setup();
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
-      await userEvent.click(screen.getByLabelText("Unformatted"));
-      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
-        `E.g. 2024-09-06 or 187.50, like in the database`,
-      );
+      await userEvent.click(screen.getByLabelText("Keep the data formatted"));
       expect(
-        screen.queryByLabelText("Keep data pivoted"),
+        screen.getByText("E.g. 2024-09-06 or 187.50, like in the database"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Keep the data pivoted"),
       ).not.toBeInTheDocument();
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
@@ -131,12 +131,11 @@ describe("QuestionDownloadWidget", () => {
       const { onDownload } = setup();
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
-      await userEvent.click(screen.getByLabelText("Formatted"));
-      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
-        `E.g. September 6, 2024 or $187.50, like in Metabase`,
-      );
       expect(
-        screen.queryByLabelText("Keep data pivoted"),
+        screen.getByText("E.g. September 6, 2024 or $187.50, like in Metabase"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Keep the data pivoted"),
       ).not.toBeInTheDocument();
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
@@ -155,9 +154,11 @@ describe("QuestionDownloadWidget", () => {
     const { onDownload } = setup({ card: { ...TEST_CARD, display: "line" } });
 
     await userEvent.click(screen.getByLabelText(`.${format}`));
-    expect(screen.queryByLabelText(`Formatted`)).not.toBeInTheDocument();
     expect(
-      screen.queryByLabelText("Keep data pivoted"),
+      screen.queryByLabelText(`Keep the data formatted`),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Keep the data pivoted"),
     ).not.toBeInTheDocument();
     await userEvent.click(await screen.findByTestId("download-results-button"));
 
@@ -179,7 +180,7 @@ describe("QuestionDownloadWidget", () => {
       });
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
-      await userEvent.click(screen.getByLabelText(`Unformatted`));
+      await userEvent.click(screen.getByLabelText(`Keep the data formatted`));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
       );
@@ -192,7 +193,7 @@ describe("QuestionDownloadWidget", () => {
     },
   );
 
-  it("should hide 'Keep data pivoted' option when enable-pivoted-exports setting is false", async () => {
+  it("should hide 'Keep the data pivoted' option when enable-pivoted-exports setting is false", async () => {
     setup({
       card: { ...TEST_CARD, display: "pivot" },
       settings: { "enable-pivoted-exports": false },
@@ -200,7 +201,7 @@ describe("QuestionDownloadWidget", () => {
 
     await userEvent.click(screen.getByLabelText(".csv"));
     expect(
-      screen.queryByLabelText("Keep data pivoted"),
+      screen.queryByLabelText("Keep the data pivoted"),
     ).not.toBeInTheDocument();
   });
 });
