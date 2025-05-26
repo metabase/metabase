@@ -1234,8 +1234,6 @@
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
-<<<<<<< HEAD
-=======
 
 (deftest user-agent-is-set-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1258,4 +1256,3 @@
       (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
               (-> (qp/process-query query)
                   mt/rows))))))
->>>>>>> 0125b77c3dd (Add bigquery user agent (#58410))
