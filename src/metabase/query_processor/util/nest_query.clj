@@ -21,6 +21,9 @@
 
 (defn- all-fields-for-table [table-id]
   (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
+       ;; The remove line is taken from the add-implicit-clauses middleware. It shouldn't be necessary, because any
+       ;; unused fields should be dropped from the inner query. It also shouldn't hurt anything, because the outer
+       ;; query shouldn't use these fields in the first place.
        (remove #(#{:sensitive :retired} (:visibility-type %)))
        (map (fn [field]
               [:field (u/the-id field) nil]))))
