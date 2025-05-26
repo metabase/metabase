@@ -90,9 +90,6 @@ export const BrowseTableData = ({
             size="1.5rem"
           />
           <Title>{table.display_name}</Title>
-          <Box mt="0.4rem">
-            <Icon name="info_filled" color="var(--mb-color-text-secondary)" />
-          </Box>
         </Group>
         <Group gap="md">
           <Button
