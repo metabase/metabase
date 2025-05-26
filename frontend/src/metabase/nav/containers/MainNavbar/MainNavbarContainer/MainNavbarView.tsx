@@ -4,6 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import {
+  isExamplesCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
@@ -111,14 +115,12 @@ export function MainNavbarView({
 
   const [regularCollections, trashCollection, examplesCollection] =
     useMemo(() => {
-      const isTrash = (c: CollectionTreeItem) => c.type === "trash";
-      const isExamples = (c: CollectionTreeItem) =>
-        !!c.is_sample && c.name === "Examples";
-
       return [
-        collections.filter((c) => !isTrash(c) && !isExamples(c)),
-        collections.find(isTrash),
-        collections.find(isExamples),
+        collections.filter(
+          (c) => !isRootTrashCollection(c) && !isExamplesCollection(c),
+        ),
+        collections.find(isRootTrashCollection),
+        collections.find(isExamplesCollection),
       ];
     }, [collections]);
 
