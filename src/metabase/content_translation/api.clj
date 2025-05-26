@@ -5,7 +5,6 @@
 
 (api.macros/defendpoint :get "/dictionary"
   "Provides translations of user-generated content. This is a public route so that logged-out viewers of static-embedded questions and dashboards can retrieve translations"
-  ;; TODO: Secure this route against shenanigans
   [_route-params query-params _body]
   (let [locale (:locale query-params)]
     (if locale
