@@ -78,6 +78,7 @@ export function IFrameViz({
         dashboard,
         parameterValues,
         text: allowedIframeAttributes?.src,
+        urlEncode: true,
       }),
     [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],
   );

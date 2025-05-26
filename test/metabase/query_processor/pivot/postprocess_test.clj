@@ -5,29 +5,52 @@
 
 (deftest build-top-headers-test
   (testing "builds top headers with single level hierarchy"
-    (let [top-left-header ["Row"]
-          top-header-items [{:depth 0 :value "A" :span 2}
+    (let [top-header-items [{:depth 0 :value "A" :span 2}
                             {:depth 0 :value "B" :span 1}]
-          result (#'pivot.postprocess/build-top-headers top-left-header top-header-items)]
+          left-header-items [{:depth 0 :value "Row1" :span 1 :offset 0 :maxDepthBelow 0}]
+          row-indexes [0]
+          display-name-for-col (fn [idx] (condp = idx 0 "Row"))
+          result (#'pivot.postprocess/build-top-headers top-header-items left-header-items row-indexes display-name-for-col)]
       (is (= [["Row" "A" "A" "B"]]
              result))))
 
   (testing "builds top headers with multi-level hierarchy"
-    (let [top-left-header ["Row1", "Row2"]
-          top-header-items [{:depth 0 :value "A" :span 2}
+    (let [top-header-items [{:depth 0 :value "A" :span 2}
                             {:depth 1 :value "X" :span 1}
                             {:depth 1 :value "Y" :span 1}
                             {:depth 0 :value "B" :span 1}
                             {:depth 1 :value "Z" :span 1}]
-          result (#'pivot.postprocess/build-top-headers top-left-header top-header-items)]
+          left-header-items [{:depth 0 :value "Region" :span 2 :offset 0 :maxDepthBelow 1}
+                             {:depth 1 :value "Country" :span 1 :offset 0 :maxDepthBelow 0}]
+          row-indexes [0 1]
+          display-name-for-col (fn [idx] (condp = idx 0 "Row1" 1 "Row2"))
+          result (#'pivot.postprocess/build-top-headers top-header-items left-header-items row-indexes display-name-for-col)]
       (is (= [[nil nil "A" "A" "B"]
               ["Row1" "Row2" "X" "Y" "Z"]]
              result))))
 
-  (testing "handles empty top header items withotu error"
-    (let [top-left-header ["Row"]
-          top-header-items []
-          result (#'pivot.postprocess/build-top-headers top-left-header top-header-items)]
+  (testing "handles the case where the max depth of the left-header-items tree is less than the count of row-indexes (#58340)"
+    (let [top-header-items [{:depth 0 :value "A" :span 2}
+                            {:depth 1 :value "X" :span 1}
+                            {:depth 1 :value "Y" :span 1}
+                            {:depth 0 :value "B" :span 1}
+                            {:depth 1 :value "Z" :span 1}]
+          left-header-items [{:depth 0 :value "Region" :span 2 :offset 0 :maxDepthBelow 0}]
+          row-indexes [0 1]
+          display-name-for-col (fn [idx] (condp = idx 0 "Row1" 1 "Row2"))
+          result (#'pivot.postprocess/build-top-headers top-header-items left-header-items row-indexes display-name-for-col)]
+      ;; Number of left columns should match the depth of left-header-items, to account for cases where entire columns
+      ;; are collapsed and thus are omitted from the export
+      (is (= [[nil "A" "A" "B"]
+              ["Row1" "X" "Y" "Z"]]
+             result))))
+
+  (testing "handles empty top header items without error"
+    (let [top-header-items []
+          left-header-items [{:depth 0 :value "Row1" :span 1 :offset 0 :maxDepthBelow 0}]
+          row-indexes [0]
+          display-name-for-col (fn [idx] (condp = idx 0 "Row"))
+          result (#'pivot.postprocess/build-top-headers top-header-items left-header-items row-indexes display-name-for-col)]
       (is (= [["Row"]]
              result)))))
 

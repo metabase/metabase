@@ -63,8 +63,19 @@ export function assertDataSourceColumnSelected(
 }
 
 export function selectDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").type(datasetName);
+  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
   cy.findAllByText(datasetName).first().click({ force: true });
+  cy.wait("@cardQuery");
+}
+
+export function deselectDataset(datasetName: string) {
+  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
+  cy.findAllByText(datasetName)
+    .first()
+    .closest("button")
+    .siblings('[data-testid="remove-dataset-button"]')
+    .first()
+    .click({ force: true });
   cy.wait("@cardQuery");
 }
 
@@ -234,10 +245,12 @@ export function showDashcardVisualizerModalSettings(index = 0) {
   showDashcardVisualizerModal(index);
 
   return modal().within(() => {
-    // TODO: replace this with data-testid
-    // when https://github.com/metabase/metabase/pull/56483 is merged
-    cy.findByText("Settings").click();
+    toggleVisualizerSettingsSidebar();
   });
+}
+
+export function toggleVisualizerSettingsSidebar() {
+  return cy.findByTestId("visualizer-settings-button").click();
 }
 
 export function saveDashcardVisualizerModal(
@@ -248,6 +261,12 @@ export function saveDashcardVisualizerModal(
   });
 
   modal({ timeout: 6000 }).should("not.exist");
+}
+
+export function closeDashcardVisualizerModal() {
+  return modal().within(() => {
+    cy.findByTestId("visualizer-close-button").click();
+  });
 }
 
 export function saveDashcardVisualizerModalSettings() {
