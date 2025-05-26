@@ -26,6 +26,7 @@ import type {
   EmbedHideParameters,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type {
@@ -111,6 +112,14 @@ export function PublicOrEmbeddedDashboardView({
   cardTitled,
   downloadsEnabled,
 }: PublicOrEmbeddedDashboardViewProps) {
+  const tc = useTranslateContent();
+  const maybeTranslatedParameters = parameters.map(
+    (parameter): UiParameter => ({
+      ...parameter,
+      name: tc(parameter.name),
+    }),
+  );
+
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}
@@ -171,7 +180,7 @@ export function PublicOrEmbeddedDashboardView({
       name={dashboard && dashboard.name}
       description={dashboard && dashboard.description}
       dashboard={dashboard}
-      parameters={parameters}
+      parameters={maybeTranslatedParameters}
       parameterValues={parameterValues}
       draftParameterValues={draftParameterValues}
       hiddenParameterSlugs={hiddenParameterSlugs}
