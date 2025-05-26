@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -924,6 +925,69 @@
       (create-editable-table-card! dashboard-id dashcard table-id)
       dashcard)))
 
+(defn- init-grid-actions
+  "Actions can be added to editable grids. This makes sure we actually create the corresponding actions.
+  For now, this just means generating an id, and setting default / fallback values."
+  [dashcard]
+  (m/update-existing-in
+   dashcard
+   [:visualization_settings :editableTable.enabledActions]
+   (partial map
+            (fn [{action-id :id :as grid-action}]
+              (if (contains? #{"row/create" "row/delete"} action-id)
+                ;; Certain ids correspond not to primitive actions, but to hard-coded handlers in the FE.
+                ;; Leave them alone.
+                grid-action
+                (-> grid-action
+                    ;; We can leave "id" (should be "action_id") packed, since it's not being saved as a row.
+                    ;; If we removed it, editing these actions would not work properly.
+                    identity
+                    ;; Generate initial ids in the BE, preparing for a time when these are first-class db records.
+                    ;; FE needs to rename "id" to "action_id", and then this can be renamed to "id"
+                    ;; NOTE: it's possible that the dashcard has not been saved to the database yet, and there does not
+                    ;;       have an id. in this case, we'll have to use the action execution scope to find the dashcard
+                    ;;       which contains this JSON defining the relevant grid action. that isn't great, so we'll
+                    ;;       try to heal such under-defined actions when the dashboard is next saved. once these actions
+                    ;;       are first-class database records, we won't have this problem.
+                    (update :actual_id (fn [id]
+                                         (if (or (int? id) (not (str/includes? (str id) ":unknown:")))
+                                           id
+                                           (str "dashcard:" (:id dashcard "unknown") ":" (u/generate-nano-id)))))
+                    ;; At the time of writing, the FE only allows the creation of row actions. Make this explicit.
+                    (update :type #(or % "row-action"))
+                    ;; By default actions are enabled.
+                    (update :enabled #(if (some? %) % true))))))))
+
+(defn- unpack-dashcard-button
+  "There are three flavors of action we can link buttons to: saved, primitive, and encoded.
+  This transforms the dashcard so that each type is represented distinctly, with transparent parameters."
+  [dashcard]
+  (if-not (:action_id dashcard)
+    ;; Either this is not an action, or it has already been unpacked (and we don't want to mess with it)
+    dashcard
+    (let [action-id (:action_id dashcard)
+          dashcard  (-> dashcard
+                        ;; This field corresponds to an FK, so we can only keep values corresponding to saved actions.
+                        (u/update-some :action_id #(when (pos-int? %) %))
+                        ;; Delete any unpacked data, it may be stale, and will be recreated if necessary.
+                        (u/update-if-exists :visualization_settings dissoc :table_action :unsupported_action))]
+      (cond
+        ;; Saved actions, pass through.
+        (pos-int? action-id) dashcard
+        ;; Perhaps we will support primitive actions directly?
+        (or (keyword? action-id) (string? action-id))
+        (assoc-in dashcard [:visualization_settings :primitive_action] action-id)
+        ;; Unpack encoded actions
+        (neg-int? action-id)
+        (let [[op param] (actions/unpack-encoded-action-id action-id)]
+          ;; This would be much better handled as multimethod, but hopefully the hacks don't live much longer.
+          (if (isa? op :table.row/common)
+            (assoc-in dashcard [:visualization_settings :table_action] {:kind (u/qualified-name op), :table_id param})
+            ;; We should have matched exhaustively by now. At least make a noise and leave some debuggable data.
+            (let [info {:packed-id action-id, :op op, :param param}]
+              (log/warn "Unsupported packed action-id on dashcard: " (pr-str (assoc info :dashcard-id (:id dashcard))))
+              (assoc-in dashcard [:visualization_settings :unsupported_action] info))))))))
+
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
@@ -1006,19 +1070,7 @@
                                                                         (assoc card :dashboard_tab_id real-tab-id)
                                                                         card)))
                                                                true
-                                                               (map (fn [dashcard]
-                                                                      (cond
-                                                                        (pos-int? (:action_id dashcard))
-                                                                        (u/update-if-exists dashcard :visualization_settings dissoc :table_action)
-                                                                        (neg-int? (:action_id dashcard))
-                                                                        (let [[op table-id] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
-                                                                          (-> dashcard
-                                                                              (assoc-in [:visualization_settings :table_action]
-                                                                                        {:kind (u/qualified-name op)
-                                                                                         :table_id table-id})
-                                                                              (dissoc :action_id)))
-                                                                        :else
-                                                                        dashcard))))
+                                                               (map (comp init-grid-actions unpack-dashcard-button)))
 
                    new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
