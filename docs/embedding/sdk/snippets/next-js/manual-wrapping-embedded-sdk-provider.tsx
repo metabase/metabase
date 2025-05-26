@@ -26,7 +26,6 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       readonly NEXT_PUBLIC_METABASE_INSTANCE_URL: string;
-      readonly NEXT_PUBLIC_METABASE_AUTH_PROVIDER_URI: string;
     }
   }
 }
