@@ -4,10 +4,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  getAdminPaths,
-  getIsOnboardingSidebarLinkDismissed,
-} from "metabase/admin/app/selectors";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
 import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
@@ -38,7 +35,6 @@ const mapStateToProps = (state) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
   isNewInstance: getIsNewInstance(state),
-  showOnboardingLink: getIsOnboardingSidebarLinkDismissed(state),
 });
 
 const mapDispatchToProps = {
@@ -52,7 +48,6 @@ function ProfileLink({
   canAccessOnboardingPage,
   isNewInstance,
   onLogout,
-  showOnboardingLink,
   openDiagnostics,
 }) {
   const [modalOpen, setModalOpen] = useState(null);
@@ -72,6 +67,9 @@ function ProfileLink({
 
   const generateOptionsForUser = () => {
     const showAdminSettingsItem = adminItems?.length > 0;
+
+    // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
+    const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
 
     return [
       {
@@ -101,14 +99,13 @@ function ProfileLink({
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
-      (!isNewInstance || showOnboardingLink) &&
-        canAccessOnboardingPage && {
-          // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
-          title: t`How to use Metabase`,
-          icon: null,
-          link: "/getting-started",
-          event: `Navbar;Profile Dropdown;Getting Started`,
-        },
+      showOnboardingLink && {
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
+        title: t`How to use Metabase`,
+        icon: null,
+        link: "/getting-started",
+        event: `Navbar;Profile Dropdown;Getting Started`,
+      },
       {
         title: t`Report an issue`,
         icon: null,
@@ -259,6 +256,5 @@ ProfileLink.propTypes = {
   canAccessOnboardingPage: PropTypes.bool,
   isNewInstance: PropTypes.bool,
   onLogout: PropTypes.func.isRequired,
-  showOnboardingLink: PropTypes.bool,
   openDiagnostics: PropTypes.func.isRequired,
 };
