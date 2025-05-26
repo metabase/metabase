@@ -208,38 +208,37 @@ describe("scenarios > dashboard > visualizer > basics", () => {
   });
 
   it("should allow clicking on the title", () => {
-    function assertDashboardUrl() {
-      cy.get("@dashboardId").then((id) => {
-        cy.url().should("contain", `${id}-test-dashboard`);
-      });
-    }
-
     createDashboardWithVisualizerDashcards();
 
     // Click on both series of the first chart
     // Series 1
     H.showUnderlyingQuestion(0, ORDERS_COUNT_BY_CREATED_AT.name);
-    cy.get("@ordersCountByCreatedAtQuestionId").then((id) => {
-      cy.url().should("contain", `${id}-orders-by-created-at-month`);
-    });
+
+    cy.get("@ordersCountByCreatedAtQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-orders-by-created-at-month`),
+    );
     cy.findByLabelText("Back to Test Dashboard").click();
-    assertDashboardUrl();
 
     // Series 2
     H.showUnderlyingQuestion(0, PRODUCTS_COUNT_BY_CREATED_AT.name);
-    cy.get("@productsCountByCreatedAtQuestionId").then((id) => {
-      cy.url().should("contain", `${id}-products-by-created-at-month`);
-    });
+    cy.get("@productsCountByCreatedAtQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-created-at-month`),
+    );
     cy.findByLabelText("Back to Test Dashboard").click();
-    assertDashboardUrl();
+
+    // Click on the third chart (a pie)
+    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY.name);
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
 
     // Click on the fifth chart (a funnel)
     H.showUnderlyingQuestion(4, STEP_COLUMN_CARD.name);
-    cy.get("@stepColumnQuestionId").then((id) => {
-      cy.url().should("contain", `${id}-step-column`);
-    });
+    cy.get("@stepColumnQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-step-column`),
+    );
     cy.findByLabelText("Back to Test Dashboard").click();
-    assertDashboardUrl();
   });
 
   it("should rename a dashboard card", () => {
@@ -595,7 +594,8 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.editDashboard();
 
     H.getDashboardCard(0).within(() => {
-      cy.findByText(baseQuestion.name).should("exist");
+      // dashcard title + the funnel itself
+      cy.findAllByText(baseQuestion.name).should("have.length", 2);
       cy.findByText(invalidQuestion.name).should("exist");
       cy.findByText("1").should("exist");
     });

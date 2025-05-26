@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   isInstanceAnalyticsCustomCollection,
+  isPersonalCollection,
   isRootCollection,
   isRootPersonalCollection,
 } from "metabase/collections/utils";
@@ -18,7 +19,6 @@ import type { Collection } from "metabase-types/api";
 export interface CollectionMenuProps {
   collection: Collection;
   isAdmin: boolean;
-  isPersonalCollectionChild: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
@@ -34,7 +34,6 @@ const mergeArrays = (arr: ReactNode[][]): ReactNode[] => {
 export const CollectionMenu = ({
   collection,
   isAdmin,
-  isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -43,13 +42,16 @@ export const CollectionMenu = ({
 
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
-  const isPersonal = isRootPersonalCollection(collection);
+  const isPersonal = isPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
 
   const canWrite = collection.can_write;
   const canMove =
-    !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
+    !isRoot &&
+    !isRootPersonalCollection(collection) &&
+    canWrite &&
+    !isInstanceAnalyticsCustom;
 
   const moveItems = [];
   const cleanupItems = [];
@@ -76,7 +78,7 @@ export const CollectionMenu = ({
     );
   }
 
-  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
+  if (isAdmin && !isPersonal) {
     editItems.push(
       <Menu.Item
         key="collection-edit"
