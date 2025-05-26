@@ -17,12 +17,13 @@ import type {
 
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
 import S from "./RowActionSettingsModalContent.module.css";
+import type { BasicTableViewColumn } from "./types";
 import { isValidMapping } from "./utils";
 
 interface Props {
   action: WritebackAction | null | undefined;
   rowActionSettings: TableActionDisplaySettings | undefined;
-  tableColumns: { id: number; name: string }[];
+  tableColumns: BasicTableViewColumn[];
   onClose: () => void;
   onSubmit: (actionParams: {
     action: WritebackAction;
@@ -91,7 +92,7 @@ export function RowActionSettingsModalContent({
 
   const getIsFormInvalid = (values: { parameters: RowActionFieldSettings[] }) =>
     selectedAction != null &&
-    values.parameters.some((mapping) => !isValidMapping(mapping));
+    values.parameters.some((mapping) => !isValidMapping(mapping, tableColumns));
 
   const handlePickAction = (action: WritebackAction) => {
     setSelectedAction(action);

@@ -20,13 +20,14 @@ import type {
 
 import S from "./RowActionSettingsModalContent.module.css";
 import { TableColumnsSelect } from "./TableColumnsSelect";
+import type { BasicTableViewColumn } from "./types";
 import { getFieldFlagsCaption } from "./utils";
 
 interface ActionParameterMappingProps {
   action: WritebackAction;
   parameters: WritebackParameter[];
   values: { parameters: RowActionFieldSettings[] };
-  tableColumns: { id: number; name: string }[];
+  tableColumns: BasicTableViewColumn[];
 }
 
 const SOURCE_TYPE_OPTIONS = [
@@ -102,7 +103,7 @@ export const RowActionParameterMappingForm = ({
                     <Group>
                       <Radio
                         name={`parameters.${index}.visibility`}
-                        label={t`Visible`}
+                        label={t`Editable`}
                         value=""
                       />
                       <Radio

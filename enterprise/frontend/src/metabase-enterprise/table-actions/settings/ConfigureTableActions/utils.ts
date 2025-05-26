@@ -5,15 +5,22 @@ import type {
   RowActionFieldSettings,
 } from "metabase-types/api";
 
+import type { BasicTableViewColumn } from "./types";
+
 export const isValidMapping = (
   mapping: PartialRowActionFieldSettings,
+  tableColumns: BasicTableViewColumn[],
 ): mapping is RowActionFieldSettings => {
   if (mapping.sourceType === "ask-user") {
     return true;
   }
 
   if (mapping.sourceType === "row-data") {
-    return "sourceValueTarget" in mapping && !!mapping.sourceValueTarget;
+    return (
+      "sourceValueTarget" in mapping &&
+      !!mapping.sourceValueTarget &&
+      !!tableColumns.find(({ id }) => id === mapping.sourceValueTarget) // TODO: add tuple notation for field ref
+    );
   }
 
   if (mapping.sourceType === "constant") {

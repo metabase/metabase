@@ -12,11 +12,12 @@ import type {
 
 import { RowActionItem } from "./RowActionItem";
 import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
+import type { BasicTableViewColumn } from "./types";
 import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 
 type ConfigureTableActionsProps = {
   value: TableActionDisplaySettings[] | undefined;
-  cols: { id: number; name: string }[];
+  cols: BasicTableViewColumn[];
   onChange: (newValue: TableActionDisplaySettings[]) => void;
 };
 
