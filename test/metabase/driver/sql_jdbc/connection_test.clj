@@ -343,8 +343,8 @@
                 (is (> @connection-creations 1))))))))))
 
 (mt/defdataset
-  small-table
-  [["small-table"
+  small-data
+  [["small"
     [{:field-name "value"
       :base-type :type/Text}]
     [["foo"] ["bar"]]]])
@@ -353,7 +353,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is established"
       (mt/dataset
-        small-table
+        small-data
         (mt/with-temp-copy-of-db
           (let [tunnel-db-details (assoc (:details (mt/db))
                                          :tunnel-enabled true
@@ -365,13 +365,13 @@
             (t2/update! :model/Database (mt/id) {:details tunnel-db-details})
             (is (true? (driver.u/can-connect-with-details? (tx/driver) tunnel-db-details)))
             (is (= [["foo"]]
-                   (mt/rows (mt/run-mbql-query small-table {:fields [$value] :filter [:= $id 1]}))))))))))
+                   (mt/rows (mt/run-mbql-query small {:fields [$value] :filter [:= $id 1]}))))))))))
 
 (deftest ^:synchronized test-ssh-server-reconnection
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (mt/dataset
-        small-table
+        small-data
         (mt/with-temp-copy-of-db
           (let [tunnel-db-details (assoc (:details (mt/db))
                                          :tunnel-enabled true
@@ -383,7 +383,7 @@
             (t2/update! :model/Database (mt/id) {:details tunnel-db-details})
             (letfn [(check-row []
                       (is (= [["foo"]]
-                             (mt/rows (mt/run-mbql-query small-table {:fields [$value] :filter [:= $id 1]})))))]
+                             (mt/rows (mt/run-mbql-query small {:fields [$value] :filter [:= $id 1]})))))]
               ;; check that some data can be queried
               (check-row)
               ;; restart the ssh server
@@ -396,7 +396,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (mt/dataset
-        small-table
+        small-data
         (mt/with-temp-copy-of-db
           (let [tunnel-db-details (assoc (:details (mt/db))
                                          :tunnel-enabled true
@@ -408,7 +408,7 @@
             (t2/update! :model/Database (mt/id) {:details tunnel-db-details})
             (letfn [(check-row []
                       (is (= [["foo"]]
-                             (mt/rows (mt/run-mbql-query small-table {:fields [$value] :filter [:= $id 1]})))))]
+                             (mt/rows (mt/run-mbql-query small {:fields [$value] :filter [:= $id 1]})))))]
               ;; check that some data can be queried
               (check-row)
               ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
