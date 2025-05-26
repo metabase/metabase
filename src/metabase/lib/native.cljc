@@ -197,10 +197,10 @@
          (with-native-extras native-extras)))))
 
 ;; map of function names to min/max expected arguments
-(def function-expected-args
+(def ^:private function-expected-args
   {"mb.time_grouping" [2 2]})
 
-(def tag-type->display-name
+(def ^:private tag-type->display-name
   {:temporal-unit "time grouping"
    :text "variable"
    :card "card reference"
