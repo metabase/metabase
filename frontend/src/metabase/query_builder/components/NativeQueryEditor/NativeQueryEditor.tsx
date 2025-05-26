@@ -45,6 +45,7 @@ import {
 } from "./CodeMirrorEditor";
 import DataSourceSelectors from "./DataSourceSelectors";
 import S from "./NativeQueryEditor.module.css";
+import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
@@ -356,15 +357,41 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 enableParameterRequiredBehavior
               />
             )}
-            {query.hasWritePermission() &&
-              !query.question().isArchived() &&
-              this.props.setIsNativeEditorOpen && (
-                <VisibilityToggler
-                  isOpen={isNativeEditorOpen}
-                  readOnly={!!readOnly}
-                  toggleEditor={this.props.toggleEditor}
+            <Flex ml="auto" gap="lg" mr="lg">
+              {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
+                <NativeQueryEditorSidebar
+                  features={sidebarFeatures}
+                  onShowPromptInput={this.togglePromptVisibility}
+                  onFormatQuery={this.formatQuery}
+                  onGenerateQuery={this.onChange}
+                  question={question}
+                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
+                  snippetCollections={snippetCollections}
+                  snippets={this.props.snippets}
+                  isRunnable={this.props.isRunnable}
+                  isRunning={this.props.isRunning}
+                  isResultDirty={this.props.isResultDirty}
+                  isShowingDataReference={this.props.isShowingDataReference}
+                  isShowingTemplateTagsEditor={
+                    this.props.isShowingTemplateTagsEditor
+                  }
+                  isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
+                  onOpenModal={this.props.onOpenModal}
+                  toggleDataReference={this.props.toggleDataReference}
+                  toggleTemplateTagsEditor={this.props.toggleTemplateTagsEditor}
+                  toggleSnippetSidebar={this.props.toggleSnippetSidebar}
                 />
               )}
+              {query.hasWritePermission() &&
+                !query.question().isArchived() &&
+                this.props.setIsNativeEditorOpen && (
+                  <VisibilityToggler
+                    isOpen={isNativeEditorOpen}
+                    readOnly={!!readOnly}
+                    toggleEditor={this.props.toggleEditor}
+                  />
+                )}
+            </Flex>
           </Flex>
         )}
         <ResizableBox
@@ -397,12 +424,13 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             />
 
             {hasEditingSidebar && !readOnly && (
-              <NativeQueryEditorSidebar
-                features={sidebarFeatures}
-                onShowPromptInput={this.togglePromptVisibility}
-                onFormatQuery={this.formatQuery}
-                onGenerateQuery={this.onChange}
-                {...this.props}
+              <NativeQueryEditorRunButton
+                cancelQuery={this.props.cancelQuery}
+                isResultDirty={this.props.isResultDirty}
+                isRunnable={this.props.isRunnable}
+                isRunning={this.props.isRunning}
+                nativeEditorSelectedText={this.props.nativeEditorSelectedText}
+                runQuery={this.props.runQuery}
               />
             )}
           </>

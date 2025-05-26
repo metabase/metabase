@@ -23,7 +23,9 @@ export const VisibilityToggler = ({
 
   return (
     <Flex className={VisibilityTogglerS.ToggleRoot}>
-      <a
+      <Flex
+        component="a"
+        align="center"
         className={cx(VisibilityTogglerS.ToggleContent, className, {
           [VisibilityTogglerS.isReadOnly]: readOnly,
         })}
@@ -31,11 +33,13 @@ export const VisibilityToggler = ({
         data-testid="visibility-toggler"
         aria-hidden={readOnly}
       >
-        <Text component="span" mr="sm" miw={70}>
-          {text}
-        </Text>
-        <Icon name={icon} />
-      </a>
+        {text && (
+          <Text component="span" mr="sm" miw={70}>
+            {text}
+          </Text>
+        )}
+        <Icon name={icon} size={18} />
+      </Flex>
     </Flex>
   );
 };

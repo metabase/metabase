@@ -31,7 +31,10 @@ export function GenerateSqlQueryButton({
       <Button
         className={className}
         variant="subtle"
-        leftSection={<Icon name="metabot" />}
+        p={0}
+        h="fit-content"
+        bd="none"
+        leftSection={<Icon name="metabot" size={18} />}
         loading={isLoading}
         disabled={request == null}
         aria-label={t`Generate SQL based on the prompt`}
