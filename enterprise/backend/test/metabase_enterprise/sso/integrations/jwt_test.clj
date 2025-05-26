@@ -7,13 +7,13 @@
    [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.config :as config]
-   [metabase.http-client :as client]
+   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.appearance.settings :as appearance.settings]
+   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -436,7 +436,7 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
-                    public-settings/site-name                   (constantly "test")]
+                    appearance.settings/site-name               (constantly "test")]
         (is
          (thrown-with-msg?
           clojure.lang.ExceptionInfo

@@ -30,10 +30,16 @@ describe("scenarios > collection defaults", () => {
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
-  describe("new collection button", () => {
+  H.describeWithSnowplow("new collection button", () => {
     beforeEach(() => {
       H.restore();
-      cy.signInAsNormalUser();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should show the new collection button in the root collection", () => {
@@ -43,6 +49,12 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-menu")
         .findByLabelText("Create a new collection")
         .click();
+
+      cy.log("Track the collection initiation from the header");
+      H.expectUnstructuredSnowplowEvent({
+        event: "plus_button_clicked",
+        triggered_from: "collection-header",
+      });
       cy.findByTestId("new-collection-modal").within(() => {
         cy.findByLabelText("Name").type("MCL");
         cy.findByTestId("collection-picker-button").should(
@@ -61,6 +73,14 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-menu")
         .findByLabelText("Create a new collection")
         .should("be.visible");
+
+      cy.log("Track the collection initiation from the main navbar");
+      H.navigationSidebar().findByLabelText("Create a new collection").click();
+      cy.findByTestId("new-collection-modal").should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "plus_button_clicked",
+        triggered_from: "collection-nav",
+      });
     });
 
     it("user without curate permissions should only be allowed to create a new collection inside their personal collection scope", () => {
@@ -364,6 +384,24 @@ describe("scenarios > collection defaults", () => {
         "mouseenter",
       );
       cy.findByRole("tooltip").should("exist");
+    });
+  });
+
+  it("should not show you the parent collection in recents or search results", () => {
+    H.visitCollection(THIRD_COLLECTION_ID);
+    H.openCollectionMenu();
+    H.popover().findByText("Move").click();
+    H.entityPickerModal().within(() => {
+      cy.findByRole("button", { name: /First collection / }).should("exist");
+      cy.findByRole("button", { name: /Second collection/ }).should(
+        "not.exist",
+      );
+
+      cy.findByPlaceholderText("Search…").type("coll");
+      cy.findByRole("button", { name: /Robert Tableton/ }).should("exist");
+      cy.findByRole("button", { name: /Second collection/ }).should(
+        "not.exist",
+      );
     });
   });
 

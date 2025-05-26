@@ -24,6 +24,7 @@ export type DatabaseFeature =
   | "expression-literals"
   | "expressions"
   | "expressions/date"
+  | "expressions/datetime"
   | "expressions/integer"
   | "expressions/float"
   | "expressions/text"

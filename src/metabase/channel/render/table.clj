@@ -5,15 +5,11 @@
    [medley.core :as m]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
-   [metabase.formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.util :as u])
-  (:import
-   (metabase.formatter NumericWrapper)))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase.formatter/keep-me)
 
 (defn- bar-th-style []
   (merge
@@ -54,13 +50,13 @@
 
 (defn- heading-style-for-type
   [cell]
-  (if (instance? NumericWrapper cell)
+  (if (formatter/NumericWrapper? cell)
     (bar-th-style-numeric)
     (bar-th-style)))
 
 (defn- row-style-for-type
   [cell]
-  (if (instance? NumericWrapper cell)
+  (if (formatter/NumericWrapper? cell)
     (bar-td-style-numeric)
     (bar-td-style)))
 
@@ -149,24 +145,35 @@
            ;; with negative minibars extending to the left
            (if has-neg?
              [:tr
-              [:td {:style (style/style {:background-color (if is-neg? style/mb-secondary-color-alpha style/mb-primary-color-alpha) :border-radius "3px" :padding "0"})}
+              [:td {:style (style/style {:background-color (if is-neg? (style/mb-secondary-color-alpha) (style/mb-primary-color-alpha))
+                                         :border-radius "3px"
+                                         :padding "0"})}
                [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height (format "%spx" style/mb-height)})}
                 (if is-neg?
                   [:tr
                    [:td {:style (style/style {:width (format "%s%%" neg-pct-left) :padding "0"})}]
-                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color style/mb-secondary-color :border-radius "3px 0 0 3px"})}]
+                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full))
+                                              :padding "0"
+                                              :background-color (style/mb-secondary-color)
+                                              :border-radius "3px 0 0 3px"})}]
                    [:td {:style (style/style {:width "2%" :padding "0" :background-color "white"})}]
                    [:td {:style (style/style {:width "49%" :padding "0"})}]]
                   [:tr
                    [:td {:style (style/style {:width "49%" :padding "0"})}]
                    [:td {:style (style/style {:width "2%" :padding "0" :background-color "white"})}]
-                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color style/mb-primary-color :border-radius "0 3px 3px 0"})}]
+                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full))
+                                              :padding "0"
+                                              :background-color (style/mb-primary-color)
+                                              :border-radius "0 3px 3px 0"})}]
                    [:td {:style (style/style {:width (format "%s%%" neg-pct-left) :padding "0"})}]])]]]
              [:tr
-              [:td {:style (style/style {:background-color style/mb-primary-color-alpha :border-radius "3px" :padding "0"})}
+              [:td {:style (style/style {:background-color (style/mb-primary-color-alpha) :border-radius "3px" :padding "0"})}
                [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height (format "%spx" style/mb-height)})}
                 [:tr
-                 [:td {:style (style/style {:width (format "%s%%" pct-full) :padding "0" :background-color style/mb-primary-color :border-radius "3px"})}]
+                 [:td {:style (style/style {:width (format "%s%%" pct-full)
+                                            :padding "0"
+                                            :background-color (style/mb-primary-color)
+                                            :border-radius "3px"})}]
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
     (h val)))
 

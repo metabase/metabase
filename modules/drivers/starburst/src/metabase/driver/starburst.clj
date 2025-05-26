@@ -1,6 +1,5 @@
 (ns metabase.driver.starburst
   "starburst driver."
-  #_{:clj-kondo/ignore [:metabase/modules]} ; api.common, For legacy impersonation
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -9,8 +8,8 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -26,7 +25,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -34,20 +33,8 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    SQLType
-    Time
-    Types)
-   (java.time
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLType Time Types)
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
@@ -82,7 +69,7 @@
   [_ {{:keys [card-id dashboard-id]} :info, :as query}]
   (str
    (qp.util/default-query->remark query)
-   (format-field "accountID" (public-settings/site-uuid))
+   (format-field "accountID" (system/site-uuid))
    (format-field "dashboardID" dashboard-id)
    (format-field "cardID" card-id)))
 
@@ -163,6 +150,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Temporal Casting                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/cast-temporal-string [:starburst :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (h2x/->timestamp [:replace expr "T" " "]))
 
 (defmethod sql.qp/cast-temporal-string [:starburst :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_ _coercion-strategy expr]
@@ -1003,3 +994,7 @@
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
   (get-in database [:details :user]))
+
+(defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))

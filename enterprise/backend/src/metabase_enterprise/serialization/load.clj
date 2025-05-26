@@ -9,8 +9,8 @@
     :as names
     :refer [fully-qualified-name->context]]
    [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
@@ -703,7 +703,7 @@
     (when-let [{email :email, google-auth? :google_auth, is-active? :is_active}
                (t2/select-one [User :email :google_auth :is_active] :id user-id)]
       (let [reset-token        (user/set-password-reset-token! user-id)
-            site-url           (public-settings/site-url)
+            site-url           (system/site-url)
             password-reset-url (str site-url "/auth/reset_password/" reset-token)
             ;; in a web server context, the server-name ultimately comes from ServletRequest/getServerName
             ;; (i.e. the Java class, via Ring); this is the closest approximation in our batch context

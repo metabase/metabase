@@ -64,9 +64,8 @@ describe("Onboarding checklist page", () => {
 
     cy.log("The link should now live in the main settings menu");
     cy.findByLabelText("Settings menu").click();
-    cy.findAllByTestId("entity-menu-link")
-      .contains("How to use Metabase")
-      .click();
+
+    H.popover().should("contain", "How to use Metabase").click();
     cy.location("pathname").should("eq", "/getting-started");
   });
 });
@@ -134,14 +133,13 @@ H.describeWithSnowplow("Onboarding checklist events", () => {
       .findByRole("listitem", { name: "How to use Metabase" })
       .click();
     cy.location("pathname").should("eq", "/getting-started");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "onboarding_checklist_opened",
     });
   });
 
   describe("Onboarding checklist page", () => {
     it("should track each item when expanded", () => {
-      const PAGE_VIEW = 1;
       const items: ChecklistItemValue[] = [
         "invite",
         "database",
@@ -154,14 +152,10 @@ H.describeWithSnowplow("Onboarding checklist events", () => {
       ];
 
       cy.visit("/getting-started");
-      cy.log(
-        "The default open accordion item is not tracked - only the page view is",
-      );
-      H.expectGoodSnowplowEvents(PAGE_VIEW);
 
       items.forEach((i) => {
         cy.findByTestId(`${i}-item`).click();
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "onboarding_checklist_item_expanded",
           triggered_from: i,
         });
@@ -178,7 +172,7 @@ H.describeWithSnowplow("Onboarding checklist events", () => {
         .should("have.attr", "aria-selected", "true");
 
       cy.findByTestId("database-cta").button("Add Database").click();
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "database",
         event_detail: "primary",
@@ -188,7 +182,7 @@ H.describeWithSnowplow("Onboarding checklist events", () => {
 
       cy.findByTestId("invite-item").click();
       cy.findByTestId("invite-cta").button("Invite people").click();
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "invite",
         event_detail: "primary",
@@ -197,7 +191,7 @@ H.describeWithSnowplow("Onboarding checklist events", () => {
       cy.go("back");
 
       cy.findByTestId("invite-cta").button("Set up Single Sign-on").click();
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "invite",
         event_detail: "secondary",

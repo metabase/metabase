@@ -3,7 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]

@@ -1,9 +1,11 @@
 import type { Query } from "history";
 
 import {
-  deserializeBooleanParameterValue,
-  deserializeStringParameterValue,
+  normalizeBooleanParameterValue,
+  normalizeDateParameterValue,
   normalizeNumberParameterValue,
+  normalizeStringParameterValue,
+  normalizeTemporalUnitParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -56,8 +58,21 @@ export function parseParameterValue(value: any, parameter: Parameter) {
     return parseParameterValueForFields(coercedValue, fields);
   }
 
-  if (type === "number") {
-    return parseParameterValueForNumber(coercedValue);
+  // Note:
+  // - "string" parameters can be mapped to anything (string, number, boolean)
+  // - "category" and "id" parameters can be mapped to anything
+  // We cannot properly deserialize their values by checking the parameter type only
+  switch (type) {
+    case "number":
+      return parseParameterValueForNumber(coercedValue);
+    case "location":
+      return normalizeStringParameterValue(coercedValue);
+    case "date":
+      return normalizeDateParameterValue(coercedValue);
+    case "boolean":
+      return normalizeBooleanParameterValue(coercedValue);
+    case "temporal-unit":
+      return normalizeTemporalUnitParameterValue(coercedValue);
   }
 
   return coercedValue;
@@ -96,11 +111,11 @@ function parseParameterValueForFields(
   }
 
   if (fields.every((f) => f.isBoolean())) {
-    return deserializeBooleanParameterValue(value);
+    return normalizeBooleanParameterValue(value);
   }
 
   if (fields.every((f) => f.isString() || f.isStringLike())) {
-    return deserializeStringParameterValue(value);
+    return normalizeStringParameterValue(value);
   }
 
   return value;

@@ -77,7 +77,7 @@ function setupHosted(opts = {}) {
 
 describe("ProfileLink", () => {
   beforeEach(() => {
-    fetchMock.get("path:/api/util/bug_report_details", "mockBugReportDetails");
+    fetchMock.get("path:/api/bug-reporting/details", "mockBugReportDetails");
   });
 
   describe("self-hosted", () => {
@@ -164,7 +164,7 @@ describe("ProfileLink", () => {
         });
         await openMenu();
 
-        const link = screen.queryByRole("link", { name: /help/i });
+        const link = screen.queryByRole("menuitem", { name: /help/i });
 
         expect(link).not.toBeInTheDocument();
       });
@@ -178,7 +178,7 @@ describe("ProfileLink", () => {
         });
         await openMenu();
 
-        const link = screen.getByRole("link", { name: /help/i });
+        const link = screen.getByRole("menuitem", { name: /help/i });
 
         expect(link).toBeInTheDocument();
         expect(link).toHaveProperty("href", "https://custom.example.org/help");
@@ -194,7 +194,7 @@ describe("ProfileLink", () => {
             helpLinkSetting: "metabase",
           });
           await openMenu();
-          const link = screen.getByRole("link", { name: /help/i });
+          const link = screen.getByRole("menuitem", { name: /help/i });
 
           expect(link).toBeInTheDocument();
           const mockBugReportDetails = encodeURIComponent(
@@ -215,7 +215,7 @@ describe("ProfileLink", () => {
             helpLinkSetting: "metabase",
           });
           await openMenu();
-          const link = screen.getByRole("link", { name: /help/i });
+          const link = screen.getByRole("menuitem", { name: /help/i });
 
           expect(link).toBeInTheDocument();
           expect(link).toHaveProperty(
@@ -230,5 +230,5 @@ describe("ProfileLink", () => {
 
 const openMenu = async () => {
   await userEvent.click(screen.getByRole("img", { name: /gear/i }));
-  await screen.findByRole("dialog");
+  await screen.findByRole("menu");
 };

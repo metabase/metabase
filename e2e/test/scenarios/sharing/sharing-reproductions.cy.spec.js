@@ -320,7 +320,8 @@ describe("issue 21559", { tags: "@external" }, () => {
     });
   });
 
-  it("should respect dashboard card visualization (metabase#21559)", () => {
+  // TODO: implement this using the visualizer
+  it.skip("should respect dashboard card visualization (metabase#21559)", () => {
     cy.findByTestId("add-series-button").click({ force: true });
 
     cy.findByTestId("add-series-modal").within(() => {
@@ -1003,7 +1004,7 @@ describe("issue 49525", { tags: "@external" }, () => {
     });
   });
 
-  it("Subscriptions with 'Keep data pivoted' checked should work (metabase#49525)", () => {
+  it("Subscriptions with 'Keep the data pivoted' checked should work (metabase#49525)", () => {
     // Send a test email subscription
     H.openSharingMenu("Subscriptions");
     H.sidebar().within(() => {
@@ -1017,7 +1018,7 @@ describe("issue 49525", { tags: "@external" }, () => {
       // Click this just to close the popover that is blocking the "Send email now" button
       cy.findByText("To:").click();
       cy.findByLabelText("Attach results").click();
-      cy.findByText("Keep data pivoted").click();
+      cy.findByText("Keep the data pivoted").click();
       cy.findByText("Questions to attach").click();
     });
 

@@ -9,3 +9,10 @@
   :export?    false
   :default    false
   :type       :boolean)
+
+(defsetting sql-parsing-enabled
+  (i18n/deferred-tru "SQL Parsing is disabled")
+  :visibility :internal
+  :export?    false
+  :default    true
+  :type       :boolean)

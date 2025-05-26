@@ -428,12 +428,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MongoDB 4.4
-            junit-name: be-tests-mongo-4-4-ee
-            image: metabase/qa-databases:mongo-sample-4.4
-          - name: MongoDB 5.0
-            junit-name: be-tests-mongo-5-0-ee
-            image: metabase/qa-databases:mongo-sample-5.0
+          - name: MongoDB 6.0
+            junit-name: be-tests-mongo-6-0-ee
+            image: metabase/qa-databases:mongo-sample-6
           - name: MongoDB Latest
             junit-name: be-tests-mongo-latest-ee
             image: mongo:latest
@@ -480,12 +477,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MongoDB 4.4
-            junit-name: be-tests-mongo-4-4-ee
-            image: metabase/qa-databases:mongo-sample-4.4
-          - name: MongoDB 5.0
-            junit-name: be-tests-mongo-5-0-ssl-ee
-            image: metabase/qa-databases:mongo-sample-5.0
+          - name: MongoDB 6.0
+            junit-name: be-tests-mongo-6-0-ssl-ee
+            image: metabase/qa-databases:mongo-sample-6
     env:
       CI: 'true'
       DRIVERS: mongo

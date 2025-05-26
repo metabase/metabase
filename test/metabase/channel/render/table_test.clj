@@ -6,7 +6,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.table :as table]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -272,7 +272,7 @@
            ["is respected in table renders when above the default of 20." 25 25]
            ["is set to 20 when the value doesn't make sense." -20 20]
            ["is limited to a max. of 100 rows." 200 100]]]
-    (testing (format "The `metabase.settings.deprecated-grab-bag/attachment-rows-limit` %s" test-explanation)
+    (testing (format "The `attachment-rows-limit` %s" test-explanation)
       (mt/with-temp-env-var-value! ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
         (is (= expected
                (count (-> (render-table
