@@ -47,10 +47,14 @@ export const initAuth = createAsyncThunk(
           api.sessionToken = session.id;
         }
       };
-      // verify that the session is actually valid before proceeding
-      await dispatch(
-        getOrRefreshSession(authConfig.metabaseInstanceUrl),
-      ).unwrap();
+      try {
+        // verify that the session is actually valid before proceeding
+        await dispatch(
+          getOrRefreshSession(authConfig.metabaseInstanceUrl),
+        ).unwrap();
+      } catch (e) {
+        throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(e as Error);
+      }
     }
 
     // Fetch user and site settings
@@ -67,8 +71,6 @@ export const initAuth = createAsyncThunk(
       sdkVersion !== "unknown" &&
       !isSdkVersionCompatibleWithMetabaseVersion({ mbVersion, sdkVersion })
     ) {
-      // Optionally throw here if you want to block on version mismatch
-      // throw MetabaseError.SDK_VERSION_INCOMPATIBLE({ expected: mbVersion, actual: sdkVersion });
       console.warn(
         `SDK version ${sdkVersion} is not compatible with MB version ${mbVersion}, this might cause issues.`,
         // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
@@ -80,7 +82,7 @@ export const initAuth = createAsyncThunk(
       throw MetabaseError.USER_FETCH_FAILED();
     }
     if (!siteSettings.payload) {
-      throw MetabaseError.USER_FETCH_FAILED(); // or SITE_SETTINGS_FETCH_FAILED if you have one
+      throw MetabaseError.USER_FETCH_FAILED();
     }
   },
 );
@@ -132,13 +134,7 @@ const getRefreshToken = async (
     | MetabaseAuthConfig["fetchRequestToken"]
     | null = null,
 ) => {
-  let urlResponseJson;
-  try {
-    urlResponseJson = await connectToInstanceAuthSso(url);
-  } catch (e) {
-    console.error("connectToInstanceAuthSso threw:", e);
-    throw e;
-  }
+  const urlResponseJson = await connectToInstanceAuthSso(url);
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
     return await openSamlLoginPopup(responseUrl);
