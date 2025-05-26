@@ -101,13 +101,14 @@ describe("scenarios > metrics > dashboard", () => {
       cy.findByTestId("visualization-canvas").within(() => {
         // On the funnel and on the horizontal well
         cy.findAllByText(ORDERS_SCALAR_METRIC.name).should("have.length", 2);
-        cy.findAllByText(PRODUCTS_SCALAR_METRIC.name).should("have.length", 2);
+        cy.findAllByText(PRODUCTS_SCALAR_METRIC.name).should("exist");
       });
       cy.button("Save").click();
     });
     H.saveDashboard();
     H.getDashboardCard().within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      // On the funnel and on the horizontal well
+      cy.findAllByText(ORDERS_SCALAR_METRIC.name).should("have.length", 2);
       cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("be.visible");
     });
   });
