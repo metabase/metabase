@@ -1,8 +1,10 @@
 import React, {
   type ComponentType,
+  type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  useCallback,
   useMemo,
 } from "react";
 import { t } from "ttag";
@@ -36,6 +38,8 @@ import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type { TranslateDisplayNamesFunction } from "metabase/i18n/hooks";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
@@ -78,7 +82,11 @@ import type {
   TimelineEvent,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
+import type {
+  AdminPathKey,
+  Dispatch as ReduxDispatch,
+  State,
+} from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -726,7 +734,7 @@ export const PLUGIN_METABOT = {
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
-  dispatch: Dispatch,
+  dispatch: ReduxDispatch,
 ) => (DashCardMenuItem & { key: string }) | null;
 
 export type PluginDashcardMenu = {
@@ -735,6 +743,20 @@ export type PluginDashcardMenu = {
 
 export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
+};
+
+export const PLUGIN_CONTENT_TRANSLATION = {
+  isEnabled: false,
+  ContentTranslationConfiguration: PluginPlaceholder,
+  useTranslateContent: <
+    T = string | null | undefined,
+  >(): ContentTranslationFunction => {
+    // In OSS, the input is not translated
+    return useCallback(<U = T>(arg: U) => arg, []);
+  },
+  translateDisplayNames: ((obj, _tc, _fieldsToTranslate) => ({
+    ...obj,
+  })) satisfies TranslateDisplayNamesFunction,
 };
 
 export const PLUGIN_DB_ROUTING = {

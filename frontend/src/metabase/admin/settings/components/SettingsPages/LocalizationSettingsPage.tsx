@@ -6,6 +6,8 @@ import { Box, Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { FormattingWidget } from "../widgets/FormattingWidget";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import ErrorBoundary from "metabase/ErrorBoundary";
 
 export function LocalizationSettingsPage() {
   const availableLocales = useSetting("available-locales");
@@ -21,6 +23,11 @@ export function LocalizationSettingsPage() {
           )}
           inputType="select"
         />
+        {PLUGIN_CONTENT_TRANSLATION.isEnabled && (
+          <ErrorBoundary>
+            <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+          </ErrorBoundary>
+        )}
         <AdminSettingInput
           name="report-timezone"
           searchable
