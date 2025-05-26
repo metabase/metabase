@@ -104,15 +104,6 @@
                    (:metabase.lib.field/temporal-unit col)
                    (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
 
-                   (and *force-broken-card-refs*
-                        ;; never force broken refs for Models, because Models can have give columns with completely
-                        ;; different names the Field ID of a different column, somehow. See #22715
-                        (or
-                         ;; we can only do this check if `card-id` is passed in.
-                         (not card-id)
-                         (not= (:type card) :model)))
-                   (assoc ::force-broken-id-refs true)
-
                    ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
                    ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
                    ;; treated as FKs unless the metadata is configured accordingly.
