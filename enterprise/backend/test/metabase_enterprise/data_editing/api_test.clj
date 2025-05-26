@@ -713,8 +713,7 @@
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]
     (mt/with-premium-features #{:table-data-editing}
-      ;; H2 does not support DDL operations, so this query action will fail.
-      (mt/test-drivers #{#_:h2 :postgres}
+      (mt/test-drivers #{:h2 :postgres}
         (data-editing.tu/toggle-data-editing-enabled! true)
         (mt/with-actions-enabled
           (testing "no dashcard"
