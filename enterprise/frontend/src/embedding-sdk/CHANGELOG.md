@@ -1,3 +1,13 @@
+## [0.53.18](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.17...embedding-sdk-0.53.18) (2025-05-26)
+
+
+### Bug Fixes
+
+* **sdk:** fix tooltip crash by migrating away from renderToString ([#58394](https://github.com/metabase/metabase/issues/58394)) ([#58412](https://github.com/metabase/metabase/issues/58412)) ([f1d9962](https://github.com/metabase/metabase/commit/f1d996246fb1261566884c5a0137f9d49f721b08))
+* **sdk:** questions shows an error while loading on strict mode ([#58220](https://github.com/metabase/metabase/issues/58220)) ([6592640](https://github.com/metabase/metabase/commit/65926405896b5cfb3d4c445cb4906576eeddbc46)), closes [#58183](https://github.com/metabase/metabase/issues/58183)
+
+
+
 ## [0.53.17](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.16...embedding-sdk-0.53.17) (2025-05-16)
 
 
