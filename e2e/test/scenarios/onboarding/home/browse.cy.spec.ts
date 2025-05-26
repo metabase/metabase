@@ -277,9 +277,9 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
     browseModels();
 
     cy.log("Filter on verified models is enabled by default");
-    cy.findByTestId("browse-models-header")
-      .findByTestId("filter-dot")
-      .should("be.visible");
+    cy.findByTestId("browse-models-header").findByRole("switch", {
+      name: /Show unverified models, too/i,
+    });
 
     cy.log("Model 1 does not appear in the table, since it's not verified");
     model1().should("not.exist");
