@@ -727,8 +727,8 @@
               (is (= 404 (:status (req {:action-id 999999
                                         :scope     {:dashcard-id (:id dashcard)}
                                         :input     {}}))))
-              (testing "no dashcard still results in 400"
-                (is (= 400 (:status (req {:action-id 999999, :input {}})))))))
+              (testing "no dashcard still results in 404"
+                (is (= 404 (:status (req {:action-id 999999, :input {}})))))))
           (mt/with-non-admin-groups-no-root-collection-perms
             (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
                                                                       :name [:text]
