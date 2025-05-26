@@ -20,7 +20,7 @@ schedule_info as (
         id,
         case
             when ui_display_type = 'cron/raw' then 'custom'
-            when minutes = '*' or minutes like '0/%' then 'by the minute'
+            when minutes ~ '^\*$' or minutes ~ '^\d+/\d+$' then 'by the minute'
             when day_of_month != '*' and
                  (day_of_week = '?' or
                   day_of_week ~ '^\d#1$' or

@@ -16,7 +16,7 @@ select
     case
         when ns.ui_display_type = 'cron/raw' then 'custom'
         when REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){1}([^ ]+)', 1, 1, '', 2) = '*' or
-             REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){1}([^ ]+)', 1, 1, '', 2) like '0/%' then 'by the minute'
+             REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){1}([^ ]+)', 1, 1, '', 2), '^[0-9]+/[0-9]+$') then 'by the minute'
         when REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){3}([^ ]+)', 1, 1, '', 2) != '*' and
              (REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2) = '?' or
               REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^[0-9]#1$') or
