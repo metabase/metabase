@@ -6,8 +6,8 @@ ENV WATCH=${WATCH}
 ARG VITE_METABASE_INSTANCE_URL
 ENV VITE_METABASE_INSTANCE_URL=${VITE_METABASE_INSTANCE_URL}
 
-ARG VITE_METABASE_EMBEDDING_API_KEY
-ENV VITE_METABASE_EMBEDDING_API_KEY=${VITE_METABASE_EMBEDDING_API_KEY}
+ARG VITE_AUTH_PROVIDER_URI
+ENV VITE_AUTH_PROVIDER_URI=${VITE_AUTH_PROVIDER_URI}
 
 WORKDIR /app
 
@@ -22,7 +22,8 @@ RUN if [ -d "../local-dist/embedding-sdk" ]; then \
       echo "Local embedding-sdk dist is found in ../local-dist/embedding-sdk, installing it..."; \
       npm install file:../local-dist/embedding-sdk --install-links; \
     else \
-      echo "Local embedding-sdk dist is not found in ../local-dist/embedding-sdk, skipping copy"; \
+      echo "Local embedding-sdk dist is not found in ../local-dist/embedding-sdk..."; \
+      exit 1; \
     fi
 
 RUN if [ "$WATCH" != "true" ]; then \

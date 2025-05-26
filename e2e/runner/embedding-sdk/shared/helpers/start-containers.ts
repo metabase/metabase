@@ -36,7 +36,9 @@ export async function startContainers({
   try {
     shell(`${dockerUpCommand} -d`, { cwd, env });
 
-    await waitForHealth(`http://localhost:${env.MB_PORT}/api/health`);
+    if (env.MB_PORT) {
+      await waitForHealth(`http://localhost:${env.MB_PORT}/api/health`);
+    }
   } catch {
     shell(dockerDownCommand, { cwd, env });
   }

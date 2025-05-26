@@ -216,6 +216,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get Sample App name
+        id: get-sample-app-name
+        shell: bash
+        run: |
+          test_suite="${{ matrix.test_suite }}"
+          echo "sample_app_name=${test_suite%-e2e}" >> "$GITHUB_OUTPUT"
+
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
@@ -277,20 +284,13 @@ jobs:
         continue-on-error: true
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }} --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
-      - name: Find Cypress folder
-        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
-        id: find-cypress-folder
-        run: |
-          cypress_folder_path=$(find e2e/embedding-sdk-host-apps -type d -name cypress | head -n 1)
-          echo "cypress_folder_path=$cypress_folder_path" >> "$GITHUB_OUTPUT"
-
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-sample-app-${{ matrix.test_suite }}-latest
           path: |
-            ./${{ steps.find-cypress-folder.outputs.cypress_folder_path }}
+            ./e2e/tmp/${{ steps.get-sample-app-name.outputs.sample_app_name }}/cypress
           if-no-files-found: ignore
 
       - name: Fail job if tests failed
@@ -342,6 +342,18 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
+      - name: Prepare JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: "temurin"
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        run: node e2e/runner/run_cypress_ci.js snapshot
+
       - name: Prepare and launch Host App
         run: npx tsx ./e2e/runner/embedding-sdk/host-apps/start-ci.ts ${{ matrix.test_suite }}
 
@@ -350,20 +362,13 @@ jobs:
         continue-on-error: true
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }} --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
-      - name: Find Cypress folder
-        if: ${{ steps.run-e2e-tests.outcome != 'success' }}
-        id: find-cypress-folder
-        run: |
-          cypress_folder_path=$(find e2e/embedding-sdk-host-apps -type d -name cypress | head -n 1)
-          echo "cypress_folder_path=$cypress_folder_path" >> "$GITHUB_OUTPUT"
-
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
         if: ${{ steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-host-app-${{ matrix.test_suite }}-${{ matrix.environment }}-latest
           path: |
-            ./${{ steps.find-cypress-folder.outputs.cypress_folder_path }}
+            ./cypress
           if-no-files-found: ignore
 
       - name: Fail job if tests failed

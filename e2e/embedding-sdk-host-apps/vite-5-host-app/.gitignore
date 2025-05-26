@@ -1,17 +1,9 @@
-# environment
-.env
-.env.docker
-.env*.local
-
 # local dist
 local-dist/*
 !local-dist/.gitkeep
 
 # dependencies
 node_modules
-
-# testing
-cypress
 
 # dist
 out

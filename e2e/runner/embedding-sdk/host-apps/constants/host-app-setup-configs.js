@@ -1,20 +1,18 @@
-const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed as an ENV variable.
+import { BACKEND_PORT } from "../../../constants/backend-port.js";
 
 const BASE_ENV = {
   WATCH: process.env.HOST_APP_ENVIRONMENT === "development" ? "true" : "false",
-  PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
-  MB_PORT: 4300,
+  MB_PORT: BACKEND_PORT,
   CLIENT_PORT: 4400,
-  AUTH_PROVIDER_PORT: 4500,
 };
 
 const BASE_SETUP_CONFIG = {
   "docker-up-command": "yarn docker:up",
   "docker-down-command": "yarn docker:down",
-  "docker-env-example-path": ".env.docker.example",
-  "docker-env-path": ".env.docker",
-  defaultBranch: BRANCH_NAME,
   env: BASE_ENV,
+  cypressEnv: {
+    CLIENT_PORT: BASE_ENV.CLIENT_PORT,
+  },
 };
 
 export const HOST_APP_SETUP_CONFIGS = {
@@ -29,6 +27,10 @@ export const HOST_APP_SETUP_CONFIGS = {
       WATCH: BASE_ENV.WATCH,
       PREMIUM_EMBEDDING_TOKEN: BASE_ENV.PREMIUM_EMBEDDING_TOKEN,
       MB_PORT: BASE_ENV.MB_PORT,
+      CLIENT_PORT_APP_ROUTER: BASE_ENV.CLIENT_PORT,
+      CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT + 1,
+    },
+    cypressEnv: {
       CLIENT_PORT_APP_ROUTER: BASE_ENV.CLIENT_PORT,
       CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT + 1,
     },

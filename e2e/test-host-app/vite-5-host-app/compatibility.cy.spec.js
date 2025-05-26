@@ -1,27 +1,41 @@
+import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing";
+
 const TIMEOUT_MS = 40000;
 
+const CLIENT_PORT = Cypress.env("CLIENT_PORT");
+const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
+
 describe("Embedding SDK: vite-5-host-app compatibility", () => {
+  beforeEach(() => {
+    signInAsAdminAndEnableEmbeddingSdkForE2e();
+    mockAuthProviderAndJwtSignIn();
+  });
+
   it("should download an Interactive Dashboard", () => {
+    cy.deleteDownloadsFolder();
+
     cy.visit({
-      url: "/interactive-dashboard",
+      url: `${CLIENT_HOST}/interactive-dashboard`,
     });
 
     cy.findByTestId("embed-frame", { timeout: TIMEOUT_MS }).within(() => {
       cy.findByTestId("fixed-width-dashboard-header", {
         timeout: TIMEOUT_MS,
       }).within(() => {
-        cy.get("button svg.Icon-download").first().click({ force: true });
+        cy.findByTestId("export-as-pdf-button").click();
       });
 
-      cy.readFile("cypress/downloads/E-commerce Insights.pdf", {
+      cy.verifyDownload(".pdf", {
         timeout: TIMEOUT_MS,
-      }).should("exist");
+        contains: true,
+      });
     });
   });
 
   it("should load a metabase locale", () => {
     cy.visit({
-      url: "/interactive-question?locale=es&questionId=1",
+      url: "http://localhost:4400/interactive-question?locale=es&questionId=1",
     });
 
     cy.findByTestId("interactive-question-result-toolbar", {
@@ -36,7 +50,7 @@ describe("Embedding SDK: vite-5-host-app compatibility", () => {
     cy.clock(time, ["Date"]);
 
     cy.visit({
-      url: "/interactive-question?locale=es&questionId=1",
+      url: "http://localhost:4400/interactive-question?locale=es&questionId=1",
     });
 
     cy.findByTestId("interactive-question-result-toolbar", {
@@ -46,7 +60,7 @@ describe("Embedding SDK: vite-5-host-app compatibility", () => {
     });
 
     cy.get('[data-element-id="mantine-popover"]').within(() => {
-      cy.findByText("Created At").click();
+      cy.findByText("Started At").click();
       cy.findByText(/Rango de fechas relativo…/).click();
     });
 
@@ -60,7 +74,7 @@ describe("Embedding SDK: vite-5-host-app compatibility", () => {
     cy.clock(time, ["Date"]);
 
     cy.visit({
-      url: "/interactive-question?locale=es&questionId=1",
+      url: "http://localhost:4400/interactive-question?locale=es&questionId=1",
     });
 
     cy.findByTestId("interactive-question-result-toolbar", {
@@ -69,7 +83,7 @@ describe("Embedding SDK: vite-5-host-app compatibility", () => {
       cy.findByText("Filtro").click();
     });
     cy.get('[data-element-id="mantine-popover"]').within(() => {
-      cy.findByText("Created At").click();
+      cy.findByText("Started At").click();
       cy.findByText(/Rango de fechas fijo…/).click();
     });
 

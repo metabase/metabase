@@ -1,7 +1,6 @@
 import { FAILURE_EXIT_CODE } from "../../constants/exit-code";
 import { printBold } from "../../cypress-runner-utils";
 import {
-  copyExampleEnvFile,
   copyLocalEmbeddingSdkPackage,
   copyLocalMetabaseJar,
 } from "../shared/helpers/prepare-app";
@@ -19,8 +18,6 @@ export async function startHostAppContainers(testSuite: HostAppTestSuiteName) {
     appName,
     "docker-up-command": dockerUpCommand,
     "docker-down-command": dockerDownCommand,
-    "docker-env-example-path": dockerEnvExamplePath,
-    "docker-env-path": dockerEnvPath,
     env,
   } = setupConfig;
 
@@ -28,8 +25,6 @@ export async function startHostAppContainers(testSuite: HostAppTestSuiteName) {
     const rootPath = `${HOST_APP_FOLDER_PATH}/${appName}`;
 
     setupAppCleanup({ rootPath, env, dockerDownCommand, removeAppDir: false });
-
-    copyExampleEnvFile({ rootPath, dockerEnvExamplePath, dockerEnvPath });
 
     copyLocalMetabaseJar(rootPath);
 

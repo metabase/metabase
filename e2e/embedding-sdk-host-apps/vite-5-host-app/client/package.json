@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "dotenv -e ../.env vite",
-    "dev": "dotenv -e ../.env vite",
-    "build": "dotenv -e ../.env vite build",
-    "preview": "dotenv -e ../.env vite preview",
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -21,7 +21,6 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
-    "dotenv-cli": "^8.0.0",
     "eslint": "^9.13.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",

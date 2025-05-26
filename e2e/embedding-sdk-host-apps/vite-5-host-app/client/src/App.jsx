@@ -12,7 +12,7 @@ import { Redirect, Route, Switch, useSearchParams } from "wouter";
 // Configuration
 const config = defineMetabaseAuthConfig({
   metabaseInstanceUrl: import.meta.env.VITE_METABASE_INSTANCE_URL,
-  apiKey: import.meta.env.VITE_METABASE_EMBEDDING_API_KEY,
+  authProviderUri: import.meta.env.VITE_AUTH_PROVIDER_URI,
 });
 
 const defaultQuestionId = 24;

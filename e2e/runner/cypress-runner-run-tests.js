@@ -1,5 +1,6 @@
 const cypress = require("cypress");
 
+const { BACKEND_PORT } = require("./constants/backend-port");
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
 const { parseArguments, args } = require("./cypress-runner-utils");
 const {
@@ -9,13 +10,14 @@ const {
   SAMPLE_APP_SETUP_CONFIGS,
 } = require("./embedding-sdk/sample-apps/constants/sample-app-setup-configs");
 
-const DEFAULT_PORT = 4000;
-const getHost = (port = null) =>
-  `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
+const getHost = (port = null) => `http://localhost:${port ?? BACKEND_PORT}`;
 
-const getEmbeddingSdkAppE2eConfig = async ({ appName, env, project }) => {
-  const { CLIENT_PORT } = env;
-
+const getEmbeddingSdkAppE2eConfig = async ({
+  baseUrl,
+  env,
+  project,
+  specPattern,
+}) => {
   process.env = {
     ...process.env,
     ...env,
@@ -26,9 +28,9 @@ const getEmbeddingSdkAppE2eConfig = async ({ appName, env, project }) => {
     project,
     configFile: "e2e/support/cypress.config.js",
     config: {
-      // If the `CLIENT_PORT` is not set, it means we have multiple apps running on different ports,
-      // so we control the `baseUrl` based on other `env` variables.
-      baseUrl: CLIENT_PORT ? getHost(CLIENT_PORT) : "",
+      baseUrl,
+      specPattern,
+      env,
     },
     testingType: "e2e",
     openMode: args["--open"] || process.env.OPEN_UI === "true",
@@ -42,9 +44,12 @@ const getEmbeddingSdkAppE2eConfig = async ({ appName, env, project }) => {
 const getSampleAppE2eConfig = (suite) => ({
   [suite]: async () => {
     const { appName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
+    const { CLIENT_PORT } = env;
 
     return getEmbeddingSdkAppE2eConfig({
-      appName,
+      // If the `clientPort` is not set, it means we have multiple apps running on different ports,
+      // so we control the `baseUrl` based on other `env` variables on the Sample App tests level.
+      baseUrl: CLIENT_PORT ? getHost(CLIENT_PORT) : "",
       env,
       project: ["e2e/tmp", appName].join("/"),
     });
@@ -56,9 +61,11 @@ const getHostAppE2eConfig = (suite) => ({
     const { appName, env } = HOST_APP_SETUP_CONFIGS[suite];
 
     return getEmbeddingSdkAppE2eConfig({
-      appName,
+      baseUrl: getHost(),
       env,
-      project: ["e2e/embedding-sdk-host-apps", appName].join("/"),
+      specPattern: ["e2e/test-host-app", appName, "**/*.cy.spec.{js,ts}"].join(
+        "/",
+      ),
     });
   },
 });
