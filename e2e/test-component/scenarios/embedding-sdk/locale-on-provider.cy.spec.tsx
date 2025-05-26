@@ -6,7 +6,6 @@ import {
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { updateSetting } from "e2e/support/helpers/api";
 import {
-  AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
@@ -33,7 +32,6 @@ function setup({
   cy.mount(
     <MetabaseProvider
       authConfig={{
-        authProviderUri: AUTH_PROVIDER_URL,
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
       }}
       locale={locale}

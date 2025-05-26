@@ -53,19 +53,11 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
     cy.task("signJwt", {
       payload: {
         email: USERS.normal.email,
-        exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
       },
       secret: JWT_SHARED_SECRET,
     }).then((jwtToken) => {
-      const ssoUrl = new URL("/auth/sso", Cypress.config().baseUrl);
-      ssoUrl.searchParams.set("jwt", jwtToken);
-      ssoUrl.searchParams.set("token", "true");
-      cy.request(ssoUrl.toString()).then(({ body }) => {
-        cy.wrap(body).as("metabaseSsoResponse");
-      });
-    });
-    cy.get("@metabaseSsoResponse").then((ssoResponse) => {
-      cy.intercept("GET", "/sso/metabase", ssoResponse);
+      cy.intercept("GET", "/sso/metabase", { jwt: jwtToken });
     });
   });
 
