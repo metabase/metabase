@@ -4,13 +4,12 @@ import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-loa
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
-  EntityTypeFilterKeys,
   LoadSdkQuestionParams,
   MetabaseQuestion,
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk/types/question";
-import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
 
@@ -18,7 +17,7 @@ type InteractiveQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypeFilter?: EntityTypeFilterKeys[];
+  entityTypes?: EmbeddingEntityType[];
 
   /**
    * Whether to show the save button.
@@ -88,8 +87,7 @@ export type InteractiveQuestionContextType = Omit<
     InteractiveQuestionConfig,
     "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
-  Pick<InteractiveQuestionProviderProps, "variant"> &
-  Pick<QBNotebookProps, "modelsFilterList"> & {
+  Pick<InteractiveQuestionProviderProps, "variant"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
     resetQuestion: () => void;
