@@ -1225,18 +1225,6 @@
                      (:error result)))))))
       (is (< (count before-names) (+ (count (future-thread-names)) 5))))))
 
-(deftest alternate-host-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (testing "Alternate BigQuery host can be configured"
-      (mt/with-temp [:model/Database {:as temp-db}
-                     {:engine  :bigquery-cloud-sdk
-                      :details (-> (:details (mt/db))
-                                   (assoc :host "bigquery.example.com"))}]
-        (let [client (#'bigquery/database-details->client (:details temp-db))]
-          (is (= "bigquery.example.com"
-                 (.getHost (.getOptions client)))
-              "BigQuery client should be configured with alternate host"))))))
-
 (deftest user-agent-is-set-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "User agent is set for bigquery requests"
@@ -1246,15 +1234,3 @@
             user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
         (is (= user-agent
                (-> client .getOptions .getUserAgent)))))))
-
-(deftest timestamp-precision-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (let [sql (str "select"
-                   " timestamp '2024-12-11 16:23:55.123456 UTC' col_timestamp,"
-                   " datetime  '2024-12-11T16:23:55.123456' col_datetime")
-          query {:database (mt/id)
-                 :type :native
-                 :native {:query sql}}]
-      (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
-              (-> (qp/process-query query)
-                  mt/rows))))))

@@ -67,8 +67,6 @@
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes))
                   (.setHeaderProvider header-provider))]
-    (when-let [host (not-empty (:host details))]
-      (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
