@@ -19,12 +19,16 @@
     :table-id     :table
     :unknown))
 
+(def ^:private missing-id -1)
+
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
     (let [{:keys [card_id dashboard_id]} (t2/select-one [:model/DashboardCard :card_id :dashboard_id]
                                                         (:dashcard-id scope))]
-      (merge {:card-id card_id, :dashboard-id dashboard_id} scope))))
+      (merge {:card-id (or card_id missing-id)
+              :dashboard-id (or dashboard_id missing-id)}
+             scope))))
 
 (defn- hydrate-from-card [scope card-id]
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
@@ -34,8 +38,8 @@
           table-id     (when (pos-int? source-table)
                          source-table)]
       (merge {:table-id      table-id
-              :collection-id (:collection_id card)
-              :database-id   (:database_id card)}
+              :collection-id (:collection_id card missing-id)
+              :database-id   (:database_id card missing-id)}
              scope))))
 
 (defn- hydrate-scope* [scope]
@@ -43,17 +47,17 @@
     (:dashcard-id scope) hydrate-from-dashcard
 
     (:dashboard-id scope)
-    (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard-id scope))))
+    (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard-id scope)) missing-id))
 
     (:webhook-id scope)
-    (update :table-id #(or % (t2/select-one-fn :table_id [:table_webhook_token :table_id] (:webhook-id scope))))
+    (update :table-id #(or % (t2/select-one-fn :table_id [:table_webhook_token :table_id] (:webhook-id scope)) missing-id))
 
     (:card-id scope) (hydrate-from-card (:card-id scope))
 
     (:model-id scope) (hydrate-from-card (:model-id scope))
 
     (:table-id scope)
-    (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope))))))
+    (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope)) missing-id))))
 
 (mu/defn hydrate-scope :- ::types/scope.hydrated
   "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
