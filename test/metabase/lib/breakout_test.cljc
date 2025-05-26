@@ -4,7 +4,6 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]

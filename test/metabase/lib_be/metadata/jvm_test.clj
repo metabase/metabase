@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
