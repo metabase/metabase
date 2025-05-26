@@ -30,6 +30,7 @@ const RemappedValueContent = ({
       remap: false,
     });
   }
+
   if (displayColumn != null) {
     displayValue = formatValue(displayValue, {
       ...props,
@@ -38,8 +39,14 @@ const RemappedValueContent = ({
       remap: false,
     });
   }
+
   if (displayValue != null) {
-    return renderRemapped({ value, displayValue, column, displayColumn });
+    return renderRemapped({
+      value,
+      displayValue,
+      column,
+      displayColumn,
+    });
   } else {
     return renderNormal({ value, column });
   }

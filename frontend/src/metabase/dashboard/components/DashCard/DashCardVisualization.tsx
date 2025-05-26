@@ -12,9 +12,11 @@ import {
   isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
@@ -110,7 +112,7 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   dashboard,
-  series: rawSeries,
+  series: untranslatedRawSeries,
   getClickActionMode,
   getHref,
   gridSize,
@@ -149,6 +151,12 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const tc = useTranslateContent();
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.translateRawSeries(
+    untranslatedRawSeries,
+    tc,
+  );
 
   const series = useMemo(() => {
     if (

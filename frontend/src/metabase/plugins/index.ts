@@ -47,6 +47,7 @@ import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type { HoveredObject } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -67,6 +68,7 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
+  DatasetColumn,
   DatasetError,
   DatasetErrorType,
   Group,
@@ -747,17 +749,23 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
   ContentTranslationConfiguration: PluginPlaceholder,
-  useTranslateContent: (): ContentTranslationFunction => {
+  useTranslateContent: <
+    T = string | null | undefined,
+  >(): ContentTranslationFunction => {
     // In OSS, the input is not translated
-    return useCallback(
-      <T extends string | null | undefined>(arg: T) => arg,
-      [],
-    );
+    return useCallback(<U = T>(arg: U) => arg, []);
   },
   translateDisplayNames: <T extends object>(
     obj: T,
     _tc: ContentTranslationFunction,
   ) => obj,
+  shouldTranslateFieldValuesOfColumn: (_col: DatasetColumn) => false,
+  translateHoveredObject: (
+    obj: HoveredObject | null,
+    _tc?: ContentTranslationFunction,
+  ) => obj,
+  translateSomeFieldValues: (obj: any, _tc: ContentTranslationFunction) => obj,
+  translateRawSeries: <T>(obj: T, _tc: ContentTranslationFunction): T => obj,
 };
 
 export const PLUGIN_DB_ROUTING = {
