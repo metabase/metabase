@@ -1,15 +1,17 @@
 import fs from "fs";
 
-import { shell } from "../../cypress-runner-utils";
+import { shell } from "../../../cypress-runner-utils";
 
 export function setupAppCleanup({
   rootPath,
   env,
   dockerDownCommand,
+  removeAppDir,
 }: {
   rootPath: string;
   env: Record<string, string | number>;
   dockerDownCommand: string;
+  removeAppDir: boolean;
 }) {
   if (!process.env.CI) {
     ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach((signal) => {
@@ -17,7 +19,10 @@ export function setupAppCleanup({
         console.log(`Parent received ${signal}, stopping app...`);
 
         shell(dockerDownCommand, { cwd: rootPath, env });
-        fs.rmSync(rootPath, { recursive: true, force: true });
+
+        if (removeAppDir) {
+          fs.rmSync(rootPath, { recursive: true, force: true });
+        }
       });
     });
   }

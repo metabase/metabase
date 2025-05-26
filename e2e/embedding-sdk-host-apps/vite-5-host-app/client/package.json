@@ -1,0 +1,32 @@
+{
+  "name": "client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "dotenv -e ../.env vite",
+    "dev": "dotenv -e ../.env vite",
+    "build": "dotenv -e ../.env vite build",
+    "preview": "dotenv -e ../.env vite preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@metabase/embedding-sdk-react": "latest",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "wouter": "^3.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.11.0",
+    "vite": "^5.4.10"
+  }
+}

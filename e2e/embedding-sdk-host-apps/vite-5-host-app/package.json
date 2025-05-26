@@ -1,0 +1,12 @@
+{
+  "name": "vite-5-host-app",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "start": "npm run docker:up",
+    "docker:up": "docker compose --env-file .env.docker up",
+    "docker:down": "docker compose --env-file .env.docker down --rmi all --volumes",
+    "cypress:open": "dotenv -e .env.docker -- cypress open --config-file ./e2e/support/cypress.config.js --e2e",
+    "cypress:run": "dotenv -e .env.docker -- cypress run --config-file ./e2e/support/cypress.config.js"
+  }
+}

@@ -1,0 +1,40 @@
+services:
+  metabase:
+    build:
+      context: .
+      dockerfile: metabase/Dockerfile
+    environment:
+      MB_CONFIG_FILE_PATH: "./app/init-config.yml"
+      MB_JETTY_PORT: "${MB_PORT}"
+      MB_EDITION: "ee"
+      MB_SITE_URL: "http://localhost:${MB_PORT}/"
+      MB_SETUP_TOKEN: "${PREMIUM_EMBEDDING_TOKEN}"
+      MB_PREMIUM_EMBEDDING_TOKEN: "${PREMIUM_EMBEDDING_TOKEN}"
+      METABASE_EMBEDDING_API_KEY: "${METABASE_EMBEDDING_API_KEY}"
+    healthcheck:
+      test: curl --fail -X GET -I "http://localhost:${MB_PORT}/api/health" || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${MB_PORT}:${MB_PORT}"
+
+  client:
+    depends_on:
+      metabase:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: ./client/Dockerfile
+      args:
+        VITE_METABASE_INSTANCE_URL: "http://localhost:${MB_PORT}"
+        VITE_METABASE_EMBEDDING_API_KEY: "${METABASE_EMBEDDING_API_KEY}"
+        WATCH: '${WATCH}'
+    environment:
+      CLIENT_PORT: "${CLIENT_PORT}"
+      VITE_METABASE_INSTANCE_URL: "http://localhost:${MB_PORT}"
+      VITE_METABASE_EMBEDDING_API_KEY: "${METABASE_EMBEDDING_API_KEY}"
+    ports:
+      - "${CLIENT_PORT}:${CLIENT_PORT}"
+    volumes:
+      - ./client/src:/app/client/src

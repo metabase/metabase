@@ -1,4 +1,4 @@
-import { delay, shell } from "../../cypress-runner-utils";
+import { delay, shell } from "../../../cypress-runner-utils";
 
 const HEALTH_CHECK_ATTEMPTS_COUNT = 60 * 5;
 const HEALTH_CHECK_WAIT_TIME_MS = 1000;
