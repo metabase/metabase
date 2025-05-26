@@ -104,28 +104,28 @@ export const refreshTokenAsync = createAsyncThunk(
 
     if (!session || typeof session !== "object") {
       throw MetabaseError.INVALID_SESSION_OBJECT({
-        expected: "{jwt: string}",
-        actual: JSON.stringify(session),
+        expected: "{ jwt: string }",
+        actual: JSON.stringify(session, null, 2),
       });
     }
     if ("status" in session && session.status !== "ok") {
       if ("message" in session && typeof session.message === "string") {
         throw MetabaseError.INVALID_SESSION_OBJECT({
-          expected: "{jwt: string}",
+          expected: "{ jwt: string }",
           actual: session.message,
         });
       }
       if (typeof session.status === "string") {
         throw MetabaseError.INVALID_SESSION_OBJECT({
-          expected: "{jwt: string}",
+          expected: "{ jwt: string }",
           actual: session.status,
         });
       }
     }
     if (!sessionSchema.isValidSync(session)) {
       throw MetabaseError.INVALID_SESSION_SCHEMA({
-        expected: "{id:string, exp:number, iat:number, status:string}",
-        actual: JSON.stringify(session),
+        expected: "{ id: string, exp: number, iat: number, status: string }",
+        actual: JSON.stringify(session, null, 2),
       });
     }
     return session;
@@ -152,7 +152,7 @@ const getRefreshToken = async (
     );
   }
   throw new Error(
-    `Unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson)}`,
+    `Unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson, null, 2)}`,
   );
 };
 
