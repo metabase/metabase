@@ -90,7 +90,7 @@ export const LegendCaption = ({
       onMouseEnter={handleMouseEnter}
     >
       <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
-      {titleMenuItems && (
+      {title && titleMenuItems && (
         <Icon
           style={{ flexShrink: 0, marginRight: 10 }}
           name="chevrondown"
