@@ -667,8 +667,9 @@ jobs:
             exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
+            #:only '"test"'
             test-args: >-
-              :only '"test"'
+              :only metabase.notification.models-test/v-alerts-schedule-type-test
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0

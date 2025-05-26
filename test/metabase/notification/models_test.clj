@@ -381,8 +381,7 @@
                   ["daily"         "0 0 2 * * ? *"    :cron/builder] ;; every day
                   ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every first day of the month
                   ["custom"        "0 * * * * ? *"    :cron/raw]]]
-           (testing (str schedule-type " schedule with cron " cron-schedule (-> (t2/query "select pg_get_viewdef('v_alerts', true)")
-                                                                                first :pg_get_viewdef))
+           (testing (str schedule-type " schedule with cron " cron-schedule)
              (update-subscription! {:cron_schedule   cron-schedule
                                     :ui_display_type ui-display-type})
              (is (= schedule-type (get-schedule-type))))))))))
