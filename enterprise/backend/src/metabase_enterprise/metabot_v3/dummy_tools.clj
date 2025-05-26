@@ -203,15 +203,15 @@
             api/*current-user-id* 2
             api/*is-superuser?* true]
     #_(table-details 30 nil)
-    #_(card-details 53)
+    (card-details 110)
     #_(metric-details 108)
-    (dev.toucan2-monitor/with-queries [queries]
-      (u/prog1 (answer-sources "__METABOT__"
-                               {:with-fields?                    false
-                                :with-metrics?                   true
-                                :with-default-temporal-breakout? false
-                                :with-queryable-dimensions?      false})
-        (tap> (queries)))))
+    #_(dev.toucan2-monitor/with-queries [queries]
+        (u/prog1 (answer-sources "__METABOT__"
+                                 {:with-fields?                    false
+                                  :with-metrics?                   true
+                                  :with-default-temporal-breakout? false
+                                  :with-queryable-dimensions?      false})
+          (tap> (queries)))))
   -)
 
 (defn get-table-details
