@@ -233,11 +233,18 @@
    {:pre [(#{:h2 :ansi :mysql} dialect)]}
    ((:quote (sql/get-dialect dialect)) s)))
 
+(defn- clause-order-fn-for-application-db [clauses]
+  (case (mdb.connection/db-type)
+    (:postgres :h2) clauses
+    :mysql          (let [{f :clause-order-fn} (sql/get-dialect :mysql)]
+                      (f clauses))))
+
 ;;; register with Honey SQL 2
 (sql/register-dialect!
  ::application-db
  (assoc (sql/get-dialect :ansi)
-        :quote quote-for-application-db))
+        :quote           quote-for-application-db
+        :clause-order-fn clause-order-fn-for-application-db))
 
 (reset! t2.honeysql/global-options
         {:quoted       true
