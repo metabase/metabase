@@ -288,6 +288,17 @@
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
+  ;; set all Field parent_ids to NULL, since its FK relationship is `ON DELETE RESTRICT` as of #44866. If we do this
+  ;; then the normal ON DELETE CASCADE relationship from Database => Table => Field will take care of the rest.
+  (t2/query {:update (t2/table-name :model/Field)
+             :set    {:parent_id nil}
+             :where  [:in :id {:select    [[:field.id :id]]
+                               :from      [[(t2/table-name :model/Field) :field]]
+                               :left-join [[(t2/table-name :model/Table) :table]
+                                           [:= :field.table_id :table.id]]
+                               :where     [:and
+                                           [:= :table.db_id [:inline (u/the-id id)]]
+                                           [:= :field.parent_id nil]]}]})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
