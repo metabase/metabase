@@ -267,6 +267,10 @@
            task
            util}}
 
+  content-translation
+  {:api  #{metabase.content-translation.api}
+   :uses #{api}}
+
   content-verification
   {:api  #{metabase.content-verification.core
            metabase.content-verification.init}
