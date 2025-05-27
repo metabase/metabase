@@ -1,0 +1,25 @@
+.actionLink {
+  font-weight: 700;
+  color: var(--mb-color-brand);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  height: 5rem;
+  padding-inline: 1.5rem;
+}
+
+.list {
+  gap: 2px;
+}
+
+.tab {
+  height: 2.5rem;
+  border-radius: var(--mantine-radius-md);
+
+  &[data-active="true"] {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand-lighter);
+  }
+}
