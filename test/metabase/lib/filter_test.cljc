@@ -256,8 +256,8 @@
             "Venues__LATITUDE"
             "Venues__LONGITUDE"
             "Venues__PRICE"
-            "CATEGORIES__via__CATEGORY_ID__ID"
-            "CATEGORIES__via__CATEGORY_ID__NAME"]
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
            (map :lib/desired-column-alias columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,
@@ -640,6 +640,17 @@
        :name "Created At excludes 3 quarter of year selections"}
       {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
+
+      {:clause [:= (lib/get-year created-at) 2001]
+       :name "Created At is in 2001"}
+      {:clause [:= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At is one of 3 year of era selections"}
+      {:clause [:!= (lib/get-year created-at) 2001]
+       :name "Created At excludes 2001"}
+      {:clause [:!= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
+      {:clause [:not-in (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
 
       {:clause [:is-null created-at]
        :name "Created At is empty"}
