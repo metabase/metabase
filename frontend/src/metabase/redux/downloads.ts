@@ -235,11 +235,24 @@ const getDatasetParams = ({
     if (resource === "question" && token) {
       const params = new URLSearchParams(window.location.search);
 
+      const convertSearchParamsToObject = (params: URLSearchParams) => {
+        const object: Record<string, string[]> = {};
+        for (const [key, value] of params.entries()) {
+          if (object[key]) {
+            object[key] = [...object[key], value];
+          } else {
+            object[key] = [value];
+          }
+        }
+
+        return object;
+      };
+
       return {
         method: "GET",
         url: Urls.embedCard(token, type),
         params: new URLSearchParams({
-          parameters: JSON.stringify(Object.fromEntries(params)),
+          parameters: JSON.stringify(convertSearchParamsToObject(params)),
           ..._.mapObject(exportParams, (value) => String(value)),
         }),
       };
