@@ -183,4 +183,25 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.get("iframe").invoke("attr", "src").should("eq", originalSrc);
     });
   });
+
+  it("does not show an error if the token features are available and the parent page is not localhost", () => {
+    cy.log("restore the current page's domain");
+    cy.visit("http://localhost:4000");
+
+    cy.log("visit a test page with an origin of example.com");
+    const frame = H.loadSdkIframeEmbedTestPage({
+      origin: "http://example.com",
+      template: "exploration",
+    });
+
+    frame
+      .findByText("A valid license is required for embedding.")
+      .should("not.exist");
+
+    frame.within(() => {
+      H.assertSdkNotebookEditorUsable(frame);
+    });
+
+    frame.findByTestId("sdk-usage-problem-indicator").should("not.exist");
+  });
 });
