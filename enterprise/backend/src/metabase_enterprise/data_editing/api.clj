@@ -443,7 +443,12 @@
       (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
 
 (api.macros/defendpoint :post "/action/v2/execute"
-  " ** The Grand Unification ** "
+  "The One True API for invoking actions.
+  It doesn't care whether the action is saved or primitive, and whether it has been placed.
+  In particular, it supports:
+  - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
+  - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
+  Since actions are free to return multiple outputs even for a single output, the response is always plural."
   [{}
    {}
    {:keys [action_id scope input]}
@@ -454,7 +459,7 @@
   {:outputs (execute!* action_id scope [input])})
 
 (api.macros/defendpoint :post "/action/v2/execute-bulk"
-  " ** The Grand Unification ** "
+  "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
   [{}
    {}
    {:keys [action_id scope inputs]}
