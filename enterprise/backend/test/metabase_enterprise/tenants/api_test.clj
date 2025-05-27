@@ -5,7 +5,7 @@
    [toucan2.core :as t2]))
 
 (defn with-premium-feature-fixture [f]
-  (mt/with-premium-features #{:tenants}
+  (mt/with-premium-features #{:tenants :advanced-permissions}
     (f)))
 
 (use-fixtures :each with-premium-feature-fixture)
@@ -38,20 +38,31 @@
                  :model/User _ {:tenant_id id1}]
     (is (= {:id id1
             :name "Tenant Name"
+            :is_active true
             :slug "sluggy"
             :member_count 1}
            (mt/user-http-request :crowberto :get 200 (str "ee/tenants/" id1))))))
 
-(deftest can-update-tenant
+(deftest can-update-tenant-name
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}
                  :model/Tenant _ {:name "Other Name" :slug "sluggy2"}]
     (is (= {:id id
             :name "New Name"
             :slug "sluggy"
+            :is_active true
             :member_count 0}
            (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id) {:name "New Name"})))
     (is (= "This name is already taken."
            (mt/user-http-request :crowberto :put 400 (str "ee/tenants/" id) {:name "Other Name"})))))
+
+(deftest can-mark-tenant-as-active-or-inactive
+  (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}]
+    (is (= {:id id
+            :name "Tenant Name"
+            :slug "sluggy"
+            :is_active false
+            :member_count 0}
+           (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id) {:is_active false})))))
 
 (deftest can-list-tenants
   (testing "I can list tenants"
@@ -65,3 +76,17 @@
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?limit=1")))
       (is (=? {:data [{:id id2}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?offset=1"))))))
+
+(deftest can-list-deactivated-tenants
+  (testing "I can list deactivated tenants only"
+    (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1"}
+                   :model/User {} {:tenant_id id1}
+                   :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2" :is_active false}]
+      (is (=? {:data [{:id id1 :member_count 1}
+                      {:id id2 :member_count 0}]}
+              (mt/user-http-request :crowberto :get 200 "ee/tenants/")))
+      (is (=? {:data [{:id id1 :member_count 1}
+                      {:id id2 :member_count 0}]}
+              (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=all")))
+      (is (=? {:data [{:id id2 :member_count 0}]}
+              (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=deactivated"))))))
