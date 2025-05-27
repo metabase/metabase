@@ -112,11 +112,14 @@ const refreshUserJwt = async (url: string) => {
     });
   }
 
+  const text = await clientBackendResponse.text();
   // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
   try {
-    return await clientBackendResponse.json();
+    return JSON.parse(text);
   } catch (e) {
     // JSON parsing error
-    throw MetabaseError.DEFAULT_ENDPOINT_ERROR({});
+    throw MetabaseError.DEFAULT_ENDPOINT_ERROR({
+      actual: `"${text}"`,
+    });
   }
 };
