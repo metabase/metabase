@@ -38,13 +38,18 @@ class MetabaseEmbed {
    * Merge these settings with the current settings.
    */
   public updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
+    // The value of instanceUrl must be the same as the initial value used to create an embed.
+    // This allows users to pass a complete settings object that includes all their settings.
+    if (
+      settings.instanceUrl &&
+      settings.instanceUrl !== this._settings.instanceUrl
+    ) {
+      raiseError("instanceUrl cannot be updated after the embed is created");
+    }
+
     if (!this._isEmbedReady) {
       warn("embed settings must be ready before updating the settings");
       return;
-    }
-
-    if (settings.instanceUrl) {
-      raiseError("instanceUrl cannot be updated after the embed is created");
     }
 
     this._setEmbedSettings(settings);
@@ -116,6 +121,12 @@ class MetabaseEmbed {
       raiseError("API key and instance URL must be provided");
     }
 
+    if (!settings.dashboardId && !settings.questionId && !settings.template) {
+      raiseError(
+        "either dashboardId, questionId, or template must be provided",
+      );
+    }
+
     if (
       settings.template === "exploration" &&
       (settings.dashboardId || settings.questionId)
@@ -126,7 +137,9 @@ class MetabaseEmbed {
     }
 
     if (settings.dashboardId && settings.questionId) {
-      raiseError("can't use both dashboardId and questionId at the same time");
+      raiseError(
+        "can't use both dashboardId and questionId at the same time. to change the question to a dashboard, set the questionId to null (and vice-versa)",
+      );
     }
 
     if (!settings.target) {

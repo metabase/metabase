@@ -12,14 +12,22 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when target element is not found", () => {
     expect(() => {
-      new MetabaseEmbed({ ...defaultSettings, target: "#not-existent-target" });
+      new MetabaseEmbed({
+        ...defaultSettings,
+        questionId: 1,
+        target: "#not-existent-target",
+      });
     }).toThrow('cannot find embed container "#not-existent-target"');
   });
 
   it("throws when target element is undefined", () => {
     expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({ ...defaultSettings, target: undefined });
+      new MetabaseEmbed({
+        ...defaultSettings,
+        questionId: 1,
+        // @ts-expect-error -- we are testing for incorrect configuration
+        target: undefined,
+      });
     }).toThrow("target must be provided");
   });
 
@@ -47,6 +55,19 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).toThrow("can't use both dashboardId and questionId at the same time");
   });
 
+  it("does not throw an error when instanceUrl is updated to be the same", () => {
+    expect(() => {
+      const embed = new MetabaseEmbed({
+        ...defaultSettings,
+        instanceUrl: "https://foo-bar-baz.com",
+        questionId: 10,
+        target: document.createElement("div"),
+      });
+
+      embed.updateSettings({ instanceUrl: "https://foo-bar-baz.com" });
+    }).not.toThrow();
+  });
+
   it("throws when question id is provided in the exploration template", () => {
     expect(() => {
       new MetabaseEmbed({
@@ -69,5 +90,11 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).toThrow(
       "the exploration template can't be used with dashboardId or questionId",
     );
+  });
+
+  it("throws when neither question id, dashboard id, or template are provided", () => {
+    expect(() => {
+      new MetabaseEmbed({ ...defaultSettings });
+    }).toThrow("either dashboardId, questionId, or template must be provided");
   });
 });
