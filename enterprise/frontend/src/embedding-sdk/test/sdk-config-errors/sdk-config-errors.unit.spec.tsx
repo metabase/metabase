@@ -85,71 +85,69 @@ const expectErrorMessage = async (message: string) => {
   }
 };
 
-describe("SDK auth errors", () => {
+describe("SDK auth errors for JWT authentication", () => {
   afterEach(() => {
     jest.resetAllMocks();
   });
 
-  describe("Auth Provider URI authentication", () => {
-    it("should show a message when the user's JWT server endpoint didn't return a json object", async () => {
-      const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
-        body: "not a json object",
-      });
-
-      await waitForRequest(() => getLastAuthProviderApiCall());
-
-      await expectErrorMessage(
-        "Your JWT server endpoint must return an object with the shape { jwt: string }",
-      );
+  it("should show a message when the user's JWT server endpoint doesn't return a json object", async () => {
+    const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
+      body: "not a json object",
     });
 
-    it("should show a message when the auth provider returns the id as an object", async () => {
-      const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
-        body: { id: { id: "123" } },
-      });
+    await waitForRequest(() => getLastAuthProviderApiCall());
 
-      await waitForRequest(() => getLastAuthProviderApiCall());
+    await expectErrorMessage(
+      'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received "not a json object"',
+    );
+  });
 
-      await expectErrorMessage(
-        "Your JWT server endpoint must return an object with the shape { jwt: string }",
-      );
+  it("should show a message when the auth provider returns the id as an object", async () => {
+    const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
+      body: { id: { id: "123" } },
     });
 
-    it("should show a message when fetchRequestToken doesn't return a json object", async () => {
-      const authConfig = defineMetabaseAuthConfig({
-        ...defaultAuthConfig,
-        // @ts-expect-error -- testing error path
-        fetchRequestToken: async () => "not a json object",
-      });
+    await waitForRequest(() => getLastAuthProviderApiCall());
 
-      await setup(authConfig);
+    await expectErrorMessage(
+      'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"id":{"id":"123"}}',
+    );
+  });
 
-      await expectErrorMessage(
-        'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received "not a json object"',
-      );
+  it("should show a message when fetchRequestToken doesn't return a json object", async () => {
+    const authConfig = defineMetabaseAuthConfig({
+      ...defaultAuthConfig,
+      // @ts-expect-error -- testing error path
+      fetchRequestToken: async () => "not a json object",
     });
 
-    it("should show a useful message if the authProviderUri returned an error code", async () => {
-      const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
-        body: JSON.stringify({ status: "error-embedding-sdk-disabled" }),
-      });
+    await setup(authConfig);
 
-      await waitForRequest(() => getLastAuthProviderApiCall());
+    await expectErrorMessage(
+      'Your fetchRefreshToken function must return an object with the shape { jwt: string }, but instead received "not a json object"',
+    );
+  });
 
-      await expectErrorMessage("error-embedding-sdk-disabled");
+  it("should show a useful message if the JWT provider URI returns an error code", async () => {
+    const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
+      body: JSON.stringify({ status: "error-embedding-sdk-disabled" }),
     });
 
-    it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
-      const authConfig = defineMetabaseAuthConfig({
-        ...defaultAuthConfig,
-        fetchRequestToken: async () => {
-          throw new Error("Custom error message");
-        },
-      });
+    await waitForRequest(() => getLastAuthProviderApiCall());
 
-      await setup(authConfig);
+    await expectErrorMessage("error-embedding-sdk-disabled");
+  });
 
-      await expectErrorMessage("Custom error message");
+  it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
+    const authConfig = defineMetabaseAuthConfig({
+      ...defaultAuthConfig,
+      fetchRequestToken: async () => {
+        throw new Error("Custom error message");
+      },
     });
+
+    await setup(authConfig);
+
+    await expectErrorMessage("Custom error message");
   });
 });

@@ -8,7 +8,7 @@ type BaseMetabaseAuthConfig = {
 
   /**
    * Specifies a function to fetch the refresh token.
-   * The refresh token should be in the format of { id: string, exp: number }
+   * The refresh token should be in the format of {@link UserBackendJwtResponse}
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 };
