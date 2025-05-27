@@ -36,6 +36,7 @@
                  :window-functions/offset
                  :distinct-where
                  :native-temporal-units
+                 :expressions/datetime
                  :expressions/date
                  :expressions/text
                  :distinct-where]]

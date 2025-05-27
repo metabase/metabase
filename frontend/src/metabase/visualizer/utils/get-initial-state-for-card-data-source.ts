@@ -93,21 +93,23 @@ export function getInitialStateForCardDataSource(
   const state: VisualizerVizDefinitionWithColumns = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
-      : card.display === "scalar"
-        ? "funnel"
-        : DEFAULT_VISUALIZER_DISPLAY,
+      : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
-    settings: {},
+    settings: {
+      "card.title": card.name,
+    },
   };
 
-  const dataSource = createDataSource("card", card.entity_id, card.name);
+  const dataSource = createDataSource("card", card.id, card.name);
 
-  if (card.display === "scalar") {
+  if (card.display === "scalar" || card.display === "gauge") {
     const numericColumn = originalColumns.find((col) =>
       Lib.isNumeric(Lib.legacyColumnTypeInfo(col)),
     );
     if (numericColumn) {
+      state.display = "funnel";
+
       const columnRef = createVisualizerColumnReference(
         dataSource,
         numericColumn,
@@ -171,28 +173,36 @@ export function getInitialStateForCardDataSource(
       }
 
       if (Array.isArray(originalValue)) {
-        // When there're no sensibile metrics/dimensions,
+        // When there're no sensible metrics/dimensions,
         // "graph.dimensions" and "graph.metrics" are `[null]`
         if (originalValue.filter(Boolean).length === 0) {
           return;
         } else {
           return [
             setting,
-            originalValue.map((originalColumnName) => {
-              const index = columns.findIndex(
-                (col) => col.name === originalColumnName,
-              );
-              return state.columns[index].name;
-            }),
+            originalValue
+              .map((originalColumnName) => {
+                const index = columns.findIndex(
+                  (col) => col.name === originalColumnName,
+                );
+
+                if (index === -1 || !state.columns[index]) {
+                  return null;
+                }
+
+                return state.columns[index].name;
+              })
+              .filter(isNotNull),
           ];
         }
       } else {
         const index = columns.findIndex((col) => col.name === originalValue);
+
         if (!state.columns[index]) {
           return;
         }
 
-        return [setting, state.columns[index]?.name];
+        return [setting, state.columns[index].name];
       }
     })
     .filter(isNotNull);

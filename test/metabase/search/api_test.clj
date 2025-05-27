@@ -11,9 +11,7 @@
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.core :as search.engines.appdb]
@@ -122,11 +120,11 @@
   (cleaned-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :can_write true)
     test-collection
-    (make-result "card test card", :model "card", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "dataset test dataset", :model "dataset", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "metric test metric", :model "metric", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
@@ -398,7 +396,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card" :entity_id true :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
+                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
                          :display "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
@@ -448,7 +446,7 @@
                      :model/Card {card :id} {:collection_id parent-id :name (named "card")}
                      :model/Card {model :id} {:collection_id parent-id :type :model :name (named "model")}]
         (mt/with-full-data-perms-for-all-users!
-          (perms/revoke-collection-permissions! (perms-group/all-users) parent-id)
+          (perms/revoke-collection-permissions! (perms/all-users-group) parent-id)
           (testing "sanity check: before archiving, we can't see these items"
             (is (= [] (:data (mt/user-http-request :rasta :get 200 "/search"
                                                    :archived true :q search-name)))))
@@ -467,7 +465,7 @@
                    (set (map (comp :id :collection) (:data (mt/user-http-request :crowberto :get 200 "/search"
                                                                                  :archived true :q search-name)))))))
           (testing "if we are granted permissions on the original collection, we can see the trashed items"
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent-id)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-id)
             (is (= #{dash card model}
                    (set (map :id (:data (mt/user-http-request :rasta :get 200 "/search"
                                                               :archived true :q search-name))))))))))))
@@ -870,7 +868,7 @@
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
-               (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable" :models "table"))))))))
+               (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
   (testing "You should not see hidden tables"
@@ -878,7 +876,7 @@
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Foo Visible")]
-               (map #(dissoc % :entity_id) (search-request-data user :q "Foo"))))))))
+               (search-request-data user :q "Foo")))))))
 
 (deftest table-test-3
   (testing "You should be able to search by their display name"
@@ -886,7 +884,7 @@
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                 (map #(dissoc % :entity_id) (search-request-data user :q "Lancelot")))))))))
+                 (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-4
   (testing "You should be able to search by their description"
@@ -894,7 +892,7 @@
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                 (map #(dissoc % :entity_id) (search-request-data user :q "Lancelot")))))))))
+                 (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-5
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
@@ -902,7 +900,7 @@
       (mt/with-temp [:model/Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
-                 (map #(dissoc % :entity_id) (search-request-data user :q table-name :archived true)))))))))
+                 (search-request-data user :q table-name :archived true))))))))
 
 (deftest table-test-6
   (testing "*archived* tables should not appear in search results"
@@ -910,7 +908,7 @@
       (mt/with-temp [:model/Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
-                 (map #(dissoc % :entity_id) (search-request-data user :q table-name)))))))))
+                 (search-request-data user :q table-name))))))))
 
 (deftest table-test-7
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
@@ -919,7 +917,7 @@
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (binding [*search-request-results-database-id* db-id]
-                 (map #(dissoc % :entity_id) (search-request-data :rasta :q (:name table))))))))))
+                 (search-request-data :rasta :q (:name table)))))))))
 
 (deftest table-test-8
   (testing "you should be able to see a Table when the current user is a superuser"
@@ -928,7 +926,7 @@
       (mt/with-no-data-perms-for-all-users!
         (is (= 1
                (binding [*search-request-results-database-id* db-id]
-                 (count (map #(dissoc % :entity_id) (search-request-data :crowberto :q (:name table)))))))))))
+                 (count (search-request-data :crowberto :q (:name table))))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
@@ -938,23 +936,23 @@
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
+        (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(default-table-search-row "RoundTable")]
                  (binding [*search-request-results-database-id* db-id]
-                   (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable"))))))))))
+                   (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp [:model/Database                   {db-id :id} {}
                    :model/Table                      table {:name "RoundTable", :db_id db-id}]
-      (mt/with-restored-data-perms-for-group! (:id (perms-group/all-users))
-        (data-perms/set-table-permission! (perms-group/all-users) table :perms/create-queries :no)
+      (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
+        (perms/set-table-permission! (perms/all-users-group) table :perms/create-queries :no)
         (is (= []
                (filter #(= (:name %) "RoundTable")
                        (binding [*search-request-results-database-id* db-id]
-                         (map #(dissoc % :entity_id) (search-request-data :rasta :q "RoundTable"))))))))))
+                         (search-request-data :rasta :q "RoundTable")))))))))
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
@@ -1482,7 +1480,7 @@
                 :type            nil}
                (-> result :data first :collection))))
 
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-2)
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll-2)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              (u/the-id coll-1)
                 :name            "Collection 1"
@@ -1490,7 +1488,7 @@
                 :type            nil}
                (-> result :data first :collection))))
 
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-1)
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll-1)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              "root"
                 :name            "Our analytics"
@@ -1511,8 +1509,8 @@
                    :model/Dashboard   _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
                                                                         :collection_id collection-id})]
       ;; remove read/write access and add back read access to the collection
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
       (mt/with-current-user (mt/user->id :crowberto)
         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
                                                      {:archived true}))

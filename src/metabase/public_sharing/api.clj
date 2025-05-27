@@ -6,7 +6,6 @@
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.dashboards.api :as api.dashboard]
    [metabase.events.core :as events]
@@ -16,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -90,7 +90,7 @@
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (u/prog1 (card-with-uuid uuid)
     (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question})))
 
@@ -163,7 +163,7 @@
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))]
     (apply process-query-for-card-with-id card-id export-format parameters options)))
 
@@ -249,7 +249,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (validation/check-public-sharing-enabled)
+    (public-sharing.validation/check-public-sharing-enabled)
     (u/prog1 (dashboard-with-uuid uuid)
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
@@ -291,7 +291,7 @@
                                           [:card-id     ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
@@ -321,7 +321,7 @@
                                                                                         [:sequential :map]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
@@ -342,7 +342,7 @@
                                   [:dashcard-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters ms/JSONString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))
   (actions/fetch-values
    (api/check-404 (actions/dashcard->action dashcard-id))
@@ -372,7 +372,7 @@
                :body throttle-message}
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
-        (validation/check-public-sharing-enabled)
+        (public-sharing.validation/check-public-sharing-enabled)
         (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
@@ -415,7 +415,7 @@
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
     (public-action action)))
@@ -431,7 +431,7 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
       (queries/card-param-values card param-key))))
@@ -442,7 +442,7 @@
                                       [:uuid      ms/UUIDString]
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
       (queries/card-param-values card param-key query))))
@@ -514,7 +514,7 @@
                                           [:dashcard-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
@@ -557,7 +557,7 @@
                :body   throttle-message}
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
-        (validation/check-public-sharing-enabled)
+        (public-sharing.validation/check-public-sharing-enabled)
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
@@ -584,7 +584,7 @@
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
         parameters (json/decode+kw parameters)
         lat-field  (json/decode+kw lat-field)
@@ -605,7 +605,7 @@
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
         parameters   (json/decode+kw parameters)
         lat-field    (json/decode+kw lat-field)
@@ -616,7 +616,7 @@
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
 ;; TODO - why don't we just make these routes have a bit of middleware that includes the
-;; `validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
+;; `public-sharing.validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
 ;; every single endpoint definition here? Wouldn't that be 100x better?!
 ;;
 ;; TODO - also a smart person would probably just parse the UUIDs automatically in middleware as appropriate for

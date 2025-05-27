@@ -2,15 +2,18 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
+import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
 import type {
   ExportFormat,
   TableExportFormat,
 } from "metabase/common/types/export";
+import Link from "metabase/core/components/Link";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   Box,
   Button,
+  Flex,
   Icon,
   Stack,
   type StackProps,
@@ -104,6 +107,16 @@ export const QuestionDownloadWidget = ({
     }
   };
 
+  const { url: pivotExcelExportsDocsLink, showMetabaseLinks } = useDocsUrl(
+    "questions/exporting-results",
+    { anchor: "exporting-pivot-tables" },
+  );
+
+  const [
+    dismissedExcelPivotExportsBanner,
+    setDismissedExcelPivotExportsBanner,
+  ] = useUserSetting("dismissed-excel-pivot-exports-banner");
+
   const handleDownload = () => {
     onDownload({
       type: format,
@@ -112,13 +125,14 @@ export const QuestionDownloadWidget = ({
     });
   };
 
+  const showPivotXlsxExportHint =
+    format === "xlsx" &&
+    isPivoted &&
+    !dismissedExcelPivotExportsBanner &&
+    showMetabaseLinks;
   return (
-    <Stack
-      w={hasTruncatedResults ? "18.75rem" : "16.25rem"}
-      p="sm"
-      {...stackProps}
-    >
-      <Title order={4}>{t`Download`}</Title>
+    <Stack w={336} p="0.75rem" gap="md" {...stackProps}>
+      <Title order={5}>{t`Download data`}</Title>
       <ExportSettingsWidget
         selectedFormat={format}
         formats={formats}
@@ -130,6 +144,40 @@ export const QuestionDownloadWidget = ({
         onToggleFormatting={() => setIsFormatted((prev) => !prev)}
         onTogglePivoting={() => setIsPivoted((prev) => !prev)}
       />
+      {showPivotXlsxExportHint && (
+        <Flex
+          p="md"
+          bg="var(--mb-color-background-light)"
+          align="center"
+          justify="space-between"
+        >
+          <Text fz="12px" lh="16px" c="text-medium">
+            {t`Trying to pivot this data in Excel? You should download the raw data instead.`}{" "}
+            <Link
+              target="_new"
+              to={pivotExcelExportsDocsLink}
+              style={{ color: "var(--mb-color-brand)" }}
+            >
+              {t`Read the docs`}
+            </Link>
+          </Text>
+          <Button
+            aria-label={t`Close hint`}
+            pl={8}
+            pr={0}
+            variant="subtle"
+            size="compact-md"
+            style={{ flexShrink: 0 }}
+          >
+            <Icon
+              name="close"
+              c="text-medium"
+              tooltip={t`Don’t show me this again.`}
+              onClick={() => setDismissedExcelPivotExportsBanner(true)}
+            />
+          </Button>
+        </Flex>
+      )}
       {hasTruncatedResults && (
         <Box>
           <Text
@@ -145,7 +193,8 @@ export const QuestionDownloadWidget = ({
       )}
       <Button
         data-testid="download-results-button"
-        leftSection={<Icon name="download" />}
+        mt="auto"
+        ml="auto"
         variant="filled"
         onClick={handleDownload}
         disabled={disabled}

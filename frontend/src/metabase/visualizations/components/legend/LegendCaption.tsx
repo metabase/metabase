@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 
 import LegendActions from "./LegendActions";
 import {
@@ -39,6 +39,7 @@ interface LegendCaptionProps {
   actionButtons?: React.ReactNode;
   hasInfoTooltip?: boolean;
   onSelectTitle?: () => void;
+  titleMenuItems?: React.ReactNode;
   width?: number;
 }
 
@@ -52,6 +53,7 @@ export const LegendCaption = ({
   hasInfoTooltip = true,
   onSelectTitle,
   width,
+  titleMenuItems,
 }: LegendCaptionProps) => {
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
@@ -75,22 +77,43 @@ export const LegendCaption = ({
     }
   }, [getHref]);
 
+  const titleElement = (
+    <LegendLabel
+      className={cx(
+        DashboardS.fullscreenNormalText,
+        DashboardS.fullscreenNightText,
+        EmbedFrameS.fullscreenNightText,
+      )}
+      href={href}
+      onClick={onSelectTitle}
+      onFocus={handleFocus}
+      onMouseEnter={handleMouseEnter}
+    >
+      <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
+      {titleMenuItems && (
+        <Icon
+          style={{ flexShrink: 0, marginRight: 10 }}
+          name="chevrondown"
+          size={10}
+          className={CS.ml1}
+        />
+      )}
+    </LegendLabel>
+  );
+
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
-      <LegendLabel
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
-        href={href}
-        onClick={onSelectTitle}
-        onFocus={handleFocus}
-        onMouseEnter={handleMouseEnter}
-      >
-        <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
-      </LegendLabel>
+      {titleMenuItems ? (
+        <Menu>
+          <Menu.Target>{titleElement}</Menu.Target>
+          <Menu.Dropdown data-testid="legend-caption-menu">
+            {titleMenuItems}
+          </Menu.Dropdown>
+        </Menu>
+      ) : (
+        titleElement
+      )}
       <LegendRightContent>
         {hasInfoTooltip && description && !shouldHideDescription(width) && (
           <Tooltip

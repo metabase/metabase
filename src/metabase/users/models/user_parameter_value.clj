@@ -2,8 +2,8 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.batch-processing.core :as grouper]
    [metabase.models.interface :as mi]
-   [metabase.util.grouper :as grouper]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

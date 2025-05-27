@@ -1,10 +1,13 @@
 (ns metabase.analytics.settings
   (:require
+   [java-time.api :as t]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defsetting prometheus-server-port
   (deferred-tru (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
@@ -68,3 +71,39 @@
   :visibility :public
   :audit      :never
   :doc        false)
+
+(defn- first-user-creation
+  "Returns the earliest user creation timestamp in the database"
+  []
+  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
+
+(defn- -instance-creation []
+  (when-not (setting/get-value-of-type :timestamp :instance-creation)
+    ;; For instances that were started before this setting was added (in 0.41.3), use the creation
+    ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
+    ;; is first read.
+    (let [value (or (first-user-creation) (t/offset-date-time))]
+      (setting/set-value-of-type! :timestamp :instance-creation value)
+      ((requiring-resolve 'metabase.analytics.snowplow/track-event!) :snowplow/account {:event :new_instance_created} nil)))
+  (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
+
+(defsetting instance-creation
+  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+  :visibility :public
+  :setter     :none
+  :getter     #'-instance-creation
+  :doc        false)
+
+(defn- -non-table-chart-generated!
+  [new-value]
+  ;; Only allow toggling from false -> true one time
+  (when (true? new-value)
+    (setting/set-value-of-type! :boolean :non-table-chart-generated true)))
+
+(defsetting non-table-chart-generated
+  (deferred-tru "Whether a non-table chart has already been generated. Required for analytics to track instance activation journey.")
+  :visibility :authenticated
+  :default    false
+  :type       :boolean
+  :export?    true
+  :setter     #'-non-table-chart-generated!)

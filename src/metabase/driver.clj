@@ -10,89 +10,24 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [java-time.api :as t]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.classloader.core :as classloader]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.settings]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.log :as log]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
-(declare notify-database-updated)
+(comment metabase.driver.settings/keep-me)
 
-(defn- notify-all-databases-updated
-  "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
-
-  Currently only used below by [[report-timezone]] setter (i.e., only used when report timezone changes). Reusing
-  pooled connections with the old session timezone can have weird effects, especially if report timezone is changed to
-  `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
-  by a given Database (meaning subsequent queries will fail to change the session timezone)."
-  []
-  (doseq [{driver :engine, id :id, :as database} (t2/select :model/Database)]
-    (try
-      (notify-database-updated driver database)
-      (catch Throwable e
-        (log/errorf e "Failed to notify %s Database %s updated" driver id)))))
-
-(defn- short-timezone-name [timezone-id]
-  (let [^java.time.ZoneId zone (if (seq timezone-id)
-                                 (t/zone-id timezone-id)
-                                 (t/zone-id))]
-    (.getDisplayName
-     zone
-     java.time.format.TextStyle/SHORT
-     (java.util.Locale/getDefault))))
-
-(defn- long-timezone-name [timezone-id]
-  (if (seq timezone-id)
-    timezone-id
-    (str (t/zone-id))))
-
-;; TODO -- we really need to decouple this stuff and use an event for this
-
-(defn- update-send-pulse-triggers-timezone!
-  []
-  ((requiring-resolve 'metabase.pulse.task.send-pulses/update-send-pulse-triggers-timezone!)))
-
-(defn- update-send-notification-triggers-timezone!
-  []
-  ((requiring-resolve 'metabase.notification.core/update-send-notification-triggers-timezone!)))
-
-(defsetting report-timezone
-  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :encryption :no
-  :visibility :settings-manager
-  :export?    true
-  :audit      :getter
-  :setter
-  (fn [new-value]
-    (setting/set-value-of-type! :string :report-timezone new-value)
-    (notify-all-databases-updated)
-    (update-send-pulse-triggers-timezone!)
-    (update-send-notification-triggers-timezone!)))
-
-(defsetting report-timezone-short
-  "Current report timezone abbreviation"
-  :visibility :public
-  :export?    true
-  :setter     :none
-  :getter     (fn [] (short-timezone-name (report-timezone)))
-  :doc        false)
-
-(defsetting report-timezone-long
-  "Current report timezone string"
-  :visibility :public
-  :export?    true
-  :setter     :none
-  :getter     (fn [] (long-timezone-name (report-timezone)))
-  :doc        false)
+(p/import-vars
+ [metabase.driver.settings
+  report-timezone
+  report-timezone!])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |
@@ -745,6 +680,9 @@
 
     ;; Does this driver support casting text to dates? (`date()` custom expression function)
     :expressions/date
+
+    ;; Does this driver support casting text to datetimes?? (`datetime()` custom expression function)
+    :expressions/datetime
 
     ;; Does this driver support casting text to floats? (`float()` custom expression function)
     :expressions/float

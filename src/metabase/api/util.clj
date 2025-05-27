@@ -4,20 +4,11 @@
   (:require
    [crypto.random :as crypto-random]
    [metabase.analytics.core :as analytics]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.api.open-api :as open-api]
-   [metabase.logger :as logger]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
-
-(api.macros/defendpoint :get "/logs"
-  "Logs."
-  []
-  (validation/check-has-application-permission :monitoring)
-  (logger/messages))
 
 (api.macros/defendpoint :get "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
@@ -32,12 +23,3 @@
   (let [pool-info (analytics/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
-
-(api.macros/defendpoint :get "/openapi"
-  "Return the OpenAPI specification for the Metabase API."
-  []
-  (api/check-superuser)
-  {:status 200
-   :body (merge
-          (open-api/root-open-api-object @(requiring-resolve 'metabase.api-routes.core/routes))
-          {:servers [{:url "" :description "Metabase API"}]})})

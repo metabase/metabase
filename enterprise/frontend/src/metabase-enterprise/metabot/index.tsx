@@ -6,9 +6,10 @@ import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
+import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
-import { metabotReducer } from "./state";
+import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.Metabot = Metabot;
@@ -16,6 +17,9 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
   PLUGIN_METABOT.MetabotContext = MetabotContext;
   PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
+  // TODO: make enterprise store + fix type
+  PLUGIN_METABOT.getMetabotVisible =
+    getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
     const { submitInput, setVisible } = useMetabotAgent();
 
@@ -34,12 +38,19 @@ if (hasPremiumFeature("metabot_v3")) {
             if (searchText) {
               submitInput(searchText);
             }
+            // HACK: if the user opens the command palette via the search button bar focus
+            // will be moved back to the search button bar if the metabot option is chosen
+            setTimeout(() => {
+              document.getElementById("metabot-chat-input")?.focus();
+            }, 100);
           },
         },
       ];
       return ret;
     }, [searchText, submitInput, setVisible]);
   };
+
+  PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }

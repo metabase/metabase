@@ -785,7 +785,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addTemporalUnitParameter();
       H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
       // eslint-disable-next-line no-unsafe-element-filtering
-      H.undoToastList().last().button("Auto-connect").click();
+      H.undoToastList().last().findByText("Auto-connect").click();
       H.saveDashboard();
 
       cy.log("verify data with 2 parameters");

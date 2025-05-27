@@ -4,7 +4,6 @@
    [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
@@ -27,8 +26,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [lib.card/*force-broken-card-refs* false]
-                        (thunk))))
+                      (thunk)))
 
 (defn- grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)

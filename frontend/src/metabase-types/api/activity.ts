@@ -57,7 +57,6 @@ export type RecentCollectionItem = BaseRecentItem & {
   };
   authority_level?: "official" | null; // for collections
   moderated_status?: "verified" | null; // for cards / models / dashboards
-  entity_id?: string; // for questions
   display?: CardDisplayType; // for questions
   dashboard?: {
     name: string;

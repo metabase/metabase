@@ -53,3 +53,10 @@ x.com")
                   (assert (some-> (system/site-url) (str/starts-with? "https:"))
                           (tru "Cannot redirect requests to HTTPS unless `site-url` is HTTPS.")))
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
+
+(defsetting health-check-logging-enabled
+  (deferred-tru "Whether to log health check requests from session middleware.")
+  :type       :boolean
+  :default    true
+  :visibility :internal
+  :export?    false)

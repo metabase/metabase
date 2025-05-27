@@ -784,3 +784,37 @@
             (is (types/field-is-type? :type/Text (last cols)))
             (doseq [[_uncasted-value casted-value] rows]
               (is (string? casted-value)))))))))
+
+;; datetime()
+
+(defn- datetime-type? [col]
+  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                       :type/Text ;; sqlite uses text :(
+                                       :type/* ;; Mongo
+                                       ]))
+
+(deftest ^:parallel datetime-cast
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T22:20:01" "")
+                                              :mode nil
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}
+                                              :limit 1}
+                                             {:expression (lib/concat "2025-05-15 22:20:01" "")
+                                              :mode nil
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}
+                                              :limit 1}]]]
+              {:keys [expression mode expected limit]} expressions]
+        (testing (str "Parsing " expression " as datetime with " mode ".")
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
+                          (lib/expression "DATETIME_PARSE" (lib/datetime expression))
+                          (lib/limit limit))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (datetime-type? (last cols)))
+            (doseq [[_id casted-value] rows]
+              (is (contains? expected casted-value)))))))))

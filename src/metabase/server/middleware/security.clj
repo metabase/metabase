@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
-   [metabase.embedding.app-origins-sdk :as aos]
+   [metabase.embedding.settings :as embedding.settings]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
 
@@ -247,7 +247,7 @@
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                           (aos/embedding-app-origins-sdk))
+                           (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)

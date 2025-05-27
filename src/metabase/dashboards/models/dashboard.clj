@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -183,10 +184,10 @@
   (when (seq dashboards)
     (let [coll-id->level (into {}
                                (map (juxt :id :authority_level))
-                               (mdb.query/query {:select    [:dashboard.id :collection.authority_level]
-                                                 :from      [[:report_dashboard :dashboard]]
-                                                 :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
-                                                 :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+                               (app-db/query {:select    [:dashboard.id :collection.authority_level]
+                                              :from      [[:report_dashboard :dashboard]]
+                                              :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
+                                              :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
 
@@ -407,7 +408,7 @@
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
-   :coerce {:parameters [:maybe [:sequential ms/Parameter]]}})
+   :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]

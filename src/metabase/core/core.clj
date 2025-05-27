@@ -18,7 +18,7 @@
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]

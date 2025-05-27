@@ -21,7 +21,6 @@
    [metabase.formatter.impl :as formatter]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -975,7 +974,7 @@
 
 (deftest downloads-row-limit-test
   (testing "Downloads row limit respects minimum (#52019)"
-    (mt/with-temporary-setting-values [limit/download-row-limit 100]
+    (mt/with-temporary-setting-values [download-row-limit 100]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
@@ -990,8 +989,8 @@
                   :public-dashcard-download 110}
                  (update-vals results count)))))))
   (testing "Downloads row limit can be raised"
-    (binding [limit/*minimum-download-row-limit* 100]
-      (mt/with-temporary-setting-values [limit/download-row-limit 109]
+    (binding [qp.settings/*minimum-download-row-limit* 100]
+      (mt/with-temporary-setting-values [download-row-limit 109]
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
                                                          :type     :native

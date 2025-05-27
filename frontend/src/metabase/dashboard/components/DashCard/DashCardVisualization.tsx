@@ -22,12 +22,13 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
-  getInitialStateForVisualizerCard,
+  createDataSource,
   isVisualizerDashboardCard,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
+import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -40,6 +41,7 @@ import type {
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
+  VisualizerDataSourceId,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
@@ -158,11 +160,37 @@ export function DashCardVisualization({
       return rawSeries;
     }
 
-    const { visualizationEntityWithColumns, dataSources, dataSourceDatasets } =
-      getInitialStateForVisualizerCard(dashcard, datasets);
-    const { display, settings, columns, columnValuesMapping } =
-      visualizationEntityWithColumns;
+    const visualizerEntity = dashcard.visualization_settings.visualization;
+    const { display, columnValuesMapping, settings } = visualizerEntity;
 
+    const cards = [dashcard.card];
+    if (Array.isArray(dashcard.series)) {
+      cards.push(...dashcard.series);
+    }
+
+    const dataSources = cards.map((card) =>
+      createDataSource("card", card.id, card.name),
+    );
+
+    const dataSourceDatasets: Record<
+      VisualizerDataSourceId,
+      Dataset | null | undefined
+    > = Object.fromEntries(
+      Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
+        `card:${cardId}`,
+        dataset,
+      ]),
+    );
+
+    const didEveryDatasetLoad = dataSources.every(
+      (dataSource) => dataSourceDatasets[dataSource.id] != null,
+    );
+
+    const columns = getVisualizationColumns(
+      visualizerEntity,
+      dataSourceDatasets,
+      dataSources,
+    );
     const card = extendCardWithDashcardSettings(
       {
         display,
@@ -171,10 +199,6 @@ export function DashCardVisualization({
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
     ) as Card;
-
-    const didEveryDatasetLoad = dataSources.every(
-      (dataSource) => dataSourceDatasets[dataSource.id] != null,
-    );
 
     if (!didEveryDatasetLoad) {
       return [{ card }];

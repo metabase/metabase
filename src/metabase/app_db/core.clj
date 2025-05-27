@@ -7,20 +7,28 @@
   - a few other random functions that have built up for different purposes.
 
   Namespaces outside of src/metabase/app_db/ should not use any metabase.app-db.* namespace but use this api namespace."
+  (:refer-clojure :exclude [compile])
   (:require
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
+   [metabase.app-db.format]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.query]
+   [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.config.core :as config]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.app-db.format/keep-me
+         metabase.app-db.query/keep-me
+         metabase.app-db.query-cancelation/keep-me)
 
 (p/import-vars
  [mdb.connection
@@ -47,6 +55,9 @@
   decrypt-db
   encrypt-db]
 
+ [metabase.app-db.format
+  format-sql]
+
  [mdb.setup
   migrate!
   quote-for-application-db]
@@ -54,6 +65,20 @@
  [mdb.spec
   make-subname
   spec]
+
+ [metabase.app-db.query
+  compile
+  isa
+  join
+  qualify
+  query
+  select-or-insert!
+  type-keyword->descendants
+  update-or-insert!
+  with-conflict-retry]
+
+ [metabase.app-db.query-cancelation
+  query-canceled-exception?]
 
  [liquibase
   changelog-by-id])

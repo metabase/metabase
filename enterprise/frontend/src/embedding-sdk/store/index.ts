@@ -13,6 +13,7 @@ import {
   useDispatch,
   useStore,
 } from "metabase/lib/redux";
+import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
 import { getStore } from "metabase/store";
@@ -26,6 +27,9 @@ export const sdkReducers = {
   qb: combineReducers(qb),
   visualizer,
   sdk,
+  plugins: combineReducers({
+    metabotPlugin: PLUGIN_REDUCERS.metabotPlugin,
+  }),
 } as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>

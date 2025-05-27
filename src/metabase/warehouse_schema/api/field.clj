@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.parameters.field :as parameters.field]
@@ -243,8 +243,8 @@
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
-          updated-pk             (mdb.query/update-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                                              (constantly update-map))]
+          updated-pk             (app-db/update-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                                           (constantly update-map))]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
 

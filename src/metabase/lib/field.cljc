@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -180,7 +179,8 @@
    stage-number
    metadata
    [_tag {source-uuid :lib/uuid
-          :keys [base-type binning effective-type ident join-alias source-field temporal-unit], :as opts}
+          :keys [base-type binning effective-type ident join-alias source-field source-field-join-alias temporal-unit]
+          :as opts}
     :as field-ref]]
   (let [metadata (merge
                   {:lib/type        :metadata/column}
@@ -192,20 +192,23 @@
                          default
                          original))]
     (cond-> metadata
-      source-uuid    (assoc :lib/source-uuid source-uuid)
-      base-type      (-> (assoc :base-type base-type)
-                         (update :effective-type default-type base-type))
-      effective-type (assoc :effective-type effective-type)
-      temporal-unit  (assoc ::temporal-unit temporal-unit)
-      binning        (assoc ::binning binning)
-      source-field   (-> (assoc :fk-field-id source-field)
-                         (update :ident lib.metadata.ident/implicitly-joined-ident
-                                 (:ident (lib.metadata/field query source-field))))
-      join-alias     (-> (lib.join/with-join-alias join-alias)
-                         (update :ident lib.metadata.ident/explicitly-joined-ident
-                                 (:ident (lib.join/maybe-resolve-join-across-stages query stage-number join-alias))))
+      source-uuid             (assoc :lib/source-uuid source-uuid)
+      base-type               (-> (assoc :base-type base-type)
+                                  (update :effective-type default-type base-type))
+      effective-type          (assoc :effective-type effective-type)
+      temporal-unit           (assoc ::temporal-unit temporal-unit)
+      binning                 (assoc ::binning binning)
+      source-field            (-> (assoc :fk-field-id source-field)
+                                  (update :ident lib.metadata.ident/implicitly-joined-ident
+                                          (:ident (lib.metadata/field query source-field))))
+      source-field-join-alias (assoc :fk-join-alias source-field-join-alias)
+      join-alias              (-> (lib.join/with-join-alias join-alias)
+                                  (update :ident lib.metadata.ident/explicitly-joined-ident
+                                          (:ident (lib.join/maybe-resolve-join-across-stages query
+                                                                                             stage-number
+                                                                                             join-alias))))
       ;; Overwriting the ident with one from the options, eg. for a breakout clause.
-      ident          (assoc :ident ident))))
+      ident                   (assoc :ident ident))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
@@ -453,8 +456,7 @@
 
 (defn- column-metadata->field-ref
   [metadata]
-  (let [inherited-column? (when-not (::lib.card/force-broken-id-refs metadata)
-                            (#{:source/card :source/native :source/previous-stage} (:lib/source metadata)))
+  (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}
@@ -483,7 +485,10 @@
                                    {:was-binned was-binned})
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
-                                   {:source-field source-field-id}))
+                                   {:source-field source-field-id})
+                                 (when-let [source-field-join-alias (when-not inherited-column?
+                                                                      (:fk-join-alias metadata))]
+                                   {:source-field-join-alias source-field-join-alias}))
         id-or-name        ((if inherited-column?
                              (some-fn :lib/desired-column-alias :name)
                              (some-fn :id :name))

@@ -120,7 +120,7 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <PLUGIN_METABOT.Metabot />
+              <PLUGIN_METABOT.Metabot hide={isAdminApp} />
             </AppContentContainer>
           </AppContainer>
           <Palette />

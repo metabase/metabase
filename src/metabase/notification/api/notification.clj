@@ -6,8 +6,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -126,7 +126,7 @@
        set))
 
 (defn- send-you-were-added-card-notification-email! [notification]
-  (when (email/email-configured?)
+  (when (channel.settings/email-configured?)
     (let [current-user? #{(:email @api/*current-user*)}]
       (when-let [recipients-except-creator (->> (all-email-recipients notification)
                                                 (remove current-user?)
@@ -153,7 +153,7 @@
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
   [updated-notification existing-notification]
-  (when (email/email-configured?)
+  (when (channel.settings/email-configured?)
     (let [was-active?  (:active existing-notification)
           is-active?   (:active updated-notification)
           current-user @api/*current-user*
