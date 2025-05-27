@@ -76,6 +76,6 @@ export function withNativeExtras(
   return ML.with_native_extras(query, nativeExtras);
 }
 
-export function validateNativeQuery(query: Query) {
+export function validateNativeQuery(query: Query): string[] {
   return ML.validate_native_query(query);
 }

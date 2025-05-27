@@ -136,7 +136,7 @@ interface NativeQueryEditorState {
   isSelectedTextPopoverOpen: boolean;
   mobileShowParameterList: boolean;
   isPromptInputVisible: boolean;
-  queryValidationError?: string[] | null;
+  queryValidationError: string[] | null;
 }
 
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
@@ -451,24 +451,25 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 />
               )}
 
-            {this.state.queryValidationError && (
-              <Flex
-                pos="absolute"
-                bottom="15px"
-                w="calc(100% - 5.5rem)"
-                p="md"
-                data-testid="query-validation-error"
-                className={S.queryErrorContainer}
-                ml="lg"
-              >
-                <Icon name="warning" c="error" mr="sm" />
-                <Box component="ul" m={0} p={0} style={{ listStyle: "none" }}>
-                  {this.state.queryValidationError.map((err, idx) => (
-                    <li key={idx}>{err}</li>
-                  ))}
-                </Box>
-              </Flex>
-            )}
+            {this.state.queryValidationError &&
+              this.state.queryValidationError.length > 0 && (
+                <Flex
+                  pos="absolute"
+                  bottom="15px"
+                  w="calc(100% - 5.5rem)"
+                  p="md"
+                  data-testid="query-validation-error"
+                  className={S.queryErrorContainer}
+                  ml="lg"
+                >
+                  <Icon name="warning" c="error" mr="sm" />
+                  <Box component="ul" m={0} p={0} style={{ listStyle: "none" }}>
+                    {this.state.queryValidationError.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </Box>
+                </Flex>
+              )}
           </>
         </ResizableBox>
 
