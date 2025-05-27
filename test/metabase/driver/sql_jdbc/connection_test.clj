@@ -356,9 +356,11 @@
        (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
        (t2/update! :model/Database (mt/id) {:details tunnel-db-details#})
        (mt/with-db (t2/select-one :model/Database (mt/id))
-         ~@body)
+         (try
+           ~@body
+           (finally
+             (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))
        (finally
-         (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
          (t2/update! :model/Database (mt/id) {:details original-details#})))))
 
 (defn- check-row []
