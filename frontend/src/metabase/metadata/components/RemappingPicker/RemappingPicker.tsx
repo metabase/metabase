@@ -53,6 +53,7 @@ export const RemappingPicker = ({
       ? skipToken
       : {
           id: fkTargetField.table_id,
+          include_sensitive_fields: true,
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
   );
@@ -65,7 +66,7 @@ export const RemappingPicker = ({
   const isFkMapping = value === "foreign";
   const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
   const hasFkMappingValue = isFkMapping && fkRemappingFieldId != null;
-  const { data: fkRemappingField } = useGetFieldQuery(
+  const { data: fkRemappingFieldData } = useGetFieldQuery(
     hasFkMappingValue
       ? {
           id: fkRemappingFieldId,
@@ -73,6 +74,7 @@ export const RemappingPicker = ({
         }
       : skipToken,
   );
+  const fkRemappingField = hasFkMappingValue ? fkRemappingFieldData : undefined;
 
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
@@ -113,7 +115,17 @@ export const RemappingPicker = ({
     }
   };
 
-  const handelFkRemappingFieldChange = (_fkRemappingFieldId: FieldId) => {};
+  const handleFkRemappingFieldChange = (fkFieldId: FieldId) => {
+    setHasChanged(false);
+    setIsChoosingInitialFkTarget(false);
+
+    createFieldDimension({
+      id,
+      type: "external",
+      name: field.display_name,
+      human_readable_field_id: fkFieldId,
+    });
+  };
 
   return (
     <Stack gap={0}>
@@ -139,6 +151,7 @@ export const RemappingPicker = ({
             selectedFieldId={fkRemappingField?.id}
             selectedTable={fkTargetTable}
             selectedTableId={fkTargetTable?.id}
+            setFieldFn={handleFkRemappingFieldChange}
             triggerElement={
               <Select
                 data={[
@@ -155,10 +168,10 @@ export const RemappingPicker = ({
                 // hasError={!fkRemappingField}
               />
             }
-            setFieldFn={handelFkRemappingFieldChange}
           />
         </>
       )}
+
       {hasChanged && hasFkMappingValue && <NamingTip />}
     </Stack>
   );
