@@ -324,7 +324,6 @@
    notification-payload #_:- #_notification/NotificationPayload
    template             :- [:maybe ::models.channel/ChannelTemplate]
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
-  (def notification-payload notification-payload)
   (let [event-name  (get-in notification-payload [:context :event_name])
         template    (or template
                         ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
