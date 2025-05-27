@@ -775,7 +775,7 @@
                                                       :aggregation  [[:distinct &Products.products.id]]
                                                       :filter       [:= &Products.products.category "Gizmo"]}
                                        :alias        "Q2"
-                                       :condition    [:= [:field "CREATED_AT" {:base-type :type/DateTime}]
+                                       :condition    [:= [:field "Products__CREATED_AT" {:base-type :type/DateTime}]
                                                       !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
