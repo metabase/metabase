@@ -6,6 +6,8 @@
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [environ.core :as env]
+   [flatland.ordered.map :as ordered-map]
+   [flatland.ordered.set :as ordered-set]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -20,6 +22,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -349,40 +352,64 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
-(defn- has-feature?
-  [feature]
-  ((requiring-resolve 'metabase.premium-features.core/has-feature?) feature))
+(defonce ^:private current-user-settings-access-fns
+  (atom (ordered-map/ordered-map)))
 
-(defn has-advanced-setting-access?
-  "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
-  Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
-  []
-  (or api/*is-superuser?*
-      (when (and config/ee-available?
-                 (has-feature? :advanced-permissions))
-        ((requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?)
-         :setting))
-      false))
+(mu/defn register-current-user-settings-access-fn!
+  "Add a function of the signature
 
-(defn- current-user-can-access-setting?
+    (f setting) => any?
+
+  to the list of functions [[current-user-can-access-setting?]] tries. Any truthy value means that the current user
+  should be allowed to access the Setting.
+
+  `unique-key` is used to prevent duplicates when re-evaluating `register-current-user-settings-access-fn!` calls; it
+  is also returned as a 'reason' by [[current-user-can-access-setting?]] if the function in question was the first to
+  allow access."
+  [unique-key :- qualified-keyword?
+   f          :- [:=> [:cat :map] :any]]
+  (swap! current-user-settings-access-fns assoc unique-key f))
+
+(register-current-user-settings-access-fn!
+ ::setting-access-checks-disabled?
+ (fn [_setting]
+   (not *enforce-setting-access-checks*)))
+
+(register-current-user-settings-access-fn!
+ ::no-current-user?
+ (fn [_setting]
+   (nil? api/*current-user-id*)))
+
+(register-current-user-settings-access-fn!
+ ::current-user-is-superuser?
+ (fn [_seting]
+   api/*is-superuser?*))
+
+(register-current-user-settings-access-fn!
+ ::non-admin-user-local-setting?
+ (fn [setting]
+   (allows-user-local-values? setting)
+   (not= (:visibility setting) :admin)))
+
+(mu/defn- current-user-can-access-setting? :- [:maybe qualified-keyword?]
   "This checks whether the current user should have the ability to read or write the provided setting.
 
-  By default this function always returns `true`, but setting access control can be turned on the dynamic var
-  `*enforce-setting-access-checks*`. This is because this enforcement is only necessary when settings are being
-  accessed directly via the API, but not in most other places on the backend."
-  [setting]
-  (or (not *enforce-setting-access-checks*)
-      (nil? api/*current-user-id*)
-      api/*is-superuser?*
-      (and
-       ;; Non-admin setting managers can only access settings that are not marked as admin-only
-       (not api/*is-superuser?*)
-       (has-advanced-setting-access?)
-       (not= (:visibility setting) :admin))
-      (and
-       ;; Non-admins can only access user-local settings not marked as admin-only
-       (allows-user-local-values? setting)
-       (not= (:visibility setting) :admin))))
+  By default this function always returns truthy, but setting access control can be turned on the dynamic var
+  [[*enforce-setting-access-checks*]]. This is because this enforcement is only necessary when settings are being
+  accessed directly via the API, but not in most other places on the backend.
+
+  This is implemented with by checking each function in the set of functions [[current-user-settings-access-fns]]
+  until one of them returns truthy; you can add additional ways for the current user to access a setting
+  with [[register-current-user-settings-access-fn!]]. This is used for EE advanced permissions to implement Settings
+  managers.
+
+  This function returns the key associated with the function that allowed access, which serves as a 'reason' for
+  debugging purposes."
+  [setting :- :map]
+  (some (fn [[k f]]
+          (when (f setting)
+            k))
+        @current-user-settings-access-fns))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."

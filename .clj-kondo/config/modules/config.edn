@@ -1031,9 +1031,7 @@
            config
            events
            models
-           premium-features
-           util
-           enterprise/advanced-permissions}}
+           util}}
 
   setup
   {:api  #{metabase.setup.api
@@ -1340,12 +1338,14 @@
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
            metabase-enterprise.advanced-permissions.common
+           metabase-enterprise.advanced-permissions.init
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
            lib
            permissions
            premium-features
            query-processor
+           settings
            util
            warehouses
            enterprise/impersonation}}
