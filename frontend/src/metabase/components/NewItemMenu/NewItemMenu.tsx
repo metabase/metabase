@@ -7,10 +7,8 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId } from "metabase-types/api";
 
@@ -52,9 +50,7 @@ const NewItemMenu = ({
   onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
-  const entityTypes = useSelector(
-    (state) => getEmbedOptions(state).entity_types,
-  );
+  const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const lastUsedDatabaseId = useSelector((state) =>
