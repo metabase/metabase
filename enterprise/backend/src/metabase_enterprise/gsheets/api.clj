@@ -19,7 +19,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.time Instant)))
 
 ;; # Google Sheets Integration
 ;;
@@ -40,36 +41,21 @@
 ;;   - user copies their Google Drive share link into MB form and hits submit
 ;; - FE sends :post "api/ee/gsheets/folder" w/ folder url string as `request.body.url`
 ;;   - BE forwards request to :post "/api/v2/mb/connections" w/ body:
-;;     `{:type "gdrive" :secret {:resources ["the-url"]}}`
+;;     `{:type "[gdrive|google_spreadsheet]" :secret {:resources ["the-url"]}}`
 ;;     - on unexceptional status:
-;;       - BE sets `gsheets.status` to `"loading"`
-;;       - BE returns the gsheets shape: `{:status "loading" :folder_url "the-url" :folder-upload-time <epoch-time> :gdrive/conn-id <uuid>}}`
-;;     - on exceptional status, BE returns a message like: "Unable to setup drive folder sync. Please check that the
+;;       - BE returns the gsheets shape: `{:status "syncing" :url "the-url" :created_at <epoch-time>}}`
+;;     - on exceptional status, BE returns a message like: "Unable to set up drive folder sync. Please check that the
 ;;       folder is shared with the proper service account email and sharing permissions."
 ;;
 ;; ## Polling
-;; - FE polls :get "api/ee/gsheets/folder" until `body.status` == `complete`
+;; - FE polls :get "api/ee/gsheets/connection" until `body.status` == `active`
 ;; - BE forwards requests to :get "/api/v2/mb/connection/<gdrive-conn-id>", filtering for the google drive connection
 ;;   - If the connection doesn't exist: `{:error "google drive connection not found."}`
-;;   - If the connection exists and is NOT active, return loading state in the response
-;;   - If the connection exists and is active AND the latest sync of the attached datawarehouse is AFTER the sync time
-;;         on Harbormaster's gdrive connection, return `body.status` == "complete".
-;; - FE sees status == "complete"
-;;
-;; ### What does "complete" mean?
-;; When the status is "complete", the user can access their google sheets info inside Metabase.
-;; This means that both:
-;; 1. the gdrive connection has been marked active
-;; 2. the attached datawarehouse has completed syncing inside metabase
-;; To check this, we compare the last sync time of the attached datawarehouse with the last sync time of the gdrive.
-;;
-;; ### What if the sync takes too long or never ends?
-;; Upon the successful creation of a gdrive connection, we start a timer that will error out if the sync does not
-;; complete within [[*folder-setup-timeout-seconds*]] seconds. If the sync does not complete within this window, we
-;; reset the gsheets status to `{:status "not-connected"}` and return an error for the FE to show.
+;;   - If the connection exists, return connection state in the response
+;; - FE sees status == "active" or "syncing" and updates the UI accordingly, stopping polling when it sees "active"
 ;;
 ;; ## Steps to disconnect a google drive folder
-;; - FE sends request to :delete "/folder"
+;; - FE sends request to :delete "/connection"
 ;;   - MB loops over all gdrive connection ids and deletes them
 ;;
 ;; ## Why do we need to sync the attached datawarehouse before considering it ready?
@@ -94,10 +80,16 @@
   ([message] (error-response-in-body message {}))
   ([message data]
    (throw (ex-info message (merge data {;; the `:errors true` bit informs the exception middleware to return the message
-                                        ;; in the body, even if we want to pass a stauts code. Without `:errors true`,
+                                        ;; in the body, even if we want to pass a status code. Without `:errors true`,
                                         ;; sending a status code will elide the message from the response.
                                         :errors true
                                         :message message})))))
+
+(defn- loggable-response [hm-response]
+  (-> hm-response
+      last
+      (#(or (:ex-data %) %))
+      (#(select-keys % [:status :body]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
@@ -115,17 +107,19 @@
       (= :error status)
       (error-response-in-body
        (tru "Harbormaster returned an error.")
-       {:hm/response response :status-code 502})
+       {:status-code 502
+        :hm/response (loggable-response response)})
 
       :else
       (error-response-in-body
        (tru "Google service-account is not setup in harbormaster.")
-       {:status-code 502}))))
+       {:status-code 502
+        :hm/response (loggable-response response)}))))
 
 (mr/def :gdrive/connection
   [:map {:description "A Harbormaster Gdrive Connection"}
    [:id :string]
-   [:type [:= "gdrive"]]
+   [:type [:enum "gdrive" "google_spreadsheet"]]
    [:status [:enum "initializing" "syncing" "active" "error"]]
    [:last-sync-at [:maybe :time/zoned-date-time]]
    [:last-sync-started-at [:maybe :time/zoned-date-time]]
@@ -134,7 +128,7 @@
 
 (defn- is-gdrive?
   "Is this connection a gdrive connection?"
-  [{:keys [type] :as _conn}] (= "gdrive" type))
+  [{:keys [type] :as _conn}] (or (= "google_spreadsheet" type) (= "gdrive" type)))
 
 (defn- normalize-gdrive-conn
   "Normalize the gdrive connection shape from harbormaster, mostly parsing times."
@@ -173,6 +167,14 @@
         (when-not (= delete-status :ok)
           (log/debugf "Unable to delete gdrive connection %s." id))))))
 
+(mu/defn hm-get-all-connections :- :hm-client/http-reply
+  "Get all connections from harbormaster."
+  []
+  (hm.client/make-request :get "/api/v2/mb/connections"))
+
+(comment
+  (hm-get-all-connections))
+
 (mu/defn hm-get-gdrive-conn :- :hm-client/http-reply
   "Get a specific gdrive connection by id."
   [id]
@@ -180,10 +182,24 @@
     (throw (ex-info "Cannot fetch Google Drive connection: ID is nil" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
+(defn- url-type [url]
+  (cond
+    (re-matches #"^(https|http)://docs.google.com/spreadsheets/.*" url)
+    "google_spreadsheet"
+
+    (re-matches #"^(https|http)://drive.google.com/file/.*" url)
+    "google_spreadsheet"
+
+    (re-matches #"^(https|http)://drive.google.com/drive/.*" url)
+    "gdrive"
+
+    :else
+    (throw (ex-info (tru "Invalid URL: {0}" url) {:status-code 400}))))
+
 (mu/defn- hm-create-gdrive-conn! :- :hm-client/http-reply
-  "Creating a gdrive connection on HM starts the sync w/ drive folder."
-  [drive-folder-url]
-  (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
+  "Creating a gdrive connection on HM starts the sync w/ drive folder or sheet."
+  [resource-url]
+  (hm.client/make-request :post "/api/v2/mb/connections" {:type (url-type resource-url) :secret {:resources [resource-url]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FE <-> MB APIs
@@ -194,125 +210,165 @@
   before."
   []
   (when-not (gsheets.settings/show-google-sheets-integration)
-    (reset-gsheets-status!)
     (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
 (defn- seconds-from-epoch-now
-  "This is used to track how long a folder has been syncing. We set gsheets.folder-upload-time to this value when we create a
-  new gdrive connection, and on every :get /folder request we check if the current time is greater than this value plus
-  [[*folder-setup-timeout-seconds*]]. If it is, that's a timeout."
+  "This is used to track how long a connection has been syncing. We set gsheets.created-at to this value when we create a
+  new gdrive connection."
   [] (.getEpochSecond (t/instant)))
 
-(api.macros/defendpoint :post "/folder" :- :gsheets/gsheets
-  "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
+(defn- setting->response
+  "Returns the data in the setting which should be returned in API responses, correctly formatted"
+  [setting]
+  {:url           (:url setting)
+   :created_at    (:created-at setting)
+   :created_by_id (:created-by-id setting)
+   :db_id         (:db-id setting)})
+
+(api.macros/defendpoint :post "/connection" :- :gsheets/response
+  "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
-  (let [[status response] (hm-create-gdrive-conn! url)]
-    (if (= status :ok)
-      (u/prog1 {:status "loading"
-                :folder_url url
-                :folder-upload-time (seconds-from-epoch-now)
-                :gdrive/conn-id (-> response :body :id)}
-        (analytics/inc! :metabase-gsheets/connection-creation-began)
-        (gsheets! <>))
-      (do
-        (reset-gsheets-status!)
+  (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
+    (when-not (some? attached-dwh)
+      (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
+      (error-response-in-body (tru "No attached dwh found.")))
+
+    (let [[status response] (hm-create-gdrive-conn! url)
+          created-at (seconds-from-epoch-now)
+          created-by-id api/*current-user-id*]
+      (if (= status :ok)
+        (u/prog1 {:status          "syncing"
+                  :url             url
+                  :created_at      created-at
+                  :created_by_id   created-by-id
+                  :sync_started_at created-at
+                  :db_id           attached-dwh}
+          (gsheets! {:url            url
+                     :created-at     created-at
+                     :gdrive/conn-id (-> response :body :id)
+                     :created-by-id  created-by-id
+                     :db-id          attached-dwh})
+          (analytics/inc! :metabase-gsheets/connection-creation-began))
         (error-response-in-body
-         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."))))))
+         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")
+         {:hm/response (loggable-response response)})))))
 
-(defn- sync-complete? [{:keys [status last-dwh-sync last-gdrive-conn-sync]}]
-  (and (= status "active") ;; HM says the connection is active
-       last-dwh-sync ;; make sure it's not nil
-       last-gdrive-conn-sync ;; make sure it's not nil
-       ;; We finished a sync of the dwh from metabase After the HM conn was synced:
-       (t/after? (t/instant last-dwh-sync) (t/instant last-gdrive-conn-sync))))
+(defn- gsheets-safe
+  "Return the gsheets setting, or fetch it from the db if it's not in the cache."
+  []
+  (or (gsheets)
+      (do (log/warn "CACHE MISS ON GSHEETS")
+          (some-> (t2/select-one :model/Setting :key "gsheets")
+                  :value
+                  json/decode+kw))))
 
-(defn- get-last-mb-dwh-sync-time []
-  (t2/select-one-fn :ended_at :model/TaskHistory
-                    :db_id (t2/select-one-fn :id [:model/Database :id] :is_attached_dwh true)
-                    :task "sync"
-                    :status :success
-                    {:order-by [[:ended_at :desc]]}))
+(defn- handle-get-connection []
+  (let [cannot-check-message (tru "Unable to check Google Drive connection. Reconnect if the issue persists.")
+        saved-setting (gsheets-safe)
+        conn-id (:gdrive/conn-id saved-setting)
+        hm-response (if (empty? saved-setting)
+                      [:error nil]
+                      (try (hm-get-gdrive-conn conn-id)
+                           (catch Exception e
+                             (do
+                               (log/errorf e "Exception getting status of connection %s." conn-id)
+                               (error-response-in-body
+                                cannot-check-message
+                                {:gdrive/conn-id conn-id
+                                 :hm/exception e})))))
+        [hm-status {hm-status-code :status hm-body :body hm-err-body :ex-data}] hm-response]
+    (if (= :ok hm-status)
+      (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
+             :as   _} (normalize-gdrive-conn hm-body)]
+        (cond
+          (= "active" status)
+          (assoc (setting->response saved-setting)
+                 :status "active"
+                 :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                 :next_sync_at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15))))
 
-(def ^:dynamic ^:private *folder-setup-timeout-seconds*
-  "We want to avoid polling forever, even if harbormaster never finishes the sync, so if the sync does not happen during
-  this window, we'll error out, reset the gsheets status, and suggest trying again."
-  (* 10 60))
+          (or (= "syncing" status) (= "initializing" status))
+          (assoc (setting->response saved-setting)
+                 :status "syncing"
+                 :last_sync_at (if (nil? last-sync-at) nil (.getEpochSecond ^Instant (t/instant last-sync-at)))
+                 :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
-(defn- handle-get-folder [attached-dwh]
-  (let [conn-id (or (:gdrive/conn-id (gsheets))
-                    (do (log/warn "CACHE MISS ON GSHEETS")
-                        (some-> (t2/select-one :model/Setting :key "gsheets")
-                                :value
-                                json/decode+kw
-                                :gdrive/conn-id)))
-        [sstatus {conn :body}] (try (hm-get-gdrive-conn conn-id)
-                                    ;; missing id:
-                                    (catch Exception _
-                                      (reset-gsheets-status!)
-                                      (error-response-in-body
-                                       (tru "Unable to find google drive connection, please try again.")
-                                       {:conn-id conn-id})))]
-    (if (= :ok sstatus)
-      (let [{:keys [status] last-gdrive-conn-sync :last-sync-at
-             :as   _gdrive-conn} (normalize-gdrive-conn conn)
-            last-dwh-sync       (get-last-mb-dwh-sync-time)]
-        (-> (cond
-              (sync-complete? {:status status :last-dwh-sync last-dwh-sync :last-gdrive-conn-sync last-gdrive-conn-sync})
-              (u/prog1 (assoc (gsheets) :status "complete")
-                (gsheets! <>)
-                (analytics/inc! :metabase-gsheets/connection-creation-ok)
-                (snowplow/track-event! :snowplow/simple_event
-                                       {:event "sheets_connected" :event_detail "success"}))
+          ;; other statuses are listed as "errors" to the frontend
+          :else
+          (u/prog1 (assoc (setting->response saved-setting)
+                          :status "error"
+                          :error_message (or status-reason
+                                             (when (= error "not-found") "Unable to sync Google Drive: file does not exist or permissions are not set up correctly.")
+                                             cannot-check-message)
+                          :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                          :hm/response (loggable-response hm-response))
+            (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
+            (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))
+      (cond
+        (empty? saved-setting)
+        {:status "not-connected"}
 
-              ;; Timeout check
-              (when-let [upload-time (:folder-upload-time (gsheets))]
-                (> (seconds-from-epoch-now) (+ upload-time *folder-setup-timeout-seconds*)))
-              (do (reset-gsheets-status!)
-                  (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "timeout"})
-                  (error-response-in-body (tru "Timeout syncing google drive folder, please try again.")
-                                          {:status-code 408}))
+        (= 403 (or hm-status-code (:status hm-err-body)))
+        (let [[list-status list-response] (hm-get-all-connections)]
+          (if (and (= :ok list-status) (not (some (partial = conn-id) (set (map :id (:body list-response))))))
+            (u/prog1 {:status "not-connected"}
+              (log/warnf "Removing google drive connection %s because harbormaster gives a 403 error for it." conn-id)
+              (reset-gsheets-status!))
+            ;; It doesn't look like a spot where we can remove the connection, so we just return the error
+            (assoc (setting->response saved-setting)
+                   :status "error"
+                   :error_message cannot-check-message
+                   :hm/response (loggable-response hm-response))))
 
-              ;; Syncing failed
-              (= "error" status)
-              (do
-                (reset-gsheets-status!)
-                (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-                (error-response-in-body (tru "Problem syncing google drive folder, please try again..")))
+        :else
+        (u/prog1 (assoc (setting->response saved-setting)
+                        :status "error"
+                        :error_message cannot-check-message
+                        :hm/response (loggable-response hm-response))
+          (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
+          (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))))
 
-              ;; Continue waiting
-              :else (gsheets))
-            (assoc :db_id (:id attached-dwh)
-                   ;; here is some debugging info that proved very helpful:
-                   #_#_:hm/conn gdrive-conn
-                   #_#_:mb/sync-info {:status                status
-                                      :last-dwh-sync         last-dwh-sync
-                                      :last-gdrive-conn-sync last-gdrive-conn-sync})))
-      (do
-        (reset-gsheets-status!)
-        (error-response-in-body
-         (tru "Unable to find google drive connection.")
-         {:status-code 404})))))
-
-(api.macros/defendpoint :get "/folder" :- :gsheets/gsheets
-  "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
+(api.macros/defendpoint :get "/connection" :- :gsheets/response
+  "Check the status of a connection. This endpoint gets polled by FE to determine when to
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
-  [] :- ::gsheets
-  (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
-    (when-not (some? attached-dwh)
-      (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
-      (reset-gsheets-status!)
-      (error-response-in-body (tru "No attached dwh found.")))
-    (handle-get-folder attached-dwh)))
+  [] :- :gsheets/response
+  (handle-get-connection))
 
-(api.macros/defendpoint :delete "/folder"
+(mu/defn- hm-sync-conn! :- :hm-client/http-reply
+  "Sync a (presumably a gdrive) connection on HM."
+  [conn-id]
+  (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
+
+(api.macros/defendpoint :post "/connection/sync"
+  "Force a sync of the connection now.
+
+  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
+  []
+  (let [sheet-config (gsheets-safe)]
+    (if (empty? sheet-config)
+      (do
+        (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync" :event_detail "fail - no config"})
+        (error-response-in-body (tru "No attached google sheet(s) found.") {:status-code 404}))
+      (do
+        (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
+        (analytics/inc! :metabase-gsheets/connection-manually-synced)
+        (let [[status response] (hm-sync-conn! (:gdrive/conn-id sheet-config))]
+          (if (= status :ok)
+            (assoc (setting->response sheet-config)
+                   :status "syncing"
+                   :sync_started_at (seconds-from-epoch-now))
+            (error-response-in-body (tru "Error requesting sync") {:hm/response (loggable-response response)})))))))
+
+(api.macros/defendpoint :delete "/connection"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
   (snowplow/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
   (analytics/inc! :metabase-gsheets/connection-deleted)
-  (reset-gsheets-status!))
+  (reset-gsheets-status!)
+  {:status "not-connected"})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/gsheets` routes."

@@ -126,7 +126,7 @@ export function DashCardCardParameterMapper({
         duration={400}
         exitDuration={0}
       >
-        {styles => {
+        {(styles) => {
           /* bottom prop is negative as we wanted to keep layout not shifted on hint */
           return (
             <Flex

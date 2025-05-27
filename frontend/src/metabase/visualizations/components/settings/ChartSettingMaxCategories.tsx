@@ -48,7 +48,7 @@ export const ChartSettingMaxCategories = ({
       <Checkbox
         checked={isEnabled}
         label={t`Enforce maximum number of series`}
-        onChange={e => handleToggleMaxNumberOfSeries(e.target.checked)}
+        onChange={(e) => handleToggleMaxNumberOfSeries(e.target.checked)}
       />
       <ChartSettingInputNumeric
         {...props}
@@ -77,10 +77,40 @@ export const ChartSettingMaxCategories = ({
 };
 
 const AGGREGATION_FN_OPTIONS = [
-  { label: t`Sum`, value: "sum" },
-  { label: t`Average`, value: "avg" },
-  { label: t`Median`, value: "median" },
-  { label: t`Standard deviation`, value: "stddev" },
-  { label: t`Min`, value: "min" },
-  { label: t`Max`, value: "max" },
+  {
+    get label() {
+      return t`Sum`;
+    },
+    value: "sum",
+  },
+  {
+    get label() {
+      return t`Average`;
+    },
+    value: "avg",
+  },
+  {
+    get label() {
+      return t`Median`;
+    },
+    value: "median",
+  },
+  {
+    get label() {
+      return t`Standard deviation`;
+    },
+    value: "stddev",
+  },
+  {
+    get label() {
+      return t`Min`;
+    },
+    value: "min",
+  },
+  {
+    get label() {
+      return t`Max`;
+    },
+    value: "max",
+  },
 ];

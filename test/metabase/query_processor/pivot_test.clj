@@ -6,10 +6,10 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -243,7 +243,11 @@
             (is (= [[0 1] [1] [0] []]
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
             (is (=? {:status    :completed
-                     :row_count 156}
+                     :row_count 156
+                     :data {:cols [{:ident (get-in query [:query :breakout-idents 0])}
+                                   {:ident (get-in query [:query :breakout-idents 1])}
+                                   {:name  "pivot-grouping"}
+                                   {:ident (get-in query [:query :aggregation-idents 0])}]}}
                     (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
 
 (deftest ^:parallel nested-question-pivot-aggregation-names-test
@@ -434,7 +438,8 @@
             (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
 (defn- clean-pivot-results [results]
-  (let [no-uuid #(dissoc % :lib/source_uuid)]
+  (let [no-uuid #(cond-> (dissoc % :lib/source_uuid)
+                   (= (:name %) "pivot-grouping") (assoc :ident "test_dummy_pivot-grouping"))]
     (-> results
         (dissoc :running_time :started_at :json_query)
         (m/dissoc-in [:data :results_metadata :checksum])

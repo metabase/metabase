@@ -2,13 +2,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-keys.core :as api-key]
    [metabase.channel.email :as email]
    [metabase.channel.email-test :as et]
    [metabase.channel.email.messages :as messages]
-   [metabase.models.api-key :as api-key]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [metabase.util.cron :as u.cron]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt])
   (:import
@@ -46,36 +45,6 @@
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
-
-(deftest alert-schedule-text-test
-  (let [schedule-text (fn [cron-string]
-                        (-> cron-string
-                            u.cron/schedule-map->cron-string
-                            ((fn [cron-string] {:type :notification-subscription/cron
-                                                :cron_schedule cron-string}))
-                            (@#'messages/notification-card-schedule-text)))]
-    (testing "Alert schedules can be described as English strings, with the timezone included"
-      (tu/with-temporary-setting-values [report-timezone "America/Pacific"]
-        (is (= "Run hourly"
-               (schedule-text {:schedule_type "hourly"})))
-        (is (= "Run daily at 12 AM America/Pacific"
-               (schedule-text {:schedule_type "daily"
-                               :schedule_hour 0})))
-        (is (= "Run daily at 5 AM America/Pacific"
-               (schedule-text {:schedule_type "daily"
-                               :schedule_hour 5})))
-        (is (= "Run daily at 6 PM America/Pacific"
-               (schedule-text {:schedule_type "daily"
-                               :schedule_hour 18})))
-        (is (= "Run weekly on Monday at 8 AM America/Pacific"
-               (schedule-text {:schedule_type "weekly"
-                               :schedule_day  "mon"
-                               :schedule_hour 8})))))
-    (testing "If report-timezone is not set, falls back to UTC"
-      (tu/with-temporary-setting-values [report-timezone nil]
-        (is (= "Run daily at 12 AM UTC"
-               (schedule-text {:schedule_type "daily"
-                               :schedule_hour 0})))))))
 
 #_(deftest render-pulse-email-test
     (testing "Email with few rows and columns can be rendered when tracing (#21166)"

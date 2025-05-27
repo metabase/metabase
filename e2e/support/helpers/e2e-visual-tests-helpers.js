@@ -10,6 +10,14 @@ import {
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
+export function ensureChartIsActive() {
+  cy.findByTestId("debounced-frame-root").should(
+    "not.have.css",
+    "pointer-events",
+    "none",
+  );
+}
+
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
@@ -20,7 +28,7 @@ export function echartsTriggerBlur() {
 }
 
 export function ensureEchartsContainerHasSvg() {
-  return echartsContainer().should(root => {
+  return echartsContainer().should((root) => {
     // Check if there's an SVG child within the element
     expect(root.find("svg").length, "SVG exists").to.be.equal(1);
   });
@@ -68,7 +76,7 @@ export function sankeyEdge(color) {
 }
 
 export function chartPathsWithFillColors(colors) {
-  return colors.map(color => chartPathWithFillColor(color));
+  return colors.map((color) => chartPathWithFillColor(color));
 }
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
@@ -85,7 +93,7 @@ export function cartesianChartCircleWithColor(color) {
 }
 
 export function cartesianChartCircleWithColors(colors) {
-  return colors.map(color => cartesianChartCircleWithColor(color));
+  return colors.map((color) => cartesianChartCircleWithColor(color));
 }
 
 export function otherSeriesChartPaths() {
@@ -137,7 +145,7 @@ export function pieSliceWithColor(color) {
 
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
-  return cy.findAllByTestId("echarts-tooltip").should($elements => {
+  return cy.findAllByTestId("echarts-tooltip").should(($elements) => {
     // Use a custom function to check if the fixed-position tooltip is visible,
     // as Cypress's ":visible" or "be.visible" fails to identify a fixed-position tooltip as visible.
     const visibleTooltips = $elements
@@ -224,7 +232,7 @@ export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
     }
 
     if (rows != null) {
-      rows.forEach(row => {
+      rows.forEach((row) => {
         const { name, ...rest } = row;
         assertTooltipRow(name, rest);
       });
@@ -242,7 +250,7 @@ export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
 
 export function assertEChartsTooltipNotContain(rows) {
   echartsTooltip().within(() => {
-    rows.forEach(row => {
+    rows.forEach((row) => {
       cy.findByText(row).should("not.exist");
     });
   });

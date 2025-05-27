@@ -47,7 +47,9 @@ const Dashboards = createEntity({
   nameOne: "dashboard",
   path: "/api/dashboard",
 
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameOne: t`dashboard`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`dashboards`,
 
   rtk: {
@@ -134,7 +136,7 @@ const Dashboards = createEntity({
     copy: compose(
       withAction(COPY_ACTION),
       // NOTE: unfortunately we can't use Dashboard.withRequestState, etc because the entity isn't defined yet
-      withRequestState(dashboard => [
+      withRequestState((dashboard) => [
         "entities",
         "dashboard",
         dashboard.id,
@@ -164,7 +166,7 @@ const Dashboards = createEntity({
   },
 
   actions: {
-    save: dashboard => async dispatch => {
+    save: (dashboard) => async (dispatch) => {
       const savedDashboard = await entityCompatibleQuery(
         dashboard,
         dispatch,
@@ -188,7 +190,7 @@ const Dashboards = createEntity({
       }),
     )(
       ({ id, ...params }) =>
-        dispatch =>
+        (dispatch) =>
           entityCompatibleQuery(
             { id, ...params },
             dispatch,
@@ -208,7 +210,7 @@ const Dashboards = createEntity({
       }),
     )(
       ({ entity, entityId, dashboard_load_id }) =>
-        dispatch =>
+        (dispatch) =>
           entityCompatibleQuery(
             { entity, entityId, dashboard_load_id },
             dispatch,
@@ -225,9 +227,9 @@ const Dashboards = createEntity({
   },
 
   objectSelectors: {
-    getName: dashboard => dashboard && dashboard.name,
-    getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
-    getCollection: dashboard =>
+    getName: (dashboard) => dashboard && dashboard.name,
+    getUrl: (dashboard) => dashboard && Urls.dashboard(dashboard),
+    getCollection: (dashboard) =>
       dashboard && normalizedCollection(dashboard.collection),
     getIcon: () => ({ name: "dashboard" }),
     getColor: () => color("dashboard"),

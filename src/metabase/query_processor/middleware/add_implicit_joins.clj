@@ -10,7 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
+   [metabase.lib.core :as lib]
    [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -28,7 +28,7 @@
   Fields from metadata are not considered. It is expected, that field which would cause implicit join is in the query
   and not just in it's metadata. Example of query having `:source-field` fields in `:source-metadata` and no use of
   `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
-  [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
+  [[metabase.parameters.custom-values-test/with-mbql-card-test]]."
   [x]
   (set (lib.util.match/match x
          [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
@@ -60,14 +60,14 @@
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
         (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table target-table-ids))
-      (for [{fk-name :name, fk-field-id :id, pk-id :fk-target-field-id} fk-fields
-            :when                                                       pk-id]
+      (for [{fk-name :name, fk-field-id :id, fk-ident :ident, pk-id :fk-target-field-id} fk-fields
+            :when                                                                        pk-id]
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
               alias-for-join           (join-alias table-name fk-name)]
           (-> {:source-table source-table
                :alias        alias-for-join
-               :ident        (lib.ident/random-ident)
+               :ident        (lib/implicit-join-clause-ident fk-ident)
                :fields       :none
                :strategy     :left-join
                :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias alias-for-join}]]

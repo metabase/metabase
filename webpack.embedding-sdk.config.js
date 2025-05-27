@@ -24,7 +24,12 @@ const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
 
 const sdkPackageTemplateJson = fs.readFileSync(
-  path.resolve("./enterprise/frontend/src/embedding-sdk/package.template.json"),
+  path.resolve(
+    path.join(
+      __dirname,
+      "enterprise/frontend/src/embedding-sdk/package.template.json",
+    ),
+  ),
   "utf-8",
 );
 const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
@@ -38,7 +43,7 @@ const BABEL_CONFIG = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: isDevMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -49,7 +54,7 @@ const CSS_CONFIG = {
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
-module.exports = env => {
+module.exports = (env) => {
   const config = {
     ...mainConfig,
 
@@ -117,13 +122,17 @@ module.exports = env => {
       ],
     },
 
-    externals: {
-      ...mainConfig.externals,
-      react: "react",
-      "react-dom": "react-dom",
-      "react-dom/client": "react-dom/client",
-      "react/jsx-runtime": "react/jsx-runtime",
-    },
+    // Prevent these dependencies from being included in the JavaScript bundle.
+    externals: [
+      mainConfig.externals,
+
+      // We intend to support multiple React versions in the SDK,
+      // so the SDK itself should not pre-bundle react and react-dom
+      "react",
+      /^react\//i,
+      "react-dom",
+      /^react-dom\//i,
+    ],
 
     optimization: {
       // The default `moduleIds: 'named'` setting breaks Cypress tests when `development` mode is enabled,
@@ -183,7 +192,7 @@ module.exports = env => {
 
   config.resolve.alias = {
     ...mainConfig.resolve.alias,
-    "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
+    "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
   };
 
@@ -203,8 +212,8 @@ class TypescriptConvertErrorsToWarnings {
   apply(compiler) {
     const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
 
-    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", issues =>
-      issues.map(issue => ({ ...issue, severity: "warning" })),
+    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", (issues) =>
+      issues.map((issue) => ({ ...issue, severity: "warning" })),
     );
   }
 }

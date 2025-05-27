@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   skipToken,
+  useGetCardQuery,
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
@@ -11,14 +12,18 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import { addCardWithVisualization } from "metabase/dashboard/actions";
+import { getSelectedTabId } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
 import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
+import type { CardId, CollectionId } from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
 
@@ -39,6 +44,12 @@ export function QuestionList({
 }: QuestionListProps) {
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
+
+  const [visualizerModalCardId, setVisualizerModalCardId] =
+    useState<CardId | null>(null);
+  const isVisualizerModalOpen = !!visualizerModalCardId;
+
+  const selectedTabId = useSelector(getSelectedTabId);
 
   useEffect(() => {
     setQueryOffset(0);
@@ -98,7 +109,7 @@ export function QuestionList({
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
   const list = useMemo(() => {
-    return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
+    return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
 
   if (collectionId === "personal" && !searchText) {
@@ -123,22 +134,43 @@ export function QuestionList({
   return (
     <>
       <SelectList>
-        {list.map(item => (
-          <SelectList.Item
-            className={S.QuestionListItem}
-            key={item.id}
-            id={item.id}
-            name={item.getName()}
-            icon={{
-              name: item.getIcon().name,
-              size: item.model === "dataset" ? 18 : 16,
-              className: S.QuestionListItemIcon,
-            }}
-            onSelect={onSelect}
-            rightIcon={PLUGIN_MODERATION.getStatusIcon(
-              item.moderated_status ?? undefined,
-            )}
-          />
+        {list.map((item) => (
+          <Flex key={item.id} className={S.QuestionListItemRoot} gap="2px">
+            <SelectList.Item
+              id={item.id}
+              classNames={{
+                root: S.QuestionListItemRoot,
+                label: S.QuestionListItemLabel,
+              }}
+              className={S.QuestionListItem}
+              name={item.getName()}
+              icon={{
+                name: item.getIcon().name,
+                size: item.model === "dataset" ? 18 : 16,
+                className: S.QuestionListItemIcon,
+              }}
+              onSelect={onSelect}
+              rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                item.moderated_status ?? undefined,
+              )}
+            />
+            <Tooltip label={t`Visualize another way`}>
+              <ActionIcon
+                className={S.VisualizerButton}
+                size="41px"
+                aria-label={t`Visualize another way`}
+                onClick={() => {
+                  trackSimpleEvent({
+                    event: "visualize_another_way_clicked",
+                    triggered_from: "question-list",
+                  });
+                  setVisualizerModalCardId(Number(item.id));
+                }}
+              >
+                <Icon name="add_data" />
+              </ActionIcon>
+            </Tooltip>
+          </Flex>
         ))}
       </SelectList>
       <Flex justify="flex-end">
@@ -152,6 +184,36 @@ export function QuestionList({
           onPreviousPage={handleClickPreviousPage}
         />
       </Flex>
+      {isVisualizerModalOpen && (
+        <VisualizerModalWithCardId
+          cardId={visualizerModalCardId}
+          onSave={(visualization) => {
+            dispatch(
+              addCardWithVisualization({ visualization, tabId: selectedTabId }),
+            );
+            setVisualizerModalCardId(null);
+          }}
+          onClose={() => setVisualizerModalCardId(null)}
+          allowSaveWhenPristine
+        />
+      )}
     </>
   );
 }
+
+const VisualizerModalWithCardId = (
+  props: { cardId: CardId } & ComponentProps<typeof VisualizerModal>,
+) => {
+  const { cardId, ...otherProps } = props;
+
+  const { data: card, isLoading: isQuestionLoading } = useGetCardQuery(
+    cardId ? { id: cardId } : skipToken,
+  );
+
+  // TODO improve loading state?
+  if (isQuestionLoading || !card) {
+    return null;
+  }
+
+  return <VisualizerModal initialState={{ cardId: card.id }} {...otherProps} />;
+};

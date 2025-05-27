@@ -14,7 +14,7 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<SdkUsageProblemBannerProps> = args => {
+const Template: StoryFn<SdkUsageProblemBannerProps> = (args) => {
   return (
     <Box pos="absolute" bottom="15px" left="15px">
       <SdkUsageProblemBanner {...args} />
@@ -29,7 +29,11 @@ export const Warning = {
   render: Template,
 
   args: {
-    problem: { severity: "warning", message: MESSAGE },
+    problem: {
+      severity: "warning",
+      title: "This embed is powered by the Metabase SDK",
+      message: MESSAGE,
+    },
   },
 };
 
@@ -37,6 +41,6 @@ export const Error = {
   render: Template,
 
   args: {
-    problem: { severity: "error", message: MESSAGE },
+    problem: { severity: "error", title: "Error", message: MESSAGE },
   },
 };

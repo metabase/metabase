@@ -12,6 +12,6 @@ export const FormInputRoot = styled.input<FormInputRootProps>`
   width: 100%;
 
   &:not(:focus) {
-    border-color: ${props => props.touched && props.error && color("error")};
+    border-color: ${(props) => props.touched && props.error && color("error")};
   }
 `;

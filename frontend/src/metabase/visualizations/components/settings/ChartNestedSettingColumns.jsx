@@ -3,7 +3,7 @@ import { Component } from "react";
 
 import { ColumnItem } from "./ColumnItem";
 
-const displayNameForColumn = column =>
+const displayNameForColumn = (column) =>
   column ? column.display_name || column.name : "[Unknown]";
 
 // various props injected by chartSettingNestedSettings HOC

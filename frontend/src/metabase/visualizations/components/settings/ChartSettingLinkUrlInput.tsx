@@ -16,7 +16,7 @@ const filterOptions = (value: string | undefined, options: string[]) => {
     const match = value.match(linkVariablePattern);
     if (match) {
       const suggestionFilter = match[1];
-      return options.filter(option =>
+      return options.filter((option) =>
         option.toLowerCase().includes(suggestionFilter.toLowerCase()),
       );
     }
@@ -39,9 +39,9 @@ const ChartSettingLinkUrlInput = ({
     const partial = match?.[1];
 
     if (partial) {
-      setFocusedValue(v => v.replace(`{{${partial}`, `{{${suggestion}}}`));
+      setFocusedValue((v) => v.replace(`{{${partial}`, `{{${suggestion}}}`));
     } else if (partial === "") {
-      setFocusedValue(v => `${v}${suggestion}}}`);
+      setFocusedValue((v) => `${v}${suggestion}}}`);
     }
   };
 

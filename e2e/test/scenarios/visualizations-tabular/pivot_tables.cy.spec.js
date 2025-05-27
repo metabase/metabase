@@ -650,7 +650,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       });
     });
 
-    TEST_CASES.forEach(test => {
+    TEST_CASES.forEach((test) => {
       describe(test.case, () => {
         beforeEach(() => {
           cy.visit("collection/root");
@@ -670,7 +670,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
             .invoke("val")
-            .then($value => {
+            .then(($value) => {
               cy.visit($value);
             });
           cy.findByTestId("embed-frame-header").contains(test.subject);
@@ -711,12 +711,32 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
   });
 
-  it("should open the download popover (metabase#14750)", () => {
+  it("should show a download widget with a hint about pivoted xlsx exports (metabase#14750)", () => {
+    const HINT_TEXT =
+      "Trying to pivot this data in Excel? You should download the raw data instead.";
     createTestQuestion();
     cy.icon("download").click();
-    H.popover().within(() =>
-      cy.findAllByText("Download").should("have.length", 2),
-    );
+
+    H.popover().within(() => {
+      cy.findByText(".xlsx").click();
+      cy.findByText(HINT_TEXT);
+      cy.findByText("Read the docs").should(
+        "have.attr",
+        "href",
+        "https://www.metabase.com/docs/latest/questions/exporting-results.html#exporting-pivot-tables",
+      );
+
+      cy.findByLabelText("Close hint").click();
+      cy.findByText(HINT_TEXT).should("not.exist");
+
+      cy.findByText("Download");
+    });
+
+    // Ensure the hint is not visible after a page reload
+    cy.reload();
+
+    cy.icon("download").click();
+    H.popover().findByText(HINT_TEXT).should("not.exist");
   });
 
   it.skip("should work for user without data permissions (metabase#14989)", () => {
@@ -1049,7 +1069,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByText("Row totals").should("be.visible");
     });
 
-    cy.get("@questionId").then(id => H.visitQuestion(id));
+    cy.get("@questionId").then((id) => H.visitQuestion(id));
 
     H.queryBuilderMain().within(() => {
       cy.findByLabelText(PIVOT_TABLE_BODY_LABEL).scrollTo(10000, 0);
@@ -1058,7 +1078,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   describe("column resizing", () => {
-    const getCellWidth = textEl =>
+    const getCellWidth = (textEl) =>
       textEl.closest("[data-testid=pivot-table-cell]").width();
 
     it("should persist column sizes in visualization settings", () => {
@@ -1075,10 +1095,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       dragColumnHeader(totalHeaderColHandle, 100);
 
       cy.findByTestId("pivot-table").within(() => {
-        cy.findByText("User → Source").should($headerTextEl => {
+        cy.findByText("User → Source").should(($headerTextEl) => {
           expect(getCellWidth($headerTextEl)).equal(80); // min width is 80
         });
-        cy.findByText("Row totals").should($headerTextEl => {
+        cy.findByText("Row totals").should(($headerTextEl) => {
           expect(getCellWidth($headerTextEl)).equal(200);
         });
       });
@@ -1091,10 +1111,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.reload(); // reload to make sure the settings are persisted
 
       cy.findByTestId("pivot-table").within(() => {
-        cy.findByText("User → Source").then($headerTextEl => {
+        cy.findByText("User → Source").then(($headerTextEl) => {
           expect(getCellWidth($headerTextEl)).equal(80);
         });
-        cy.findByText("Row totals").then($headerTextEl => {
+        cy.findByText("Row totals").then(($headerTextEl) => {
           expect(getCellWidth($headerTextEl)).equal(200);
         });
       });
@@ -1102,8 +1122,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should not have to wait for data to show fields in summarisation (metabase#26467)", () => {
-    cy.intercept("POST", "api/card/pivot/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "api/card/pivot/*/query", (req) => {
+      req.on("response", (res) => {
         res.setDelay(20_000);
       });
     });
@@ -1512,7 +1532,7 @@ function assertOnPivotFields() {
 
 function dragColumnHeader(el, xDistance = 50) {
   const HANDLE_WIDTH = xDistance > 0 ? 2 : -2;
-  el.then($el => {
+  el.then(($el) => {
     const currentXPos = $el[0].getBoundingClientRect().x;
     el.trigger("mousedown", { which: 1 })
       .trigger("mousemove", {
@@ -1544,7 +1564,7 @@ function sortColumnResults(column, direction) {
   // Click anywhere to dismiss the popover from UI
   cy.get("body").click("topLeft");
 
-  cy.location("hash").then(hash => {
+  cy.location("hash").then((hash) => {
     // Get rid of the leading `#`
     const base64EncodedQuery = hash.slice(1);
     const decodedQuery = atob(base64EncodedQuery);

@@ -3,21 +3,21 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.channel.urls :as urls]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
-   [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
-   [metabase.public-settings :as public-settings]
+   [metabase.parameters.shared :as shared.params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
@@ -132,50 +132,67 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (system/site-locale) (escape-markdown-chars? dashcard))))
+
+(def ^{:private true
+       :doc     "If a query has more than the number of rows specified here, we store the data to disk instead of in memory."}
+  rows-to-disk-threadhold
+  1000)
 
 (defn- data-rows-to-disk!
   [qp-result]
-  (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))
+  (if (<= (:row_count qp-result) rows-to-disk-threadhold)
+    (do
+      (log/debugf "Less than %d rows, skip storing %d rows to disk" rows-to-disk-threadhold (:row_count qp-result))
+      qp-result)
+    (do
+      (log/debugf "Storing %d rows to disk" (:row_count qp-result))
+      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
 
   This function should be executed under pulse's creator permissions."
   [{:keys [card_id dashboard_id] :as dashcard} parameters]
-  (try
-    (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
-      (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
-            result-fn      (fn [card-id]
-                             {:card     (if (= card-id (:id card))
-                                          card
-                                          (t2/select-one :model/Card :id card-id))
-                              :dashcard dashcard
-                              ;; TODO should this be dashcard?
-                              :type     :card
-                              :result   (qp.dashboard/process-query-for-dashcard
-                                         :dashboard-id  dashboard_id
-                                         :card-id       card-id
-                                         :dashcard-id   (u/the-id dashcard)
-                                         :context       :dashboard-subscription
-                                         :export-format :api
-                                         :parameters    parameters
-                                         :constraints   {}
-                                         :middleware    {:process-viz-settings?             true
-                                                         :js-int-to-string?                 false
-                                                         :add-default-userland-constraints? false}
-                                         :make-run      (fn make-run [qp _export-format]
-                                                          (^:once fn* [query info]
-                                                            (qp
-                                                             (qp/userland-query query info)
-                                                             nil))))})
-            result         (result-fn card_id)
-            series-results (mapv (comp result-fn :id) multi-cards)]
-        (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
-                       (is-card-empty? (assoc card :result (:result result))))
-          (update result :dashcard assoc :series-results series-results))))
-    (catch Throwable e
-      (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))
+  (log/with-context {:card_id card_id}
+    (try
+      (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
+        (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
+              result-fn      (fn [card-id]
+                               {:card     (if (= card-id (:id card))
+                                            card
+                                            (t2/select-one :model/Card :id card-id))
+                                :dashcard dashcard
+                                ;; TODO should this be dashcard?
+                                :type     :card
+                                :result   (qp.dashboard/process-query-for-dashcard
+                                           :dashboard-id  dashboard_id
+                                           :card-id       card-id
+                                           :dashcard-id   (u/the-id dashcard)
+                                           :context       :dashboard-subscription
+                                           :export-format :api
+                                           :parameters    parameters
+                                           :constraints   {}
+                                           :middleware    {:process-viz-settings?             true
+                                                           :js-int-to-string?                 false
+                                                           :add-default-userland-constraints? false}
+                                           :make-run      (fn make-run [qp _export-format]
+                                                            (^:once fn* [query info]
+                                                              (qp
+                                                               (qp/userland-query query info)
+                                                               nil))))})
+              result         (result-fn card_id)
+              series-results (mapv (comp result-fn :id) multi-cards)]
+          (log/debugf "Dashcard has %d series" (count multi-cards))
+          (log/debugf "Result has %d rows" (-> result :result :row_count))
+          (doseq [series-result series-results]
+            (log/with-context {:series_card_id (-> series-result :card :id)}
+              (log/debugf "Series result has %d rows" (-> series-result :result :row_count))))
+          (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
+                         (is-card-empty? (assoc card :result (:result result))))
+            (update result :dashcard assoc :series-results series-results))))
+      (catch Throwable e
+        (log/warnf e "Error running query for Card %s" (:card_id dashcard))))))
 
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
@@ -185,10 +202,12 @@
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
-    (let [parameters (merge-default-values parameters)]
-      ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
-      ;; memory
-      (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!))
+    (log/with-context {:card_id (:card_id dashcard)}
+      (let [parameters (merge-default-values parameters)]
+        ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
+        ;; memory
+        ;; TODO: we need to store series result data rows to disk too
+        (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!)))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -242,11 +261,15 @@
             tabs-with-cards    (filter #(seq (:cards %)) tabs)
             should-render-tab? (< 1 (count tabs-with-cards))]
         (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
-                          (concat
-                           (when should-render-tab?
-                             [(tab->part tab)])
-                           (dashcards->part cards parameters))))))
-      (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
+                          (do
+                            (log/debugf "Rendering tab %s with %d cards" (:name tab) (count cards))
+                            (concat
+                             (when should-render-tab?
+                               [(tab->part tab)])
+                             (dashcards->part cards parameters)))))))
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)]
+        (log/debugf "Rendering dashboard with %d cards" (count dashcards))
+        (dashcards->part dashcards parameters)))))
 
 (mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."
@@ -255,17 +278,19 @@
   (let [result (request/with-current-user creator-id
                  (qp.card/process-query-for-card card-id :api
                                                  ;; TODO rename to :notification?
-                                                 :context    :pulse
-                                                 :middleware {:skip-results-metadata?            false
-                                                              :process-viz-settings?             true
-                                                              :js-int-to-string?                 false
-                                                              :add-default-userland-constraints? false}
-                                                 :make-run      (fn make-run [qp _export-format]
-                                                                  (^:once fn* [query info]
-                                                                    (qp
-                                                                     (qp/userland-query query info)
-                                                                     nil)))))]
+                                                 :context     :pulse
+                                                 :constraints {}
+                                                 :middleware  {:skip-results-metadata?            false
+                                                               :process-viz-settings?             true
+                                                               :js-int-to-string?                 false
+                                                               :add-default-userland-constraints? false}
+                                                 :make-run    (fn make-run [qp _export-format]
+                                                                (^:once fn* [query info]
+                                                                  (qp
+                                                                   (qp/userland-query query info)
+                                                                   nil)))))]
 
+    (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
-     :result result
+     :result (data-rows-to-disk! result)
      :type   :card}))

@@ -16,19 +16,18 @@ describe("issue 26470", { tags: "@external" }, () => {
       "unpersist",
     );
 
-    cy.clock(Date.now());
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@persist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
@@ -66,7 +65,7 @@ describe("issue 21532", () => {
     cy.findByTestId("admin-layout-content");
 
     cy.go("back");
-    cy.location().should(location => {
+    cy.location().should((location) => {
       expect(location.pathname).to.eq("/");
     });
   });
@@ -116,31 +115,35 @@ describe("issue 41765", { tags: "@external" }, () => {
     });
   }
 
-  it("re-syncing a database should invalidate the table cache (metabase#41765)", () => {
-    cy.visit("/");
+  it(
+    "re-syncing a database should invalidate the table cache (metabase#41765)",
+    { tags: "@flaky" },
+    () => {
+      cy.visit("/");
 
-    H.queryWritableDB(
-      `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
-      "postgres",
-    );
+      H.queryWritableDB(
+        `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
+        "postgres",
+      );
 
-    openWritableDatabaseQuestion();
+      openWritableDatabaseQuestion();
 
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
 
-    enterAdmin();
+      enterAdmin();
 
-    H.appBar().findByText("Databases").click();
-    cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
-    cy.button("Sync database schema").click();
+      H.appBar().findByText("Databases").click();
+      cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
+      cy.button("Sync database schema").click();
 
-    exitAdmin();
-    openWritableDatabaseQuestion();
+      exitAdmin();
+      openWritableDatabaseQuestion();
 
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
-  });
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
+    },
+  );
 });
 
 describe("(metabase#45042)", () => {
@@ -201,7 +204,7 @@ describe("(metabase#46714)", () => {
   it("should allow users to apply relative date options in the segment date picker", () => {
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByRole("tab", { name: "Previous" }).click();
       cy.findByLabelText("Starting from…").click();
     });

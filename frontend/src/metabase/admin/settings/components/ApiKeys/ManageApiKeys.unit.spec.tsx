@@ -6,7 +6,6 @@ import {
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import {
-  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitFor,
@@ -59,7 +58,6 @@ const testApiKeys: ApiKey[] = [
     },
   },
 ];
-mockScrollIntoView();
 
 async function setup(
   { apiKeys }: { apiKeys?: ApiKey[] } = { apiKeys: undefined },
@@ -105,6 +103,12 @@ describe("ManageApiKeys", () => {
     await userEvent.type(screen.getByLabelText(/Key name/), "New key");
     await userEvent.click(await screen.findByLabelText(/which group/i));
     await userEvent.click(await screen.findByText("flamingos"));
+
+    // Blur the select
+    await userEvent.click(await screen.findByText(/We don't version/));
+    expect(
+      await screen.findByRole("textbox", { name: /which group/i }),
+    ).not.toHaveAttribute("data-error");
 
     const createButton = screen.getByRole("button", { name: "Create" });
     await waitFor(() => expect(createButton).toBeEnabled());

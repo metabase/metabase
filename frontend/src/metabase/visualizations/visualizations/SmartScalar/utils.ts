@@ -41,9 +41,9 @@ export const formatChangeAutoPrecision = (
   }: { fontFamily: string; fontWeight: number; width: number },
 ): string =>
   [2, 1]
-    .map(n => formatChange(change, { maximumFractionDigits: n }))
+    .map((n) => formatChange(change, { maximumFractionDigits: n }))
     .find(
-      formatted =>
+      (formatted) =>
         measureText(formatted, {
           size: "1rem",
           family: fontFamily,
@@ -86,7 +86,9 @@ export const getChangeWidth = (width: number): number => {
 export const COMPARISON_SELECTOR_OPTIONS = {
   ANOTHER_COLUMN: {
     type: COMPARISON_TYPES.ANOTHER_COLUMN,
-    name: t`Value from another column…`,
+    get name() {
+      return t`Value from another column…`;
+    },
   },
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
@@ -96,11 +98,15 @@ export const COMPARISON_SELECTOR_OPTIONS = {
   },
   PREVIOUS_VALUE: {
     type: COMPARISON_TYPES.PREVIOUS_VALUE,
-    name: t`Previous value`,
+    get name() {
+      return t`Previous value`;
+    },
   },
   STATIC_NUMBER: {
     type: COMPARISON_TYPES.STATIC_NUMBER,
-    name: t`Custom value…`,
+    get name() {
+      return t`Custom value…`;
+    },
   },
 } as const;
 
@@ -115,7 +121,7 @@ export function getDefaultComparison(
   ] = series;
 
   const dateUnit = insights?.find(
-    insight => insight.col === settings["scalar.field"],
+    (insight) => insight.col === settings["scalar.field"],
   )?.unit;
 
   if (!dateUnit) {
@@ -144,7 +150,7 @@ export function getColumnsForComparison(
   settings: VisualizationSettings,
 ) {
   return columns.filter(
-    column => isNumeric(column) && column.name !== settings["scalar.field"],
+    (column) => isNumeric(column) && column.name !== settings["scalar.field"],
   );
 }
 
@@ -176,7 +182,7 @@ export function getComparisonOptions(
   );
 
   const dateUnit = insights.find(
-    insight => insight.col === settings["scalar.field"],
+    (insight) => insight.col === settings["scalar.field"],
   )?.unit;
 
   if (!dateUnit) {
@@ -228,7 +234,7 @@ export function isComparisonValid(
     }
 
     const isExistingColumn =
-      cols.find(col => col.name === comparison?.column) != null;
+      cols.find((col) => col.name === comparison?.column) != null;
 
     const isDifferentFromPrimaryColumn =
       comparison.column !== settings["scalar.field"];
@@ -245,7 +251,7 @@ export function isComparisonValid(
   }
 
   const dateUnit = insights?.find(
-    insight => insight.col === settings["scalar.field"],
+    (insight) => insight.col === settings["scalar.field"],
   )?.unit;
 
   if (!dateUnit) {
@@ -260,7 +266,7 @@ export function validateComparisons(
   settings: VisualizationSettings,
 ) {
   const comparisons = settings["scalar.comparisons"] || [];
-  return comparisons.every(comparison =>
+  return comparisons.every((comparison) =>
     isComparisonValid(comparison, series, settings),
   );
 }
@@ -270,7 +276,7 @@ export function getComparisons(
   settings: VisualizationSettings,
 ) {
   const comparisons = settings["scalar.comparisons"] || [];
-  const filteredComparisons = comparisons.filter(comparison =>
+  const filteredComparisons = comparisons.filter((comparison) =>
     isComparisonValid(comparison, series, settings),
   );
   return filteredComparisons.length > 0
@@ -289,7 +295,7 @@ function getMaxPeriodsAgo({
   rows,
   dateUnit,
 }: getMaxPeriodsAgoParameters) {
-  const dimensionIndex = cols.findIndex(col => isDate(col));
+  const dimensionIndex = cols.findIndex((col) => isDate(col));
 
   if (dimensionIndex === -1) {
     return null;
@@ -297,11 +303,11 @@ function getMaxPeriodsAgo({
 
   const latestNonEmptyRowIndex = _.findLastIndex(
     rows,
-    row => !isEmpty(row[dimensionIndex]),
+    (row) => !isEmpty(row[dimensionIndex]),
   );
   const latestNonEmptyRow =
     latestNonEmptyRowIndex !== -1 ? rows[latestNonEmptyRowIndex] : undefined;
-  const earliestNonEmptyRow = rows.find(row => !isEmpty(row[dimensionIndex]));
+  const earliestNonEmptyRow = rows.find((row) => !isEmpty(row[dimensionIndex]));
 
   if (latestNonEmptyRow === undefined || earliestNonEmptyRow === undefined) {
     return null;

@@ -99,9 +99,6 @@ export const getInputType = (param: Parameter, field?: Field) => {
   ) {
     return "string";
   }
-  if (field.isCategory() && field.semantic_type !== TYPE.Name) {
-    return "string";
-  }
 
   return "string";
 };
@@ -125,7 +122,7 @@ export const getOrGenerateFieldSettings = (
   if (isGeneratedImplicitActionField) {
     const generatedFieldSettings = generateFieldSettingsFromParameters(params);
 
-    fieldValues.forEach(fieldValue => {
+    fieldValues.forEach((fieldValue) => {
       const singleFieldSettings = generatedFieldSettings[fieldValue.id];
       // this is the only field we sync with BE
       singleFieldSettings.hidden = fieldValue.hidden;

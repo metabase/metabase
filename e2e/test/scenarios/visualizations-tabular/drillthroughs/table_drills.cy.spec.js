@@ -19,84 +19,95 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     cy.viewport(1500, 800);
   });
 
-  it("should display proper drills on cell click for unaggregated query", () => {
-    H.openReviewsTable({ limit: 3 });
+  [false, true].forEach((devMode) => {
+    it(`should display proper drills on cell click for unaggregated query - development-mode: ${devMode}`, () => {
+      cy.intercept("/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["token-features"]["development-mode"] = devMode;
+        });
+      });
+      H.openReviewsTable({ limit: 3 });
 
-    // FK cell drills
-    cy.get(".test-Table-FK").findByText("1").first().click();
-    H.popover().within(() => {
-      cy.findByText("View this Product's Reviews").should("be.visible");
-      cy.findByText("View details").should("be.visible");
-    });
+      // FK cell drills
+      cy.get(".test-Table-FK").findByText("1").first().click();
+      H.popover().within(() => {
+        cy.findByText("View this Product's Reviews").should("be.visible");
+        cy.findByText("View details").should("be.visible");
+      });
 
-    // Short text cell drills
-    cy.get("[data-testid=cell-data]").contains("christ").click();
-    H.popover().within(() => {
-      cy.findByText("Is christ").should("be.visible");
-      cy.findByText("Is not christ").should("be.visible");
-      cy.findByText("View details").should("be.visible");
-    });
+      // Short text cell drills
+      cy.get("[data-testid=cell-data]").contains("christ").click();
+      H.popover().within(() => {
+        cy.findByText("Is christ").should("be.visible");
+        cy.findByText("Is not christ").should("be.visible");
+        cy.findByText("View details").should("be.visible");
+      });
 
-    // Number cell drills
-    cy.get("[data-testid=cell-data]").contains("5").first().click();
-    H.popover().within(() => {
-      cy.findByText(">").should("be.visible");
-      cy.findByText("<").should("be.visible");
-      cy.findByText("=").should("be.visible");
-      cy.findByText("≠").should("be.visible");
-      cy.findByText("View details").should("be.visible");
-    });
+      // Number cell drills
+      cy.get("[data-testid=cell-data]").contains("5").first().click();
+      H.popover().within(() => {
+        cy.findByText(">").should("be.visible");
+        cy.findByText("<").should("be.visible");
+        cy.findByText("=").should("be.visible");
+        cy.findByText("≠").should("be.visible");
+        cy.findByText("View details").should("be.visible");
+      });
 
-    cy.get("[data-testid=cell-data]").contains("Ad perspiciatis quis").click();
-    H.popover().within(() => {
-      cy.findByText("Contains…").should("be.visible");
-      cy.findByText("Does not contain…").should("be.visible");
-      cy.findByText("View details").should("be.visible");
-    });
+      cy.get("[data-testid=cell-data]")
+        .contains("Ad perspiciatis quis")
+        .click();
+      H.popover().within(() => {
+        cy.findByText("Contains…").should("be.visible");
+        cy.findByText("Does not contain…").should("be.visible");
+        cy.findByText("View details").should("be.visible");
+      });
 
-    cy.get("[data-testid=cell-data]").contains("May 15, 20").click();
-    H.popover().within(() => {
-      cy.findByText("Before").should("be.visible");
-      cy.findByText("After").should("be.visible");
-      cy.findByText("On").should("be.visible");
-      cy.findByText("Not on").should("be.visible");
-      cy.findByText("View details").should("be.visible");
-    });
+      cy.get("[data-testid=cell-data]").contains("May 15, 20").click();
+      H.popover().within(() => {
+        cy.findByText("Before").should("be.visible");
+        cy.findByText("After").should("be.visible");
+        cy.findByText("On").should("be.visible");
+        cy.findByText("Not on").should("be.visible");
+        cy.findByText("View details").should("be.visible");
+      });
 
-    H.tableHeaderClick("ID");
-    cy.findByTestId("click-actions-popover-content-for-ID").within(() => {
-      cy.icon("arrow_down").should("be.visible");
-      cy.icon("arrow_up").should("be.visible");
-      cy.icon("gear").should("be.visible");
+      H.tableHeaderClick("ID");
+      cy.findByTestId("click-actions-popover-content-for-ID").within(() => {
+        cy.icon("arrow_down").should("be.visible");
+        cy.icon("arrow_up").should("be.visible");
+        cy.icon("gear").should("be.visible");
 
-      cy.findByText("Filter by this column").should("be.visible");
-      cy.findByText("Distinct values").should("be.visible");
-    });
+        cy.findByText("Filter by this column").should("be.visible");
+        cy.findByText("Distinct values").should("be.visible");
+      });
 
-    H.tableHeaderClick("Reviewer");
-    cy.findByTestId("click-actions-popover-content-for-Reviewer").within(() => {
-      cy.icon("arrow_down").should("be.visible");
-      cy.icon("arrow_up").should("be.visible");
-      cy.icon("gear").should("be.visible");
+      H.tableHeaderClick("Reviewer");
+      cy.findByTestId("click-actions-popover-content-for-Reviewer").within(
+        () => {
+          cy.icon("arrow_down").should("be.visible");
+          cy.icon("arrow_up").should("be.visible");
+          cy.icon("gear").should("be.visible");
 
-      cy.findByText("Filter by this column").should("be.visible");
-      cy.findByText("Distribution").should("be.visible");
-      cy.findByText("Distinct values").should("be.visible");
-    });
+          cy.findByText("Filter by this column").should("be.visible");
+          cy.findByText("Distribution").should("be.visible");
+          cy.findByText("Distinct values").should("be.visible");
+        },
+      );
 
-    H.tableHeaderClick("Rating");
-    cy.findByTestId("click-actions-popover-content-for-Rating").within(() => {
-      cy.icon("arrow_down").should("be.visible");
-      cy.icon("arrow_up").should("be.visible");
-      cy.icon("gear").should("be.visible");
+      H.tableHeaderClick("Rating");
+      cy.findByTestId("click-actions-popover-content-for-Rating").within(() => {
+        cy.icon("arrow_down").should("be.visible");
+        cy.icon("arrow_up").should("be.visible");
+        cy.icon("gear").should("be.visible");
 
-      cy.findByText("Filter by this column").should("be.visible");
-      cy.findByText("Sum over time").should("be.visible");
-      cy.findByText("Distribution").should("be.visible");
+        cy.findByText("Filter by this column").should("be.visible");
+        cy.findByText("Sum over time").should("be.visible");
+        cy.findByText("Distribution").should("be.visible");
 
-      cy.findByText("Sum").should("be.visible");
-      cy.findByText("Avg").should("be.visible");
-      cy.findByText("Distinct values").should("be.visible");
+        cy.findByText("Sum").should("be.visible");
+        cy.findByText("Avg").should("be.visible");
+        cy.findByText("Distinct values").should("be.visible");
+      });
     });
   });
 
@@ -237,7 +248,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.get("[data-testid=cell-data]").contains(drillCellText).first().click();
       H.popover().within(() => {
         cy.findByText("Break out by…").click();
-        menuItems.forEach(item => {
+        menuItems.forEach((item) => {
           cy.findByText(item).click();
         });
       });

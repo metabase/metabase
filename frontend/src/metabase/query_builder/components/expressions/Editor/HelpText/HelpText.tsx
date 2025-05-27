@@ -1,20 +1,29 @@
 import cx from "classnames";
-import { Fragment, type MouseEvent, useCallback } from "react";
+import {
+  Children,
+  Fragment,
+  type MouseEvent,
+  type ReactNode,
+  useCallback,
+} from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Markdown from "metabase/core/components/Markdown";
 import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MBQL_CLAUSES } from "metabase-lib/v1/expressions/config";
 import {
-  getHelpDocsUrl,
+  type HelpText,
+  getClauseDefinition,
   getHelpText,
-} from "metabase-lib/v1/expressions/helper-text-strings";
-import type { HelpText } from "metabase-lib/v1/expressions/types";
+} from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { HighlightExpression } from "../../HighlightExpression";
+import {
+  HighlightExpressionParts,
+  HighlightExpressionSource,
+} from "../../HighlightExpression";
 
 import S from "./HelpText.module.css";
 
@@ -45,6 +54,23 @@ function getDatabase(query: Lib.Query, metadata: Metadata) {
   return metadata.database(databaseId);
 }
 
+const components = {
+  code(props: { children: ReactNode }) {
+    const children = Children.toArray(props.children);
+    if (!children.every((child) => typeof child === "string")) {
+      return <code>{children}</code>;
+    }
+    const source = children.join("");
+
+    if (source.startsWith("$")) {
+      // The code is an argument name
+      return <code className={S.arg}>{source.slice(1)}</code>;
+    }
+
+    return <HighlightExpressionSource inline expression={source} />;
+  },
+};
+
 export function HelpText({
   open = true,
   onToggle,
@@ -59,11 +85,11 @@ export function HelpText({
       ? getHelpText(enclosingFunction.name, database, reportTimezone)
       : null;
 
-  const clause = helpText && MBQL_CLAUSES[helpText.name];
+  const clause = helpText && getClauseDefinition(helpText.name);
   const isSupported = clause && database?.hasFeature(clause?.requiresFeature);
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    helpText ? getHelpDocsUrl(helpText) : "",
+    helpText?.docsUrl ?? "",
   );
 
   const handleMouseDown = useCallback(
@@ -86,7 +112,7 @@ export function HelpText({
     return null;
   }
 
-  const { description, structure, args, example } = helpText;
+  const { description, displayName: structure, args, example } = helpText;
   const argIndex = enclosingFunction?.arg?.index ?? -1;
 
   return (
@@ -99,10 +125,10 @@ export function HelpText({
       >
         <Box>
           {structure}
-          {args != null && (
+          {
             <>
               (
-              {args.map(({ name }, index) => (
+              {args?.map(({ name }, index) => (
                 <span key={index}>
                   <span
                     className={cx(S.arg, {
@@ -118,7 +144,7 @@ export function HelpText({
               ))}
               )
             </>
-          )}
+          }
         </Box>
         <UnstyledButton className={S.toggle} px="sm">
           <Icon
@@ -135,7 +161,9 @@ export function HelpText({
           data-testid="expression-helper"
           onMouseDown={handleContentMouseDown}
         >
-          <Box>{description}</Box>
+          <Box>
+            <Markdown components={components}>{description}</Markdown>
+          </Box>
 
           {args != null && (
             <Box
@@ -144,17 +172,27 @@ export function HelpText({
             >
               {args.map(({ name, description }, index) => (
                 <Fragment key={index}>
-                  <Box className={S.arg}>{wrapPlaceholder(name)}</Box>
-                  <Box>{description}</Box>
+                  <Box className={S.arg} data-testid={`arg-${name}-name`}>
+                    {wrapPlaceholder(name)}
+                  </Box>
+                  <Box data-testid={`arg-${name}-description`}>
+                    <Markdown components={components}>
+                      {description ?? ""}
+                    </Markdown>
+                  </Box>
                 </Fragment>
               ))}
             </Box>
           )}
 
-          {example && (
+          {example != null && (
             <>
               <Box className={S.title}>{t`Example`}</Box>
-              <HighlightExpression expression={example} />
+              <HighlightExpressionParts
+                expression={example}
+                printWidth={50}
+                data-testid="helptext-example"
+              />
             </>
           )}
 

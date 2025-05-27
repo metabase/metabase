@@ -2,16 +2,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
-   [java-time.api :as t]
    [metabase-enterprise.gsheets.api :as gsheets.api]
+   [metabase-enterprise.gsheets.settings :refer [gsheets]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import [java.time
-            LocalDate
-            LocalTime
-            ZoneId
-            ZonedDateTime]))
+   [metabase.util.string :as u.string]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,8 +20,8 @@
 (deftest gsheets-calls-fail-when-not-activated
   (mt/with-premium-features #{:etl-connections :attached-dwh}
     (mt/with-temporary-setting-values [api-key nil]
-      (is (partial= {:message "Missing api-key."}
-                    (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account"))))))
+      (is (partial= {:message "Google Sheets integration is not enabled."}
+                    (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account"))))))
 
 (deftest gsheets-calls-fail-when-missing-attached-dwh
   (mt/with-temporary-setting-values [api-key "some"]
@@ -44,8 +39,8 @@
 (deftest gsheets-calls-fail-when-there-is-no-mb-api-key
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
     (mt/with-temporary-setting-values [api-key nil]
-      (is (= "Missing api-key."
-             (:message (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account")))))))
+      (is (= "Google Sheets integration is not enabled."
+             (:message (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account")))))))
 
 (def happy-responses (read-string (slurp (io/resource "gsheets/mock_hm_responses.edn"))))
 
@@ -54,16 +49,16 @@
          {:method :get, :url "/api/v2/mb/connections", :body nil}
          [:ok
           {:status 200,
-           :body [{:updated-at "2025-01-27T18:43:04Z",
-                   :hosted-instance-resource-id 7,
-                   :last-sync-at nil,
-                   :error-detail nil,
-                   :type "gdrive",
-                   :hosted-instance-id "f390ec19-bd44-48ae-991c-66817182a376",
-                   :last-sync-started-at "2025-01-27T18:43:04Z",
-                   :status "syncing",
-                   :id "049f3007-2146-4083-be38-f160c526aca7",
-                   :created-at "2025-01-27T18:43:02Z"}]}]))
+           :body   [{:updated-at                  "2025-01-27T18:43:04Z",
+                     :hosted-instance-resource-id 7,
+                     :last-sync-at                nil,
+                     :error-detail                nil,
+                     :type                        "gdrive",
+                     :hosted-instance-id          "f390ec19-bd44-48ae-991c-66817182a376",
+                     :last-sync-started-at        "2025-01-27T18:43:04Z",
+                     :status                      "syncing",
+                     :id                          "049f3007-2146-4083-be38-f160c526aca7",
+                     :created-at                  "2025-01-27T18:43:02Z"}]}]))
 
 (defn mock-make-request
   ([responses method url] (mock-make-request responses method url nil))
@@ -79,35 +74,6 @@
              [:map [:email [:maybe :string]]]
              (mt/user-http-request :crowberto :get 200 "ee/gsheets/service-account")))))))
 
-(defn- ->zdt
-  [^long date ^long time ^String zone]
-  (ZonedDateTime/of (LocalDate/of date 1 1) (-> LocalTime/MIDNIGHT (.plusSeconds time)) (ZoneId/of zone)))
-
-(deftest sync-complete?-test
-  (let [earlier-time (->zdt 2000 0 "UTC")
-        later-time (->zdt 2022 0 "UTC")]
-
-    (is (not (#'gsheets.api/sync-complete? {:status "initializing" :last-dwh-sync nil :last-gdrive-conn-sync nil}))
-        "status must be active for sync to be complete")
-
-    (is (not (#'gsheets.api/sync-complete? {:status "active" :last-dwh-sync nil :last-gdrive-conn-sync nil}))
-        "sync is not complete when we don't get a last-gdrive-conn-sync time")
-
-    (is (not (#'gsheets.api/sync-complete? {:status "active" :last-dwh-sync nil :last-gdrive-conn-sync earlier-time}))
-        "sync is not complete when we don't get a last-dwh-sync time")
-
-    (is (not (#'gsheets.api/sync-complete? {:status "active" :last-dwh-sync later-time :last-gdrive-conn-sync nil}))
-        "sync is not complete when we don't get a last-gdrive-conn-sync time")
-
-    (is (not (#'gsheets.api/sync-complete? {:status "active" :last-dwh-sync earlier-time :last-gdrive-conn-sync later-time}))
-        "sync is not complete when the last dwh sync is before the last gdrive conn sync")
-
-    (is (not (#'gsheets.api/sync-complete? {:status "active" :last-dwh-sync later-time :last-gdrive-conn-sync later-time}))
-        "sync is not complete when the last dwh sync == the last gdrive conn sync")
-
-    (is (#'gsheets.api/sync-complete? {:status "active" :last-dwh-sync later-time :last-gdrive-conn-sync earlier-time})
-        "sync is complete when we get active status and the last local sync time is before current time")))
-
 (deftest can-get-service-account-test
   (let [[status response] (mock-make-request happy-responses
                                              :get
@@ -118,85 +84,242 @@
 (def ^:private
   gdrive-link
   "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
-  "<expected-gdrive-link>")
+  "https://drive.google.com/drive/expected-gdrive-link")
+
+(def ^:private
+  sheet-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "https://docs.google.com/spreadsheets/expected-sheet-link")
+
+(def ^:private
+  gsheet-error-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "https://docs.google.com/spreadsheets/error-gdrive-link")
+
+(def ^:private
+  gdrive-active-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "049f3007-2146-4083-be38-f160c526aca7")
+
+(def ^:private
+  gdrive-syncing-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "663f3e8a-bfff-4b3f-ad5f-20ceadf929cc")
+
+(def ^:private
+  gdrive-initializing-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "80b0635a-f0d9-4103-9ac8-389df7fd250a")
+
+(def ^:private
+  gdrive-paused-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "eef1ae21-924e-4cba-9420-3a57aa06c955")
+
+(def ^:private
+  gdrive-400-error-link
+  "A 400 response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "93662bf7-b1c7-442b-80ec-18dee23894fa")
+
+(def ^:private
+  gdrive-403-error-link
+  "A 403 response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "e5b50d83-c1d6-4382-8351-ff95a23af60e")
+
+(def ^:private
+  gdrive-200-error-link
+  "A 200 'error' response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "e8653c8d-4d86-4ebc-92a3-0468252b9d07")
 
 (defmacro with-sample-db-as-dwh [& body]
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
-  `(try
-     (t2/update! :model/Database :id 1 {:is_attached_dwh true})
-     ~@body
-     (finally (t2/update! :model/Database :id 1 {:is_attached_dwh false}))))
+  (let [db-sym (gensym "db-")]
+    `(mt/with-temp [:model/Database ~db-sym {:is_attached_dwh true}]
+       ~@body)))
 
 (deftest post-folder-test
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (mt/with-temporary-setting-values [gsheets nil]
+        (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+          (let [result (mt/user-http-request :crowberto :post 200 "ee/gsheets/connection" {:url gdrive-link})]
+            (is (partial=
+                 {:status "syncing", :url gdrive-link, :created_by_id (mt/user->id :crowberto)}
+                 result))
+            (is (pos-int? (:sync_started_at result))))
+          (let [saved (gsheets)]
+            (is (partial= {:url "https://drive.google.com/drive/expected-gdrive-link", :created-by-id (mt/user->id :crowberto)}
+                          saved))
+            (is (pos-int? (:created-at saved)))
+            (is (u.string/valid-uuid? (:gdrive/conn-id saved)))))))))
+
+(deftest post-sheet-test
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (is (partial=
-             {:status "loading", :folder_url gdrive-link}
-             (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})))))))
+             {:status "syncing", :url sheet-link}
+             (mt/user-http-request :crowberto :post 200 "ee/gsheets/connection" {:url sheet-link})))))))
 
-(deftest post-folder-syncing-test
+(deftest post-error-test
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (mt/with-temporary-setting-values [gsheets nil]
+        (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+          (let [result (mt/user-http-request :crowberto :post 500 "ee/gsheets/connection" {:url gsheet-error-link})]
+            (is (partial=
+                 {:message "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.", :errors true}
+                 result)))
+          (let [saved (gsheets)]
+            (is (= {} saved))))))))
+
+(deftest folder-syncing-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
-      (is (partial= {:status "loading", :folder_url gdrive-link}
-                    (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link}))))))
+    (testing "Sync starts"
+      (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
+        (mt/with-temporary-setting-values [gsheets {:url "stored-url" :created-by-id 2 :gdrive/conn-id gdrive-syncing-link}]
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/gsheets/connection/sync")]
+            (is (partial= {:status "syncing", :url "stored-url", :created_by_id 2}
+                          response))
+            (is (pos-int? (:sync_started_at response)))
+            (is (nil? (:sync_started_at (gsheets))))
+            (is (nil? (:status (gsheets))))))))
+    (testing "Error if folder not set up"
+      (mt/with-temporary-setting-values [gsheets nil]
+        (let [response (mt/user-http-request :crowberto :post 404 "ee/gsheets/connection/sync")]
+          (is (partial= {:errors true, :message "No attached google sheet(s) found."} response)))))))
 
 (deftest get-folder-test
   (with-sample-db-as-dwh
-    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-      ;; This puts us into loading state:
-      (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
-        (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link}))
-      (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
-        (dotimes [_ 10]
-          (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)]
-            (testing (str "when the dwh has never been synced, we should be status=loading.\n"
-                          "calling it over and over will return the same result.")
-              (is (partial= {:status "loading", :folder_url gdrive-link :db_id 1}
-                            (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder"))))
-            (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
-        (testing "when the local sync time is before the last gdrive connection sync time, we should be status=loading."
-          (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2000-01-01T00:00:00Z"))]
-            (is (partial= {:status "loading", :folder_url gdrive-link :db_id 1}
-                          (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
-            (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
-        (testing "when the local sync time is after the last gdrive connection sync time, then we should be status=complete."
-          (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2222-01-01T00:00:00Z"))]
-            (is (partial= {:status "complete" :folder_url gdrive-link :db_id 1}
-                          (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))))))))
+    (let [mock-gsheet {:created-by-id 2
+                       :url           "test-url",
+                       :created-at    15
+                       :db-id         1}]
+      (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+        (testing "when no config exists, return not-connected"
+          (mt/with-temporary-setting-values [gsheets nil]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (= {:status "not-connected"} response))))))
+        (testing "when state==initializing, status==syncing"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-initializing-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "syncing", :url "test-url" :created_by_id 2}
+                              response))
+                (is (pos-int? (:sync_started_at response)))
+                (is (pos-int? (:db_id response)))
+                (is (nil? (:last_sync_at response)))
+                (is (nil? (:next_sync_at response)))
+                (testing "current state info doesn't get persisted"
+                  (is (nil? (:sync_started_at (gsheets)))))))))
+        (testing "when state==syncing, status==syncing"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-syncing-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "syncing", :url "test-url" :created_by_id 2}
+                              response))
+                (is (pos-int? (:sync_started_at response)))
+                (is (pos-int? (:db_id response)))
+                (is (pos-int? (:last_sync_at response)))
+                (is (nil? (:next_sync_at response)))
+                (testing "current state info doesn't get persisted"
+                  (is (nil? (:sync_started_at (gsheets)))))))))
+        (testing "when state==active, status==active"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-active-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "active", :url "test-url" :created_by_id 2}
+                              response))
+                (is (pos-int? (:db_id response)))
+                (is (nil? (:sync_started_at response)))
+                (is (pos-int? (:last_sync_at response)))
+                (is (pos-int? (:next_sync_at response)))
+                (testing "current state info doesn't get persisted"
+                  (is (nil? (:sync_started_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets)))))))))
+        (testing "when paused"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-paused-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2 :error_message "DWH quota exceeded"}
+                              response))
+                (is (pos-int? (:db_id response)))
+                (is (nil? (:sync_started_at response)))
+                (is (pos-int? (:last_sync_at response)))
+                (testing "current state info doesn't get persisted"
+                  (is (nil? (:sync_started_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets)))))))))
+        (testing "when 400 error response"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-400-error-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2} response))
+                (is (pos-int? (:db_id response)))))))
+        (testing "when 200 error response"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-200-error-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2} response))
+                (is (pos-int? (:db_id response)))))))))))
 
-(deftest get-folder-timeout-test
+(deftest get-folder-test-invalid-connections
   (with-sample-db-as-dwh
-    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-      (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
-        (let [resp (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})]
-          (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)
-                        gsheets.api/seconds-from-epoch-now (constantly
-                                                            ;; set "now" to 1 second after now + folder upload time:
-                                                            (+ 1 @#'gsheets.api/*folder-setup-timeout-seconds*
-                                                               (:folder-upload-time resp)))]
-            (is (= {:errors true, :message "Timeout syncing google drive folder, please try again."}
-                   (mt/user-http-request :crowberto :get 408 "ee/gsheets/folder"))
-                "When we timeout, we should return an error.")))))))
+    (let [mock-gsheet {:created-by-id 2
+                       :url           "test-url",
+                       :created-at    15
+                       :db-id         1}]
+      (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+        (testing "when the connection does not exist, it is deleted"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-403-error-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (= {:status "not-connected"} response))
+                (is (= {} (gsheets)))))))
+        (testing "when the HM gives a 403 response for the connection, but it shows in the connection list then it is not deleted"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-active-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request (assoc happy-responses
+                                                                                   {:method :get, :url (str "/api/v2/mb/connections/" gdrive-active-link), :body nil}
+                                                                                   [:error
+                                                                                    {:status 403,
+                                                                                     :body   {:error "User not authorized to act over resource."}}]))]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (= "error" (:status response)))
+                (is (= 15 (:created-at (gsheets))))))))
+        (testing "when the HM gives a 403 response for the connection, and the connection list fails, then it is not deleted"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-403-error-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request
+                                                          (assoc happy-responses
+                                                                 {:method :get, :url "/api/v2/mb/connections", :body nil}
+                                                                 [:error
+                                                                  {:status 403,
+                                                                   :body   {:error "User not authorized to act over resource."}}]))]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (= "error" (:status response)))
+                (is (= 15 (:created-at (gsheets))))))))))))
 
 (deftest delete-folder-test
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-      (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
-        (is (= {:status "not-connected"}
-               (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder")))))))
+      (mt/with-temporary-setting-values [gsheets {:url "stored-url" :created-by-id 2}]
+        (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+          (is (= {:status "not-connected"}
+                 (mt/user-http-request :crowberto :delete 200 "ee/gsheets/connection")))
+          (is (empty? (gsheets))))))))
 
 (defn +empty-conn-listing [responses]
   (assoc responses {:method :get, :url "/api/v2/mb/connections", :body nil}
          [:ok {:status 200,
-               :body []}]))
+               :body   []}]))
 
 (deftest delete-folder-cannot-find
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (with-redefs [hm.client/make-request (partial mock-make-request (+empty-conn-listing happy-responses))]
         (is (= {:status "not-connected"}
-               (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder")))))))
+               (mt/user-http-request :crowberto :delete 200 "ee/gsheets/connection")))))))
 
 (defn +failed-delete-response [responses]
   (assoc responses
@@ -208,4 +331,11 @@
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response happy-responses))]
         (= {:status "not-connected"}
-           (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))
+           (mt/user-http-request :crowberto :delete 200 "ee/gsheets/connection"))))))
+
+(deftest url-type
+  (is (= "gdrive" (#'gsheets.api/url-type "https://drive.google.com/drive/abc")))
+  (is (= "gdrive" (#'gsheets.api/url-type "http://drive.google.com/drive/abc")))
+  (is (= "google_spreadsheet" (#'gsheets.api/url-type "https://docs.google.com/spreadsheets/abc")))
+  (is (= "google_spreadsheet" (#'gsheets.api/url-type "http://docs.google.com/spreadsheets/abc")))
+  (is (thrown-with-msg? Exception #"Invalid URL: https://not.google.com/file" (#'gsheets.api/url-type "https://not.google.com/file"))))

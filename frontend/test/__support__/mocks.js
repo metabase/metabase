@@ -6,6 +6,18 @@ global.window.matchMedia = () => ({
   removeEventListener: () => {},
 });
 
+/**
+ * jsdom doesn't have scrollBy or scrollTo, so we need to mock it.
+ */
+global.window.HTMLElement.prototype.scrollBy = jest.fn();
+global.window.HTMLElement.prototype.scrollTo = jest.fn();
+
+/**
+ * jsdom doesn't have scrollIntoView, so we need to mock it.
+ * Used e.g. under the hood in Mantine's Select component.
+ */
+global.window.HTMLElement.prototype.scrollIntoView = jest.fn();
+
 global.window.ResizeObserver = class ResizeObserver {
   observe() {}
 
@@ -28,7 +40,7 @@ jest.mock("@uiw/react-codemirror", () => {
         {...rest}
         value={props.value ?? ""}
         // @ts-expect-error: We cannot provide the update argument to onChange
-        onChange={evt => props.onChange?.(evt.target.value, undefined)}
+        onChange={(evt) => props.onChange?.(evt.target.value, undefined)}
         autoFocus
       />
     );

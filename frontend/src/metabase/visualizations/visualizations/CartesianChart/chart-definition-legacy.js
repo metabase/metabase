@@ -33,18 +33,18 @@ function transformSingleSeries(s, series, seriesIndex) {
   const settings = getComputedSettingsForSeries([s]);
 
   const dimensions = (settings["graph.dimensions"] || []).filter(
-    d => d != null,
+    (d) => d != null,
   );
-  const metrics = (settings["graph.metrics"] || []).filter(d => d != null);
-  const dimensionColumnIndexes = dimensions.map(dimensionName =>
-    _.findIndex(cols, col => col.name === dimensionName),
+  const metrics = (settings["graph.metrics"] || []).filter((d) => d != null);
+  const dimensionColumnIndexes = dimensions.map((dimensionName) =>
+    _.findIndex(cols, (col) => col.name === dimensionName),
   );
-  const metricColumnIndexes = metrics.map(metricName =>
-    _.findIndex(cols, col => col.name === metricName),
+  const metricColumnIndexes = metrics.map((metricName) =>
+    _.findIndex(cols, (col) => col.name === metricName),
   );
   const bubbleColumnIndex =
     settings["scatter.bubble"] &&
-    _.findIndex(cols, col => col.name === settings["scatter.bubble"]);
+    _.findIndex(cols, (col) => col.name === settings["scatter.bubble"]);
   const extraColumnIndexes =
     bubbleColumnIndex != null && bubbleColumnIndex >= 0
       ? [bubbleColumnIndex]
@@ -70,12 +70,12 @@ function transformSingleSeries(s, series, seriesIndex) {
         breakoutValues.push(seriesValue);
       }
 
-      const newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
+      const newRow = rowColumnIndexes.map((columnIndex) => row[columnIndex]);
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);
     }
 
-    return breakoutValues.map(breakoutValue => ({
+    return breakoutValues.map((breakoutValue) => ({
       ...s,
       card: {
         ...card,
@@ -89,7 +89,7 @@ function transformSingleSeries(s, series, seriesIndex) {
             { column: cols[seriesColumnIndex] },
           ),
         ]
-          .filter(n => n)
+          .filter((n) => n)
           .join(": "),
         originalCardName: card.name,
         _breakoutValue: breakoutValue,
@@ -97,7 +97,7 @@ function transformSingleSeries(s, series, seriesIndex) {
       },
       data: {
         rows: breakoutRowsByValue.get(breakoutValue),
-        cols: rowColumnIndexes.map(i => cols[i]),
+        cols: rowColumnIndexes.map((i) => cols[i]),
         results_timezone: data.results_timezone,
         _rawCols: cols,
         _transformed: true,
@@ -115,7 +115,7 @@ function transformSingleSeries(s, series, seriesIndex) {
   } else {
     // dimensions.length <= 1
     const dimensionColumnIndex = dimensionColumnIndexes[0];
-    return metricColumnIndexes.map(metricColumnIndex => {
+    return metricColumnIndexes.map((metricColumnIndex) => {
       const col = cols[metricColumnIndex];
       const rowColumnIndexes = [dimensionColumnIndex].concat(
         metricColumnIndex,
@@ -128,7 +128,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         (metricColumnIndexes.length > 1 || series.length === 1) &&
           col?.display_name,
       ]
-        .filter(n => n)
+        .filter((n) => n)
         .join(": ");
 
       return {
@@ -144,11 +144,11 @@ function transformSingleSeries(s, series, seriesIndex) {
         },
         data: {
           rows: rows.map((row, rowIndex) => {
-            const newRow = rowColumnIndexes.map(i => row[i]);
+            const newRow = rowColumnIndexes.map((i) => row[i]);
             newRow._origin = { seriesIndex, rowIndex, row, cols };
             return newRow;
           }),
-          cols: rowColumnIndexes.map(i => cols[i]),
+          cols: rowColumnIndexes.map((i) => cols[i]),
           results_timezone: data.results_timezone,
           _transformed: true,
           _rawCols: cols,

@@ -153,7 +153,7 @@ export function FormCreator({
 
   const fieldSettings = formSettings.fields || {};
 
-  const showWarning = form.fields.some(field => {
+  const showWarning = form.fields.some((field) => {
     const settings = fieldSettings[field.name];
 
     if (!settings) {
@@ -162,7 +162,7 @@ export function FormCreator({
 
     if (actionType === "implicit") {
       const parameter = parameters.find(
-        parameter => parameter.id === settings.id,
+        (parameter) => parameter.id === settings.id,
       );
 
       return parameter?.required && settings.hidden;

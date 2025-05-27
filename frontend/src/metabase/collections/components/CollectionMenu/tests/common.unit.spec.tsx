@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { getIcon, queryIcon, screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { setup } from "./setup";
+import { assertIndicatorHidden, assertIndicatorVisible, setup } from "./setup";
 
 describe("CollectionMenu", () => {
   it("should be able to edit collection permissions with admin access", async () => {
@@ -36,6 +36,7 @@ describe("CollectionMenu", () => {
       collection: createMockCollection({
         personal_owner_id: 1,
         can_write: true,
+        is_personal: true,
       }),
       isAdmin: true,
     });
@@ -47,9 +48,9 @@ describe("CollectionMenu", () => {
     setup({
       collection: createMockCollection({
         can_write: true,
+        is_personal: true,
       }),
       isAdmin: true,
-      isPersonalCollectionChild: true,
     });
 
     await userEvent.click(getIcon("ellipsis"));
@@ -163,19 +164,12 @@ describe("for your consideration", () => {
         isAdmin: true,
       });
 
-      expect(
-        fetchMock.called(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
-          { method: "PUT" },
-        ),
-      ).toBe(false);
-
-      expect(await screen.findByTestId("indicator")).toBeInTheDocument();
+      await assertIndicatorVisible();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
         fetchMock.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(1);
@@ -203,7 +197,8 @@ describe("for your consideration", () => {
         isAdmin: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await assertIndicatorHidden();
+
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -219,10 +214,10 @@ describe("for your consideration", () => {
         collection: createMockCollection({ can_write: true }),
         dashboardQuestionCandidates: [dqCandidate],
         isAdmin: true,
-        collectionMenu: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await assertIndicatorHidden();
+
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -244,7 +239,7 @@ describe("for your consideration", () => {
         isAdmin: false,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -263,7 +258,7 @@ describe("for your consideration", () => {
         moveToDashboard: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -279,11 +274,10 @@ describe("for your consideration", () => {
         collection: createMockCollection({ can_write: true }),
         dashboardQuestionCandidates: [dqCandidate],
         isAdmin: true,
-        collectionMenu: true,
         moveToDashboard: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(

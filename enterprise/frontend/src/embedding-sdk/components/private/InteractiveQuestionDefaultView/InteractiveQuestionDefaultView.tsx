@@ -5,8 +5,10 @@ import { t } from "ttag";
 
 import {
   QuestionNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
@@ -30,9 +32,20 @@ import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./InteractiveQuestionDefaultView.module.css";
 
-export interface InteractiveQuestionDefaultViewProps {
+export interface InteractiveQuestionDefaultViewProps extends FlexibleSizeProps {
+  /**
+   * Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only applicable to interactive questions when using the default layout.
+   */
   title?: SdkQuestionTitleProps;
+
+  /**
+   * Determines whether a reset button is displayed. Only relevant when using the default layout.
+   */
   withResetButton?: boolean;
+
+  /**
+   * Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.
+   */
   withChartTypeSelector?: boolean;
 }
 
@@ -44,18 +57,14 @@ export const InteractiveQuestionDefaultView = ({
   title,
   withResetButton,
   withChartTypeSelector,
-}: InteractiveQuestionDefaultViewProps & FlexibleSizeProps): ReactElement => {
+}: InteractiveQuestionDefaultViewProps): ReactElement => {
   const {
     originalId,
     question,
     queryResults,
     isQuestionLoading,
     originalQuestion,
-    onCreate,
-    onSave,
     isSaveEnabled,
-    targetCollection,
-    isCardIdError,
     withDownloads,
   } = useInteractiveQuestionContext();
 
@@ -76,9 +85,12 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  // `isCardError: true` when the entity ID couldn't be resolved
-  if ((!question || isCardIdError) && originalId && originalId !== "new") {
-    return <QuestionNotFoundError id={originalId} />;
+  if (!question) {
+    if (originalId) {
+      return <QuestionNotFoundError id={originalId} />;
+    } else {
+      return <SdkError message={t`Question not found`} />;
+    }
   }
 
   const showSaveButton =
@@ -169,21 +181,48 @@ export const InteractiveQuestionDefaultView = ({
         </Box>
       </Box>
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveEnabled && isSaveModalOpen && question && (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion ?? null}
-          opened
-          closeOnSuccess
-          onClose={closeSaveModal}
-          onCreate={onCreate}
-          onSave={async question => {
-            await onSave(question);
-            closeSaveModal();
-          }}
-          targetCollection={targetCollection}
-        />
-      )}
+      <DefaultViewSaveModal isOpen={isSaveModalOpen} close={closeSaveModal} />
     </FlexibleSizeComponent>
+  );
+};
+
+const DefaultViewSaveModal = ({
+  isOpen,
+  close,
+}: {
+  isOpen: boolean;
+  close: () => void;
+}) => {
+  const {
+    question,
+    originalQuestion,
+    onCreate,
+    onSave,
+    isSaveEnabled,
+    targetCollection,
+  } = useInteractiveQuestionContext();
+
+  const { id, isLoading } = useTranslatedCollectionId({
+    id: targetCollection,
+  });
+
+  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+    return null;
+  }
+
+  return (
+    <SaveQuestionModal
+      question={question}
+      originalQuestion={originalQuestion ?? null}
+      opened
+      closeOnSuccess
+      onClose={close}
+      onCreate={onCreate}
+      onSave={async (question) => {
+        await onSave(question);
+        close();
+      }}
+      targetCollection={id}
+    />
   );
 };

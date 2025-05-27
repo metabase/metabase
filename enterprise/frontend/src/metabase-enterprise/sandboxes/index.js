@@ -28,6 +28,7 @@ import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   label: t`Sandboxed`,
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
@@ -87,9 +88,9 @@ if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
     getEditSegmentedAccessPostAction;
 
-  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
     const sandboxes = getDraftPolicies(state);
-    const modifiedGroupIds = _.uniq(sandboxes.map(sb => sb.group_id));
+    const modifiedGroupIds = _.uniq(sandboxes.map((sb) => sb.group_id));
     return [{ sandboxes }, modifiedGroupIds];
   });
 

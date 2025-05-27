@@ -38,7 +38,7 @@ const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
 export const initializeDataPermissions = createThunkAction(
   INITIALIZE_DATA_PERMISSIONS,
-  () => async dispatch => {
+  () => async (dispatch) => {
     await Promise.all([
       dispatch(loadDataPermissions()),
       dispatch(Group.actions.fetchList()),
@@ -76,7 +76,7 @@ const INITIALIZE_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_COLLECTION_PERMISSIONS";
 export const initializeCollectionPermissions = createThunkAction(
   INITIALIZE_COLLECTION_PERMISSIONS,
-  namespace => async dispatch => {
+  (namespace) => async (dispatch) => {
     await Promise.all([
       dispatch(loadCollectionPermissions(namespace)),
       dispatch(Group.actions.fetchList()),
@@ -88,7 +88,7 @@ const LOAD_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/LOAD_COLLECTION_PERMISSIONS";
 export const loadCollectionPermissions = createThunkAction(
   LOAD_COLLECTION_PERMISSIONS,
-  namespace => async () => {
+  (namespace) => async () => {
     const params = namespace != null ? { namespace } : {};
     return CollectionsApi.graph(params);
   },
@@ -98,7 +98,7 @@ export const LIMIT_DATABASE_PERMISSION =
   "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
 export const limitDatabasePermission = createThunkAction(
   LIMIT_DATABASE_PERMISSION,
-  (groupId, entityId, accessPermissionValue) => dispatch => {
+  (groupId, entityId, accessPermissionValue) => (dispatch) => {
     const newValue =
       PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
         accessPermissionValue,
@@ -126,7 +126,7 @@ export const NAVIGATE_TO_GRANULAR_PERMISSIONS =
   "metabase/admin/permissions/NAVIGATE_TO_GRANULAR_PERMISSIONS";
 export const navigateToGranularPermissions = createThunkAction(
   NAVIGATE_TO_GRANULAR_PERMISSIONS,
-  (groupId, entityId) => dispatch => {
+  (groupId, entityId) => (dispatch) => {
     dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
   },
 );
@@ -143,6 +143,7 @@ export const updateDataPermission = createThunkAction(
             dbId: entityId.databaseId,
             include_hidden: true,
             remove_inactive: true,
+            skip_fields: true,
           }),
         );
       }
@@ -223,7 +224,7 @@ const SAVE_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/data/SAVE_COLLECTION_PERMISSIONS";
 export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
-  namespace => async (_dispatch, getState) => {
+  (namespace) => async (_dispatch, getState) => {
     const {
       originalCollectionPermissions,
       collectionPermissions,
@@ -252,7 +253,7 @@ const CLEAR_SAVE_ERROR = "metabase/admin/permissions/CLEAR_SAVE_ERROR";
 export const clearSaveError = createAction(CLEAR_SAVE_ERROR);
 
 const savePermission = {
-  next: _state => null,
+  next: (_state) => null,
   throw: (_state, { payload }) => {
     return (
       (payload && typeof payload.data === "string"
@@ -266,11 +267,11 @@ const saveError = handleActions(
   {
     [SAVE_DATA_PERMISSIONS]: savePermission,
     [LOAD_DATA_PERMISSIONS]: {
-      next: state => null,
+      next: (state) => null,
     },
     [SAVE_COLLECTION_PERMISSIONS]: savePermission,
     [LOAD_COLLECTION_PERMISSIONS]: {
-      next: state => null,
+      next: (state) => null,
     },
     [CLEAR_SAVE_ERROR]: { next: () => null },
   },
@@ -279,7 +280,7 @@ const saveError = handleActions(
 
 function getDecendentCollections(collection) {
   const subCollections = collection.children.filter(
-    collection => !collection.is_personal,
+    (collection) => !collection.is_personal,
   );
   return subCollections.concat(...subCollections.map(getDecendentCollections));
 }
@@ -489,7 +490,7 @@ export const toggleHelpReference = createAction(TOGGLE_HELP_REFERENCE);
 export const isHelpReferenceOpen = handleActions(
   {
     [toggleHelpReference]: {
-      next: state => !state,
+      next: (state) => !state,
     },
   },
   false,

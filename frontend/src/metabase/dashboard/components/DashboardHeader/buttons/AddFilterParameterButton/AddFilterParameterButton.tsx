@@ -9,6 +9,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   type ParameterSection,
   getDashboardParameterSections,
@@ -40,6 +41,19 @@ export const AddFilterParameterButton = () => {
     }
   };
 
+  useRegisterShortcut(
+    [
+      {
+        id: "dashboard-add-filter",
+        perform: () =>
+          isOpened
+            ? dispatch(hideAddParameterPopover())
+            : dispatch(showAddParameterPopover()),
+      },
+    ],
+    [isOpened],
+  );
+
   useLayoutEffect(() => {
     if (isOpened) {
       setRightSectionWidth(rightSectionWidthRef.current);
@@ -51,6 +65,7 @@ export const AddFilterParameterButton = () => {
       opened={isOpened}
       onClose={() => dispatch(hideAddParameterPopover())}
       position="bottom-end"
+      trapFocus
     >
       <Menu.Target>
         <ToolbarButton
@@ -66,7 +81,7 @@ export const AddFilterParameterButton = () => {
       </Menu.Target>
       <Menu.Dropdown data-testid="add-filter-parameter-dropdown">
         <Menu.Label>{t`Add a filter or parameter`}</Menu.Label>
-        {sections.map(section => (
+        {sections.map((section) => (
           <Menu.Item
             key={section.id}
             leftSection={<Icon name={getParameterIconName(section.id)} />}

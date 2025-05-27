@@ -205,7 +205,6 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Float
   display_name: Days since last view
-  expression_name: Days since last view
   field_ref:
   - expression
   - Days since last view
@@ -231,6 +230,7 @@ serdes/meta:
   label: dashboards_without_recent_views
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: BHyad8ZHCbeiBZpQxDwsP
 metabase_version: vUNKNOWN (901f705)
 source_card_id: AxSackBiyXVRUzM_TyyQY

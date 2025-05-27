@@ -18,7 +18,7 @@ export function isSpecificValue(
 }
 
 export function getTabs(availableOperators: DatePickerOperator[]): Tab[] {
-  return TABS.filter(tab => availableOperators.includes(tab.operator));
+  return TABS.filter((tab) => availableOperators.includes(tab.operator));
 }
 
 export function getDefaultValue() {
@@ -121,12 +121,10 @@ export function clearTimePart(value: Date) {
   return dayjs(value).startOf("date").toDate();
 }
 
-export function coerceValue({
-  type,
-  operator,
-  values,
-  hasTime,
-}: SpecificDatePickerValue): SpecificDatePickerValue {
+export function coerceValue(
+  value: SpecificDatePickerValue,
+): SpecificDatePickerValue {
+  const { type, operator, values, hasTime } = value;
   if (operator === "between") {
     const [startDate, endDate] = values;
 
@@ -140,5 +138,5 @@ export function coerceValue({
     };
   }
 
-  return { type, operator, values, hasTime };
+  return value;
 }

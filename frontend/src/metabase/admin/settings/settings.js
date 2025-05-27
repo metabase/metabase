@@ -7,7 +7,6 @@ import {
 import { refreshSiteSettings } from "metabase/redux/settings";
 import {
   EmailApi,
-  GoogleApi,
   LdapApi,
   SamlApi,
   SettingsApi,
@@ -28,7 +27,7 @@ export const refreshSettingsList = createAction(
   REFRESH_SETTINGS_LIST,
   async () => {
     const settingsList = await SettingsApi.list();
-    return settingsList.map(setting => ({
+    return settingsList.map((setting) => ({
       ...setting,
       originalValue: setting.value,
     }));
@@ -118,7 +117,7 @@ export const CLEAR_EMAIL_SETTINGS =
 
 export const clearEmailSettings = createThunkAction(
   CLEAR_EMAIL_SETTINGS,
-  () => async dispatch => {
+  () => async (dispatch) => {
     await EmailApi.clear(), await dispatch(reloadSettings());
   },
 );
@@ -157,19 +156,6 @@ export const updateSamlSettings = createThunkAction(
   function (settings) {
     return async function (dispatch) {
       const result = await SamlApi.updateSettings(settings);
-      await dispatch(reloadSettings());
-      return result;
-    };
-  },
-);
-
-export const UPDATE_GOOGLE_SETTINGS =
-  "metabase/admin/settings/UPDATE_GOOGLE_SETTINGS";
-export const updateGoogleSettings = createThunkAction(
-  UPDATE_GOOGLE_SETTINGS,
-  function (settings) {
-    return async function (dispatch) {
-      const result = await GoogleApi.updateSettings(settings);
       await dispatch(reloadSettings());
       return result;
     };

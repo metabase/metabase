@@ -26,7 +26,7 @@ export function addOrUpdateDashboardCard({
         },
       ],
     })
-    .then(response => ({
+    .then((response) => ({
       ...response,
       body: response.body.dashcards[0],
     }));

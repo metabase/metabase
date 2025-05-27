@@ -69,7 +69,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
     successTestCases.forEach(({ name, questionIdAlias }) => {
       it(`should load question content for ${name}`, () => {
-        cy.get(questionIdAlias).then(questionId => {
+        cy.get(questionIdAlias).then((questionId) => {
           mountStaticQuestion({ questionId });
         });
 

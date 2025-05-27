@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import { ProfileLink } from "../ProfileLink";
-import { SearchButton } from "../search/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
 import {
@@ -26,7 +26,7 @@ export interface AppBarSmallProps {
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
-  isEmbedded?: boolean;
+  isEmbeddingIframe?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
@@ -40,7 +40,7 @@ const AppBarSmall = ({
   isNavBarEnabled,
   isLogoVisible,
   isSearchVisible,
-  isEmbedded,
+  isEmbeddingIframe,
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
@@ -80,14 +80,14 @@ const AppBarSmall = ({
             </AppBarToggleContainer>
             <AppBarSearchContainer>
               {isSearchVisible &&
-                (isEmbedded ? (
+                (isEmbeddingIframe ? (
                   <SearchBar
                     onSearchActive={handleSearchActive}
                     onSearchInactive={handleSearchInactive}
                   />
                 ) : (
                   <Flex justify="end">
-                    <SearchButton />
+                    <PLUGIN_METABOT.SearchButton />
                   </Flex>
                 ))}
             </AppBarSearchContainer>

@@ -24,7 +24,7 @@
                       {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
                                                     {:name "NAME", :lib/source :source/previous-stage}]}
                       {}]}
-            (#'lib.stage/ensure-previous-stages-have-metadata query -1)))))
+            (#'lib.stage/ensure-previous-stages-have-metadata query -1 {})))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"

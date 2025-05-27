@@ -9,7 +9,6 @@ import {
 } from "embedding-sdk/components/private/util/MultiStepPopover";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import type { FilterColumnPickerProps } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
 import type { PopoverProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../../context";
@@ -17,14 +16,23 @@ import { ToolbarButton } from "../../util/ToolbarButton";
 import { FilterBadgeList } from "../FilterBadgeList";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
 
-type FilterProps = Pick<FilterColumnPickerProps, "withColumnItemIcon">;
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionFilterDropdownProps = {
+  /**
+   * Whether to show the icon for the column item
+   */
+  withColumnItemIcon?: boolean;
+};
 
 const FilterDropdownInner = ({
   query,
   withColumnItemIcon,
   ...popoverProps
 }: Pick<UpdateQueryHookProps, "query"> &
-  FilterProps &
+  InteractiveQuestionFilterDropdownProps &
   Omit<PopoverProps, "children" | "onClose" | "opened">) => {
   const filters = useMemo(() => getFilterItems(query), [query]);
 
@@ -43,7 +51,7 @@ const FilterDropdownInner = ({
     .with(0, () => t`Filter`)
     .with(1, () => t`1 filter`)
     .otherwise(
-      value =>
+      (value) =>
         c("{0} refers to a number greater than 1 (i.e. 2 filters, 10 filters)")
           .t`${value} filters`,
     );
@@ -94,7 +102,16 @@ const FilterDropdownInner = ({
   );
 };
 
-export const FilterDropdown = ({ withColumnItemIcon }: FilterProps) => {
+/**
+ * A dropdown button for the Filter component.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const FilterDropdown = ({
+  withColumnItemIcon,
+}: InteractiveQuestionFilterDropdownProps) => {
   const { question } = useInteractiveQuestionContext();
 
   if (!question) {

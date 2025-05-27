@@ -21,7 +21,9 @@
   ;; make sure we handle < 50 cards that had `:dataset` instead of `:type`
   (let [serialized-card (cond-> serialized-card
                           (contains? serialized-card :dataset) (-> (dissoc :dataset)
-                                                                   (assoc :type (if (:dataset serialized-card) :model :question))))]
+                                                                   (assoc :type (if (:dataset serialized-card) :model :question)))
+                          ;; Add the default `:card_schema` of 20, if it's missing.
+                          (not (:card_schema serialized-card)) (assoc :card_schema 20))]
     ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
 
 (defn- model?

@@ -11,6 +11,7 @@ const esmPackages = [
   "hast.*",
   "html-void-elements",
   "is-absolute-url",
+  "jose",
   "property-information",
   "rehype-external-links",
   "screenfull",
@@ -26,8 +27,7 @@ const esmPackages = [
   "zwitch",
 ];
 
-/** @type {import('jest').Config} */
-const config = {
+const baseConfig = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
@@ -47,7 +47,7 @@ const config = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
-    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
@@ -79,9 +79,7 @@ const config = {
   globals: {
     ga: {},
   },
-  reporters: ["default", "jest-junit"],
   coverageDirectory: "./coverage",
-  coverageReporters: ["html", "lcov"],
   collectCoverageFrom: [
     "frontend/src/**/*.{js,jsx,ts,tsx}",
     "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
@@ -98,11 +96,40 @@ const config = {
     "/frontend/test/",
   ],
   testEnvironment: "jest-environment-jsdom",
+};
+
+/** @type {import('jest').Config} */
+const config = {
+  reporters: ["default", "jest-junit"],
+  coverageReporters: ["html", "lcov"],
   watchPlugins: [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname",
   ],
   testTimeout: 30000,
+  projects: [
+    {
+      ...baseConfig,
+      displayName: "sdk",
+
+      testMatch: [
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
+      ],
+
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest-console-restrictions.js",
+      ],
+    },
+    {
+      ...baseConfig,
+      displayName: "core",
+      testPathIgnorePatterns: [
+        ...(baseConfig.testPathIgnorePatterns || []),
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+      ],
+    },
+  ],
 };
 
 // eslint-disable-next-line import/no-commonjs

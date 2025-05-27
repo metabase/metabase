@@ -36,7 +36,7 @@ const SETTING_WIDGET_MAP = {
   hidden: () => null,
 };
 
-export const SettingsSetting = props => {
+export const SettingsSetting = (props) => {
   const [fancyStyle, setFancyStyle] = useState({});
   const thisRef = useRef();
 
@@ -116,6 +116,10 @@ export const SettingsSetting = props => {
   );
 };
 
+/**
+ * @deprecated
+ * use SetByEnvVar from metabase/admin/settings/components/widgets/AdminSettingInput instead
+ */
 export const SetByEnvVar = ({ setting }) => {
   const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
 

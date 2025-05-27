@@ -68,7 +68,7 @@ interface SetupOpts {
 function setup({
   columns = COLUMNS,
   columnSettings = COLUMN_SETTINGS,
-  getColumnName = column => column.display_name,
+  getColumnName = (column) => column.display_name,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onShowWidget = jest.fn();
@@ -132,5 +132,5 @@ function findColumnIndex(
   columnName: string,
   settings: TableColumnOrderSetting[],
 ) {
-  return settings.findIndex(setting => setting.name === columnName);
+  return settings.findIndex((setting) => setting.name === columnName);
 }

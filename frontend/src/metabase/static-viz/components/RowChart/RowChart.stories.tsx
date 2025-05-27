@@ -13,7 +13,7 @@ export default {
   component: RowChart,
 };
 
-const Template: StoryFn<StaticRowChartProps> = args => {
+const Template: StoryFn<StaticRowChartProps> = (args) => {
   return <RowChart {...args} />;
 };
 
@@ -29,4 +29,9 @@ export const MetricColumnWithScaling = {
     ...METRIC_COLUMN_WITH_SCALING,
     getColor: color,
   },
+};
+
+export const Watermark = {
+  render: Template,
+  args: { ...MULTIPLE_SERIES, getColor: color, hasDevWatermark: true },
 };

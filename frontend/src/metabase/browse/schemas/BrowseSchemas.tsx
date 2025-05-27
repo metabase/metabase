@@ -62,7 +62,7 @@ const BrowseSchemasContainer = ({
                 >{t`This database doesn't have any tables.`}</h2>
               ) : (
                 <Grid>
-                  {schemas.map(schema => (
+                  {schemas.map((schema) => (
                     <SchemaGridItem key={schema.id}>
                       <SchemaLink
                         to={`/browse/databases/${dbId}/schema/${encodeURIComponent(

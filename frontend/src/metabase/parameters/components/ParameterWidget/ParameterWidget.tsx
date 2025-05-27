@@ -71,7 +71,7 @@ const EditParameterWidget = ({
           setEditingParameter?.(isEditingParameter ? null : parameter.id)
         }
       >
-        <div className={CS.mr1} onClick={e => e.stopPropagation()}>
+        <div className={CS.mr1} onClick={(e) => e.stopPropagation()}>
           {dragHandle}
         </div>
         {parameter.name}
@@ -131,7 +131,7 @@ export const ParameterWidget = ({
             question={question}
             dashboard={dashboard}
             value={parameter.value}
-            setValue={value => setValue?.(value)}
+            setValue={(value) => setValue?.(value)}
             isEditing={isEditingParameter}
             placeholder={parameter.name}
             focusChanged={setIsFocused}

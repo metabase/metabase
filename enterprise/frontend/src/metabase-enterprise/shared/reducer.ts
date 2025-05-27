@@ -21,7 +21,7 @@ export const shared = createSlice({
   initialState,
   name: "metabase-enterprise/shared",
   reducers: {},
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder.addCase(fetchUserAttributes.fulfilled, (state, action) => {
       state.attributes = action.payload;
     });

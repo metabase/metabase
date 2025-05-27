@@ -21,12 +21,13 @@ dataset_query: {}
 result_metadata: null
 visualization_settings:
   column_settings: null
+card_schema: 22
 serdes/meta:
 - id: IBZSKSt2-QOMviIaGcQE6
   label: parent_card
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.1.33-SNAPSHOT (a859933)
+metabase_version: v1.54.4-SNAPSHOT (c6780bb)
 source_card_id: null
 type: question

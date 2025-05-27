@@ -24,7 +24,7 @@ export function useSdkUsageProblem({
   // their customer would see an alarming error message on production.
   const isEnabled = useSetting("enable-embedding-sdk") ?? true;
 
-  const hasTokenFeature = useSdkSelector(state => {
+  const hasTokenFeature = useSdkSelector((state) => {
     // We also assume that the feature is enabled if the token-features are missing.
     // Same reason as above.
     if (!state.settings.values?.["token-features"]) {
@@ -34,13 +34,23 @@ export function useSdkUsageProblem({
     return getTokenFeature(state, "embedding_sdk");
   });
 
+  const isDevelopmentMode = useSdkSelector((state) => {
+    // Assume that we are not in development mode until the setting is loaded
+    if (!state.settings.values?.["token-features"]) {
+      return false;
+    }
+
+    return getTokenFeature(state, "development-mode");
+  });
+
   const usageProblem = useMemo(() => {
     return getSdkUsageProblem({
       authConfig,
       hasTokenFeature,
       isEnabled,
+      isDevelopmentMode,
     });
-  }, [authConfig, hasTokenFeature, isEnabled]);
+  }, [authConfig, hasTokenFeature, isEnabled, isDevelopmentMode]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.

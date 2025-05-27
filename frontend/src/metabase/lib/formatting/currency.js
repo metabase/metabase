@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { currency } from "cljs/metabase.util.currency";
 
 let currencyMapCache;
@@ -17,3 +19,45 @@ export const COMPACT_CURRENCY_OPTIONS = {
   digits: 2,
   currency_style: "symbol",
 };
+
+export function getCurrencyStyleOptions(currency = "USD") {
+  const symbol = getCurrencySymbol(currency);
+  const code = getCurrency(currency, "code");
+  const name = getCurrency(currency, "name");
+  return [
+    ...(symbol !== code
+      ? [
+          {
+            label: t`Symbol` + ` ` + `(${symbol})`,
+            value: "symbol",
+          },
+        ]
+      : []),
+    {
+      label: t`Code` + ` ` + `(${code})`,
+      value: "code",
+    },
+    {
+      label: t`Name` + ` ` + `(${name})`,
+      value: "name",
+    },
+  ];
+}
+
+export function getCurrency(currency, currencyStyle) {
+  return (0)
+    .toLocaleString("en", {
+      style: "currency",
+      currency: currency,
+      currencyDisplay: currencyStyle,
+    })
+    .replace(/0([.,]0+)?/, "")
+    .trim(); // strip off actual number
+}
+
+export function getCurrencyOptions() {
+  return currency.map(([, currency]) => ({
+    name: currency.name,
+    value: currency.code,
+  }));
+}

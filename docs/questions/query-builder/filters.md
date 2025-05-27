@@ -24,16 +24,7 @@ Depending on the data type of the column, Metabase will present different filter
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, whether it contains, starts with, or ends with a substring, or whether the row is empty or not.
 - **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
 - **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
-
-## Filter multiple columns
-
-When viewing a table or chart, clicking on the **Filter** will bring up the filter modal.
-
-![Bulk filter modal](../images/bulk-filter-modal.png)
-
-Here you can add multiple filters to your question in one go (which can save you a lot of loading time). Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. You can also filter your summaries.
-
-When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the editor, and vice versa.
+- **Latitude and longitude columns** will have the same options as numeric columns, but also a special "Inside" filter type that will let you filter on both latitude and longitude simultaneously.
 
 ## Filtering by date
 

@@ -1,18 +1,20 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { cardApi, dashboardApi, datasetApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { MetabaseApi, RevisionsApi } from "metabase/services";
+import { RevisionsApi } from "metabase/services";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
-const deprecated = message => {
+const deprecated = (message) => {
   if (!isProduction) {
     console.warn("DEPRECATED: " + message);
   }
@@ -24,7 +26,7 @@ export const fetchSegments = (reload = false) => {
   return Segments.actions.fetchList(null, { reload });
 };
 
-export const updateSegment = segment => {
+export const updateSegment = (segment) => {
   deprecated("metabase/redux/metadata updateSegment");
   return Segments.actions.update(segment);
 };
@@ -39,13 +41,13 @@ export const fetchDatabaseMetadata = (dbId, reload = false) => {
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
 };
 
-export const updateDatabase = database => {
+export const updateDatabase = (database) => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
   return Databases.actions.update(slimDatabase);
 };
 
-export const updateTable = table => {
+export const updateTable = (table) => {
   deprecated("metabase/redux/metadata updateTable");
   const slimTable = _.omit(
     table,
@@ -73,7 +75,7 @@ export const fetchField = createThunkAction(
   METADATA_FETCH_FIELD,
   (id, reload = false) => {
     deprecated("metabase/redux/metadata fetchField");
-    return async dispatch => {
+    return async (dispatch) => {
       const action = await dispatch(Fields.actions.fetch({ id }, { reload }));
       const field = Fields.HACK_getObjectFromAction(action);
       if (field?.dimensions?.[0]?.human_readable_field_id != null) {
@@ -93,25 +95,19 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => {
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
 };
 
-export { ADD_PARAM_VALUES } from "metabase/entities/fields";
-export const addParamValues = paramValues => {
-  deprecated("metabase/redux/metadata addParamValues");
-  return Fields.actions.addParamValues(paramValues);
-};
-
 export { ADD_FIELDS } from "metabase/entities/fields";
-export const addFields = fieldMaps => {
+export const addFields = (fields) => {
   deprecated("metabase/redux/metadata addFields");
-  return Fields.actions.addFields(fieldMaps);
+  return Fields.actions.addFields(fields);
 };
 
-export const updateField = field => {
+export const updateField = (field) => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
   return Fields.actions.update(slimField);
 };
 
-export const deleteFieldDimension = fieldId => {
+export const deleteFieldDimension = (fieldId) => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
   return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
@@ -205,36 +201,60 @@ export const addRemappings = (fieldId, remappings) => {
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
 export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
-  (value, fieldId) => async (dispatch, getState) => {
-    const metadata = getMetadata(getState());
-    const field = metadata.field(fieldId);
-    const remappedField = field && field.remappedField();
-    if (field && remappedField && !field.hasRemappedValue(value)) {
-      const fieldId = (field.target || field).id;
-      const remappedFieldId = remappedField.id;
-      fetchData({
-        dispatch,
-        getState,
-        requestStatePath: [
-          "entities",
-          "remapping",
-          fieldId,
-          JSON.stringify(value),
-        ],
-        getData: async () => {
-          const remapping = await MetabaseApi.field_remapping({
+  ({ parameter, value, field, cardId, dashboardId }) =>
+    async (dispatch, getState) => {
+      if (
+        field == null ||
+        field.remappedField() == null ||
+        field.hasRemappedValue(value)
+      ) {
+        return;
+      }
+
+      if (dashboardId != null && parameter != null) {
+        const remapping = await entityCompatibleQuery(
+          {
+            dashboard_id: dashboardId,
+            parameter_id: parameter.id,
             value,
-            fieldId,
-            remappedFieldId,
-          });
-          if (remapping) {
-            // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
-            dispatch(addRemappings(field.id, [remapping]));
-          }
-        },
-      });
-    }
-  },
+          },
+          dispatch,
+          dashboardApi.endpoints.getRemappedDashboardParameterValue,
+          { forceRefetch: false },
+        );
+        if (remapping != null) {
+          dispatch(addRemappings(field.id, [remapping]));
+        }
+      } else if (cardId != null && parameter != null) {
+        const remapping = await entityCompatibleQuery(
+          {
+            card_id: cardId,
+            parameter_id: parameter.id,
+            value,
+          },
+          dispatch,
+          cardApi.endpoints.getRemappedCardParameterValue,
+          { forceRefetch: false },
+        );
+        if (remapping != null) {
+          dispatch(addRemappings(field.id, [remapping]));
+        }
+      } else if (parameter != null) {
+        const remapping = await entityCompatibleQuery(
+          {
+            parameter: normalizeParameter(parameter),
+            field_ids: [field.id],
+            value,
+          },
+          dispatch,
+          datasetApi.endpoints.getRemappedParameterValue,
+          { forceRefetch: false },
+        );
+        if (remapping != null) {
+          dispatch(addRemappings(field.id, [remapping]));
+        }
+      }
+    },
 );
 
 const FETCH_REAL_DATABASES_WITH_METADATA =
@@ -246,7 +266,7 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
       await dispatch(fetchRealDatabases());
       const databases = getIn(getState(), ["entities", "databases"]);
       await Promise.all(
-        Object.values(databases).map(database =>
+        Object.values(databases).map((database) =>
           dispatch(fetchDatabaseMetadata(database.id)),
         ),
       );

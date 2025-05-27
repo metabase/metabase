@@ -23,7 +23,7 @@ export const BrowseDataHeader = () => {
           justify="space-between"
           align="center"
         >
-          <Title order={1} c="text-dark">
+          <Title order={2} c="text-dark">
             <Group gap="sm">
               <Icon size={24} color={color("brand")} name="database" />
               {t`Databases`}
@@ -46,6 +46,6 @@ const LearnAboutDataLink = () => (
         </Text>
       </BrowseHeaderIconContainer>
     </Link>
-    <PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectButton />
+    <PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu />
   </Flex>
 );

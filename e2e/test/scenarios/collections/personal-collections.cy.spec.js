@@ -56,13 +56,12 @@ describe("personal collections", () => {
       cy.findAllByRole("tree")
         .contains("Your personal collection")
         .should("be.visible");
-      H.navigationSidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
-      H.popover().findByText("Other users' personal collections").click();
+      H.navigationSidebar()
+        .findByLabelText("Other users' personal collections")
+        .click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
-      Object.values(USERS).forEach(user => {
+      Object.values(USERS).forEach((user) => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
         cy.findByText(FULL_NAME);
       });
@@ -75,12 +74,13 @@ describe("personal collections", () => {
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
-      // Go to admin's personal collection
-      cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Your personal collection").click();
+      H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
 
+      cy.log(
+        "Make sure it's not possible to edit personal collection's permissions",
+      );
       H.getCollectionActions().within(() => {
+        cy.icon("info").should("exist");
         cy.icon("ellipsis").should("not.exist");
       });
 
@@ -96,11 +96,14 @@ describe("personal collections", () => {
 
       // Go to the newly created sub-collection "Foo"
       H.navigationSidebar().findByText("Foo").click();
-
-      // It should be possible to edit sub-collections' details, but not its permissions
       cy.findByDisplayValue("Foo").should("be.enabled");
+
+      cy.log(
+        "Other menu options exist, but editing permissions is not possible",
+      );
       H.openCollectionMenu();
       H.popover().within(() => {
+        cy.findByText("Move to trash").should("be.visible");
         cy.findByText("Edit permissions").should("not.exist");
       });
 
@@ -112,9 +115,10 @@ describe("personal collections", () => {
       // });
 
       // Go to random user's personal collection
-      cy.visit(`/collection/${NO_DATA_PERSONAL_COLLECTION_ID}`);
+      H.visitCollection(NO_DATA_PERSONAL_COLLECTION_ID);
 
       H.getCollectionActions().within(() => {
+        cy.icon("info").should("exist");
         cy.icon("ellipsis").should("not.exist");
       });
     });
@@ -132,14 +136,13 @@ describe("personal collections", () => {
   });
 
   describe("all users", () => {
-    Object.keys(USERS).forEach(user => {
+    Object.keys(USERS).forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
 
           cy.visit("/collection/root");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Your personal collection").click();
+          H.navigationSidebar().findByText("Your personal collection").click();
 
           // Create initial collection inside the personal collection and navigate to it
           addNewCollection("Foo");
@@ -161,11 +164,9 @@ describe("personal collections", () => {
           );
 
           H.openCollectionMenu();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          H.popover().within(() => cy.findByText("Move to trash").click());
-          H.modal().findByRole("button", { name: "Move to trash" }).click();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Trashed collection");
+          H.popover().findByText("Move to trash").click();
+          H.modal().button("Move to trash").click();
+          cy.findByTestId("toast-undo").should("contain", "Trashed collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
@@ -174,7 +175,7 @@ describe("personal collections", () => {
 });
 
 function addNewCollection(name) {
-  H.newButton("Collection").click();
+  H.startNewCollectionFromSidebar();
   cy.findByPlaceholderText("My new fantastic collection").type(name, {
     delay: 0,
   });

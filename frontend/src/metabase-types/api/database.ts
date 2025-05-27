@@ -21,7 +21,13 @@ export type DatabaseFeature =
   | "datetime-diff"
   | "dynamic-schema"
   | "expression-aggregations"
+  | "expression-literals"
   | "expressions"
+  | "expressions/date"
+  | "expressions/datetime"
+  | "expressions/integer"
+  | "expressions/float"
+  | "expressions/text"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
@@ -41,7 +47,9 @@ export type DatabaseFeature =
   | "connection-impersonation-requires-role"
   | "native-requires-specified-collection"
   | "window-functions/offset"
-  | "distinct-where";
+  | "distinct-where"
+  | "saved-question-sandboxing"
+  | "split-part";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -61,6 +69,8 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
+  router_database_id?: number | null;
+  router_user_attribute?: string | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -115,6 +125,7 @@ export interface ListDatabasesRequest {
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
+  router_database_id?: DatabaseId;
 }
 
 export interface ListDatabasesResponse {
@@ -168,16 +179,25 @@ export interface UpdateDatabaseRequest {
   id: DatabaseId;
   name?: string;
   engine?: string;
-  refingerprint?: boolean;
+  refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
   auto_run_queries?: boolean;
-  cache_ttl?: number;
-  settings?: DatabaseSettings;
+  cache_ttl?: number | null;
+  settings?: DatabaseSettings | null;
 }
+
+export type DatabaseEditErrorType = {
+  data: {
+    message: string;
+    errors: { [key: string]: string };
+  };
+  statusText: string;
+  message: string;
+};
 
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
@@ -187,4 +207,14 @@ export interface SavedQuestionDatabase {
   id: -1337;
   name: "Saved Questions";
   is_saved_questions: true;
+}
+
+export interface CreateDestinationDatabaseRequest {
+  router_database_id: DatabaseId;
+  destination_database: { name: string; details?: Record<string, unknown> };
+}
+
+export interface UpdateDatabaseRouterRequest {
+  id: DatabaseId;
+  user_attribute: string | null;
 }

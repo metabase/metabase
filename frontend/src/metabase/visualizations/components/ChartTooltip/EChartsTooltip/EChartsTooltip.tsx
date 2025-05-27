@@ -37,12 +37,12 @@ export const EChartsTooltip = ({
   rows,
   footer,
 }: EChartsTooltipProps) => {
-  const hasMarkers = rows.some(row => row.markerColorClass != null);
+  const hasMarkers = rows.some((row) => row.markerColorClass != null);
   const maxValuesColumns = rows.reduce((currentMax, row) => {
     return Math.max(currentMax, row.values.filter(isNotNull).length);
   }, 0);
 
-  const paddedRows = rows.map(row => {
+  const paddedRows = rows.map((row) => {
     return {
       ...row,
       values: getPaddedValuesArray(row.values, maxValuesColumns),

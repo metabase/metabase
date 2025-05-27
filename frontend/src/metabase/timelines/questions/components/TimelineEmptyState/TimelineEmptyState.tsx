@@ -18,7 +18,7 @@ const TimelineEmptyState = ({
   onNewEvent,
 }: TimelineEmptyStateProps): JSX.Element => {
   const canWrite =
-    timelines.some(timeline => timeline.collection?.can_write) ||
+    timelines.some((timeline) => timeline.collection?.can_write) ||
     collection.can_write;
 
   const applicationName = useSelector(getApplicationName);

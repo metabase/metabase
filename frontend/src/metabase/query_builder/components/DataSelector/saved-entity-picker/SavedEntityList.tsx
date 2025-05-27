@@ -51,7 +51,7 @@ const SavedEntityList = ({
   const list = data?.data ?? [];
   const filteredList = databaseId
     ? // When `databaseId` is provided, we're joining data, so we need to filter out items that don't belong to the current database
-      list.filter(collectionItem => collectionItem.database_id === databaseId)
+      list.filter((collectionItem) => collectionItem.database_id === databaseId)
     : list;
 
   return (
@@ -63,7 +63,7 @@ const SavedEntityList = ({
           error={error}
         >
           <Fragment>
-            {filteredList.map(collectionItem => {
+            {filteredList.map((collectionItem) => {
               const { id, name, moderated_status } = collectionItem;
               const virtualTableId = getQuestionVirtualTableId(id);
 

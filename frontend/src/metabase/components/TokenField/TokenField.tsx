@@ -124,6 +124,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     this.setInputValue("", clearSearchValue);
   }
 
+  clearSelectedOption() {
+    this.setState({
+      selectedOptionValue: null,
+    });
+  }
+
   _id(value: any) {
     const { idKey } = this.props;
 
@@ -172,7 +178,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const { options = [], value, removeSelected = true } = props;
     let { searchValue, selectedOptionValue } = this.state;
     const selectedValueIds = new Set(
-      value.map(v => JSON.stringify(this._id(v))),
+      value.map((v) => JSON.stringify(this._id(v))),
     );
 
     const filterOption =
@@ -181,7 +187,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         String(this._label(option) || "").indexOf(searchValue) >= 0);
 
     let selectedCount = 0;
-    const filteredOptions = options.filter(option => {
+    const filteredOptions = options.filter((option) => {
       const isSelected = selectedValueIds.has(
         JSON.stringify(this._id(this._value(option))),
       );
@@ -207,7 +213,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     if (
       selectedOptionValue == null ||
-      !_.find(filteredOptions, option =>
+      !_.find(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       )
     ) {
@@ -267,9 +273,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     const { filteredOptions, selectedOptionValue } = this.state;
 
-    // enter, tab, comma
-    if (
-      keyCode === KEYCODE_ESCAPE ||
+    if (keyCode === KEYCODE_ESCAPE) {
+      event.preventDefault();
+      this.inputRef.current?.blur();
+      this.setState({ isFocused: false });
+    } else if (
+      // enter, tab, comma
       keyCode === KEYCODE_TAB ||
       // We check event.key for comma presses because some keyboard layouts
       // (e.g. Russian) have a letter on that key and require a modifier to type
@@ -286,7 +295,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     } else if (event.keyCode === KEYCODE_UP) {
       // up arrow
       event.preventDefault();
-      const index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index > 0) {
@@ -297,12 +306,16 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     } else if (keyCode === KEYCODE_DOWN) {
       // down arrow
       event.preventDefault();
-      const index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index >= 0 && index < filteredOptions.length - 1) {
         this.setState({
           selectedOptionValue: this._value(filteredOptions[index + 1]),
+        });
+      } else if (filteredOptions.length > 0) {
+        this.setState({
+          selectedOptionValue: this._value(filteredOptions[0]),
         });
       }
     } else if (keyCode === KEYCODE_BACKSPACE || key === KEY_BACKSPACE) {
@@ -346,7 +359,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       e.preventDefault();
       const string = e.clipboardData.getData("Text");
       const lines = this.props.multi ? string.split(/\n|,/g) : [string];
-      const values = lines.map(this.props.parseFreeformValue).filter(s => s);
+      const values = lines.map(this.props.parseFreeformValue).filter((s) => s);
       if (values.length > 0) {
         this.addValue(values);
       }
@@ -370,7 +383,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
     const input = this.inputRef.current;
-    const option = _.find(filteredOptions, option =>
+    const option = _.find(filteredOptions, (option) =>
       this._valueIsEqual(selectedOptionValue, this._value(option)),
     );
     if (option) {
@@ -383,6 +396,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         // only clear the search if this was the last option
         this.clearInputValue(filteredOptions.length === 1);
       }
+      this.clearSelectedOption();
       return true;
     } else if (this.props.parseFreeformValue) {
       // if we previously updated on input change then we don't need to do it again,
@@ -432,7 +446,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
   removeValue(valueToRemove: any) {
     const { value, onChange } = this.props;
-    const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
+    const values = value.filter((v) => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
   }
 
@@ -550,12 +564,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             {multi && (
               <TokenFieldAddon
                 isValid={validateValue(v)}
-                onClick={e => {
+                onClick={(e) => {
                   e.preventDefault();
                   this.removeValue(v);
                   this.inputRef?.current?.blur();
                 }}
-                onMouseDown={e => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
               >
                 <Icon
                   name="close"
@@ -603,7 +617,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
-          {filteredOptions.map(option => (
+          {filteredOptions.map((option) => (
             <li className={CS.mr1} key={this._key(option)}>
               <div
                 className={cx(
@@ -628,13 +642,13 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                       ),
                   },
                 )}
-                onClick={e => {
+                onClick={(e) => {
                   this.addOption(option);
                   // clear the input value, and search value if last option
                   this.clearInputValue(filteredOptions.length === 1);
                   e.preventDefault();
                 }}
-                onMouseDown={e => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
               >
                 {optionRenderer(option)}
               </div>
@@ -668,7 +682,7 @@ const DefaultTokenFieldLayout = ({
   <div>
     <TippyPopover
       visible={isFocused && !!optionsList}
-      content={<div>{optionsList}</div>}
+      content={<div data-testid="token-field-popover">{optionsList}</div>}
       placement="bottom-start"
     >
       <div>{valuesList}</div>

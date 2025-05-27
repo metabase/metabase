@@ -14,7 +14,7 @@ export default {
   component: TimelinePicker,
 };
 
-const Template: StoryFn<TimelinePickerProps> = args => {
+const Template: StoryFn<TimelinePickerProps> = (args) => {
   const [value, setValue] = useState<Timeline>();
   return <TimelinePicker {...args} value={value} onChange={setValue} />;
 };

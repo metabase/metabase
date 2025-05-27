@@ -3,7 +3,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -69,7 +69,7 @@
     :else                (isa? x y)))
 
 (defn type-of?
-  "Whether the [[type-of]] `expr` isa? [[metabase.types]] `base-type`."
+  "Whether the [[type-of]] `expr` isa? [[metabase.types.core]] `base-type`."
   [expr base-type]
   (let [expr-type (type-of expr)]
     (assert ((some-fn keyword? set?) expr-type)
@@ -203,3 +203,21 @@
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
   [:sequential {:min 1} [:ref ::expression.definition]])
+
+(mr/def ::positive-integer-or-numeric-expression
+  [:and
+   [:ref ::integer]
+   [:fn
+    {:error/message "positive integer literal or numeric expression"}
+    #(cond
+       (vector? %) ;; non-literal (checked above)
+       true
+
+       (not (int? %))
+       false
+
+       (not (pos? %))
+       false
+
+       :else
+       true)]])

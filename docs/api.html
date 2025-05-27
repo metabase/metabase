@@ -83,6 +83,30 @@ redirect_from:
   },
   "components" : {
     "schemas" : {
+      "api.tiles/route-params" : {
+        "type" : "object",
+        "properties" : {
+          "lat-field" : {
+            "type" : "string"
+          },
+          "lon-field" : {
+            "type" : "string"
+          },
+          "x" : {
+            "description" : "value must be an integer.",
+            "type" : "integer"
+          },
+          "y" : {
+            "description" : "value must be an integer.",
+            "type" : "integer"
+          },
+          "zoom" : {
+            "description" : "value must be an integer.",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "zoom", "x", "y", "lat-field", "lon-field" ]
+      },
       "metabase.analyze.fingerprint.schema/Fingerprint" : {
         "type" : "object",
         "properties" : {
@@ -346,6 +370,14 @@ redirect_from:
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
       },
+      "metabase.api.logger/log-level" : {
+        "type" : "string",
+        "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ]
+      },
+      "metabase.api.logger/time-unit" : {
+        "type" : "string",
+        "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ]
+      },
       "metabase.api.user/user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
@@ -445,7 +477,7 @@ redirect_from:
         }, {
           "anyOf" : [ {
             "type" : "string",
-            "enum" : [ "Africa/Abidjan", "Africa/Accra", "Africa/Addis_Ababa", "Africa/Algiers", "Africa/Asmara", "Africa/Asmera", "Africa/Bamako", "Africa/Bangui", "Africa/Banjul", "Africa/Bissau", "Africa/Blantyre", "Africa/Brazzaville", "Africa/Bujumbura", "Africa/Cairo", "Africa/Casablanca", "Africa/Ceuta", "Africa/Conakry", "Africa/Dakar", "Africa/Dar_es_Salaam", "Africa/Djibouti", "Africa/Douala", "Africa/El_Aaiun", "Africa/Freetown", "Africa/Gaborone", "Africa/Harare", "Africa/Johannesburg", "Africa/Juba", "Africa/Kampala", "Africa/Khartoum", "Africa/Kigali", "Africa/Kinshasa", "Africa/Lagos", "Africa/Libreville", "Africa/Lome", "Africa/Luanda", "Africa/Lubumbashi", "Africa/Lusaka", "Africa/Malabo", "Africa/Maputo", "Africa/Maseru", "Africa/Mbabane", "Africa/Mogadishu", "Africa/Monrovia", "Africa/Nairobi", "Africa/Ndjamena", "Africa/Niamey", "Africa/Nouakchott", "Africa/Ouagadougou", "Africa/Porto-Novo", "Africa/Sao_Tome", "Africa/Timbuktu", "Africa/Tripoli", "Africa/Tunis", "Africa/Windhoek", "America/Adak", "America/Anchorage", "America/Anguilla", "America/Antigua", "America/Araguaina", "America/Argentina/Buenos_Aires", "America/Argentina/Catamarca", "America/Argentina/ComodRivadavia", "America/Argentina/Cordoba", "America/Argentina/Jujuy", "America/Argentina/La_Rioja", "America/Argentina/Mendoza", "America/Argentina/Rio_Gallegos", "America/Argentina/Salta", "America/Argentina/San_Juan", "America/Argentina/San_Luis", "America/Argentina/Tucuman", "America/Argentina/Ushuaia", "America/Aruba", "America/Asuncion", "America/Atikokan", "America/Atka", "America/Bahia", "America/Bahia_Banderas", "America/Barbados", "America/Belem", "America/Belize", "America/Blanc-Sablon", "America/Boa_Vista", "America/Bogota", "America/Boise", "America/Buenos_Aires", "America/Cambridge_Bay", "America/Campo_Grande", "America/Cancun", "America/Caracas", "America/Catamarca", "America/Cayenne", "America/Cayman", "America/Chicago", "America/Chihuahua", "America/Coral_Harbour", "America/Cordoba", "America/Costa_Rica", "America/Creston", "America/Cuiaba", "America/Curacao", "America/Danmarkshavn", "America/Dawson", "America/Dawson_Creek", "America/Denver", "America/Detroit", "America/Dominica", "America/Edmonton", "America/Eirunepe", "America/El_Salvador", "America/Ensenada", "America/Fort_Nelson", "America/Fort_Wayne", "America/Fortaleza", "America/Glace_Bay", "America/Godthab", "America/Goose_Bay", "America/Grand_Turk", "America/Grenada", "America/Guadeloupe", "America/Guatemala", "America/Guayaquil", "America/Guyana", "America/Halifax", "America/Havana", "America/Hermosillo", "America/Indiana/Indianapolis", "America/Indiana/Knox", "America/Indiana/Marengo", "America/Indiana/Petersburg", "America/Indiana/Tell_City", "America/Indiana/Vevay", "America/Indiana/Vincennes", "America/Indiana/Winamac", "America/Indianapolis", "America/Inuvik", "America/Iqaluit", "America/Jamaica", "America/Jujuy", "America/Juneau", "America/Kentucky/Louisville", "America/Kentucky/Monticello", "America/Knox_IN", "America/Kralendijk", "America/La_Paz", "America/Lima", "America/Los_Angeles", "America/Louisville", "America/Lower_Princes", "America/Maceio", "America/Managua", "America/Manaus", "America/Marigot", "America/Martinique", "America/Matamoros", "America/Mazatlan", "America/Mendoza", "America/Menominee", "America/Merida", "America/Metlakatla", "America/Mexico_City", "America/Miquelon", "America/Moncton", "America/Monterrey", "America/Montevideo", "America/Montreal", "America/Montserrat", "America/Nassau", "America/New_York", "America/Nipigon", "America/Nome", "America/Noronha", "America/North_Dakota/Beulah", "America/North_Dakota/Center", "America/North_Dakota/New_Salem", "America/Nuuk", "America/Ojinaga", "America/Panama", "America/Pangnirtung", "America/Paramaribo", "America/Phoenix", "America/Port-au-Prince", "America/Port_of_Spain", "America/Porto_Acre", "America/Porto_Velho", "America/Puerto_Rico", "America/Punta_Arenas", "America/Rainy_River", "America/Rankin_Inlet", "America/Recife", "America/Regina", "America/Resolute", "America/Rio_Branco", "America/Rosario", "America/Santa_Isabel", "America/Santarem", "America/Santiago", "America/Santo_Domingo", "America/Sao_Paulo", "America/Scoresbysund", "America/Shiprock", "America/Sitka", "America/St_Barthelemy", "America/St_Johns", "America/St_Kitts", "America/St_Lucia", "America/St_Thomas", "America/St_Vincent", "America/Swift_Current", "America/Tegucigalpa", "America/Thule", "America/Thunder_Bay", "America/Tijuana", "America/Toronto", "America/Tortola", "America/Vancouver", "America/Virgin", "America/Whitehorse", "America/Winnipeg", "America/Yakutat", "America/Yellowknife", "Antarctica/Casey", "Antarctica/Davis", "Antarctica/DumontDUrville", "Antarctica/Macquarie", "Antarctica/Mawson", "Antarctica/McMurdo", "Antarctica/Palmer", "Antarctica/Rothera", "Antarctica/South_Pole", "Antarctica/Syowa", "Antarctica/Troll", "Antarctica/Vostok", "Arctic/Longyearbyen", "Asia/Aden", "Asia/Almaty", "Asia/Amman", "Asia/Anadyr", "Asia/Aqtau", "Asia/Aqtobe", "Asia/Ashgabat", "Asia/Ashkhabad", "Asia/Atyrau", "Asia/Baghdad", "Asia/Bahrain", "Asia/Baku", "Asia/Bangkok", "Asia/Barnaul", "Asia/Beirut", "Asia/Bishkek", "Asia/Brunei", "Asia/Calcutta", "Asia/Chita", "Asia/Choibalsan", "Asia/Chongqing", "Asia/Chungking", "Asia/Colombo", "Asia/Dacca", "Asia/Damascus", "Asia/Dhaka", "Asia/Dili", "Asia/Dubai", "Asia/Dushanbe", "Asia/Famagusta", "Asia/Gaza", "Asia/Harbin", "Asia/Hebron", "Asia/Ho_Chi_Minh", "Asia/Hong_Kong", "Asia/Hovd", "Asia/Irkutsk", "Asia/Istanbul", "Asia/Jakarta", "Asia/Jayapura", "Asia/Jerusalem", "Asia/Kabul", "Asia/Kamchatka", "Asia/Karachi", "Asia/Kashgar", "Asia/Kathmandu", "Asia/Katmandu", "Asia/Khandyga", "Asia/Kolkata", "Asia/Krasnoyarsk", "Asia/Kuala_Lumpur", "Asia/Kuching", "Asia/Kuwait", "Asia/Macao", "Asia/Macau", "Asia/Magadan", "Asia/Makassar", "Asia/Manila", "Asia/Muscat", "Asia/Nicosia", "Asia/Novokuznetsk", "Asia/Novosibirsk", "Asia/Omsk", "Asia/Oral", "Asia/Phnom_Penh", "Asia/Pontianak", "Asia/Pyongyang", "Asia/Qatar", "Asia/Qostanay", "Asia/Qyzylorda", "Asia/Rangoon", "Asia/Riyadh", "Asia/Saigon", "Asia/Sakhalin", "Asia/Samarkand", "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Srednekolymsk", "Asia/Taipei", "Asia/Tashkent", "Asia/Tbilisi", "Asia/Tehran", "Asia/Tel_Aviv", "Asia/Thimbu", "Asia/Thimphu", "Asia/Tokyo", "Asia/Tomsk", "Asia/Ujung_Pandang", "Asia/Ulaanbaatar", "Asia/Ulan_Bator", "Asia/Urumqi", "Asia/Ust-Nera", "Asia/Vientiane", "Asia/Vladivostok", "Asia/Yakutsk", "Asia/Yangon", "Asia/Yekaterinburg", "Asia/Yerevan", "Atlantic/Azores", "Atlantic/Bermuda", "Atlantic/Canary", "Atlantic/Cape_Verde", "Atlantic/Faeroe", "Atlantic/Faroe", "Atlantic/Jan_Mayen", "Atlantic/Madeira", "Atlantic/Reykjavik", "Atlantic/South_Georgia", "Atlantic/St_Helena", "Atlantic/Stanley", "Australia/ACT", "Australia/Adelaide", "Australia/Brisbane", "Australia/Broken_Hill", "Australia/Canberra", "Australia/Currie", "Australia/Darwin", "Australia/Eucla", "Australia/Hobart", "Australia/LHI", "Australia/Lindeman", "Australia/Lord_Howe", "Australia/Melbourne", "Australia/NSW", "Australia/North", "Australia/Perth", "Australia/Queensland", "Australia/South", "Australia/Sydney", "Australia/Tasmania", "Australia/Victoria", "Australia/West", "Australia/Yancowinna", "Brazil/Acre", "Brazil/DeNoronha", "Brazil/East", "Brazil/West", "CET", "CST6CDT", "Canada/Atlantic", "Canada/Central", "Canada/Eastern", "Canada/Mountain", "Canada/Newfoundland", "Canada/Pacific", "Canada/Saskatchewan", "Canada/Yukon", "Chile/Continental", "Chile/EasterIsland", "Cuba", "EET", "EST5EDT", "Egypt", "Eire", "Etc/GMT", "Etc/GMT+0", "Etc/GMT+1", "Etc/GMT+10", "Etc/GMT+11", "Etc/GMT+12", "Etc/GMT+2", "Etc/GMT+3", "Etc/GMT+4", "Etc/GMT+5", "Etc/GMT+6", "Etc/GMT+7", "Etc/GMT+8", "Etc/GMT+9", "Etc/GMT-0", "Etc/GMT-1", "Etc/GMT-10", "Etc/GMT-11", "Etc/GMT-12", "Etc/GMT-13", "Etc/GMT-14", "Etc/GMT-2", "Etc/GMT-3", "Etc/GMT-4", "Etc/GMT-5", "Etc/GMT-6", "Etc/GMT-7", "Etc/GMT-8", "Etc/GMT-9", "Etc/GMT0", "Etc/Greenwich", "Etc/UCT", "Etc/UTC", "Etc/Universal", "Etc/Zulu", "Europe/Amsterdam", "Europe/Andorra", "Europe/Astrakhan", "Europe/Athens", "Europe/Belfast", "Europe/Belgrade", "Europe/Berlin", "Europe/Bratislava", "Europe/Brussels", "Europe/Bucharest", "Europe/Budapest", "Europe/Busingen", "Europe/Chisinau", "Europe/Copenhagen", "Europe/Dublin", "Europe/Gibraltar", "Europe/Guernsey", "Europe/Helsinki", "Europe/Isle_of_Man", "Europe/Istanbul", "Europe/Jersey", "Europe/Kaliningrad", "Europe/Kiev", "Europe/Kirov", "Europe/Lisbon", "Europe/Ljubljana", "Europe/London", "Europe/Luxembourg", "Europe/Madrid", "Europe/Malta", "Europe/Mariehamn", "Europe/Minsk", "Europe/Monaco", "Europe/Moscow", "Europe/Nicosia", "Europe/Oslo", "Europe/Paris", "Europe/Podgorica", "Europe/Prague", "Europe/Riga", "Europe/Rome", "Europe/Samara", "Europe/San_Marino", "Europe/Sarajevo", "Europe/Saratov", "Europe/Simferopol", "Europe/Skopje", "Europe/Sofia", "Europe/Stockholm", "Europe/Tallinn", "Europe/Tirane", "Europe/Tiraspol", "Europe/Ulyanovsk", "Europe/Uzhgorod", "Europe/Vaduz", "Europe/Vatican", "Europe/Vienna", "Europe/Vilnius", "Europe/Volgograd", "Europe/Warsaw", "Europe/Zagreb", "Europe/Zaporozhye", "Europe/Zurich", "GB", "GB-Eire", "GMT", "GMT0", "Greenwich", "Hongkong", "Iceland", "Indian/Antananarivo", "Indian/Chagos", "Indian/Christmas", "Indian/Cocos", "Indian/Comoro", "Indian/Kerguelen", "Indian/Mahe", "Indian/Maldives", "Indian/Mauritius", "Indian/Mayotte", "Indian/Reunion", "Iran", "Israel", "Jamaica", "Japan", "Kwajalein", "Libya", "MET", "MST7MDT", "Mexico/BajaNorte", "Mexico/BajaSur", "Mexico/General", "NZ", "NZ-CHAT", "Navajo", "PRC", "PST8PDT", "Pacific/Apia", "Pacific/Auckland", "Pacific/Bougainville", "Pacific/Chatham", "Pacific/Chuuk", "Pacific/Easter", "Pacific/Efate", "Pacific/Enderbury", "Pacific/Fakaofo", "Pacific/Fiji", "Pacific/Funafuti", "Pacific/Galapagos", "Pacific/Gambier", "Pacific/Guadalcanal", "Pacific/Guam", "Pacific/Honolulu", "Pacific/Johnston", "Pacific/Kanton", "Pacific/Kiritimati", "Pacific/Kosrae", "Pacific/Kwajalein", "Pacific/Majuro", "Pacific/Marquesas", "Pacific/Midway", "Pacific/Nauru", "Pacific/Niue", "Pacific/Norfolk", "Pacific/Noumea", "Pacific/Pago_Pago", "Pacific/Palau", "Pacific/Pitcairn", "Pacific/Pohnpei", "Pacific/Ponape", "Pacific/Port_Moresby", "Pacific/Rarotonga", "Pacific/Saipan", "Pacific/Samoa", "Pacific/Tahiti", "Pacific/Tarawa", "Pacific/Tongatapu", "Pacific/Truk", "Pacific/Wake", "Pacific/Wallis", "Pacific/Yap", "Poland", "Portugal", "ROK", "Singapore", "SystemV/AST4", "SystemV/AST4ADT", "SystemV/CST6", "SystemV/CST6CDT", "SystemV/EST5", "SystemV/EST5EDT", "SystemV/HST10", "SystemV/MST7", "SystemV/MST7MDT", "SystemV/PST8", "SystemV/PST8PDT", "SystemV/YST9", "SystemV/YST9YDT", "Turkey", "UCT", "US/Alaska", "US/Aleutian", "US/Arizona", "US/Central", "US/East-Indiana", "US/Eastern", "US/Hawaii", "US/Indiana-Starke", "US/Michigan", "US/Mountain", "US/Pacific", "US/Samoa", "UTC", "Universal", "W-SU", "WET", "Zulu" ]
+            "enum" : [ "Africa/Abidjan", "Africa/Accra", "Africa/Addis_Ababa", "Africa/Algiers", "Africa/Asmara", "Africa/Asmera", "Africa/Bamako", "Africa/Bangui", "Africa/Banjul", "Africa/Bissau", "Africa/Blantyre", "Africa/Brazzaville", "Africa/Bujumbura", "Africa/Cairo", "Africa/Casablanca", "Africa/Ceuta", "Africa/Conakry", "Africa/Dakar", "Africa/Dar_es_Salaam", "Africa/Djibouti", "Africa/Douala", "Africa/El_Aaiun", "Africa/Freetown", "Africa/Gaborone", "Africa/Harare", "Africa/Johannesburg", "Africa/Juba", "Africa/Kampala", "Africa/Khartoum", "Africa/Kigali", "Africa/Kinshasa", "Africa/Lagos", "Africa/Libreville", "Africa/Lome", "Africa/Luanda", "Africa/Lubumbashi", "Africa/Lusaka", "Africa/Malabo", "Africa/Maputo", "Africa/Maseru", "Africa/Mbabane", "Africa/Mogadishu", "Africa/Monrovia", "Africa/Nairobi", "Africa/Ndjamena", "Africa/Niamey", "Africa/Nouakchott", "Africa/Ouagadougou", "Africa/Porto-Novo", "Africa/Sao_Tome", "Africa/Timbuktu", "Africa/Tripoli", "Africa/Tunis", "Africa/Windhoek", "America/Adak", "America/Anchorage", "America/Anguilla", "America/Antigua", "America/Araguaina", "America/Argentina/Buenos_Aires", "America/Argentina/Catamarca", "America/Argentina/ComodRivadavia", "America/Argentina/Cordoba", "America/Argentina/Jujuy", "America/Argentina/La_Rioja", "America/Argentina/Mendoza", "America/Argentina/Rio_Gallegos", "America/Argentina/Salta", "America/Argentina/San_Juan", "America/Argentina/San_Luis", "America/Argentina/Tucuman", "America/Argentina/Ushuaia", "America/Aruba", "America/Asuncion", "America/Atikokan", "America/Atka", "America/Bahia", "America/Bahia_Banderas", "America/Barbados", "America/Belem", "America/Belize", "America/Blanc-Sablon", "America/Boa_Vista", "America/Bogota", "America/Boise", "America/Buenos_Aires", "America/Cambridge_Bay", "America/Campo_Grande", "America/Cancun", "America/Caracas", "America/Catamarca", "America/Cayenne", "America/Cayman", "America/Chicago", "America/Chihuahua", "America/Ciudad_Juarez", "America/Coral_Harbour", "America/Cordoba", "America/Costa_Rica", "America/Creston", "America/Cuiaba", "America/Curacao", "America/Danmarkshavn", "America/Dawson", "America/Dawson_Creek", "America/Denver", "America/Detroit", "America/Dominica", "America/Edmonton", "America/Eirunepe", "America/El_Salvador", "America/Ensenada", "America/Fort_Nelson", "America/Fort_Wayne", "America/Fortaleza", "America/Glace_Bay", "America/Godthab", "America/Goose_Bay", "America/Grand_Turk", "America/Grenada", "America/Guadeloupe", "America/Guatemala", "America/Guayaquil", "America/Guyana", "America/Halifax", "America/Havana", "America/Hermosillo", "America/Indiana/Indianapolis", "America/Indiana/Knox", "America/Indiana/Marengo", "America/Indiana/Petersburg", "America/Indiana/Tell_City", "America/Indiana/Vevay", "America/Indiana/Vincennes", "America/Indiana/Winamac", "America/Indianapolis", "America/Inuvik", "America/Iqaluit", "America/Jamaica", "America/Jujuy", "America/Juneau", "America/Kentucky/Louisville", "America/Kentucky/Monticello", "America/Knox_IN", "America/Kralendijk", "America/La_Paz", "America/Lima", "America/Los_Angeles", "America/Louisville", "America/Lower_Princes", "America/Maceio", "America/Managua", "America/Manaus", "America/Marigot", "America/Martinique", "America/Matamoros", "America/Mazatlan", "America/Mendoza", "America/Menominee", "America/Merida", "America/Metlakatla", "America/Mexico_City", "America/Miquelon", "America/Moncton", "America/Monterrey", "America/Montevideo", "America/Montreal", "America/Montserrat", "America/Nassau", "America/New_York", "America/Nipigon", "America/Nome", "America/Noronha", "America/North_Dakota/Beulah", "America/North_Dakota/Center", "America/North_Dakota/New_Salem", "America/Nuuk", "America/Ojinaga", "America/Panama", "America/Pangnirtung", "America/Paramaribo", "America/Phoenix", "America/Port-au-Prince", "America/Port_of_Spain", "America/Porto_Acre", "America/Porto_Velho", "America/Puerto_Rico", "America/Punta_Arenas", "America/Rainy_River", "America/Rankin_Inlet", "America/Recife", "America/Regina", "America/Resolute", "America/Rio_Branco", "America/Rosario", "America/Santa_Isabel", "America/Santarem", "America/Santiago", "America/Santo_Domingo", "America/Sao_Paulo", "America/Scoresbysund", "America/Shiprock", "America/Sitka", "America/St_Barthelemy", "America/St_Johns", "America/St_Kitts", "America/St_Lucia", "America/St_Thomas", "America/St_Vincent", "America/Swift_Current", "America/Tegucigalpa", "America/Thule", "America/Thunder_Bay", "America/Tijuana", "America/Toronto", "America/Tortola", "America/Vancouver", "America/Virgin", "America/Whitehorse", "America/Winnipeg", "America/Yakutat", "America/Yellowknife", "Antarctica/Casey", "Antarctica/Davis", "Antarctica/DumontDUrville", "Antarctica/Macquarie", "Antarctica/Mawson", "Antarctica/McMurdo", "Antarctica/Palmer", "Antarctica/Rothera", "Antarctica/South_Pole", "Antarctica/Syowa", "Antarctica/Troll", "Antarctica/Vostok", "Arctic/Longyearbyen", "Asia/Aden", "Asia/Almaty", "Asia/Amman", "Asia/Anadyr", "Asia/Aqtau", "Asia/Aqtobe", "Asia/Ashgabat", "Asia/Ashkhabad", "Asia/Atyrau", "Asia/Baghdad", "Asia/Bahrain", "Asia/Baku", "Asia/Bangkok", "Asia/Barnaul", "Asia/Beirut", "Asia/Bishkek", "Asia/Brunei", "Asia/Calcutta", "Asia/Chita", "Asia/Choibalsan", "Asia/Chongqing", "Asia/Chungking", "Asia/Colombo", "Asia/Dacca", "Asia/Damascus", "Asia/Dhaka", "Asia/Dili", "Asia/Dubai", "Asia/Dushanbe", "Asia/Famagusta", "Asia/Gaza", "Asia/Harbin", "Asia/Hebron", "Asia/Ho_Chi_Minh", "Asia/Hong_Kong", "Asia/Hovd", "Asia/Irkutsk", "Asia/Istanbul", "Asia/Jakarta", "Asia/Jayapura", "Asia/Jerusalem", "Asia/Kabul", "Asia/Kamchatka", "Asia/Karachi", "Asia/Kashgar", "Asia/Kathmandu", "Asia/Katmandu", "Asia/Khandyga", "Asia/Kolkata", "Asia/Krasnoyarsk", "Asia/Kuala_Lumpur", "Asia/Kuching", "Asia/Kuwait", "Asia/Macao", "Asia/Macau", "Asia/Magadan", "Asia/Makassar", "Asia/Manila", "Asia/Muscat", "Asia/Nicosia", "Asia/Novokuznetsk", "Asia/Novosibirsk", "Asia/Omsk", "Asia/Oral", "Asia/Phnom_Penh", "Asia/Pontianak", "Asia/Pyongyang", "Asia/Qatar", "Asia/Qostanay", "Asia/Qyzylorda", "Asia/Rangoon", "Asia/Riyadh", "Asia/Saigon", "Asia/Sakhalin", "Asia/Samarkand", "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Srednekolymsk", "Asia/Taipei", "Asia/Tashkent", "Asia/Tbilisi", "Asia/Tehran", "Asia/Tel_Aviv", "Asia/Thimbu", "Asia/Thimphu", "Asia/Tokyo", "Asia/Tomsk", "Asia/Ujung_Pandang", "Asia/Ulaanbaatar", "Asia/Ulan_Bator", "Asia/Urumqi", "Asia/Ust-Nera", "Asia/Vientiane", "Asia/Vladivostok", "Asia/Yakutsk", "Asia/Yangon", "Asia/Yekaterinburg", "Asia/Yerevan", "Atlantic/Azores", "Atlantic/Bermuda", "Atlantic/Canary", "Atlantic/Cape_Verde", "Atlantic/Faeroe", "Atlantic/Faroe", "Atlantic/Jan_Mayen", "Atlantic/Madeira", "Atlantic/Reykjavik", "Atlantic/South_Georgia", "Atlantic/St_Helena", "Atlantic/Stanley", "Australia/ACT", "Australia/Adelaide", "Australia/Brisbane", "Australia/Broken_Hill", "Australia/Canberra", "Australia/Currie", "Australia/Darwin", "Australia/Eucla", "Australia/Hobart", "Australia/LHI", "Australia/Lindeman", "Australia/Lord_Howe", "Australia/Melbourne", "Australia/NSW", "Australia/North", "Australia/Perth", "Australia/Queensland", "Australia/South", "Australia/Sydney", "Australia/Tasmania", "Australia/Victoria", "Australia/West", "Australia/Yancowinna", "Brazil/Acre", "Brazil/DeNoronha", "Brazil/East", "Brazil/West", "CET", "CST6CDT", "Canada/Atlantic", "Canada/Central", "Canada/Eastern", "Canada/Mountain", "Canada/Newfoundland", "Canada/Pacific", "Canada/Saskatchewan", "Canada/Yukon", "Chile/Continental", "Chile/EasterIsland", "Cuba", "EET", "EST5EDT", "Egypt", "Eire", "Etc/GMT", "Etc/GMT+0", "Etc/GMT+1", "Etc/GMT+10", "Etc/GMT+11", "Etc/GMT+12", "Etc/GMT+2", "Etc/GMT+3", "Etc/GMT+4", "Etc/GMT+5", "Etc/GMT+6", "Etc/GMT+7", "Etc/GMT+8", "Etc/GMT+9", "Etc/GMT-0", "Etc/GMT-1", "Etc/GMT-10", "Etc/GMT-11", "Etc/GMT-12", "Etc/GMT-13", "Etc/GMT-14", "Etc/GMT-2", "Etc/GMT-3", "Etc/GMT-4", "Etc/GMT-5", "Etc/GMT-6", "Etc/GMT-7", "Etc/GMT-8", "Etc/GMT-9", "Etc/GMT0", "Etc/Greenwich", "Etc/UCT", "Etc/UTC", "Etc/Universal", "Etc/Zulu", "Europe/Amsterdam", "Europe/Andorra", "Europe/Astrakhan", "Europe/Athens", "Europe/Belfast", "Europe/Belgrade", "Europe/Berlin", "Europe/Bratislava", "Europe/Brussels", "Europe/Bucharest", "Europe/Budapest", "Europe/Busingen", "Europe/Chisinau", "Europe/Copenhagen", "Europe/Dublin", "Europe/Gibraltar", "Europe/Guernsey", "Europe/Helsinki", "Europe/Isle_of_Man", "Europe/Istanbul", "Europe/Jersey", "Europe/Kaliningrad", "Europe/Kiev", "Europe/Kirov", "Europe/Kyiv", "Europe/Lisbon", "Europe/Ljubljana", "Europe/London", "Europe/Luxembourg", "Europe/Madrid", "Europe/Malta", "Europe/Mariehamn", "Europe/Minsk", "Europe/Monaco", "Europe/Moscow", "Europe/Nicosia", "Europe/Oslo", "Europe/Paris", "Europe/Podgorica", "Europe/Prague", "Europe/Riga", "Europe/Rome", "Europe/Samara", "Europe/San_Marino", "Europe/Sarajevo", "Europe/Saratov", "Europe/Simferopol", "Europe/Skopje", "Europe/Sofia", "Europe/Stockholm", "Europe/Tallinn", "Europe/Tirane", "Europe/Tiraspol", "Europe/Ulyanovsk", "Europe/Uzhgorod", "Europe/Vaduz", "Europe/Vatican", "Europe/Vienna", "Europe/Vilnius", "Europe/Volgograd", "Europe/Warsaw", "Europe/Zagreb", "Europe/Zaporozhye", "Europe/Zurich", "GB", "GB-Eire", "GMT", "GMT0", "Greenwich", "Hongkong", "Iceland", "Indian/Antananarivo", "Indian/Chagos", "Indian/Christmas", "Indian/Cocos", "Indian/Comoro", "Indian/Kerguelen", "Indian/Mahe", "Indian/Maldives", "Indian/Mauritius", "Indian/Mayotte", "Indian/Reunion", "Iran", "Israel", "Jamaica", "Japan", "Kwajalein", "Libya", "MET", "MST7MDT", "Mexico/BajaNorte", "Mexico/BajaSur", "Mexico/General", "NZ", "NZ-CHAT", "Navajo", "PRC", "PST8PDT", "Pacific/Apia", "Pacific/Auckland", "Pacific/Bougainville", "Pacific/Chatham", "Pacific/Chuuk", "Pacific/Easter", "Pacific/Efate", "Pacific/Enderbury", "Pacific/Fakaofo", "Pacific/Fiji", "Pacific/Funafuti", "Pacific/Galapagos", "Pacific/Gambier", "Pacific/Guadalcanal", "Pacific/Guam", "Pacific/Honolulu", "Pacific/Johnston", "Pacific/Kanton", "Pacific/Kiritimati", "Pacific/Kosrae", "Pacific/Kwajalein", "Pacific/Majuro", "Pacific/Marquesas", "Pacific/Midway", "Pacific/Nauru", "Pacific/Niue", "Pacific/Norfolk", "Pacific/Noumea", "Pacific/Pago_Pago", "Pacific/Palau", "Pacific/Pitcairn", "Pacific/Pohnpei", "Pacific/Ponape", "Pacific/Port_Moresby", "Pacific/Rarotonga", "Pacific/Saipan", "Pacific/Samoa", "Pacific/Tahiti", "Pacific/Tarawa", "Pacific/Tongatapu", "Pacific/Truk", "Pacific/Wake", "Pacific/Wallis", "Pacific/Yap", "Poland", "Portugal", "ROK", "Singapore", "SystemV/AST4", "SystemV/AST4ADT", "SystemV/CST6", "SystemV/CST6CDT", "SystemV/EST5", "SystemV/EST5EDT", "SystemV/HST10", "SystemV/MST7", "SystemV/MST7MDT", "SystemV/PST8", "SystemV/PST8PDT", "SystemV/YST9", "SystemV/YST9YDT", "Turkey", "UCT", "US/Alaska", "US/Aleutian", "US/Arizona", "US/Central", "US/East-Indiana", "US/Eastern", "US/Hawaii", "US/Indiana-Starke", "US/Michigan", "US/Mountain", "US/Pacific", "US/Samoa", "UTC", "Universal", "W-SU", "WET", "Zulu" ]
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.literal~1string.zone-offset"
           } ]
@@ -887,6 +919,10 @@ redirect_from:
             "type" : {
               "type" : "string",
               "enum" : [ "notification-subscription/cron", "notification-subscription/system-event" ]
+            },
+            "ui_display_type" : {
+              "type" : "string",
+              "enum" : [ "cron/raw", "cron/builder" ]
             }
           },
           "required" : [ "type", "cron_schedule" ]
@@ -903,9 +939,6 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.util.cron~1ScheduleMap"
           }
         }
-      },
-      "metabase.tiles.api/field-id-or-name" : {
-        "type" : "string"
       },
       "metabase.timeline.api.timeline/include" : {
         "type" : "string",
@@ -2691,7 +2724,7 @@ redirect_from:
     "/api/card/{card-id}/query/{export-format}" : {
       "post" : {
         "summary" : "POST /api/card/{card-id}/query/{export-format}",
-        "description" : "Run the query associated with a Card, and return its results as a file in the specified format.\n\n  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint\n  is normally used to power 'Download Results' buttons that use HTML `form` actions).",
+        "description" : "Run the query associated with a Card, and return its results as a file in the specified format.\n\n  `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content\n  or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use\n  HTML `form` actions).",
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
@@ -3979,7 +4012,7 @@ redirect_from:
                   "parameters" : {
                     "type" : "array",
                     "items" : {
-                      "description" : "value must be a parameter map with an id key",
+                      "description" : "value must be a parameter map with an 'id' key",
                       "allOf" : [ {
                         "type" : "object",
                         "properties" : {
@@ -4081,7 +4114,7 @@ redirect_from:
                   "parameters" : {
                     "type" : "array",
                     "items" : {
-                      "description" : "value must be a parameter map with an id key",
+                      "description" : "value must be a parameter map with an 'id' key",
                       "allOf" : [ {
                         "type" : "object",
                         "properties" : {
@@ -4159,7 +4192,7 @@ redirect_from:
                     "anyOf" : [ {
                       "type" : "array",
                       "items" : {
-                        "description" : "value must be a parameter map with an id key",
+                        "description" : "value must be a parameter map with an 'id' key",
                         "allOf" : [ {
                           "type" : "object",
                           "properties" : {
@@ -4789,7 +4822,7 @@ redirect_from:
           "schema" : {
             "const" : "tables"
           },
-          "description" : "include must be either empty or the value tables"
+          "description" : "include must be either empty or the value 'tables'"
         }, {
           "in" : "query",
           "name" : "include_analytics",
@@ -4830,6 +4863,15 @@ redirect_from:
             "type" : "boolean",
             "default" : false
           }
+        }, {
+          "in" : "query",
+          "name" : "router_database_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         } ],
         "tags" : [ "/api/database" ]
       },
@@ -4951,6 +4993,20 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "tables", "tables.fields" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_editable_data_model",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "exclude_uneditable_details",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
           }
         } ],
         "tags" : [ "/api/database" ]
@@ -5141,6 +5197,23 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/database/{id}/fields",
         "description" : "Get a list of all `Fields` in `Database`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/database" ]
+      }
+    },
+    "/api/database/{id}/healthcheck" : {
+      "get" : {
+        "summary" : "GET /api/database/{id}/healthcheck",
+        "description" : "Reports whether the database can currently connect",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -6005,6 +6078,187 @@ redirect_from:
         "description" : "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,\n   using the embedding token and signed in user's email to fetch the billing information.",
         "parameters" : [ ],
         "tags" : [ "/api/ee/billing" ]
+      }
+    },
+    "/api/ee/data-editing/table/{table-id}" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-editing/table/{table-id}",
+        "description" : "Insert row(s) into the given table.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "table-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/ee/data-editing" ]
+      },
+      "put" : {
+        "summary" : "PUT /api/ee/data-editing/table/{table-id}",
+        "description" : "Update row(s) within the given table.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "table-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/ee/data-editing" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/ee/data-editing/table/{table-id}",
+        "description" : "Delete row(s) from the given table",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "table-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/ee/data-editing" ]
+      }
+    },
+    "/api/ee/database-routing/mirror-database" : {
+      "post" : {
+        "summary" : "POST /api/ee/database-routing/mirror-database",
+        "description" : "Create new Mirror Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "check_connection_details",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "mirrors" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "details" : {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        },
+                        "name" : {
+                          "description" : "value must be a non-blank string.",
+                          "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                        }
+                      },
+                      "required" : [ "name", "details" ]
+                    }
+                  },
+                  "router_database_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "router_database_id", "mirrors" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-routing" ]
+      }
+    },
+    "/api/ee/database-routing/router-database/{id}" : {
+      "put" : {
+        "summary" : "PUT /api/ee/database-routing/router-database/{id}",
+        "description" : "Updates an existing Database with the `user_attribute` to route on. Will either:\n  - turn an existing Database into a Router database\n  - change the `user_attribute` used to route for an existing Router database, or\n  - turn a Router database into a regular Database\n  depending on the value of `user_attribute`",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "user_attribute" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-routing" ]
+      }
+    },
+    "/api/ee/gsheets/connection" : {
+      "post" : {
+        "summary" : "POST /api/ee/gsheets/connection",
+        "description" : "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "url" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  }
+                },
+                "required" : [ "url" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/gsheets" ]
+      },
+      "get" : {
+        "summary" : "GET /api/ee/gsheets/connection",
+        "description" : "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to\n  stop showing the setup widget.\n\n  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`.",
+        "parameters" : [ ],
+        "tags" : [ "/api/ee/gsheets" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/ee/gsheets/connection",
+        "description" : "Disconnect the google service account. There is only one (or zero) at the time of writing.",
+        "parameters" : [ ],
+        "tags" : [ "/api/ee/gsheets" ]
+      }
+    },
+    "/api/ee/gsheets/folder/sync" : {
+      "post" : {
+        "summary" : "POST /api/ee/gsheets/folder/sync",
+        "description" : "Force a sync of the folder now.\n\n  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`.",
+        "parameters" : [ ],
+        "tags" : [ "/api/ee/gsheets" ]
+      }
+    },
+    "/api/ee/gsheets/service-account" : {
+      "get" : {
+        "summary" : "GET /api/ee/gsheets/service-account",
+        "description" : "Checks to see if service-account is setup or not, delegates to HM only if we haven't set it from a metabase cluster\n  before.",
+        "parameters" : [ ],
+        "tags" : [ "/api/ee/gsheets" ]
       }
     },
     "/api/ee/logs/query_execution/{yyyy-mm}" : {
@@ -7296,6 +7550,146 @@ redirect_from:
         "tags" : [ "/api/embed" ]
       }
     },
+    "/api/embed/tiles/card/{token}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/embed/tiles/card/{token}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for an embedded Card using the map visualization.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "lat-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "lon-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "tags" : [ "/api/embed" ]
+      }
+    },
+    "/api/embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for a Card on an embedded Dashboard using the map visualization.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "lat-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "lon-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "tags" : [ "/api/embed" ]
+      }
+    },
     "/api/field/{id}" : {
       "get" : {
         "summary" : "GET /api/field/{id}",
@@ -7720,12 +8114,72 @@ redirect_from:
             "application/json" : {
               "schema" : {
                 "type" : "object",
-                "properties" : { }
+                "properties" : {
+                  "ldap-enabled" : {
+                    "type" : "boolean"
+                  },
+                  "ldap-host" : {
+                    "type" : "string"
+                  },
+                  "ldap-password" : {
+                    "type" : "string"
+                  },
+                  "ldap-port" : {
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                }
               }
             }
           }
         },
         "tags" : [ "/api/ldap" ]
+      }
+    },
+    "/api/logger/adjustment" : {
+      "post" : {
+        "summary" : "POST /api/logger/adjustment",
+        "description" : "Temporarily adjust the log levels.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "duration" : {
+                    "type" : "integer"
+                  },
+                  "duration_unit" : {
+                    "$ref" : "#/components/schemas/metabase.api.logger~1time-unit"
+                  },
+                  "log_levels" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "$ref" : "#/components/schemas/metabase.api.logger~1log-level"
+                    }
+                  }
+                },
+                "required" : [ "duration", "duration_unit", "log_levels" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/logger" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/logger/adjustment",
+        "description" : "Undo any log level adjustments.",
+        "parameters" : [ ],
+        "tags" : [ "/api/logger" ]
+      }
+    },
+    "/api/logger/presets" : {
+      "get" : {
+        "summary" : "GET /api/logger/presets",
+        "description" : "Get all known presets.",
+        "parameters" : [ ],
+        "tags" : [ "/api/logger" ]
       }
     },
     "/api/login-history/current" : {
@@ -8077,7 +8531,7 @@ redirect_from:
                     "type" : "string"
                   },
                   "name" : {
-                    "description" : "snippet names cannot include } or start with spaces"
+                    "description" : "snippet names cannot include '}' or start with spaces"
                   }
                 },
                 "required" : [ "content", "name" ]
@@ -8138,7 +8592,7 @@ redirect_from:
                     "type" : "string"
                   },
                   "name" : {
-                    "description" : "snippet names cannot include } or start with spaces"
+                    "description" : "snippet names cannot include '}' or start with spaces"
                   }
                 }
               }
@@ -9796,7 +10250,7 @@ redirect_from:
     "/api/public/oembed" : {
       "get" : {
         "summary" : "GET /api/public/oembed",
-        "description" : "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL.",
+        "description" : "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL.",
         "parameters" : [ {
           "in" : "query",
           "name" : "url",
@@ -9886,6 +10340,150 @@ redirect_from:
         }, {
           "in" : "path",
           "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/tiles/card/{uuid}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/public/tiles/card/{uuid}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for a publicly-accessible Card using the map visualization. Does not require auth\n  credentials. Public sharing must be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "lat-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "lon-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/tiles/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/public/tiles/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not\n  require auth credentials. Public sharing must be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "lat-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "lon-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -10493,6 +11091,14 @@ redirect_from:
             "type" : "boolean",
             "default" : false
           }
+        }, {
+          "in" : "query",
+          "name" : "include_metadata",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
         } ],
         "tags" : [ "/api/search" ]
       }
@@ -10970,14 +11576,6 @@ redirect_from:
         "tags" : [ "/api/setup" ]
       }
     },
-    "/api/setup/admin_checklist" : {
-      "get" : {
-        "summary" : "GET /api/setup/admin_checklist",
-        "description" : "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!",
-        "parameters" : [ ],
-        "tags" : [ "/api/setup" ]
-      }
-    },
     "/api/setup/user_defaults" : {
       "get" : {
         "summary" : "GET /api/setup/user_defaults",
@@ -11034,7 +11632,7 @@ redirect_from:
                   },
                   "slack-bug-report-channel" : {
                     "type" : "string"
-                  },
+                  }
                 }
               }
             }
@@ -11429,6 +12027,23 @@ redirect_from:
         "tags" : [ "/api/table" ]
       }
     },
+    "/api/table/{table-id}/data" : {
+      "get" : {
+        "summary" : "GET /api/table/{table-id}/data",
+        "description" : "Get the data for the given table",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "table-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/table" ]
+      }
+    },
     "/api/task/" : {
       "get" : {
         "summary" : "GET /api/task/",
@@ -11441,6 +12056,14 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/task/info",
         "description" : "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers).",
+        "parameters" : [ ],
+        "tags" : [ "/api/task" ]
+      }
+    },
+    "/api/task/unique-tasks" : {
+      "get" : {
+        "summary" : "GET /api/task/unique-tasks",
+        "description" : "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique\n  tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should\n  reflect that.",
         "parameters" : [ ],
         "tags" : [ "/api/task" ]
       }
@@ -11462,10 +12085,10 @@ redirect_from:
         "tags" : [ "/api/task" ]
       }
     },
-    "/api/tiles/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/tiles/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
       "get" : {
-        "summary" : "GET /api/tiles/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
-        "description" : "This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query\n  string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the\n  appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in\n  parallel.",
+        "summary" : "GET /api/tiles/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for a saved Card.",
         "parameters" : [ {
           "in" : "path",
           "name" : "zoom",
@@ -11495,16 +12118,122 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.tiles.api~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.tiles.api~1field-id-or-name"
+            "type" : "string"
           }
         }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "tags" : [ "/api/tiles" ]
+      }
+    },
+    "/api/tiles/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/tiles/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for a dashcard.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "lat-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "lon-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dashboard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "tags" : [ "/api/tiles" ]
+      }
+    },
+    "/api/tiles/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/tiles/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for an ad-hoc query.",
+        "parameters" : [ {
           "in" : "query",
           "name" : "query",
           "required" : true,

@@ -11,7 +11,7 @@ table_id:
 database_type: timestamptz
 base_type: type/DateTimeWithLocalTZ
 effective_type: type/DateTimeWithLocalTZ
-semantic_type: null
+semantic_type: type/CreationTimestamp
 database_is_auto_increment: false
 database_required: false
 fk_target_field_id: null
@@ -39,4 +39,4 @@ serdes/meta:
   model: Field
 database_indexed: false
 database_partitioned: null
-entity_id: H07rG7wgZ6ocycUgH93C3
+entity_id: jKNRg5tnVE2V1EwdeUGC7

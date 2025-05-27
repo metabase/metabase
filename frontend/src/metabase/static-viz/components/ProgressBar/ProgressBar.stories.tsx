@@ -8,7 +8,7 @@ export default {
   component: ProgressBar,
 };
 
-const Template: StoryFn<ProgressBarProps> = args => {
+const Template: StoryFn<ProgressBarProps> = (args) => {
   return <ProgressBar {...args} />;
 };
 
@@ -30,4 +30,9 @@ export const ReachedGoal = {
 export const ExceedsGoal = {
   render: Template,
   args: EXCEEDS_GOAL,
+};
+
+export const Watermark = {
+  render: Template,
+  args: { ...EXCEEDS_GOAL, hasDevWatermark: true },
 };

@@ -10,19 +10,25 @@ import type { Dispatch } from "metabase-types/store";
 const ACTIONS: Record<Lib.SummarizeColumnDrillThruOperator, ClickActionBase> = {
   sum: {
     name: "summarize-column.sum",
-    title: t`Sum`,
+    get title() {
+      return t`Sum`;
+    },
     section: "sum",
     buttonType: "token",
   },
   avg: {
     name: "summarize-column.avg",
-    title: t`Avg`,
+    get title() {
+      return t`Avg`;
+    },
     section: "sum",
     buttonType: "token",
   },
   distinct: {
     name: "summarize-column.distinct",
-    title: t`Distinct values`,
+    get title() {
+      return t`Distinct values`;
+    },
     section: "sum",
     buttonType: "token",
   },
@@ -35,7 +41,7 @@ export const summarizeColumnDrill: Drill<Lib.SummarizeColumnDrillThruInfo> = ({
 }) => {
   const { aggregations } = drillInfo;
 
-  return aggregations.map(operator => ({
+  return aggregations.map((operator) => ({
     ...ACTIONS[operator],
     question: () => applyDrill(drill, operator).setDefaultDisplay(),
     action: () => (dispatch: Dispatch) =>

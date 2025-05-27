@@ -78,6 +78,7 @@ export function IFrameViz({
         dashboard,
         parameterValues,
         text: allowedIframeAttributes?.src,
+        urlEncode: true,
       }),
     [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],
   );
@@ -96,7 +97,7 @@ export function IFrameViz({
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
-                onMouseDown={e => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
               >{t`Done`}</Button>
             </Box>
           </Group>
@@ -112,8 +113,8 @@ export function IFrameViz({
               h="100%"
               value={iframeOrUrl ?? ""}
               placeholder={`<iframe src="https://example.com" />`}
-              onChange={e => handleIFrameChange(e.target.value)}
-              onMouseDown={e => e.stopPropagation()}
+              onChange={(e) => handleIFrameChange(e.target.value)}
+              onMouseDown={(e) => e.stopPropagation()}
               style={{ pointerEvents: "all" }}
             />
           </Box>

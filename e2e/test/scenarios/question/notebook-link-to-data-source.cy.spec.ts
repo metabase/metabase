@@ -33,9 +33,9 @@ describe("scenarios > notebook > link to data source", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.on("window:before:load", win => {
+    cy.on("window:before:load", (win) => {
       // prevent Cypress opening in a new window/tab and spy on this method
-      cy.stub(win, "open").callsFake(url => {
+      cy.stub(win, "open").callsFake((url) => {
         expect(win.open).to.be.calledOnce;
         // replace the current page with the linked data source upon ctrl/meta click
         win.location.assign(url);
@@ -56,7 +56,7 @@ describe("scenarios > notebook > link to data source", () => {
     cy.log("Meta/Ctrl click on the fields picker behaves as a regular click");
     H.getNotebookStep("data").findByTestId("fields-picker").click(clickConfig);
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
     });
     // Regular click on the fields picker again to close the popover
     H.getNotebookStep("data").findByTestId("fields-picker").click();
@@ -350,7 +350,7 @@ describe("scenarios > notebook > link to data source", () => {
         .click(clickConfig);
 
       cy.log("Make sure the source model is rendered in a simple mode");
-      cy.get("@nestedModelId").then(id => {
+      cy.get("@nestedModelId").then((id) => {
         cy.location("pathname").should(
           "eq",
           `/model/${id}-nested-model-based-on-a-question`,
@@ -382,7 +382,7 @@ describe("scenarios > notebook > link to data source", () => {
         .click(clickConfig);
 
       cy.log("Make sure the source model is rendered in a simple mode");
-      cy.get("@nestedModelId").then(id => {
+      cy.get("@nestedModelId").then((id) => {
         cy.location("pathname").should(
           "eq",
           `/model/${id}-nested-model-based-on-a-model`,

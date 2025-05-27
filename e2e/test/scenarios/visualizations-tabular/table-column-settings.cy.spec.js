@@ -33,7 +33,7 @@ const tableQuestionWithJoin = {
   },
 };
 
-const tableQuestionWithJoinOnQuestion = card => ({
+const tableQuestionWithJoinOnQuestion = (card) => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -165,7 +165,7 @@ const nativeQuestion = {
   limit: 5,
 };
 
-const nestedQuestion = card => ({
+const nestedQuestion = (card) => ({
   display: "table",
   query: {
     "source-table": `card__${card.id}`,
@@ -173,7 +173,7 @@ const nestedQuestion = card => ({
   limit: 5,
 });
 
-const nestedQuestionWithJoinOnTable = card => ({
+const nestedQuestionWithJoinOnTable = (card) => ({
   display: "table",
   query: {
     "source-table": `card__${card.id}`,
@@ -193,7 +193,7 @@ const nestedQuestionWithJoinOnTable = card => ({
   },
 });
 
-const nestedQuestionWithJoinOnQuestion = card => ({
+const nestedQuestionWithJoinOnQuestion = (card) => ({
   display: "table",
   query: {
     "source-table": `card__${card.id}`,
@@ -543,20 +543,20 @@ describe("scenarios > visualizations > table column settings", () => {
       H.openReviewsTable();
       H.openColumnOptions("Body");
 
-      assertRowHeight(0, 36);
+      H.assertRowHeight(0, 36);
 
       H.popover().within(() => {
         cy.icon("gear").click();
         cy.findByText("Wrap text").click();
       });
 
-      assertRowHeight(0, 52);
+      H.assertRowHeight(0, 53);
 
       H.popover().within(() => {
         cy.findByText("Wrap text").click();
       });
 
-      assertRowHeight(0, 36);
+      H.assertRowHeight(0, 36);
     });
   });
 
@@ -823,11 +823,11 @@ describe("scenarios > visualizations > table column settings", () => {
   });
 });
 
-const showColumn = column => {
+const showColumn = (column) => {
   cy.findByTestId(`${column}-show-button`).click();
 };
 
-const hideColumn = column => {
+const hideColumn = (column) => {
   cy.findByTestId(`${column}-hide-button`).click();
 };
 
@@ -849,21 +849,14 @@ const visibleColumns = () => {
   return cy.findByTestId("visible-columns");
 };
 
-const getColumn = columnName => {
+const getColumn = (columnName) => {
   return visibleColumns().contains("[role=listitem]", columnName);
 };
 
-const assertColumnEnabled = column => {
+const assertColumnEnabled = (column) => {
   column.should("have.attr", "data-enabled", "true");
 };
 
-const assertColumnHidden = column => {
+const assertColumnHidden = (column) => {
   column.should("have.attr", "data-enabled", "false");
-};
-
-const assertRowHeight = (index, height) => {
-  H.tableInteractive()
-    .find(`[data-index=${index}]`)
-    .should("exist")
-    .should("have.css", "height", `${height}px`);
 };

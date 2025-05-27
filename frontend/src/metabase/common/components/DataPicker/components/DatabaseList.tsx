@@ -25,7 +25,7 @@ export const DatabaseList = ({
   onClick,
 }: Props) => {
   const items: DataPickerFolderItem[] | undefined = useMemo(() => {
-    return databases?.map(database => ({
+    return databases?.map((database) => ({
       id: database.id,
       model: "database",
       name: database.name,
@@ -48,7 +48,7 @@ export const DatabaseList = ({
         items={items}
         selectedItem={selectedItem}
         onClick={onClick}
-        navLinkProps={isSelected => ({
+        navLinkProps={(isSelected) => ({
           px: "1.5rem",
           py: "1.25rem",
           mb: "1rem",

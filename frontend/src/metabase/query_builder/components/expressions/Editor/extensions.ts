@@ -18,10 +18,9 @@ import S from "./Editor.module.css";
 import { customExpression } from "./language";
 
 type Options = {
-  startRule: "expression" | "aggregation" | "boolean";
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
-  name?: string;
   expressionIndex: number | undefined;
   metadata: Metadata;
   reportTimezone?: string;
@@ -43,10 +42,9 @@ function getTooltipParent() {
 
 export function useExtensions(options: Options): Extension[] {
   const {
-    startRule,
+    expressionMode,
     query,
     stageIndex,
-    name,
     expressionIndex,
     reportTimezone,
     metadata,
@@ -74,10 +72,9 @@ export function useExtensions(options: Options): Extension[] {
       highlighting(),
       EditorView.lineWrapping,
       customExpression({
-        startRule,
+        expressionMode,
         query,
         stageIndex,
-        name,
         expressionIndex,
         metadata,
       }),
@@ -99,7 +96,7 @@ export function useExtensions(options: Options): Extension[] {
         query,
         stageIndex,
         reportTimezone,
-        startRule,
+        expressionMode,
         expressionIndex,
         metadata,
       }),
@@ -113,10 +110,9 @@ export function useExtensions(options: Options): Extension[] {
       .filter(isNotNull);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    startRule,
+    expressionMode,
     query,
     stageIndex,
-    name,
     expressionIndex,
     metadata,
     reportTimezone,
@@ -156,7 +152,7 @@ function highlighting() {
  * Expands -> to → when the user is typing.
  */
 function expander() {
-  return EditorView.updateListener.of(update => {
+  return EditorView.updateListener.of((update) => {
     if (!update.docChanged) {
       return;
     }

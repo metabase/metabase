@@ -1,4 +1,7 @@
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  INDEX_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { RawSeries } from "metabase-types/api";
 
@@ -18,8 +21,8 @@ export function getScatterPlotDataset(
     } = cardSeries;
     const columnDescs = cardsColumns[index];
 
-    rows.forEach(row => {
-      const datum: Datum = { [X_AXIS_DATA_KEY]: null };
+    rows.forEach((row, index) => {
+      const datum: Datum = { [X_AXIS_DATA_KEY]: null, [INDEX_KEY]: index };
 
       cols.forEach((column, columnIndex) => {
         const value = row[columnIndex];

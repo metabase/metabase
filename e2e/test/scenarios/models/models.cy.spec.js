@@ -37,7 +37,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a GUI question into a model", () => {
-    cy.get("@productsQuestionId").then(id => {
+    cy.get("@productsQuestionId").then((id) => {
       cy.request("PUT", `/api/card/${id}`, {
         name: "Products Model",
       });
@@ -48,12 +48,12 @@ describe("scenarios > models", () => {
       assertIsModel();
 
       H.filter();
-      H.filterField("Vendor", {
-        operator: "Contains",
-        value: "Fisher",
+      H.popover().findByText("Vendor").click();
+      H.selectFilterOperator("Contains");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("Fisher");
+        cy.button("Apply filter").click();
       });
-
-      cy.findByTestId("apply-filters").click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
@@ -98,12 +98,12 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     H.filter();
-    H.filterField("VENDOR", {
-      operator: "Contains",
-      value: "Fisher",
+    H.popover().findByText("VENDOR").click();
+    H.selectFilterOperator("Contains");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("Fisher");
+      cy.button("Apply filter").click();
     });
-
-    cy.findByTestId("apply-filters").click();
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
@@ -112,7 +112,7 @@ describe("scenarios > models", () => {
       table: "Products",
     });
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
     });
 
@@ -154,7 +154,7 @@ describe("scenarios > models", () => {
     H.openQuestionActions();
     assertIsModel();
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.wait("@dataset").then(({ response }) => {
         expect(response.body.json_query.query["source-table"]).to.equal(
           `card__${questionId}`,
@@ -163,30 +163,13 @@ describe("scenarios > models", () => {
       });
     });
 
-    // Filtering on the long column is currently broken in master (metabase#47863),
-    // but this works in the release-x.50.x branch.
-    //
-    // filter();
-    // filterField(
-    //   "TOTAL_NUMBER_OF_PEOPLE_FROM_EACH_STATE_SEPARATED_BY_STATE_AND_THEN_WE_DO_A_COUNT",
-    //   {
-    //     operator: "Contains",
-    //     value: "A",
-    //   },
-    // );
-
-    // cy.findByTestId("apply-filters").click();
-    // cy.wait("@dataset").then(({ response }) => {
-    //   expect(response.body.error).to.not.exist;
-    // });
-
     H.filter();
-    H.filterField("COUN", {
-      operator: "Greater than",
-      value: 30,
+    H.popover().findByText("COUN").click();
+    H.selectFilterOperator("Greater than");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("30");
+      cy.button("Apply filter").click();
     });
-
-    cy.findByTestId("apply-filters").click();
     cy.wait("@dataset").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
@@ -197,7 +180,7 @@ describe("scenarios > models", () => {
       table: "People",
     });
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
     });
 
@@ -368,8 +351,8 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders");
 
         cy.findByText("Everywhere").click();
-        getResults().should("have.length", 6);
-        cy.findByText("6 results").should("be.visible");
+        getResults().should("have.length", 5);
+        cy.findByText("5 results").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "dataset")
@@ -388,10 +371,6 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders, Count");
         getResults()
           .eq(4)
-          .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders");
-        getResults()
-          .eq(5)
           .should("have.attr", "data-model-type", "table")
           .and("contain.text", "Orders");
       });
@@ -443,7 +422,7 @@ describe("scenarios > models", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByText("Save").click();
       });
 
@@ -477,10 +456,9 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       H.filter();
-      H.filterField("Discount", {
-        operator: "Not empty",
-      });
-      cy.findByTestId("apply-filters").click();
+      H.popover().findByText("Discount").click();
+      H.selectFilterOperator("Not empty");
+      H.popover().button("Apply filter").click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
@@ -602,7 +580,7 @@ describe("scenarios > models", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click({ force: true });
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click({ force: true });
     });
 
@@ -699,7 +677,7 @@ describe("scenarios > models", () => {
 
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
-      cy.get("@modelId").then(id => {
+      cy.get("@modelId").then((id) => {
         H.startNewNativeQuestion();
         H.NativeEditor.type(`select * from {{#${id}}}`, {
           parseSpecialCharSequences: false,

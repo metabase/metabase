@@ -152,7 +152,7 @@ describe("scenarios > question > nested", () => {
       idAlias: "metricId",
     });
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const baseQuestionDetails = {
         name: "12507",
@@ -207,7 +207,7 @@ describe("scenarios > question > nested", () => {
       query: ordersJoinProductsQuery,
     };
 
-    ["default", "remapped"].forEach(scenario => {
+    ["default", "remapped"].forEach((scenario) => {
       if (scenario === "remapped") {
         cy.log("Remap Product ID's display value to `title`");
         H.remapDisplayValueToFK({
@@ -223,7 +223,7 @@ describe("scenarios > question > nested", () => {
       cy.contains("37.65");
 
       // should handle multi-level nesting
-      cy.get("@nestedQuestionId").then(id => {
+      cy.get("@nestedQuestionId").then((id) => {
         visitNestedQueryAdHoc(id);
         cy.contains("37.65");
       });
@@ -431,7 +431,7 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
       H.popover().findByText("VAL").click();
-      cy.wait("@dataset").then(xhr => {
+      cy.wait("@dataset").then((xhr) => {
         expect(xhr.response.body.error).not.to.exist;
       });
       cy.get("@consoleWarn").should(
@@ -478,11 +478,12 @@ describe("scenarios > question > nested", () => {
       "Should be able to use integer filter on a nested query based on a saved native question (metabase#15808)",
     );
     H.filter();
-    H.filterField("RATING", {
-      operator: "Equal to",
-      value: "4",
+    H.popover().findByText("RATING").click();
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("4");
+      cy.button("Apply filter").click();
     });
-    cy.findByTestId("apply-filters").click();
 
     cy.findAllByTestId("cell-data")
       .should("contain", "Murray, Watsica and Wunsch")
@@ -514,27 +515,25 @@ describe("scenarios > question > nested", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summaries").click();
-    H.filterField("Count", {
-      operator: "Equal to",
-      value: "5",
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Count").click();
     });
-    cy.button("Apply filters").click();
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("5");
+      cy.button("Apply filter").click();
+    });
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count is equal to 5");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 100 rows");
+    H.queryBuilderFiltersPanel().findByText("Count is equal to 5");
+    H.assertQueryBuilderRowCount(100);
 
     H.saveQuestionToCollection();
 
     reloadQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 100 rows");
+    H.assertQueryBuilderRowCount(100);
 
     H.openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);

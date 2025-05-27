@@ -1,16 +1,17 @@
 (ns metabase.channel.impl.slack
   (:require
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   ;; TODO: integrations.slack should be migrated to channel.slack
-   [metabase.integrations.slack :as slack]
-   [metabase.models.params.shared :as shared.params]
-   [metabase.public-settings :as public-settings]
+   [metabase.channel.slack :as slack]
+   [metabase.channel.urls :as urls]
+   [metabase.parameters.shared :as shared.params]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.system.core :as system]
    [metabase.util.malli :as mu]
-   [metabase.util.markdown :as markdown]
-   [metabase.util.urls :as urls]))
+   [metabase.util.markdown :as markdown]))
 
 (defn- notification-recipient->channel-id
   [notification-recipient]
@@ -50,22 +51,23 @@
 
 (defn- part->attachment-data
   [part]
-  (case (:type part)
-    :card
-    (let [{:keys [card dashcard result]}         part
-          {card-id :id card-name :name :as card} card]
-      {:title           (or (-> dashcard :visualization_settings :card.title)
-                            card-name)
-       :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-       :title_link      (urls/card-url card-id)
-       :attachment-name "image.png"
-       :fallback        card-name})
+  (let [part (channel.shared/maybe-realize-data-rows part)]
+    (case (:type part)
+      :card
+      (let [{:keys [card dashcard result]}         part
+            {card-id :id card-name :name :as card} card]
+        {:title           (or (-> dashcard :visualization_settings :card.title)
+                              card-name)
+         :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+         :title_link      (urls/card-url card-id)
+         :attachment-name "image.png"
+         :fallback        card-name})
 
-    :text
-    (text->markdown-block (:text part))
+      :text
+      (text->markdown-block (:text part))
 
-    :tab-title
-    (text->markdown-block (format "# %s" (:text part)))))
+      :tab-title
+      (text->markdown-block (format "# %s" (:text part))))))
 
 (def ^:private slack-width
   "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
@@ -145,8 +147,21 @@
 (defn- filter-text
   [filter]
   (truncate
-   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
+   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (system/site-locale)))
    attachment-text-length-limit))
+
+(defn- include-branding?
+  "Branding in exports is included only for instances that do not have a whitelabel feature flag."
+  []
+  (not (premium-features/enable-whitelabeling?)))
+
+(def metabase-branding-link
+  "Metabase link with UTM params related to the branding exports campaign"
+  "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=slack")
+
+(def metabase-branding-copy
+  "Human visible Markdown content that we use for branding purposes in Slack links"
+  "Made with Metabase :blue_heart:")
 
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
@@ -157,12 +172,18 @@
                                 :text (truncate (:name dashboard) header-text-limit)
                                 :emoji true}}
         link-section    {:type "section"
-                         :fields [{:type "mrkdwn"
-                                   :text (mkdwn-link-text
-                                          (urls/dashboard-url (:id dashboard) parameters)
-                                          (format "*Sent from %s by %s*"
-                                                  (public-settings/site-name)
-                                                  creator-name))}]}
+                         :fields (cond-> [{:type "mrkdwn"
+                                           :text (mkdwn-link-text
+                                                  (urls/dashboard-url (:id dashboard) parameters)
+                                                  (format "*Sent from %s by %s*"
+                                                          (appearance/site-name)
+                                                          creator-name))}]
+                                   (include-branding?)
+                                   (conj
+                                    {:type "mrkdwn"
+                                     :text (mkdwn-link-text
+                                            metabase-branding-link
+                                            metabase-branding-copy)}))}
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
@@ -175,7 +196,7 @@
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [parts]
   (for [part  parts
-        :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part))]
+        :let  [attachment (part->attachment-data part)]
         :when attachment]
     attachment))
 

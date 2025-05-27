@@ -38,7 +38,7 @@ export default class VisualizationResult extends Component {
     this.setState({ showCreateAlertModal: false });
   };
 
-  getObjectDetailData = series => {
+  getObjectDetailData = (series) => {
     return [
       {
         ...series[0],
@@ -60,6 +60,8 @@ export default class VisualizationResult extends Component {
       onNavigateBack,
       className,
       isRunning,
+      isShowingSummarySidebar,
+      onEditSummary,
       renderEmptyMessage,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -127,6 +129,8 @@ export default class VisualizationResult extends Component {
             isEditing={true}
             isObjectDetail={false}
             isQueryBuilder={true}
+            isShowingSummarySidebar={isShowingSummarySidebar}
+            onEditSummary={onEditSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}
             canToggleSeriesVisibility
@@ -144,6 +148,7 @@ export default class VisualizationResult extends Component {
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
+            onVisualizationRendered={this.props.onVisualizationRendered}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (

@@ -52,7 +52,7 @@ export function ModelUploadModal({
   });
 
   const uploadableModels = useMemo(
-    () => data?.data?.filter(model => !!model.based_on_upload),
+    () => data?.data?.filter((model) => !!model.based_on_upload),
     [data],
   );
   const hasNoUploadableModels = !isLoading && uploadableModels?.length === 0;
@@ -72,7 +72,7 @@ export function ModelUploadModal({
   const handleUpload = () => {
     if (uploadMode !== UploadMode.create && tableId) {
       const modelForTableId = uploadableModels?.find(
-        model => model.based_on_upload === Number(tableId),
+        (model) => model.based_on_upload === Number(tableId),
       );
 
       return onUpload({
@@ -124,7 +124,7 @@ export function ModelUploadModal({
         </Text>
         <Radio.Group
           value={uploadMode}
-          onChange={val => setUploadMode(val as UploadMode)}
+          onChange={(val) => setUploadMode(val as UploadMode)}
           pl="1px"
         >
           <Radio label={t`Create a new model`} value={UploadMode.create} />
@@ -141,12 +141,12 @@ export function ModelUploadModal({
         </Radio.Group>
         {uploadMode !== UploadMode.create && (
           <Select
-            aria-label="Select a model"
+            aria-label={t`Select a model`}
             leftSection={<Icon name="model" />}
-            placeholder="Select a model"
+            placeholder={t`Select a model`}
             value={tableId ? String(tableId) : ""}
             data={
-              uploadableModels.map(model => ({
+              uploadableModels.map((model) => ({
                 value: String(model.based_on_upload),
                 label: model.name,
               })) ?? []
@@ -157,7 +157,7 @@ export function ModelUploadModal({
       </Stack>
 
       <Flex justify="flex-end" gap="sm">
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button onClick={handleUpload} variant="filled" disabled={!isFormValid}>
           {buttonText}
         </Button>

@@ -304,10 +304,10 @@ describe("FilterPicker", () => {
       await userEvent.click(screen.getByText("Category"));
       await waitForLoaderToBeRemoved(); // fetching Category field values
 
-      productCategories.forEach(category => {
+      productCategories.forEach((category) => {
         expect(screen.getByLabelText(category)).not.toBeChecked();
       });
-      productVendors.forEach(vendor => {
+      productVendors.forEach((vendor) => {
         expect(screen.queryByText(vendor)).not.toBeInTheDocument();
       });
 

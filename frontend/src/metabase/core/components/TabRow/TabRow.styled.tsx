@@ -32,16 +32,16 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   height: 100%;
   width: 3rem;
   padding-bottom: ${space(2)};
-  text-align: ${props => props.direction};
+  text-align: ${(props) => props.direction};
   color: var(--mb-color-text-light);
 
   &:hover {
     color: var(--mb-color-brand);
   }
-  ${props => props.direction}: 0;
+  ${(props) => props.direction}: 0;
 
   background: linear-gradient(
-    to ${props => props.direction},
+    to ${(props) => props.direction},
     ${() => alpha("bg-white", 0.1)},
     ${() => alpha("bg-white", 0.5)},
     30%,

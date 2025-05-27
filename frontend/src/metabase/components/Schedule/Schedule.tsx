@@ -1,13 +1,23 @@
-import { type HTMLAttributes, useCallback, useMemo } from "react";
+import cx from "classnames";
+import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import { c } from "ttag";
+import { c, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
+import {
+  cronToScheduleSettings,
+  scheduleSettingsToCron,
+} from "metabase/admin/performance/utils";
+import { CronExpressionInput } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput";
+import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
-import { Box, type BoxProps } from "metabase/ui";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
-import { GroupControlsTogether } from "./GroupControlsTogether";
+import {
+  GROUP_ATTRIBUTES,
+  GroupControlsTogether,
+} from "./GroupControlsTogether";
 import S from "./Schedule.module.css";
 import {
   SelectFrame,
@@ -17,42 +27,54 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import type { ScheduleChangeProp, UpdateSchedule } from "./types";
+import { byTheMinuteIntervals } from "./strings";
+import type { UpdateSchedule } from "./types";
 import { getScheduleDefaults } from "./utils";
 
 export interface ScheduleProps {
-  schedule: ScheduleSettings;
+  className?: string;
+  cronString: string;
   scheduleOptions: ScheduleType[];
   onScheduleChange: (
+    nextCronString: string,
     nextSchedule: ScheduleSettings,
-    change: ScheduleChangeProp,
   ) => void;
   timezone?: string;
   verb?: string;
-  textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
+  labelAlignment?: "compact" | "left";
+  isCustomSchedule?: boolean;
+  renderScheduleDescription?: (
+    schedule: ScheduleSettings,
+    cronString: string,
+  ) => JSX.Element | string | null;
 }
 
 export const Schedule = ({
-  schedule,
+  className,
+  cronString: initialCronString,
   scheduleOptions,
   timezone,
   verb,
   minutesOnHourPicker,
   onScheduleChange,
-  ...boxProps
-}: {
-  schedule: ScheduleSettings;
-  scheduleOptions: ScheduleType[];
-  timezone?: string;
-  verb?: string;
-  minutesOnHourPicker?: boolean;
-  onScheduleChange: (
-    nextSchedule: ScheduleSettings,
-    change: ScheduleChangeProp,
-  ) => void;
-} & BoxProps &
-  HTMLAttributes<HTMLDivElement>) => {
+  labelAlignment = "compact",
+  isCustomSchedule,
+  renderScheduleDescription,
+  ...flexProps
+}: ScheduleProps & FlexProps & HTMLAttributes<HTMLDivElement>) => {
+  const [internalCronString, setInternalCronString] = useState(() =>
+    formatCronExpressionForUI(initialCronString),
+  );
+  const schedule = useMemo(() => {
+    return (
+      cronToScheduleSettings(initialCronString, isCustomSchedule) ?? {
+        schedule_type: "hourly" as ScheduleType,
+        schedule_minute: 0,
+      }
+    );
+  }, [initialCronString, isCustomSchedule]);
+
   const updateSchedule: UpdateSchedule = useCallback(
     (
       updatedField: keyof ScheduleSettings,
@@ -70,6 +92,9 @@ export const Schedule = ({
           schedule_type: newValue as ScheduleType,
           ...defaults,
         };
+        if (newValue === "cron") {
+          setInternalCronString(formatCronExpressionForUI(initialCronString));
+        }
       } else {
         newSchedule = _.defaults(
           removeNullAndUndefinedValues(newSchedule),
@@ -82,9 +107,10 @@ export const Schedule = ({
         newSchedule.schedule_day = null;
       }
 
-      onScheduleChange(newSchedule, { name: updatedField, value: newValue });
+      const newCronString = scheduleSettingsToCron(newSchedule);
+      onScheduleChange(newCronString, newSchedule);
     },
-    [onScheduleChange, schedule],
+    [initialCronString, onScheduleChange, schedule],
   );
 
   const renderedSchedule = useMemo(() => {
@@ -116,6 +142,15 @@ export const Schedule = ({
         key="minute"
         schedule_minute={schedule_minute}
         updateSchedule={updateSchedule}
+      />
+    );
+
+    const selectEveryMinute = (
+      <SelectMinute
+        key="minute"
+        schedule_minute={schedule_minute}
+        updateSchedule={updateSchedule}
+        range={byTheMinuteIntervals}
       />
     );
 
@@ -152,7 +187,34 @@ export const Schedule = ({
       />
     );
 
+    const selectCron = (
+      <CronExpressionInput
+        data-group={GROUP_ATTRIBUTES.separate}
+        key="cron"
+        value={internalCronString}
+        onChange={(value: string) => {
+          setInternalCronString(value);
+        }}
+        onBlurChange={(value) =>
+          onScheduleChange(value, {
+            schedule_type: "cron",
+          })
+        }
+        showExplainer={false}
+      />
+    );
+
     return match(schedule_type)
+      .with(
+        "every_n_minutes",
+        () =>
+          // Converting to lowercase here, because 'minute` is used without pluralization on the backend,
+          // and it's impossible to have both pluralized and single form for the same string.
+          c(
+            "{0} is a verb like 'Check', {1} is an adverb like 'by the minute', {2} is a number of minutes.",
+          )
+            .jt`${verb} ${selectFrequency} every ${selectEveryMinute} ${ngettext(msgid`Minute`, "Minutes", schedule_minute as number).toLocaleLowerCase()}`,
+      )
       .with("hourly", () => {
         return minutesOnHourPicker ? (
           // For example, "Send hourly at 15 minutes past the hour"
@@ -198,6 +260,7 @@ export const Schedule = ({
               selectWeekdayOfMonth
             } at ${selectTime}`,
       )
+      .with("cron", () => [verb, selectFrequency, selectCron])
       .with(null, () => null)
       .with(undefined, () => null)
       .exhaustive();
@@ -208,11 +271,30 @@ export const Schedule = ({
     timezone,
     updateSchedule,
     verb,
+    internalCronString,
+    onScheduleChange,
   ]);
 
+  const scheduleDescription = useMemo(() => {
+    return renderScheduleDescription?.(schedule, internalCronString) || null;
+  }, [renderScheduleDescription, schedule, internalCronString]);
+
   return (
-    <Box className={S.Schedule} {...boxProps}>
-      <GroupControlsTogether>{renderedSchedule}</GroupControlsTogether>
-    </Box>
+    <Flex direction="column" gap="1rem" {...flexProps}>
+      <Box
+        className={cx(
+          S.Schedule,
+          {
+            [S.CompactLabels]: labelAlignment === "compact",
+          },
+          className,
+        )}
+      >
+        <GroupControlsTogether>{renderedSchedule}</GroupControlsTogether>
+      </Box>
+      {scheduleDescription && (
+        <Box style={{ gridColumn: "span 2" }}>{scheduleDescription}</Box>
+      )}
+    </Flex>
   );
 };

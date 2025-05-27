@@ -4,6 +4,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -89,6 +90,14 @@
                                                           :field                 fieldd})))
     fieldd))
 
+(mu/defn remapped-field :- [:maybe ::lib.schema.metadata/column]
+  "Given a metadata source and a column's metadata, return the metadata for the field it's being remapped to, if any."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (when (lib.types.isa/foreign-key? column)
+    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+      (field metadata-providerable remap-field-id))))
+
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -108,10 +117,10 @@
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
 
 (mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
-  "Get metadata for the Metric with `metric-id`, if it can be found."
+  "Get metadata for the Metric with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metric-id             :- ::lib.schema.id/metric]
-  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) metric-id)]
+   card-id               :- ::lib.schema.id/card]
+  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)]
     (when (= (:type card-meta) :metric)
       (assoc card-meta :lib/type :metadata/metric))))
 
@@ -158,6 +167,18 @@
   (let [stages (:stages query)]
     (mu/disable-enforcement
       (editable-stages? query stages))))
+
+(mu/defn database-supports? :- :boolean
+  "Does `metadata-providerable`'s [[database]] support the given `feature`?
+
+  Minimize the use of this function. Using it is often a code smell. The lib should not normally be concerned with
+  driver features. See https://github.com/metabase/metabase/pull/55206#discussion_r2017378181"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   feature               :- :keyword]
+  (-> metadata-providerable
+      database
+      :features
+      (contains? feature)))
 
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use

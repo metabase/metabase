@@ -18,7 +18,7 @@ export default {
   component: StaticVisualization,
 };
 
-const Template: StoryFn<StaticChartProps> = args => {
+const Template: StoryFn<StaticChartProps> = (args) => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
       <StaticVisualization {...args} isStorybook />
@@ -312,6 +312,14 @@ export const BarStackedNormalizedCustomMinMax48021 = {
   render: Template,
   args: {
     rawSeries: data.barStackedNormalizedCustomMinMax48021 as any,
+    renderingContext,
+  },
+};
+
+export const BarStackedNormalizedGoalLine51054 = {
+  render: Template,
+  args: {
+    rawSeries: data.barStackedNormalizedGoalLine51054 as any,
     renderingContext,
   },
 };
@@ -1024,10 +1032,43 @@ export const NoDimensionColumn54755 = {
   },
 };
 
+export const BarNonLinearNumericXAxis = {
+  render: Template,
+  args: {
+    rawSeries: data.barNonLinearNumericXAxis as any,
+    renderingContext,
+  },
+};
+
+export const BarWidthDstTimezones56424 = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+  },
+};
+
 export const Default = {
   render: Template,
   args: {
     rawSeries: data.messedUpAxis as any,
+    renderingContext,
+  },
+};
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+    hasDevWatermark: true,
+  },
+};
+
+export const VisualizerTimeseriesDifferentUnits = {
+  render: Template,
+  args: {
+    rawSeries: data.visualizerTimeseriesDifferentUnits as any,
     renderingContext,
   },
 };

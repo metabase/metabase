@@ -21,7 +21,7 @@ export function setupRecentViewsAndSelectionsEndpoints(
   mockPostRequest: boolean = true,
 ) {
   fetchMock.get(
-    url =>
+    (url) =>
       url.endsWith(
         `/api/activity/recents?${querystring.stringify({ context })}`,
       ),

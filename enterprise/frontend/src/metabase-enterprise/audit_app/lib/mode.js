@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-export const getColumnName = column => column.remapped_to || column.name;
+export const getColumnName = (column) => column.remapped_to || column.name;
 
 export const getRowValuesByColumns = (row, cols) =>
   cols.reduce((acc, col, index) => {
@@ -14,23 +14,23 @@ export const getRowValuesByColumns = (row, cols) =>
 
 export const columnNameToUrl = {
   // No admin page for collections but still want to link to it
-  collection_id: value => `/collection/${value}`,
-  user_id: value => `/admin/audit/member/${value}`,
-  creator_id: value => `/admin/audit/member/${value}`,
-  viewed_by_id: value => `/admin/audit/member/${value}`,
-  saved_by_id: value => `/admin/audit/member/${value}`,
-  dashboard_id: value => `/admin/audit/dashboard/${value}`,
-  card_id: value => `/admin/audit/question/${value}`,
-  database_id: value => `/admin/audit/database/${value}`,
+  collection_id: (value) => `/collection/${value}`,
+  user_id: (value) => `/admin/audit/member/${value}`,
+  creator_id: (value) => `/admin/audit/member/${value}`,
+  viewed_by_id: (value) => `/admin/audit/member/${value}`,
+  saved_by_id: (value) => `/admin/audit/member/${value}`,
+  dashboard_id: (value) => `/admin/audit/dashboard/${value}`,
+  card_id: (value) => `/admin/audit/question/${value}`,
+  database_id: (value) => `/admin/audit/database/${value}`,
   // NOTE: disable schema links until schema detail is implemented
   // schema: value => `/admin/audit/schema/${value}`,
-  table_id: value => `/admin/audit/table/${value}`,
+  table_id: (value) => `/admin/audit/table/${value}`,
   // NOTE: query_hash uses standard Base64 encoding which isn't URL safe so make sure to escape it
-  query_hash: value =>
+  query_hash: (value) =>
     `/admin/audit/query/${encodeURIComponent(String(value))}`,
   recipients: (_, clicked) => {
     const pulseIdIndex = clicked.origin.cols.findIndex(
-      col => getColumnName(col) === "pulse_id",
+      (col) => getColumnName(col) === "pulse_id",
     );
     const pulseId = clicked.origin.row[pulseIdIndex];
 
@@ -67,7 +67,7 @@ const AuditDrill = ({ question, clicked }) => {
   if (origin && column && column.name === "card_id") {
     const queryHashColIndex = _.findIndex(
       origin.cols,
-      col => col.name === "query_hash",
+      (col) => col.name === "query_hash",
     );
     const value = origin.row[queryHashColIndex];
     if (value) {

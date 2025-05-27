@@ -154,7 +154,7 @@ describe("issue 34414", () => {
   });
 
   it("populate field values after re-adding filter on virtual table field (metabase#34414)", () => {
-    H.createQuestion(INVOICE_MODEL_DETAILS).then(response => {
+    H.createQuestion(INVOICE_MODEL_DETAILS).then((response) => {
       const modelId = response.body.id;
 
       H.visitQuestionAdhoc({
@@ -492,7 +492,7 @@ describe("issue 40435", () => {
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("User ID").click();
     });
     H.getNotebookStep("data").button("Pick columns").click();
@@ -525,13 +525,13 @@ describe("issue 41381", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show an error message when adding a constant-only custom expression (metabase#41381)", () => {
+  it("should not show an error message when adding a constant-only custom expression (metabase#41381)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
     H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
     H.popover().within(() => {
-      cy.findByText("Invalid expression").should("be.visible");
-      cy.button("Done").should("be.disabled");
+      cy.findByText("Invalid expression").should("not.exist");
+      cy.button("Done").should("be.enabled");
     });
   });
 });
@@ -546,7 +546,7 @@ describe(
 
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
-        const tableId = body.find(table => table.name === "orders").id;
+        const tableId = body.find((table) => table.name === "orders").id;
         H.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
@@ -560,7 +560,7 @@ describe(
       H.tableInteractiveBody()
         .findAllByRole("gridcell")
         .first()
-        .then($cell => {
+        .then(($cell) => {
           // Ids are non-deterministic so we have to obtain the id from the cell, and store its value.
           const id = $cell.text();
 
@@ -568,16 +568,12 @@ describe(
             "Scenario 1 - Make sure the simple mode filter is working correctly (metabase#40770)",
           );
           H.filter();
-
-          cy.findByRole("dialog").within(() => {
-            cy.findByPlaceholderText("Search by ID").type(id);
-            cy.button("Apply filters").click();
+          H.popover().within(() => {
+            cy.findAllByText("ID").should("have.length", 2).first().click();
+            cy.findByLabelText("Filter value").type(id).click();
+            cy.button("Apply filter").click();
           });
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1 row",
-          );
+          H.assertQueryBuilderRowCount(1);
           removeFilter();
 
           cy.log(
@@ -594,7 +590,7 @@ describe(
 
           cy.findByTestId("string-filter-picker").within(() => {
             cy.findByLabelText("Filter operator").should("have.text", "Is");
-            cy.findByPlaceholderText("Search by ID").type(id);
+            cy.findByLabelText("Filter value").type(id);
             cy.button("Add filter").click();
           });
 
@@ -701,7 +697,7 @@ describe("issue 42957", () => {
       },
     );
 
-    cy.get("@collectionId").then(collectionId => {
+    cy.get("@collectionId").then((collectionId) => {
       H.createQuestion({
         name: "Question",
         type: "question",
@@ -716,7 +712,22 @@ describe("issue 42957", () => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Collections").click();
 
-      cy.findByText("Collection without models").should("not.exist");
+      // wait for data to load
+      H.entityPickerModalLevel(1).should("contain", "Orders, Count");
+
+      // open filter
+      cy.findByRole("button", { name: /Filter/ }).click();
+    });
+
+    H.popover().findByLabelText("Saved questions").click();
+
+    H.entityPickerModal().within(() => {
+      // close filter
+      cy.findByRole("button", { name: /Filter/ }).click();
+      H.entityPickerModalLevel(1).should(
+        "not.contain",
+        "Collection without models",
+      );
     });
   });
 });
@@ -979,7 +990,7 @@ describe("issue 44415", () => {
   });
 
   it("should be able to edit a table question in the notebook editor before running its query (metabase#44415)", () => {
-    cy.get("@questionId").then(questionId =>
+    cy.get("@questionId").then((questionId) =>
       cy.visit(`/question/${questionId}/notebook`),
     );
 
@@ -994,7 +1005,7 @@ describe("issue 44415", () => {
     H.visualize();
 
     cy.findByTestId("qb-filters-panel").should("not.exist");
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.url().should("not.include", `/question/${questionId}`);
       cy.url().should("include", "question#");
     });
@@ -1134,11 +1145,11 @@ describe("issue 33441", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
     H.enterCustomColumnDetails({
-      formula: 'datetimeDiff([Created At] , now, "days")',
+      formula: 'datetimeDiff([Created At] , now(), "days")',
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Invalid expression").should("be.visible");
+      cy.findByText("Types are incompatible.").should("be.visible");
       cy.button("Done").should("be.disabled");
     });
   });
@@ -1325,7 +1336,7 @@ describe("issue 43057", () => {
     H.tableHeaderClick("Created At");
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
       cy.findByLabelText("Date").clear().type("November 18, 2024");
       cy.button("Add filter").click();
@@ -1520,7 +1531,7 @@ describe("issue 44668", () => {
       cy.findByText("Count").should("be.visible"); // y-axis
 
       // x-axis values
-      ["AK", "AL", "AR", "AZ", "CA"].forEach(state => {
+      ["AK", "AL", "AR", "AZ", "CA"].forEach((state) => {
         cy.findByText(state).should("be.visible");
       });
     });
@@ -1554,7 +1565,7 @@ describe("issue 44668", () => {
     H.queryBuilderMain()
       .findByLabelText("Legend")
       .within(() => {
-        ["68", "56", "49", "20", "90"].forEach(value => {
+        ["68", "56", "49", "20", "90"].forEach((value) => {
           cy.findByText(`abc_${value}`).should("exist");
         });
       });
@@ -1756,7 +1767,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       cy.log("populate result_metadata");
       cy.request("POST", `/api/card/${model.id}/query`);
       cy.log("map columns to database fields");
-      H.setModelMetadata(model.id, field => {
+      H.setModelMetadata(model.id, (field) => {
         if (field.name === fieldName) {
           return { ...field, id: fieldId, semantic_type: fieldSemanticType };
         }
@@ -1805,14 +1816,13 @@ describe("issue 45063", { tags: "@flaky" }, () => {
 
   function verifySearchFilter({
     fieldDisplayName,
+    fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
   }) {
     H.tableHeaderClick(fieldDisplayName);
     H.popover().findByText("Filter by this column").click();
-    H.popover()
-      .findByPlaceholderText(`Search by ${fieldDisplayName}`)
-      .type(fieldValueLabel);
+    H.popover().findByPlaceholderText(fieldPlaceholder).type(fieldValueLabel);
     H.selectDropdown().findByText(fieldValueLabel).click();
     cy.findByTestId("number-filter-picker")
       .click()
@@ -1827,6 +1837,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     visitCard,
     fieldId,
     fieldDisplayName,
+    fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
     expectedRowCount,
@@ -1844,7 +1855,12 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     setSearchValues({ fieldId });
     cy.signInAsNormalUser();
     visitCard();
-    verifySearchFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    verifySearchFilter({
+      fieldDisplayName,
+      fieldPlaceholder,
+      fieldValue,
+      fieldValueLabel,
+    });
     H.assertQueryBuilderRowCount(expectedRowCount);
   }
 
@@ -1860,6 +1876,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => H.visitQuestion("@questionId"),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
+        fieldPlaceholder: "Search by Name or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Hudson Borer",
         expectedRowCount: 1,
@@ -1872,6 +1889,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
+        fieldPlaceholder: "Search by Name or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Hudson Borer",
         expectedRowCount: 1,
@@ -1889,6 +1907,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
+        fieldPlaceholder: "Search by Name or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Hudson Borer",
         expectedRowCount: 1,
@@ -1911,6 +1930,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => H.visitQuestion("@questionId"),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "Product ID",
+        fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
         expectedRowCount: 93,
@@ -1923,6 +1943,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "Product ID",
+        fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
         expectedRowCount: 93,
@@ -1940,6 +1961,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "PRODUCT_ID",
+        fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
         expectedRowCount: 93,
@@ -1977,8 +1999,8 @@ describe("issue 41464", () => {
         url: "/api/dataset",
         middleware: true,
       },
-      req => {
-        req.on("response", res => {
+      (req) => {
+        req.on("response", (res) => {
           // Throttle the response to 50kbps
           res.setThrottle(50);
         });
@@ -2025,8 +2047,8 @@ describe.skip("issue 45359", () => {
     });
 
     cy.document()
-      .then(document => document.fonts.ready)
-      .then(fonts => {
+      .then((document) => document.fonts.ready)
+      .then((fonts) => {
         cy.wrap(fonts).invoke("check", "16px Lato").should("be.true");
       });
   });
@@ -2042,18 +2064,18 @@ describe("issue 45452", () => {
     H.openOrdersTable();
     H.summarize();
 
-    cy.findByTestId("summarize-aggregation-item-list").then($el => {
+    cy.findByTestId("summarize-aggregation-item-list").then(($el) => {
       const element = $el[0];
       expectNoScrollbarContainer(element);
     });
 
-    cy.findByTestId("summarize-breakout-column-list").then($el => {
+    cy.findByTestId("summarize-breakout-column-list").then(($el) => {
       const element = $el[0];
       expectNoScrollbarContainer(element);
     });
 
     // the sidebar is the only element with a scrollbar
-    cy.findByTestId("sidebar-content").then($el => {
+    cy.findByTestId("sidebar-content").then(($el) => {
       const element = $el[0];
       expect(element.scrollHeight > element.clientHeight).to.be.true;
       expect(element.offsetWidth > element.clientWidth).to.be.true;
@@ -2095,7 +2117,7 @@ describe("issue 41612", () => {
     H.queryBuilderHeader().button("Save").click();
     H.modal().button("Save").click();
 
-    cy.wait("@createQuestion").then(xhr => {
+    cy.wait("@createQuestion").then((xhr) => {
       const card = xhr.request.body;
       expect(card.visualization_settings["graph.metrics"]).to.deep.equal([
         "count",
@@ -2131,7 +2153,7 @@ describe("issue 36027", () => {
     };
 
     H.createQuestion({ query: BASE_QUERY }, { wrapId: true }).then(
-      baseQuestionId => {
+      (baseQuestionId) => {
         H.createQuestion(
           {
             display: "waterfall",
@@ -2181,7 +2203,7 @@ describe("issue 36027", () => {
 
       // x-axis values
       ["January 2023", "January 2024", "January 2025", "January 2026"].forEach(
-        state => {
+        (state) => {
           cy.findByText(state).should("be.visible");
         },
       );
@@ -2196,7 +2218,7 @@ describe("issue 36027", () => {
         "15,000",
         "18,000",
         "21,000",
-      ].forEach(state => {
+      ].forEach((state) => {
         cy.findByText(state).should("be.visible");
       });
     });
@@ -2213,7 +2235,7 @@ describe("issue 12586", () => {
     H.openOrdersTable();
     H.summarize();
 
-    cy.intercept("POST", "/api/dataset", req => req.destroy());
+    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
 
     H.rightSidebar().button("Done").click();
     H.main()
@@ -2268,15 +2290,16 @@ describe("issue 48829", () => {
     H.modal().should("not.exist");
   });
 
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter modal (metabase#48829)", () => {
+  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter picker (metabase#48829)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.queryBuilderHeader()
       .button(/Filter/)
       .click();
-    H.modal().within(() => {
+    H.popover().within(() => {
+      cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Apply filters").click();
+      cy.button("Apply filter").click();
     });
 
     H.queryBuilderHeader()
@@ -2359,8 +2382,8 @@ describe("issue 50038", () => {
       idAlias: "otherQuestionId",
     });
 
-    cy.get("@questionId").then(questionId => {
-      cy.get("@otherQuestionId").then(otherQuestionId => {
+    cy.get("@questionId").then((questionId) => {
+      cy.get("@otherQuestionId").then((otherQuestionId) => {
         H.createQuestion(
           {
             name: "Joined question",
@@ -2387,7 +2410,7 @@ describe("issue 50038", () => {
   });
 
   function assertEqualHeight(selector, otherSelector) {
-    selector.invoke("outerHeight").then(height => {
+    selector.invoke("outerHeight").then((height) => {
       otherSelector.invoke("outerHeight").should("eq", height);
     });
   }

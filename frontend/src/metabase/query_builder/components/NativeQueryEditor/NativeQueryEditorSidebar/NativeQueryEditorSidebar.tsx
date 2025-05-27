@@ -3,6 +3,8 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { isMac } from "metabase/lib/browser";
+import { getEngineNativeType } from "metabase/lib/engine";
+import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
 import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
@@ -47,6 +49,7 @@ interface NativeQueryEditorSidebarProps {
   toggleTemplateTagsEditor: () => void;
   toggleSnippetSidebar: () => void;
   onFormatQuery: () => void;
+  onGenerateQuery: (queryText: string) => void;
 }
 
 export const NativeQueryEditorSidebar = (
@@ -64,6 +67,7 @@ export const NativeQueryEditorSidebar = (
     snippets,
     features,
     onFormatQuery,
+    onGenerateQuery,
   } = props;
 
   // hide the snippet sidebar if there aren't any visible snippets/collections
@@ -78,16 +82,16 @@ export const NativeQueryEditorSidebar = (
     const command = nativeEditorSelectedText
       ? t`Run selected text`
       : t`Run query`;
-
     const shortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
-
     return command + " " + shortcut;
   };
 
+  const query = question.query();
   const canRunQuery = runQuery && cancelQuery;
-
   const engine = question.database?.()?.engine;
   const canFormatQuery = engine != null && canFormatForEngine(engine);
+  const canGenerateQuery =
+    engine != null && getEngineNativeType(engine) === "sql";
 
   return (
     <Box
@@ -119,6 +123,14 @@ export const NativeQueryEditorSidebar = (
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
+      {canGenerateQuery && (
+        <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
+          className={CS.mt3}
+          query={query}
+          selectedQueryText={nativeEditorSelectedText}
+          onGenerateQuery={onGenerateQuery}
+        />
+      )}
       {!!canRunQuery && (
         <RunButtonWithTooltip
           className={NativeQueryEditorSidebarS.RunButtonWithTooltipStyled}
@@ -127,7 +139,6 @@ export const NativeQueryEditorSidebar = (
           isDirty={isResultDirty}
           onRun={runQuery}
           onCancel={cancelQuery}
-          compact
           getTooltip={getTooltip}
         />
       )}

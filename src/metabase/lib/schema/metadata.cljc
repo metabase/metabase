@@ -50,7 +50,7 @@
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
-;;; in [[metabase.models.field-values]], [[metabase.models.params.chain-filter]],
+;;; in [[metabase.warehouse-schema.models.field-values]], [[metabase.parameters.chain-filter]],
 ;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
 ;;; those and then maybe you will understand what the hell is going on.
 
@@ -97,9 +97,9 @@
   (into [:enum] (sort column-has-field-values-options)))
 
 (mr/def ::column.remapping.external
-  "External remapping (Dimension) for a column. From the [[metabase.models.dimension]] with `type = external` associated
-  with a `Field` in the application database. See [[metabase.query-processor.middleware.add-dimension-projections]]
-  for what this means."
+  "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
+  external` associated with a `Field` in the application database.
+  See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
    [:lib/type [:= :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
@@ -109,10 +109,10 @@
    ;; from. e.g. if the column in question is `venues.category-id`, then this would be the ID of `categories.name`
    [:field-id ::lib.schema.id/field]])
 
-;;; Internal remapping (FieldValues) for a column. From [[metabase.models.dimension]] with `type = internal` and
-;;; the [[metabase.models.field-values]] associated with a `Field` in the application database.
-;;; See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.
 (mr/def ::column.remapping.internal
+  "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
+  internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
+  database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
    [:lib/type              [:= :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
@@ -200,7 +200,7 @@
    ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
    ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
    ;; the application database, look at the implementation for fetching a `:metadata/column`
-   ;; in [[metabase.lib.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
+   ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
    ;; provider doesn't add these keys.
    [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]])
@@ -231,15 +231,18 @@
    :metric])
 
 (mr/def ::type
+  "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a
+  separate table in the app DB, but now that they're a subtype of Card it's probably not important anymore, we can
+  probably just use `:metadata/card` here."
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
    :metadata/segment])
 
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
-  a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
-  pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
-  massaged into a sequence of [[::column]] metadata just yet. See [[metabase.lib.card/card-metadata-columns]] that
-  converts these as needed."
+  a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
+  converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
+  not quite massaged into a sequence of [[::column]] metadata just yet.
+  See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
   [:map
    {:error/message "Valid Card metadata"}
    [:lib/type    [:= :metadata/card]]
@@ -275,33 +278,19 @@
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-;;; converts these as needed.
 (mr/def ::metric
-  [:map
-   {:error/message "Valid metric metadata"}
-   [:lib/type    [:= :metadata/metric]]
-   [:id          ::lib.schema.id/metric]
-   [:name        ::lib.schema.common/non-blank-string]
-   [:database-id ::lib.schema.id/database]
-   ;; The definition.
-   [:dataset-query   {:optional true} :map]
-   ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
-   ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential :map]]]
-   ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
-   [:type        [:= :metric]]
-   ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
-   ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
-   [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]
-   ;;
-   ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
-   ;;
-   [:lib/persisted-info {:optional true} [:maybe [:ref ::persisted-info]]]
-   [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]])
+  "A V2 Metric! This a special subtype of a Card. Not convinced we really need this as opposed to just using `::card` --
+  see my notes on `::type`."
+  [:merge
+   ::card
+   [:map
+    [:lib/type [:= :metadata/metric]]
+    [:type     [:= :metric]]
+    [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::table
-  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
-  but with kebab-case keys."
+  "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
+  kebab-case keys."
   [:map
    {:error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]

@@ -76,7 +76,9 @@ describe("scenarios > public > question", () => {
       cy.wait("@publicQuery");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.get("@uuid").then(publicUuid => {
+      cy.get("@uuid").then((publicUuid) => {
+        H.main().realHover();
+
         H.downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUuid },
           H.assertSheetRowsCount(5),
@@ -96,7 +98,7 @@ describe("scenarios > public > question", () => {
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").should($input => {
+          cy.findByTestId("public-link-input").should(($input) => {
             expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
           });
           cy.findByText("Remove public URL").should("not.exist");
@@ -153,7 +155,7 @@ describe("scenarios > public > question", () => {
       },
     );
 
-    cy.get("@questionId").then(id => {
+    cy.get("@questionId").then((id) => {
       H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
@@ -183,7 +185,7 @@ describe("scenarios > public > question", () => {
           path: ["Our analytics"],
         },
       );
-      cy.get("@questionId").then(id => {
+      cy.get("@questionId").then((id) => {
         H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
           cy.signInAsNormalUser().then(() => {
@@ -217,14 +219,14 @@ describe("scenarios > question > public link with extension", () => {
   });
 
   it("should download a json file when a public link with .json is shared", () => {
-    downloadPublicFileURL("json", response => {
+    downloadPublicFileURL("json", (response) => {
       expect(response.body[0]).to.deep.eq({ ID: 1 });
     });
   });
 
-  ["csv", "xlsx"].forEach(fileType =>
+  ["csv", "xlsx"].forEach((fileType) =>
     it(`should download a ${fileType} file when a public link with .${fileType} is shared`, () => {
-      downloadPublicFileURL(fileType, response => {
+      downloadPublicFileURL(fileType, (response) => {
         const { SheetNames, Sheets } = xlsx.read(response.body, {
           type: "binary",
         });
@@ -273,7 +275,7 @@ describe("scenarios [EE] > public > question", () => {
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
     cy.intercept("/app/locales/de.json").as("deLocale");
 
-    cy.get("@questionId").then(id => {
+    cy.get("@questionId").then((id) => {
       H.visitPublicQuestion(id, {
         params: {
           some_parameter: "some_value",
@@ -293,13 +295,13 @@ describe("scenarios [EE] > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  cy.findByTestId("public-link-input").should($input => {
+  cy.findByTestId("public-link-input").should(($input) => {
     // Copied URL has no get params
     expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
   });
   cy.findByTestId("public-link-input")
     .invoke("val")
-    .then(publicURL => {
+    .then((publicURL) => {
       cy.signOut();
       cy.visit(publicURL);
     });
@@ -317,13 +319,13 @@ const downloadPublicFileURL = (fileType, validationCallback) => {
     new RegExp(`\\/public\\/question\\/.*\\.${fileType}`),
   );
 
-  cy.get("@publicUrl").then(url => {
+  cy.get("@publicUrl").then((url) => {
     cy.request({
       method: "GET",
       url: url,
       followRedirect: true,
       encoding: "binary",
-    }).then(response => {
+    }).then((response) => {
       validationCallback(response);
     });
   });

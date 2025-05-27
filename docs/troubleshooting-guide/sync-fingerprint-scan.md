@@ -34,7 +34,7 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
 
 ### Special cases
 
-If you’ve just set up a new database in Metabase, the initial sync query needs some time to kick off. If the sync hasn't started at all, try [Troubleshooting database connections](./db-connection.md).
+If you've just set up a new database in Metabase, the initial sync query needs some time to kick off. If the sync hasn't started at all, try [Troubleshooting database connections](./db-connection.md).
 
 **Explanation**
 
@@ -147,11 +147,11 @@ Metabase doesn't have a built-in option to trigger manual fingerprinting queries
 To speed up **syncs**:
 
 - Restrict the privileges used to connect to the database so that Metabase only syncs a limited subset of schemas or tables.
-- [Reduce the frequency of sync queries](../databases/sync-scan.md#scheduling-database-syncs).
+- [Reduce the frequency of sync queries](../databases/sync-scan.md#database-syncing).
 
 To speed up **scans**:
 
-- [Reduce the frequency of scans, or disable scans entirely](../databases/sync-scan.md#scheduling-database-scans).
+- [Reduce the frequency of scans, or disable scans entirely](../databases/sync-scan.md#scanning-for-filter-values).
 - Reduce the number of columns being scanned by going to **Admin** > **Table Metadata** and setting **Filtering on this field** to **Search box** or **Plain input box**.
 
 **Explanation**
@@ -166,7 +166,7 @@ Syncs and scans are ultimately just two kinds of queries that are run against yo
 
 ## Are you still stuck?
 
-If you can’t solve your problem using the troubleshooting guides:
+If you can't solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
 - Search for [known bugs or limitations](./known-issues.md).

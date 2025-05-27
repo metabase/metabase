@@ -54,7 +54,7 @@ export function getAllDashboardCardsWithUnmappedParameters({
       isQuestionDashCard(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
-        mapping => mapping.parameter_id === parameterId,
+        (mapping) => mapping.parameter_id === parameterId,
       ),
   );
 }
@@ -138,7 +138,7 @@ export function getParameterMappings<DC extends DashboardCard>(
   // allow mapping the same parameter to multiple action targets
   if (!isAction) {
     parameter_mappings = parameter_mappings.filter(
-      m =>
+      (m) =>
         ("card_id" in m && m.card_id !== card_id) ||
         m.parameter_id !== parameter_id,
     );
@@ -149,7 +149,7 @@ export function getParameterMappings<DC extends DashboardCard>(
       // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
       // can only be mapped to a single parameter.
       parameter_mappings = parameter_mappings.filter(
-        m => !_.isEqual(m.target, target),
+        (m) => !_.isEqual(m.target, target),
       );
     }
 

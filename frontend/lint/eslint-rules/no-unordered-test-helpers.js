@@ -42,7 +42,9 @@ module.exports = {
           if (node.callee.property.name === "restore") {
             currentScope.hasRestore = true;
           } else if (node.callee.property.name === "resetTestTable") {
-            const hasRestoreInHierarchy = stack.some(scope => scope.hasRestore);
+            const hasRestoreInHierarchy = stack.some(
+              (scope) => scope.hasRestore,
+            );
 
             if (!hasRestoreInHierarchy) {
               context.report({

@@ -109,7 +109,7 @@ const nativeQuestion = {
   visualization_settings: {},
 };
 
-const nestedQuestion = card => ({
+const nestedQuestion = (card) => ({
   display: "table",
   dataset_query: {
     database: SAMPLE_DB_ID,
@@ -121,7 +121,7 @@ const nestedQuestion = card => ({
   visualization_settings: {},
 });
 
-const nestedQuestionWithExpression = card => ({
+const nestedQuestionWithExpression = (card) => ({
   display: "table",
   dataset_query: {
     database: SAMPLE_DB_ID,
@@ -136,7 +136,7 @@ const nestedQuestionWithExpression = card => ({
   visualization_settings: {},
 });
 
-const nestedQuestionWithJoin = card => ({
+const nestedQuestionWithJoin = (card) => ({
   display: "table",
   dataset_query: {
     database: SAMPLE_DB_ID,
@@ -168,7 +168,7 @@ const nestedQuestionWithJoin = card => ({
   visualization_settings: {},
 });
 
-const nestedQuestionWithJoinAndFields = card => ({
+const nestedQuestionWithJoinAndFields = (card) => ({
   display: "table",
   dataset_query: {
     database: SAMPLE_DB_ID,
@@ -200,7 +200,7 @@ const nestedQuestionWithJoinAndFields = card => ({
   visualization_settings: {},
 });
 
-const nestedQuestionWithAggregations = card => ({
+const nestedQuestionWithAggregations = (card) => ({
   display: "table",
   dataset_query: {
     database: SAMPLE_DB_ID,

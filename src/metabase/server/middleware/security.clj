@@ -4,10 +4,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.config :as config]
-   [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.analytics.core :as analytics]
+   [metabase.config.core :as config]
+   [metabase.embedding.settings :as embedding.settings]
    [metabase.request.core :as request]
+   [metabase.server.settings :as server.settings]
+
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -119,7 +122,7 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
-                                  (when (public-settings/anon-tracking-enabled)
+                                  (when (analytics/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
@@ -147,7 +150,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
+                  :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
@@ -157,7 +160,7 @@
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics
-                                 (when (public-settings/anon-tracking-enabled)
+                                 (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
@@ -225,12 +228,14 @@
   [origin enabled? approved-origins]
   (when enabled?
     (merge
-     (when (approved-origin? origin (if enabled? approved-origins "localhost:*"))
+     (when (approved-origin? origin approved-origins)
        {"Access-Control-Allow-Origin" origin
         "Vary"                        "Origin"})
      {"Access-Control-Allow-Headers"  "*"
       "Access-Control-Allow-Methods"  "*"
-      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"})))
+      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"
+      ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
+      "Access-Control-Max-Age"  "60"})))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
@@ -242,7 +247,7 @@
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                           (setting/get-value-of-type :string :embedding-app-origins-sdk))
+                           (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
@@ -259,7 +264,7 @@
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         ((:headers request) "origin")
+                                            :origin         (get (:headers request) "origin")
                                             :nonce          (:nonce request)
                                             :allow-iframes? ((some-fn request/public? request/embed?) request)
                                             :allow-cache?   (request/cacheable? request))))

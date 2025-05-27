@@ -549,14 +549,14 @@ describe("useReferencedCardCompletion", () => {
 
   function setup({
     results = MOCK_RESULTS,
-    cardIds = results.map(card => card.id).filter(isNotNull),
+    cardIds = results.map((card) => card.id).filter(isNotNull),
   }: {
     results?: Partial<Card>[];
     cardIds?: number[];
   } = {}) {
     for (const id of cardIds) {
       const url = `path:/api/card/${id}`;
-      const card = results.find(card => card.id === id);
+      const card = results.find((card) => card.id === id);
       fetchMock.get(url, {
         status: 200,
         body: card,
@@ -597,8 +597,8 @@ describe("useReferencedCardCompletion", () => {
       from: 7,
       validFor: expect.any(Function),
       options: [
-        { label: "Foobar", detail: "Referenced Question :type/Text" },
-        { label: "Bar", detail: "Referenced Question :type/Text" },
+        { label: "Foobar", detail: "Referenced Question varchar" },
+        { label: "Bar", detail: "Referenced Question varchar" },
       ],
     });
 
@@ -613,8 +613,8 @@ describe("useReferencedCardCompletion", () => {
       to: 10,
       validFor: expect.any(Function),
       options: [
-        { label: "Foobar", detail: "Referenced Question :type/Text" },
-        { label: "Bar", detail: "Referenced Question :type/Text" },
+        { label: "Foobar", detail: "Referenced Question varchar" },
+        { label: "Bar", detail: "Referenced Question varchar" },
       ],
     });
     expect(fetchMock.calls(url)).toHaveLength(1);

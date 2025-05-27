@@ -1,26 +1,20 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
-  [[metabase.dashboard-subscription-test]]."
+  [[metabase.pulse.dashboard-subscription-test]]."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.channel.email :as email]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.integrations.slack :as slack]
-   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.retry :as retry]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -135,7 +129,8 @@
                          ((keyword "channel" (name channel-type))
                           (pulse.test-util/with-captured-channel-send-messages!
                             (mt/with-temporary-setting-values [site-url "https://testmb.com"]
-                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                              (notification.tu/with-javascript-visualization-stub
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))))))
                     (thunk []
                       (if fixture
                         (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
@@ -329,20 +324,20 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-temporary-setting-values [limit/attachment-row-limit 30]
+        (mt/with-temporary-setting-values [attachment-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert
       {:email
        (fn [_ [email]]
-         (is (= true (some? email))
+         (is (true? (some? email))
              "Should have a message in the inbox")
          (when email
            (let [filename (-> email :message last :content)
                  exists?  (some-> filename io/file .exists)]
              (testing "File should exist"
-               (is (= true
-                      exists?)))
+               (is (true?
+                    exists?)))
              (testing (str "tmp file = %s" filename)
                (testing "Slurp in the generated CSV and count the lines found in the file"
                  (when exists?
@@ -561,22 +556,22 @@
         goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
     (testing "Progress bar"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+        (testing "value below goal"  (is (false? (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (true? (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (true? (goal-met? alert-above-pulse (progress-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+        (testing "value below goal"  (is (true? (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (false? (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (false? (goal-met? alert-below-pulse (progress-result 6)))))))
     (testing "Timeseries"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+        (testing "value below goal"  (is (false? (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (true? (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (true? (goal-met? alert-above-pulse (timeseries-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+        (testing "value below goal"  (is (true? (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (false? (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (false? (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
@@ -619,181 +614,6 @@
          (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
          (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
          (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe")))))))
-
-(defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
-  (let [metrics (bean (.getMetrics retry))]
-    (into {}
-          (map (fn [field]
-                 (let [n (metrics field)]
-                   (when (pos? n)
-                     [field n]))))
-          [:numberOfFailedCallsWithRetryAttempt
-           :numberOfFailedCallsWithoutRetryAttempt
-           :numberOfSuccessfulCallsWithRetryAttempt
-           :numberOfSuccessfulCallsWithoutRetryAttempt])))
-
-(def ^:private fake-email-notification
-  {:subject      "test-message"
-   :recipients   ["whoever@example.com"]
-   :message-type :text
-   :message      "test message body"})
-
-(defn ^:private test-retry-configuration
-  []
-  (assoc (#'retry/retry-configuration)
-         :initial-interval-millis 1
-         :max-attempts 2))
-
-(deftest email-notification-retry-test
-  (testing "send email succeeds w/o retry"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-      (with-redefs [email/send-email!                      mt/fake-inbox-email-fn
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 1 (count @mt/inbox)))))))
-  (testing "send email succeeds hiding SMTP host not set error"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-      (with-redefs [email/send-email!                      (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 0 (count @mt/inbox)))))))
-  (testing "send email fails b/c retry limit"
-    (let [retry-config (assoc (test-retry-configuration) :max-attempts 1)
-          test-retry (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfFailedCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 0 (count @mt/inbox)))))))
-  (testing "send email succeeds w/ retry"
-    (let [retry-config (assoc (test-retry-configuration) :max-attempts 2)
-          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 1 (count @mt/inbox))))))))
-
-(def ^:private fake-slack-notification
-  {:channel-id  "#test-channel"
-   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
-
-(deftest slack-notification-retry-test
-  (notification.tu/with-send-notification-sync
-    (testing "post slack message succeeds w/o retry"
-      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-        (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
-                      slack/post-chat-message!               (constantly nil)]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))
-    (testing "post slack message succeeds hiding token error"
-      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-        (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
-                      slack/post-chat-message!               (fn [& _]
-                                                               (throw (ex-info "Invalid token"
-                                                                               {:errors {:slack-token "Invalid token"}})))]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))
-    (testing "post slack message fails b/c retry limit"
-      (let [retry-config (assoc (test-retry-configuration) :max-attempts 1)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
-                      retry/random-exponential-backoff-retry (constantly test-retry)]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfFailedCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))
-    (testing "post slack message succeeds with retry"
-      (let [retry-config (assoc (test-retry-configuration) :max-attempts 2)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
-                      retry/random-exponential-backoff-retry (constantly test-retry)]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))))
-
-(defn- latest-task-history-entry
-  [task-name]
-  (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
-                    :model/TaskHistory
-                    {:order-by [[:started_at :desc]]
-                     :where [:= :task (name task-name)]}))
-
-(deftest send-channel-record-task-history-test
-  (with-redefs [notification.send/default-retry-config {:max-attempts            4
-                                                        :initial-interval-millis 1
-                                                        :multiplier              2.0
-                                                        :randomization-factor    0.1
-                                                        :max-interval-millis     30000}]
-    (mt/with-model-cleanup [:model/TaskHistory]
-      (let [pulse-id             (rand-int 10000)
-            default-task-details {:notification_id pulse-id
-                                  :notification_type "notification/card"
-                                  :channel_type "channel/slack"
-                                  :channel_id   nil
-                                  :retry_config {:max-attempts            4
-                                                 :initial-interval-millis 1
-                                                 :multiplier              2.0
-                                                 :randomization-factor    0.1
-                                                 :max-interval-millis     30000}}
-            send!                #(#'notification.send/channel-send-retrying! pulse-id :notification/card {:channel_type :channel/slack} fake-slack-notification)]
-        (testing "channel send task history task details include retry config"
-          (with-redefs [channel/send! (constantly true)]
-            (send!)
-            (is (=? {:task         "channel-send"
-                     :db_id        nil
-                     :status       :success
-                     :task_details default-task-details}
-                    (latest-task-history-entry :channel-send)))))
-
-        (testing "retry errors are recorded when the task eventually succeeds"
-          (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]
-            (send!)
-            (is (=? {:task         "channel-send"
-                     :db_id        nil
-                     :status       :success
-                     :task_details (merge default-task-details
-                                          {:attempted_retries 2
-                                           :retry_errors      (mt/malli=?
-                                                               [:sequential {:min 2 :max 2}
-                                                                [:map
-                                                                 [:message :string]
-                                                                 [:timestamp :string]]])})}
-                    (latest-task-history-entry :channel-send)))))
-
-        (testing "retry errors are recorded when the task eventually fails"
-          (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
-            (send!)
-            (is (=? {:task         "channel-send"
-                     :db_id        nil
-                     :status       :failed
-                     :task_details {:original-info     default-task-details
-                                    :attempted_retries 4
-                                    :retry_errors      (mt/malli=?
-                                                        [:sequential {:min 4 :max 4}
-                                                         [:map
-                                                          [:message :string]
-                                                          [:timestamp :string]]])}}
-                    (latest-task-history-entry :channel-send)))))))))
 
 (deftest partial-channel-failure-will-deliver-all-that-success-test
   (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"

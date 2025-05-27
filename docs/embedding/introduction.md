@@ -41,7 +41,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Action                                                                                                                          | [Embedded analytics SDK](./sdk/introduction.md) | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../embedding/public-links.md) |
 | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------- | ------------------------------- | -------------------------------------- |
 | Display charts and dashboards                                                                                                   | ✅                                              | ✅                                        | ✅                              | ✅                                     |
-| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                                           | ✅                                              | ✅                                        | ✅                              | ✅                                     |
+| Display interactive [filter widgets](https://www.metabase.com/glossary/filter-widget)                                           | ✅                                              | ✅                                        | ✅                              | ✅                                     |
 | Export results\*                                                                                                                | ✅                                              | ✅                                        | ✅                              | ✅                                     |
 | Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters) | ❌                                              | ❌                                        | ✅                              | ❌                                     |
 | Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                                                | ✅                                              | ✅                                        | ❌                              | ❌                                     |
@@ -52,7 +52,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Embed individual Metabase components                                                                                            | ✅                                              | ❌                                        | ❌                              | ❌                                     |
 | Manage access and interactivity per component                                                                                   | ✅                                              | ❌                                        | ❌                              | ❌                                     |
 
-\* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
+\* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
 ## Switching from static to interactive embedding
 

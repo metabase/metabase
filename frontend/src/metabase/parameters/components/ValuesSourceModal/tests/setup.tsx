@@ -75,7 +75,7 @@ export const setup = async ({
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections: [rootCollection] });
     setupCardsEndpoints(cards);
-    cards.forEach(card =>
+    cards.forEach((card) =>
       setupTableQueryMetadataEndpoint(
         createMockTable({
           id: `card__${card.id}`,

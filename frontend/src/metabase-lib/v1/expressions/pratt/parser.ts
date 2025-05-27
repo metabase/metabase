@@ -1,194 +1,54 @@
 import { t } from "ttag";
 
-import { OPERATOR, TOKEN, tokenize } from "../tokenizer";
+import { CompileError } from "../errors";
+import type { Hooks } from "../types";
 
 import {
   ADD,
   ARG_LIST,
   BAD_TOKEN,
-  BOOLEAN,
   CALL,
-  COMMA,
-  COMPARISON,
   END_OF_INPUT,
-  EQUALITY,
-  FIELD,
   GROUP,
-  GROUP_CLOSE,
-  IDENTIFIER,
-  LOGICAL_AND,
-  LOGICAL_NOT,
-  LOGICAL_OR,
-  MULDIV_OP,
   NEGATIVE,
-  NUMBER,
   ROOT,
-  STRING,
   SUB,
-  WS,
 } from "./syntax";
-import type { Hooks, Node, NodeType, Token } from "./types";
-import { CompileError, assert } from "./types";
+import type { Node, NodeType, Token } from "./types";
+import { assert } from "./types";
 
 interface ParserOptions {
-  hooks?: Hooks;
   maxIterations?: number;
-  throwOnError?: boolean;
+  hooks?: Hooks;
 }
 
-interface ParserResult {
-  root: Node;
-  errors: CompileError[];
-}
+const DEFAULT_HOOKS: Hooks = {
+  error(error) {
+    throw error;
+  },
+};
 
-export function lexify(expression: string) {
-  const lexs: Token[] = [];
-
-  const { tokens, errors } = tokenize(expression);
-  if (errors && errors.length > 0) {
-    errors.forEach(error => {
-      const { pos } = error;
-
-      if (typeof pos === "number") {
-        lexs.push({ type: BAD_TOKEN, text: expression[pos], length: 1, pos });
-      }
-    });
-  }
-
-  let start = 0;
-  for (let i = 0; i < tokens.length; ++i) {
-    const token = tokens[i];
-    if (start < token.start) {
-      lexs.push({
-        type: WS,
-        text: expression.slice(start, token.start),
-        length: token.start - start,
-        pos: start,
-      });
-    }
-    start = token.end;
-    let text = expression.slice(token.start, token.end);
-    const pos = token.start;
-    let length = token.end - token.start;
-    let type = BAD_TOKEN;
-    switch (token.type) {
-      case TOKEN.Number:
-        type = NUMBER;
-        break;
-      case TOKEN.String:
-        type = STRING;
-        break;
-      case TOKEN.Identifier:
-        type = text[0] === "[" ? FIELD : IDENTIFIER;
-        break;
-      case TOKEN.Boolean:
-        type = BOOLEAN;
-        break;
-      case TOKEN.Operator:
-        switch (token.op) {
-          case OPERATOR.Comma:
-            type = COMMA;
-            break;
-          case OPERATOR.OpenParenthesis:
-            type = GROUP;
-            break;
-          case OPERATOR.CloseParenthesis:
-            type = GROUP_CLOSE;
-            break;
-          case OPERATOR.Plus:
-            type = ADD;
-            break;
-          case OPERATOR.Minus:
-            type = SUB;
-            break;
-          case OPERATOR.Star:
-          case OPERATOR.Slash:
-            type = MULDIV_OP;
-            break;
-          case OPERATOR.Equal:
-          case OPERATOR.NotEqual:
-            type = EQUALITY;
-            break;
-          case OPERATOR.LessThan:
-          case OPERATOR.GreaterThan:
-          case OPERATOR.LessThanEqual:
-          case OPERATOR.GreaterThanEqual:
-            type = COMPARISON;
-            break;
-          case OPERATOR.Not:
-            type = LOGICAL_NOT;
-            break;
-          case OPERATOR.And:
-            type = LOGICAL_AND;
-            break;
-          case OPERATOR.Or:
-            type = LOGICAL_OR;
-            break;
-          default:
-            break;
-        }
-        break;
-    }
-
-    if (type === IDENTIFIER) {
-      const next = tokens[i + 1];
-      if (
-        next &&
-        next.type === TOKEN.Operator &&
-        next.op === OPERATOR.OpenParenthesis
-      ) {
-        type = CALL;
-        length = next.start - token.start;
-        text = expression.slice(token.start, next.start);
-        start = next.start;
-      }
-    }
-
-    lexs.push({ type, text, length, pos });
-  }
-
-  // This simplifies the parser
-  lexs.push({
-    type: END_OF_INPUT,
-    text: "\n",
-    length: 1,
-    pos: expression.length,
-  });
-
-  return lexs.sort((a, b) => a.pos - b.pos);
-}
-
-export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
-  const { maxIterations = 1000000, hooks = {}, throwOnError = false } = opts;
-  const errors: CompileError[] = [];
+export function parse(tokens: Token[], opts: ParserOptions = {}): Node {
+  const { maxIterations = 1000000, hooks = DEFAULT_HOOKS } = opts;
   let counter = 0;
-  const root = createASTNode(null, null, ROOT, counter);
-  root.isRoot = true;
+  const root = createASTNode(null, null, ROOT);
+
+  function error(message: string, node?: Node) {
+    const error = new CompileError(message, node);
+    hooks?.error?.(error);
+  }
 
   let node = root;
-  hooks.onCreateNode?.(tokens[0], node);
   for (
     let index = 0;
     index < tokens.length && counter < maxIterations;
     index++
   ) {
     const token = tokens[index];
-    hooks.onIteration?.(token, node);
 
-    if (token.type.skip) {
-      hooks.onSkipToken?.(token, node);
-      continue;
-    }
     if (token.type === BAD_TOKEN) {
-      const err = new CompileError(t`Unexpected token "${token.text}"`, {
-        node,
-        token,
-      });
-      hooks.onBadToken?.(token, node, err);
-      if (throwOnError) {
-        throw err;
-      }
-      errors.push(err);
+      error(t`Unexpected token "${token.text}"`, node);
+
       // If we don't throw on error, we skip the bad token
       continue;
     }
@@ -212,9 +72,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
           token,
           node.parent,
           getASType(token.type, node.parent.type),
-          counter,
         );
-        hooks.onReparentNode?.(token, node);
       } else {
         // If we don't need to reparent, we decrement the token index. This is
         // because we iterate several times for each node, first to create it
@@ -224,64 +82,46 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
 
       // Place the node in its parent children and get the next "active" node
       // which is node.parent
-      node = place(node, errors, opts);
+      node = place(node, error);
       if (node.children.length === node.type.expectedChildCount) {
         node.complete = true;
-        hooks.onCompleteNode?.(token, node);
       }
     } else if (token.type.isTerminator) {
-      hooks.onTerminatorToken?.(token, node);
       // Terminator tokens like `]`, `)` or end of input will complete a node if
       // they match the type's `requiresTerminator`
       if (node.type.requiresTerminator === token.type) {
         node.complete = true;
-        hooks.onCompleteNode?.(token, node);
       } else if (node.type.ignoresTerminator.indexOf(token.type) === -1) {
         // If the current token isn't in the list of the AST type's ignored
         // tokens and it's not the terminator the current node requires, we'll
         // throw an error
-        const err = new CompileError(t`Expected expression`, { node, token });
-        hooks.onUnexpectedTerminator?.(token, node, err);
-        if (throwOnError) {
-          throw err;
-        }
-        errors.push(err);
+        error(t`Expected expression`, node);
 
         if (token.type === END_OF_INPUT) {
           // We complete and reparent/place the final node by running the for
           // loop one last time
           if (!node.complete) {
             node.complete = true;
-            hooks.onCompleteNode?.(token, node);
             index--;
           }
         }
       }
     } else if (token.type.leftOperands !== 0) {
-      // Subtraction is a special case because it might actually be negation
       if (token.type === SUB) {
-        node = createASTNode(token, node, NEGATIVE, counter);
-        hooks.onCreateNode?.(token, node);
+        // Subtraction is a special case because it might actually be negation
+        // ie. -42
+        node = createASTNode(token, node, NEGATIVE);
+      } else if (token.type === ADD) {
+        // Addition is a special case because it might actually be just a unary plus
+        // ie. +42
+        continue;
       } else {
-        const err = new CompileError(t`Expected expression`, {
-          token,
-        });
-        hooks.onMissinChildren?.(token, node, err);
-        if (throwOnError) {
-          throw err;
-        }
-        errors.push(err);
+        error(t`Expected expression`, node);
       }
     } else {
       // Create the AST node. It will be marked as complete if the node doesn't
       // expect any children (like a literal or identifier)
-      node = createASTNode(
-        token,
-        node,
-        getASType(token.type, node.type),
-        counter,
-      );
-      hooks.onCreateNode?.(token, node);
+      node = createASTNode(token, node, getASType(token.type, node.type));
     }
     counter += 1;
   }
@@ -292,24 +132,15 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
 
   const childViolation = ROOT.checkChildConstraints(root);
   if (childViolation !== null) {
-    const err = new CompileError(t`Unexpected token`, {
-      node: root,
-      ...childViolation,
-    });
-    hooks.onChildConstraintViolation?.(node, err);
-    if (throwOnError) {
-      throw err;
-    }
-    errors.push(err);
+    error(t`Unexpected token`, node);
   }
-  return { root, errors };
+  return root;
 }
 
 function createASTNode(
   token: Token | null,
   parent: Node | null,
   type: NodeType,
-  counter: number,
 ): Node {
   return {
     type,
@@ -317,29 +148,18 @@ function createASTNode(
     complete: type.expectedChildCount === 0,
     parent,
     token,
-    resolvedType: type.resolvesAs ? type.resolvesAs : counter,
   };
 }
 
-function place(node: Node, errors: CompileError[], opts: ParserOptions) {
-  const { hooks = {}, throwOnError = false } = opts;
+function place(node: Node, error: (message: string, node?: Node) => void) {
   const { type, parent } = node;
 
   const childViolation = type.checkChildConstraints(node);
   if (childViolation !== null) {
-    const err = new CompileError(t`Unexpected token`, {
-      node,
-      ...childViolation,
-    });
-    hooks.onChildConstraintViolation?.(node, err);
-    if (throwOnError) {
-      throw err;
-    }
-    errors.push(err);
+    error(t`Unexpected token`, node);
   }
   assert(parent, "Tried to place a node without a parent", node);
   parent.children.push(node);
-  hooks.onPlaceNode?.(node, parent);
   return parent;
 }
 

@@ -27,7 +27,7 @@ describe("issue 43075", () => {
     H.popover().findByText("Break out by…").click();
     H.popover().findByText("Category").click();
 
-    cy.window().then(win => {
+    cy.window().then((win) => {
       expect(win.document.documentElement.scrollHeight).to.be.lte(
         win.document.documentElement.offsetHeight,
       );
@@ -278,5 +278,130 @@ describe("issue 51952", () => {
     cy.findByTestId("settings-CREATED_AT").click();
     H.popover().findByText("Abbreviate days and months").click();
     H.echartsContainer().findByText("Jan 2024");
+  });
+});
+
+describe("issue 55880", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render scatter plot with native query data", () => {
+    H.visitQuestionAdhoc({
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+      },
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select * from (
+  select 1415 x, 1 y
+  union all select 20, 2
+  union all select 900, 3
+  union all select 115, 4
+) as subquery
+where x < {{param}}`,
+          "template-tags": {
+            param: {
+              type: "number",
+              name: "param",
+              id: "144103a1-ebd4-4477-a7fa-f08cfd808d5e",
+              "display-name": "Param",
+              required: true,
+              default: "30",
+            },
+          },
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+    });
+
+    // Renders a scatter chart with numeric x-axis
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 1);
+    H.echartsContainer().findByText("20");
+
+    H.saveQuestion("55880");
+
+    // Change filter value so values include numbers that can be parsed as valid dates
+    cy.findByPlaceholderText("Param").clear().type("1500");
+    H.runNativeQuery();
+
+    // Still renders a scatter chart with numeric x-axis
+    H.echartsContainer().findByText("1,500");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+  });
+});
+
+describe("issue 47757", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show correct tooltips for interpolated data points (metabase#47757)", () => {
+    H.visitQuestionAdhoc({
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+        series_settings: { Y: { "line.missing": "zero" } },
+      },
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select '2020-01-01' x, 10 y
+union all select '2020-03-01' x, 30 y
+union all select '2020-04-01' x, 40 y`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(0).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "January 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 10,
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(1).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "February 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 0,
+          secondaryValue: "-100%",
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(2).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "March 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 30,
+          secondaryValue: "+∞%",
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
   });
 });

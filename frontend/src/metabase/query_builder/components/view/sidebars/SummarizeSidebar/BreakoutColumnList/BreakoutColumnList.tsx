@@ -4,6 +4,7 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { isNotNull } from "metabase/lib/types";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
@@ -43,7 +44,8 @@ export function BreakoutColumnList({
     () =>
       breakouts
         .slice(0, pinnedItemCount)
-        .map(breakout => getBreakoutListItem(query, stageIndex, breakout)),
+        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
+        .filter(isNotNull),
     [query, stageIndex, breakouts, pinnedItemCount],
   );
 
@@ -55,7 +57,7 @@ export function BreakoutColumnList({
   const unpinnedColumns = useMemo(
     () =>
       allColumns.filter(
-        column => !isPinnedColumn(query, stageIndex, column, pinnedItemCount),
+        (column) => !isPinnedColumn(query, stageIndex, column, pinnedItemCount),
       ),
     [query, stageIndex, allColumns, pinnedItemCount],
   );
@@ -136,7 +138,7 @@ export function BreakoutColumnList({
       )}
       <DelayGroup>
         <ul data-testid="unpinned-dimensions">
-          {sections.map(section => (
+          {sections.map((section) => (
             <li key={section.name}>
               <Box className={BreakoutColumnListS.ColumnGroupName}>
                 {section.name}

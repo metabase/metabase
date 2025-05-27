@@ -6,7 +6,7 @@ import { SetupCardContainer } from "../SetupCardContainer";
 
 export const DatabaseHelp = (): JSX.Element => {
   const engine = useSelector(getDatabaseEngine);
-  const isStepActive = useSelector(state =>
+  const isStepActive = useSelector((state) =>
     getIsStepActive(state, "db_connection"),
   );
   const isVisible = isStepActive && engine != null;

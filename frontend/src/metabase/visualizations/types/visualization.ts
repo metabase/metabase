@@ -15,7 +15,7 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Query from "metabase-lib/v1/queries/Query";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   Dashboard,
@@ -100,6 +100,7 @@ export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   renderingContext: RenderingContext;
   isStorybook?: boolean;
+  hasDevWatermark?: boolean;
 }
 
 export interface VisualizationProps {
@@ -111,35 +112,43 @@ export interface VisualizationProps {
   data: DatasetData;
   metadata?: Metadata;
   rawSeries: RawSeries;
+  visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
   actionButtons?: ReactNode;
   fontFamily: string;
-  isPlaceholder?: boolean;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
   isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  isRawTable?: boolean;
+  scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
+  queryBuilderMode?: QueryBuilderMode;
+  uuid?: string;
+  token?: string;
 
   gridSize?: VisualizationGridSize;
   width: number;
   height: number;
 
-  visualizationIsClickable: (clickObject?: ClickObject) => boolean;
-  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
+  visualizationIsClickable: (clickObject: ClickObject | null) => boolean;
+  getExtraDataForClick?: (
+    clickObject: ClickObject | null,
+  ) => Record<string, unknown>;
 
   onRender: ({
     yAxisSplit,
@@ -152,7 +161,7 @@ export interface VisualizationProps {
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
-  onVisualizationClick: (clickObject?: ClickObject) => void;
+  onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
     settings: VisualizationSettings,
     question?: Question,
@@ -161,12 +170,16 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
 
-  canRemoveSeries?: (seriesIndex: number) => boolean;
   canToggleSeriesVisibility?: boolean;
-  onRemoveSeries?: (event: MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 
   dispatch: Dispatch;
+
+  /**
+   * Items that will be shown in a menu when the title is clicked.
+   * Used for visualizer cards to jump to underlying questions
+   */
+  titleMenuItems?: React.ReactNode;
 }
 
 export type VisualizationPassThroughProps = {
@@ -203,12 +216,15 @@ export type VisualizationPassThroughProps = {
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
 
-  // frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx
-  canRemoveSeries?: (seriesIndex: number) => boolean;
   showAllLegendItems?: boolean;
-  onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
 
   onHeaderColumnReorder?: (columnName: string) => void;
+
+  /**
+   * Items that will be shown in a menu when the title is clicked.
+   * Used for visualizer cards to jump to underlying questions
+   */
+  titleMenuItems?: React.ReactNode;
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -292,10 +308,11 @@ export type Visualization = React.ComponentType<
 export type VisualizationDefinition = {
   name?: string;
   noun?: string;
-  uiName: string;
+  getUiName: () => string;
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
+  hasEmptyState?: boolean;
 
   maxMetricsSupported?: number;
   maxDimensionsSupported?: number;
@@ -306,14 +323,12 @@ export type VisualizationDefinition = {
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
-  supportsSeries?: boolean;
+  supportsVisualizer?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
 
   settings: VisualizationSettingsDefinitions;
-
-  placeHolderSeries?: Series;
 
   transformSeries?: (series: Series) => TransformedSeries;
   isSensible: (data: DatasetData) => boolean;
@@ -321,9 +336,8 @@ export type VisualizationDefinition = {
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,
-    query?: Query | null,
+    query?: NativeQuery | null,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
-  placeholderSeries: RawSeries;
 };

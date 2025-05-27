@@ -99,7 +99,7 @@ const buildAccessPermission = (
       groupId,
       undefined,
     ),
-    ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
+    ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map((confirmation) =>
       confirmation(permissions, groupId, entityId, newValue),
     ),
     getRevokingAccessToAllTablesWarningModal(

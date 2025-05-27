@@ -30,7 +30,9 @@ import {
 } from "../selectors";
 
 const emptyStateData = {
-  message: t`Fields in this table will appear here as they're added`,
+  get message() {
+    return t`Fields in this table will appear here as they're added`;
+  },
   icon: "fields",
 };
 
@@ -66,12 +68,13 @@ const propTypes = {
   setError: PropTypes.func.isRequired,
   updateField: PropTypes.func.isRequired,
   user: PropTypes.object.isRequired,
+  table: PropTypes.object.isRequired,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
   onSubmit: PropTypes.func,
 };
 
-const SegmentFieldList = props => {
+const SegmentFieldList = (props) => {
   const {
     segment,
     style,
@@ -80,6 +83,7 @@ const SegmentFieldList = props => {
     loadingError,
     loading,
     user,
+    table,
     isEditing,
     startEditing,
     endEditing,
@@ -94,16 +98,16 @@ const SegmentFieldList = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields =>
+    onSubmit: (fields) =>
       onSubmit(entities, fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
 
-  const getNestedFormField = id => ({
+  const getNestedFormField = (id) => ({
     display_name: getFormField(`${id}.display_name`),
     semantic_type: getFormField(`${id}.semantic_type`),
     fk_target_field_id: getFormField(`${id}.fk_target_field_id`),
@@ -159,12 +163,13 @@ const SegmentFieldList = props => {
                 </div>
                 <List>
                   {Object.values(entities).map(
-                    entity =>
+                    (entity) =>
                       entity &&
                       entity.id &&
                       entity.name && (
                         <li className={CS.relative} key={entity.id}>
                           <Field
+                            databaseId={table.db_id}
                             field={entity}
                             foreignKeys={foreignKeys}
                             url={`/reference/segments/${segment.id}/fields/${entity.id}`}

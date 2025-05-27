@@ -20,7 +20,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(database => (
+      {data.map((database) => (
         <div key={database.id}>{database.name}</div>
       ))}
     </div>

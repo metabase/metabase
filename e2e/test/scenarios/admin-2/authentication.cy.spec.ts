@@ -10,7 +10,7 @@ describe("scenarios > admin > settings > authentication", () => {
 
   describe("page layout", () => {
     describe("oss", { tags: "@OSS" }, () => {
-      it("should implement a tab layout for oss customers", () => {
+      it("should not implement a tab layout for oss customers", () => {
         cy.visit("/admin/settings/authentication");
 
         cy.log(
@@ -26,9 +26,7 @@ describe("scenarios > admin > settings > authentication", () => {
         cy.findByRole("tab").should("not.exist");
         // no tabs on api keys
         cy.visit("/admin/settings/authentication/api-keys");
-        H.main().within(() => {
-          cy.findByText("Manage API Keys");
-        });
+        cy.findByTestId("admin-layout-content").findByText("Manage API Keys");
         cy.findByRole("tab").should("not.exist");
       });
     });
@@ -77,9 +75,14 @@ describe("scenarios > admin > settings > user provisioning", () => {
   describe("oss", { tags: "@OSS" }, () => {
     it("user provisioning page should not be availble for OSS customers", () => {
       cy.visit("/admin/settings/authentication/user-provisioning");
-      H.main().within(() => {
-        cy.findByText("We're a little lost...");
-      });
+
+      // falls back to the authentication page
+      cy.findByTestId("google-setting").should("be.visible");
+      cy.findByTestId("ldap-setting").should("be.visible");
+      cy.findByTestId("api-keys-setting").should("be.visible");
+
+      // no EE auth providers
+      cy.findByTestId("saml-setting").should("not.exist");
     });
   });
 
@@ -122,7 +125,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         // save to compare with masked token
         scimTokenInput()
           .invoke("val")
-          .then(val => (initialUnmaskedToken = String(val)));
+          .then((val) => (initialUnmaskedToken = String(val)));
         cy.findAllByRole("button", { name: /Done/ }).click();
       });
 
@@ -138,7 +141,9 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(initialUnmaskedToken.slice(0, 7)));
+        .then((val) =>
+          expect(val).to.contain(initialUnmaskedToken.slice(0, 7)),
+        );
 
       cy.log("should be able to regenerate a token");
       cy.findByRole("button", { name: /Regenerate/ }).click();
@@ -155,7 +160,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
           .invoke("val")
           .should("not.contain", "Loading")
           .should("not.contain", "****************************************")
-          .then(val => (regeneratedToken = String(val)));
+          .then((val) => (regeneratedToken = String(val)));
         cy.findByRole("button", { name: /Done/ }).click();
       });
 
@@ -163,7 +168,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(regeneratedToken.slice(0, 7)));
+        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
 
       cy.log("should be able to cancel regenerating a token");
       cy.findByRole("button", { name: /Regenerate/ }).click();
@@ -178,18 +183,18 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(regeneratedToken.slice(0, 7)));
+        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
 
       cy.log("should be able to disable scim and info stay");
       scimToggle().click();
-      scimToggle().should("not.be.checked");
+      scimToggle().findByText("Disabled");
       scimEndpointInput().should("be.visible");
       scimTokenInput().should("be.visible");
       cy.findByRole("button", { name: /Regenerate/ }).should("be.disabled");
 
       cy.log("should be able to re-enable");
       scimToggle().click();
-      scimToggle().should("be.checked");
+      scimToggle().findByText("Enabled");
     });
 
     it("should warn users that saml user provisioning will be disabled before enabling scim", () => {
@@ -204,9 +209,9 @@ describe("scenarios > admin > settings > user provisioning", () => {
         cy.findByText(samlWarningMessage).should("exist");
 
         cy.log("message should not exist once scim has been enabled");
-        scimToggle().should("not.be.checked");
+        scimToggle().findByText("Disabled");
         scimToggle().click();
-        scimToggle().should("be.checked");
+        scimToggle().findByText("Enabled");
       });
 
       H.modal().within(() => {
@@ -237,7 +242,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         "should show error when scim token fails to generate when scim is enabled",
       );
       // enable scim and stop mocking get scim api key request
-      cy.intercept("GET", "/api/ee/scim/api_key", req => {
+      cy.intercept("GET", "/api/ee/scim/api_key", (req) => {
         req.continue();
       });
       cy.request("PUT", "api/setting/scim-enabled", { value: true });
@@ -270,8 +275,7 @@ function authTab(name: string) {
 }
 
 function scimToggle() {
-  // TODO: make better selector
-  return cy.get("#scim-enabled");
+  return cy.findByTestId("scim-enabled-setting").findByText(/Enabled|Disabled/);
 }
 
 function scimEndpointInput() {

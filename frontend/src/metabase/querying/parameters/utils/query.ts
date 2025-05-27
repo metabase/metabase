@@ -1,5 +1,6 @@
 import { P, match } from "ts-pattern";
 
+import { isNotNull } from "metabase/lib/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -56,6 +57,10 @@ export function applyParameter(
   value: ParameterValueOrArray | null,
 ) {
   if (target == null || value == null || !isStructuredDimensionTarget(target)) {
+    return query;
+  }
+
+  if (stageIndex >= Lib.stageCount(query)) {
     return query;
   }
 
@@ -120,7 +125,7 @@ function getParameterFilterClause(
   if (Lib.isNumeric(column)) {
     return getNumberParameterFilterClause(type, column, value);
   }
-  if (Lib.isString(column)) {
+  if (Lib.isStringOrStringLike(column)) {
     return getStringParameterFilterClause(type, column, value);
   }
 }
@@ -198,9 +203,9 @@ function applyTemporalUnitParameter(
   value: ParameterValueOrArray,
 ): Lib.Query {
   const breakouts = Lib.breakouts(query, stageIndex);
-  const columns = breakouts.map(breakout =>
-    Lib.breakoutColumn(query, stageIndex, breakout),
-  );
+  const columns = breakouts
+    .map((breakout) => Lib.breakoutColumn(query, stageIndex, breakout))
+    .filter(isNotNull);
   const columnRef = target[1];
   const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
@@ -216,7 +221,7 @@ function applyTemporalUnitParameter(
   const breakout = breakouts[columnIndex];
   const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
   const bucket = buckets.find(
-    bucket => Lib.displayInfo(query, stageIndex, bucket).shortName === value,
+    (bucket) => Lib.displayInfo(query, stageIndex, bucket).shortName === value,
   );
   if (!bucket) {
     return query;

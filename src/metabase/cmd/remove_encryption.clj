@@ -1,6 +1,6 @@
 (ns metabase.cmd.remove-encryption
   (:require
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.util.log :as log]))
 
 (defn remove-encryption!

@@ -53,8 +53,8 @@ const setup = () => {
       ),
     );
 
-    const onChange = update => {
-      setQuestion(q => {
+    const onChange = (update) => {
+      setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
         return new Question(thaw(newQuestion.card()), metadata);
       });
@@ -82,7 +82,6 @@ const setup = () => {
                 createMockColumn({
                   name: "pivot-grouping",
                   display_name: "pivot-grouping",
-                  expression_name: "pivot-grouping",
                   field_ref: ["expression", "pivot-grouping"],
                   source: "breakout",
                   base_type: "type/Integer",

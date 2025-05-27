@@ -1173,49 +1173,60 @@
                    (t2/select-one-fn :name :model/Collection :id (:id coll))))))))))
 
 (deftest circular-links-test
-  (mt/with-empty-h2-app-db
-    (let [coll  (ts/create! :model/Collection :name "coll")
-          card  (ts/create! :model/Card :name "card" :collection_id (:id coll))
-          dash1 (ts/create! :model/Dashboard :name "dash1" :collection_id (:id coll))
-          dash2 (ts/create! :model/Dashboard :name "dash2" :collection_id (:id coll))
-          dash3 (ts/create! :model/Dashboard :name "dash3" :collection_id (:id coll))
-          dc1   (ts/create! :model/DashboardCard :dashboard_id (:id dash1) :card_id (:id card)
-                            :visualization_settings {:click_behavior {:type     "link"
-                                                                      :linkType "dashboard"
-                                                                      :targetId (:id dash2)}})
-          dc2   (ts/create! :model/DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
-                            :visualization_settings {:click_behavior {:type     "link"
-                                                                      :linkType "dashboard"
-                                                                      :targetId (:id dash3)}})
-          dc3   (ts/create! :model/DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
-                            :visualization_settings {:click_behavior {:type     "link"
-                                                                      :linkType "dashboard"
-                                                                      :targetId (:id dash1)}})
-          card-2 (ts/create! :model/Card :name "card-2" :dashboard_id (:id dash1))
-          ser   (into [] (serdes.extract/extract {:no-settings   true
-                                                  :no-data-model true}))]
-      (t2/delete! :model/DashboardCard :id [:in (map :id [dc1 dc2 dc3])])
-      (testing "Circular dependencies are loaded correctly"
-        (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
-        (let [select-target #(-> % :visualization_settings :click_behavior :targetId)]
-
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (let [coll          (ts/create! :model/Collection :name "coll")
+            card          (ts/create! :model/Card :name "card" :collection_id (:id coll))
+            dash1         (ts/create! :model/Dashboard :name "dash1" :collection_id (:id coll))
+            dash2         (ts/create! :model/Dashboard :name "dash2" :collection_id (:id coll))
+            dash3         (ts/create! :model/Dashboard :name "dash3" :collection_id (:id coll))
+            dc1           (ts/create! :model/DashboardCard :dashboard_id (:id dash1) :card_id (:id card)
+                                      :visualization_settings {:click_behavior {:type     "link"
+                                                                                :linkType "dashboard"
+                                                                                :targetId (:id dash2)}})
+            dc2           (ts/create! :model/DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                                      :visualization_settings {:click_behavior {:type     "link"
+                                                                                :linkType "dashboard"
+                                                                                :targetId (:id dash3)}})
+            dc3           (ts/create! :model/DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                                      :visualization_settings {:click_behavior {:type     "link"
+                                                                                :linkType "dashboard"
+                                                                                :targetId (:id dash1)}})
+            card-2        (ts/create! :model/Card :name "card-2" :dashboard_id (:id dash1))
+            _dc2-1        (ts/create! :model/DashboardCard :dashboard_id (:id dash1) :card_id (:id card-2))
+            ser           (into [] (serdes.extract/extract {:no-settings   true
+                                                            :no-data-model false}))
+            select-target #(-> % :visualization_settings :click_behavior :targetId)]
+        ;; loaded to the same db so we know ids won't be corrupted
+        (testing "Dashcard ids won't be changed by loading on top of them"
+          (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+          (is (= (:id dc1)
+                 (t2/select-one-fn :id :model/DashboardCard :entity_id (:entity_id dc1))))
+          (is (= (:id dc2)
+                 (t2/select-one-fn :id :model/DashboardCard :entity_id (:entity_id dc2))))
+          (is (= (:id dc3)
+                 (t2/select-one-fn :id :model/DashboardCard :entity_id (:entity_id dc3))))
           (is (= (:id dash2)
                  (t2/select-one-fn select-target :model/DashboardCard :entity_id (:entity_id dc1))))
           (is (= (:id dash3)
                  (t2/select-one-fn select-target :model/DashboardCard :entity_id (:entity_id dc2))))
           (is (= (:id dash1)
                  (t2/select-one-fn select-target :model/DashboardCard :entity_id (:entity_id dc3)))))
-        (testing "Circular dependencies work for Dashboard Questions as well"
-          (is (= (:id dash1)
-                 (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2)))))))))
+        ;; loaded to a different db so we know it works for sure instead of relying on data being present in the
+        ;; database
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+          (testing "Circular dependencies work for Dashboard Questions as well"
+            (is (= (t2/select-one-fn :id :model/Dashboard :entity_id (:entity_id dash1))
+                   (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2))))))))))
 
 (deftest continue-on-error-test
-  (let [change-ser    (fn [ser changes] ;; kind of like left-join, but right side is indexed
-                        (vec (for [entity ser]
-                               (merge entity (get changes (:entity_id entity))))))
-        logs-extract  (fn [re logs]
-                        (keep #(rest (re-find re %))
-                              (map :message logs)))]
+  (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed
+                       (vec (for [entity ser]
+                              (merge entity (get changes (:entity_id entity))))))
+        logs-extract (fn [re logs]
+                       (keep #(rest (re-find re %))
+                             (map :message logs)))]
     (mt/with-empty-h2-app-db
       (mt/with-temp [:model/Collection coll {:name "coll"}
                      :model/Card       c1   {:name "card1" :collection_id (:id coll)}
@@ -1390,8 +1401,8 @@
 
 (deftest blank-eid-creates-new-entity-test
   (mt/with-empty-h2-app-db
-    (let [db         (ts/create! :model/Collection :name "mycoll")
-          [coll-ser] (serdes.extract/extract {:targets [["Collection" (:id db)]]})
+    (let [coll       (ts/create! :model/Collection :name "mycoll")
+          [coll-ser] (serdes.extract/extract {:targets [["Collection" (:id coll)]]})
           new-coll   (assoc coll-ser :entity_id nil)
           coll-count (fn [] (t2/count :model/Collection :name "mycoll"))]
       (serdes.load/load-metabase! (ingestion-in-memory [new-coll]))

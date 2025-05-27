@@ -69,13 +69,12 @@ describe("scenarios > metrics > question", () => {
 
   it("should be able to add a filter with an ad-hoc question", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel")
-      .button(/Filter/)
-      .click();
-    H.modal().within(() => {
+    H.filter();
+    H.popover().within(() => {
       cy.findByText("Product").click();
+      cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Apply filters").click();
+      cy.button("Apply filter").click();
     });
     cy.findByTestId("scalar-container")
       .findByText("4,939")

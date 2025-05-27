@@ -1,11 +1,12 @@
-(ns metabase.driver.common-test
+(ns ^:mb/driver-tests metabase.driver.common-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]))
 
 (deftest ^:parallel base-type-inference-test
@@ -66,9 +67,24 @@
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default {:details details}))
       {}                      true
       {:json-unfolding nil}   true
       {:json-unfolding true}  true
       {:json-unfolding false} false)))
+
+(deftest ^:parallel json-decimals-keep-precision-test
+  (testing "json fields with decimals maintain their decimal places"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (mt/dataset (mt/dataset-definition "json-decimals-db"
+                                         ["json-decimals-table"
+                                          [{:field-name "json-field" :base-type :type/JSON}]
+                                          [["{\"A\": 123, \"B\": 0.456, \"C\": 0.789}"]
+                                           ["{\"A\": 456, \"B\": 0.789, \"C\": 789}"]]])
+        (when-not (mysql/mariadb? (mt/db))
+          (is (= [[1 123.0 0.456 0.789]
+                  [2 456.0 0.789 789.0]]
+                 (mt/formatted-rows [int double double double]
+                                    (mt/run-mbql-query json-decimals-table)))))))))

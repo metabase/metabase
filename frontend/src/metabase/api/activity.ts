@@ -1,10 +1,12 @@
 import type {
   CreateRecentRequest,
+  Field,
   PopularItem,
   PopularItemsResponse,
   RecentItem,
   RecentsRequest,
   RecentsResponse,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -16,21 +18,35 @@ import {
 } from "./tags";
 
 export const activityApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listRecents: builder.query<RecentItem[], RecentsRequest | void>({
-      query: ({ context } = { context: ["views"] }) => {
-        const contextParam = [...context]
-          .sort()
-          .map(ctx => `context=${ctx}`)
-          .join("&");
+      query: ({ context, include_metadata } = {}) => {
+        const contextParams = [];
+
+        if (context) {
+          // concat() because sorting mutates the array
+          // and we don't want to mutate the original context array
+          context
+            .concat()
+            .sort()
+            .forEach((ctx) => {
+              contextParams.push(`context=${ctx}`);
+            });
+        } else {
+          contextParams.push("context=views");
+        }
+
+        if (include_metadata != null) {
+          contextParams.push(`include_metadata=${include_metadata}`);
+        }
 
         return {
           method: "GET",
-          url: `/api/activity/recents?${contextParam}`,
+          url: `/api/activity/recents?${contextParams.join("&")}`,
         };
       },
       transformResponse: (response: RecentsResponse) => response?.recents,
-      providesTags: items => provideActivityItemListTags(items ?? []),
+      providesTags: (items) => provideActivityItemListTags(items ?? []),
     }),
     listPopularItems: builder.query<PopularItem[], void>({
       query: () => ({
@@ -39,7 +55,7 @@ export const activityApi = Api.injectEndpoints({
       }),
       transformResponse: (response: PopularItemsResponse) =>
         response?.popular_items,
-      providesTags: items => provideActivityItemListTags(items ?? []),
+      providesTags: (items) => provideActivityItemListTags(items ?? []),
     }),
     logRecentItem: builder.mutation<void, Omit<CreateRecentRequest, "context">>(
       {
@@ -61,8 +77,30 @@ export const activityApi = Api.injectEndpoints({
   }),
 });
 
-export const {
-  useListRecentsQuery,
-  useListPopularItemsQuery,
-  useLogRecentItemMutation,
-} = activityApi;
+export const { useListPopularItemsQuery, useLogRecentItemMutation } =
+  activityApi;
+
+// Makes it possible and type-safe to use the `include_metadata` parameter
+// in the `useListRecentsQuery` hook. If `include_metadata` is set to `true`,
+// the returned data will include the `result_metadata` property
+type RecentItemWithMetadata = RecentItem & {
+  result_metadata: Field[];
+  display: VisualizationDisplay;
+};
+export function useListRecentsQuery<T extends boolean | undefined = undefined>(
+  params?:
+    | ({ include_metadata?: T } & Omit<RecentsRequest, "include_metadata">)
+    | void,
+  options?: {
+    refetchOnMountOrArgChange?: boolean;
+    skip?: boolean;
+  },
+) {
+  type ResultType = T extends true ? RecentItemWithMetadata : RecentItem;
+  return activityApi.endpoints.listRecents.useQuery(
+    params,
+    options,
+  ) as ReturnType<typeof activityApi.endpoints.listRecents.useQuery> & {
+    data?: ResultType[];
+  };
+}

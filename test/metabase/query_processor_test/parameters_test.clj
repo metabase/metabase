@@ -156,12 +156,9 @@
              (run-count-query query))))))
 
 (deftest ^:parallel field-filter-param-test
-  ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't currently
-  ;; work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load the dataset
-  ;; and run tests using this dataset such as these, which doesn't even use the TIME type.
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/time-type)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/dynamic-dataset-loading)
     (testing "temporal field filters"
-      (mt/dataset attempted-murders
+      (mt/dataset attempted-murders-no-time
         (doseq [field
                 [:datetime
                  :date
@@ -602,7 +599,7 @@
                           (qp/process-query {:database (mt/id)
                                              :type     :native
                                              :native   (dissoc (qp.compile/compile (:dataset_query card-2))
-                                                               :metabase.models.query.permissions/referenced-card-ids)}))))))
+                                                               :metabase.permissions.models.query.permissions/referenced-card-ids)}))))))
               (let [query (mt/native-query
                             {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
                              :template-tags {"card" {:name         "card"

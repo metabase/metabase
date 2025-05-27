@@ -4,15 +4,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.saml :as saml.mt]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.http-client :as client]
+   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.appearance.settings :as appearance.settings]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.init]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
@@ -473,7 +474,7 @@
                                                                        :RelayState   relay-state}}}
                      response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                  (is (successful-login? response))
-                 (is (= (public-settings/site-url)
+                 (is (= (system/site-url)
                         (get-in response [:headers "Location"])))
                  (is (= (some-saml-attributes "rasta")
                         (saml-login-attributes "rasta@metabase.com"))))))))))))
@@ -514,7 +515,8 @@
                          :id           true
                          :last_name    "User"
                          :date_joined  true
-                         :common_name  "New User"}
+                         :common_name  "New User"
+                         :tenant_id    false}
                         (-> (mt/boolean-ids-and-timestamps new-user)
                             (dissoc :last_login))))
                  (testing "User Invite Event is logged."
@@ -553,7 +555,8 @@
                         :id           true
                         :last_name    nil
                         :date_joined  true
-                        :common_name  "newuser@metabase.com"}]
+                        :common_name  "newuser@metabase.com"
+                        :tenant_id    false}]
                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                            (map #(dissoc % :last_login))))))
             ;; login with the same user, but now givenname and surname attributes exist
@@ -567,7 +570,8 @@
                         :id           true
                         :last_name    "User"
                         :date_joined  true
-                        :common_name  "New User"}]
+                        :common_name  "New User"
+                        :tenant_id    false}]
                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                            (map #(dissoc % :last_login))))))
              (finally
@@ -714,7 +718,7 @@
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
-                      public-settings/site-name (constantly "test")]
+                      appearance.settings/site-name (constantly "test")]
           (is
            (thrown-with-msg?
             clojure.lang.ExceptionInfo

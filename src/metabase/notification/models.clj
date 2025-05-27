@@ -7,11 +7,10 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -162,17 +161,6 @@
                 payload-id))
   instance)
 
-(defmethod audit-log/model-details :model/Notification
-  [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
-  (merge
-   (select-keys fully-hydrated-notification [:id :payload_type :payload_id :creator_id :active])
-   {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
-    :handlers      (map (fn [handler]
-                          (merge (select-keys [:id :channel_type :channel_id :template_id :active]
-                                              handler)
-                                 {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details]) (:recipients handler))}))
-                        handlers)}))
-
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                               :model/NotificationSubscription                                   ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -181,14 +169,21 @@
   #{:notification-subscription/system-event
     :notification-subscription/cron})
 
+(def ^:private subscription-ui-display-types
+  #{:cron/raw
+    :cron/builder
+    nil})
+
 (t2/deftransforms :model/NotificationSubscription
-  {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
-   :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
+  {:type            (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
+   :event_name      (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
+   :ui_display_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-ui-display-types))})
 
 (mr/def ::NotificationSubscription
   "Schema for :model/NotificationSubscription."
   [:merge [:map
            [:type (ms/enum-decode-keyword subscription-types)]]
+
    [:multi {:dispatch (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
@@ -196,8 +191,10 @@
       [:cron_schedule {:optional true} nil?]]]
     [:notification-subscription/cron
      [:map
-      [:cron_schedule                  :string]
-      [:event_name    {:optional true} nil?]]]]])
+      [:cron_schedule                    :string]
+      [:event_name      {:optional true} nil?]
+      ;; enum values can change depending on UI
+      [:ui_display_type {:optional true} [:maybe (into [:enum] subscription-ui-display-types)]]]]]])
 
 (defn- validate-subscription
   "Validate a NotificationSubscription."
@@ -365,6 +362,13 @@
   [recipient]
   (mu/validate-throw ::NotificationRecipient recipient))
 
+(defenterprise validate-email-domains!
+  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting,
+  if set. This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the
+  `:email-allow-list` feature." metabase-enterprise.advanced-config.models.notification
+  [_email-addresses]
+  nil)
+
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
@@ -373,6 +377,9 @@
 (t2/define-before-update :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
+  (when (and (= :notification-recipient/raw-value (:type instance))
+             (u/email? (get-in instance [:details :value])))
+    (validate-email-domains! [(get-in instance [:details :value])]))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -401,6 +408,21 @@
   (merge {:send_condition :has_result
           :send_once      false}
          instance))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                            Helpers                                              ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn validate-email-handlers!
+  "Validate the domains of external emails for email handlers."
+  [handlers]
+  ;; validate email domain of all the external email recipients
+  (some->> handlers
+           (filter #(= :channel/email (:channel_type %)))
+           (mapcat :recipients)
+           (filter #(= :notification-recipient/raw-value (:type %)))
+           (map #(get-in % [:details :value]))
+           validate-email-domains!))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Permissions                                             ;;
@@ -521,6 +543,7 @@
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [notification subscriptions handlers+recipients]
+  (validate-email-handlers! handlers+recipients)
   (t2/with-transaction [_conn]
     (let [payload-id      (case (:payload_type notification)
                             (:notification/system-event :notification/testing)
@@ -553,7 +576,7 @@
                                   :extra-cols   [:card_id]}
                   :subscriptions {:model        :model/NotificationSubscription
                                   :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule]
+                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
@@ -567,6 +590,7 @@
 (defn update-notification!
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
+  (validate-email-handlers! (:handlers new-notification))
   (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
 
 (defn unsubscribe-user!

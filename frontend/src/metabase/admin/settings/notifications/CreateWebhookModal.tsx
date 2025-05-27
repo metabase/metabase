@@ -44,7 +44,7 @@ export const CreateWebhookModal = ({
       .then(() => {
         onClose();
       })
-      .catch(e => {
+      .catch((e) => {
         handleFieldError(e);
         throw e;
       });

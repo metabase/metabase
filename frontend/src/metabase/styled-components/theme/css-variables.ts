@@ -31,8 +31,8 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
     :root {
       --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}
-      ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
+      ${getThemeSpecificCssVariables(theme)}
     }
   `;
 }
@@ -51,7 +51,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
     /* Dynamic colors from SDK */
     ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
       ([_key, metabaseColorNames]) => {
-        return metabaseColorNames.map(metabaseColorName => {
+        return metabaseColorNames.map((metabaseColorName) => {
           /**
            * Prevent returning the primary color when color is not found,
            * so we could add a logic to fallback to the default color ourselves.

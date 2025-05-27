@@ -1,12 +1,10 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
 import PropTypes from "prop-types";
 import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -20,16 +18,14 @@ import {
 } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import { Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { SnippetRow } from "../SnippetRow";
 
 import S from "./SnippetSidebar.module.css";
 import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
-const ICON_SIZE = 16;
-const HEADER_ICON_SIZE = 16;
-const MIN_SNIPPETS_FOR_SEARCH = 15;
+const MIN_SNIPPETS_FOR_SEARCH = 1;
 
 class SnippetSidebarInner extends React.Component {
   state = {
@@ -45,10 +41,18 @@ class SnippetSidebarInner extends React.Component {
     insertSnippet: PropTypes.func.isRequired,
   };
 
+  searchBox = React.createRef();
+
+  componentDidUpdate() {
+    if (this.state.showSearch) {
+      this.searchBox.current?.focus();
+    }
+  }
+
   showSearch = () => {
     this.setState({ showSearch: true });
-    this.searchBox && this.searchBox.focus();
   };
+
   hideSearch = () => {
     this.setState({ showSearch: false, searchString: "" });
   };
@@ -56,9 +60,10 @@ class SnippetSidebarInner extends React.Component {
   footer = () => (
     <Flex
       className={S.SidebarFooter}
+      p="md"
       onClick={() => this.setState({ showArchived: true })}
     >
-      <Icon className={S.SidebarIcon} name="view_archive" size={ICON_SIZE} />
+      <Icon mr="sm" name="view_archive" />
       {t`Archived snippets`}
     </Flex>
   );
@@ -68,6 +73,7 @@ class SnippetSidebarInner extends React.Component {
       snippets,
       openSnippetModalWithSelectedText,
       snippetCollection,
+      snippetCollections,
       search,
     } = this.props;
 
@@ -82,10 +88,27 @@ class SnippetSidebarInner extends React.Component {
     }
 
     const displayedItems = showSearch
-      ? snippets.filter(snippet =>
+      ? snippets.filter((snippet) =>
           snippet.name.toLowerCase().includes(searchString.toLowerCase()),
         )
       : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
+
+    const hasParentCollection = snippetCollection.parent_id !== null;
+    const onSnippetCollectionBack = () => {
+      // if this collection's parent isn't in the list,
+      // we don't have perms to see it, return to the root instead
+      const hasPermissionToSeeParent = snippetCollections.some(
+        (collection) =>
+          canonicalCollectionId(collection.id) ===
+          canonicalCollectionId(snippetCollection.parent_id),
+      );
+
+      const targetId = hasPermissionToSeeParent
+        ? snippetCollection.parent_id
+        : null;
+
+      this.props.setSnippetCollectionId(targetId);
+    };
 
     return (
       <SidebarContent footer={this.footer()}>
@@ -96,157 +119,117 @@ class SnippetSidebarInner extends React.Component {
             onClick={openSnippetModalWithSelectedText}
           />
         ) : (
-          <div>
-            <div
-              className={cx(CS.flex, CS.alignCenter, CS.pl3, CS.pr2)}
-              style={{ paddingTop: 10, paddingBottom: 11 }}
-            >
-              <div className={CS.flexFull}>
-                <div
-                  /* Hide the search input by collapsing dimensions rather than `display: none`.
-                                                                           This allows us to immediately focus on it when showSearch is set to true.*/
-                  style={showSearch ? {} : { width: 0, height: 0 }}
-                  className={cx(CS.textHeavy, CS.h3, CS.overflowHidden)}
-                >
+          <>
+            <Flex align="center" justify="space-between" p="md" pl="lg" pr="sm">
+              {showSearch ? (
+                <>
                   <input
-                    className={cx(CS.input, CS.inputBorderless, CS.p0)}
-                    ref={e => (this.searchBox = e)}
-                    onChange={e =>
+                    ref={this.searchBox}
+                    className={CS.inputBorderless}
+                    onChange={(e) =>
                       this.setState({ searchString: e.target.value })
                     }
                     value={searchString}
-                    onKeyDown={e => {
+                    onKeyDown={(e) => {
                       if (e.key === "Escape") {
                         this.hideSearch();
                       }
                     }}
                   />
-                </div>
-                <span
-                  className={cx({ [CS.hide]: showSearch }, CS.textHeavy, CS.h3)}
-                >
+                  <Button
+                    variant="transparent"
+                    onClick={this.hideSearch}
+                    className={S.HeaderButton}
+                  >
+                    <Icon name="close" />
+                  </Button>
+                </>
+              ) : (
+                <>
                   {snippetCollection.id === "root" ? (
-                    t`Snippets`
+                    <SidebarHeader title={t`Snippets`} />
                   ) : (
-                    <span
-                      className={S.SnippetTitle}
-                      onClick={() => {
-                        const parentId = snippetCollection.parent_id;
-                        this.props.setSnippetCollectionId(
-                          // if this collection's parent isn't in the list, we don't have perms to see it, return to the root instead
-                          this.props.snippetCollections.some(
-                            sc =>
-                              canonicalCollectionId(sc.id) ===
-                              canonicalCollectionId(parentId),
-                          )
-                            ? parentId
-                            : null,
-                        );
-                      }}
-                    >
-                      <Icon name="chevronleft" className={CS.mr1} />
-                      {snippetCollection.name}
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div
-                className={cx(
-                  CS.flexAlignRight,
-                  CS.flex,
-                  CS.alignCenter,
-                  CS.textMedium,
-                  CS.noDecoration,
-                )}
-              >
-                {[
-                  ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map(f =>
-                    f(this, { className: CS.mr2 }),
-                  ),
-                ]}
-                {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
-                  <Icon
-                    className={cx(S.SearchSnippetIcon, {
-                      [S.isHidden]: showSearch,
-                    })}
-                    name="search"
-                    size={HEADER_ICON_SIZE}
-                    onClick={this.showSearch}
-                  />
-                )}
-
-                {snippetCollection.can_write && (
-                  <TippyPopoverWithTrigger
-                    triggerClasses="flex"
-                    triggerContent={
-                      <Icon
-                        className={cx(S.AddSnippetIcon, {
-                          [S.isHidden]: showSearch,
-                        })}
-                        name="add"
-                        size={HEADER_ICON_SIZE}
-                      />
-                    }
-                    placement="bottom-end"
-                    popoverContent={({ closePopover }) => (
-                      <div className={cx(CS.flex, CS.flexColumn)}>
-                        {[
-                          {
-                            icon: "snippet",
-                            name: t`New snippet`,
-                            onClick: openSnippetModalWithSelectedText,
-                          },
-                          ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(f =>
-                            f(this),
-                          ),
-                        ].map(({ icon, name, onClick }) => (
-                          <Flex
-                            className={S.MenuIconContainer}
-                            key={name}
-                            onClick={() => {
-                              onClick();
-                              closePopover();
-                            }}
-                          >
-                            <Icon
-                              name={icon}
-                              size={ICON_SIZE}
-                              className={CS.mr2}
-                            />
-                            <h4>{name}</h4>
-                          </Flex>
-                        ))}
-                      </div>
-                    )}
-                  />
-                )}
-                <Icon
-                  className={cx(S.HideSearchIcon, {
-                    [S.isHidden]: !showSearch,
-                  })}
-                  name="close"
-                  size={HEADER_ICON_SIZE}
-                  onClick={this.hideSearch}
-                />
-              </div>
-            </div>
-            <div className={CS.flexFull}>
-              {displayedItems.length > 0
-                ? displayedItems.map(item => (
-                    <Row
-                      key={`${item.model || "snippet"}-${item.id}`}
-                      item={item}
-                      type={item.model || "snippet"}
-                      setSidebarState={this.setState.bind(this)}
-                      canWrite={snippetCollection.can_write}
-                      {...this.props}
+                    <SidebarHeader
+                      title={snippetCollection.name}
+                      onBack={
+                        hasParentCollection ? onSnippetCollectionBack : null
+                      }
                     />
-                  ))
-                : null}
-            </div>
-          </div>
+                  )}
+
+                  <Flex
+                    align="center"
+                    justify="flex-end"
+                    data-testid="snippet-header-buttons"
+                  >
+                    {[
+                      ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
+                        f(this, { className: S.HeaderButton }),
+                      ),
+                    ]}
+
+                    {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
+                      <Button
+                        variant="transparent"
+                        onClick={this.showSearch}
+                        className={S.HeaderButton}
+                      >
+                        <Icon name="search" />
+                      </Button>
+                    )}
+
+                    {snippetCollection.can_write && !showSearch && (
+                      <Menu position="bottom-end">
+                        <Menu.Target>
+                          <Button
+                            variant="transparent"
+                            className={S.HeaderButton}
+                          >
+                            <Icon name="add" />
+                          </Button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          {[
+                            {
+                              icon: "snippet",
+                              name: t`New snippet`,
+                              onClick: openSnippetModalWithSelectedText,
+                            },
+                            ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(
+                              (f) => f(this),
+                            ),
+                          ].map(({ icon, name, onClick }) => (
+                            <Menu.Item
+                              key={name}
+                              onClick={onClick}
+                              leftSection={<Icon name={icon} />}
+                            >
+                              {name}
+                            </Menu.Item>
+                          ))}
+                        </Menu.Dropdown>
+                      </Menu>
+                    )}
+                  </Flex>
+                </>
+              )}
+            </Flex>
+
+            <Flex direction="column">
+              {displayedItems.map((item) => (
+                <Row
+                  key={`${item.model || "snippet"}-${item.id}`}
+                  item={item}
+                  type={item.model || "snippet"}
+                  setSidebarState={this.setState.bind(this)}
+                  canWrite={snippetCollection.can_write}
+                  {...this.props}
+                />
+              ))}
+            </Flex>
+          </>
         )}
-        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map(f => f(this))}
+        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map((f) => f(this))}
       </SidebarContent>
     );
   }
@@ -269,46 +252,42 @@ export const SnippetSidebar = _.compose(
   }),
 )(SnippetSidebarInner);
 
-class ArchivedSnippetsInner extends React.Component {
-  render() {
-    const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
-      this.props;
-    const collectionsById = _.indexBy(
-      snippetCollections.concat(archivedSnippetCollections),
-      c => canonicalCollectionId(c.id),
-    );
+function ArchivedSnippetsInner(props) {
+  const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
+    props;
+  const collectionsById = _.indexBy(
+    snippetCollections.concat(archivedSnippetCollections),
+    (c) => canonicalCollectionId(c.id),
+  );
 
-    return (
-      <SidebarContent>
-        <SidebarHeader
-          className={CS.p2}
-          title={t`Archived snippets`}
-          onBack={onBack}
+  return (
+    <SidebarContent>
+      <Box p="lg">
+        <SidebarHeader title={t`Archived snippets`} onBack={onBack} />
+      </Box>
+
+      {archivedSnippetCollections.map((collection) => (
+        <Row
+          key={`collection-${collection.id}`}
+          item={collection}
+          type="collection"
         />
-
-        {archivedSnippetCollections.map(collection => (
-          <Row
-            key={`collection-${collection.id}`}
-            item={collection}
-            type="collection"
-          />
-        ))}
-        {snippets.map(snippet => (
-          <Row
-            key={`snippet-${snippet.id}`}
-            item={snippet}
-            type="snippet"
-            canWrite={
-              collectionsById[
-                // `String` used to appease flow
-                String(canonicalCollectionId(snippet.collection_id))
-              ].can_write
-            }
-          />
-        ))}
-      </SidebarContent>
-    );
-  }
+      ))}
+      {snippets.map((snippet) => (
+        <Row
+          key={`snippet-${snippet.id}`}
+          item={snippet}
+          type="snippet"
+          canWrite={
+            collectionsById[
+              // `String` used to appease flow
+              String(canonicalCollectionId(snippet.collection_id))
+            ].can_write
+          }
+        />
+      ))}
+    </SidebarContent>
+  );
 }
 
 const ArchivedSnippets = _.compose(

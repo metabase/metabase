@@ -4,11 +4,11 @@ export const usePagination = (initialPage = 0) => {
   const [page, setPage] = useState(initialPage);
 
   const handleNextPage = useCallback(
-    () => setPage(prev => prev + 1),
+    () => setPage((prev) => prev + 1),
     [setPage],
   );
   const handlePreviousPage = useCallback(
-    () => setPage(prev => prev - 1),
+    () => setPage((prev) => prev - 1),
     [setPage],
   );
 

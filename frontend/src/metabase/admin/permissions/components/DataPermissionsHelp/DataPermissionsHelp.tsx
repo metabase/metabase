@@ -23,10 +23,10 @@ import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
-    state => getSetting(state, "token-features").advanced_permissions,
+    (state) => getSetting(state, "token-features").advanced_permissions,
   );
 
-  const shouldShowLegacyNoSelfServiceInfo = useSelector(state =>
+  const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
     hasPermissionValueInGraph(
       state.admin.permissions.originalDataPermissions,
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
@@ -37,7 +37,7 @@ export const DataPermissionsHelp = () => {
   return (
     <Flex direction="column" py={rem(22)} px="1rem">
       <Box px={rem(12)}>
-        <Title order={4}>{t`Data permissions`}</Title>
+        <Title order={3}>{t`Data permissions`}</Title>
         <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
       </Box>
 

@@ -29,13 +29,13 @@ export const getGroupsSidebar = createSelector(
 
     const [pinnedGroups, unpinnedGroups] = groups;
 
-    const pinnedGroupItems = pinnedGroups.map(group => ({
+    const pinnedGroupItems = pinnedGroups.map((group) => ({
       ...group,
       name: getGroupNameLocalized(group),
       icon: "bolt",
     }));
 
-    const unpinnedGroupItems = unpinnedGroups.map(group => ({
+    const unpinnedGroupItems = unpinnedGroups.map((group) => ({
       ...group,
       name: getGroupNameLocalized(group),
       icon: "group",

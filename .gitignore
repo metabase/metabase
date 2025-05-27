@@ -6,6 +6,7 @@
 *.po~
 *.sqlite
 *.trace.db
+*.trace.db.old
 *.xcworkspacedata
 .DS_Store
 .\#*
@@ -36,9 +37,16 @@
 /crate-*
 /cypress
 /deploy/artifacts/*
+/docs/**/node_modules
+/docs/**/package.json
+/docs/**/yarn.lock
+/docs/embedding/sdk/api/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
+!/e2e/tmp/db_dumps
+/e2e/tmp/db_dumps/*
+!/e2e/tmp/db_dumps/.gitkeep
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -67,6 +75,7 @@
 /storybook-static
 /target
 /test-report-*
+/temp
 **/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/
@@ -125,4 +134,12 @@ modules/drivers/*/.lsp/*
 
 # jar downloader
 /jars/
+
+# metabot
+llm-payloads
+
 /bin/bb
+
+.aider*
+/config.yml
+CLAUDE.local.md

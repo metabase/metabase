@@ -4,7 +4,8 @@ import { dedent } from "ts-dedent";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID, PEOPLE } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column", () => {
   beforeEach(() => {
@@ -483,7 +484,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
     cy.findByTestId("step-expression-0-0").should("not.exist");
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -523,7 +524,7 @@ describe("scenarios > question > custom column", () => {
         },
         display: "table",
       },
-      { callback: xhr => expect(xhr.response.body.error).not.to.exist },
+      { callback: (xhr) => expect(xhr.response.body.error).not.to.exist },
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -567,7 +568,7 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -594,7 +595,7 @@ describe("scenarios > question > custom column", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByLabelText("Start date").clear().type("12/10/2024");
       cy.findByLabelText("End date").clear().type("01/05/2025");
       cy.button("Add filter").click();
@@ -618,7 +619,7 @@ describe("scenarios > question > custom column", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("MiscDate").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByDisplayValue("days").click();
     });
@@ -767,6 +768,38 @@ describe("scenarios > question > custom column", () => {
 
     // Focus remains on the expression editor
     cy.focused().should("have.attr", "role", "textbox");
+  });
+
+  it("should be possible to use the suggestion snippet arguments", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+
+    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
+  });
+
+  it("should be possible to use the suggestion templates", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+
+    H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
+
+    // Wait for error check to render, it should not affect the state of the snippets
+    cy.wait(1300);
+
+    H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
+      focus: false,
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
   });
 
   // TODO: fixme!
@@ -927,6 +960,42 @@ describe("scenarios > question > custom column", () => {
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "198");
   });
+
+  it("should handle expression references", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "[Price]",
+      name: "Foo",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Foo]",
+      name: "Bar",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Bar]",
+      name: "Quu",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Foo").click();
+    H.CustomExpressionEditor.value().should("eq", "[Price]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Bar").click();
+    H.CustomExpressionEditor.value().should("eq", "[Foo]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Quu").click();
+    H.CustomExpressionEditor.value().should("eq", "[Bar]");
+  });
 });
 
 describe(
@@ -1026,7 +1095,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("DoB").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1046,7 +1115,7 @@ describe(
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1065,7 +1134,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1090,7 +1159,7 @@ describe("scenarios > question > custom column > error feedback", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Unknown Field: abcdef/i);
+    cy.contains(/^Unknown column: abcdef/i);
   });
 
   it("should fail on expression validation errors", () => {
@@ -1161,14 +1230,14 @@ describe("scenarios > question > custom column > help text", () => {
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(text)");
+      .should("contain", "lower(value)");
   });
 
   it("should appear after a field reference", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(text)");
+      .should("contain", "lower(value)");
   });
 
   it("should not appear while outside a function", () => {
@@ -1216,6 +1285,101 @@ describe("scenarios > question > custom column > help text", () => {
       .should("be.visible")
       .should("contain", "round([Temperature])");
   });
+
+  describe("scenarios > question > custom column > help text > visibility", () => {
+    beforeEach(() => {
+      H.enterCustomColumnDetails({ formula: "round(", blur: false });
+    });
+
+    it("should be possible to show and hide the help text when there are no suggestions", () => {
+      assertHelpTextIsVisible();
+
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertNeitherAreVisible();
+
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+    });
+
+    it("should show the help text again when the suggestions are closed", () => {
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+
+      cy.log("suggestions should be visible");
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain visible when suggestions are picked");
+      // helptext should re-open when suggestion is picked
+      H.CustomExpressionEditor.selectCompletion("Rating");
+      assertHelpTextIsVisible();
+    });
+
+    it("should be possible to close the help text", () => {
+      cy.log("hide help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertNeitherAreVisible();
+
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain hidden after selecting a suggestion");
+      H.CustomExpressionEditor.selectCompletion("Rating");
+      assertNeitherAreVisible();
+    });
+
+    it("should be possible to prefer showing the help text over the suggestions", () => {
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("show help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+
+      cy.log("help text should remain shown after finishing typing");
+      H.CustomExpressionEditor.type("ing], ", { focus: false });
+      assertHelpTextIsVisible();
+    });
+
+    it("should be possible to prefer showing the suggestion when typing", () => {
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("show help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+
+      cy.log("show suggestions again by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain shown after finishing typing");
+      H.CustomExpressionEditor.type("ing], ", { focus: false });
+      assertNeitherAreVisible();
+    });
+
+    function assertSuggestionsAreVisible() {
+      cy.log("suggestions should be visible");
+      H.CustomExpressionEditor.helpText().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .findAllByRole("option")
+        .should("be.visible");
+    }
+    function assertHelpTextIsVisible() {
+      cy.log("help text should be visible");
+      H.CustomExpressionEditor.helpText().should("be.visible");
+      H.CustomExpressionEditor.completions()
+        .findByRole("option")
+        .should("not.exist");
+    }
+    function assertNeitherAreVisible() {
+      H.CustomExpressionEditor.helpText().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .findByRole("option")
+        .should("not.exist");
+    }
+  });
 });
 
 describe("scenarios > question > custom column > exiting the editor", () => {
@@ -1233,9 +1397,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.CustomExpressionEditor.get().should("not.exist");
   });
 
-  // This test is skipped until we can implement the "save unsaved changes"
-  // dialog for the Custom Expression popover.
-  it.skip("should not be possible to close the custom expression editor by pressing Escape when it is not empty", () => {
+  it("should not be possible to close the custom expression editor by pressing Escape when it is not empty", () => {
     H.CustomExpressionEditor.type("count(");
     cy.realPress("Escape");
     H.CustomExpressionEditor.get().should("be.visible");
@@ -1251,15 +1413,13 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
-    H.popover().findByText("Select none").should("be.visible");
+    H.popover().findByText("Select all").should("be.visible");
   });
 
-  // This test is skipped until we can implement the "save unsaved changes"
-  // dialog for the Custom Expression popover.
-  it.skip("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
+  it("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").should("not.exist");
+    H.popover().findByText("Select all").should("not.exist");
     H.expressionEditorWidget().should("exist");
 
     H.modal().within(() => {
@@ -1274,13 +1434,11 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.expressionEditorWidget().should("exist");
   });
 
-  // This test is skipped until we can implement the "save unsaved changes"
-  // dialog for the Custom Expression popover.
-  it.skip("should be possible to discard changes when clicking outside of the editor", () => {
+  it("should be possible to discard changes when clicking outside of the editor", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
     H.expressionEditorWidget().should("exist");
-    H.popover().findByText("Select none").should("not.exist");
+    H.popover().findByText("Select all").should("not.exist");
 
     H.modal().within(() => {
       cy.findByText("Keep editing your custom expression?").should(
@@ -1294,14 +1452,28 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.expressionEditorWidget().should("not.exist");
   });
 
-  // This test is skipped until we can implement the "save unsaved changes"
-  // dialog for the Custom Expression popover.
-  it.skip("should be possible to discard changes by clicking cancel button", () => {
+  it("should be possible to discard changes by clicking cancel button", () => {
     H.enterCustomColumnDetails({ formula: "1+1", name: "OK" });
     H.expressionEditorWidget().button("Cancel").click();
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
     H.getNotebookStep("expression").findByText("OK").should("not.exist");
+  });
+
+  it("should be possible to close the popover when navigating away from the expression editor", () => {
+    H.expressionEditorWidget().button("Cancel").click();
+    cy.button("Summarize").click();
+    H.popover().as("popover").findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
+    cy.log("Go back to summarize modal");
+    H.popover().findByText("Custom Expression").click();
+
+    cy.log("Close summarize modal by clicking outside");
+    cy.button("View SQL").click();
+
+    H.modal().should("not.exist");
+    cy.get("popover").should("not.exist");
   });
 });
 
@@ -1339,5 +1511,248 @@ describe("scenarios > question > custom column > distinctIf", () => {
     H.popover().button("Update").click();
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "147");
+  });
+});
+
+describe("scenarios > question > custom column > path", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should allow to use a path function", () => {
+    const CC_NAME = "URL_URL";
+    const questionDetails = {
+      name: "path from url",
+      query: {
+        "source-table": PEOPLE_ID,
+        limit: 1,
+        expressions: {
+          [CC_NAME]: [
+            "concat",
+            "http://",
+            ["domain", ["field", PEOPLE.EMAIL, null]],
+            ".com/my/path",
+          ],
+        },
+      },
+      type: "model",
+    };
+
+    H.createQuestion(questionDetails, {
+      wrapId: true,
+      idAlias: "modelId",
+    });
+
+    cy.get("@modelId").then((modelId) => {
+      H.setModelMetadata(modelId, (field) => {
+        if (field.name === CC_NAME) {
+          return { ...field, semantic_type: "type/URL" };
+        }
+
+        return field;
+      });
+
+      H.visitModel(modelId);
+    });
+
+    H.openNotebook();
+
+    cy.log("add a new expression");
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: `Path([${CC_NAME}])`,
+      name: "extracted path",
+    });
+
+    H.popover().button("Done").click();
+    H.visualize();
+    cy.findByTestId("table-scroll-container").scrollTo("right");
+
+    const extractedValue = "/my/path";
+    assertTableData({
+      title: "extracted path",
+      value: extractedValue,
+    });
+  });
+});
+
+describe("scenarios > question > custom column > function browser", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.openProductsTable({ mode: "notebook" });
+    H.addCustomColumn();
+  });
+
+  it("should be possible to insert functions by clicking them in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("datetimeAdd")
+      .click();
+
+    H.CustomExpressionEditor.value().should("equal", "datetimeAdd()");
+
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should("equal", "datetimeAdd(day())");
+
+    H.CustomExpressionEditor.type('"foo"{rightarrow}, ', { focus: false });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'datetimeAdd(day("foo"), )',
+    );
+
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'datetimeAdd(day("foo"), day())',
+    );
+  });
+
+  it("should be possible to replace text when inserting functions", () => {
+    H.CustomExpressionEditor.type("foo bar baz");
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should("equal", "foo day() baz");
+  });
+
+  it("should be possible to filter functions in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("con");
+
+      cy.findByText("datetimeAdd").should("not.exist");
+      cy.findByText("concat").should("be.visible");
+      cy.findByText("second").should("be.visible");
+      //
+      cy.findByPlaceholderText("Search functions…").clear();
+      cy.findByText("datetimeAdd").should("exist");
+    });
+  });
+
+  it("should not show functions that are not supported by the current database", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("convertTimezone");
+      cy.findByText("convertTimezone").should("not.exist");
+    });
+  });
+
+  it("should not show aggregations unless aggregating", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("Count");
+      cy.findByText("Count").should("not.exist");
+    });
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search aggregations…").type("Count");
+      cy.findByText("Count").should("be.visible");
+    });
+  });
+
+  it("show a message when no functions match the filter", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("foobar");
+      cy.findByText("Didn't find any results").should("be.visible");
+    });
+  });
+
+  it("should insert parens even when the clause has no arguments", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("now");
+      cy.findByText("now").click();
+    });
+    H.CustomExpressionEditor.value().should("equal", "now()");
+  });
+});
+
+describe("scenarios > question > custom column > splitPart", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("People").click();
+    });
+
+    cy.findByLabelText("Custom column").click();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should be possible to split a custom column", () => {
+    const CC_NAME = "Split Title";
+
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 1)",
+      name: CC_NAME,
+    });
+    H.popover().button("Done").click();
+
+    cy.findByLabelText("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit").type(1).blur();
+
+    H.visualize();
+
+    H.tableInteractiveScrollContainer().scrollTo("right");
+    assertTableData({ title: CC_NAME, value: "Hudson" });
+  });
+
+  it("should show a message when index is below 1", () => {
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 0)",
+    });
+
+    H.popover().button("Done").should("be.disabled");
+    H.popover().should("contain", "Expected positive integer but found 0");
   });
 });

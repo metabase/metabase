@@ -181,19 +181,15 @@ describe("scenarios > visualizations > bar chart", () => {
       H.queryBuilderHeader()
         .button(/Filter/)
         .click();
-      H.modal().within(() => {
+      H.popover().within(() => {
         cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category")
-          .findByLabelText("Filter operator")
-          .click();
+        cy.findByText("Category").click();
       });
-      H.popover().findByText("Is not").click();
-      H.modal().within(() => {
-        cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category").findByText("Gadget").click();
-        cy.button("Apply filters").click();
+      H.selectFilterOperator("Is not");
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Apply filter").click();
       });
-
       H.getDraggableElements().should("have.length", 2);
       H.getDraggableElements().eq(0).should("have.text", "Doohickey");
       H.getDraggableElements().eq(1).should("have.text", "Widget");
@@ -299,30 +295,37 @@ describe("scenarios > visualizations > bar chart", () => {
   });
 
   describe("with stacked bars", () => {
-    it("should drill-through correctly when stacking", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", PRODUCTS.CATEGORY],
-              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
+    [false, true].forEach((devMode) => {
+      it(`should drill-through correctly when stacking - development-mode: ${devMode}`, () => {
+        cy.intercept("/api/session/properties", (req) => {
+          req.continue((res) => {
+            res.body["token-features"]["development-mode"] = devMode;
+          });
+        });
+        H.visitQuestionAdhoc({
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": PRODUCTS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", PRODUCTS.CATEGORY],
+                ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+            },
           },
-        },
-        display: "bar",
-        visualization_settings: { "stackable.stack_type": "stacked" },
+          display: "bar",
+          visualization_settings: { "stackable.stack_type": "stacked" },
+        });
+
+        cy.findAllByTestId("legend-item").findByText("Doohickey").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("See these Products").click();
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Category is Doohickey").should("be.visible");
       });
-
-      cy.findAllByTestId("legend-item").findByText("Doohickey").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See these Products").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Doohickey").should("be.visible");
     });
   });
 
@@ -496,7 +499,7 @@ describe("scenarios > visualizations > bar chart", () => {
       questions: [multiMetric],
     }).then(({ dashboard }) => {
       H.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           H.cypressWaitAll([
             H.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
               series: [
@@ -586,9 +589,9 @@ describe("scenarios > visualizations > bar chart", () => {
       "#88BF4D",
       "#98D9D9",
     ]);
-    firstMetric.then($metricOne => {
+    firstMetric.then(($metricOne) => {
       const { height: heightMetricOne } = $metricOne[0].getBoundingClientRect();
-      secondMetric.then($metricTwo => {
+      secondMetric.then(($metricTwo) => {
         const { height: heightMetricTwo } =
           $metricTwo[0].getBoundingClientRect();
 

@@ -4,7 +4,7 @@ title: Embedded analytics SDK - CLI quickstart
 
 # Embedded analytics SDK - CLI quickstart
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true convert_pro_link_to_embbedding=true %}
 
 We built a single command to spin up a Metabase and help you get an embedded dashboard in your app. This setup with API keys won't work in production; it's only intended for you to quickly try out the SDK on your local machine. A production setup requires a Pro/Enterprise license, and SSO with JWT.
 
@@ -92,8 +92,8 @@ You can delete these files once you've played around with the tool, and are read
 
 You'll need to add the Metabase/React components to your app. Add an import to your client app, like so:
 
-```sh
-import { AnalyticsPage } from "./components/metabase/analytics-page";
+```jsx
+{% include_file "{{ dirname }}/snippets/quickstart-cli/example.tsx" snippet="imports" %}
 ```
 
 Make sure the `from` path is valid (depending on your app, you may need to move the components to a new directory).
@@ -101,15 +101,7 @@ Make sure the `from` path is valid (depending on your app, you may need to move 
 Then you'll need to add the `<AnalyticsPage />` component to a page in your app. Something like:
 
 ```jsx
-function App() {
-  return (
-    <div className="App" style={{ width: "1200px", height: "800px" }}>
-      <AnalyticsPage/>
-    </div>
-  );
-}
-
-export default App;
+{% include_file "{{ dirname }}/snippets/quickstart-cli/example.tsx" snippet="example" %}
 ```
 
 ## Behold: Metabase is embedded in your app

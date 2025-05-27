@@ -13,7 +13,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function TimeFilterPicker({
   query,
@@ -21,6 +21,7 @@ export function TimeFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -50,13 +51,20 @@ export function TimeFilterPicker({
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values);
     if (filter) {
-      onChange(filter);
+      onChange(filter, opts);
     }
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleFilterChange({ run: true });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ run: false });
   };
 
   return (
@@ -64,7 +72,7 @@ export function TimeFilterPicker({
       component="form"
       w={WIDTH}
       data-testid="time-filter-picker"
-      onSubmit={handleSubmit}
+      onSubmit={handleFormSubmit}
     >
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
@@ -86,7 +94,12 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <FilterPickerFooter isNew={isNew} canSubmit />
+        <FilterPickerFooter
+          isNew={isNew}
+          isValid
+          withAddButton={withAddButton}
+          onAddButtonClick={handleAddButtonClick}
+        />
       </Box>
     </Box>
   );
@@ -106,7 +119,7 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
         value={value}
         w="100%"
         autoFocus
-        onChange={newValue => onChange([newValue])}
+        onChange={(newValue) => onChange([newValue])}
       />
     );
   }
@@ -119,13 +132,13 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
           value={value1}
           w="100%"
           autoFocus
-          onChange={newValue1 => onChange([newValue1, value2])}
+          onChange={(newValue1) => onChange([newValue1, value2])}
         />
         <Text>{t`and`}</Text>
         <TimeInput
           value={value2}
           w="100%"
-          onChange={newValue2 => onChange([value1, newValue2])}
+          onChange={(newValue2) => onChange([value1, newValue2])}
         />
       </Flex>
     );

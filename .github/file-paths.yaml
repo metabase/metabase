@@ -26,19 +26,21 @@ frontend_sources: &frontend_sources
   - "babel.config.json"
   - ".eslintrc.js"
   - "postcss.config.js"
+  - "rspack.config.js"
   - "webpack.config.js"
   - "webpack.embedding-sdk.config.js"
   - "webpack.static-viz.config.js"
   - ".nvmrc"
 
 frontend_embedding_sdk_sources:
-  - "enterprise/frontend/src/embedding-sdk/**"
+  - *frontend_sources
 
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
+  - ".github/**/*.unit.spec.*"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
@@ -108,9 +110,6 @@ e2e_ci: &e2e_ci
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
   - "**/*.cy.*.ts"
-  - "e2e/runner/**"
-  - "e2e/support/**"
-  - "e2e/snapshot*/**"
 
 e2e_cross_version: &e2e_cross_version
   - ".github/workflows/e2e-cross-version.yml"
@@ -121,12 +120,14 @@ e2e_all:
   - *e2e_ci
   - *sources
   - *e2e_specs
+  - "e2e/**"
 
 snowplow:
   - ".github/workflows/snowplow.yml"
   - "snowplow/**"
 
 documentation:
+  - ".typedoc/**"
   - "docs/**"
   - "**/*.md"
 

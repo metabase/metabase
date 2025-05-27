@@ -4,11 +4,11 @@ export function getDefaultDisplayOptions(
   shouldShownDownloadData: boolean,
 ): EmbeddingDisplayOptions {
   return {
-    font: null,
+    font: "",
     theme: "light",
     background: true,
     bordered: true,
     titled: true,
-    downloads: shouldShownDownloadData ? true : null,
+    downloads: shouldShownDownloadData ? { pdf: true, results: true } : null,
   };
 }

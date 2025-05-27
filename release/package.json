@@ -8,9 +8,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "auto-translate": "tsx src/auto-translate.ts",
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
-    "copy-required-checks": "tsx ./src/required-checks.ts",
     "generate-changelog": "tsx generate-changelog.ts",
     "prettier": "prettier --write",
     "release-offline": "tsx release-offline.ts",
@@ -21,7 +19,7 @@
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "@octokit/rest": "^20.0.2",
+    "@octokit/rest": "^20.1.2",
     "@slack/web-api": "^6.12.1",
     "dayjs": "^1.11.10",
     "dotenv": "^16.3.1",

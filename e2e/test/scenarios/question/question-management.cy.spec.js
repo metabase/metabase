@@ -25,7 +25,7 @@ describe(
 
     Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
       context(`${permission} access`, () => {
-        userGroup.forEach(user => {
+        userGroup.forEach((user) => {
           onlyOn(permission === "curate", () => {
             describe(`${user} user`, () => {
               beforeEach(() => {
@@ -97,6 +97,19 @@ describe(
                       .parents("li")
                       .should("have.attr", "aria-selected", "true");
                   });
+
+                  if (user === "admin") {
+                    H.openQuestionActions();
+                    cy.findByTestId("move-button").click();
+                    H.entityPickerModal().within(() => {
+                      cy.findByRole("button", {
+                        name: /Orders in a dashboard/,
+                      }).should("exist");
+                      cy.findByRole("button", { name: /Bobby Table/ }).should(
+                        "not.exist",
+                      );
+                    });
+                  }
                 });
 
                 it("should be able to move the question to a collection created on the go", () => {
@@ -210,7 +223,7 @@ describe(
                       );
 
                       // Simulate a couple gets, so that the dashboards appears in recents for various users
-                      cy.get("@dashboardId").then(dashboardId => {
+                      cy.get("@dashboardId").then((dashboardId) => {
                         cy.request(`/api/dashboard/${dashboardId}`);
                         cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
                       });
@@ -425,8 +438,6 @@ describe(
 );
 
 H.describeWithSnowplow("send snowplow question events", () => {
-  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION = 2;
-
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -441,20 +452,15 @@ H.describeWithSnowplow("send snowplow question events", () => {
   it("should send event when clicking `Turn into a model`", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openQuestionActions();
-    H.expectGoodSnowplowEvents(
-      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION,
-    );
     H.popover().within(() => {
       cy.findByText("Turn into a model").click();
     });
-    H.expectGoodSnowplowEvents(
-      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION + 1,
-    );
+    H.expectUnstructuredSnowplowEvent({ event: "turn_into_model_clicked" });
   });
 });
 
 function assertRequestNot403(xhr_alias) {
-  cy.wait("@" + xhr_alias).then(xhr => {
+  cy.wait("@" + xhr_alias).then((xhr) => {
     expect(xhr.status).not.to.eq(403);
   });
 }
@@ -479,13 +485,13 @@ function findPickerItem(name) {
 }
 
 function findActivePickerItem(name) {
-  return findPickerItem(name).then($button => {
+  return findPickerItem(name).then(($button) => {
     expect($button).to.have.attr("data-active", "true");
   });
 }
 
 function findInactivePickerItem(name) {
-  return findPickerItem(name).then($button => {
+  return findPickerItem(name).then(($button) => {
     expect($button).not.to.have.attr("data-active", "true");
   });
 }

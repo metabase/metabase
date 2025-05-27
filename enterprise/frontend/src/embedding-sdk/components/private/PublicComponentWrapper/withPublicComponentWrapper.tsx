@@ -4,8 +4,8 @@ import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
 export function withPublicComponentWrapper<P extends object>(
   WrappedComponent: React.ComponentType<P>,
-): React.FC<P> {
-  const WithPublicComponentWrapper: React.FC<P> = props => {
+): (props: P) => React.ReactNode {
+  const WithPublicComponentWrapper: React.FC<P> = (props) => {
     return (
       <PublicComponentWrapper>
         <WrappedComponent {...props} />

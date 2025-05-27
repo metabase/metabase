@@ -10,6 +10,7 @@ import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartSc
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 export function computeTrend(series, insights, settings, { getColor }) {
   try {
@@ -35,7 +36,7 @@ export function computeTrend(series, insights, settings, { getColor }) {
           value: displayValue,
           date: displayDate,
         },
-        comparisons: comparisons.map(comparison =>
+        comparisons: comparisons.map((comparison) =>
           buildComparisonObject({
             comparison,
             currentMetricData,
@@ -153,9 +154,11 @@ function getCurrentMetricData({ series, insights, settings }) {
   ] = series;
 
   // column locations for date and metric
-  const dimensionColIndex = cols.findIndex(col => isDate(col));
+  const dimensionColIndex = cols.findIndex((col) => {
+    return isDate(col) || isAbsoluteDateTimeUnit(col.unit);
+  });
   const metricColIndex = cols.findIndex(
-    col => col.name === settings["scalar.field"],
+    (col) => col.name === settings["scalar.field"],
   );
 
   if (dimensionColIndex === -1) {
@@ -169,7 +172,7 @@ function getCurrentMetricData({ series, insights, settings }) {
   }
 
   // get latest value and date
-  const latestRowIndex = _.findLastIndex(rows, row => {
+  const latestRowIndex = _.findLastIndex(rows, (row) => {
     const date = row[dimensionColIndex];
     const value = row[metricColIndex];
 
@@ -184,7 +187,7 @@ function getCurrentMetricData({ series, insights, settings }) {
   // get metric column metadata
   const metricColumn = cols[metricColIndex];
   const metricInsight = insights?.find(
-    insight => insight.col === metricColumn.name,
+    (insight) => insight.col === metricColumn.name,
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
@@ -237,7 +240,7 @@ function computeTrendAnotherColumn({ comparison, currentMetricData, series }) {
   const { cols, rows } = series[0].data;
 
   const columnIndex = cols.findIndex(
-    column => column.name === comparison.column,
+    (column) => column.name === comparison.column,
   );
 
   if (columnIndex === -1) {

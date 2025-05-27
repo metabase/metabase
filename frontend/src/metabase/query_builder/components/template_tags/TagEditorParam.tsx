@@ -60,7 +60,6 @@ interface Props {
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
-  databaseFields?: Field[];
   metadata: Metadata;
   originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
@@ -250,7 +249,11 @@ class TagEditorParamInner extends Component<Props> {
 
     // old parameters with widget-type of `location/state` etc. need be remapped to string/= so that the
     // dropdown is correctly populated with a set option
-    return isOldWidgetType ? "string/=" : widgetType;
+    if (isOldWidgetType) {
+      return "string/=";
+    }
+
+    return widgetType;
   };
 
   render() {
@@ -317,7 +320,7 @@ class TagEditorParamInner extends Component<Props> {
         {(hasWidgetOptions || !isDimension) && (
           <FilterWidgetLabelInput
             tag={tag}
-            onChange={value =>
+            onChange={(value) =>
               this.setParameterAttribute("display-name", value)
             }
           />
@@ -339,7 +342,7 @@ class TagEditorParamInner extends Component<Props> {
             tag={tag}
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
-            onChangeDefaultValue={value => {
+            onChangeDefaultValue={(value) => {
               this.setParameterAttribute("default", value);
               this.props.setParameterValue(tag.id, value);
             }}

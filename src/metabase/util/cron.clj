@@ -9,7 +9,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (net.redhogs.cronparser CronExpressionDescriptor)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
@@ -159,8 +158,3 @@
      :schedule_frame  (cron-day-of-week+day-of-month->frame day-of-week day-of-month)
      :schedule_hour   (cron->digit hours)
      :schedule_type   (cron->schedule-type hours day-of-month day-of-week)}))
-
-(mu/defn describe-cron-string :- ms/NonBlankString
-  "Return a human-readable description of a cron expression, localized for the current User."
-  [^String cron-string :- CronScheduleString]
-  (CronExpressionDescriptor/getDescription cron-string (i18n/user-locale)))

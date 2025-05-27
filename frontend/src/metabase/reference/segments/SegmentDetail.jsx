@@ -81,7 +81,7 @@ const mapDispatchToProps = {
   onSubmit: actions.rUpdateSegmentDetail,
 };
 
-const validate = values =>
+const validate = (values) =>
   !values.revision_message
     ? { revision_message: t`Please enter a revision message` }
     : {};
@@ -107,7 +107,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const SegmentDetail = props => {
+const SegmentDetail = (props) => {
   const {
     style,
     entity,
@@ -135,10 +135,11 @@ const SegmentDetail = props => {
     validate,
     initialValues: {},
     initialErrors: validate({}),
-    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields) =>
+      onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });

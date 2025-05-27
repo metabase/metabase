@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   AggregationPicker,
   type AggregationPickerProps,
@@ -60,8 +62,8 @@ export const SummarizeBadgeList = ({
 
   return (
     <BadgeList
-      items={aggregationItems.map(item => ({ item, name: item.displayName }))}
-      addButtonLabel="Add grouping"
+      items={aggregationItems.map((item) => ({ item, name: item.displayName }))}
+      addButtonLabel={t`Add grouping`}
       onSelectItem={onSelectItem}
       onAddItem={onAddItem}
       onRemoveItem={onRemoveItem}

@@ -2,7 +2,10 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box } from "metabase/ui";
 
-import { EditorButton, type EditorButtonProps } from "./EditorButton";
+import {
+  EditorButton,
+  type InteractiveQuestionEditorButtonProps,
+} from "./EditorButton";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
@@ -19,7 +22,7 @@ export default {
 };
 
 export const Default = {
-  render(args: EditorButtonProps) {
+  render(args: InteractiveQuestionEditorButtonProps) {
     return (
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>

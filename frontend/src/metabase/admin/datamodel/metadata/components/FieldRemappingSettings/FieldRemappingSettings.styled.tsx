@@ -21,7 +21,7 @@ interface FieldSelectButtonProps {
 }
 
 export const FieldSelectButton = styled(SelectButton)<FieldSelectButtonProps>`
-  border-color: ${props =>
+  border-color: ${(props) =>
     props.hasError ? color("error") : alpha("accent2", 0.2)};
 `;
 

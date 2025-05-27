@@ -1,32 +1,65 @@
 (ns metabase-enterprise.gsheets.settings
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.gsheets.constants :as gsheets.constants]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mr/def :gsheets/gsheets
-  [:multi {:dispatch :status}
-   ["not-connected" [:map]]
+(mr/def :gsheets/response
+  [:or
+   [:map
+    [:error true?]
+    [:message ms/NonBlankString]]
+   [:multi {:dispatch :status}
+    ["not-connected" [:map]]
 
-   ["loading"
-    [:map
-     [:folder_url ms/NonBlankString]
-     ;; time in seconds from epoch:
-     [:folder-upload-time pos-int?]
-     [:gdrive/conn-id ms/UUIDString]]]
+    ["syncing"
+     [:map
+      [:url ms/NonBlankString]
+      ;; time in seconds from epoch:
+      [:created_at pos-int?]
+      ;; time in seconds from epoch:
+      [:sync_started_at pos-int?]
+      [:created_by_id pos-int?]
+      [:db_id pos-int?]]]
 
-   ["complete"
-    [:map
-     [:folder_url ms/NonBlankString]
-     ;; time in seconds from epoch:
-     [:folder-upload-time pos-int?]
-     [:gdrive/conn-id ms/UUIDString]]]])
+    ["active"
+     [:map
+      [:url ms/NonBlankString]
+      ;; time in seconds from epoch:
+      [:created_at pos-int?]
+      ;; time in seconds from epoch:
+      [:last_sync_at pos-int?]
+      ;; time in seconds from epoch:
+      [:next_sync_at pos-int?]
+      [:created_by_id pos-int?]
+      [:db_id pos-int?]]]
+    ["error"
+     [:map
+      [:url ms/NonBlankString]
+      ;; time in seconds from epoch:
+      [:created_at pos-int?]
+      [:error_message ms/NonBlankString]
+      [:created_by_id pos-int?]
+      [:db_id pos-int?]]]]])
+
+(mr/def :gsheets/setting
+  [:or
+   [:map {}]
+   [:map
+    [:url ms/NonBlankString]
+    ;; time in seconds from epoch:
+    [:created-at pos-int?]
+    [:created-by-id pos-int?]
+    [:gdrive/conn-id ms/UUIDString]
+    [:db-id pos-int?]]])
 
 (defsetting show-google-sheets-integration
   "Whether or not to show the user a button that sets up Google Sheets integration."
@@ -44,6 +77,18 @@
              (some? (setting/get :store-api-url))
              ;; Need [[api-key]] to make requests to HM
              (some? (setting/get :api-key)))))
+
+(defn- migrate-gsheet-value
+  "Migrate sheets in old formats to the current"
+  [value]
+  (-> value
+      (set/rename-keys {:folder_url         :url
+                        :folder-upload-time :created-at})
+      (dissoc :status)
+      (cond->
+       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)))
+      (u/prog1 (when-not (= (set (keys <>)) (set (keys value)))
+                 (setting/set-value-of-type! :json :gsheets <>)))))
 
 (defsetting gsheets
   #_"
@@ -67,9 +112,10 @@
   :export? true
   :visibility :admin
   :type :json
-  :getter (fn [] (or
-                  ;; This NEEDS to be up to date between instances on a cluster, so:
-                  ;; we are going around the settings cache:
-                  (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw)
-                  (u/prog1 gsheets.constants/not-connected
-                    (setting/set-value-of-type! :json :gsheets <>)))))
+  :getter (mu/fn :- :gsheets/setting []
+            (or
+              ;; This NEEDS to be up to date between instances on a cluster, so:
+              ;; we are going around the settings cache:
+             (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw migrate-gsheet-value)
+             (u/prog1 gsheets.constants/not-connected
+               (setting/set-value-of-type! :json :gsheets <>)))))

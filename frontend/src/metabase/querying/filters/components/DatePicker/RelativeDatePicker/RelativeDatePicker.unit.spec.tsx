@@ -10,19 +10,16 @@ import type {
 import { RelativeDatePicker } from "./RelativeDatePicker";
 
 const TABS = ["Previous", "Current", "Next"];
-const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
+const TAB_CASES = TABS.flatMap((fromTab) =>
+  TABS.map((toTab) => [fromTab, toTab]),
+);
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
-  submitButtonLabel?: string;
 }
 
-function setup({
-  value,
-  availableUnits = DATE_PICKER_UNITS,
-  submitButtonLabel = "Apply",
-}: SetupOpts = {}) {
+function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
 
@@ -30,7 +27,6 @@ function setup({
     <RelativeDatePicker
       value={value}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
       onChange={onChange}
       onBack={onBack}
     />,

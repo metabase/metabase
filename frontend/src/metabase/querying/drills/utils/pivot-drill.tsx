@@ -14,17 +14,23 @@ import type Question from "metabase-lib/v1/Question";
 const ACTIONS = {
   category: {
     name: "pivot.category",
-    title: t`Category`,
+    get title() {
+      return t`Category`;
+    },
     icon: "string",
   },
   location: {
     name: "pivot.location",
-    title: t`Location`,
+    get title() {
+      return t`Location`;
+    },
     icon: "location",
   },
   time: {
     name: "pivot.time",
-    title: t`Time`,
+    get title() {
+      return t`Time`;
+    },
     icon: "calendar",
   },
 } as const;
@@ -32,7 +38,7 @@ const ACTIONS = {
 export const pivotDrill: Drill = ({ query, drill, applyDrill }) => {
   const { pivotTypes, stageIndex } = Lib.pivotDrillDetails(drill);
 
-  const actions = pivotTypes.map(pivotType =>
+  const actions = pivotTypes.map((pivotType) =>
     getActionForType(query, stageIndex, drill, pivotType, applyDrill),
   );
 
@@ -93,7 +99,7 @@ function getColumnPopover(
           stageIndex={stageIndex}
           columnGroups={Lib.groupColumns(columns)}
           checkIsColumnSelected={() => false}
-          onSelect={column => {
+          onSelect={(column) => {
             const nextQuestion = applyDrill(drill, column).setDefaultDisplay();
             const nextCard = nextQuestion.card();
             onChangeCardAndRun({ nextCard });

@@ -91,7 +91,7 @@ describe("issue 12928", () => {
 
     H.visualize();
 
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+    cy.get("@joinedQuestionId").then((joinedQuestionId) => {
       H.assertJoinValid({
         lhsTable: SOURCE_QUESTION_NAME,
         rhsTable: JOINED_QUESTION_NAME,
@@ -149,7 +149,7 @@ describe("issue 14793", () => {
     H.popover().findByText("Automatic insights…").click();
     H.popover().findByText("X-ray").click();
 
-    cy.wait("@xray").then(xhr => {
+    cy.wait("@xray").then((xhr) => {
       for (let i = 0; i < XRAY_DATASETS; ++i) {
         cy.wait("@postDataset");
       }
@@ -326,7 +326,7 @@ describe("issue 17767", () => {
       cy.findByText("Reviews").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -403,7 +403,7 @@ describe("issue 18502", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Birth Date: Month").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -469,7 +469,7 @@ describe("issue 18512", () => {
     H.popover().findByText("Products → Created At: Month").click();
     H.popover().findByText("Products → Created At: Month").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -663,7 +663,7 @@ describe("issue 20519", () => {
       .contains("Two")
       .should("exist");
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).not.to.exist;
     });
 
@@ -695,7 +695,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
   };
 
   function getJoinedTableColumnHeader() {
-    cy.get("@q1Id").then(id => {
+    cy.get("@q1Id").then((id) => {
       cy.findByText(`Question ${id} → ID`);
     });
   }
@@ -707,7 +707,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
     H.createQuestion(questionDetails, { wrapId: true, idAlias: "q1Id" });
 
     // Join Orders table with the previously saved question and save it again
-    cy.get("@q1Id").then(id => {
+    cy.get("@q1Id").then((id) => {
       const nestedQuestionDetails = {
         name: "22859-Q2",
         query: {
@@ -743,7 +743,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
   });
 
   it("model based on multi-level nested saved question should work (metabase#22859-1)", () => {
-    cy.get("@q2Id").then(id => {
+    cy.get("@q2Id").then((id) => {
       // Convert the second question to a model
       cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
@@ -1085,7 +1085,7 @@ describe("issue 31769", () => {
     cy.signInAsAdmin();
 
     H.createQuestion({ name: "Q1", query: Q1 }).then(() => {
-      H.createQuestion({ name: "Q2", query: Q2 }).then(response => {
+      H.createQuestion({ name: "Q2", query: Q2 }).then((response) => {
         cy.wrap(response.body.id).as("card_id_q2");
         H.startNewQuestion();
       });
@@ -1103,7 +1103,7 @@ describe("issue 31769", () => {
     // Asserting there're two columns from Q1 and two columns from Q2
     cy.findAllByTestId("header-cell").should("have.length", 4);
 
-    cy.get("@card_id_q2").then(cardId => {
+    cy.get("@card_id_q2").then((cardId) => {
       H.tableInteractive()
         .findByText("Q2 - Products → Category → Category")
         .should("exist");
@@ -1151,7 +1151,7 @@ describe.skip("issue 27521", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -1167,7 +1167,7 @@ describe.skip("issue 27521", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -1188,7 +1188,7 @@ describe.skip("issue 27521", () => {
     });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -1293,7 +1293,7 @@ describe("issue 45300", () => {
     cy.signInAsNormalUser();
   });
 
-  it("joins using the foreign key only should not break the filter modal (metabase#45300)", () => {
+  it("joins using the foreign key only should not break the filter picker (metabase#45300)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -1326,23 +1326,13 @@ describe("issue 45300", () => {
     });
 
     H.filter();
-
-    H.modal().within(() => {
-      // sidebar
-      cy.findByRole("tablist").within(() => {
-        cy.findAllByRole("tab", { name: "Product" }).eq(0).click();
-      });
-
-      // main panel
-      cy.findAllByTestId("filter-column-Category")
-        .should("have.length", 1)
-        .within(() => {
-          cy.findByText("Doohickey").click();
-        });
-
-      cy.button("Apply filters").click();
-      cy.wait("@dataset");
+    H.popover().within(() => {
+      cy.findAllByText("Product").should("have.length", 2).first().click();
+      cy.findByText("Category").click();
+      cy.findByText("Doohickey").click();
+      cy.button("Apply filter").click();
     });
+    cy.wait("@dataset");
 
     cy.findByTestId("filter-pill").should(
       "have.text",

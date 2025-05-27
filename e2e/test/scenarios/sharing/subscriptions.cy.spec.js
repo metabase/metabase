@@ -107,6 +107,22 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly");
       });
 
+      it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
+        openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
+
+        H.sidebar().findByText("Email it").click();
+
+        const input = cy.findByPlaceholderText(
+          "Enter user names or email addresses",
+        );
+        input.click().type(`${admin.first_name}`);
+        input.type("{esc}");
+
+        input.should("have.value", `${admin.first_name}`);
+
+        cy.findByTestId("token-field-popover").should("not.exist");
+      });
+
       it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
         openDashboardSubscriptions();
 
@@ -384,7 +400,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       // Click anywhere outside to close the popover
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15705D").click();
-      H.sendEmailAndAssert(email => {
+      H.sendEmailAndAssert((email) => {
         expect(email.html).not.to.include(
           "An error occurred while displaying this card.",
         );
@@ -404,7 +420,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       // Click outside popover to close it and at the same time check that the text card content is shown as expected
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(TEXT_CARD).click();
-      H.sendEmailAndAssert(email => {
+      H.sendEmailAndAssert((email) => {
         expect(email.html).to.include(TEXT_CARD);
       });
     });
@@ -435,7 +451,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         },
       );
 
-      H.sendEmailAndAssert(email => {
+      H.sendEmailAndAssert((email) => {
         expect(email.html).to.include(dashboardDetails.name);
         expect(email.html).to.include(questionDetails.name);
       });
@@ -485,8 +501,24 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
-      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
       H.setupSMTP();
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+    });
+
+    it("should include branding", () => {
+      assignRecipient();
+      H.sendEmailAndVisitIt();
+      cy.findAllByRole("link")
+        .filter(":contains(Orders in a dashboard)")
+        .should("be.visible");
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("contain", "Metabase")
+        .and(
+          "have.attr",
+          "href",
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=dashboard_subscription",
+        );
     });
 
     describe("with parameters", () => {
@@ -553,6 +585,17 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setTokenFeatures("all");
       H.setupSMTP();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+    });
+
+    it("should not include branding", () => {
+      assignRecipient();
+      H.sendEmailAndVisitIt();
+      cy.findAllByRole("link")
+        .filter(":contains(Orders in a dashboard)")
+        .should("be.visible");
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("not.exist");
     });
 
     it("should only show current user in recipients dropdown if `user-visiblity` setting is `none`", () => {
@@ -674,7 +717,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByText("Corbin Mertz").last().click();
         H.popover().within(() => {
-          H.fieldValuesInput().type("Bob");
+          H.fieldValuesCombobox().type("Bob");
           cy.findByText("Bobby Kessler").click();
         });
         H.popover().contains("Update filter").click();
@@ -739,10 +782,15 @@ function assignRecipient({
 } = {}) {
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .click()
-    .type(`${user.first_name} ${user.last_name}{enter}`)
-    .blur(); // blur is needed to close the popover
+
+  const input = cy.findByPlaceholderText("Enter user names or email addresses");
+  input.click().type(`${user.first_name} ${user.last_name}`);
+
+  cy.findByTestId("token-field-popover").within(() => {
+    cy.findByText(`${user.first_name} ${user.last_name}`).click();
+  });
+
+  input.blur(); // blur is needed to close the popover
 }
 
 function assignRecipients({
@@ -753,7 +801,7 @@ function assignRecipients({
   cy.findByText("Email it").click();
 
   const userInput = users
-    .map(user => `${user.first_name} ${user.last_name}{enter}`)
+    .map((user) => `${user.first_name} ${user.last_name}{enter}`)
     .join("");
 
   cy.findByPlaceholderText("Enter user names or email addresses")

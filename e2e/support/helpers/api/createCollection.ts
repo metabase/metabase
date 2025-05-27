@@ -22,7 +22,7 @@ export const createCollection = ({
       parent_id,
       authority_level,
     })
-    .then(response => {
+    .then((response) => {
       if (alias) {
         cy.wrap(response.body.id).as(alias);
       }

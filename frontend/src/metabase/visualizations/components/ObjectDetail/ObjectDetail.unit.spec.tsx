@@ -148,7 +148,7 @@ function setupForeignKeyCountQueryEndpoints() {
 }
 
 function findField(fields: Field[] | undefined, name: string) {
-  return fields?.find(field => field.name === name);
+  return fields?.find((field) => field.name === name);
 }
 
 describe("ObjectDetail", () => {

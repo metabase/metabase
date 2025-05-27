@@ -147,7 +147,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 });
 
 function waitAndAssertOnRequest(requestAlias) {
-  cy.wait(requestAlias).then(xhr => {
+  cy.wait(requestAlias).then((xhr) => {
     expect(xhr.response.body.error).to.not.exist;
   });
 }

@@ -15,12 +15,26 @@ import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
+
+/**
+ * The main visualization component that renders the question results as a chart, table, or other visualization type.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 export const QuestionVisualization = ({
   height,
   width,
   className,
   style,
-}: FlexibleSizeProps) => {
+}: InteractiveQuestionQuestionVisualizationProps) => {
   const {
     question,
     queryResults,
@@ -31,7 +45,6 @@ export const QuestionVisualization = ({
     onNavigateBack,
     updateQuestion,
     variant,
-    isCardIdError,
     originalId,
   } = useInteractiveQuestionContext();
 
@@ -43,12 +56,11 @@ export const QuestionVisualization = ({
     return <SdkLoader />;
   }
 
-  // `isCardError: true` when the entity ID couldn't be resolved
-  if (!question || isCardIdError) {
-    if (originalId && originalId !== "new") {
+  if (!question) {
+    if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
-      return <SdkError message={t`Question not found`}></SdkError>;
+      return <SdkError message={t`Question not found`} />;
     }
   }
 

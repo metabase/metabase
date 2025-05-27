@@ -79,7 +79,7 @@ function JoinStrategyDropdown({
 }: JoinStrategyDropdownProps) {
   const items = useMemo(
     () =>
-      Lib.availableJoinStrategies(query, stageIndex).map(strategy => ({
+      Lib.availableJoinStrategies(query, stageIndex).map((strategy) => ({
         strategy,
         strategyInfo: Lib.displayInfo(query, stageIndex, strategy),
       })),
@@ -103,10 +103,18 @@ function JoinStrategyDropdown({
 }
 
 const JOIN_NAME: Record<string, string> = {
-  "left-join": t`Left outer join`,
-  "right-join": t`Right outer join`,
-  "inner-join": t`Inner join`,
-  "full-join": t`Full outer join`,
+  get "left-join"() {
+    return t`Left outer join`;
+  },
+  get "right-join"() {
+    return t`Right outer join`;
+  },
+  get "inner-join"() {
+    return t`Inner join`;
+  },
+  get "full-join"() {
+    return t`Full outer join`;
+  },
 };
 
 const JOIN_ICON: Record<string, IconName> = {

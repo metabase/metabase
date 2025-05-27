@@ -9,6 +9,7 @@
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf])
@@ -17,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- stream-api-results-to-export-format
+(mu/defn- stream-api-results-to-export-format!
   "For legacy compatibility. Takes QP results in the normal `:api` response format and streams them to a different
   format.
 
@@ -35,6 +36,7 @@
                                                                      [:database_id ::lib.schema.id/database]]]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
+  (log/debugf "Streaming results to %s with %d rows" export-format (:row_count results))
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
       (let [w                           (qp.si/streaming-results-writer export-format os)
@@ -53,17 +55,17 @@
                      nil (range) rows)
         (qp.si/finish! w results)))))
 
-(defn- create-temp-file
+(defn- create-temp-file!
   "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
   [suffix]
   (doto (File/createTempFile "metabase_attachment" suffix)
     .deleteOnExit))
 
-(defn- create-temp-file-or-throw
+(defn- create-temp-file-or-throw!
   "Tries to create a temp file, will give the users a better error message if we are unable to create the temp file"
   [suffix]
   (try
-    (create-temp-file suffix)
+    (create-temp-file! suffix)
     (catch IOException e
       (let [ex-msg (tru "Unable to create temp file in `{0}` for email attachments "
                         (System/getProperty "java.io.tmpdir"))]
@@ -82,21 +84,25 @@
 
 (defn result-attachment
   "Create result attachments for an email."
-  [{{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
+  [{{original-card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
+    dashcard :dashcard
     result :result
     :as part}]
   (when (pos-int? (:row_count result))
-    (let [realize-data-rows (requiring-resolve 'metabase.channel.shared/realize-data-rows)
-          result (:result (realize-data-rows part))]
+    (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
+          result            (:result (maybe-realize-data-rows part))
+          visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))
+                             (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title])))
+          filename-prefix  (or visualizer-title original-card-name)]
       (->>
        [(when-let [temp-file (and (:include_csv card)
-                                  (create-temp-file-or-throw "csv"))]
+                                  (create-temp-file-or-throw! "csv"))]
           (with-open [os (io/output-stream temp-file)]
-            (stream-api-results-to-export-format os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
-          (create-result-attachment-map "csv" card-name temp-file))
+            (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
+          (create-result-attachment-map "csv" filename-prefix temp-file))
         (when-let [temp-file (and (:include_xls card)
-                                  (create-temp-file-or-throw "xlsx"))]
+                                  (create-temp-file-or-throw! "xlsx"))]
           (with-open [os (io/output-stream temp-file)]
-            (stream-api-results-to-export-format os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
-          (create-result-attachment-map "xlsx" card-name temp-file))]
+            (stream-api-results-to-export-format! os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
+          (create-result-attachment-map "xlsx" filename-prefix temp-file))]
        (filterv some?)))))

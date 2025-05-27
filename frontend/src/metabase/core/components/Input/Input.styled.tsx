@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
@@ -51,17 +52,17 @@ export const InputRoot = styled.div<InputRootProps>`
   display: inline-flex;
   align-items: center;
   position: relative;
-  width: ${props => (props.fullWidth ? "100%" : "")};
+  width: ${(props) => (props.fullWidth ? "100%" : "")};
 `;
 
 export const InputField = styled.input<InputProps>`
-  ${props => inputPadding(props.fieldSize)}
-  ${props => inputTypography(props.fieldSize)}
+  ${(props) => inputPadding(props.fieldSize)}
+  ${(props) => inputTypography(props.fieldSize)}
   font-family: inherit;
   color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.readOnly
       ? "var(--mb-color-background-disabled)"
       : "var(--mb-color-background)"};
@@ -70,7 +71,7 @@ export const InputField = styled.input<InputProps>`
 
   &:focus,
   &:hover {
-    border-color: ${props => color(props.colorScheme)};
+    border-color: ${(props) => color(props.colorScheme)};
     transition: border 300ms ease-in-out;
   }
 
@@ -79,37 +80,37 @@ export const InputField = styled.input<InputProps>`
     background-color: var(--mb-color-bg-light);
   }
 
-  ${props => focusOutlineStyle(props.colorScheme)};
+  ${(props) => focusOutlineStyle(props.colorScheme)};
 
-  ${props =>
+  ${(props) =>
     props.hasError &&
     css`
       border-color: var(--mb-color-error);
     `};
 
-  ${props =>
+  ${(props) =>
     props.fullWidth &&
     css`
       width: 100%;
     `}
 
-  ${props =>
+  ${(props) =>
     props.fieldSize === "small" &&
     css`
       font-size: 0.875rem;
       line-height: 1rem;
     `};
 
-  padding-left: ${props =>
+  padding-left: ${(props) =>
     getHorizontalPadding(props.fieldSize, props.hasLeftIcon)};
-  padding-right: ${props =>
+  padding-right: ${(props) =>
     getHorizontalPadding(
       props.fieldSize,
       props.hasRightIcon,
       props.hasClearButton,
     )};
 
-  ${props =>
+  ${(props) =>
     props.hasSubtitle &&
     css`
       padding-top: 1.75rem;
@@ -122,10 +123,11 @@ type InputButtonProps = {
 
 const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
-  color: ${props => color(props.onClick != null ? "text-dark" : "text-light")};
-  padding: ${props => (props.size === "small" ? "0.5rem" : "0.75rem")};
+  color: ${(props) =>
+    color(props.onClick != null ? "text-dark" : "text-light")};
+  padding: ${(props) => (props.size === "small" ? "0.5rem" : "0.75rem")};
   border-radius: 50%;
-  bottom: ${props => (props.size === "large" ? "0.125rem" : 0)};
+  bottom: ${(props) => (props.size === "large" ? "0.125rem" : 0)};
 
   &:disabled {
     cursor: default;
@@ -144,8 +146,11 @@ type InputResetButtonProps = {
   hasRightIcon: boolean;
 };
 
-export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
-  right: ${props => (props.hasRightIcon ? "1.25rem" : 0)};
+// shouldForwardProp: isPropValid is used to prevent passing the `hasRightIcon` prop to the DOM element
+export const InputResetButton = styled(InputButton, {
+  shouldForwardProp: isPropValid,
+})<InputResetButtonProps>`
+  right: ${(props) => (props.hasRightIcon ? "1.25rem" : 0)};
 `;
 
 export const InputSubtitle = styled.div`

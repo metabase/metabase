@@ -15,7 +15,7 @@ export default {
   component: AlertListModal,
 };
 
-const Template: StoryFn<ComponentProps<typeof AlertListModal>> = args => {
+const Template: StoryFn<ComponentProps<typeof AlertListModal>> = (args) => {
   const [isOpen, setIsOpen] = useState(true);
 
   return (

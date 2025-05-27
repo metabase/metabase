@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -46,7 +47,7 @@ describe("scenarios > question > saved", () => {
 
     // Save the question
     H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@cardCreate");
@@ -66,7 +67,7 @@ describe("scenarios > question > saved", () => {
 
     H.queryBuilderHeader().button("Save").click();
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save question").should("be.visible");
       cy.findByTestId("save-question-button").should("be.enabled");
 
@@ -105,7 +106,7 @@ describe("scenarios > question > saved", () => {
     // check that save will give option to replace
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText('Replace original question, "Orders"');
       cy.findByText("Save as new question");
       cy.findByText("Cancel").click();
@@ -283,7 +284,7 @@ describe("scenarios > question > saved", () => {
     H.openQuestionActions();
     H.popover().findByText("Duplicate").click();
 
-    H.modal().should($el => {
+    H.modal().should(($el) => {
       const $modal = $el[0];
       expect($modal.clientWidth).to.be.equal($modal.scrollWidth);
     });
@@ -382,7 +383,7 @@ describe("scenarios > question > saved", () => {
     cy.findAllByTestId("header-cell")
       .filter(":contains(Tax)")
       .as("headerCell")
-      .then($cell => {
+      .then(($cell) => {
         const originalWidth = $cell[0].getBoundingClientRect().width;
         cy.wrap(originalWidth).as("originalWidth");
       });
@@ -409,8 +410,8 @@ describe("scenarios > question > saved", () => {
     // Wait until column width gets updated
     cy.wait(10);
 
-    cy.get("@originalWidth").then(originalWidth => {
-      cy.get("@headerCell").should($newCell => {
+    cy.get("@originalWidth").then((originalWidth) => {
+      cy.get("@headerCell").should(($newCell) => {
         const newWidth = $newCell[0].getBoundingClientRect().width;
         expect(newWidth).to.be.gte(originalWidth + stepX * 2);
       });
@@ -426,7 +427,7 @@ describe("scenarios > question > saved", () => {
     );
     savedQuestionTitle.blur();
 
-    savedQuestionTitle.should("be.visible").should($el => {
+    savedQuestionTitle.should("be.visible").should(($el) => {
       // clientHeight: height of the textarea
       // scrollHeight: height of the text content, including content not visible on the screen
       const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
@@ -478,7 +479,7 @@ describe("scenarios > question > saved", () => {
       }
     }
 
-    HIDDEN_TYPES.forEach(visibilityType => {
+    HIDDEN_TYPES.forEach((visibilityType) => {
       it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
         hideTable("Orders", visibilityType);
 
@@ -576,6 +577,88 @@ describe("scenarios > question > saved", () => {
       cy.get("@questionId").then(H.visitQuestion);
 
       H.queryBuilderHeader().findByText("View-only").should("be.visible");
+    });
+  });
+
+  describe("with watermark", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+
+      cy.intercept("/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["token-features"]["development-mode"] = true;
+        });
+      });
+
+      cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
+        collection_position: 1,
+        enable_embedding: true,
+      });
+
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+        enable_embedding: true,
+      });
+    });
+
+    it("should show questions with a watermark when in dev mode whereever we show visualizations", () => {
+      H.visitQuestion(ORDERS_QUESTION_ID);
+
+      cy.findByTestId("development-watermark").should("exist");
+
+      H.appBar()
+        .findByRole("link", { name: /Our analytics/i })
+        .click();
+      cy.findByTestId("pinned-items")
+        .findAllByTestId("development-watermark")
+        .should("have.length.above", 0);
+
+      cy.findByTestId("collection-table")
+        .findByRole("link", { name: /Orders in a dashboard/i })
+        .click();
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.above",
+        0,
+      );
+
+      H.visitEmbeddedPage({
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      });
+
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.greaterThan",
+        0,
+      );
+
+      H.visitEmbeddedPage({
+        resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
+        params: {},
+      });
+
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.greaterThan",
+        0,
+      );
+
+      //Need to sign in to generate the public link for the orders question
+      cy.signInAsAdmin();
+
+      H.visitPublicQuestion(ORDERS_QUESTION_ID);
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.above",
+        0,
+      );
+
+      //Need to sign in to generate the public link for the orders dashboard
+      cy.signInAsAdmin();
+
+      H.visitPublicDashboard(ORDERS_DASHBOARD_ID);
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.above",
+        0,
+      );
     });
   });
 });

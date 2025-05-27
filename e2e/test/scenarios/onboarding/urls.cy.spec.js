@@ -32,7 +32,7 @@ describe("URLs", () => {
     [
       `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}`,
       `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}-saved-questions`,
-    ].forEach(url => {
+    ].forEach((url) => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
         cy.findByRole("heading", { name: "Databases" });
@@ -90,13 +90,11 @@ describe("URLs", () => {
     });
 
     it("should not slugify users' collections page URL", () => {
-      cy.visit("/collection/root");
-      H.navigationSidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
-      H.popover().findByText("Other users' personal collections").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("All personal collections");
+      cy.visit("/collection/users");
+      cy.findByTestId("browsercrumbs").should(
+        "contain",
+        /All personal collections/i,
+      );
       cy.location("pathname").should("eq", "/collection/users");
     });
 

@@ -2,7 +2,7 @@
 
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
-![Metabase Product Screenshot](docs/images/metabase-product-screenshot.svg)
+![Metabase Product Screenshot](docs/images/metabase-product-screenshot.png)
 
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
@@ -15,7 +15,7 @@ The easiest way to get started with Metabase is to sign up for a free trial of [
 ## Features
 
 - [Set up in five minutes](https://www.metabase.com/docs/latest/setting-up-metabase.html) (we're not kidding).
-- Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL.
+- Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/questions/introduction) without knowing SQL.
 - Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
 - Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/users-guide/07-dashboards.html) with filters, auto-refresh, fullscreen, and custom click behavior.
 - Create [models](https://www.metabase.com/learn/metabase-basics/getting-started/models) that clean up, annotate, and/or combine raw tables.
@@ -29,7 +29,7 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 ## Supported databases
 
 - [Officially supported databases](./docs/databases/connecting.md#connecting-to-supported-databases)
-- [Partner and Community drivers](./docs/developers-guide/partner-and-community-drivers.md)
+- [Community drivers](./docs/developers-guide/partner-and-community-drivers.md)
 
 ## Installation
 
@@ -72,36 +72,6 @@ $ clojure -M:run
 
 For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
 
-### MAGE - Development Automation
-
-You need [Babashka](https://github.com/babashka/babashka#quickstart) to run The Metabase Automation Genius Engine (MAGE). Run `./bin/mage` to list your tasks. All of them support `-h` to learn more and show examples.
-
-``` shell
-$ ./bin/mage
-   ███╗   ███╗ █████╗  ██████╗ ███████╗
-   ████╗ ████║██╔══██╗██╔════╝ ██╔════╝
-   ██╔████╔██║███████║██║  ███╗█████╗
-   ██║╚██╔╝██║██╔══██║██║   ██║██╔══╝
-   ██║ ╚═╝ ██║██║  ██║╚██████╔╝███████╗
-   ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-    The Metabase Automation Genius Engine
-
-The following tasks are available:
-
-cljfmt-staged   Runs cljfmt on staged files
-...
-kondo           Runs Kondo against a file, directory, or everything we usually lint
-...
-start-db        Start a db on a default port in docker
-jar-download    Given a version, downloads a metabase jar
-$ ./bin/mage kondo -h
-<prints help for easily running kondo>
-```
-
-### mage Autocomplete
-
-Run `./bin/mage -autocomplete` and follow the instructions to setup autocomplete in your terminal.
-
 ## Internationalization
 
 We want Metabase to be available in as many languages as possible. See which translations are available and help contribute to internationalization using our project over at [Crowdin](https://crowdin.com/project/metabase-i18n). You can also check out our [policies on translations](https://www.metabase.com/docs/latest/administration-guide/localization.html).
@@ -122,7 +92,7 @@ See [SECURITY.md](./SECURITY.md) for details.
 
 ## License
 
-This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the [commercial editions of Metabase](https://www.metabase.com/pricing), which are released under the Metabase Commercial Software License.
+This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the [commercial editions of Metabase](https://www.metabase.com/pricing/), which are released under the Metabase Commercial Software License.
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 

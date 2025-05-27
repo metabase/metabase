@@ -22,11 +22,15 @@
     margin-right: 8px;
     height: 14px;
     width: 14px;
+    flex-shrink: 0;
   }
 }
 
 .label {
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: break-word;
 }
 
 .highlight {

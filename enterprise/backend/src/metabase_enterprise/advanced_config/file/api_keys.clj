@@ -3,12 +3,15 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
-   [metabase.models.user :as user]
+   [metabase.api-keys.core :as api-key]
    [metabase.permissions.core :as perms]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/name
   string?)
@@ -50,18 +53,28 @@
 
 (defn- init-from-config-file!
   [api-key-config]
-  (let [{:keys [name key group creator]} api-key-config
-        group-id (case group
-                   "admin" (u/the-id (perms/admin-group))
-                   "all-users" (u/the-id (perms/all-users-group)))
-        unhashed-key (u.secret/secret key)
-        creator (get-admin-user-by-email creator)]
-
+  (let [{:keys [name key group creator]} api-key-config]
+    ;; Check if there's an existing API key with the same name first
     (if-let [existing-api-key (select-api-key name)]
       (do
         (log/info (u/format-color :blue "API key with name %s already exists, skipping" (pr-str name)))
         existing-api-key)
-      (do
+      (let [group-id (case group
+                       "admin" (u/the-id (perms/admin-group))
+                       "all-users" (u/the-id (perms/all-users-group)))
+            unhashed-key (u.secret/secret key)
+            _ (when-not (and (<= 11 (count key) 254)
+                             (re-matches #"mb_[A-Za-z0-9+/=]+" key))
+                (throw (ex-info (format "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'.")
+                                {:name name})))
+            prefix (api-key/prefix (u.secret/expose unhashed-key))
+            creator (get-admin-user-by-email creator)]
+
+        ;; Check if there's an existing API key with the same prefix
+        (when (t2/exists? :model/ApiKey :key_prefix prefix)
+          (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
+                          {:name name :prefix prefix})))
+
         (log/info (u/format-color :green "Creating new API key %s" (pr-str name)))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))

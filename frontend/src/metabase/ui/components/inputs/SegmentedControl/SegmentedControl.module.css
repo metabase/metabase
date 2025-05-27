@@ -1,5 +1,5 @@
 .SegmentedControl {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--sc-background-color);
 }
 
 .SegmentedControlLabel {
@@ -20,7 +20,7 @@
   &[data-active] {
     &,
     &:hover {
-      color: var(--mb-color-text-dark);
+      color: var(--sc-active-text-color);
     }
   }
 }
@@ -38,8 +38,4 @@
       color: var(--mb-color-text-light);
     }
   }
-}
-
-.SegmentedControlIndicator {
-  background-color: var(--mb-color-bg-white);
 }

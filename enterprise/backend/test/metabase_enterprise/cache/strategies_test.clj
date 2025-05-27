@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
-   [metabase-enterprise.task.cache :as task.cache]
-   [metabase.models.query :as query]
+   [metabase-enterprise.cache.task.refresh-cache-configs :as task.cache]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]))

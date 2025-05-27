@@ -3,7 +3,7 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -165,4 +165,7 @@
   (load-all-schemas-prod! types-dir)
   ;; in dev, watch both types directories for changes
   (when config/is-dev?
-    (watch-directory! (io/file (io/resource types-dir)) handle-file-change!)))
+    (try
+      (watch-directory! (io/file (io/resource types-dir)) handle-file-change!)
+      (catch Exception e
+        (log/warn e "Could not watch UserKeyValue schema directory!")))))

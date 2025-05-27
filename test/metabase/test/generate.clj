@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
@@ -261,11 +262,6 @@
                                   :spec        ::field
                                   :insert!     {:model :model/Field}
                                   :relations   {:table_id [:table :id]}}
-   :metric                       {:prefix    :metric
-                                  :spec      ::metric
-                                  :insert!   {:model :model/LegacyMetric}
-                                  :relations {:creator_id [:core-user :id]
-                                              :table_id   [:table :id]}}
    :table                        {:prefix    :t
                                   :spec      ::table
                                   :insert!   {:model :model/Table}
@@ -345,6 +341,9 @@
     ;; Table names need to be unique within their database. This enforces it, and appends junk to names if needed.
     (= ent-type :table)
     (update :name unique-name)
+    ;; Table schemas also need to be unique.
+    (= ent-type :table)
+    (m/update-existing :schema unique-name)
 
     ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
     (= ent-type :field)

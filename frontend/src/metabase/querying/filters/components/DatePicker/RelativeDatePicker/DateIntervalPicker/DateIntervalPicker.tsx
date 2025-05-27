@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
 import type {
@@ -17,6 +17,8 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import type { DatePickerSubmitButtonProps } from "../../types";
+import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import {
   formatDateRange,
@@ -30,7 +32,7 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
-  submitButtonLabel: string;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
@@ -38,7 +40,7 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   availableUnits,
-  submitButtonLabel,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
@@ -53,7 +55,7 @@ export function DateIntervalPicker({
   };
 
   const handleUnitChange = (inputValue: string | null) => {
-    const option = unitOptions.find(option => option.value === inputValue);
+    const option = unitOptions.find((option) => option.value === inputValue);
     if (option) {
       onChange(setUnit(value, option.value));
     }
@@ -107,9 +109,7 @@ export function DateIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        <Button variant="filled" type="submit">
-          {submitButtonLabel}
-        </Button>
+        {renderSubmitButton({ value, isDisabled: false })}
       </Group>
     </form>
   );

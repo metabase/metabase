@@ -3,12 +3,11 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.audit :as audit]
-   [metabase.db :as mdb]
-   [metabase.models.serialization :as serdes]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.plugins :as plugins]
+   [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -28,10 +27,10 @@
 
   More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
   []
-  (-> (Thread/currentThread)
-      (.getContextClassLoader)
-      (.getResource "")
-      (str/starts-with? "jar:")))
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
 
 (defn- get-jar-path
   "Returns the path to the currently running jar file.
@@ -95,23 +94,19 @@
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
-  (when (contains? #{:mysql :h2} (mdb/db-type))
-    (t2/update! :model/Database audit-db-id {:engine "postgres"})
-    (when (= :mysql (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema "public"}))
-    (when (= :h2 (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :schema] :name [:lower :name]})
-      (t2/update! :model/Field
-                  {:table_id
-                   [:in
-                    {:select [:id]
-                     :from [(t2/table-name :model/Table)]
-                     :where [:= :db_id audit-db-id]}]}
-                  {:name [:lower :name]}))
-    (log/info "Adjusted Audit DB for loading Analytics Content")))
+  (t2/update! :model/Database audit-db-id {:engine "postgres"})
+  (t2/update! :model/Table {:db_id audit-db-id} {:schema "public" :name [:lower :name]})
+  (t2/update! :model/Field
+              {:table_id
+               [:in
+                {:select [:id]
+                 :from [(t2/table-name :model/Table)]
+                 :where [:= :db_id audit-db-id]}]}
+              {:name [:lower :name]})
+  (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- adjust-audit-db-to-host!
-  [{audit-db-id :id :keys [engine]}]
+  [{audit-db-id :id :keys [engine] :as audit-db}]
   (when (not= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
@@ -126,6 +121,9 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:upper :name]}))
+    (when (= :postgres (mdb/db-type))
+      ;; in postgresql the data should look just like the source
+      (adjust-audit-db-to-source! audit-db))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name (mdb/db-type)))))
 
 (def ^:private analytics-dir-resource
@@ -159,15 +157,6 @@
                       (u.files/relative-path ia-dir)
                       {:replace-existing true})
         (log/info "Copying complete.")))))
-
-(defsetting load-analytics-content
-  "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
-  :type       :boolean
-  :default    true
-  :visibility :internal
-  :setter     :none
-  :audit      :never
-  :doc        "Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.")
 
 (def ^:constant SKIP_CHECKSUM_FLAG
   "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
@@ -205,10 +194,10 @@
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
-      (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
+      (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
+        (adjust-audit-db-to-source! audit-db)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
@@ -220,64 +209,18 @@
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-              (audit/last-analytics-checksum! current-checksum))))))
-    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (adjust-audit-db-to-host! audit-db))))
-
-(def ^:private audit-db-entity-id
-  "Hard-coded `:entity_id` for the audit DB. Used to compute any missing `:entity_id`s for existing audit DBs."
-  "audit__rP75CiURKZ-0pq")
-
-(defn- entity-id-for-table [table]
-  (-> [audit-db-entity-id
-       ;; The hard-coded entity_ids saved in the serdes export used a schema of "public", so that's now hard-coded.
-       ;; The schema (and spelling) used for the AppDB tables varies by engine, so it should not influence the idents.
-       "public"
-       ;; We use inconsistent upper and lower case table and field names for audit across AppDB engines; this uses
-       ;; lower case everywhere to make the entity IDs effectively hard-coded.
-       (u/lower-case-en (:name table))]
-      serdes/raw-hash
-      u/generate-nano-id))
-
-(defn- entity-id-for-field [table-eid field]
-  ;; We use inconsistent upper and lower case table and field names for audit across AppDB engines; this uses lower
-  ;; case to make the entity IDs effectively hard-coded.
-  (-> [table-eid (u/lower-case-en (:name field))]
-      serdes/raw-hash
-      u/generate-nano-id))
-
-(defn- backfill-entity-ids!
-  "Databases, Tables and Fields did not originally have `:entity_id` fields. Now that they do (Jan 2025), we need to
-  include `:entity_id`s on the exported audit DB checked into the Metabase repo and inlined in the (EE) JAR files.
-
-  If we add new tables and fields in the future, they'll get randomly generated `:entity_id`s that will be randomly
-  generated, exported and checked in.
-
-  But for existing audit DBs, we can't do that! Serdes will backfill the `:entity_id`s based on its
-  `serdes/hash-fields` mechanism, but `:engine` is part of the hash for Databases, since names can be duplicated
-  with different engines! That's a mess, but it has happened in the wild so we have to support it.
-
-  So we hard-code a NanoID for the audit Database, and then compute reproducible NanoIDs for all existing tables and
-  fields by *seeding* [[u/generate-nano-id]] with the table and field names."
-  [db]
-  (when db
-    (t2/update! :model/Database (:id db) {:entity_id audit-db-entity-id})
-    (let [tables (t2/select :model/Table :db_id (:id db))
-          eids   (into {} (map (juxt :id (some-fn :entity_id entity-id-for-table))) tables)]
-      (doseq [table tables
-              :when (not (:entity_id table))]
-        (t2/update! :model/Table (:id table) {:entity_id (get eids (:id table))}))
-      (when (seq tables)
-        (doseq [field (t2/select :model/Field :table_id [:in (map :id tables)] :entity_id nil)]
-          (t2/update! :model/Field (:id field)
-                      {:entity_id (entity-id-for-field (get eids (:table_id field)) field)}))))))
+              (audit/last-analytics-checksum! current-checksum))))
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+          (adjust-audit-db-to-host! audit-db))))))
 
 (defn- maybe-install-audit-db
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
-    (when audit-db
-      (backfill-entity-ids! audit-db))
     (cond
+      (not (audit-app.settings/install-analytics-database))
+      (u/prog1 ::blocked
+        (log/info "Not installing Audit DB - install-analytics-database setting is false"))
+
       (nil? audit-db)
       (u/prog1 ::installed
         (log/info "Installing Audit DB...")
@@ -297,7 +240,7 @@
   :feature :none
   []
   (u/prog1 (maybe-install-audit-db)
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; prevent sync while loading
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db

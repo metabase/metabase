@@ -36,11 +36,11 @@ class EntityMenu extends Component {
     this.setState({ open, menuItemContent: null });
   };
 
-  setFreezeMenu = freezeMenu => {
+  setFreezeMenu = (freezeMenu) => {
     this.setState({ freezeMenu });
   };
 
-  replaceMenuWithItemContent = menuItemContent => {
+  replaceMenuWithItemContent = (menuItemContent) => {
     this.setState({ menuItemContent });
   };
 
@@ -91,12 +91,13 @@ class EntityMenu extends Component {
         <Popover.Dropdown>
           {menuItemContent || (
             <ol className={CS.p1} style={{ minWidth: minWidth ?? 184 }}>
-              {items.map(item => {
+              {items.map((item) => {
                 if (!item) {
                   return null;
                 }
 
                 const key = item.key ?? item.title;
+                const itemId = `entity-menu-item-${encodeURIComponent(key)}`;
 
                 if (item.separator) {
                   return (
@@ -108,8 +109,13 @@ class EntityMenu extends Component {
 
                 if (item.content) {
                   return (
-                    <li key={key} data-testid={item.testId}>
+                    <li
+                      key={key}
+                      data-testid={item.testId}
+                      aria-labelledby={itemId}
+                    >
                       <EntityMenuItem
+                        htmlId={itemId}
                         icon={item.icon}
                         title={item.title}
                         action={() =>
@@ -135,14 +141,19 @@ class EntityMenu extends Component {
                 }
 
                 return (
-                  <li key={key} data-testid={item.testId}>
+                  <li
+                    key={key}
+                    data-testid={item.testId}
+                    aria-labelledby={itemId}
+                  >
                     <EntityMenuItem
+                      htmlId={itemId}
                       icon={item.icon}
                       title={item.title}
                       externalLink={item.externalLink}
                       action={
                         item.action &&
-                        (e => {
+                        ((e) => {
                           item.action(e);
                           this.toggleMenu();
                         })

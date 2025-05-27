@@ -11,10 +11,10 @@ export const funnelToBarTransform: TransformSeries = (rawSeries, settings) => {
   } = series;
 
   const dimensionIndex = cols.findIndex(
-    col => col.name === settings["funnel.dimension"],
+    (col) => col.name === settings["funnel.dimension"],
   );
   const metricIndex = cols.findIndex(
-    col => col.name === settings["funnel.metric"],
+    (col) => col.name === settings["funnel.metric"],
   );
 
   const rowByDimensionValue = rows.reduce((acc, row) => {
@@ -25,13 +25,13 @@ export const funnelToBarTransform: TransformSeries = (rawSeries, settings) => {
   const orderedRows =
     Array.isArray(rowsOrder) && rowsOrder.length > 0
       ? rowsOrder
-          .map(rowOrder =>
+          .map((rowOrder) =>
             rowOrder.enabled ? rowByDimensionValue.get(rowOrder.key) : null,
           )
           .filter(isNotNull)
       : rows;
 
-  return orderedRows.map(row => {
+  return orderedRows.map((row) => {
     const name = String(
       formatValue(row[dimensionIndex], {
         column: cols[dimensionIndex],

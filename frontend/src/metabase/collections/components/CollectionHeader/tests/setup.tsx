@@ -23,7 +23,6 @@ const getProps = (
   isBookmarked: false,
   canUpload: false,
   uploadsEnabled: true,
-  isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
   saveFile: jest.fn(),
@@ -44,8 +43,8 @@ export const setup = ({
   setupDashboardQuestionCandidatesEndpoint([]);
   setupUserKeyValueEndpoints({
     key: "collection-menu",
-    namespace: "user_acknowledgement",
-    value: true,
+    namespace: "indicator-menu",
+    value: [],
   });
   setupUserKeyValueEndpoints({
     key: "move-to-dashboard",

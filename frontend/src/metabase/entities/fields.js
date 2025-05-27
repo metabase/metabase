@@ -29,7 +29,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
 
@@ -46,7 +45,6 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 
 // ADDITIONAL OTHER ACTIONS
 
-export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
 /**
@@ -58,7 +56,7 @@ const Fields = createEntity({
   schema: FieldSchema,
 
   rtk: {
-    getUseGetQuery: fetchType => {
+    getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchFieldValues") {
         return {
           useGetQuery: useGetFetchFieldValuesQuery,
@@ -109,15 +107,17 @@ const Fields = createEntity({
           const uniqueId = getUniqueFieldId({ id, table_id });
           return [...Fields.getObjectStatePath(uniqueId), "values"];
         },
-        field => {
+        (field) => {
           return Fields.getQueryKey({ id: field.id });
         },
       ),
       withNormalize(FieldSchema),
-    )(field => async dispatch => {
-      const { field_id, ...data } = await MetabaseApi.field_values({
-        fieldId: field.id,
-      });
+    )((field) => async (dispatch) => {
+      const { field_id, ...data } = await entityCompatibleQuery(
+        field.id,
+        dispatch,
+        fieldApi.endpoints.getFieldValues,
+      );
       const table_id = field.table_id;
 
       // table_id is required for uniqueFieldId as it's a way to know if field is virtual
@@ -168,7 +168,7 @@ const Fields = createEntity({
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
       ({ id }, dimension) =>
-        dispatch =>
+        (dispatch) =>
           entityCompatibleQuery(
             { id, ...dimension },
             dispatch,
@@ -178,7 +178,7 @@ const Fields = createEntity({
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
       ({ id }) =>
-        async dispatch => {
+        async (dispatch) => {
           await entityCompatibleQuery(
             id,
             dispatch,
@@ -195,8 +195,7 @@ const Fields = createEntity({
   },
 
   actions: {
-    addParamValues: createAction(ADD_PARAM_VALUES),
-    addFields: createAction(ADD_FIELDS, fields =>
+    addFields: createAction(ADD_FIELDS, (fields) =>
       normalize(fields, [FieldSchema]),
     ),
   },
@@ -205,18 +204,6 @@ const Fields = createEntity({
 
   reducer: handleActions(
     {
-      [ADD_PARAM_VALUES]: {
-        next: (state, { payload: paramValues }) => {
-          for (const fieldValues of Object.values(paramValues)) {
-            state = assocIn(
-              state,
-              [fieldValues.field_id, "values"],
-              fieldValues,
-            );
-          }
-          return state;
-        },
-      },
       [ADD_REMAPPINGS]: (state, { payload: { fieldId, remappings } }) =>
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),

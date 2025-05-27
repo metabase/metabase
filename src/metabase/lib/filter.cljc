@@ -62,10 +62,6 @@
    (for [clause subclauses]
      (lib.metadata.calculation/display-name query stage-number clause style))))
 
-(defn- ->maybe-bigint
-  [x]
-  (clojure.core/or (when (string? x) (u.number/parse-bigint x)) x))
-
 (defmethod lib.metadata.calculation/display-name-method ::varargs
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
@@ -83,7 +79,6 @@
                        (temporal? a)
                        (lib.util/clause? a)
                        (clojure.core/contains? units (:temporal-unit (second a)))))))
-        ->number-display-name #(-> % ->maybe-bigint ->display-name)
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)
@@ -144,7 +139,7 @@
                 (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
       [(_ :guard #{:= :in}) _ (a :guard numeric?) b]
-      (i18n/tru "{0} is equal to {1}" (->display-name a) (->number-display-name b))
+      (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
       [(_ :guard #{:= :in}) _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
       (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (u.time/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
@@ -156,7 +151,7 @@
       (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))
 
       [(_ :guard #{:!= :not-in}) _ (a :guard numeric?) b]
-      (i18n/tru "{0} is not equal to {1}" (->display-name a) (->number-display-name b))
+      (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
 
       [(_ :guard #{:!= :not-in}) _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (inflections/plural (->temporal-name a b)))
@@ -239,7 +234,6 @@
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
-        ->number-display-name #(-> % ->maybe-bigint ->display-name)
         ->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (lib.util.match/match-one expr
@@ -247,24 +241,23 @@
       (i18n/tru "{0} is before {1}"                   (->display-name x) (->temporal-name y))
 
       [:< _ x y]
-      (i18n/tru "{0} is less than {1}"                (->number-display-name x) (->number-display-name y))
+      (i18n/tru "{0} is less than {1}"                (->display-name x) (->display-name y))
 
       [:<= _ x y]
-      (i18n/tru "{0} is less than or equal to {1}"    (->number-display-name x) (->number-display-name y))
+      (i18n/tru "{0} is less than or equal to {1}"    (->display-name x) (->display-name y))
 
       [:> _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "{0} is after {1}"                    (->display-name x) (->temporal-name y))
 
       [:> _ x y]
-      (i18n/tru "{0} is greater than {1}"             (->number-display-name x) (->number-display-name y))
+      (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
 
       [:>= _ x y]
-      (i18n/tru "{0} is greater than or equal to {1}" (->number-display-name x) (->number-display-name y)))))
+      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y)))))
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
-        ->number-display-name #(-> % ->maybe-bigint ->display-name)
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)]
@@ -294,9 +287,9 @@
 
       [:between _ x y z]
       (i18n/tru "{0} is between {1} and {2}"
-                (->number-display-name x)
-                (->number-display-name y)
-                (->number-display-name z)))))
+                (->display-name x)
+                (->display-name y)
+                (->display-name z)))))
 
 (defmethod lib.metadata.calculation/display-name-method :during
   [query stage-number [_tag _opts expr value unit] style]
@@ -325,6 +318,15 @@
       ;; TODO -- This description is sorta wack, we should use [[metabase.legacy-mbql.util/negate-filter-clause]] to
       ;; negate `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
       :not       (i18n/tru "not {0}" expr))))
+
+(defmethod lib.metadata.calculation/display-name-method :value
+  [query stage-number [_value {:keys [base-type]} expr] style]
+  (lib.metadata.calculation/display-name query
+                                         stage-number
+                                         (cond-> expr
+                                           (clojure.core/and (string? expr) (isa? base-type :type/BigInteger))
+                                           u.number/parse-bigint)
+                                         style))
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]

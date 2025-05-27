@@ -297,8 +297,10 @@ describe(
       });
 
       H.getTable({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
-        table => {
-          const countField = table.fields.find(field => field.name === "count");
+        (table) => {
+          const countField = table.fields.find(
+            (field) => field.name === "count",
+          );
           cy.request("PUT", `/api/field/${countField.id}`, {
             semantic_type: "type/Quantity",
           });
@@ -451,7 +453,7 @@ const getDashboardResource = ({ dashboard_id }) => ({
   params: {},
 });
 
-const getTargetDashboard = sourceSettings => ({
+const getTargetDashboard = (sourceSettings) => ({
   parameters: [
     {
       ...targetParameter,
@@ -464,7 +466,7 @@ const getTargetDashboard = sourceSettings => ({
   },
 });
 
-const getStructuredDashboard = questionId => {
+const getStructuredDashboard = (questionId) => {
   return getTargetDashboard({
     values_source_type: "card",
     values_source_config: {
@@ -474,7 +476,7 @@ const getStructuredDashboard = questionId => {
   });
 };
 
-const getNativeDashboard = questionId => {
+const getNativeDashboard = (questionId) => {
   return getTargetDashboard({
     values_source_type: "card",
     values_source_config: {
@@ -484,7 +486,7 @@ const getNativeDashboard = questionId => {
   });
 };
 
-const getListDashboard = values_query_type => {
+const getListDashboard = (values_query_type) => {
   return getTargetDashboard({
     values_source_type: "static-list",
     values_query_type,
@@ -507,7 +509,7 @@ const getParameterMapping = ({ card_id }) => ({
 function setSearchFilter(label) {
   H.filterWidget().click();
   H.popover().within(() => {
-    H.fieldValuesInput().type(label);
+    H.fieldValuesCombobox().type(label);
   });
 
   // eslint-disable-next-line no-unsafe-element-filtering

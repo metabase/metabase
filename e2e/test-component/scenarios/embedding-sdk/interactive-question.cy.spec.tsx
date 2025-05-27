@@ -3,11 +3,13 @@ import {
   InteractiveQuestion,
   type MetabaseQuestion,
 } from "@metabase/embedding-sdk-react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -28,6 +30,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Modal } from "metabase/ui";
+const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -64,6 +67,20 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should show a watermark in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("development-watermark").should("exist");
+    });
+  });
+
   it("should not fail on aggregated question drill", () => {
     mountInteractiveQuestion();
 
@@ -74,7 +91,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
-    cy.on("uncaught:exception", error => {
+    cy.on("uncaught:exception", (error) => {
       expect(
         error.message.includes(
           "Error converting :aggregation reference: no aggregation at index 0",
@@ -98,7 +115,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     const lastColumnName = "Max of Quantity";
     const columnNames = [firstColumnName, lastColumnName];
 
-    columnNames.forEach(columnName => {
+    columnNames.forEach((columnName) => {
       tableInteractive().findByText(columnName).should("be.visible");
 
       tableHeaderClick(columnName);
@@ -206,7 +223,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       </Box>
     );
 
-    cy.get<string>("@questionId").then(questionId => {
+    cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<TestSuiteComponent questionId={questionId} />);
     });
 
@@ -270,7 +287,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     const onBeforeSaveSpy = cy.spy().as("onBeforeSaveSpy");
     const onSaveSpy = cy.spy().as("onSaveSpy");
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       mountSdkContent(
         <TestComponent
           questionId={questionId}
@@ -311,13 +328,13 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     // Expect the default summarization view to be there.
     cy.findByTestId("aggregation-picker").should("be.visible");
 
-    cy.on("uncaught:exception", error => {
+    cy.on("uncaught:exception", (error) => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;
     });
   });
 
   it("does not contain known console errors (metabase#48497)", () => {
-    cy.get<number>("@questionId").then(questionId => {
+    cy.get<number>("@questionId").then((questionId) => {
       mountSdkContentAndAssertNoKnownErrors(
         <InteractiveQuestion questionId={questionId} />,
       );
@@ -353,7 +370,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     successTestCases.forEach(({ name, questionIdAlias }) => {
       it(`should load question content for ${name}`, () => {
-        cy.get(questionIdAlias).then(questionId => {
+        cy.get(questionIdAlias).then((questionId) => {
           mountInteractiveQuestion({ questionId });
         });
 
@@ -377,6 +394,107 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           cy.findByText("Product ID").should("not.exist");
           cy.findByText("Max of Quantity").should("not.exist");
         });
+      });
+    });
+  });
+
+  it("should select sensible display for new questions (EMB-308)", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    cy.log("Select data");
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    cy.log("Select summarization");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByRole("option", { name: "Count of rows" }).click();
+
+    cy.log("Select grouping");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByRole("heading", { name: "Created At" }).click();
+
+    cy.log("Set limit");
+    const LIMIT = 2;
+    cy.button("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit")
+      .type(LIMIT.toString())
+      .realPress("Tab");
+
+    cy.log("Visualize");
+    H.visualize();
+    H.cartesianChartCircle().should("have.length", LIMIT);
+  });
+
+  it("can change target collection to a different entity id without crashing (metabase#57438)", () => {
+    const TestComponent = () => {
+      const [targetCollection, setTargetCollection] = useState<string | null>(
+        FIRST_COLLECTION_ENTITY_ID!,
+      );
+
+      return (
+        <div>
+          <div>id = {targetCollection}</div>
+
+          <InteractiveQuestion
+            questionId="new"
+            targetCollection={targetCollection}
+            onSave={() => {}}
+            isSaveEnabled
+          />
+
+          <div
+            onClick={() => setTargetCollection(SECOND_COLLECTION_ENTITY_ID!)}
+          >
+            use second collection
+          </div>
+        </div>
+      );
+    };
+
+    mountSdkContent(<TestComponent />);
+
+    getSdkRoot().within(() => {
+      cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("exist");
+
+      cy.log("click on the button to switch target collection");
+      cy.findByText("use second collection").click();
+      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
+    });
+
+    cy.log("close any existing open popovers to reduce flakes");
+    cy.get("body").type("{esc}");
+
+    getSdkRoot().within(() => {
+      cy.log("open the data picker");
+      cy.findByText("Pick your starting data").click();
+
+      cy.log("ensure that the interactive question still works");
+      H.popover().findByRole("link", { name: "Orders" }).click();
+      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+    });
+  });
+
+  it("should not show any sdk error when showing a question in strict mode", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        strictMode: true,
+      });
+
+      getSdkRoot().within(() => {
+        H.assertElementNeverExists({
+          shouldNotExistSelector: "[data-testid='sdk-error-container']",
+          successSelector: "[data-testid='table-header']",
+          rejectionMessage:
+            "sdk errors should not show up when rendering an interactive question in strict mode",
+          pollInterval: 20,
+          timeout: 15000,
+        });
+
+        cy.log("should show the question's visualization");
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
       });
     });
   });

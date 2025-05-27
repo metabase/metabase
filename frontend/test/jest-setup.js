@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+import { Crypto, CryptoKey } from "@peculiar/webcrypto";
 import { TextDecoder, TextEncoder } from "util";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
@@ -10,7 +12,7 @@ import "__support__/mocks";
 // window.location or similar jsdom properties after the tests have ended and
 // jsdom has been torn down
 // NOTE: probably not needed in jest >= 23
-process.on("uncaughtException", err =>
+process.on("uncaughtException", (err) =>
   console.error("WARNING: UNCAUGHT EXCEPTION", err),
 );
 
@@ -25,10 +27,24 @@ if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   };
 }
 
-// global TextEncoder is not available in jsdom + Jest, see
+// Patch TextEncoder to coerce to global Uint8Array
+class JSDOMTextEncoder extends TextEncoder {
+  encode(...args) {
+    const result = super.encode(...args);
+    if (!(result instanceof global.Uint8Array)) {
+      return new global.Uint8Array(result);
+    }
+    return result;
+  }
+}
+
+// global TextEncoder and Crypto are not available in jsdom + Jest, see
 // https://stackoverflow.com/questions/70808405/how-to-set-global-textdecoder-in-jest-for-jsdom-if-nodes-util-textdecoder-is-ty
 // (hacky fix)
-global.TextEncoder = TextEncoder;
+delete globalThis.crypto;
+globalThis.crypto = new Crypto();
+globalThis.CryptoKey = CryptoKey;
+global.TextEncoder = JSDOMTextEncoder;
 global.TextDecoder = TextDecoder;
 
 // https://github.com/jsdom/jsdom/issues/3002

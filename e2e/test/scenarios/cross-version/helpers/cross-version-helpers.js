@@ -8,7 +8,7 @@ export function parseVersionString(versionString) {
     return { version: versionString }; // Return versionString if no segments found
   }
 
-  const segmentInts = segments.map(segment => parseInt(segment, 10));
+  const segmentInts = segments.map((segment) => parseInt(segment, 10));
   const editionIndex = segmentInts[0];
 
   let edition = null;
@@ -137,7 +137,7 @@ export function saveQuestion({ majorVersion }) {
   if (majorVersion < updatedCypressSaveLogicVersion) {
     cy.button("Save").click();
   } else {
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
   }
@@ -168,7 +168,7 @@ export function dismissOkToPlayWithQuestionsModal({ majorVersion }) {
 
 export function fillAreaUnderLineChart({ majorVersion }) {
   if (majorVersion < filledAreaIconRemovedVersion) {
-    cy.findByTestId("sidebar-left").within(element => {
+    cy.findByTestId("sidebar-left").within((element) => {
       cy.icon("area").click();
     });
   }

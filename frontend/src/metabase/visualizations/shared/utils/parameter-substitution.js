@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { substitute_tags } from "cljs/metabase.models.params.shared";
+import { substitute_tags } from "cljs/metabase.parameters.shared";
 import { siteLocale, withInstanceLanguage } from "metabase/lib/i18n";
 
 export function fillParametersInText({
@@ -9,16 +9,20 @@ export function fillParametersInText({
   parameterValues,
   text,
   escapeMarkdown = false,
+  urlEncode = false,
 }) {
   const parametersByTag = dashcard?.parameter_mappings?.reduce(
     (acc, mapping) => {
       const tagId = mapping.target[1];
       const parameter = dashboard.parameters?.find(
-        p => p.id === mapping.parameter_id,
+        (p) => p.id === mapping.parameter_id,
       );
 
       if (parameter) {
-        const parameterValue = parameterValues[parameter.id];
+        const rawParameterValue = parameterValues[parameter.id];
+        const parameterValue = urlEncode
+          ? encodeURIComponent(rawParameterValue)
+          : rawParameterValue;
         return {
           ...acc,
           [tagId]: { ...parameter, value: parameterValue },

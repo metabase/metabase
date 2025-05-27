@@ -8,17 +8,19 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.task-history :as task-history]
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
+   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.memory :as u.mem]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -128,11 +130,12 @@
   {:style/indent [:form]}
   [log-fn message f]
   (let [start-time (System/nanoTime)
-        _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
+        _          (log-fn (u/format-color 'magenta "STARTING: %s (%s)" message (u.mem/pretty-usage-str)))
         result     (f)]
-    (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
+    (log-fn (u/format-color 'magenta "FINISHED: %s (%s) (%s)"
                             message
-                            (u/format-nanoseconds (- (System/nanoTime) start-time))))
+                            (u/format-nanoseconds (- (System/nanoTime) start-time))
+                            (u.mem/pretty-usage-str)))
     result))
 
 (defn- with-start-and-finish-logging
@@ -213,15 +216,16 @@
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  ((with-duplicate-ops-prevented
-    operation database
-    (with-sync-events
-     operation database
-     (with-start-and-finish-logging
-      message
-      (with-db-logging-disabled
-       (sync-in-context database
-                        (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+  (when (database/should-sync? database)
+    ((with-duplicate-ops-prevented
+      operation database
+      (with-sync-events
+       operation database
+       (with-start-and-finish-logging
+        message
+        (with-db-logging-disabled
+         (sync-in-context database
+                          (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -310,12 +314,23 @@
   {:active          true
    :visibility_type nil})
 
+(def ^:dynamic *batch-size*
+  "Size of table update partition."
+  20000)
+
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set."
   [database-or-id]
-  (t2/update! :model/Table (merge sync-tables-kv-args {:db_id (u/the-id database-or-id)})
-              {:initial_sync_status "complete"}))
+  (let [where-clause {:where (into [:and]
+                                   (map (partial into [:=]))
+                                   (merge sync-tables-kv-args
+                                          {:db_id (u/the-id database-or-id)}))}
+        ids (t2/select-fn-vec :id :model/Table where-clause)]
+    (reduce (fn [acc ids']
+              (+ acc (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"})))
+            0
+            (partition-all *batch-size* ids))))
 
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
@@ -486,12 +501,12 @@
                     (fn [& args]
                       (try
                         (task-history/with-task-history
-                         {:task            step-name
-                          :db_id           (u/the-id database)
-                          :on-success-info (fn [update-map result]
-                                             (if (instance? Throwable result)
-                                               (throw result)
-                                               (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
+                          {:task            step-name
+                           :db_id           (u/the-id database)
+                           :on-success-info (fn [update-map result]
+                                              (if (instance? Throwable result)
+                                                (throw result)
+                                                (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
                           (apply sync-fn database args))
                         (catch Throwable e
                           (if *log-exceptions-and-continue?*
@@ -604,8 +619,8 @@
                    ~@more-for-bindings]
                (do ~@body))))
 
-(defn can-be-category-or-list?
-  "Can this type be a category or list?"
+(defn can-be-list?
+  "Can this type be a list?"
   [base-type semantic-type]
   (not
    (or (isa? base-type :type/Temporal)
@@ -615,3 +630,10 @@
         ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
        (isa? semantic-type :type/PK)
        (isa? semantic-type :type/FK))))
+
+(defn can-be-category?
+  "Can this type be a category?"
+  [base-type semantic-type]
+  (and (or (isa? base-type :type/Text)
+           (isa? base-type :type/TextLike))
+       (can-be-list? base-type semantic-type)))

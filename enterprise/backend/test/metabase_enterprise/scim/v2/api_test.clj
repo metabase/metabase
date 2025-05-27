@@ -3,10 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
-   [metabase.http-client :as client]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -38,7 +38,7 @@
   `(with-scim-setup-impl! (fn [] ~@body)))
 
 (defn- scim-client
-  "Wrapper for `metabase.http-client/client` which includes the SCIM key in the Authorization header"
+  "Wrapper for [[metabase.test.http-client/client]] which includes the SCIM key in the Authorization header"
   ([method expected-status-code endpoint]
    (scim-client method expected-status-code endpoint {}))
   ([method expected-status-code endpoint body]
@@ -250,7 +250,7 @@
                                           :value "True"}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
-            (is (= true (:active response)))))
+            (is (true? (:active response)))))
 
         (testing "Update family name of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
@@ -277,7 +277,7 @@
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
             (is (= "UpdatedLastName" (get-in response [:name :familyName])))
-            (is (= true (response :active)))))
+            (is (true? (response :active)))))
 
         (testing "Error when using unsupported path"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]

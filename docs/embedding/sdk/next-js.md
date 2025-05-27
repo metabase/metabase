@@ -29,92 +29,19 @@ If you want to customize the loading of the components, you can create your own 
 In your app, create a `metabase` directory, and add a `EmbeddingSdkProvider.tsx` file to that directory. This file will contain the provider with the appropriate configuration.
 
 ```tsx
-"use client";
-
-import {
-  defineMetabaseAuthConfig,
-  MetabaseProvider,
-} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: process.env.NEXT_PUBLIC_METABASE_INSTANCE_URL,
-  authProviderUri: process.env.NEXT_PUBLIC_METABASE_AUTH_PROVIDER_URI,
-});
-
-export const EmbeddingSdkProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  return (
-    <MetabaseProvider authConfig={authConfig}>{children}</MetabaseProvider>
-  );
-};
+{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-embedded-sdk-provider.tsx" snippet="example" %}
 ```
 
 Next, add an `index.tsx` file to that `metabase` directory. This file will include the `use client` directive, and it'll export a lazy-loaded version of the `EmbeddingSdkProvider` with  SSR disabled.
 
 ```tsx
-"use client";
-
-import dynamic from "next/dynamic";
-
-import React from "react";
-
-// Lazy load the EmbeddingSdkProvider so and let it render children while it's being loaded
-export const EmbeddingSdkProviderLazy = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const EmbeddingSdkProvider = dynamic(
-    () =>
-      import("./EmbeddingSdkProvider").then(m => {
-        return { default: m.EmbeddingSdkProvider };
-      }),
-    {
-      ssr: false,
-      loading: () => {
-        // render children while loading
-        return <div>{children}</div>;
-      },
-    },
-  );
-
-  return <EmbeddingSdkProvider>{children}</EmbeddingSdkProvider>;
-};
-
-// Wrap all components that you need like this:
-
-export const StaticQuestion = dynamic(
-  () => import("@metabase/embedding-sdk-react").then(m => m.StaticQuestion),
-  {
-    ssr: false,
-    loading: () => {
-      return <div>Loading...</div>;
-    },
-  },
-);
-
-export const StaticDashboard = dynamic(
-  () => import("@metabase/embedding-sdk-react").then(m => m.StaticDashboard),
-  {
-    ssr: false,
-    loading: () => {
-      return <div>Loading...</div>;
-    },
-  },
-);
+{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-entrypoint.tsx" snippet="example" %}
 ```
 
 You can now import components like so:
 
 ```tsx
-import { StaticQuestion } from "@/metabase"; // path to the folder created earlier
-
-export default function Home() {
-  return <StaticQuestion questionId={123} />;
-}
+{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-usage.tsx" %}
 ```
 
 ## Handling authentication
@@ -128,55 +55,15 @@ You can create a Route handler that signs people in to Metabase.
 Create a new `route.ts` file in your `app/*` directory, for example `app/sso/metabase/route.ts` that corresponds to an endpoint at /sso/metabase.
 
 ```typescript
-import jwt from "jsonwebtoken";
+{% include_file "{{ dirname }}/snippets/next-js/app-router-authentication-api-route.ts" snippet="imports" %}
 
-const METABASE_JWT_SHARED_SECRET = process.env.METABASE_JWT_SHARED_SECRET || "";
-const METABASE_INSTANCE_URL = process.env.METABASE_INSTANCE_URL || "";
-
-export async function GET() {
-  const token = jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      groups: [user.group],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-    },
-    // This is the JWT signing secret in your Metabase JWT authentication setting
-    METABASE_JWT_SHARED_SECRET,
-  );
-  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
-
-  try {
-    const ssoResponse = await fetch(ssoUrl, { method: "GET" });
-    const ssoResponseBody = await ssoResponse.json();
-
-    return Response.json(ssoResponseBody);
-  } catch (error) {
-    if (error instanceof Error) {
-      return Response.json(
-        {
-          status: "error",
-          message: "authentication failed",
-          error: error.message,
-        },
-        {
-          status: 401,
-        },
-      );
-    }
-  }
-}
+{% include_file "{{ dirname }}/snippets/next-js/app-router-authentication-api-route.ts" snippet="example" %}
 ```
 
 Then, pass this `authConfig` to `MetabaseProvider`
 
 ```typescript
-import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
-});
+{% include_file "{{ dirname }}/snippets/next-js/authentication-auth-config.tsx" %}
 ```
 
 ### Using Pages Router
@@ -186,52 +73,13 @@ You can create an API route that signs people in to Metabase.
 Create a new `metabase.ts` file in your `pages/api/*` directory, for example `pages/api/sso/metabase.ts` that corresponds to an endpoint at /api/sso/metabase.
 
 ```typescript
-import type { NextApiRequest, NextApiResponse } from "next";
-import jwt from "jsonwebtoken";
+{% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" snippet="imports" %}
 
-const METABASE_JWT_SHARED_SECRET = process.env.METABASE_JWT_SHARED_SECRET || "";
-const METABASE_INSTANCE_URL = process.env.METABASE_INSTANCE_URL || "";
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
-  const token = jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      groups: [user.group],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-    },
-    // This is the JWT signing secret in your Metabase JWT authentication setting
-    METABASE_JWT_SHARED_SECRET,
-  );
-  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
-
-  try {
-    const ssoResponse = await fetch(ssoUrl, { method: "GET" });
-    const ssoResponseBody = await ssoResponse.json();
-
-    res.status(200).json(ssoResponseBody);
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(401).json({
-        status: "error",
-        message: "authentication failed",
-        error: error.message,
-      });
-    }
-  }
-}
+{% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" snippet="example" %}
 ```
 
 Then, pass this `authConfig` to `MetabaseProvider`
 
 ```ts
-import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react/nextjs";
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
-});
+{% include_file "{{ dirname }}/snippets/next-js/authentication-auth-config.tsx" %}
 ```

@@ -368,7 +368,7 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number)
+      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -678,7 +678,9 @@
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
                                         ;; Remove the randomized idents, which are of course not going to match.
-                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))))
+                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
+      ;; Ignore :info since it contains the randomized :card-entity-id.
+      (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
@@ -986,14 +988,44 @@
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
 ;; This form is deliberately different from the MBQL representation.
 
+(defn- expression-parts-like?
+  "Test if [[x]] has the shape expression-parts, possible with missing :lib/type."
+  [x]
+  (and (map? x)
+       (:operator x)
+       (:args x)
+       (or
+        (and
+         (not (:lib/type x))
+         (not (:type x)))
+        (= (:lib/type x) :mbql/expression-parts)
+        (= (:type x) :mbql/expression-parts))))
+
+(defn- expression-parts-js->cljs
+  "When coming from js the expression parts will have no :lib/type, so we need to add
+   it back in recursively for each node down the path."
+  [x]
+  (as-> x parts
+    (js->clj parts :keywordize-keys true)
+    (walk/postwalk
+     #(cond-> %
+        (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
+     parts)))
+
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
-  [an-operator args options]
-  (-> (lib.core/expression-clause
-       (keyword an-operator)
-       args
-       (js->clj options :keywordize-keys true))
-      lib.core/normalize))
+  ([x]
+   (-> x
+       expression-parts-js->cljs
+       lib.core/expression-clause
+       lib.core/normalize))
+  ([an-operator args]
+   (expression-clause an-operator args {}))
+  ([an-operator args options]
+   (expression-clause {:lib/type :mbql/expression-parts
+                       :operator (keyword an-operator)
+                       :args args
+                       :options options})))
 
 (defn ^:export expression-parts
   "Returns an AST for `an-expression-clause`.
@@ -1016,7 +1048,8 @@
        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
          (let [{:keys [operator options args]} node]
            #js {:operator (name operator)
-                :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                :options (fix-namespaced-values
+                          (clj->js (select-keys options [:case-sensitive :include-current :base-type]) :keyword-fn u/qualified-name))
                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
          node))
      parts)))
@@ -1199,14 +1232,29 @@
       #js {:operator (name operator)
            :column   column})))
 
-;; TODO remove once all filter-parts are migrated to MBQL lib
-(defn ^:export is-column-metadata
+(defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
-  > **Code health:** Smelly. When is this called and why does the FE need to know? The values are supposed to be opaque,
-  and we should see if there's a better way to get the needed information."
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
+
+(defn ^:export metric-metadata?
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/metric`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/metric (:lib/type arg))))
+
+(defn ^:export segment-metadata?
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
@@ -2068,6 +2116,15 @@
                        (legacy-ref->pMBQL a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
+(defn ^:export legacy-column->type-info
+  "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
+  does not require a `query`. MLv2 columns remain unchanged.
+
+  > **Code health:** Legacy."
+  [column]
+  (cond-> column
+    (object? column) js.metadata/parse-column))
+
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
   `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like
@@ -2317,40 +2374,12 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
-(defn ^:export expression-clause-for-legacy-expression
-  "Convert `legacy-expression` into a modern expression clause.
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number legacy-expression]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.core/normalize (lib.convert/->pMBQL expr)))))
-
-(defn ^:export legacy-expression-for-expression-clause
-  "Convert `an-expression-clause` into a legacy expression.
-
-  When processing aggregation clauses with custom expressions, any `aggregation-options` wrapper is thrown away. (The
-  options specify extras like the name of the aggregation expression.)
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number an-expression-clause]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
-      (clj->js (cond-> legacy-expr
-                 (and (vector? legacy-expr)
-                      (#{:aggregation-options :value} (first legacy-expr)))
-                 (get 1))
-               :keyword-fn u/qualified-name))))
-
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.
 
   - `expression-mode` specifies what type of thing `expr` is: an \"expression\" (custom column),
     an \"aggregation\" expression, or a \"filter\" condition.
-  - `legacy-expression` is a legacy MBQL expression created using the custom column editor in the FE.
+  - `expression` is an expression created using the custom column editor in the FE.
   - `expression-position` is provided when editing an existing custom column, and `nil` otherwise.
 
   Cyclic references are checked only when `expression-mode` is `\"expression\"` and `expression-position` is non-`nil`.
@@ -2358,20 +2387,16 @@
 
   Returns an i18n error message describing the problem, or `nil` (JS `null`) if there are no issues.
 
-  > **Code health:** Legacy, Single use. The expression parser should be refactored to support MLv2 expressions, and
-  then several of these functions for dealing with legacy can be removed."
-  [a-query stage-number expression-mode legacy-expression expression-position]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (as-> legacy-expression expr
-                 (js->clj expr :keywordize-keys true)
-                 (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))
-                 (lib.convert/->pMBQL expr)
-                 (lib.core/normalize expr))]
-      (-> (lib.expression/diagnose-expression a-query stage-number
-                                              (keyword expression-mode)
-                                              expr
-                                              expression-position)
-          clj->js))))
+  > **Code health:** Single use."
+  [a-query stage-number expression-mode an-expression expression-position]
+  (let [expr (-> an-expression
+                 (js->clj :keywordize-keys true)
+                 lib.normalize/normalize)]
+    (-> (lib.expression/diagnose-expression a-query stage-number
+                                            (keyword expression-mode)
+                                            expr
+                                            expression-position)
+        clj->js)))
 
 ;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].
@@ -2382,11 +2407,11 @@
 
   > **Code health:** Single use. Only supports the search info."
   [metadata-providerable column]
-  (-> (lib.field/field-values-search-info metadata-providerable column)
-      (update :has-field-values name)
-      ;; TODO: This should probably reuse `display-info->js` for caching and uniformity.
-      (update-keys cljs-key->js-key)
-      clj->js))
+  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-values-search-info metadata-providerable column)]
+    #js {:fieldId        field-id
+         :searchField    search-field
+         :searchFieldId  search-field-id
+         :hasFieldValues (name has-field-values)}))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map
@@ -2407,14 +2432,10 @@
   west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
   ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number latitude-column longitude-column card-id  bounds]
   ;; (.log js/console "update-lat-lon-filter")
-  (let [bounds           (js->clj bounds :keywordize-keys true)
-        latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
-        longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
+  (let [bounds           (js->clj bounds :keywordize-keys true)]
     (lib.core/with-wrapped-native-query a-query stage-number card-id
       lib.core/update-lat-lon-filter latitude-column longitude-column bounds)))
 
@@ -2422,13 +2443,10 @@
   "Add or update a filter against `numeric-column`, based on the provided start and end values. **Removes** any existing
   filters for `numeric-column`.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number numeric-column card-id start end]
-  (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-numeric-filter numeric-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-numeric-filter numeric-column start end))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`, based on the provided start and end values.
@@ -2437,13 +2455,10 @@
   Modifies the temporal unit for any breakouts to on `temporal-column` to still be useful: If there are fewer than 4
   points (see [[metabase.lib.filter.update/temporal-filter-min-num-points]]), move to the next-smaller unit.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number temporal-column card-id start end]
-  (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-temporal-filter temporal-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-temporal-filter temporal-column start end))
 
 (defn ^:export valid-filter-for?
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.
@@ -2549,3 +2564,10 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export random-ident
+  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
+
+  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
+  []
+  (lib.core/random-ident))

@@ -60,9 +60,9 @@ Turn this option **OFF** if people want to click **Run** (the play button) befor
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
-### Choose when Metabase syncs and scans
+### Choose when syncs and scans happen
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md).
+See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 
 #### Database syncing
 
@@ -92,6 +92,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Connecting to Azure SQL
 
 To connect to Azure SQL, you'll need to set the port to 1433.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

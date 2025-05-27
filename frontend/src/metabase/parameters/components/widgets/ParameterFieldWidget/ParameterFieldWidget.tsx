@@ -1,11 +1,11 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
@@ -16,8 +16,10 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import type { Dashboard, RowValue } from "metabase-types/api";
 
-import { Footer, WidgetRoot } from "../Widget";
+import { Footer } from "../Widget";
+import { MIN_WIDTH } from "../constants";
 
+import FieldValuesWidget from "./FieldValuesWidget";
 import { normalizeValue } from "./normalizeValue";
 
 interface ParameterFieldWidgetProps {
@@ -52,17 +54,28 @@ export function ParameterFieldWidget({
     multi && !parameter.hasVariableTemplateTagTarget;
 
   const isValid =
-    unsavedValue.every(value => value != null) &&
-    (supportsMultipleValues || unsavedValue.length === numFields);
+    unsavedValue.every((value) => value != null) &&
+    (supportsMultipleValues || unsavedValue.length <= numFields);
+  const isEmpty = unsavedValue.length === 0;
+  const isRequired = parameter?.required;
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!isValid || (isRequired && isEmpty)) {
+      return;
+    }
+
+    setValue(unsavedValue);
+  };
 
   return (
-    <WidgetRoot>
+    <Box component="form" miw={MIN_WIDTH} onSubmit={handleFormSubmit}>
       <div className={CS.p1}>
         {verboseName && !isEqualsOp && (
           <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
         )}
 
-        {_.times(numFields, index => {
+        {_.times(numFields, (index) => {
           const value = supportsMultipleValues
             ? unsavedValue
             : [unsavedValue[index]];
@@ -104,9 +117,8 @@ export function ParameterFieldWidget({
           defaultValue={parameter.default}
           isValueRequired={parameter.required ?? false}
           isValid={isValid}
-          onClick={() => setValue(unsavedValue)}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }

@@ -19,15 +19,11 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
-import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
-import type BaseQuery from "metabase-lib/v1/queries/Query";
-import StructuredQuery, {
-  STRUCTURED_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import { sortObject } from "metabase-lib/v1/utils";
 import type {
@@ -173,13 +169,11 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  _legacyQuery = _.once((): AtomicQuery => {
+  _legacyNativeQuery = _.once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
-    for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
-      if (QueryClass.isDatasetQueryType(datasetQuery)) {
-        return new QueryClass(this, datasetQuery);
-      }
+    if (NativeQuery.isDatasetQueryType(datasetQuery)) {
+      return new NativeQuery(this, datasetQuery);
     }
 
     const isVirtualDashcard = !this._card.id;
@@ -188,25 +182,15 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
-  legacyQuery<UseStructuredQuery extends boolean>({
-    useStructuredQuery,
-  }: {
-    useStructuredQuery?: UseStructuredQuery;
-  } = {}): UseStructuredQuery extends true
-    ? StructuredQuery
-    : AtomicQuery | StructuredQuery {
-    const query = this._legacyQuery();
-    if (query instanceof StructuredQuery && !useStructuredQuery) {
-      throw new Error("StructuredQuery usage is forbidden. Use MLv2");
-    }
-    return query;
+  legacyNativeQuery(): NativeQuery | undefined {
+    return this._legacyNativeQuery();
   }
 
   /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setLegacyQuery(newQuery: BaseQuery): Question {
+  setLegacyQuery(newQuery: NativeQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -354,7 +338,7 @@ class Question {
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
     return isNative
-      ? this.legacyQuery().canRun()
+      ? this.legacyNativeQuery().canRun()
       : Lib.canRun(this.query(), this.type());
   }
 
@@ -381,7 +365,7 @@ class Question {
     const table = this.metadata().table(sourceTableId);
 
     const hasSinglePk =
-      table?.fields?.filter(field => field.isPK())?.length === 1;
+      table?.fields?.filter((field) => field.isPK())?.length === 1;
     const { isNative } = Lib.queryDisplayInfo(this.query());
 
     return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
@@ -578,7 +562,7 @@ class Question {
     const query = this.query();
     const { isNative } = Lib.queryDisplayInfo(query);
     if (isNative) {
-      return this.legacyQuery().table();
+      return this.legacyNativeQuery().table();
     } else {
       const tableId = Lib.sourceTableOrCardId(query);
       const metadata = this.metadata();
@@ -609,7 +593,7 @@ class Question {
 
   setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
     const metadata = this.getResultMetadata();
-    const newMetadata = metadata.map(column => {
+    const newMetadata = metadata.map((column) => {
       const columnDiff = metadataDiff[column.name];
       return columnDiff ? { ...column, ...columnDiff } : column;
     });
@@ -648,7 +632,7 @@ class Question {
   }
 
   setParameter(id: ParameterId, parameter: ParameterObject) {
-    const newParameters = this.parameters().map(oldParameter =>
+    const newParameters = this.parameters().map((oldParameter) =>
       oldParameter.id === id ? parameter : oldParameter,
     );
 
@@ -682,26 +666,36 @@ class Question {
   // predicate function that determines if the question is "dirty" compared to the given question
   isDirtyComparedTo(originalQuestion: Question) {
     if (!this.isSaved() && this.canRun() && originalQuestion == null) {
-      // if it's new, then it's dirty if it is runnable
+      // If it's new, then it's dirty if it is runnable
       return true;
     } else {
-      // if it's saved, then it's dirty when the current card doesn't match the last saved version
+      // If it's saved, then it's dirty when the current card doesn't match the last saved version.
+      // Omit `entity_id` and `dataset_query` as they have randomized idents
       const origCardSerialized =
         originalQuestion &&
         originalQuestion._serializeForUrl({
+          includeEntityId: false,
+          includeDatasetQuery: false,
           includeOriginalCardId: false,
         });
-
       const currentCardSerialized = this._serializeForUrl({
+        includeEntityId: false,
+        includeDatasetQuery: false,
         includeOriginalCardId: false,
       });
+      if (currentCardSerialized !== origCardSerialized) {
+        return true;
+      }
 
-      return currentCardSerialized !== origCardSerialized;
+      return !Lib.areLegacyQueriesEqual(
+        this.datasetQuery(),
+        originalQuestion.datasetQuery(),
+      );
     }
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
-    const [a, b] = [this, originalQuestion].map(q => {
+    const [a, b] = [this, originalQuestion].map((q) => {
       return (
         q &&
         new Question(q.card(), this.metadata())
@@ -724,46 +718,56 @@ class Question {
 
   // Internal methods
   _serializeForUrl({
+    includeEntityId = true,
+    includeDatasetQuery = true,
     includeOriginalCardId = true,
     includeDisplayIsLocked = false,
     creationType,
+  }: {
+    includeEntityId?: boolean;
+    includeDatasetQuery?: boolean;
+    includeOriginalCardId?: boolean;
+    includeDisplayIsLocked?: boolean;
+    creationType?: string;
   } = {}) {
-    const query = this.query();
-
+    const card = this._card;
     const cardCopy = {
-      name: this._card.name,
-      description: this._card.description,
-      collection_id: this._card.collection_id,
-      dashboard_id: this._card.dashboard_id,
-      dataset_query: Lib.toLegacyQuery(query),
-      display: this._card.display,
-      ...(_.isEmpty(this._card.parameters)
+      name: card.name,
+      description: card.description,
+      collection_id: card.collection_id,
+      dashboard_id: card.dashboard_id,
+      ...(includeEntityId ? { entity_id: card.entity_id } : {}),
+      ...(includeDatasetQuery
+        ? { dataset_query: Lib.toLegacyQuery(this.query()) }
+        : {}),
+      display: card.display,
+      ...(_.isEmpty(card.parameters)
         ? undefined
         : {
-            parameters: this._card.parameters,
+            parameters: card.parameters,
           }),
-      type: this._card.type,
+      type: card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
             parameterValues: this._parameterValues,
           }),
       // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
-      visualization_settings: this._card.visualization_settings,
+      visualization_settings: card.visualization_settings,
       ...(includeOriginalCardId
         ? {
-            original_card_id: this._card.original_card_id,
+            original_card_id: card.original_card_id,
           }
         : {}),
       ...(includeDisplayIsLocked
         ? {
-            displayIsLocked: this._card.displayIsLocked,
+            displayIsLocked: card.displayIsLocked,
           }
         : {}),
 
       ...(creationType ? { creationType } : {}),
-      dashboardId: this._card.dashboardId,
-      dashcardId: this._card.dashcardId,
+      dashboardId: card.dashboardId,
+      dashcardId: card.dashcardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
@@ -814,7 +818,7 @@ class Question {
   }
 
   query(): Query {
-    if (this._legacyQuery() instanceof InternalQuery) {
+    if (InternalQuery.isDatasetQueryType(this.datasetQuery())) {
       throw new Error("Internal query is not supported by MLv2");
     }
 

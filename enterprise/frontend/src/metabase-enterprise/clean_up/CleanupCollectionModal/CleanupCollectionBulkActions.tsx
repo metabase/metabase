@@ -6,7 +6,7 @@ import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
-import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
+import { UndoListOverlay } from "metabase/containers/UndoListing";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 
@@ -31,14 +31,14 @@ export const CleanupCollectionBulkActions = ({
 
   const handleUndo = async (items: CollectionItem[]) => {
     return Promise.all(
-      items.map(item => item?.setArchived?.(false, { notify: false })),
+      items.map((item) => item?.setArchived?.(false, { notify: false })),
     )
       .then(() => resetPagination())
       .finally(() => setUndo(undefined));
   };
 
   const handleBulkArchive = async () => {
-    const actions = selected.map(item => {
+    const actions = selected.map((item) => {
       return archiveAndTrack({
         archive: () =>
           item.setArchived
@@ -51,7 +51,7 @@ export const CleanupCollectionBulkActions = ({
     });
 
     Promise.allSettled(actions)
-      .then(results => {
+      .then((results) => {
         resetPagination();
 
         const successfullyArchivedItems = results
@@ -65,7 +65,7 @@ export const CleanupCollectionBulkActions = ({
 
         const id = Date.now();
         const timeoutId = setTimeout(() => {
-          setUndo(undo => (undo?.id === id ? undefined : undo));
+          setUndo((undo) => (undo?.id === id ? undefined : undo));
         }, 5000) as unknown as number;
 
         const message = ngettext(
@@ -95,16 +95,11 @@ export const CleanupCollectionBulkActions = ({
 
   return (
     <>
-      {undo && (
-        <UndoListOverlay>
-          <UndoToast
-            undo={undo}
-            onUndo={() => undo.actions?.[0]()}
-            onDismiss={() => setUndo(undefined)}
-          />
-        </UndoListOverlay>
-      )}
-
+      <UndoListOverlay
+        undos={undo ? [undo] : []}
+        onUndo={() => undo?.actions?.[0]()}
+        onDismiss={() => setUndo(undefined)}
+      />
       <BulkActionBar
         className={CS.actionBarContainer}
         message={actionMessage}

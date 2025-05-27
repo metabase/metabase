@@ -12,10 +12,10 @@ export const HeaderLink = styled.div`
   min-width: 0;
   margin-right: auto;
   color: var(--mb-color-text-dark);
-  cursor: ${props => props.onClick && "pointer"};
+  cursor: ${(props) => props.onClick && "pointer"};
 
   &:hover {
-    color: ${props => props.onClick && color("brand")};
+    color: ${(props) => props.onClick && color("brand")};
   }
 `;
 

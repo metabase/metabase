@@ -2,10 +2,11 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import { type ComponentProps, useEffect, useMemo } from "react";
+import type { ComponentProps } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import {
   DateTimeColumn,
@@ -48,7 +49,7 @@ export default {
   component: PublicOrEmbeddedQuestionView,
   decorators: [
     ReduxDecorator,
-    WaitForResizeToStopDecorator,
+    createWaitForResizeToStopDecorator(),
     MockIsEmbeddingDecorator,
   ],
   parameters: {
@@ -62,28 +63,6 @@ function ReduxDecorator(Story: StoryFn) {
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-/**
- * This is an arbitrary number, it should be big enough to pass CI tests.
- * This works because we set delays for ExplicitSize to 0 in storybook.
- */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
-function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = useMemo(() => createAsyncCallback(), []);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(
-      asyncCallback,
-      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
-    );
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [asyncCallback]);
-
-  return <Story />;
 }
 
 declare global {
@@ -105,7 +84,7 @@ const initialState = createMockState({
 
 const store = getStore(publicReducers, initialState);
 
-const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = args => {
+const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = (args) => {
   return <PublicOrEmbeddedQuestionView {...args} />;
 };
 
@@ -371,7 +350,9 @@ const downloadQuestionAsPng = async (
 ) => {
   const canvas = within(canvasElement);
 
-  const downloadButton = await canvas.findByTestId("download-button");
+  const downloadButton = await canvas.findByTestId(
+    "question-results-download-button",
+  );
   await userEvent.click(downloadButton!);
 
   const documentElement = within(document.documentElement);

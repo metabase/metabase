@@ -26,7 +26,9 @@ const MAX_SANKEY_NODES = 150;
 export const SETTINGS_DEFINITIONS = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Source`,
     showColumnSetting: true,
     persistDefault: true,
@@ -36,7 +38,9 @@ export const SETTINGS_DEFINITIONS = {
       findSensibleSankeyColumns(series.data)?.source,
   }),
   ...dimensionSetting("sankey.target", {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Target`,
     showColumnSetting: true,
     persistDefault: true,
@@ -46,7 +50,9 @@ export const SETTINGS_DEFINITIONS = {
       findSensibleSankeyColumns(series.data)?.target,
   }),
   ...metricSetting("sankey.value", {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Value`,
     showColumnSetting: true,
     persistDefault: true,
@@ -56,21 +62,26 @@ export const SETTINGS_DEFINITIONS = {
       findSensibleSankeyColumns(series.data)?.metric,
   }),
   "sankey.node_align": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Align`,
     widget: "select",
     default: "left",
     props: {
       options: [
         {
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Left`,
           value: "left",
         },
         {
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Right`,
           value: "right",
         },
         {
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Justify`,
           value: "justify",
         },
@@ -78,20 +89,27 @@ export const SETTINGS_DEFINITIONS = {
     },
   },
   "sankey.show_edge_labels": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Show edge labels`,
     widget: "toggle",
     default: false,
     inline: true,
   },
   "sankey.label_value_formatting": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Auto formatting`,
     widget: "segmentedControl",
     props: {
       options: [
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Auto`, value: "auto" },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Compact`, value: "compact" },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Full`, value: "full" },
       ],
     },
@@ -104,14 +122,19 @@ export const SETTINGS_DEFINITIONS = {
     default: "auto",
   },
   "sankey.edge_color": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Edge color`,
     widget: "segmentedControl",
     default: "source",
     props: {
       options: [
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Gray`, value: "gray" },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Source`, value: "source" },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Target`, value: "target" },
       ],
     },
@@ -119,16 +142,17 @@ export const SETTINGS_DEFINITIONS = {
 };
 
 export const SANKEY_CHART_DEFINITION = {
-  uiName: t`Sankey`,
+  getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),
   defaultSize: getDefaultSize("sankey"),
   isSensible: (data: DatasetData) => {
     const { cols, rows } = data;
     const numDimensions = cols.filter(
-      col => isDimension(col) && !isDate(col),
+      (col) => isDimension(col) && !isDate(col),
     ).length;
     const numMetrics = cols.filter(isMetric).length;
 
@@ -197,7 +221,7 @@ export const SANKEY_CHART_DEFINITION = {
     }
 
     const nodesCount = new Set(
-      rows.flatMap(row => [
+      rows.flatMap((row) => [
         row[sankeyColumns.source.index],
         row[sankeyColumns.target.index],
       ]),
@@ -209,6 +233,7 @@ export const SANKEY_CHART_DEFINITION = {
       );
     }
   },
+  hasEmptyState: true,
   settings: {
     ...SETTINGS_DEFINITIONS,
   } as any as VisualizationSettingsDefinitions,

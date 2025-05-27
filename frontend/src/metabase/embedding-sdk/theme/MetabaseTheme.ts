@@ -92,6 +92,7 @@ export type MetabaseColor = keyof MetabaseColors;
  * Theme options for customizing specific Metabase
  * components and visualizations.
  *
+ * @privateRemarks
  * Every non-optional properties here must have a default value defined
  * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
@@ -129,6 +130,9 @@ export type MetabaseComponentTheme = {
 
   /** Data tables **/
   table: {
+    /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
+    stickyBackgroundColor?: string;
+
     cell: {
       /** Text color of cells, defaults to `text-primary`. */
       textColor: string;
@@ -239,7 +243,10 @@ export type MetabaseComponentTheme = {
   };
 };
 
-type ColorCssVariableOrString = `var(--mb-color-${ColorName})` | string;
+/**
+ * @inline
+ */
+export type ColorCssVariableOrString = `var(--mb-color-${ColorName})` | string;
 
 export type ChartColor =
   | string

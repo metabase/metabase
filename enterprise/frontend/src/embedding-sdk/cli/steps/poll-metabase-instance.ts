@@ -3,12 +3,12 @@ import ora from "ora";
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
 const delay = (duration: number) =>
-  new Promise(resolve => setTimeout(resolve, duration));
+  new Promise((resolve) => setTimeout(resolve, duration));
 
 const HEALTH_CHECK_MAX_ATTEMPTS = 60 * 5;
 const HEALTH_CHECK_WAIT = 1000;
 
-export const pollMetabaseInstance: CliStepMethod = async state => {
+export const pollMetabaseInstance: CliStepMethod = async (state) => {
   let attempts = 0;
 
   const spinner = ora(

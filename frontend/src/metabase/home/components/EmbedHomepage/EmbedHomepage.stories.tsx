@@ -21,7 +21,7 @@ export default meta;
 type Story = StoryObj<Args>;
 
 export const Default: Story = {
-  render: args => {
+  render: (args) => {
     return (
       <EmbedHomepageView
         {...args}

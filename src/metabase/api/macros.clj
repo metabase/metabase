@@ -27,7 +27,7 @@
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.open-api :as open-api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -568,7 +568,7 @@
   [request :- :map]
   (or (some-> (not-empty (:form-params request)) (update-keys keyword))
       (when-let [body (:body request)]
-        (when-not (instance? org.eclipse.jetty.server.HttpInput body)
+        (when-not (instance? org.eclipse.jetty.ee9.nested.HttpInput body)
           body))))
 
 (mu/defn- middleware-forms

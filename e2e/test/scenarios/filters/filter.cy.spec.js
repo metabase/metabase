@@ -32,7 +32,7 @@ describe("scenarios > question > filter", () => {
       .findByText("Products → Category is not Gizmo")
       .should("be.visible");
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -103,12 +103,11 @@ describe("scenarios > question > filter", () => {
     // Add filter as remapped Product ID (Product name)
     H.openOrdersTable();
     H.filter();
-
-    H.filterFieldPopover("Product ID")
-      .contains("Aerodynamic Linen Coat")
-      .click();
-
-    cy.findByTestId("apply-filters").click();
+    H.popover().within(() => {
+      cy.findByText("Product ID").click();
+      cy.findByText("Aerodynamic Linen Coat").click();
+      cy.button("Apply filter").click();
+    });
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
     cy.findByTestId("loading-indicator").should("not.exist");
@@ -298,7 +297,7 @@ describe("scenarios > question > filter", () => {
 
     // Avoid flakiness caused by CodeMirror not accepting the keypress
     // immediately
-    cy.wait(100);
+    cy.wait(200);
     cy.realPress("ArrowDown");
 
     H.CustomExpressionEditor.completion("ceil")
@@ -401,7 +400,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("isempty([Reviewer])");
+    cy.contains("isEmpty([Reviewer])");
     H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
 
     cy.button("Update").click();
@@ -429,7 +428,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("isnull([Rating])");
+    cy.contains("isNull([Rating])");
     H.CustomExpressionEditor.clear()
       .type("NOT IsNull([Rating])", { delay: 50 })
       .blur();
@@ -498,7 +497,7 @@ describe("scenarios > question > filter", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByText(/^Include/).click();
       cy.button("Add filter").click();
@@ -553,7 +552,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('contains([Reviewer], "MULLER", "case-insensitive")');
     cy.button("Update").click();
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -563,27 +562,23 @@ describe("scenarios > question > filter", () => {
   it("should reject a number literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
+    H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "3.14159" });
-
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expecting boolean but found 3.14159");
+    H.popover().within(() => {
+      cy.button("Done").should("be.disabled");
+      cy.findByText("Types are incompatible.").should("be.visible");
+    });
   });
 
   it("should reject a string literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
+    H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
-
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText('Expecting boolean but found "TheAnswer"');
+    H.popover().within(() => {
+      cy.button("Done").should("be.disabled");
+      cy.findByText("Types are incompatible.").should("be.visible");
+    });
   });
 
   it.skip("column filters should work for metrics (metabase#15333)", () => {
@@ -700,9 +695,7 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.value().should("equal", "[Tax]> 42  ");
   });
 
-  // This test is skipped until we can implement the "save unsaved changes"
-  // dialog for the Custom Expression popover.
-  it.skip("should allow hiding the suggestion list with Escape", () => {
+  it("should allow hiding the suggestion list with Escape", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -741,10 +734,11 @@ describe("scenarios > question > filter", () => {
 
     cy.findByTestId("scalar-value").contains("5.41");
     H.filter();
-
-    H.filterField("Category").findByText("Gizmo").click();
-
-    cy.findByTestId("apply-filters").click();
+    H.popover().within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+      cy.button("Apply filter").click();
+    });
     H.openNotebook();
 
     H.verifyNotebookQuery("Products", [
@@ -908,7 +902,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  ["True", "False"].forEach(condition => {
+  ["True", "False"].forEach((condition) => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
     const integerAssociatedWithCondition = condition === "True" ? "0" : "1";
@@ -1041,6 +1035,21 @@ describe("scenarios > question > filter", () => {
       H.enterCustomColumnDetails({ formula: "floor" });
 
       H.checkExpressionEditorHelperPopoverPosition();
+    });
+  });
+
+  it("should close the dropdown but not the popover on escape when the combobox is opened", () => {
+    const optionName = "Abbey Satterfield";
+    H.openPeopleTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("Name").click();
+      cy.findByLabelText("Filter value").type("ab");
+      cy.findByRole("option", { name: optionName }).should("be.visible");
+
+      cy.findByLabelText("Filter value").type("{esc}");
+      cy.findByRole("option", { name: optionName }).should("not.exist");
+      cy.findByLabelText("Filter value").should("be.visible");
     });
   });
 });

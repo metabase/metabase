@@ -183,88 +183,13 @@
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
 
-(deftest ^:parallel is-column-metadata-test
-  (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
-  (is (false? (lib.js/is-column-metadata 1))))
+(deftest ^:parallel column-metadata?-test
+  (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
+  (is (false? (lib.js/column-metadata? 1))))
 
 (deftest ^:parallel cljs-key->js-key-test
   (is (= "isManyPks"
          (#'lib.js/cljs-key->js-key :many-pks?))))
-
-(deftest ^:parallel expression-clause-<->-legacy-expression-test
-  (testing "conversion works both ways, even with aggregations (#34830, #36087)"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
-                    (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
-          agg-uuid (-> query lib/aggregations first lib.options/uuid)
-          legacy-expr #js [">" #js ["aggregation" 0] 100]
-          pmbql-expr (lib.js/expression-clause-for-legacy-expression query -1 legacy-expr)
-          legacy-expr' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-expr)
-          legacy-filter #js ["<" #js ["field" (meta/id :venues :price) nil] 100]
-          pmbql-filter (lib.js/expression-clause-for-legacy-expression query -1 legacy-filter)
-          legacy-filter' (lib.js/legacy-expression-for-expression-clause query -1 pmbql-filter)]
-      (testing "from legacy expression"
-        (is (=? [:> {} [:aggregation {} agg-uuid] 100]
-                pmbql-expr)))
-      (testing "from pMBQL expression"
-        (is (= (js->clj legacy-expr) (js->clj legacy-expr'))))
-      (testing "from legacy filter"
-        (let [filter-expr [:< {} [:field {} (meta/id :venues :price)] 100]]
-          (is (=? filter-expr pmbql-filter))
-          (testing "created expression can be used to add a filter to a query (#37173)"
-            (is (=? {:stages [{:filters [filter-expr]}]}
-                    (lib/filter query pmbql-filter))))))
-      (testing "from pMBQL filter"
-        (is (= (js->clj legacy-filter) (js->clj legacy-filter'))))))
-  (testing "conversion drops aggregation-options (#36120)"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/aggregate (lib.options/update-options (lib/sum (meta/field-metadata :venues :price))
-                                                               assoc :display-name "price sum")))
-          agg-expr (-> query lib/aggregations first)
-          legacy-agg-expr #js ["sum" #js ["field" (meta/id :venues :price) #js {:base-type "type/Integer"}]]
-          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
-      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
-  (testing "legacy expressions are converted properly (#36120)"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/aggregate (lib/count)))
-          agg-expr (-> query lib/aggregations first)
-          legacy-agg-expr #js ["count"]
-          legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
-      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
-  (testing "simple values can be converted properly (#36459)"
-    (let [query (lib.tu/venues-query)
-          legacy-expr 0
-          expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
-          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
-          query-with-expr (lib/expression query 0 "expr" expr)
-          expr-from-query (first (lib/expressions query-with-expr 0))
-          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
-          named-expr (lib/with-expression-name expr "named")]
-      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query))
-      (is (= "named" (lib/display-name query named-expr)))))
-  (testing "simple expressions can be converted properly (#37173)"
-    (let [query (lib.tu/venues-query)
-          legacy-expr #js ["+" 1 2]
-          expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
-          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
-          query-with-expr (lib/expression query 0 "expr" expr)
-          expr-from-query (first (lib/expressions query-with-expr 0))
-          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)]
-      (is (=? [:+ {} 1 2] expr))
-      (is (= (js->clj legacy-expr) (js->clj legacy-expr') (js->clj legacy-expr-from-query)))
-      (testing "created expression can be aggregated in a query (#37173)"
-        (is (=? {:stages [{:aggregation [[:+ {} 1 2]]}]}
-                (lib/aggregate query -1 expr))))
-      (testing "created expression can be added as an expression to a query (#37173)"
-        (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "expr"} 1 2]]}]}
-                (lib/expression query -1 "expr" expr))))))
-  (testing "filters from queries can be converted to legacy clauses (#37173, #44584)"
-    (let [query (lib/filter (lib.tu/venues-query) (lib/< (meta/field-metadata :venues :price) 3))
-          expr (first (lib/filters query))
-          legacy-expr (lib.js/legacy-expression-for-expression-clause query 0 expr)
-          price-id (meta/id :venues :price)]
-      (is (=? [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} price-id] 3] expr))
-      (is (= ["<" ["field" price-id {"base-type" "type/Integer"}] 3] (js->clj legacy-expr))))))
 
 (deftest ^:parallel string-filter-clauses-test
   (doseq [tag                          [:contains :starts-with :ends-with :does-not-contain]
@@ -374,18 +299,10 @@
                     (lib.js/returned-columns query -1))))))
     (let [legacy-refs (->> query lib/available-segments (map #(lib.js/legacy-ref query -1 %)))]
       (testing "legacy segment refs come without options"
-        (is (= [["segment" segment-id]] (map array-checker legacy-refs))))
-      (testing "segment legacy ref can be converted to an expression and back (#37173)"
-        (let [segment-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
-          (is (=? [:segment {} segment-id] segment-expr))
-          (is (= ["segment" segment-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 segment-expr)))))))
+        (is (= [["segment" segment-id]] (map array-checker legacy-refs)))))
     (let [legacy-refs (->> metric-query lib/available-metrics (map #(lib.js/legacy-ref query -1 %)))]
       (testing "metric refs come without options"
-        (is (= [["metric" metric-id]] (map array-checker legacy-refs))))
-      (testing "metric legacy ref can be converted to an expression and back (#37173)"
-        (let [metric-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
-          (is (=? [:metric {} metric-id] metric-expr))
-          (is (= ["metric" metric-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 metric-expr)))))))))
+        (is (= [["metric" metric-id]] (map array-checker legacy-refs)))))))
 
 (deftest ^:parallel source-table-or-card-id-test
   (testing "returns the table-id as a number"
@@ -484,6 +401,7 @@
 (deftest ^:parallel js=-metatest
   (testing "check js= works correctly (who tests the tests?)"
     (testing "should be true"
+      #_{:clj-kondo/ignore [:equals-true]}
       (are [a b] (= true (js= a b))
         7 7
         0 0
@@ -611,18 +529,18 @@
                     (m/indexed (lib/expressions query)))]
     (testing "correct expression are accepted silently"
       (are [mode expr] (nil? (lib.js/diagnose-expression query 0 mode expr js/undefined))
-        "expression"  #js ["/"   #js ["field" 1 nil] 100]
-        "aggregation" #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]
-        "filter"      #js ["="   #js ["field" 1 #js {:base-type "type/Integer"}] 3]))
+        "expression"  (lib/* (meta/field-metadata :venues :price) 100)
+        "aggregation" (lib/sum (meta/field-metadata :venues :price))
+        "filter"      (lib/=  (meta/field-metadata :venues :price) 3)))
     (testing "type errors are reported"
       (are [mode expr] (-> (lib.js/diagnose-expression query 0 mode expr js/undefined)
                            .-message
                            string?)
-        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]))
+        "expression"  (lib/* (meta/field-metadata :people :address) 100)))
     (testing "circular definition"
       (is (= "Cycle detected: c → x → b → c"
              (-> (lib.js/diagnose-expression
-                  query 0 "expression" #js ["+" #js ["expression" "x"] 1] c-pos)
+                  query 0 "expression"  (lib/+ (lib/expression-ref query "x") 1) c-pos)
                  .-message))))))
 
 ;; TODO: This wants `=?` to work on JS values. See https://github.com/metabase/hawk/issues/24

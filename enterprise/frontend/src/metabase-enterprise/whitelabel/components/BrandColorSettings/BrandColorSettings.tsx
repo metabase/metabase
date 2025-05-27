@@ -74,7 +74,7 @@ const BrandColorTable = ({
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {options.map(option => (
+        {options.map((option) => (
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}

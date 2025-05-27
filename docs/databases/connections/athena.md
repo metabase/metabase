@@ -6,31 +6,15 @@ title: Amazon Athena
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-## Connecting to Athena
+## Connection and sync
 
-To connect Metabase to Athena, you'll need to input your IAM credentials:
+After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
 
-- Access key
-- Secret Key
+Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
 
-Metabase will encrypt these credentials.
+### Edit connection details
 
-If you use other AWS services, we recommend that you create a special AWS Service Account that only has the permissions required to run Athena, and input the IAM credentials from that account to connect Metabase to Athena.
-
-See [Identity and access management in Athena](https://docs.aws.amazon.com/athena/latest/ug/security-iam-athena.html).
-
-## Connecting using AWS Default Credentials Chain
-
-If you're running Metabase on AWS and want to use [AWS Default Credentials Chain](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default), leave the Access and Secret keys blank.
-
-- For EC2, you can use [instance profiles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html).
-- For ECS, you can use [IAM roles for tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
-
-In both cases, the Athena driver will automatically fetch session credentials based on which IAM role you've configured.
-
-## Settings
-
-You can edit these settings at any time. Just remember to save your changes.
+You can edit these settings at any time (and remember to save your changes).
 
 ### Display name
 
@@ -54,13 +38,19 @@ Part of IAM credentials for AWS. Metabase will encrypt these credentials.
 
 If you're running Metabase on AWS and want to use [AWS Default Credentials Chain](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default), leave the Access and Secret keys blank.
 
+See also our [notes on connecting to Athena](#notes-on-connecting-to-athena).
+
 ### Secret Key
 
 Part of IAM credentials for AWS. Metabase will encrypt these credentials.
 
 ### Additional Athena connection string options
 
-You can specify additional options via a string, e.g. `UseResultsetStreaming=0;LogLevel=6`.
+You can specify additional options via a string, e.g., `UseResultsetStreaming=0;LogLevel=6`.
+
+### Include User ID and query hash in queries
+
+This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs. Enable this feature if you need to track which users are running specific queries.
 
 ### Re-run queries for simple explorations
 
@@ -68,26 +58,9 @@ Turn this option **OFF** if people want to click **Run** (the play button) befor
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
-### Choose when Metabase syncs and scans
+### Choose when syncs and scans happen
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md).
-
-#### Database syncing
-
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
-
-- The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
-- The time to run the sync, in the timezone of the server where your Metabase app is running.
-
-#### Scanning for filter values
-
-Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
-
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
-
-- **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
-- **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 
 ### Periodically refingerprint tables
 
@@ -97,7 +70,22 @@ Turn this option **ON** to scan a sample of values every time Metabase runs a [s
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
-## Permissions and IAM Policies
+## Notes on connecting to Athena
+
+If you use other AWS services, we recommend that you create a special AWS Service Account that only has the permissions required to run Athena, and input the IAM credentials from that account to connect Metabase to Athena.
+
+See [Identity and access management in Athena](https://docs.aws.amazon.com/athena/latest/ug/security-iam-athena.html).
+
+### Connecting using AWS Default Credentials Chain
+
+If you're running Metabase on AWS and want to use [AWS Default Credentials Chain](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default), leave the Access and Secret keys blank.
+
+- For EC2, you can use [instance profiles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html).
+- For ECS, you can use [IAM roles for tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
+
+In both cases, the Athena driver will automatically fetch session credentials based on which IAM role you've configured.
+
+### Permissions and IAM Policies
 
 Most issues that we see when people attempt to connect to AWS Athena involve permissions. Querying AWS Athena requires permissions to:
 
@@ -139,7 +127,8 @@ There may be additional permissions required for other Athena functionality, lik
         "athena:StopQueryExecution",
         "athena:CreatePreparedStatement",
         "athena:DeletePreparedStatement",
-        "athena:GetPreparedStatement"
+        "athena:GetPreparedStatement",
+        "athena:GetTableMetadata"
       ],
       "Resource": "*"
     },
@@ -215,6 +204,13 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
   ]
 }
 ```
+## Model features
+
+There aren't (yet) any model features available for Athena.
+
+## Danger zone
+
+See [Danger Zone](../danger-zone.md).
 
 ## Further reading
 

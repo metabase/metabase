@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { mockScrollIntoView, render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -98,8 +98,6 @@ const setup = (props = {}) => {
   render(<Wrapper {...props} />);
 };
 
-mockScrollIntoView();
-
 describe("ChartSettingsTableFormatting", () => {
   it("should allow you to add a rule", async () => {
     setup();
@@ -159,7 +157,7 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      STRING_OPERATORS.forEach(operator => {
+      STRING_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();
@@ -177,7 +175,7 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      STRING_OPERATORS.forEach(operator => {
+      STRING_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();
@@ -195,7 +193,7 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      STRING_OPERATORS.forEach(operator => {
+      STRING_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();
@@ -213,7 +211,7 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      NUMBER_OPERATORS.forEach(operator => {
+      NUMBER_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();
@@ -240,7 +238,7 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      BOOLEAN_OPERATORS.forEach(operator => {
+      BOOLEAN_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();

@@ -1,55 +1,68 @@
-import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
-import { Select } from "metabase/ui";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import {
+  BasicAdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useAdminSetting } from "metabase/api/utils";
+import { Box } from "metabase/ui";
 
-import type { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
+import { FontFilesWidget } from "./FontFilesWidget";
+import { useGetFontOptions } from "./utils";
 
-export interface FontWidgetProps {
-  setting: FontSetting;
-  settingValues: FontSettingValues;
-  availableFonts?: string[];
-  onChange: (value: string) => void;
-  onChangeSetting: (key: FontSettingKeys, value: unknown) => void;
-}
+const defaultFont = "Lato";
 
-const CUSTOM = "custom";
+export const FontWidget = () => {
+  const fontOptions = useGetFontOptions();
+  const {
+    value: font,
+    updateSetting,
+    settingDetails,
+    description,
+  } = useAdminSetting("application-font");
+  const { value: fontFiles } = useAdminSetting("application-font-files");
 
-const FontWidget = ({
-  setting,
-  settingValues,
-  availableFonts = MetabaseSettings.get("available-fonts") || [],
-  onChange,
-  onChangeSetting,
-}: FontWidgetProps): JSX.Element => {
-  const value = !settingValues["application-font-files"]
-    ? (setting.value ?? setting.default)
-    : CUSTOM;
+  const fontValue = fontFiles ? "custom" : font;
 
-  const options = useMemo(
-    () => [
-      ...availableFonts.map(font => ({ label: font, value: font })),
-      { label: t`Custom…`, value: CUSTOM },
-    ],
-    [availableFonts],
+  const handleChange = async (newValue: string) => {
+    if (newValue === fontValue) {
+      return;
+    }
+
+    await updateSetting({
+      key: "application-font",
+      value: newValue === "custom" ? defaultFont : newValue,
+    });
+
+    await updateSetting({
+      key: "application-font-files",
+      value: newValue === "custom" ? [] : null,
+      toast: false,
+    });
+  };
+
+  return (
+    <Box>
+      <SettingHeader
+        id="application-font"
+        title={t`Font`}
+        description={description}
+      />
+      {settingDetails?.is_env_setting ? (
+        <SetByEnvVar varName={settingDetails?.env_name ?? ""} />
+      ) : (
+        <>
+          <BasicAdminSettingInput
+            value={fontValue}
+            name="application-font"
+            inputType="select"
+            onChange={(newValue) => handleChange(newValue as string)}
+            options={fontOptions}
+          />
+          {fontValue === "custom" && <FontFilesWidget />}
+        </>
+      )}
+    </Box>
   );
-
-  const handleChange = useCallback(
-    (value: string) => {
-      if (value !== CUSTOM) {
-        onChange(value);
-        onChangeSetting("application-font-files", null);
-      } else {
-        onChange(setting.default);
-        onChangeSetting("application-font-files", []);
-      }
-    },
-    [setting, onChange, onChangeSetting],
-  );
-
-  return <Select value={value} data={options} onChange={handleChange} />;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FontWidget;

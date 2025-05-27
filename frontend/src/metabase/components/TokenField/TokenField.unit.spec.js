@@ -1,4 +1,3 @@
-/* eslint-disable jest/expect-expect */
 /* eslint-disable react/prop-types */
 
 import userEvent from "@testing-library/user-event";
@@ -17,10 +16,10 @@ const MockOption = ({ option }) => <span>{option}</span>;
 const DEFAULT_TOKEN_FIELD_PROPS = {
   options: [],
   value: [],
-  valueKey: option => option,
-  labelKey: option => option,
-  valueRenderer: value => <MockValue value={value} />,
-  optionRenderer: option => <MockOption option={option} />,
+  valueKey: (option) => option,
+  labelKey: (option) => option,
+  valueRenderer: (value) => <MockValue value={value} />,
+  optionRenderer: (option) => <MockOption option={option} />,
   layoutRenderer: ({ valuesList, optionsList }) => (
     <div>
       {valuesList}
@@ -44,7 +43,7 @@ class TokenFieldWithStateAndDefaults extends Component {
         {...DEFAULT_TOKEN_FIELD_PROPS}
         {...props}
         value={this.state.value}
-        onChange={value => {
+        onChange={(value) => {
           this.setState({ value });
           if (onChange) {
             onChange(value);
@@ -86,17 +85,17 @@ describe("TokenField", () => {
     return screen.queryAllByRole("listbox")[0];
   };
 
-  const type = str => fireEvent.change(input(), { target: { value: str } });
+  const type = (str) => fireEvent.change(input(), { target: { value: str } });
 
-  const clickText = str => fireEvent.click(screen.getByText(str));
+  const clickText = (str) => fireEvent.click(screen.getByText(str));
 
-  const inputKeydown = keyCode =>
+  const inputKeydown = (keyCode) =>
     fireEvent.keyDown(input(), { keyCode: keyCode });
 
-  const findWithinValues = collection =>
+  const assertWithinValues = (collection) =>
     expect(values()).toHaveTextContent(collection.join(""));
 
-  const findWithinOptions = collection =>
+  const assertWithinOptions = (collection) =>
     expect(options()).toHaveTextContent(collection.join(""));
 
   it("should render with no options or values", () => {
@@ -123,8 +122,8 @@ describe("TokenField", () => {
         options={["bar"]}
       />,
     );
-    findWithinValues(["foo"]);
-    findWithinOptions(["bar"]);
+    assertWithinValues(["foo"]);
+    assertWithinOptions(["bar"]);
   });
 
   it("shouldn't show previous used option by default", () => {
@@ -143,7 +142,7 @@ describe("TokenField", () => {
         removeSelected={false}
       />,
     );
-    findWithinOptions(["foo"]);
+    assertWithinOptions(["foo"]);
   });
 
   it("should filter correctly", () => {
@@ -156,7 +155,7 @@ describe("TokenField", () => {
     type("nope");
     expect(options()).toBeFalsy();
     type("bar");
-    findWithinOptions(["bar"]);
+    assertWithinOptions(["bar"]);
   });
 
   it("should not allow adding new items when canAddItems is false", () => {
@@ -175,7 +174,7 @@ describe("TokenField", () => {
       <TokenFieldWithStateAndDefaults
         value={[]}
         options={["bar", "baz"]}
-        parseFreeformValue={value => value}
+        parseFreeformValue={(value) => value}
       />,
     );
     await userEvent.type(input(), "yep");
@@ -193,11 +192,11 @@ describe("TokenField", () => {
         options={["bar", "baz"]}
       />,
     );
-    findWithinOptions(["bar", "baz"]);
+    assertWithinOptions(["bar", "baz"]);
 
     clickText("bar");
-    findWithinValues(["bar"]);
-    findWithinOptions(["baz"]);
+    assertWithinValues(["bar"]);
+    assertWithinOptions(["baz"]);
   });
 
   it("should add option when filtered and clicked", () => {
@@ -210,7 +209,7 @@ describe("TokenField", () => {
     );
     type("ba");
     clickText("bar");
-    findWithinValues(["bar"]);
+    assertWithinValues(["bar"]);
   });
 
   describe("when updateOnInputChange is provided", () => {
@@ -220,7 +219,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
         />,
       );
@@ -229,17 +228,17 @@ describe("TokenField", () => {
     it("should add freeform value immediately if updateOnInputChange is provided", () => {
       setup();
       type("yep");
-      findWithinValues(["yep"]);
+      assertWithinValues(["yep"]);
     });
 
     it("should only add one option when filtered and clicked", () => {
       setup();
 
       type("Do");
-      findWithinValues(["Do"]);
+      assertWithinValues(["Do"]);
 
       clickText("Doohickey");
-      findWithinValues(["Doohickey"]);
+      assertWithinValues(["Doohickey"]);
       expect(input().value).toEqual("");
     });
 
@@ -247,20 +246,20 @@ describe("TokenField", () => {
       setup();
 
       type("Do");
-      findWithinValues(["Do"]);
+      assertWithinValues(["Do"]);
 
       inputKeydown(KEYCODE_ENTER);
-      findWithinValues(["Doohickey"]);
+      assertWithinValues(["Doohickey"]);
       expect(input().value).toEqual("");
-      findWithinOptions(["Gadget", "Gizmo", "Widget"]);
+      assertWithinOptions(["Gadget", "Gizmo", "Widget"]);
     });
 
     it("shouldn't hide option matching input freeform value", () => {
       setup();
 
       type("Doohickey");
-      findWithinValues(["Doohickey"]);
-      findWithinOptions(["Doohickey"]);
+      assertWithinValues(["Doohickey"]);
+      assertWithinOptions(["Doohickey"]);
     });
 
     // This is messy and tricky to test with RTL
@@ -279,50 +278,50 @@ describe("TokenField", () => {
       setup();
 
       type("G");
-      findWithinOptions(["Gadget", "Gizmo"]);
+      assertWithinOptions(["Gadget", "Gizmo"]);
 
       inputKeydown(KEYCODE_ENTER);
-      findWithinOptions(["Gizmo"]);
+      assertWithinOptions(["Gizmo"]);
       expect(input().value).toEqual("");
 
       // Reset search on focus (it was a separate test before)
       act(() => {
         input().focus();
       });
-      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
+      assertWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should reset the search when adding the last option", () => {
       setup();
 
       type("G");
-      findWithinOptions(["Gadget", "Gizmo"]);
+      assertWithinOptions(["Gadget", "Gizmo"]);
 
       inputKeydown(KEYCODE_ENTER);
-      findWithinOptions(["Gizmo"]);
+      assertWithinOptions(["Gizmo"]);
 
       inputKeydown(KEYCODE_ENTER);
-      findWithinOptions(["Doohickey", "Widget"]);
+      assertWithinOptions(["Doohickey", "Widget"]);
     });
 
     it("should hide the option if typed exactly then press enter", () => {
       setup();
 
       type("Gadget");
-      findWithinOptions(["Gadget"]);
+      assertWithinOptions(["Gadget"]);
       inputKeydown(KEYCODE_ENTER);
-      findWithinValues(["Gadget"]);
-      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
+      assertWithinValues(["Gadget"]);
+      assertWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should hide the option if typed partially then press enter", () => {
       setup();
 
       type("Gad");
-      findWithinOptions(["Gadget"]);
+      assertWithinOptions(["Gadget"]);
       inputKeydown(KEYCODE_ENTER);
-      findWithinValues(["Gadget"]);
-      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
+      assertWithinValues(["Gadget"]);
+      assertWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should hide the option if typed exactly then clicked", () => {
@@ -330,8 +329,8 @@ describe("TokenField", () => {
 
       type("Gadget");
       fireEvent.click(within(options()).getByText("Gadget"));
-      findWithinValues(["Gadget"]);
-      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
+      assertWithinValues(["Gadget"]);
+      assertWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should hide the option if typed partially then clicked", () => {
@@ -339,8 +338,8 @@ describe("TokenField", () => {
 
       type("Gad");
       fireEvent.click(within(options()).getByText("Gadget"));
-      findWithinValues(["Gadget"]);
-      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
+      assertWithinValues(["Gadget"]);
+      assertWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
   });
 
@@ -351,7 +350,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputBlur={false}
         />,
       );
@@ -378,7 +377,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputBlur={true}
         />,
       );
@@ -394,7 +393,7 @@ describe("TokenField", () => {
       setup();
       type("yep");
       fireEvent.blur(input());
-      findWithinValues(["yep"]);
+      assertWithinValues(["yep"]);
     });
   });
 
@@ -403,7 +402,7 @@ describe("TokenField", () => {
       render(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
           multi
         />,
@@ -415,7 +414,7 @@ describe("TokenField", () => {
         },
       });
 
-      findWithinValues(["1", "2", "3"]);
+      assertWithinValues(["1", "2", "3"]);
       // prevent pasting into <input>
       expect(input().value).toBe("");
     });
@@ -427,7 +426,7 @@ describe("TokenField", () => {
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
         />,
       );
@@ -442,7 +441,7 @@ describe("TokenField", () => {
       render(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
         />,
       );

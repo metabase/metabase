@@ -5,8 +5,9 @@ import { WebClient } from '@slack/web-api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import fetch from 'node-fetch';
-
+import _ from 'underscore';
 dayjs.extend(relativeTime);
+
 import _githubSlackMap from "../github-slack-map.json";
 
 const githubSlackMap: Record<string, string> = _githubSlackMap;
@@ -73,18 +74,23 @@ export async function sendBackportReminder({
       },
     ];
 
-    const attachments = [
-      {
-        "color": "#F9841A",
-        "blocks": [{
-          "type": "section",
-          "text": {
-            "type": "mrkdwn",
-            "text": text,
-          }
-        }],
-      },
-    ];
+    const MAX_CHARACTERS_PER_BLOCK = 2800;
+    const chunks = Math.ceil(text.length / MAX_CHARACTERS_PER_BLOCK);
+
+    const lines = text.split("\n");
+    const chunkSize = Math.floor(lines.length / chunks);
+    const chunkedLines = _.chunk(lines, chunkSize);
+
+    const attachments = [{
+      "color": "#F9841A",
+      "blocks": chunkedLines.map(lines => ({
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": lines.join("\n"),
+        },
+      })),
+    }];
 
     return slack.chat.postMessage({
       channel: channelName,
@@ -163,12 +169,25 @@ export function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message }: 
   });
 }
 
-async function getSlackChannelId(channelName: string) {
+async function getSlackChannelId(
+  channelName: string,
+  cursor?: string,
+): Promise<string | undefined> {
   const response = await slack.conversations.list({
+    cursor,
     limit: 9999,
     exclude_archived: true,
   });
-  return response.channels?.find((channel) => channel.name === channelName)?.id;
+
+  const maybeChannelId = response.channels?.find(
+    channel => channel.name === channelName,
+  )?.id;
+  const nextCursor = response.response_metadata?.next_cursor;
+  if (!maybeChannelId && nextCursor) {
+    return await getSlackChannelId(channelName, nextCursor);
+  }
+
+  return maybeChannelId;
 }
 
 async function getExistingSlackMessage(version: string, channelName: string) {
@@ -207,6 +226,34 @@ export async function sendSlackReply({ channelName, message, messageId, broadcas
     thread_ts: messageId, // if this is empty it should post in the channel
     reply_broadcast: !!broadcast,
   });
+}
+
+export async function addSlackReaction({ channelName, messageId, emoji }: { channelName: string, messageId: string, emoji: string }) {
+  const channelId = await getSlackChannelId(channelName);
+  if (!channelId) {
+    console.error(`Could not find channel ${channelName}`);
+    return;
+  }
+
+  return slack.reactions.add({
+    channel: channelId,
+    name: emoji,
+    timestamp: messageId,
+  }).catch(console.warn);
+}
+
+export async function removeSlackReaction({ channelName, messageId, emoji }: { channelName: string, messageId: string, emoji: string }) {
+  const channelId = await getSlackChannelId(channelName);
+  if (!channelId) {
+    console.error(`Could not find channel ${channelName}`);
+    return;
+  }
+
+  return slack.reactions.remove({
+    channel: channelId,
+    name: emoji,
+    timestamp: messageId,
+  }).catch(console.warn);
 }
 
 const getReleaseTitle = (version: string) =>
@@ -296,6 +343,10 @@ export async function sendTestsCompleteMessage({
   const buildThread = await getExistingSlackMessage(version, channelName);
 
   await sendSlackReply({ channelName, message, messageId: buildThread?.id });
+
+  if (testStatus !== 'success' && buildThread?.id) {
+    await addSlackReaction({ channelName, messageId: buildThread?.id, emoji: 'warning' });
+  }
 }
 
 export async function sendPublishStartMessage({
@@ -318,14 +369,12 @@ export async function sendPublishStartMessage({
 
 export async function sendPublishCompleteMessage({
   channelName,
-  generalChannelName,
   version,
   runId,
   owner,
   repo,
 }: {
   channelName: string,
-  generalChannelName?: string,
   version: string,
   runId: number,
   owner: string,
@@ -334,23 +383,19 @@ export async function sendPublishCompleteMessage({
   const baseMessage = `:partydeploy: *${githubRunLink(`${getGenericVersion(version)} Release is Complete`, runId.toString(), owner, repo)}* :partydeploy:`;
 
   const fullMessage = `\n
-    • ${slackLink("EE Extra Build", `https://github.com/${owner}/metabase-ee-extra/pulls`)}
     • ${slackLink("Ops Issues", `https://github.com/${owner}/metabase-ops/issues`)} - ${mentionSlackTeam('successengineers')}
-    • ${slackLink("Release Notes", `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam('tech-writers')}
-    • ${slackLink("Docs Update", `https://github.com/${owner}/metabase.github.io/pulls`)} - ${mentionSlackTeam('tech-writers')}`;
+    • ${slackLink("Release Notes", `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam('tech-writers')}`;
 
   const isPatch = version.split('.').length > 3;
 
   const message = `${baseMessage}${isPatch ? '' : fullMessage}`;
 
   const buildThread = await getExistingSlackMessage(version, channelName);
-  await sendSlackReply({ channelName, message, messageId: buildThread?.id, broadcast: true });
+  await sendSlackReply({ channelName, message, messageId: buildThread?.id });
 
-  if (!isPatch && generalChannelName) {
-    await sendSlackMessage({
-      message: `:partydeploy: *Metabase ${getGenericVersion(version)} has been released!* :partydeploy:\n\nSee the ${slackLink('full release notes here', `https://github.com/${owner}/${repo}/releases`)}.`,
-      channelName: generalChannelName,
-    });
+  if (buildThread?.id) {
+    await removeSlackReaction({ channelName , messageId: buildThread?.id, emoji: 'warning' });
+    await addSlackReaction({ channelName, messageId: buildThread?.id, emoji: 'very-green-check' });
   }
 }
 

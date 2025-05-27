@@ -21,13 +21,14 @@ The connection settings differ database to database. For the list of connection 
 
 ## Connecting to supported databases
 
-The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing) will get official support. For each database, Metabase supports the oldest supported version through the latest stable version.
+The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing/) will get official support. For each database, Metabase supports the oldest supported version through the latest stable version.
 
-- [Amazon Athena](./connections/athena.md)
+- [Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
+- [ClickHouse](./connections/clickhouse.md)
 - [Databricks](./connections/databricks.md)
 - [Druid](./connections/druid.md)
-- [MongoDB (recommend version 4.2 or higher)](./connections/mongodb.md)
+- [MongoDB](./connections/mongodb.md)
 - [MariaDB](./connections/mariadb.md)
 - [MySQL](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
@@ -38,9 +39,10 @@ The databases listed below have official drivers maintained by the Metabase team
 - [SparkSQL](./connections/sparksql.md)
 - [SQL Server](./connections/sql-server.md)
 - [SQLite](./connections/sqlite.md)
+- [Starburst](./connections/starburst.md)
 - [Vertica](./connections/vertica.md)
 
-If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).
+If you don't see your database listed here, see [Community drivers](../developers-guide/community-drivers.md).
 
 As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/vulnerability-post-mortem). But Metabase still ships with an H2 database to include an embedded application database, as well as to provide some sample data out of the box.
 

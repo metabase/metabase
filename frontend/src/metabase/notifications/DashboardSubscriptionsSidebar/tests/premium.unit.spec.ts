@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
+import {
+  createMockCard,
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 import { hasAdvancedFilterOptionsHidden, setup } from "./setup";
 
@@ -9,37 +14,189 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
     dashboard_subscription_filters: true,
   };
 
-  describe("Email Subscription sidebar", () => {
-    it("should show advanced filtering options with the correct feature flag", async () => {
+  [
+    {
+      channel: "email",
+      buttonText: "Email it",
+      headerText: "Email this dashboard",
+    },
+    {
+      channel: "slack",
+      buttonText: "Send it to Slack",
+      headerText: "Send this dashboard to Slack",
+    },
+  ].forEach(({ channel, buttonText, headerText }) => {
+    it(`${channel} channel: should not show advanced filtering options with no mapped parameters`, async () => {
       setup({
         isAdmin: true,
-        email: true,
+        [channel]: true,
         tokenFeatures,
         hasEnterprisePlugins: true,
+        dashcards: [
+          createMockDashboardCard({
+            parameter_mappings: [],
+          }),
+        ],
       });
 
-      await userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(await screen.findByText(buttonText));
 
-      await screen.findByText("Email this dashboard");
+      screen.getByText(headerText);
 
       expect(hasAdvancedFilterOptionsHidden(screen)).toBe(true);
     });
-  });
 
-  describe("Slack Subscription sidebar", () => {
-    it("should show advanced filtering options with the correct feature flag", async () => {
-      setup({
-        isAdmin: true,
-        slack: true,
-        tokenFeatures,
-        hasEnterprisePlugins: true,
+    it(`${channel} channel: should show all mapped parameters in advanced filtering options`, async () => {
+      const totalParameter = createMockParameter({
+        id: "1",
+        type: "number/=",
+        slug: "total",
+        name: "Total",
+      });
+      const titleParameter = createMockParameter({
+        id: "2",
+        type: "string/contains",
+        slug: "title",
+        name: "Title",
+      });
+      const mockCardNumeric = createMockCard({
+        id: 1,
+        name: "Numeric Question",
+        display: "table",
+        parameters: [totalParameter],
+      });
+      const mockCardString = createMockCard({
+        id: 2,
+        name: "String Question",
+        display: "pie",
+        parameters: [titleParameter],
       });
 
-      await userEvent.click(await screen.findByText("Send it to Slack"));
+      setup({
+        isAdmin: true,
+        [channel]: true,
+        tokenFeatures,
+        hasEnterprisePlugins: true,
+        parameters: [totalParameter, titleParameter],
+        dashcards: [
+          createMockDashboardCard({
+            id: mockCardNumeric.id,
+            card: mockCardNumeric,
+            card_id: mockCardNumeric.id,
+            parameter_mappings: [
+              {
+                card_id: mockCardNumeric.id,
+                parameter_id: totalParameter.id,
+                target: ["variable", ["template-tag", totalParameter.slug]],
+              },
+            ],
+          }),
+          createMockDashboardCard({
+            id: mockCardString.id,
+            card: mockCardString,
+            card_id: mockCardString.id,
+            parameter_mappings: [
+              {
+                card_id: mockCardString.id,
+                parameter_id: titleParameter.id,
+                target: [
+                  "dimension",
+                  ["field", titleParameter.slug, { "base-type": "type/Text" }],
+                ],
+              },
+            ],
+          }),
+        ],
+      });
 
-      await screen.findByText("Send this dashboard to Slack");
+      await userEvent.click(await screen.findByText(buttonText));
 
-      expect(hasAdvancedFilterOptionsHidden(screen)).toBe(true);
+      screen.getByText(headerText);
+
+      const subscriptionParametersSection = screen.getByTestId(
+        "subscription-parameters-section",
+      );
+
+      expect(subscriptionParametersSection).toBeInTheDocument();
+
+      expect(
+        await within(subscriptionParametersSection).findByLabelText("Total"),
+      ).toBeInTheDocument();
+      expect(
+        await within(subscriptionParametersSection).findByLabelText("Title"),
+      ).toBeInTheDocument();
+    });
+
+    it(`${channel} channel: should show only mapped parameters in advanced filtering options`, async () => {
+      const totalParameter = createMockParameter({
+        id: "1",
+        type: "number/=",
+        slug: "total",
+        name: "Total",
+      });
+      const titleParameter = createMockParameter({
+        id: "2",
+        type: "string/contains",
+        slug: "title",
+        name: "Title",
+      });
+      const mockCardNumeric = createMockCard({
+        id: 1,
+        name: "Numeric Question",
+        display: "table",
+        parameters: [totalParameter],
+      });
+      const mockCardString = createMockCard({
+        id: 2,
+        name: "String Question",
+        display: "pie",
+        parameters: [titleParameter],
+      });
+
+      setup({
+        isAdmin: true,
+        [channel]: true,
+        tokenFeatures,
+        hasEnterprisePlugins: true,
+        parameters: [totalParameter, titleParameter],
+        dashcards: [
+          createMockDashboardCard({
+            id: mockCardNumeric.id,
+            card: mockCardNumeric,
+            card_id: mockCardNumeric.id,
+            parameter_mappings: [
+              {
+                card_id: mockCardNumeric.id,
+                parameter_id: totalParameter.id,
+                target: ["variable", ["template-tag", totalParameter.slug]],
+              },
+            ],
+          }),
+          createMockDashboardCard({
+            id: mockCardString.id,
+            card: mockCardString,
+            card_id: mockCardString.id,
+            parameter_mappings: [],
+          }),
+        ],
+      });
+
+      await userEvent.click(await screen.findByText(buttonText));
+
+      screen.getByText(headerText);
+
+      const subscriptionParametersSection = screen.getByTestId(
+        "subscription-parameters-section",
+      );
+
+      expect(subscriptionParametersSection).toBeInTheDocument();
+
+      expect(
+        await within(subscriptionParametersSection).findByLabelText("Total"),
+      ).toBeInTheDocument();
+      expect(
+        within(subscriptionParametersSection).queryByLabelText("Title"),
+      ).not.toBeInTheDocument();
     });
   });
 });

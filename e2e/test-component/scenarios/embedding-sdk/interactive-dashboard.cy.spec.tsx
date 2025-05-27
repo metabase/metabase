@@ -3,6 +3,7 @@ import {
   InteractiveDashboard,
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -78,7 +79,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it("should be able to display custom question layout when clicking on dashboard cards", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(
         <InteractiveDashboard
           dashboardId={dashboardId}
@@ -98,6 +99,22 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       cy.findByText("Orders").click();
       cy.contains("Orders").should("be.visible");
       cy.contains("This is a custom question layout.");
+    });
+  });
+
+  it("should show a watermark on dashcards in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findAllByTestId("development-watermark").should("have.length", 1);
     });
   });
 
@@ -128,19 +145,16 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       },
     ];
 
-    // Those tests are sometimes rendering 6 rows, sometimes 7 rows, we don't want this to be flaky
-    const rowsTextRegex = /Rows 1-[6,7] of first 2000/;
-
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
         });
 
         getSdkRoot().within(() => {
           cy.findByText("Orders in a dashboard").should("be.visible");
           cy.findByText("Orders").should("be.visible");
-          cy.findByText(rowsTextRegex).should("be.visible");
+          H.assertTableRowsCount(2000);
           cy.findByText("Test text card").should("be.visible");
         });
       });
@@ -156,7 +170,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText(rowsTextRegex).should("not.exist");
+          H.tableInteractiveBody().should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });
@@ -164,7 +178,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it('should drill dashboards with filter values and not showing "Question not found" error (EMB-84)', () => {
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
 
@@ -177,7 +191,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
      * This seems to be the only reliable way to force the error to stay, and we will resolve
      * the promise that will cause the error to go away manually after asserting that it's not there.
      */
-    cy.intercept("get", "/api/card/*", req => {
+    cy.intercept("get", "/api/card/*", (req) => {
       return promise.then(() => {
         req.continue();
       });
@@ -192,5 +206,48 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         });
       cy.findByText("New question").should("be.visible");
     });
+  });
+
+  it("should only call POST /dataset once when parent component re-renders (EMB-288)", () => {
+    cy.intercept("POST", "/api/dataset").as("datasetQuery");
+
+    const TestComponent = ({ dashboardId }: { dashboardId: string }) => {
+      const [counter, setCounter] = useState(0);
+
+      return (
+        <div>
+          <button onClick={() => setCounter((c) => c + 1)}>
+            Trigger parent re-render ({counter})
+          </button>
+
+          <InteractiveDashboard dashboardId={dashboardId} />
+        </div>
+      );
+    };
+
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<TestComponent dashboardId={dashboardId} />);
+    });
+
+    // Drill down to "See these Orders"
+    cy.wait("@dashcardQuery");
+    cy.get("[data-dataset-index=0] > [data-column-id='PRODUCT_ID']").click();
+
+    H.popover()
+      .findByText(/View this Product/)
+      .click();
+
+    cy.wait("@datasetQuery");
+
+    // Trigger multiple parent re-renders
+    getSdkRoot().within(() => {
+      cy.findByText(/Trigger parent re-render/).click();
+      cy.findByText(/Trigger parent re-render/).click();
+      cy.findByText(/Trigger parent re-render/).click();
+    });
+
+    // Verify no additional dataset queries were made after re-renders
+    cy.wait(500);
+    cy.get("@datasetQuery.all").should("have.length", 1);
   });
 });

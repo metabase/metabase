@@ -30,7 +30,7 @@ export const SchemaList = ({
   onClick,
 }: Props) => {
   const items: DataPickerFolderItem[] | undefined = useMemo(() => {
-    return schemas?.map(schema => ({
+    return schemas?.map((schema) => ({
       id: schema,
       model: "schema",
       name: getSchemaDisplayName(schema),

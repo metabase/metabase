@@ -8,7 +8,7 @@ import type { State } from "metabase-types/store";
 const EMPTY_PROVIDERS: AuthProvider[] = [];
 
 export const getAuthProviders = createSelector([getSettings], () =>
-  PLUGIN_AUTH_PROVIDERS.reduce(
+  PLUGIN_AUTH_PROVIDERS.providers.reduce(
     (providers, getProviders) => getProviders(providers),
     EMPTY_PROVIDERS,
   ),
@@ -16,7 +16,7 @@ export const getAuthProviders = createSelector([getSettings], () =>
 
 export const getExternalAuthProviders = createSelector(
   [getAuthProviders],
-  providers => providers.filter(provider => provider.name !== "password"),
+  (providers) => providers.filter((provider) => provider.name !== "password"),
 );
 
 export const getIsEmailConfigured = (state: State) => {

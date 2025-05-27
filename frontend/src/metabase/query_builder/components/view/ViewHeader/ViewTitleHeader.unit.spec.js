@@ -100,7 +100,7 @@ function getSavedNativeQuestionCard(overrides) {
 }
 
 function mockSettings({ enableNestedQueries = true } = {}) {
-  MetabaseSettings.get = jest.fn().mockImplementation(key => {
+  MetabaseSettings.get = jest.fn().mockImplementation((key) => {
     if (key === "enable-nested-queries") {
       return enableNestedQueries;
     }
@@ -244,7 +244,7 @@ describe("ViewTitleHeader", () => {
   ];
 
   describe("Common", () => {
-    ALL_TEST_CASES.forEach(testCase => {
+    ALL_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -297,7 +297,7 @@ describe("ViewTitleHeader", () => {
   });
 
   describe("GUI", () => {
-    GUI_TEST_CASES.forEach(testCase => {
+    GUI_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -309,12 +309,11 @@ describe("ViewTitleHeader", () => {
         });
 
         it("offers to filter query results", () => {
-          const { onOpenModal } = setup({
+          setup({
             card,
             queryBuilderMode: "view",
           });
-          fireEvent.click(screen.getByText("Filter"));
-          expect(onOpenModal).toHaveBeenCalled();
+          expect(screen.getByText("Filter")).toBeInTheDocument();
         });
 
         it("offers to summarize query results", () => {
@@ -369,7 +368,7 @@ describe("ViewTitleHeader", () => {
   });
 
   describe("Native", () => {
-    NATIVE_TEST_CASES.forEach(testCase => {
+    NATIVE_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -394,7 +393,7 @@ describe("ViewTitleHeader", () => {
   });
 
   describe("Saved", () => {
-    SAVED_QUESTIONS_TEST_CASES.forEach(testCase => {
+    SAVED_QUESTIONS_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {

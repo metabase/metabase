@@ -129,7 +129,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       question: ORDERS_QUESTION_ID,
       dashboard: ORDERS_DASHBOARD_ID,
     };
-    ["question", "dashboard"].forEach(object => {
+    ["question", "dashboard"].forEach((object) => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
         cy.request("PUT", "/api/setting/enable-embedding-static", {
           value: true,
@@ -162,7 +162,15 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
               element.textContent ===
               "You can change the font with a paid plan.",
           );
-          cy.findByText("Download buttons").should("not.exist");
+
+          cy.findByText(
+            object === "dashboard"
+              ? "Results (csv, xlsx, json, png)"
+              : "Download (csv, xlsx, json, png)",
+          ).should("not.exist");
+          cy.findByRole("button", { name: "Export as PDF" }).should(
+            "not.exist",
+          );
 
           cy.findByRole("tab", { name: "Parameters" }).click();
 
@@ -183,7 +191,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
         cy.findByTestId("embed-frame").within(() => {
           cy.findByRole("heading", { name: objectName });
-          cy.get("[data-testid=cell-data]").contains("37.65");
+          cy.findAllByRole("gridcell").contains("37.65");
         });
 
         cy.findByRole("contentinfo").within(() => {
@@ -298,7 +306,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.findByText("Preview").click();
       });
 
-      cy.document().then(doc => {
+      cy.document().then((doc) => {
         const iframe = doc.querySelector("iframe");
 
         cy.signOut();

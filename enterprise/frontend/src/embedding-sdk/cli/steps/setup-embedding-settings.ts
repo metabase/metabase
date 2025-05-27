@@ -9,7 +9,7 @@ import { propagateErrorResponse } from "../utils/propagate-error-response";
  * This step must be after the license setup step, otherwise the JWT
  * configuration will not be applied.
  */
-export const setupEmbeddingSettings: CliStepMethod = async state => {
+export const setupEmbeddingSettings: CliStepMethod = async (state) => {
   const { cookie = "" } = state;
 
   const spinner = ora("Enabling embedding features...").start();

@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 import { isEqual } from "underscore";
 
-import {
-  cronToScheduleSettings,
-  scheduleSettingsToCron,
-} from "metabase/admin/performance/utils";
 import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
@@ -14,8 +10,8 @@ import {
   useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import { Schedule } from "metabase/components/Schedule/Schedule";
 import CS from "metabase/css/core/index.css";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import {
   alertIsValid,
   getAlertTriggerOptions,
@@ -25,17 +21,13 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  DEFAULT_ALERT_SCHEDULE,
-  getDefaultQuestionAlertRequest,
-} from "metabase/notifications/utils";
+import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
-import { getSetting } from "metabase/selectors/settings";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
   Button,
@@ -52,8 +44,8 @@ import type {
   CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
+  NotificationCronSubscription,
   NotificationHandler,
-  ScheduleSettings,
   ScheduleType,
   UpdateAlertNotificationRequest,
 } from "metabase-types/api";
@@ -61,8 +53,9 @@ import type {
 import { ChannelSetupModal } from "../ChannelSetupModal";
 import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";
 
-import { AlertModalSettingsBlock } from "./AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
+import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
 const ALERT_TRIGGER_OPTIONS_MAP: Record<
@@ -71,23 +64,31 @@ const ALERT_TRIGGER_OPTIONS_MAP: Record<
 > = {
   has_result: {
     value: "has_result" as const,
-    label: t`When this question has results`,
+    get label() {
+      return t`When this question has results`;
+    },
   },
   goal_above: {
     value: "goal_above" as const,
-    label: t`When results go above the goal line`,
+    get label() {
+      return t`When results go above the goal line`;
+    },
   },
   goal_below: {
     value: "goal_below" as const,
-    label: t`When results go below the goal line`,
+    get label() {
+      return t`When results go below the goal line`;
+    },
   },
 };
 
 const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
+  "every_n_minutes",
   "hourly",
   "daily",
   "weekly",
   "monthly",
+  "cron",
 ];
 
 type CreateOrEditQuestionAlertModalProps = {
@@ -116,9 +117,6 @@ export const CreateOrEditQuestionAlertModal = ({
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
-  const timezone = useSelector(state =>
-    getSetting(state, "report-timezone-short"),
-  );
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -145,7 +143,7 @@ export const CreateOrEditQuestionAlertModal = ({
       getAlertTriggerOptions({
         question,
         visualizationSettings,
-      }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
+      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
     [question, visualizationSettings],
   );
 
@@ -195,7 +193,8 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: t`An error occurred`,
+            message:
+              getResponseErrorMessage(result.error) ?? t`An error occurred`,
           }),
         );
 
@@ -230,7 +229,8 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: t`An error occurred`,
+            message:
+              getResponseErrorMessage(result.error) ?? t`An error occurred`,
           }),
         );
       }
@@ -241,30 +241,16 @@ export const CreateOrEditQuestionAlertModal = ({
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
 
-  const scheduleSettings = useMemo(() => {
-    return (
-      cronToScheduleSettings(subscription?.cron_schedule) ||
-      DEFAULT_ALERT_SCHEDULE
-    );
-  }, [subscription]);
-
-  const onScheduleChange = useCallback(
-    (nextSchedule: ScheduleSettings) => {
+  const handleScheduleChange = useCallback(
+    (updatedSubscription: NotificationCronSubscription) => {
       if (!subscription) {
         return;
       }
 
-      if (nextSchedule.schedule_type) {
-        setNotification({
-          ...notification,
-          subscriptions: [
-            {
-              ...subscription,
-              cron_schedule: scheduleSettingsToCron(nextSchedule),
-            },
-          ],
-        });
-      }
+      setNotification({
+        ...notification,
+        subscriptions: [updatedSubscription],
+      });
     },
     [setNotification, subscription, notification],
   );
@@ -323,7 +309,7 @@ export const CreateOrEditQuestionAlertModal = ({
                 data={triggerOptions}
                 value={notification.payload.send_condition}
                 w={276}
-                onChange={value =>
+                onChange={(value) =>
                   setNotification({
                     ...notification,
                     payload: {
@@ -336,15 +322,16 @@ export const CreateOrEditQuestionAlertModal = ({
             )}
           </Flex>
         </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock title={t`When do you want to check this?`}>
-          <Schedule
-            schedule={scheduleSettings}
+        <AlertModalSettingsBlock
+          title={t`When do you want to check this?`}
+          style={{
+            "--alert-modal-content-padding": "0",
+          }}
+        >
+          <NotificationSchedule
+            subscription={subscription}
             scheduleOptions={ALERT_SCHEDULE_OPTIONS}
-            minutesOnHourPicker
-            onScheduleChange={onScheduleChange}
-            verb={c("A verb in the imperative mood").t`Check`}
-            timezone={timezone}
-            aria-label={t`Describe how often the alert notification should be sent`}
+            onScheduleChange={handleScheduleChange}
           />
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock
@@ -360,18 +347,25 @@ export const CreateOrEditQuestionAlertModal = ({
               });
             }}
             emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={domains =>
-              t`You're only allowed to email alerts to addresses ending in ${domains}`
+            getInvalidRecipientText={(domains) =>
+              userCanAccessSettings
+                ? t`You're only allowed to email alerts to addresses ending in ${domains}`
+                : t`You're only allowed to email alerts to allowed domains`
             }
           />
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Only send this alert once`}
+            styles={{
+              label: {
+                lineHeight: "1.5rem",
+              },
+            }}
             labelPosition="right"
             size="sm"
             checked={notification.payload.send_once}
-            onChange={e =>
+            onChange={(e) =>
               setNotification({
                 ...notification,
                 payload: {

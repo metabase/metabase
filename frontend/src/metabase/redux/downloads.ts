@@ -1,11 +1,13 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
+import { createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { getTokenFeature } from "metabase/setup/selectors";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import type Question from "metabase-lib/v1/Question";
@@ -108,7 +110,7 @@ const getDownloadedResourceType = ({
 
 export const downloadQueryResults = createAsyncThunk(
   "metabase/downloads/downloadQueryResults",
-  async (opts: DownloadQueryResultsOpts, { dispatch }) => {
+  async (opts: DownloadQueryResultsOpts, { dispatch, getState }) => {
     const { resourceType, accessedVia } = getDownloadedResourceType(opts);
     trackDownloadResults({
       resourceType,
@@ -117,7 +119,9 @@ export const downloadQueryResults = createAsyncThunk(
     });
 
     if (opts.type === Urls.exportFormatPng) {
-      downloadChart(opts);
+      const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
+      const includeBranding = !isWhitelabeled;
+      downloadChart({ opts, includeBranding });
     } else {
       dispatch(downloadDataset({ opts, id: Date.now() }));
     }
@@ -125,15 +129,23 @@ export const downloadQueryResults = createAsyncThunk(
 );
 
 const downloadChart = async ({
-  question,
-  dashcardId,
-}: DownloadQueryResultsOpts) => {
-  const fileName = getChartFileName(question);
+  opts,
+  includeBranding,
+}: {
+  opts: DownloadQueryResultsOpts;
+  includeBranding: boolean;
+}) => {
+  const { question, dashcardId } = opts;
+  const fileName = getChartFileName(question, includeBranding);
   const chartSelector =
     dashcardId != null
       ? `[data-dashcard-key='${dashcardId}']`
       : `[data-card-key='${getCardKey(question.id())}']`;
-  await saveChartImage(chartSelector, fileName);
+  await saveChartImage({
+    selector: chartSelector,
+    fileName,
+    includeBranding,
+  });
 };
 
 export const downloadDataset = createAsyncThunk(
@@ -190,11 +202,18 @@ const getDatasetParams = ({
       };
     }
     if (resource === "question" && uuid) {
+      const parameters = (result?.json_query?.parameters ?? []).map(
+        (param) => ({
+          id: param.id,
+          value: param.value,
+        }),
+      );
+
       return {
         method: "GET",
         url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
         params: new URLSearchParams({
-          parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+          parameters: JSON.stringify(parameters),
         }),
       };
     }
@@ -208,7 +227,7 @@ const getDatasetParams = ({
         url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
         params: new URLSearchParams({
           parameters: JSON.stringify(params),
-          ..._.mapObject(exportParams, value => String(value)),
+          ..._.mapObject(exportParams, (value) => String(value)),
         }),
       };
     }
@@ -221,7 +240,7 @@ const getDatasetParams = ({
         url: Urls.embedCard(token, type),
         params: new URLSearchParams({
           parameters: JSON.stringify(Object.fromEntries(params)),
-          ..._.mapObject(exportParams, value => String(value)),
+          ..._.mapObject(exportParams, (value) => String(value)),
         }),
       };
     }
@@ -325,15 +344,17 @@ const getDatasetFileName = (headers: Headers, type: string) => {
   );
 };
 
-const getChartFileName = (question: Question) => {
+export const getChartFileName = (question: Question, branded: boolean) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
-  return `${name}-${date}.png`;
+  const fileName = `${name}-${date}.png`;
+  // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+  return branded ? `Metabase-${fileName}` : fileName;
 };
 
 export const getDownloads = (state: State) => state.downloads;
 export const hasActiveDownloads = (state: State) =>
-  state.downloads.some(download => download.status === "in-progress");
+  state.downloads.some((download) => download.status === "in-progress");
 
 const initialState: DownloadsState = [];
 
@@ -343,7 +364,7 @@ const downloads = createSlice({
   reducers: {
     clearAll: () => initialState,
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
       .addCase(downloadDataset.pending, (state, action) => {
         const title = t`Results for ${
@@ -356,14 +377,14 @@ const downloads = createSlice({
         });
       })
       .addCase(downloadDataset.fulfilled, (state, action) => {
-        const download = state.find(item => item.id === action.meta.arg.id);
+        const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "complete";
           download.title = action.payload.name;
         }
       })
       .addCase(downloadDataset.rejected, (state, action) => {
-        const download = state.find(item => item.id === action.meta.arg.id);
+        const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "error";
           download.error =

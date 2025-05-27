@@ -5,7 +5,7 @@ import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   ColumnNameColumnSplitSetting,
@@ -34,9 +34,9 @@ export function updateValueWithCurrentColumns(
   columns: DatasetColumn[],
 ): PivotTableColumnSplitSetting {
   const migratedValue = migratePivotColumnSplitSetting(storedValue, columns);
-  const currentQueryColumnNames = columns.map(c => c.name);
+  const currentQueryColumnNames = columns.map((c) => c.name);
   const currentSettingColumnNames = Object.values(migratedValue).flatMap(
-    columnNames => columnNames ?? [],
+    (columnNames) => columnNames ?? [],
   );
   const toAdd = _.difference(
     currentQueryColumnNames,
@@ -57,14 +57,14 @@ export function updateValueWithCurrentColumns(
   // remove toRemove
   const value: ColumnNameColumnSplitSetting = _.mapObject(
     migratedValue,
-    columnNames =>
-      columnNames?.filter(columnName => !toRemove.includes(columnName)),
+    (columnNames) =>
+      columnNames?.filter((columnName) => !toRemove.includes(columnName)),
   );
 
   // add toAdd to first partitions where it matches the filter
   for (const columnName of toAdd) {
     for (const { columnFilter: filter, name } of partitions) {
-      const column = columns.find(c => c.name === columnName);
+      const column = columns.find((c) => c.name === columnName);
       if (column != null && (filter == null || filter(column))) {
         value[name] = value[name] ?? [];
         value[name].push(column.name);
@@ -85,7 +85,7 @@ export function addMissingCardBreakouts(
 ): PivotTableColumnSplitSetting {
   const { rows = [], columns = [] } = setting;
   const breakoutColumns = availableColumns.filter(
-    column => column.source === "breakout",
+    (column) => column.source === "breakout",
   );
   if (breakoutColumns.length <= columns.length + rows.length) {
     return setting;
@@ -138,7 +138,7 @@ export function getLeftHeaderWidths({
       Math.max(
         // we need to use the depth index because the data is in depth order, not row index order
         ...(cellValues[depthIndex]?.values?.map(
-          value =>
+          (value) =>
             measureText(value, {
               weight: "normal",
               family: fontFamily,
@@ -203,9 +203,7 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-function databaseSupportsPivotTables(
-  query: StructuredQuery | null | undefined,
-) {
+function databaseSupportsPivotTables(query: NativeQuery | null | undefined) {
   if (!query) {
     return true;
   }
@@ -228,7 +226,7 @@ export function isSensible({ cols }: { cols: DatasetColumn[] }) {
 export function checkRenderable(
   [{ data }]: [{ data: DatasetData }],
   settings: VisualizationSettings,
-  query?: StructuredQuery | null,
+  query?: NativeQuery | null,
 ) {
   if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
     throw new Error(t`Pivot tables can only be used with aggregated queries.`);

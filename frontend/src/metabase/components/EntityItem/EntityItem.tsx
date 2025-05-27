@@ -62,9 +62,11 @@ const EntityIconCheckBox = ({
   ...props
 }: EntityIconCheckBoxProps) => {
   const iconSize = variant === "small" ? 12 : 16;
-  const handleClick: React.MouseEventHandler = e => {
+  const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();
     onToggleSelected?.();
+    // helps keyboard shortcuts work for collection items
+    e.currentTarget.focus();
   };
 
   return (
@@ -334,7 +336,7 @@ const EntityItem = ({
         <div>{extraInfo && extraInfo}</div>
       </div>
 
-      <EntityItemActions onClick={e => e.preventDefault()}>
+      <EntityItemActions onClick={(e) => e.preventDefault()}>
         {buttons}
         {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu

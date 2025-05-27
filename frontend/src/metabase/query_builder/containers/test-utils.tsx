@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
@@ -14,7 +15,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
   setupGetUserKeyValueEndpoint,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
@@ -244,7 +245,7 @@ export const setup = async ({
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
-  setupFieldValuesEndpoints(
+  setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
   setupRecentViewsEndpoints([]);
@@ -319,7 +320,7 @@ const waitForLoadingRequests = async (getState: () => State) => {
   await waitFor(
     () => {
       const requests = getRequests(getState());
-      const areRequestsLoading = requests.some(request => request.loading);
+      const areRequestsLoading = requests.some((request) => request.loading);
       expect(areRequestsLoading).toBe(false);
     },
     { timeout: 5000 },
@@ -327,9 +328,9 @@ const waitForLoadingRequests = async (getState: () => State) => {
 };
 
 const getRequests = (state: State): RequestState[] => {
-  return Object.values(state.requests).flatMap(group =>
-    Object.values(group).flatMap(entity =>
-      Object.values(entity).flatMap(request => Object.values(request)),
+  return Object.values(state.requests).flatMap((group) =>
+    Object.values(group).flatMap((entity) =>
+      Object.values(entity).flatMap((request) => Object.values(request)),
     ),
   );
 };
@@ -372,13 +373,11 @@ export const triggerMetadataChange = async () => {
 export const triggerVisualizationQueryChange = async () => {
   await userEvent.click(screen.getByText("Filter"));
 
-  const modal = screen.getByRole("dialog");
-  const total = within(modal).getByTestId("filter-column-Total");
-  const maxInput = within(total).getByPlaceholderText("Max");
+  const popover = screen.getByRole("dialog");
+  await userEvent.click(within(popover).getByText("Total"));
+  const maxInput = within(popover).getByPlaceholderText("Max");
   await userEvent.type(maxInput, "1000");
-  await userEvent.tab();
-
-  await userEvent.click(screen.getByTestId("apply-filters"));
+  await userEvent.click(await screen.findByText("Apply filter"));
 };
 
 export const triggerNotebookQueryChange = async () => {

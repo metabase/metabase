@@ -11,14 +11,14 @@ describe("parameters/utils/template-tag-options", () => {
   describe("getParameterOptions", () => {
     it("should return options with operator subtypes", () => {
       const options = new Set(_.map(getParameterOptions(), "type"));
-      const expectedOptionTypes = ["id"].concat(
+      const expectedOptionTypes = ["id", "boolean/="].concat(
         _.map(PARAMETER_OPERATOR_TYPES.number, "type"),
         _.map(PARAMETER_OPERATOR_TYPES.string, "type"),
         _.map(PARAMETER_OPERATOR_TYPES.date, "type"),
       );
 
       expect(expectedOptionTypes.length).toEqual(options.size);
-      expect(expectedOptionTypes.every(option => options.has(option))).toBe(
+      expect(expectedOptionTypes.every((option) => options.has(option))).toBe(
         true,
       );
     });
@@ -43,14 +43,14 @@ describe("parameters/utils/template-tag-options", () => {
     const field = {
       isDate: () => false,
       isID: () => false,
-      isCategory: () => false,
       isCity: () => false,
       isState: () => false,
       isZipCode: () => false,
       isCountry: () => false,
-      isNumber: () => false,
+      isNumeric: () => false,
       isString: () => false,
-      isLocation: () => false,
+      isBoolean: () => false,
+      isAddress: () => false,
     };
 
     it("should return relevantly typed options for date field", () => {
@@ -61,7 +61,7 @@ describe("parameters/utils/template-tag-options", () => {
       const availableOptions = getParameterOptionsForField(dateField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("date")),
+          availableOptions.every((option) => option.type.startsWith("date")),
       ).toBe(true);
     });
 
@@ -73,16 +73,20 @@ describe("parameters/utils/template-tag-options", () => {
       const availableOptions = getParameterOptionsForField(idField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("id")),
+          availableOptions.every((option) => option.type.startsWith("id")),
       ).toBe(true);
     });
 
-    it("should return string options for a location field", () => {
-      const locationField = { ...field, isLocation: () => true };
-      const availableOptions = getParameterOptionsForField(locationField);
+    it("should return string options for an address field", () => {
+      const addressField = {
+        ...field,
+        isString: () => true,
+        isAddress: () => true,
+      };
+      const availableOptions = getParameterOptionsForField(addressField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("string")),
+          availableOptions.every((option) => option.type.startsWith("string")),
       ).toBe(true);
     });
   });

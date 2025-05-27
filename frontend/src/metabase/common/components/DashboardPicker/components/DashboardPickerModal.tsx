@@ -214,6 +214,7 @@ export const DashboardPickerModal = ({
               : undefined
         }
         trapFocus={!isCreateDialogOpen}
+        disableCloseOnEscape={isCreateDialogOpen}
       />
       <NewDashboardDialog
         isOpen={isCreateDialogOpen}

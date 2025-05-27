@@ -1,5 +1,9 @@
 import type { EditorState } from "@codemirror/state";
-import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { useDisclosure } from "@mantine/hooks";
+import CodeMirror, {
+  EditorSelection,
+  type ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
@@ -9,15 +13,21 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import { format } from "metabase-lib/v1/expressions";
+import type * as Lib from "metabase-lib";
+import {
+  type ExpressionError,
+  diagnoseAndCompile,
+  format,
+  getClauseDefinition,
+} from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
+import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import type { ClauseType, StartRule } from "../types";
+import { FunctionBrowser } from "../FunctionBrowser";
+import { LayoutMain, LayoutSidebar } from "../Layout";
 
+import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import type { Shortcut } from "./Shortcuts";
@@ -26,35 +36,35 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { diagnoseAndCompileExpression } from "./utils";
 
-type EditorProps<S extends StartRule> = {
+type EditorProps = {
   id?: string;
-  clause?: ClauseType<S> | null;
-  name: string;
+  clause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
-  startRule: S;
+  expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
-  error?: ErrorWithMessage | Error | null;
+  error?: ExpressionError | Error | null;
+  hasHeader?: boolean;
   onCloseEditor?: () => void;
 
   onChange: (
-    clause: ClauseType<S> | null,
-    error: ErrorWithMessage | null,
+    clause: Lib.ExpressionClause | null,
+    error: ExpressionError | null,
   ) => void;
   shortcuts?: Shortcut[];
 };
 
-export function Editor<S extends StartRule = "expression">(
-  props: EditorProps<S>,
-) {
+const EDITOR_WIDGET_HEIGHT = 220;
+const FB_HEIGHT = EDITOR_WIDGET_HEIGHT + 46;
+const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
+
+export function Editor(props: EditorProps) {
   const {
     id,
-    name,
-    startRule = "expression",
+    expressionMode = "expression",
     stageIndex,
     query,
     expressionIndex,
@@ -62,13 +72,18 @@ export function Editor<S extends StartRule = "expression">(
     error,
     reportTimezone,
     shortcuts,
+    hasHeader,
+    onCloseEditor,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
+  const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
+    useDisclosure();
 
   const {
     source,
+    hasSourceChanged,
     onSourceChange,
     onBlur,
     formatExpression,
@@ -80,9 +95,13 @@ export function Editor<S extends StartRule = "expression">(
     error,
   });
 
+  const { showModal, closeModal } = useCloseModal({
+    allowPopoverExit: source === "" || !hasSourceChanged,
+  });
+
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
-    render: props => (
+    render: (props) => (
       <Tooltip
         query={query}
         stageIndex={stageIndex}
@@ -94,110 +113,154 @@ export function Editor<S extends StartRule = "expression">(
   });
 
   const extensions = useExtensions({
-    startRule,
+    expressionMode,
     query,
     stageIndex,
-    name,
     expressionIndex,
     reportTimezone,
     metadata,
     extensions: [customTooltip],
   });
 
+  const handleFunctionBrowserClauseClick = useCallback((name: string) => {
+    const view = ref.current?.view;
+    if (!view) {
+      return;
+    }
+    const clause = getClauseDefinition(name);
+    if (!clause) {
+      return;
+    }
+
+    const text = `${clause.displayName}()`;
+    const len = clause.displayName.length + 1; // + 1 for the parenthesis
+
+    view?.focus();
+    view?.dispatch(
+      view.state.changeByRange((range) => ({
+        range: EditorSelection.cursor(range.from + len),
+        changes: [{ from: range.from, to: range.to, insert: text }],
+      })),
+    );
+  }, []);
+
   return (
-    <Flex
-      className={cx(S.wrapper, { [S.formatting]: isFormatting })}
-      direction="column"
-    >
-      <CodeMirror
-        id={id}
-        ref={ref}
-        data-testid="custom-expression-query-editor"
-        className={S.editor}
-        extensions={extensions}
-        readOnly={readOnly || isFormatting}
-        value={source}
-        onChange={onSourceChange}
-        onBlur={onBlur}
-        height="100%"
-        width="100%"
-        indentWithTab={false}
-        autoFocus
-      />
-      <Errors error={error} />
+    <>
+      <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+        <CodeMirror
+          id={id}
+          ref={ref}
+          data-testid="custom-expression-query-editor"
+          placeholder={t`Type your expression, press '[' for columns…`}
+          className={S.editor}
+          extensions={extensions}
+          readOnly={readOnly || isFormatting}
+          value={source}
+          onChange={onSourceChange}
+          onBlur={onBlur}
+          height="100%"
+          width="100%"
+          indentWithTab={false}
+          autoFocus
+        />
+        <Errors error={error} />
 
-      {source.trim() === "" && !isFormatting && error == null && (
-        <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
-      )}
+        {source.trim() === "" && !isFormatting && error == null && (
+          <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
+        )}
 
-      <Flex className={S.toolbar} pr="md" gap="sm">
-        {source.trim() !== "" && error == null && isValidated && (
-          <ButtonTooltip label={t`Auto-format`}>
+        <Flex className={S.toolbar} gap="sm" pt="sm" pr="sm" direction="column">
+          <ButtonTooltip label={t`Function browser`}>
             <Button
-              aria-label={t`Auto-format`}
-              onClick={formatExpression}
-              variant="subtle"
+              aria-label={t`Function browser`}
+              onClick={toggleFunctionBrowser}
+              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
+              className={S.toolbarButton}
               size="xs"
-              p="xs"
-              disabled={isFormatting || error != null}
-              leftSection={<Icon name="format_code" />}
+              p="x"
+              leftSection={<Icon name="function" />}
             />
           </ButtonTooltip>
-        )}
-      </Flex>
+          {source.trim() !== "" && error == null && isValidated && (
+            <ButtonTooltip label={t`Auto-format`}>
+              <Button
+                aria-label={t`Auto-format`}
+                onClick={formatExpression}
+                className={S.toolbarButton}
+                variant="subtle"
+                size="xs"
+                p="xs"
+                disabled={isFormatting || error != null}
+                leftSection={<Icon name="format_code" />}
+              />
+            </ButtonTooltip>
+          )}
+        </Flex>
 
-      {portal}
-    </Flex>
+        {portal}
+      </LayoutMain>
+
+      {isFunctionBrowserOpen && (
+        <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
+          <FunctionBrowser
+            expressionMode={expressionMode}
+            reportTimezone={reportTimezone}
+            query={query}
+            onClauseClick={handleFunctionBrowserClauseClick}
+          />
+        </LayoutSidebar>
+      )}
+
+      {showModal && (
+        <CloseModal
+          onKeepEditing={closeModal}
+          onDiscardChanges={onCloseEditor}
+        />
+      )}
+    </>
   );
 }
 
-function useExpression<S extends StartRule = "expression">({
-  name,
+function useExpression({
   clause,
-  startRule,
+  expressionMode,
   stageIndex,
   query,
   expressionIndex,
   metadata,
   onChange,
-  error: prevError,
-}: EditorProps<S> & {
+}: EditorProps & {
   metadata: Metadata;
 }) {
   const [source, setSource] = useState("");
   const [initialSource, setInitialSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
+  const errorRef = useRef<ExpressionError | null>(null);
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
-      const expression =
-        clause &&
-        Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-
-      if (!expression) {
+      function done(source: string) {
         setIsFormatting(false);
-        setSource("");
+        setSource(source);
         if (initial) {
-          setInitialSource("");
+          setInitialSource(source);
         }
+      }
+
+      if (clause == null) {
+        done("");
         return;
       }
 
-      format(expression, {
+      format(clause, {
         query,
         stageIndex,
         expressionIndex,
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
-        .then(source => {
-          setIsFormatting(false);
-          setSource(source);
-          if (initial) {
-            setInitialSource(source);
-          }
-        });
+        .then(done);
     },
     [clause, query, stageIndex, expressionIndex],
   );
@@ -205,6 +268,7 @@ function useExpression<S extends StartRule = "expression">({
   const handleChange = useCallback<typeof onChange>(
     (clause, error) => {
       setIsValidated(true);
+      errorRef.current = error;
       onChange(clause, error);
     },
     [onChange],
@@ -226,15 +290,15 @@ function useExpression<S extends StartRule = "expression">({
         return;
       }
 
-      const { clause, error } = diagnoseAndCompileExpression(source, {
-        startRule,
+      const { error, expressionClause: clause } = diagnoseAndCompile({
+        source,
+        expressionMode,
         query,
         stageIndex,
-        expressionIndex,
         metadata,
-        name,
+        expressionIndex,
       });
-      if (immediate || prevError) {
+      if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
         handleChange(clause, error);
       } else {
@@ -242,15 +306,13 @@ function useExpression<S extends StartRule = "expression">({
       }
     },
     [
-      name,
       query,
       stageIndex,
-      startRule,
+      expressionMode,
       metadata,
-      expressionIndex,
       handleChange,
       debouncedOnChange,
-      prevError,
+      expressionIndex,
     ],
   );
 
@@ -292,12 +354,7 @@ function getTooltipPosition(state: EditorState) {
   const pos = state.selection.main.head;
   const source = state.doc.toString();
   let token = tokenAtPos(source, pos);
-  if (
-    pos > 0 &&
-    token &&
-    token.type === TOKEN.Operator &&
-    (token.op === "," || token.op === "(")
-  ) {
+  if (pos > 0 && token && (token.type === COMMA || token.type === GROUP)) {
     // when we're `,` or `(`, return the previous token instead
     token = tokenAtPos(source, pos - 1);
   }

@@ -22,18 +22,18 @@ import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
 const TextEditorMock = ({
-  code,
   highlightRanges,
+  value,
 }: {
-  code: string;
   highlightRanges?: { start: number; end: number }[];
+  value: string;
 }) => {
-  const highlightedTexts = highlightRanges?.map(range =>
-    code.slice(range.start, range.end),
+  const highlightedTexts = highlightRanges?.map((range) =>
+    value.slice(range.start, range.end),
   );
   return (
     <>
-      <div data-testid="text-editor-mock">{code}</div>
+      <div data-testid="text-editor-mock">{value}</div>
       <div data-testid="text-editor-mock-highlighted-code">
         {highlightedTexts}
       </div>
@@ -41,8 +41,8 @@ const TextEditorMock = ({
   );
 };
 
-jest.mock("metabase/components/CodeBlock", () => ({
-  CodeBlock: TextEditorMock,
+jest.mock("metabase/components/CodeEditor", () => ({
+  CodeEditor: TextEditorMock,
 }));
 
 export const FONTS_MOCK_VALUES = [

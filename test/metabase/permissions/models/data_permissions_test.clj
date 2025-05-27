@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -670,8 +670,8 @@
                                                              :db_id      db-id
                                                              :created_at #t "2020"
                                                              :updated_at #t "2020"})
-          group-id (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
-      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+          group-id (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]
+      (t2/insert! (t2/table-name :model/PermissionsGroupMembership) {:user_id user-id :group_id group-id})
       (migrate!)
       (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
       (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
@@ -702,8 +702,8 @@
                                                                  :db_id      db-id
                                                                  :created_at #t "2020"
                                                                  :updated_at #t "2020"})
-          group-id     (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
-      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+          group-id     (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]
+      (t2/insert! (t2/table-name :model/PermissionsGroupMembership) {:user_id user-id :group_id group-id})
       (migrate!)
       (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)

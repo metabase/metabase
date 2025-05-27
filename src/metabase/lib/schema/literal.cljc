@@ -8,7 +8,11 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]
    [metabase.util.time.impl-common :as u.time.impl-common]))
+
+#?(:clj
+   (comment metabase.lib.schema.literal.jvm/keep-me))
 
 (defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
@@ -18,21 +22,12 @@
   [_bool]
   :type/Boolean)
 
-#?(:clj
-   (defn- big-int? [x]
-     (or (instance? java.math.BigInteger x)
-         (instance? clojure.lang.BigInt x))))
-
 (mr/def ::integer
-  #?(:clj [:multi
-           {:dispatch big-int?}
-           [true  :metabase.lib.schema.literal.jvm/big-integer]
-           [false :int]]
-     :cljs :int))
+  [:or :int [:fn u.number/bigint?]])
 
 (defmethod expression/type-of-method :dispatch-type/integer
-  [_int]
-  :type/Integer)
+  [x]
+  (if (u.number/bigint? x) :type/BigInteger :type/Integer))
 
 ;;; we should probably also restrict this to disallow NaN and positive/negative infinity, I don't know in what
 ;;; universe we'd want to allow those if they're not disallowed already.
@@ -45,7 +40,7 @@
 
 (defmethod expression/type-of-method :dispatch-type/number
   [_non-integer-real]
-  ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types]] =(
+  ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types.core]] =(
   :type/Float)
 
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be

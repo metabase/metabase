@@ -1,3 +1,5 @@
+import { c } from "ttag";
+
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnExtractViaHeader } from "metabase/querying/analytics";
@@ -77,9 +79,9 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
     case "day-of-month":
       return "1, 2";
     case "day-of-week":
-      return "Monday, Tuesday";
+      return c("Example of days of the week").t`Monday, Tuesday`;
     case "month-of-year":
-      return "Jan, Feb";
+      return c("Example of months in the year").t`Jan, Feb`;
     case "quarter-of-year":
       return "Q1, Q2";
     case "year":
@@ -90,6 +92,8 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
       return "example.com, online.com";
     case "subdomain":
       return "www, maps";
+    case "path":
+      return "/en/docs/feature";
   }
 
   return undefined;

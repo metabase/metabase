@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ACCOUNTS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -134,6 +135,74 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       H.filterWidget().findByText("Twenty").should("be.visible");
     });
   });
+
+  describe("card source (dropdown)", () => {
+    it("should allow to use a card source with numeric columns and a single value", () => {
+      cy.log("setup a dashboard");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.editDashboard();
+      H.setFilter("Number", "Less than or equal to");
+      H.selectDashboardFilter(H.getDashboardCard(), "Total");
+      H.sidebar().findByText("Dropdown list").click();
+      H.setFilterQuestionSource({ question: "Orders", field: "ID" });
+      H.saveDashboard();
+
+      cy.log("pick a value without searching");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("5").click();
+        cy.button("Add filter").click();
+      });
+      H.getDashboardCard().findByText("1 row").should("be.visible");
+
+      cy.log("pick a value with searching");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Search the list").type("225");
+        cy.findByLabelText("5").should("not.exist");
+        cy.findByText("225").click();
+        cy.button("Update filter").click();
+      });
+      H.getDashboardCard().findByText("2000 rows").should("be.visible");
+    });
+
+    it("should allow to use a card source with numeric columns and multiple values", () => {
+      cy.log("setup a dashboard");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.editDashboard();
+      H.setFilter("Number", "Equal to");
+      H.selectDashboardFilter(H.getDashboardCard(), "Quantity");
+      H.sidebar().findByText("Dropdown list").click();
+      H.setFilterQuestionSource({ question: "Orders", field: "ID" });
+      H.saveDashboard();
+
+      cy.log("pick a value without searching");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("7").click();
+        cy.findByText("25").click();
+        cy.button("Add filter").click();
+      });
+      H.getDashboardCard().findByText("932 rows").should("be.visible");
+
+      cy.log("pick a value with searching");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByLabelText("7").should("be.checked");
+        cy.findByLabelText("25").should("be.checked");
+        cy.findByPlaceholderText("Search the list").type("225");
+        cy.findByLabelText("7").should("not.exist");
+        cy.findByText("225").click();
+        cy.button("Update filter").click();
+      });
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByLabelText("7").should("be.checked");
+        cy.findByLabelText("25").should("be.checked");
+        cy.findByLabelText("225").should("be.checked");
+      });
+    });
+  });
 });
 
 const mapFilterToQuestion = (column = "Quantity") => {
@@ -176,7 +245,7 @@ const getDashboardResource = ({ dashboard_id }) => ({
   params: {},
 });
 
-const getTargetDashboard = sourceSettings => ({
+const getTargetDashboard = (sourceSettings) => ({
   parameters: [
     {
       ...targetParameter,
@@ -189,7 +258,7 @@ const getTargetDashboard = sourceSettings => ({
   },
 });
 
-const getListDashboard = values_query_type => {
+const getListDashboard = (values_query_type) => {
   return getTargetDashboard({
     values_source_type: "static-list",
     values_query_type,

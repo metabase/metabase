@@ -1,116 +1,114 @@
 import {
+  type BoxProps,
+  Combobox,
   type ComboboxItem,
-  type TagsInputProps,
+  type ComboboxLikeProps,
+  type ComboboxLikeRenderOptionInput,
+  OptionsDropdown,
+  Pill,
+  PillsInput,
   Text,
   Tooltip,
+  type __InputWrapperProps,
+  extractStyleProps,
 } from "@mantine/core";
-import { useUncontrolled } from "@mantine/hooks";
-import type { ClipboardEvent, FocusEvent } from "react";
-import type React from "react";
-import { useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
-import { Icon, SpecialTagsInput } from "metabase/ui";
+import { Icon } from "../../icons";
 
-import Styles from "./MultiAutocomplete.module.css";
-import { parseValues, unique } from "./utils";
+import S from "./MultiAutocomplete.module.css";
+import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
-export type MultiAutocompleteProps = Omit<TagsInputProps, "shouldCreate"> & {
-  shouldCreate?: (query: string, selectedValues: string[]) => boolean;
-  showInfoIcon?: boolean;
-  data: ComboboxItem[];
-  nothingFoundMessage?: React.ReactNode;
+export type MultiAutocompleteRenderValueProps = {
+  value: string;
 };
 
+export type MultiAutocompleteRenderOptionProps =
+  ComboboxLikeRenderOptionInput<ComboboxItem>;
+
+export type MultiAutocompleteProps = BoxProps &
+  __InputWrapperProps &
+  ComboboxLikeProps & {
+    value: string[];
+    placeholder?: string;
+    autoFocus?: boolean;
+    rightSection?: ReactNode;
+    nothingFoundMessage?: ReactNode;
+    "aria-label"?: string;
+    "data-testid"?: string;
+    parseValue?: (rawValue: string) => string | null;
+    renderValue?: (props: MultiAutocompleteRenderValueProps) => ReactNode;
+    renderOption?: (props: MultiAutocompleteRenderOptionProps) => ReactNode;
+    onChange: (newValues: string[]) => void;
+    onSearchChange?: (newValue: string) => void;
+  };
+
 export function MultiAutocomplete({
-  data,
-  value: controlledValue,
-  defaultValue,
-  searchValue: controlledSearchValue,
+  value,
+  data = [],
+  filter,
+  limit,
+  label,
+  description,
+  error,
+  required,
+  withAsterisk,
+  labelProps,
+  descriptionProps,
+  errorProps,
+  inputContainer,
+  inputWrapperOrder,
   placeholder,
   autoFocus,
-  shouldCreate = defaultShouldCreate,
-  showInfoIcon = true,
   rightSection,
+  nothingFoundMessage,
+  maxDropdownHeight,
+  dropdownOpened,
+  defaultDropdownOpened,
+  selectFirstOptionOnChange,
+  withScrollArea,
+  comboboxProps,
+  "aria-label": ariaLabel,
+  "data-testid": dataTestId,
+  parseValue = defaultParseValue,
+  renderValue = defaultRenderValue,
+  renderOption,
   onChange,
   onSearchChange,
-  onFocus,
-  onBlur,
-  nothingFoundMessage,
-  ...props
+  onDropdownOpen,
+  onDropdownClose,
+  onOptionSubmit,
+  ...otherProps
 }: MultiAutocompleteProps) {
-  const [selectedValues, setSelectedValues] = useUncontrolled({
-    value: controlledValue,
-    defaultValue,
-    finalValue: [],
-    onChange: val => {
-      onChange?.(val);
-    },
+  const {
+    combobox,
+    pillValues,
+    filteredOptions,
+    fieldValue,
+    fieldMinWidth,
+    searchValue,
+    handleFieldChange,
+    handleFieldPaste,
+    handleFieldKeyDown,
+    handleFieldFocus,
+    handleFieldBlur,
+    handlePillClick,
+    handlePillRemoveClick,
+    handlePillGroupClick,
+    handlePillsInputClick,
+    handleOptionSubmit,
+  } = useMultiAutocomplete({
+    values: value,
+    data,
+    parseValue,
+    onChange,
+    onSearchChange,
   });
-  const [searchValue, setSearchValue] = useUncontrolled({
-    value: controlledSearchValue,
-    finalValue: "",
-    onChange: onSearchChange,
-  });
 
-  const stupidRef = useRef<string[]>([]);
-  const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
-  const [isFocused, setIsFocused] = useState(false);
-  // const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
-  const items = useMemo(
-    () => getAvailableSelectItems(data, lastSelectedValues),
-    [data, lastSelectedValues],
-  );
+  const { styleProps } = extractStyleProps(otherProps);
 
-  const handleChange = (newValues: string[]) => {
-    const values = unique(newValues)
-      .map(parseValues)
-      .flat()
-      .filter(val => shouldCreate(val, []));
-    stupidRef.current = values;
-    setLastSelectedValues(values);
-    setSelectedValues(values);
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    setIsFocused(true);
-    stupidRef.current = selectedValues;
-    setLastSelectedValues(selectedValues);
-    onFocus?.(event);
-  };
-
-  function isValid(value: string) {
-    return value !== "" && shouldCreate?.(value, lastSelectedValues);
-  }
-
-  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const input = event.target as HTMLInputElement;
-    const value = input.value;
-    const before = value.slice(0, input.selectionStart ?? value.length);
-    const after = value.slice(input.selectionEnd ?? value.length);
-
-    const pasted = event.clipboardData.getData("text");
-    const text = `${before}${pasted}${after}`;
-
-    const values = parseValues(text);
-    const validValues = values.filter(isValid);
-
-    if (values.length > 0) {
-      const newValues = unique([...lastSelectedValues, ...validValues]);
-      setSelectedValues(newValues);
-      stupidRef.current = newValues;
-      setLastSelectedValues(newValues);
-      setSearchValue("");
-    } else {
-      setSearchValue(text);
-    }
-  };
-
-  const infoIcon = isFocused ? (
+  const infoIcon = (
     <Tooltip
       label={
         <Text c="inherit" maw="20rem">
@@ -118,99 +116,98 @@ export function MultiAutocomplete({
         </Text>
       }
     >
-      <Icon name="info_filled" fill={color("text-light")} />
+      <Icon c="text-light" name="info_filled" />
     </Tooltip>
-  ) : null;
-
-  const handleSearchChange = (newSearchValue: string) => {
-    setSearchValue(newSearchValue);
-    if (newSearchValue !== "") {
-      const values = parseValues(newSearchValue);
-      if (values.length >= 1) {
-        const value = values[0];
-        if (shouldCreate(value, [])) {
-          setSelectedValues(unique([...stupidRef.current, value]));
-        }
-      }
-    }
-    if (newSearchValue === "") {
-      setSelectedValues(unique([...stupidRef.current]));
-    }
-  };
+  );
 
   return (
-    <SpecialTagsInput
-      {...props}
-      classNames={{
-        pill: Styles.pill,
-        pillsList: Styles.pillList,
-        input: Styles.input,
-        empty: Styles.empty,
-        option: Styles.option,
-        options: Styles.optionList,
-      }}
-      data={items}
-      value={lastSelectedValues}
-      searchValue={searchValue}
-      placeholder={placeholder}
-      splitChars={[",", "\t", "\n"]}
-      autoFocus={autoFocus}
-      onChange={handleChange}
-      onFocus={handleFocus}
-      onSearchChange={handleSearchChange}
-      onPasteCapture={handlePaste}
-      onBlur={e => {
-        setIsFocused(false);
-        onBlur?.(e);
-      }}
-      rightSection={rightSection ?? (showInfoIcon ? infoIcon : undefined)}
-      acceptValueOnBlur
-      role="combobox"
-      nothingFoundMessage={nothingFoundMessage}
-      comboboxProps={{
-        withinPortal: false,
-        floatingStrategy: "fixed",
-        styles: {
-          empty: {
-            padding: "1.5rem 0.5rem",
-            color: "var(--mb-color-text-light)",
-          },
-        },
-        ...props.comboboxProps,
-      }}
-    />
+    <>
+      <Combobox
+        store={combobox}
+        withinPortal={false}
+        floatingStrategy="fixed"
+        onOptionSubmit={handleOptionSubmit}
+        {...comboboxProps}
+      >
+        <Combobox.DropdownTarget>
+          <PillsInput
+            {...styleProps}
+            label={label}
+            description={description}
+            error={error}
+            required={required}
+            rightSection={rightSection ?? infoIcon}
+            withAsterisk={withAsterisk}
+            labelProps={labelProps}
+            descriptionProps={descriptionProps}
+            errorProps={errorProps}
+            inputContainer={inputContainer}
+            inputWrapperOrder={inputWrapperOrder}
+            data-testid={dataTestId}
+            onClick={handlePillsInputClick}
+          >
+            <Pill.Group role="list" onClick={handlePillGroupClick}>
+              {pillValues.map((value, valueIndex) =>
+                value !== null ? (
+                  <Pill
+                    key={valueIndex}
+                    className={S.pill}
+                    removeButtonProps={{ "aria-label": t`Remove` }}
+                    withRemoveButton
+                    onClick={(event) => handlePillClick(event, valueIndex)}
+                    onRemove={() => handlePillRemoveClick(valueIndex)}
+                  >
+                    {renderValue({ value })}
+                  </Pill>
+                ) : (
+                  <Combobox.EventsTarget key="field">
+                    <PillsInput.Field
+                      className={S.field}
+                      value={fieldValue}
+                      placeholder={placeholder}
+                      role="combobox"
+                      miw={fieldMinWidth}
+                      autoFocus={autoFocus}
+                      aria-label={ariaLabel}
+                      onChange={handleFieldChange}
+                      onPaste={handleFieldPaste}
+                      onKeyDown={handleFieldKeyDown}
+                      onFocus={handleFieldFocus}
+                      onBlur={handleFieldBlur}
+                    />
+                  </Combobox.EventsTarget>
+                ),
+              )}
+            </Pill.Group>
+          </PillsInput>
+        </Combobox.DropdownTarget>
+        <OptionsDropdown
+          value={value}
+          data={filteredOptions}
+          search={searchValue}
+          filter={filter}
+          limit={limit}
+          maxDropdownHeight={maxDropdownHeight}
+          nothingFoundMessage={nothingFoundMessage}
+          hiddenWhenEmpty={!nothingFoundMessage}
+          unstyled={false}
+          labelId={undefined}
+          withScrollArea={withScrollArea}
+          scrollAreaProps={undefined}
+          renderOption={renderOption}
+          aria-label={undefined}
+        />
+      </Combobox>
+      <Combobox.HiddenInput value={value} />
+    </>
   );
 }
 
-function defaultShouldCreate(query: string) {
-  return query.trim().length > 0;
+function defaultParseValue(value: string) {
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
-function getSelectItem(item: string | ComboboxItem): ComboboxItem {
-  if (typeof item === "string") {
-    return { value: item, label: item };
-  }
-
-  if (!item.label) {
-    return { value: item.value, label: item.value?.toString() ?? "" };
-  }
-
-  return item;
-}
-
-function getAvailableSelectItems(
-  data: ReadonlyArray<string | ComboboxItem>,
-  selectedValues: string[],
-) {
-  const all = [...data, ...selectedValues].map(getSelectItem);
-  const seen = new Set();
-
-  // Deduplicate items based on value
-  return all.filter(function (option) {
-    if (seen.has(option.value)) {
-      return false;
-    }
-    seen.add(option.value);
-    return true;
-  });
+function defaultRenderValue({ value }: MultiAutocompleteRenderValueProps) {
+  return value;
 }

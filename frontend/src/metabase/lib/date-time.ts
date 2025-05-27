@@ -18,13 +18,76 @@ type DayOfWeekOption = {
 };
 
 export const DAY_OF_WEEK_OPTIONS: DayOfWeekOption[] = [
-  { name: t`Sunday`, shortName: t`Su`, value: "sun", id: "sunday" },
-  { name: t`Monday`, shortName: t`Mo`, value: "mon", id: "monday" },
-  { name: t`Tuesday`, shortName: t`Tu`, value: "tue", id: "tuesday" },
-  { name: t`Wednesday`, shortName: t`We`, value: "wed", id: "wednesday" },
-  { name: t`Thursday`, shortName: t`Th`, value: "thu", id: "thursday" },
-  { name: t`Friday`, shortName: t`Fr`, value: "fri", id: "friday" },
-  { name: t`Saturday`, shortName: t`Sa`, value: "sat", id: "saturday" },
+  {
+    get name() {
+      return t`Sunday`;
+    },
+    get shortName() {
+      return t`Su`;
+    },
+    value: "sun",
+    id: "sunday",
+  },
+  {
+    get name() {
+      return t`Monday`;
+    },
+    get shortName() {
+      return t`Mo`;
+    },
+    value: "mon",
+    id: "monday",
+  },
+  {
+    get name() {
+      return t`Tuesday`;
+    },
+    get shortName() {
+      return t`Tu`;
+    },
+    value: "tue",
+    id: "tuesday",
+  },
+  {
+    get name() {
+      return t`Wednesday`;
+    },
+    get shortName() {
+      return t`We`;
+    },
+    value: "wed",
+    id: "wednesday",
+  },
+  {
+    get name() {
+      return t`Thursday`;
+    },
+    get shortName() {
+      return t`Th`;
+    },
+    value: "thu",
+    id: "thursday",
+  },
+  {
+    get name() {
+      return t`Friday`;
+    },
+    get shortName() {
+      return t`Fr`;
+    },
+    value: "fri",
+    id: "friday",
+  },
+  {
+    get name() {
+      return t`Saturday`;
+    },
+    get shortName() {
+      return t`Sa`;
+    },
+    value: "sat",
+    id: "saturday",
+  },
 ];
 
 export const getDayOfWeekOptions = (): DayOfWeekOption[] => {
@@ -40,12 +103,12 @@ export const getDayOfWeekOptions = (): DayOfWeekOption[] => {
   ];
 };
 
-export const HOUR_OPTIONS = _.times(12, n => ({
+export const HOUR_OPTIONS = _.times(12, (n) => ({
   name: (n === 0 ? 12 : n) + ":00",
   value: n,
 }));
 
-export const MINUTE_OPTIONS = _.times(60, n => ({
+export const MINUTE_OPTIONS = _.times(60, (n) => ({
   name: n.toString(),
   value: n,
 }));
@@ -56,7 +119,22 @@ export const AM_PM_OPTIONS = [
 ];
 
 export const MONTH_DAY_OPTIONS = [
-  { name: t`First`, value: "first" },
-  { name: t`Last`, value: "last" },
-  { name: t`15th (Midpoint)`, value: "mid" },
+  {
+    get name() {
+      return t`First`;
+    },
+    value: "first",
+  },
+  {
+    get name() {
+      return t`Last`;
+    },
+    value: "last",
+  },
+  {
+    get name() {
+      return t`15th (Midpoint)`;
+    },
+    value: "mid",
+  },
 ];

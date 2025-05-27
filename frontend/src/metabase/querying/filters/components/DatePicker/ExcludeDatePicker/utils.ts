@@ -25,7 +25,7 @@ export function getExcludeUnitOptions(
     return [];
   }
 
-  return EXCLUDE_UNIT_OPTIONS.filter(option =>
+  return EXCLUDE_UNIT_OPTIONS.filter((option) =>
     availableUnits.includes(option.unit),
   );
 }
@@ -33,7 +33,7 @@ export function getExcludeUnitOptions(
 export function getExcludeOperatorOptions(
   availableOperators: DatePickerOperator[],
 ): ExcludeOperatorOption[] {
-  return EXCLUDE_OPERATOR_OPTIONS.filter(option =>
+  return EXCLUDE_OPERATOR_OPTIONS.filter((option) =>
     availableOperators.includes(option.operator),
   );
 }
@@ -41,7 +41,7 @@ export function getExcludeOperatorOptions(
 export function findExcludeUnitOption(
   unit: DatePickerExtractionUnit,
 ): ExcludeUnitOption | undefined {
-  return EXCLUDE_UNIT_OPTIONS.find(option => option.unit === unit);
+  return EXCLUDE_UNIT_OPTIONS.find((option) => option.unit === unit);
 }
 
 export function getExcludeValueOptionGroups(

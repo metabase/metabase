@@ -1,32 +1,21 @@
+import type * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature } from "metabase-types/api";
 
-import type { OPERATOR, TOKEN } from "./tokenizer";
+import type { DefinedClauseName } from "./clause";
+import type { Token } from "./pratt";
 
-export interface HelpText {
-  name: string;
-  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
-  description: string;
-  example: string;
-  structure: string;
-  docsPage?: string;
+export enum MBQLClauseCategory {
+  Logical = "logical",
+  Math = "math",
+  String = "string",
+  Date = "date",
+  Conversion = "conversion",
+  Window = "window",
+  Aggregation = "aggregation",
 }
 
-export interface HelpTextConfig {
-  name: string;
-  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
-  description: (database: Database, reportTimezone?: string) => string;
-  structure: string;
-  docsPage?: string;
-}
-
-interface HelpTextArg {
-  name: string;
-  description: string;
-  example: string;
-}
-
-type MBQLClauseFunctionReturnType =
+export type ExpressionType =
   | "aggregation"
   | "any"
   | "boolean"
@@ -35,53 +24,57 @@ type MBQLClauseFunctionReturnType =
   | "number"
   | "string";
 
-export type MBQLClauseFunctionConfig = {
+export type ClauseArgDefinition = {
+  name: string;
+  type: ExpressionType;
+  description?: string;
+  example?:
+    | Lib.ExpressionParts
+    | Lib.ExpressionArg
+    | (Lib.ExpressionParts | Lib.ExpressionArg)[];
+  template?: string;
+  optional?: boolean;
+};
+
+export type MBQLClauseDefinition = {
+  name?: never;
   displayName: string;
-  type: MBQLClauseFunctionReturnType;
-  args: string[];
+  type: ExpressionType;
+  args(): ClauseArgDefinition[];
+  argType?(
+    index: number,
+    args: unknown[],
+    type: ExpressionType,
+  ): ExpressionType;
   requiresFeature?: DatabaseFeature;
   hasOptions?: boolean;
   multiple?: boolean;
-  tokenName?: string;
-  name?: string;
-
+  category?: MBQLClauseCategory;
   validator?: (...args: any) => string | undefined;
-};
-export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
-
-export type ErrorWithMessage = {
-  message: string;
-  pos?: number | null;
-  len?: number | null;
+  description?(database: Database, reportTimezone?: string): string;
+  docsPage?: string;
 };
 
-export type Token =
-  | {
-      type: TOKEN.Operator;
-      start: number;
-      end: number;
-      op: OPERATOR;
-    }
-  | {
-      type: TOKEN.Number;
-      start: number;
-      end: number;
-    }
-  | {
-      type: TOKEN.String;
-      start: number;
-      end: number;
-      value: string;
-    }
-  | {
-      type: TOKEN.Identifier;
-      start: number;
-      end: number;
-      isReference: boolean;
-    }
-  | {
-      type: TOKEN.Boolean;
-      start: number;
-      end: number;
-      op: "true" | "false";
-    };
+export type MBQLClauseFunctionConfig = {
+  name: DefinedClauseName;
+  displayName: string;
+  type: ExpressionType;
+  args: ClauseArgDefinition[];
+  argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
+  requiresFeature?: DatabaseFeature;
+  hasOptions: boolean;
+  multiple: boolean;
+  category?: MBQLClauseCategory;
+  validator?: (...args: any) => string | undefined;
+  description?(database: Database, reportTimezone?: string): string;
+  docsPage?: string;
+};
+
+export type Hooks = {
+  error?: (error: Error) => void;
+  lexified?: (evt: { tokens: Token[] }) => void;
+  compiled?: (evt: {
+    expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
+    expressionClause: Lib.ExpressionClause;
+  }) => void;
+};

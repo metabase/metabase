@@ -32,12 +32,12 @@ export const NotificationSettings = () => {
   return (
     <>
       <Box w="47rem">
-        <Title mb="1.5rem">{t`Slack`}</Title>
+        <Title mb="1.5rem" order={2}>{t`Slack`}</Title>
         <Link to="/admin/settings/notifications/slack">
           <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
             <Flex gap="0.5rem" align="center" mb="0.5rem">
               <Icon name="slack_colorized" />
-              <Title order={2}>{t`Connect to Slack`}</Title>
+              <Title order={3}>{t`Connect to Slack`}</Title>
             </Flex>
             <Text>
               {t`If your team uses Slack, you can send dashboard subscriptions and
@@ -47,7 +47,7 @@ export const NotificationSettings = () => {
         </Link>
 
         <Flex justify="space-between" align="center" mb="1.5rem">
-          <Title>{t`Webhooks for Alerts`}</Title>{" "}
+          <Title order={2}>{t`Webhooks for Alerts`}</Title>{" "}
           {hasChannels && (
             <Button
               variant="subtle"
@@ -59,7 +59,7 @@ export const NotificationSettings = () => {
         </Flex>
         {hasChannels ? (
           <Stack>
-            {channels?.map(c => (
+            {channels?.map((c) => (
               <ChannelBox
                 key={`channel-${c.id}`}
                 title={c.name}
@@ -110,7 +110,7 @@ const ChannelBox = ({
   >
     <Flex gap="0.5rem" align="center">
       <Icon name={icon} />
-      <Title order={2}>{title}</Title>
+      <Title order={3}>{title}</Title>
     </Flex>
     {description && <Text mt="0.5rem">{description}</Text>}
   </Paper>

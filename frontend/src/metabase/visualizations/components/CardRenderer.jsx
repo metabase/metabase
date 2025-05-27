@@ -82,7 +82,7 @@ class CardRenderer extends Component {
       <div
         className={this.props.className}
         style={this.props.style}
-        ref={element => {
+        ref={(element) => {
           this.containerRef = element;
 
           if (this.props.forwardedRef) {
@@ -107,5 +107,5 @@ const CardRendererWithRef = forwardRef(
 export default ExplicitSize({
   wrapped: true,
   // Avoid using debounce when isDashboard=true because there should not be any initial delay when rendering cards
-  refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
+  refreshMode: (props) => (props.isDashboard ? "debounceLeading" : "throttle"),
 })(CardRendererWithRef);

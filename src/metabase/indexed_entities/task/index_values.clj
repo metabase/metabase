@@ -7,7 +7,7 @@
    [metabase.driver :as driver]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -49,7 +49,7 @@
           (t2/delete! :model/ModelIndex model-index-id)))
       (model-index/add-values! model-index))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Refresh model indexed columns"}
   ModelIndexRefresh [job-context]
   (let [{:strs [model-index-id]} (qc/from-job-data job-context)]

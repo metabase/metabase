@@ -336,7 +336,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     H.saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
 
     cy.log("Make sure this works for the deeply nested models as well");
-    cy.get("@nestedModelId").then(nestedModelId => {
+    cy.get("@nestedModelId").then((nestedModelId) => {
       H.createQuestion(
         {
           type: "model",
@@ -443,7 +443,7 @@ describe.skip("issue 40635", () => {
     });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -456,7 +456,7 @@ describe.skip("issue 40635", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -471,7 +471,7 @@ describe.skip("issue 40635", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -783,8 +783,7 @@ describe("issue 33844", () => {
   }
 
   it("should show hidden PKs in model metadata editor and object details after creating a model (metabase#33844)", () => {
-    cy.visit("/");
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
@@ -1058,10 +1057,9 @@ describe("issue 34514", () => {
     cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
     cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
-    cy.visit("/");
     // It's important to navigate via UI so that there are
     // enough entries in the browser history to go back to.
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
@@ -1134,7 +1132,9 @@ describe("issue 34514", () => {
     H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
-      cy.findByText("Query results will appear here.").should("be.visible");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
     });
   }
 });
@@ -1323,6 +1323,56 @@ describe("issue 37300", () => {
   });
 });
 
+describe("issue 32037", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.visit("/browse/models");
+    cy.findByLabelText("Orders Model").click();
+    H.tableInteractive().should("be.visible");
+    cy.location("pathname").as("modelPathname");
+  });
+
+  it("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
+    H.openQuestionActions("Edit query definition");
+    cy.button("Save changes").should("be.disabled");
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("1").blur();
+      cy.button("Add filter").click();
+    });
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    verifyDiscardingChanges();
+  });
+
+  it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
+    H.openQuestionActions("Edit metadata");
+    cy.button("Save changes").should("be.disabled");
+    cy.findByLabelText("Description").type("123").blur();
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    verifyDiscardingChanges();
+  });
+
+  function verifyDiscardingChanges() {
+    H.modal().within(() => {
+      cy.findByText("Discard your changes?").should("be.visible");
+      cy.findByText("Discard changes").click();
+    });
+
+    H.tableInteractive().should("be.visible");
+    cy.button("Save changes").should("not.exist");
+    cy.get("@modelPathname").then((modelPathname) => {
+      cy.location("pathname").should("eq", modelPathname);
+    });
+  }
+});
+
 describe("issue 51925", () => {
   function setLinkDisplayType() {
     cy.findByTestId("chart-settings-widget-view_as").findByText("Link").click();
@@ -1382,5 +1432,111 @@ describe("issue 51925", () => {
         .first()
         .should("have.attr", "href", "https://example.com/6");
     });
+  });
+});
+
+describe("issue 53649", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
+    H.startNewNativeModel();
+
+    // If the app freezes, this won't work
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
+  });
+});
+
+describe("issue 56698", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should create an editable ad-hoc query based on a read-only native model (metabase#56698)", () => {
+    cy.log("create a native model");
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        name: "Native model",
+        native: { query: "select 1 union all select 2" },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.log("verify that we create an editable ad-hoc query");
+    cy.signIn("readonlynosql");
+    cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
+    H.assertQueryBuilderRowCount(2);
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 57557", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should not allow to see the query definition for a user without data permissions (metabase#57557)", () => {
+    cy.log("create a native model");
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        name: "Native model",
+        native: { query: "select 1 union all select 2" },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.log("verify that query editing functionality is hidden");
+    cy.signIn("nodata");
+    cy.get("@modelId").then((modelId) =>
+      H.visitModel(Number(modelId), { hasDataAccess: false }),
+    );
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Edit metadata").should("be.visible");
+      cy.findByText("Edit query definition").should("not.exist");
+      cy.findByText("Edit metadata").click();
+    });
+    cy.findByTestId("editor-tabs-query").should("be.disabled");
+    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+  });
+});
+
+describe("issue 56775", () => {
+  const MODEL_NAME = "Model 56775";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        type: "model",
+        name: MODEL_NAME,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
+    H.openNotebook();
+    cy.button("Visualize").click();
+
+    cy.go("back");
+    H.openQuestionActions("Edit query definition");
+
+    cy.log("verify that the model definition is visible");
+    H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
+    H.getNotebookStep("data").findByText("Products").should("be.visible");
   });
 });

@@ -35,7 +35,7 @@ export default class Progress extends Component {
     this.barRef = createRef();
   }
 
-  static uiName = t`Progress`;
+  static getUiName = () => t`Progress`;
   static identifier = "progress";
   static iconName = "progress";
 
@@ -66,18 +66,26 @@ export default class Progress extends Component {
         ],
         settings,
       ) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
     "progress.goal": {
-      section: t`Display`,
-      title: t`Goal`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Goal`;
+      },
       widget: "number",
       default: 0,
     },
     "progress.color": {
-      section: t`Display`,
-      title: t`Color`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Color`;
+      },
       widget: "color",
       default: color("accent1"),
     },
@@ -168,7 +176,7 @@ export default class Progress extends Component {
     const clicked = { value, column, settings };
     const isClickable = onVisualizationClick != null;
 
-    const handleClick = e => {
+    const handleClick = (e) => {
       if (onVisualizationClick && visualizationIsClickable(clicked)) {
         onVisualizationClick({ ...clicked, event: e.nativeEvent });
       }

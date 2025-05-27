@@ -1,7 +1,6 @@
 import type * as React from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
@@ -96,7 +95,6 @@ const RowChartVisualization = ({
   settings,
   visualizationIsClickable,
   onVisualizationClick,
-  isPlaceholder,
   hovered,
   headerIcon,
   actionButtons,
@@ -108,7 +106,6 @@ const RowChartVisualization = ({
   showTitle,
   onChangeCardAndRun,
   rawSeries: rawMultipleSeries,
-  series: multipleSeries,
   fontFamily,
   width: outerWidth,
   height: outerHeight,
@@ -117,9 +114,7 @@ const RowChartVisualization = ({
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);
-  const [chartSeries] = useMemo(() => {
-    return isPlaceholder ? multipleSeries : rawMultipleSeries;
-  }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
+  const [chartSeries] = rawMultipleSeries;
 
   const data = useMemo(
     () =>
@@ -152,9 +147,9 @@ const RowChartVisualization = ({
 
   useEffect(
     function warnOnRendered() {
-      !isPlaceholder && onRender({ warnings: chartWarnings });
+      onRender({ warnings: chartWarnings });
     },
-    [chartWarnings, isPlaceholder, onRender],
+    [chartWarnings, onRender],
   );
 
   const tickFormatters = useMemo(
@@ -335,9 +330,10 @@ const RowChartVisualization = ({
   );
 };
 
-RowChartVisualization.uiName = t`Row`;
+RowChartVisualization.getUiName = () => t`Row`;
 RowChartVisualization.identifier = "row";
 RowChartVisualization.iconName = "horizontal_bar";
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
@@ -365,11 +361,15 @@ RowChartVisualization.isLiveResizable = (series: any[]) => {
 
 RowChartVisualization.settings["graph.metrics"] = {
   ...RowChartVisualization.settings["graph.metrics"],
-  title: t`X-axis`,
+  get title() {
+    return t`X-axis`;
+  },
 };
 RowChartVisualization.settings["graph.dimensions"] = {
   ...RowChartVisualization.settings["graph.dimensions"],
-  title: t`Y-axis`,
+  get title() {
+    return t`Y-axis`;
+  },
 };
 
 /**
@@ -391,7 +391,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     data,
     chartColumns,
     getColumnValueFormatter(),
-  ).map(series => {
+  ).map((series) => {
     const seriesCard = {
       ...card,
       name: series.seriesName,
@@ -422,25 +422,9 @@ RowChartVisualization.checkRenderable = (
   validateStacking(settings);
 };
 
-RowChartVisualization.placeholderSeries = [
-  {
-    card: {
-      display: "row",
-      visualization_settings: {
-        "graph.metrics": ["x"],
-        "graph.dimensions": ["y"],
-      },
-      dataset_query: { type: "null" },
-    },
-    data: {
-      rows: _.range(0, 11).map(i => [i, i]),
-      cols: [
-        { name: "x", base_type: "type/Integer" },
-        { name: "y", base_type: "type/Integer" },
-      ],
-    },
-  },
-];
+RowChartVisualization.hasEmptyState = true;
+
+RowChartVisualization.getUiName = () => t`Row`;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RowChartVisualization;

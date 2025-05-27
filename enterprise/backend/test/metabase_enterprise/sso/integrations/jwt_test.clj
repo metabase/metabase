@@ -7,13 +7,13 @@
    [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.config :as config]
-   [metabase.http-client :as client]
+   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.appearance.settings :as appearance.settings]
+   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -303,7 +303,8 @@
                    :id           true
                    :last_name    "User"
                    :date_joined  true
-                   :common_name  "New User"}
+                   :common_name  "New User"
+                   :tenant_id    false}
                   (-> (mt/boolean-ids-and-timestamps [new-user])
                       first
                       (dissoc :last_login)))))
@@ -346,7 +347,8 @@
                   :id           true
                   :last_name    nil
                   :date_joined  true
-                  :common_name  "newuser@metabase.com"}]
+                  :common_name  "newuser@metabase.com"
+                  :tenant_id    false}]
                 (->>
                  (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login)))))))
@@ -370,7 +372,8 @@
                   :id           true
                   :last_name    "User"
                   :date_joined  true
-                  :common_name  "New User"}]
+                  :common_name  "New User"
+                  :tenant_id    false}]
                 (->>
                  (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login))))))))))))
@@ -433,7 +436,7 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
-                    public-settings/site-name                   (constantly "test")]
+                    appearance.settings/site-name               (constantly "test")]
         (is
          (thrown-with-msg?
           clojure.lang.ExceptionInfo

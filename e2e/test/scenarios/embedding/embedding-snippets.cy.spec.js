@@ -16,7 +16,7 @@ function highlightedTexts() {
   return cy.findAllByTestId("highlighted-text");
 }
 
-features.forEach(feature => {
+features.forEach((feature) => {
   describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
       H.restore();
@@ -94,7 +94,9 @@ features.forEach(feature => {
           );
 
         if (feature === "all") {
-          cy.findByText("Download buttons").click();
+          // Disable both download options
+          cy.findByText("Export to PDF").click();
+          cy.findByText("Results (csv, xlsx, json, png)").click();
 
           codeBlock()
             .first()
@@ -149,7 +151,7 @@ features.forEach(feature => {
 
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
-          cy.findByText("Download buttons").click();
+          cy.findByText("Download (csv, xlsx, json, png)").click();
 
           codeBlock()
             .first()

@@ -35,7 +35,7 @@ export const getTicksOptions = (
   let minInterval: number | undefined;
   let maxInterval: number | undefined;
 
-  const xDomain = range.map(day => {
+  const xDomain = range.map((day) => {
     const adjustedDate = dayjs(toEChartsAxisValue(day.toISOString()));
     if (!adjustedDate) {
       throw new Error(`Invalid range dates: ${JSON.stringify(range)}`);
@@ -64,7 +64,7 @@ export const getTicksOptions = (
   // If the data interval is week but due to available space and the range of the chart
   // we decide to show monthly, yearly or even larger ticks, we should format ticks values as months.
   if (interval.unit === "week" && largestInterval.unit !== "week") {
-    formatter = value => {
+    formatter = (value) => {
       return xAxisModel.formatter(value, "month");
     };
   }
@@ -73,7 +73,7 @@ export const getTicksOptions = (
     return date.isAfter(paddedMin) && date.isBefore(paddedMax);
   };
 
-  let canRender: (value: Dayjs) => boolean = date => isWithinRange(date);
+  let canRender: (value: Dayjs) => boolean = (date) => isWithinRange(date);
 
   // HACK: ECharts does not support weekly ticks internally and even by specifying minInterval=*week_duration*
   // it will not produce correct weekly ticks prioritizing start of months ticks. A workaround to this is to
@@ -94,11 +94,7 @@ export const getTicksOptions = (
   // If we let ECharts select ticks for quarterly data it can pick January and March which
   // will look like a duplication because both ticks will be formatted as Q1. So we need to
   // force ECharts to render monthly ticks and then select ones for Jan, Apr, Jul, Oct.
-  if (
-    !isSingleItem &&
-    largestInterval.unit === "month" &&
-    largestInterval.count === 3
-  ) {
+  if (!isSingleItem && largestInterval.unit === "quarter") {
     const effectiveTicksUnit = "month";
     canRender = (date: Dayjs) =>
       isWithinRange(date) && date.startOf("quarter").isSame(date, "month");

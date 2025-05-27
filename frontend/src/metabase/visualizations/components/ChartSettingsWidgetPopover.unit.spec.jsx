@@ -26,7 +26,7 @@ const STYLE_WIDGET = {
   onChange: () => {},
 };
 
-const setup = props => {
+const setup = (props) => {
   const Container = () => {
     const [anchor, setAnchor] = useState();
 

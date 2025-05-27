@@ -18,7 +18,9 @@ const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,
 
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameOne: t`snippet collection`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`snippet collections`,
 
   rtk: {
@@ -30,7 +32,7 @@ const SnippetCollections = createEntity({
 
   api: _.mapObject(
     NormalCollections.api,
-    request =>
+    (request) =>
       (opts, ...rest) =>
         request({ ...opts, namespace: "snippets" }, ...rest),
   ),
@@ -55,8 +57,8 @@ const SnippetCollections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      state => SnippetCollections.selectors.getList(state) || [],
-      collections => getExpandedCollectionsById(collections, null),
+      (state) => SnippetCollections.selectors.getList(state) || [],
+      (collections) => getExpandedCollectionsById(collections, null),
     ),
   },
 

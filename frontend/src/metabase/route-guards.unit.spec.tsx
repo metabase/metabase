@@ -20,7 +20,7 @@ describe("route-guards", () => {
       const RouteGuard = setupRouteGuard({
         // leverage the same context used by the main application
         context: MetabaseReduxContext,
-        authenticatedSelector: state => {
+        authenticatedSelector: (state) => {
           selectorState = state;
           return !!state.auth.VAL_ONLY_IN_THIS_CTX;
         },
@@ -47,7 +47,7 @@ describe("route-guards", () => {
             getState: () => ({ auth: { VAL_ONLY_IN_THIS_CTX: false } }),
           },
         }),
-        authenticatedSelector: state => {
+        authenticatedSelector: (state) => {
           selectorState = state;
           return !!state.auth.VAL_ONLY_IN_THIS_CTX;
         },

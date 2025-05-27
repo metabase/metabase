@@ -20,7 +20,7 @@ export const DownloadsStatusLarge = ({
   const status = useMemo(() => {
     return {
       title: getTitle(downloads),
-      items: downloads.map(download => ({
+      items: downloads.map((download) => ({
         id: download.id,
         title: download.title,
         icon: "download",

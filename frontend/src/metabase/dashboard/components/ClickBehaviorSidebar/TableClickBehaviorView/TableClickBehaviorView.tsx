@@ -58,7 +58,7 @@ export function TableClickBehaviorView({
   onColumnClick,
 }: Props) {
   const groupedColumns = useMemo(() => {
-    const withClickBehaviors = columns.map(column => ({
+    const withClickBehaviors = columns.map((column) => ({
       column,
       clickBehavior: getClickBehaviorForColumn(column),
     }));

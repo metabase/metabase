@@ -4,81 +4,90 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
-import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseCore from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { SemanticTypePicker } from "metabase/metadata/components";
 import D from "metabase/reference/components/Detail.module.css";
-import { isNumericBaseType, isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+
+import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
 
 const FieldTypeDetail = ({
+  databaseId,
   field,
   foreignKeys,
   fieldTypeFormField,
   foreignKeyFormField,
   isEditing,
-}) => (
-  <div className={cx(D.detail)}>
-    <div className={D.detailBody}>
-      <div className={D.detailTitle}>
-        <span>{t`Field type`}</span>
-      </div>
-      <div className={cx(D.detailSubtitle, { [CS.mt1]: true })}>
-        <span>
-          {isEditing ? (
-            <Select
-              placeholder={t`Select a field type`}
-              value={fieldTypeFormField.value || field.semantic_type}
-              options={MetabaseCore.field_semantic_types
-                .concat({
-                  id: null,
-                  name: t`No field type`,
-                  section: t`Other`,
-                })
-                .filter(type =>
-                  !isNumericBaseType(field)
-                    ? !(type.id && type.id.startsWith("timestamp_"))
-                    : true,
+}) => {
+  const semanticType =
+    typeof fieldTypeFormField.value !== "undefined"
+      ? fieldTypeFormField.value
+      : field.semantic_type;
+
+  return (
+    <div className={cx(D.detail)}>
+      <div className={D.detailBody}>
+        <div className={D.detailTitle}>
+          <span>{t`Field type`}</span>
+        </div>
+        <div className={D.detailSubtitle}>
+          <span>
+            {isEditing ? (
+              <SemanticTypePicker
+                field={field}
+                value={semanticType}
+                onChange={(value) => {
+                  fieldTypeFormField.onChange({
+                    target: {
+                      name: fieldTypeFormField.name,
+                      value,
+                    },
+                  });
+                }}
+              />
+            ) : (
+              <span>
+                {getIn(FIELD_SEMANTIC_TYPES_MAP, [
+                  field.semantic_type,
+                  "name",
+                ]) || t`No field type`}
+              </span>
+            )}
+          </span>
+          <span className={CS.ml4}>
+            {isEditing
+              ? isTypeFK(semanticType) && (
+                  <FieldFkTargetPicker
+                    databaseId={databaseId}
+                    field={field}
+                    value={
+                      foreignKeyFormField.value || field.fk_target_field_id
+                    }
+                    onChange={(value) => {
+                      foreignKeyFormField.onChange({
+                        target: {
+                          name: foreignKeyFormField.name,
+                          value,
+                        },
+                      });
+                    }}
+                  />
+                )
+              : isTypeFK(field.semantic_type) && (
+                  <span>
+                    {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
+                  </span>
                 )}
-              optionValueFn={o => o.id}
-              onChange={({ target: { value } }) =>
-                fieldTypeFormField.onChange(value)
-              }
-            />
-          ) : (
-            <span>
-              {getIn(MetabaseCore.field_semantic_types_map, [
-                field.semantic_type,
-                "name",
-              ]) || t`No field type`}
-            </span>
-          )}
-        </span>
-        <span className={CS.ml4}>
-          {isEditing
-            ? (isTypeFK(fieldTypeFormField.value) ||
-                (isTypeFK(field.semantic_type) &&
-                  fieldTypeFormField.value === undefined)) && (
-                <Select
-                  placeholder={t`Select a foreign key`}
-                  value={foreignKeyFormField.value || field.fk_target_field_id}
-                  options={Object.values(foreignKeys)}
-                  onChange={({ target: { value } }) =>
-                    foreignKeyFormField.onChange(value)
-                  }
-                  optionValueFn={o => o.id}
-                />
-              )
-            : isTypeFK(field.semantic_type) && (
-                <span>
-                  {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
-                </span>
-              )}
-        </span>
+          </span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
+
 FieldTypeDetail.propTypes = {
+  databaseId: PropTypes.number.isRequired,
   field: PropTypes.object.isRequired,
   foreignKeys: PropTypes.object.isRequired,
   fieldTypeFormField: PropTypes.object.isRequired,

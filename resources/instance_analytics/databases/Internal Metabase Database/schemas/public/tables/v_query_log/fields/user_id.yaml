@@ -19,7 +19,20 @@ fk_target_field_id:
 - public
 - v_users
 - user_id
-dimensions: []
+dimensions:
+- created_at: '2025-04-01T14:04:47.209295Z'
+  entity_id: -y4hizlxaFB-MfFB2MOy1
+  human_readable_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - full_name
+  name: User ID
+  type: external
+  serdes/meta:
+  - id: -y4hizlxaFB-MfFB2MOy1
+    label: user_id
+    model: Dimension
 json_unfolding: false
 parent_id: null
 coercion_strategy: null
@@ -43,4 +56,4 @@ serdes/meta:
   model: Field
 database_indexed: false
 database_partitioned: null
-entity_id: mAq-NOPoEyyqKJmlP6R52
+entity_id: iDGXhcdcT-AAK1TAKChbL

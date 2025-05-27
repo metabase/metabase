@@ -44,7 +44,7 @@ export default class Breadcrumbs extends Component {
           </span>
         ) : (
           crumbs
-            .map(breadcrumb =>
+            .map((breadcrumb) =>
               Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb],
             )
             .map((breadcrumb, index) => (

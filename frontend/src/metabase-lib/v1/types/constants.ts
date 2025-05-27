@@ -1,4 +1,9 @@
-import { TYPE as cljs_TYPE } from "cljs/metabase.types";
+import {
+  LEVEL_ONE_TYPES as cljs_LEVEL_ONE_TYPES,
+  TYPE as cljs_TYPE,
+} from "cljs/metabase.types.core";
+
+export const LEVEL_ONE_TYPES: string[] = cljs_LEVEL_ONE_TYPES;
 
 export const TYPE: Record<string, string> = cljs_TYPE;
 
@@ -28,12 +33,11 @@ export const TYPE_HIERARCHIES = {
   [TEMPORAL]: {
     base: [TYPE.Temporal],
     effective: [TYPE.Temporal],
-    semantic: [TYPE.Temporal],
   },
   [NUMBER]: {
     base: [TYPE.Number],
     effective: [TYPE.Number],
-    semantic: [TYPE.Number],
+    semantic: [TYPE.Number], // MySQL hack! See Lib.isNumeric
   },
   [INTEGER]: {
     base: [TYPE.Integer],
@@ -42,7 +46,6 @@ export const TYPE_HIERARCHIES = {
   [STRING]: {
     base: [TYPE.Text],
     effective: [TYPE.Text],
-    semantic: [TYPE.Text, TYPE.Category],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
@@ -76,10 +79,7 @@ export const TYPE_HIERARCHIES = {
     exclude: [LOCATION],
   },
   [CATEGORY]: {
-    base: [TYPE.Boolean],
-    effective: [TYPE.Boolean],
     semantic: [TYPE.Category],
-    include: [LOCATION],
   },
   // NOTE: this is defunct right now.  see definition of isDimension below.
   [DIMENSION]: {

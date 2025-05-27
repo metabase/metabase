@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -106,7 +106,7 @@
           ;; running the actual tests
           (try
             (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-              (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true]
+              (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
                 (qp.store/with-metadata-provider mp
                   ;; running these questions after fields have been removed from the database
                   ;; and the change has been detected by syncing

@@ -69,7 +69,7 @@ export const ClauseStep = <T,>({
           <Icon
             className={S.closeIcon}
             name="close"
-            onClick={e => {
+            onClick={(e) => {
               e.stopPropagation();
               onRemove(item, index);
             }}
@@ -94,16 +94,16 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
-            renderItem={onOpen => renderItem({ item, index, onOpen })}
-            renderPopover={onClose => renderPopover({ item, index, onClose })}
+            renderItem={(onOpen) => renderItem({ item, index, onOpen })}
+            renderPopover={(onClose) => renderPopover({ item, index, onClose })}
           />
         ))}
       </ClauseStepDndContext>
       {hasAddButton && (
         <ClausePopover
           isInitiallyOpen={isLastOpened}
-          renderItem={onOpen => renderNewItem({ onOpen })}
-          renderPopover={onClose => renderPopover({ onClose })}
+          renderItem={(onOpen) => renderNewItem({ onOpen })}
+          renderPopover={(onClose) => renderPopover({ onClose })}
         />
       )}
     </NotebookCell>

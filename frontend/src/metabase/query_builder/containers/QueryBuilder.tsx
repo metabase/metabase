@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
@@ -31,6 +32,7 @@ import type {
   BookmarkId,
   Bookmark as BookmarkType,
   Card,
+  Series,
   Timeline,
 } from "metabase-types/api";
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
@@ -41,7 +43,6 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabaseFields,
   getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
@@ -80,7 +81,6 @@ import {
   getSnippetCollectionId,
   getTableForeignKeyReferences,
   getTableForeignKeys,
-  getTables,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
@@ -91,6 +91,7 @@ import {
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
+import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
 const timelineProps = {
@@ -137,7 +138,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    tables: getTables(state),
 
     metadata: getMetadata(state),
 
@@ -168,7 +168,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    databaseFields: getDatabaseFields(state),
     sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
@@ -187,6 +186,10 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isLoadingComplete: getIsLoadingComplete(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
+    didFirstNonTableChartGenerated: getSetting(
+      state,
+      "non-table-chart-generated",
+    ),
 
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),
@@ -227,6 +230,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
+    runQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -237,7 +241,28 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isLoadingComplete,
     closeQB,
     route,
+    queryBuilderMode,
+    didFirstNonTableChartGenerated,
+    setDidFirstNonTableChartRender,
   } = props;
+
+  const didTrackFirstNonTableChartGeneratedRef = useRef(
+    didFirstNonTableChartGenerated,
+  );
+  const handleVisualizationRendered = useCallback(
+    (series: Series) => {
+      const isNonTable = series[0].card.display !== "table";
+      if (
+        !didFirstNonTableChartGenerated &&
+        !didTrackFirstNonTableChartGeneratedRef.current &&
+        isNonTable
+      ) {
+        setDidFirstNonTableChartRender(card);
+        didTrackFirstNonTableChartGeneratedRef.current = true;
+      }
+    },
+    [card, didFirstNonTableChartGenerated, setDidFirstNonTableChartRender],
+  );
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(
@@ -289,6 +314,8 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useMount(() => {
     initializeQB(location, params);
   });
+
+  useRegisterQueryBuilderMetabotContext();
 
   useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
@@ -404,6 +431,14 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     [question, isNewQuestion],
   );
 
+  const handleCmdEnter = () => {
+    if (queryBuilderMode !== "notebook") {
+      runQuestionOrSelectedQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]]);
+
   return (
     <>
       <View
@@ -419,6 +454,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         onDismissToast={onDismissToast}
         onConfirmToast={onConfirmToast}
         isShowingToaster={isShowingToaster}
+        onVisualizationRendered={handleVisualizationRendered}
       />
 
       <LeaveRouteConfirmModal
