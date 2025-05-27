@@ -6,6 +6,7 @@
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -23,7 +24,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime]
-   java.util.Arrays))
+   [java.util Arrays UUID]))
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
@@ -598,3 +599,7 @@
 (defmethod sql.qp/inline-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
+  [_driver this]
+  {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
