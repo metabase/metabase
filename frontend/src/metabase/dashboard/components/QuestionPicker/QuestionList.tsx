@@ -120,6 +120,8 @@ export function QuestionList({
     return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
   }
 
+  console.log({ list, searchData, itemsData });
+
   const shouldShowEmptyState =
     list.length === 0 && (isSearching || !hasCollections);
 

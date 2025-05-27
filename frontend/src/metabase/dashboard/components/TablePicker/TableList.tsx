@@ -10,7 +10,8 @@ type TableListProps = {
 };
 
 export const TableList = ({ onSelect }: TableListProps) => {
-  const { data: tables } = useListTablesQuery();
+  const { data: tables, isLoading } = useListTablesQuery();
+  console.log({ tables });
 
   const filteredTables = useMemo(() => {
     return tables
@@ -34,13 +35,17 @@ export const TableList = ({ onSelect }: TableListProps) => {
       });
   }, [tables]);
 
-  if (!filteredTables) {
+  if (isLoading) {
+    return null;
+  }
+
+  if (!filteredTables && !isLoading) {
     return <div>{t`Nothing found`}</div>;
   }
 
   return (
     <SelectList>
-      {filteredTables.map((item) => (
+      {filteredTables?.map((item) => (
         <SelectList.Item
           key={item.id}
           id={item.id}
