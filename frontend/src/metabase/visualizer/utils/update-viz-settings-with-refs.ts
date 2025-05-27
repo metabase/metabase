@@ -72,16 +72,16 @@ function updateSettingsValuesWithRefs(
     if (key in newSettings) {
       newSettings[key] = Array.isArray(newSettings[key])
         ? newSettings[key].map((value: string) =>
-            updateVizSettingValueWuthRef(value, columnsToRefs),
+            getMappedVizSettingValue(value, columnsToRefs),
           )
-        : updateVizSettingValueWuthRef(newSettings[key], columnsToRefs);
+        : getMappedVizSettingValue(newSettings[key], columnsToRefs);
     }
   });
 
   return newSettings;
 }
 
-function updateVizSettingValueWuthRef(
+function getMappedVizSettingValue(
   value: string,
   columnsToRefs: Record<string, string>,
 ) {
