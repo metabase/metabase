@@ -50,7 +50,7 @@
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
-;;; in [[metabase.models.field-values]], [[metabase.parameters.chain-filter]],
+;;; in [[metabase.warehouse-schema.models.field-values]], [[metabase.parameters.chain-filter]],
 ;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
 ;;; those and then maybe you will understand what the hell is going on.
 
@@ -97,9 +97,9 @@
   (into [:enum] (sort column-has-field-values-options)))
 
 (mr/def ::column.remapping.external
-  "External remapping (Dimension) for a column. From the [[metabase.models.dimension]] with `type = external` associated
-  with a `Field` in the application database. See [[metabase.query-processor.middleware.add-dimension-projections]]
-  for what this means."
+  "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
+  external` associated with a `Field` in the application database.
+  See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
    [:lib/type [:= :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
@@ -109,10 +109,10 @@
    ;; from. e.g. if the column in question is `venues.category-id`, then this would be the ID of `categories.name`
    [:field-id ::lib.schema.id/field]])
 
-;;; Internal remapping (FieldValues) for a column. From [[metabase.models.dimension]] with `type = internal` and
-;;; the [[metabase.models.field-values]] associated with a `Field` in the application database.
-;;; See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.
 (mr/def ::column.remapping.internal
+  "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
+  internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
+  database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
    [:lib/type              [:= :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
@@ -200,7 +200,7 @@
    ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
    ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
    ;; the application database, look at the implementation for fetching a `:metadata/column`
-   ;; in [[metabase.lib.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
+   ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
    ;; provider doesn't add these keys.
    [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]])
@@ -289,8 +289,8 @@
     [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::table
-  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
-  but with kebab-case keys."
+  "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
+  kebab-case keys."
   [:map
    {:error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]

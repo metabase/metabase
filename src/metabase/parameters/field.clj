@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -55,7 +55,7 @@
      (let [field        (follow-fks field)
            search-field (follow-fks search-field)
            limit        (or maybe-limit default-max-field-search-limit)]
-       (metadata-queries/search-values-query field search-field value limit))
+       (search-values-query/search-values-query field search-field value limit))
      (catch Throwable e
        (log/error e "Error searching field values")
        []))))

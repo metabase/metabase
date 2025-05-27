@@ -86,7 +86,6 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
       return t`Common`;
     },
     icon: "string",
-    deprecated: true,
   },
   {
     id: TYPE.Title,

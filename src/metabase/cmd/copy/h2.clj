@@ -3,7 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 

@@ -300,7 +300,7 @@
   "Executes an action as a row action. The allows action parameters sharing a name with column names to be derived from a specific row.
   The caller is still able to supply parameters, which will be preferred to those derived from the row.
   Discovers the table via the provided dashcard-id, assumes a model/editable for now."
-  [{:keys [action-id]}   :- [:map [:action-id ms/IntString]]
+  [{:keys [action-id]}   :- [:map [:action-id :string]]
    {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]
    {:keys [pk params]}   :- [:map
                              [:pk :any]

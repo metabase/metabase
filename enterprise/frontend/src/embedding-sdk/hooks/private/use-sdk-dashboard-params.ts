@@ -28,9 +28,6 @@ export type SdkDashboardDisplayProps = {
   /**
    * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
    * <br/>
-   * <br/>
-   * @remarks
-   * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
    * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
@@ -53,15 +50,7 @@ export type SdkDashboardDisplayProps = {
   withDownloads?: boolean;
 
   /**
-   * Whether to display the footer.
-   */
-  withFooter?: boolean;
-
-  /**
    * A list of [parameters to hide](https://www.metabase.com/docs/latest/embedding/public-links.html#appearance-parameters).
-   * <br/>
-   * <br/>
-   * @remarks
    * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
    * <br/>
@@ -74,7 +63,6 @@ export const useSdkDashboardParams = ({
   dashboardId: initialDashboardId,
   withDownloads,
   withTitle,
-  withFooter,
   hiddenParameters,
   initialParameters = {},
 }: SdkDashboardDisplayProps) => {
@@ -93,7 +81,6 @@ export const useSdkDashboardParams = ({
         titled: withTitle,
         hideDownloadButton,
         hideParameters: hiddenParameters?.join(",") ?? null,
-        withFooter,
       },
       isNotNull,
     ),

@@ -2,8 +2,8 @@
   (:require
    [medley.core :as m]
    [metabase.driver.druid.client :as druid.client]
-   [metabase.secrets.core :as secret]
-   [metabase.util.ssh :as ssh]))
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
+   [metabase.secrets.core :as secret]))
 
 (defn- do-segment-metadata-query [details datasource]
   {:pre [(map? details) (string? datasource)]}

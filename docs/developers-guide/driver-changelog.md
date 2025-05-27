@@ -12,6 +12,8 @@ title: Driver interface changelog
 
 - Extend `date()` to accept a DateTime (or DB equivalent) in addition to an ISO string. When given a DateTime, it will truncate it to a date.
 
+- Added a feature `:expressions/datetime` for drivers that support converting iso strings to datetimes
+
 - Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
 
 - Added a feature `:multi-level-schema` for drivers that support hierarchical levels between database and schema. Such as databricks' catalog. Defaults to false.
@@ -36,6 +38,36 @@ title: Driver interface changelog
   `site-uuid` now lives in `metabase.system.core`. If you were using this namespace, please update your code
   accordingly. You should be able to find the correct one by looking at how those settings are used in our first-party
   drivers.
+
+- The namespaces `metabase.models.field`, `metabase.models.field-values`, and `metabase.models.table` have been moved
+  to `metabase.warehouse-schema.field`, `metabase.warehouse-schema.field-values`, and
+  `metabase.warehouse-schema.table` respectively. You shouldn't use these namespaces directly in your drivers, but if
+  you did, please update your references.
+
+- `metabase.driver.sql.query-processor/->honeysql` is no longer supported for `:model/Table` (support for this was
+  deprecated in 0.48.0) -- methods for this will no longer be used; if you have such a method, migrate it to
+  `:metadata/table` instead. If you have a `:model/Table` and need a `:metadata/table` instead (such as in
+  implementations of `metabase.driver/table-rows-seq`) you can use `metabase.lib.metadata/table`.
+
+- `metabase.db.metadata-queries` has been removed; the parts meant for usage by drivers have been moved to
+  `metabase.driver.common.table-rows-sample`.
+
+- `metabase.util.ssh` has been moved to `metabase.driver.sql-jdbc.connection.ssh-tunnel`.
+
+- `metabase.query-processor.pipeline/*query-timeout-ms*` has been moved to
+  `metabase.driver.settings/*query-timeout-ms*`.
+
+- The namespace `metabase.query-processor.context`, deprecated in 0.50.0, has been removed.
+
+- All settings formerly in a `metabase.driver.*` namespace have been moved to `metabase.driver.settings`, and all
+  settings formerly in a `metabase.query-processor.*` namespace have been moved to
+  `metabase.query-processor.settings`.
+
+## Metabase 0.54.10
+
+- Add `metabase.driver/table-known-to-not-exist?` for drivers to test if an exception is due to a query on a table that no longer exists
+- Add `metabase.driver.sql-jdbc/impl-table-known-to-not-exist?` for JDBC drivers. This is the implemenation of table-known-to-not-exist for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
+
 
 ## Metabase 0.54.0
 

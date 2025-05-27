@@ -31,8 +31,7 @@
       (try
         (let [tags {:status (if job-exception "failed" "succeeded")
                     :job-name (.. ctx getJobDetail getKey toString)}]
-          (prometheus/inc! :metabase-tasks/quartz-tasks-executed tags)
-          (prometheus/observe! :metabase-tasks/quartz-tasks-execution-time-ms tags (.getJobRunTime ctx)))
+          (prometheus/inc! :metabase-tasks/quartz-tasks-executed tags))
         (catch Throwable e
           (log/error e "Failed to record Prometheus metric for Quartz job completion"))))))
 
@@ -90,6 +89,4 @@
 (defn add-listeners-to-scheduler!
   "Add triggers to the quartz scheduler, must be initialized before adding."
   []
-  (when-let [scheduler (task/scheduler)]
-    (task/add-trigger-listener! (create-trigger-listener scheduler))
-    (task/add-job-listener! (create-job-execution-listener))))
+  (task/add-job-listener! (create-job-execution-listener)))

@@ -21,8 +21,14 @@ export function TabularPreviewModal({
   }
 
   return (
-    <Modal opened={opened} title={t`Preview`} size="xl" onClose={onClose}>
-      <Box h="800px">
+    <Modal
+      data-testid="visualizer-tabular-preview-modal"
+      opened={opened}
+      title={t`Preview`}
+      size="xl"
+      onClose={onClose}
+    >
+      <Box h="60vh">
         <Visualization
           rawSeries={series}
           // TableInteractive crashes when trying to use metabase-lib

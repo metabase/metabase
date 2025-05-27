@@ -5,9 +5,9 @@
   instead of running like 10 separate queries? -- Cam"
   (:require
    [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -344,7 +344,7 @@
    column-mapping-fn                                :- ::column-mapping-fn]
   (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries column-mapping-fn)
         first-query                  (cond-> first-query
-                                       (seq info) qp/userland-query-with-default-constraints)]
+                                       (seq info) qp/userland-query)]
     (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
               qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
       (qp/process-query first-query rff))))
