@@ -333,7 +333,9 @@ describe("scenarios > question > new", () => {
     // test recent items do not exist
     H.startNewNativeQuestion();
     H.NativeEditor.type("select 'hi'");
-    cy.findByTestId("native-query-editor-sidebar").button("Get Answer").click();
+    cy.findByTestId("native-query-editor-container")
+      .button("Get Answer")
+      .click();
     cy.findByRole("button", { name: "Save" }).click();
 
     cy.findByTestId("save-question-modal").within(() => {
