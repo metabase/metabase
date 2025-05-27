@@ -3,7 +3,7 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :as settings]))
+   [metabase.settings.core :as setting]))
 
 (defn- has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
@@ -13,4 +13,4 @@
       (and (premium-features/has-feature? :advanced-permissions)
            (advanced-permissions.common/current-user-has-application-permissions? :setting))))
 
-(settings/register-current-user-settings-access-fn! ::has-advanced-setting-access? #'has-advanced-setting-access?)
+(setting/register-current-user-settings-access-fn! ::has-advanced-setting-access? #'has-advanced-setting-access?)

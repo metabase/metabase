@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [environ.core :as env]
    [flatland.ordered.map :as ordered-map]
-   [flatland.ordered.set :as ordered-set]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -22,7 +21,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
