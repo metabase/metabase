@@ -4,7 +4,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -362,9 +361,7 @@
                        (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
                                        {:column column-name
                                         :found  col-names}))))]
-    (lib/ref (cond-> metadata
-               ;; This forces a string column in the presence of force-broken-id-refs
-               (::lib.card/force-broken-id-refs metadata) (dissoc :id)))))
+    (lib/ref metadata)))
 
 (mu/defn query-with-stage-metadata-from-card :- ::lib.schema/query
   "Convenience for creating a query that has `:lib/metadata` stage metadata attached to it from a Card. Note that this

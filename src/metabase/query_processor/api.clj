@@ -14,6 +14,7 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -231,8 +232,8 @@
    _query-params
    {:keys     [parameter]
     field-ids :field_ids} :- [:map
-                              [:parameter ms/Parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+                              [:parameter ::parameters.schema/parameter]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
 
 (api.macros/defendpoint :post "/parameter/search/:query"
@@ -242,8 +243,8 @@
    _query-params
    {:keys     [parameter]
     field-ids :field_ids} :- [:map
-                              [:parameter ms/Parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+                              [:parameter ::parameters.schema/parameter]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids query))
 
 (defn param-remapped-value
@@ -265,7 +266,7 @@
   [_route-params
    _query-params
    {:keys [parameter value field_ids]} :- [:map
-                                           [:parameter ms/Parameter]
+                                           [:parameter ::parameters.schema/parameter]
                                            [:value :any]
-                                           [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))
