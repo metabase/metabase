@@ -74,24 +74,21 @@
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
-    (-> (dissoc details :dbname :host :port :clickhouse-settings)
-        (merge
-         {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
-          :subprotocol                    "clickhouse"
-          :subname                        (str "//" host ":" port "/" dbname)
-          :password                       (or password "")
-          :user                           user
-          :ssl                            (boolean ssl)
-          :use_server_time_zone_for_dates true
-          :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
-          :remember_last_set_roles        true
-          :http_connection_provider       "HTTP_URL_CONNECTION"
-          :jdbc_ignore_unsupported_values "true"
-          :jdbc_schema_term               "schema"
-          :max_open_connections           (or max-open-connections 100)
-           ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-          :custom_http_params             (or clickhouse-settings "")})
-        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+    {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
+     :subprotocol                    "clickhouse"
+     :subname                        (str "//" host ":" port "/" dbname)
+     :password                       (or password "")
+     :user                           user
+     :ssl                            (boolean ssl)
+     :use_server_time_zone_for_dates true
+     :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
+     :remember_last_set_roles        true
+     :http_connection_provider       "HTTP_URL_CONNECTION"
+     :jdbc_ignore_unsupported_values "true"
+     :jdbc_schema_term               "schema"
+     :max_open_connections           (or max-open-connections 100)
+     ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
+     :custom_http_params             (or clickhouse-settings "")}))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
   [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
