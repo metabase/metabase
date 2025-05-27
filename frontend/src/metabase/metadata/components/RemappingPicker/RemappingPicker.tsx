@@ -137,8 +137,8 @@ export const RemappingPicker = ({
             selectedDatabaseId={database.id}
             selectedField={fkRemappingField}
             selectedFieldId={fkRemappingField?.id}
-            selectedTable={fkTargetField?.table}
-            selectedTableId={fkTargetField?.table?.id}
+            selectedTable={fkTargetTable}
+            selectedTableId={fkTargetTable?.id}
             triggerElement={
               <Select
                 data={[
