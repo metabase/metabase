@@ -1,0 +1,41 @@
+.dbList {
+  padding: 0;
+  margin-bottom: var(--mantine-spacing-sm);
+
+  li {
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-left: 1px solid var(--mb-color-border);
+    border-right: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border);
+    cursor: pointer;
+    display: flex;
+    height: 2.5rem;
+
+    &:first-child {
+      border-top: 1px solid var(--mb-color-border);
+      border-top-left-radius: var(--default-border-radius);
+      border-top-right-radius: var(--default-border-radius);
+    }
+
+    &:last-child {
+      border-bottom-left-radius: var(--default-border-radius);
+      border-bottom-right-radius: var(--default-border-radius);
+
+      &:not(:only-child) {
+        border-top: 0;
+      }
+    }
+
+    &:hover {
+      background-color: var(--mb-color-background-hover);
+    }
+  }
+}
+
+.noResultsIcon {
+  height: 3rem;
+  width: 3rem;
+  background-color: var(--mb-color-bg-medium);
+  border-radius: 100%;
+  color: var(--mb-color-text-medium);
+}

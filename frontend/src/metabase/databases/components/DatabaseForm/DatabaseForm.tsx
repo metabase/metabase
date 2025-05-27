@@ -33,7 +33,7 @@ export interface DatabaseFormConfig {
   /** present the form with advanced configuration options */
   isAdvanced?: boolean;
   engine?: {
-    /** present the enginge field as normal, disabled, or hidden */
+    /** present the engine field as normal, disabled, or hidden */
     fieldState?: EngineFieldState | undefined;
   };
   name?: {
@@ -66,8 +66,10 @@ export const DatabaseForm = ({
 
   const engines = useSelector(getEngines);
   const isHosted = useSelector(getIsHosted);
-  const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
-  const [engineKey, setEngineKey] = useState(initialEngineKey);
+  const initialEngineKey = getEngineKey(engines, initialData);
+  const [engineKey, setEngineKey] = useState<string | undefined>(
+    initialEngineKey,
+  );
   const engine = getEngine(engines, engineKey);
 
   const validationSchema = useMemo(() => {
@@ -273,11 +275,9 @@ const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {
 const getEngineKey = (
   engines: Record<string, Engine>,
   values?: Partial<DatabaseData>,
-  isAdvanced?: boolean,
 ) => {
-  if (values?.engine) {
+  if (values?.engine && Object.keys(engines).includes(values.engine)) {
     return values.engine;
-  } else if (isAdvanced) {
-    return getDefaultEngineKey(engines);
   }
+  return getDefaultEngineKey(engines);
 };

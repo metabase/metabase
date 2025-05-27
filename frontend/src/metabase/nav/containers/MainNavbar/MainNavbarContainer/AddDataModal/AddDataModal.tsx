@@ -7,6 +7,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs, Title } from "metabase/ui";
 
 import S from "./AddDataModal.module.css";
+import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 
@@ -66,13 +67,15 @@ export const AddDataModal = ({
               </Tabs.Tab>
             </Tabs.List>
           </Box>
-          <Box component="main" w="30rem">
+          <Box component="main" w="30rem" className={S.panelContainer}>
             <PanelsHeader
               activeTab={activeTab}
               isAdmin={isAdmin}
               onClose={onClose}
             />
-            <Tabs.Panel value="db">{"Database content"}</Tabs.Panel>
+            <Tabs.Panel value="db" className={S.panel}>
+              <DatabasesPanel canSeeContent={isAdmin} />
+            </Tabs.Panel>
             <Tabs.Panel value="csv">{"CSV content"}</Tabs.Panel>
             <Tabs.Panel value="gsheet">{"Google Sheets content"}</Tabs.Panel>
           </Box>
