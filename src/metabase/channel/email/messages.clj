@@ -8,13 +8,14 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
+   [metabase.channel.urls :as urls]
    [metabase.collections.models.collection :as collection]
-   [metabase.db.query :as mdb.query]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -27,7 +28,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -177,7 +177,7 @@
                                                                       [:= :p.group_id :pg.id]
                                                                       [:= :p.object monitoring]]}]]
                                          :group-by [:pgm.user_id]}
-                                        mdb.query/query
+                                        app-db/query
                                         (mapv :user_id)))
         user-ids (filter
                   #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)

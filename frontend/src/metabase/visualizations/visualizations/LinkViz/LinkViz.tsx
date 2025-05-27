@@ -109,6 +109,7 @@ function LinkVizInner({
         dashboard,
         parameterValues,
         text: url,
+        urlEncode: true,
       }),
     [dashboard, dashcard, parameterValues, url],
   );

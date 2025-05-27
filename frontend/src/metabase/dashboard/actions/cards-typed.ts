@@ -16,6 +16,7 @@ import {
   loadMetadataForTable,
 } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
+import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import type {
   Card,
   CardId,
@@ -343,13 +344,24 @@ export const addCardWithVisualization =
   ({
     visualization,
     tabId,
-    cards,
   }: {
     visualization: VisualizerVizDefinition;
     tabId: number | null;
-    cards: Card[];
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    const cardIds = getCardIdsFromColumnValueMappings(
+      visualization.columnValuesMapping,
+    );
+    const cards: Card[] = [];
+
+    for (const cardId of cardIds) {
+      await dispatch(Questions.actions.fetch({ id: cardId }));
+      const card: Card = Questions.selectors
+        .getObject(getState(), { entityId: cardId })
+        .card();
+      cards.push(card);
+    }
+
     const [mainCard, ...secondaryCards] = cards;
 
     const dashcardId = generateTemporaryDashcardId();
@@ -381,13 +393,24 @@ export const replaceCardWithVisualization =
   ({
     dashcardId,
     visualization,
-    cards,
   }: {
     dashcardId: DashCardId;
     visualization: VisualizerVizDefinition;
-    cards: Card[];
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    const cardIds = getCardIdsFromColumnValueMappings(
+      visualization.columnValuesMapping,
+    );
+    const cards: Card[] = [];
+
+    for (const cardId of cardIds) {
+      await dispatch(Questions.actions.fetch({ id: cardId }));
+      const card: Card = Questions.selectors
+        .getObject(getState(), { entityId: cardId })
+        .card();
+      cards.push(card);
+    }
+
     const [mainCard, ...secondaryCards] = cards;
 
     const originalDashCard = getDashCardById(getState(), dashcardId);

@@ -5,9 +5,8 @@
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.urls :as urls]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.table :as table]
-   [metabase.models.user :as user]
    [metabase.notification.condition :as notification.condition]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.sample :as payload.sample]
@@ -15,13 +14,14 @@
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.urls :as urls]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (defn- join-url

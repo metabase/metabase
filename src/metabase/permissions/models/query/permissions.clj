@@ -87,6 +87,15 @@
   [query :- :map]
   (apply merge-with merge-source-ids
          (lib.util.match/match query
+           ;; If we find a table id from a gtapped table add it to the list of table ids here if we fail to get perms
+           ;; for this table we'll check again for this key and try the supplied gtap perms
+           (m :guard (every-pred map? ::gtapped-table))
+           (merge-with merge-source-ids
+                       {:table-ids #{(::gtapped-table m)}}
+                       ;; Remove any :native sibling queries since they will be ones supplied by the gtap and we don't
+                       ;; want to mark the whole query as native? if they exist
+                       (query->source-ids (dissoc m ::gtapped-table :native)))
+
            ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
            ;; permissions on the card and not necessarily require full native query access to the DB
            (m :guard (every-pred map? :native))

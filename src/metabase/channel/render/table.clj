@@ -5,15 +5,11 @@
    [medley.core :as m]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
-   [metabase.formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.util :as u])
-  (:import
-   (metabase.formatter NumericWrapper)))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase.formatter/keep-me)
 
 (defn- bar-th-style []
   (merge
@@ -54,13 +50,13 @@
 
 (defn- heading-style-for-type
   [cell]
-  (if (instance? NumericWrapper cell)
+  (if (formatter/NumericWrapper? cell)
     (bar-th-style-numeric)
     (bar-th-style)))
 
 (defn- row-style-for-type
   [cell]
-  (if (instance? NumericWrapper cell)
+  (if (formatter/NumericWrapper? cell)
     (bar-td-style-numeric)
     (bar-td-style)))
 

@@ -11,8 +11,10 @@
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.core :as channel.template]
+   [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
@@ -22,7 +24,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
-   [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
@@ -125,7 +126,7 @@
      :message        message
      :bcc?           (if recipient-type
                        (= :bcc recipient-type)
-                       (email/bcc-enabled?))})))
+                       (channel.settings/bcc-enabled?))})))
 
 (defn- recipients->emails
   [recipients]
@@ -289,7 +290,7 @@
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters           (when parameters
+                                                    :filters           (when (seq parameters)
                                                                          (render-filters parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))

@@ -6,8 +6,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -15,22 +16,27 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
+   [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
-   (com.fasterxml.jackson.core JsonFactory JsonParser JsonToken JsonParser$NumberType)
+   (com.fasterxml.jackson.core JsonFactory JsonParser JsonParser$NumberType JsonToken)
    (java.sql Connection DatabaseMetaData ResultSet)))
 
 (set! *warn-on-reflection* true)
+
+;;; these are provided as conveniences because these settings used to live here; prefer getting them from
+;;; `driver.settings` instead going forward.
+(p/import-vars
+ [driver.settings
+  nested-field-columns-value-length-limit])
 
 (defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc
   [_driver _database-type _column-name]
@@ -87,23 +93,31 @@
 (defn- fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
-  [driver ^Connection conn db-name-or-nil schema table]
+  [driver ^Connection conn db-name-or-nil schema table-name]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
-        (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
-                    rs   (.executeQuery stmt)]
-          (let [metadata (.getMetaData rs)]
-            (reduce
-             ((map (fn [^Integer i]
-                     ;; TODO: missing :database-required column as ResultSetMetadata does not have information about
-                     ;; the default value of a column, so we can't make sure whether a column is required or not
-                     {:name                       (.getColumnName metadata i)
-                      :database-type              (.getColumnTypeName metadata i)
-                      :database-is-auto-increment (.isAutoIncrement metadata i)})) rf)
-             init
-             (range 1 (inc (.getColumnCount metadata))))))))))
+        (try
+          (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
+                      rs   (.executeQuery stmt)]
+            (let [metadata (.getMetaData rs)]
+              (reduce
+               ((map (fn [^Integer i]
+                       ;; TODO: missing :database-required column as ResultSetMetadata does not have information about
+                       ;; the default value of a column, so we can't make sure whether a column is required or not
+                       {:name                       (.getColumnName metadata i)
+                        :database-type              (.getColumnTypeName metadata i)
+                        :database-is-auto-increment (.isAutoIncrement metadata i)})) rf)
+               init
+               (range 1 (inc (.getColumnCount metadata))))))
+          (catch Exception e
+            (if (driver/table-known-to-not-exist? driver e)
+              ;; if the table does not exist, we just warn and ignore it, rather than failing with an exception
+              (do
+                (log/warnf e "Cannot sync Table %s: does not exist" table-name)
+                init)
+              (throw e))))))))
 
 (defn- jdbc-fields-metadata
   "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
@@ -637,14 +651,6 @@
                                         (false? (:json_unfolding existing-field))))]
         (remove should-not-unfold? json-fields)))))
 
-(setting/defsetting nested-field-columns-value-length-limit
-  (deferred-tru (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
-                     "too high it could lead to slow syncs or out of memory errors."))
-  :visibility :internal
-  :export?    true
-  :type       :integer
-  :default    50000)
-
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
 
@@ -658,7 +664,7 @@
                                    [field]
                                    [[:case
                                      [:<
-                                      [:inline (nested-field-columns-value-length-limit)]
+                                      [:inline (driver.settings/nested-field-columns-value-length-limit)]
                                       (driver.sql/json-field-length driver field)]
                                      nil
                                      :else
@@ -672,11 +678,11 @@
        :join   [[{:union-all [{:nest {:select   pks-expr
                                       :from     [table-expr]
                                       :order-by (mapv #(vector % :asc) pk-identifiers)
-                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
+                                      :limit    (/ table-rows-sample/nested-field-sample-limit 2)}}
                               {:nest {:select   pks-expr
                                       :from     [table-expr]
                                       :order-by (mapv #(vector % :desc) pk-identifiers)
-                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
+                                      :limit    (/ table-rows-sample/nested-field-sample-limit 2)}}]}
                  :result]
                 (into [:and]
                       (for [pk-identifier pk-identifiers]
@@ -685,7 +691,7 @@
                          pk-identifier]))]}
       {:select json-field-exprs
        :from   [table-expr]
-       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)})))
+       :limit  (sql.qp/inline-num table-rows-sample/nested-field-sample-limit)})))
 
 (defn- sample-json-reducible-query
   [driver jdbc-spec table json-fields pks]

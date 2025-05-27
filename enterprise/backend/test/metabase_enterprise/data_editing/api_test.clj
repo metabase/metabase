@@ -7,11 +7,11 @@
    [metabase.actions.models :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
-   [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

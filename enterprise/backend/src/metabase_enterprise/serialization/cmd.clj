@@ -12,8 +12,7 @@
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.core :as analytics]
-   [metabase.db :as mdb]
-   [metabase.models.field :as field]
+   [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]
@@ -22,6 +21,7 @@
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))

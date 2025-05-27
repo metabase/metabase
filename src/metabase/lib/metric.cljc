@@ -123,6 +123,9 @@
              metrics (if source-table
                        (lib.metadata/metadatas-for-table query :metadata/metric source-table)
                        (lib.metadata/metadatas-for-card query :metadata/metric (lib.util/source-card-id query)))]
+         (when (seq metrics)
+           ;; "pre-warm" the metadata provider
+           (lib.metadata/bulk-metadata query :metadata/card (into #{} (map :id) metrics)))
          (not-empty
           (into []
                 (comp (filter (fn [metric-card]

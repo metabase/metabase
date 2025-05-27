@@ -57,9 +57,6 @@ export const getVisualizationColumns = (
           );
 
           if (!datasetColumn || !dataSource) {
-            console.warn(
-              `Could not find dataset column or data source for mapping ${JSON.stringify(columnMapping)}`,
-            );
             return;
           }
 

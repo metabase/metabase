@@ -1,9 +1,8 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -257,8 +256,7 @@
               (for [field (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
                 (-> field
                     (dissoc :id :fk_target_field_id)
-                    (assoc :table_id new-table-id
-                           :entity_id (u/generate-nano-id)))))
+                    (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
         new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
@@ -281,29 +279,28 @@
                                                  (for [table old-tables]
                                                    (-> table
                                                        (dissoc :id)
-                                                       (assoc :db_id new-db-id
-                                                              :entity_id (u/generate-nano-id))))))]
+                                                       (assoc :db_id new-db-id)))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
       (copy-table-fields! old-table-id new-table-id))))
 
 (defn- copy-db-fks! [old-db-id new-db-id]
   (doseq [{:keys [source-field source-table target-field target-table]}
-          (mdb.query/query {:select    [[:source-field.name :source-field]
-                                        [:source-table.name :source-table]
-                                        [:target-field.name :target-field]
-                                        [:target-table.name :target-table]]
-                            :from      [[:metabase_field :source-field]]
-                            :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
-                                        [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
-                                        [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
-                            :where     [:and
-                                        [:= :source-table.db_id old-db-id]
-                                        [:= :target-table.db_id old-db-id]
-                                        :source-field.active
-                                        :target-field.active
-                                        :source-table.active
-                                        :target-table.active
-                                        [:not= :source-field.fk_target_field_id nil]]})]
+          (mdb/query {:select    [[:source-field.name :source-field]
+                                  [:source-table.name :source-table]
+                                  [:target-field.name :target-field]
+                                  [:target-table.name :target-table]]
+                      :from      [[:metabase_field :source-field]]
+                      :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
+                                  [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
+                                  [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
+                      :where     [:and
+                                  [:= :source-table.db_id old-db-id]
+                                  [:= :target-table.db_id old-db-id]
+                                  :source-field.active
+                                  :target-field.active
+                                  :source-table.active
+                                  :target-table.active
+                                  [:not= :source-field.fk_target_field_id nil]]})]
     (t2/update! :model/Field (the-field-id (the-table-id new-db-id source-table) source-field)
                 {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 

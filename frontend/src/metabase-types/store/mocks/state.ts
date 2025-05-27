@@ -8,6 +8,7 @@ import { createMockAppState } from "./app";
 import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
 import { createMockEmbedState } from "./embed";
+import { createMockEmbeddingDataPickerState } from "./embedding-data-picker";
 import { createMockNormalizedEntitiesState } from "./entities";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
@@ -32,6 +33,7 @@ export function createMockState(opts: any) {
     currentUser: createMockUser(),
     dashboard: createMockDashboardState(),
     embed: createMockEmbedState(),
+    embeddingDataPicker: createMockEmbeddingDataPickerState(),
     entities: createMockNormalizedEntitiesState(),
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),

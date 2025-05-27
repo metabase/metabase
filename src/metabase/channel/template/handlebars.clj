@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.channel.template.handlebars-helper :as handlebars-helper]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import

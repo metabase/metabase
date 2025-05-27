@@ -11,10 +11,9 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
@@ -928,7 +927,7 @@
                              ;; :total_count
                              :limit  (if (zero? limit) 1 limit)
                              :offset offset))
-        rows        (mdb.query/query limit-query)
+        rows        (mdb/query limit-query)
         res         {:total  (->> rows first :total_count)
                      :data   (if (= limit 0)
                                []

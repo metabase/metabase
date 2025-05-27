@@ -3,19 +3,17 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.settings.core :as setting]
+   [metabase.notification.settings :as notification.settings]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.time ZonedDateTime)
    (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
@@ -27,23 +25,6 @@
   (if channel_id
     (str (u/qualified-name channel_type) " " channel_id)
     (u/qualified-name channel_type)))
-
-(setting/defsetting notification-thread-pool-size
-  "The size of the thread pool used to send notifications."
-  :default    3
-  :export?    false
-  :type       :integer
-  :visibility :internal
-  :doc "If Metabase stops sending notifications like alerts, it may be because long-running
-  queries are clogging the notification queue. You may be able to unclog the queue by
-  increasing the size of the thread pool dedicated to notifications.")
-
-(setting/defsetting notification-system-event-thread-pool-size
-  "The size of the thread pool used to send system event notifications."
-  :default    5
-  :export?    false
-  :type       :integer
-  :visibility :internal)
 
 (def ^:private default-blocking-queue-size 1000)
 
@@ -404,10 +385,10 @@
       (put-notification! queue notification))))
 
 (defonce ^:private dedup-priority-dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size) (create-dedup-priority-queue))))
+  (delay (create-notification-dispatcher (notification.settings/notification-thread-pool-size) (create-dedup-priority-queue))))
 
 (defonce ^:private simple-blocking-dispatcher
-  (delay (create-notification-dispatcher (notification-system-event-thread-pool-size) (create-blocking-queue))))
+  (delay (create-notification-dispatcher (notification.settings/notification-system-event-thread-pool-size) (create-blocking-queue))))
 
 (defn- dispatch!
   [notification]
@@ -432,34 +413,15 @@
   "The default options for sending a notification."
   {:notification/sync? false})
 
-(setting/defsetting notification-suppression-cutoff
-  "Timestamp that serves as an anchor point for notifications.
-  Timestamp should be ISO 8601 format and in UTC.
-  Tip: Use the `date -u -Iseconds` command to get the current time in UTC.
-
-  Used for staging instances to skip sending existing notifications."
-  :type       :string
-  :default    nil
-  :encryption :no
-  :export?    false
-  :cache?     false
-  :getter     (fn []
-                (when-let [timestamp (some-> (setting/get-value-of-type :string :notification-suppression-cutoff)
-                                             u.date/parse ;; expects ISO 8601 format
-                                             (#(.toOffsetDateTime ^ZonedDateTime %)))]
-                  (assert (t/< timestamp (t/offset-date-time)) "Cutoff timestamp must be in the past")
-                  timestamp))
-  :visibility :internal)
-
 (defn- skip-notification-because-of-cutoff?
-  "If `notification-suppression-cutoff` is set, returns true for notifications that have updated_at older than the cutoff timestamp.
+  "If `notification.settings/notification-suppression-cutoff` is set, returns true for notifications that have updated_at older than the cutoff timestamp.
 
   This should be set on staging instances only."
   [notification]
   (and (:updated_at notification)
-       (notification-suppression-cutoff)
+       (notification.settings/notification-suppression-cutoff)
        (t/< (:updated_at notification)
-            (notification-suppression-cutoff))))
+            (notification.settings/notification-suppression-cutoff))))
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
@@ -476,4 +438,4 @@
             (send-notification-async! notification)))
         (log/debugf "Skip queueing notification %s" (pr-str notification))))
     (log/infof "Skipping notification %s because it is older than the cutoff timestamp: %s. YOU SHOULDN'T SEE THIS ON PROD, REPORT IF YOU ARE!!!"
-               (:id notification) (notification-suppression-cutoff))))
+               (:id notification) (notification.settings/notification-suppression-cutoff))))

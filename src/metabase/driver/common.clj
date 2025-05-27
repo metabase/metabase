@@ -42,6 +42,13 @@
    :type         :password
    :placeholder  "••••••••"})
 
+(def default-role-details
+  "Map of the db default role details field, useful for `connection-properties` implementations"
+  {:name         "role"
+   :display-name (deferred-tru "Role (optional, required for connection impersonation)")
+   :helper-text (deferred-tru "Specify a role to override the database user''s default role.")
+   :placeholder (deferred-tru "user")})
+
 (def default-dbname-details
   "Map of the db name details field, useful for `connection-properties` implementations"
   {:name         "dbname"
@@ -303,7 +310,7 @@
     ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
     ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
     ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
-    ;; discussion in the `metabase.types` namespace.
+    ;; discussion in the [[metabase.types.core]] namespace.
     java.time.OffsetTime           :type/TimeWithTZ
     java.time.OffsetDateTime       :type/DateTimeWithTZ
     java.time.ZonedDateTime        :type/DateTimeWithZoneID

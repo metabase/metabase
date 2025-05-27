@@ -1,12 +1,12 @@
 (ns metabase.parameters.chain-filter-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.field-values :as field-values]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn shorthand->constraint [field-id v]
@@ -504,7 +504,7 @@
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
             [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
-                                          (dissoc :id :entity_id)
+                                          (dissoc :id)
                                           (assoc :name "NAME2"))
              :model/FieldValues  _    {:field_id (:id field)
                                        :type     :full

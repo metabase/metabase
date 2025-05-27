@@ -4,6 +4,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
+   [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -126,6 +127,7 @@
   {:application_name     (appearance/application-name)
    :application_color    (appearance/application-color)
    :application_logo_url (logo-url)
+   :include_branding     (not (premium-features/enable-whitelabeling?))
    :site_name            (appearance/site-name)
    :site_url             (system/site-url)
    :admin_email          (system/admin-email)
