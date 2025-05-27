@@ -366,7 +366,7 @@
 
 (deftest v-alerts-schedule-type-test
   ;; Idk why the CI fails on h2 and mysql for this test even though it passes locally
-  ;; I've tried to debug it but I have no clue. FWIW most of the usage analytics view don't have tests anyway
+  ;; I've tried to debug it but I have no clue.
   (when (= :postgres (mdb/db-type))
     (mt/when-ee-evailable
      (notification.tu/with-card-notification

@@ -669,9 +669,9 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
+              :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
-              :exclude-tags [:mb/driver-tests]
             exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
