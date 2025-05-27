@@ -13,6 +13,7 @@ import type {
   SdkCollectionId,
 } from "embedding-sdk/types/collection";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { isNotNull } from "metabase/lib/types";
@@ -177,6 +178,5 @@ const CollectionBrowserWrapper = ({
  * @function
  * @category CollectionBrowser
  */
-export const CollectionBrowser = withPublicComponentWrapper(
-  CollectionBrowserWrapper,
-);
+export const CollectionBrowser: SdkFunctionalComponent<CollectionBrowserProps> =
+  withPublicComponentWrapper(CollectionBrowserWrapper);

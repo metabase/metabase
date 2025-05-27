@@ -4,6 +4,7 @@ import {
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 
 import { InteractiveQuestion } from "../InteractiveQuestion";
 import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";
@@ -48,4 +49,5 @@ const StaticQuestionInner = ({
  * @function
  * @category StaticQuestion
  */
-export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);
+export const StaticQuestion: SdkFunctionalComponent<StaticQuestionProps> =
+  withPublicComponentWrapper(StaticQuestionInner);

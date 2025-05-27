@@ -32,6 +32,7 @@ import {
 } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 
 /**
  * @interface
@@ -129,7 +130,7 @@ export const _InteractiveQuestion = ({
  */
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
-) as typeof _InteractiveQuestion & {
+) as SdkFunctionalComponent<InteractiveQuestionProps> & {
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;

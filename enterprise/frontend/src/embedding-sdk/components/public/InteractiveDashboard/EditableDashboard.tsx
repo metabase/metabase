@@ -13,6 +13,7 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
@@ -57,7 +58,9 @@ export type EditableDashboardProps = {
  * @category InteractiveDashboard
  * @param props
  */
-export const EditableDashboard = ({
+export const EditableDashboard: SdkFunctionalComponent<
+  EditableDashboardProps
+> = ({
   dashboardId: initialDashboardId,
   initialParameters = {},
   withDownloads = false,

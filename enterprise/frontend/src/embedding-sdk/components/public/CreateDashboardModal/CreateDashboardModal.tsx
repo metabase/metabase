@@ -2,6 +2,7 @@ import { withPublicComponentWrapper } from "embedding-sdk/components/private/Pub
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { useCollectionQuery } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 
@@ -68,6 +69,5 @@ const CreateDashboardModalInner = ({
  * @function
  * @category CreateDashboardModal
  */
-export const CreateDashboardModal = withPublicComponentWrapper(
-  CreateDashboardModalInner,
-);
+export const CreateDashboardModal: SdkFunctionalComponent<CreateDashboardModalProps> =
+  withPublicComponentWrapper(CreateDashboardModalInner);
