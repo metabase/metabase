@@ -22,6 +22,7 @@
                                :site_name            "Metabase Test"
                                :site_url             "https://metabase.com"
                                :admin_email          "ngoc@metabase.com"
+                               :include_branding     false
                                :style                {:button true}}
                 :creator      nil}
                (-> (notification.payload/notification-payload {:payload_type :notification/system-event

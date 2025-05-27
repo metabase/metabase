@@ -844,6 +844,7 @@
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"
                       "test/metabase/pulse"
+                      "enterprise/backend/test/metabase_enterprise/notification"
                       metabase-enterprise.data-editing.notification-test]}}
 
 ;; clj -X:dev:ee:ee-dev:test:test/workflow
