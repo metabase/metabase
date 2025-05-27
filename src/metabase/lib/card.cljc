@@ -75,19 +75,11 @@
    {:error/message "Card with :dataset-query"}
    [:dataset-query :map]])
 
-(def ^:dynamic *force-broken-card-refs*
-  "Things are fundamentally broken because of #29763, and every time I try to fix this is ends up being a giant mess to
-  untangle. The FE currently ignores results metadata for ad-hoc queries, and thus cannot match up 'correct' Field
-  refs like 'Products__CATEGORY'... for the time being we'll have to force ID refs even when we should be using
-  nominal refs so as to not completely destroy the FE. Once we port more stuff over maybe we can fix this."
-  false)
-
 (defn- ->card-metadata-column
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
   accept both `card-id` and `card`."
   [col
    card-id
-   card
    field]
   (let [col (-> col
                 (update-keys u/->kebab-case-en))
@@ -103,15 +95,6 @@
 
                    (:metabase.lib.field/temporal-unit col)
                    (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
-
-                   (and *force-broken-card-refs*
-                        ;; never force broken refs for Models, because Models can have give columns with completely
-                        ;; different names the Field ID of a different column, somehow. See #22715
-                        (or
-                         ;; we can only do this check if `card-id` is passed in.
-                         (not card-id)
-                         (not= (:type card) :model)))
-                   (assoc ::force-broken-id-refs true)
 
                    ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
                    ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
@@ -132,11 +115,10 @@
     cols                  :- [:sequential :map]]
    (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
          card-id           (when card-or-id (u/the-id card-or-id))
-         card              (when card-id (lib.metadata/card metadata-providerable card-id))
          field-ids         (keep :id cols)
          fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
          field-id->field   (m/index-by :id fields)]
-     (mapv #(->card-metadata-column % card-id card (get field-id->field (:id %))) cols))))
+     (mapv #(->card-metadata-column % card-id (get field-id->field (:id %))) cols))))
 
 (def ^:private CardColumnMetadata
   [:merge
