@@ -360,8 +360,6 @@
         col-ref-tail (-> column lib.ref/ref ref-id-or-name)
         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
                       (not-empty (get ref-tails (:id column)))
-                      ;; columns from the previous stage have unique `:lib/desired-column-alias` but not `:name`.
-                      ;; we cannot fallback to `:name` when `:lib/desired-column-alias` is set
                       (get ref-tails col-ref-tail)
                       [])]
     (case (count matches)
