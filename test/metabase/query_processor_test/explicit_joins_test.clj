@@ -775,10 +775,7 @@
                                                       :aggregation  [[:distinct &Products.products.id]]
                                                       :filter       [:= &Products.products.category "Gizmo"]}
                                        :alias        "Q2"
-                                       ;; The test matches how MBQL lib generates references today. For `source-query`,
-                                       ;; it will use `:lib/desired-column-alias`, and for the joined column it will
-                                       ;; prefer the field ID.
-                                       :condition    [:= [:field "Products__CREATED_AT" {:base-type :type/DateTime}]
+                                       :condition    [:= [:field "CREATED_AT" {:base-type :type/DateTime}]
                                                       !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
