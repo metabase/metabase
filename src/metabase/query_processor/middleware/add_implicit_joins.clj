@@ -34,8 +34,7 @@
          [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
          (when-not (some #{:source-metadata} &parents)
            &match))
-       distinct
-       (into [])))
+       (into [] distinct)))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
   (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name source-fk-join-alias))
@@ -69,7 +68,7 @@
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
         (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table target-table-ids))
-      (for [{fk-field-id :fk-field-id, fk-join-alias :fk-join-alias} fk-field-infos
+      (for [{:keys [fk-field-id fk-join-alias]} fk-field-infos
             :let [fk-field (lib.metadata.protocols/field (qp.store/metadata-provider) fk-field-id)]
             :when fk-field
             :let [{pk-id :fk-target-field-id, fk-name :name, fk-ident :ident} fk-field]
@@ -77,19 +76,18 @@
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
               alias-for-join           (join-alias table-name fk-name fk-join-alias)]
-          (-> (merge {:source-table  source-table
-                      :alias         alias-for-join
-                      :ident         (lib/implicit-join-clause-ident fk-ident)
-                      :fields        :none
-                      :strategy      :left-join
-                      :condition     [:= [:field fk-field-id (when fk-join-alias {:join-alias fk-join-alias})]
-                                      [:field pk-id {:join-alias alias-for-join}]]
-                      :fk-field-id   fk-field-id}
-                     (when fk-join-alias
-                       {:fk-join-alias fk-join-alias}))
+          (-> (m/assoc-some {:source-table  source-table
+                             :alias         alias-for-join
+                             :ident         (lib/implicit-join-clause-ident fk-ident)
+                             :fields        :none
+                             :strategy      :left-join
+                             :condition     [:= [:field fk-field-id (when fk-join-alias {:join-alias fk-join-alias})]
+                                             [:field pk-id {:join-alias alias-for-join}]]
+                             :fk-field-id   fk-field-id}
+                            :fk-join-alias fk-join-alias)
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
-(mu/defn- implicitly-joined-fields->joins :- [:maybe [:sequential JoinInfo]]
+(mu/defn- implicitly-joined-fields->joins :- [:sequential JoinInfo]
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
   [field-clauses-with-source-field]
   (let [k-field-infos (->> field-clauses-with-source-field
@@ -100,8 +98,7 @@
                            distinct
                            not-empty)]
     (->> (fk-field-infos->join-infos k-field-infos)
-         distinct
-         (into []))))
+         (into [] distinct))))
 
 (defn- visible-joins
   "Set of all joins that are visible in the current level of the query or in a nested source query."
@@ -125,17 +122,15 @@
   [form]
   ;; Build a map of [[FkFieldInfo]] -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
   (into {}
-        (map (fn [{:keys [fk-field-id fk-join-alias], join-alias :alias}]
-               (when fk-field-id
-                 [(merge {:fk-field-id fk-field-id}
-                         (when fk-join-alias
-                           {:fk-join-alias fk-join-alias})) join-alias])))
+        (keep (fn [{:keys [fk-field-id fk-join-alias], join-alias :alias}]
+                (when fk-field-id
+                  [(m/assoc-some {:fk-field-id fk-field-id} :fk-join-alias fk-join-alias) join-alias])))
         (visible-joins form)))
 
 (mu/defn- field-opts->fk-field-info :- FkFieldInfo
   [{:keys [source-field source-field-join-alias]}]
-  (merge {:fk-field-id source-field}
-         (when source-field-join-alias {:fk-join-alias source-field-join-alias})))
+  (m/assoc-some {:fk-field-id source-field}
+                :fk-join-alias source-field-join-alias))
 
 (defn- add-implicit-joins-aliases-to-metadata
   "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.
