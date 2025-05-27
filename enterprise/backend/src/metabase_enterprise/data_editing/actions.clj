@@ -9,18 +9,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(derive :data-grid/create :data-grid/common)
-(derive :data-grid/update :data-grid/common)
-(derive :data-grid/delete :data-grid/common)
+(derive :data-grid.row/create :data-grid.row/common)
+(derive :data-grid.row/update :data-grid.row/common)
+(derive :data-grid.row/delete :data-grid.row/common)
 
 (s/def :actions.args.data-grid/common
   :actions.args.crud.table/row)
 
-(defmethod actions/action-arg-map-spec :data-grid/common
+(defmethod actions/action-arg-map-spec :data-grid.row/common
   [_action]
   :actions.args.data-grid/common)
 
-(defmethod actions/normalize-action-arg-map :data-grid/common
+(defmethod actions/normalize-action-arg-map :data-grid.row/common
   [_action input]
   (update-keys input u/qualified-name))
 
@@ -28,7 +28,7 @@
   (u/prog1 (-> context :scope :table-id)
     (when-not <>
       (throw (ex-info "Cannot perform data-grid actions without a table in scope."
-                      {:error :data-grid/unknown-table})))))
+                      {:error :data-grid.row/unknown-table})))))
 
 (defn- map-inputs [table-id inputs]
   (for [row (data-editing/apply-coercions table-id inputs)]
@@ -53,15 +53,15 @@
         next-inputs  (map-inputs table-id inputs)]
     (perform-table-row-action! action-kw context next-inputs post-process)))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/create]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/create]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
   (perform! :table.row/create context inputs))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/update]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/update]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
   (perform! :table.row/update context inputs))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/delete]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/delete]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
   (perform! :table.row/delete context inputs))
 

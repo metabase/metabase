@@ -42,7 +42,7 @@
   (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
         ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
         scope (or scope {:table-id table-id})]
-    {:created-rows (map :row (:outputs (actions/perform-action! :data-grid/create scope rows)))}))
+    {:created-rows (map :row (:outputs (actions/perform-action! :data-grid.row/create scope rows)))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
@@ -71,7 +71,7 @@
                       ;; For now, it's just a shim, because we haven't implemented an efficient bulk update action yet.
                       ;; This is a dumb shim; we're not checking that the pk maps are really (just) the pks.
                       (map #(merge % updates) pks))]
-      {:updated (map :row (:outputs (actions/perform-action! :data-grid/update scope rows)))})))
+      {:updated (map :row (:outputs (actions/perform-action! :data-grid.row/update scope rows)))})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
@@ -86,7 +86,7 @@
   ;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
   ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
   (let [scope (or scope {:table-id table-id})]
-    (actions/perform-action! :data-grid/delete scope rows)
+    (actions/perform-action! :data-grid.row/delete scope rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
