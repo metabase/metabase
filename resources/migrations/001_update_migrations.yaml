@@ -11603,6 +11603,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     unique: true
+              - column:
+                  name: "is_active"
+                  type: ${boolean.type}
+                  remarks: Whether the tenant is active or not
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v55.2025-05-20T12:29:03

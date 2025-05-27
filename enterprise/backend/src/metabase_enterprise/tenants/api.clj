@@ -25,25 +25,35 @@
   (t2/insert! :model/Tenant tenant))
 
 (defn- present-tenants [tenants]
-  (t2/hydrate tenants :member_count))
+  (->> (t2/hydrate tenants :member_count)
+       (map #(select-keys % [:id :name :slug :is_active :member_count]))))
 
 (defn- present-tenant [tenant]
   (first (present-tenants [tenant])))
 
 (api.macros/defendpoint :get "/"
   "Get all tenants"
-  [_ _ _]
+  [_
+   {:keys [status]} :- [:map
+                        [:status {:default "all"} [:enum "all" "deactivated"]]]
+   _]
   {:data (present-tenants
           (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]}
-                                     (request/paged?) (assoc :limit (request/limit) :offset (request/offset)))))})
+                                     (request/paged?) (assoc :limit (request/limit) :offset (request/offset))
+                                     true (assoc :where (case status
+                                                          "all" [:inline [:= 1 1]]
+                                                          "deactivated" [:= :is_active false])))))})
 
 (api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
   "Update a tenant (right now, only name)"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   tenant :- [:map {:closed true} [:name ms/NonBlankString]]]
-  (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
-                 "This name is already taken.")
+   tenant :- [:map {:closed true}
+              [:name {:optional true} [:maybe ms/NonBlankString]]
+              [:is_active {:optional true} [:maybe ms/BooleanValue]]]]
+  (when (:name tenant)
+    (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
+                   "This name is already taken."))
   (t2/update! :model/Tenant {:id id} tenant)
   (present-tenant (t2/select-one :model/Tenant :id id)))
 
