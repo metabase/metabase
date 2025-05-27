@@ -163,6 +163,7 @@ export const EditTableDataContainer = ({
       <Stack className={S.container} gap={0} data-testid="edit-table-data-root">
         {table && (
           <EditTableDataHeader
+            database={database}
             table={table}
             question={fakeTableQuestion}
             isLoading={isFetching}

@@ -5,25 +5,18 @@ import { t } from "ttag";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip"; // TODO: we should not use query builder components
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import {
-  ActionIcon,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Title,
-} from "metabase/ui";
+import { ActionIcon, Button, Flex, Group, Icon, Stack } from "metabase/ui";
 import { TableNotificationsTrigger } from "metabase-enterprise/data_editing/alerts/TableNotificationsModals/TableNotificationsTrigger/TableNotificationsTrigger";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { Table as ApiTable } from "metabase-types/api";
+import type { Database, Table } from "metabase-types/api";
 
-import { EditTableDataBackButton } from "./EditTableDataBackButton";
+import { TableBreadcrumbs } from "../common/TableBreadcrumbs";
+
 import { EditTableDataFilterButton } from "./EditTableDataFilterButton";
 
 interface EditTableDataHeaderProps {
-  table: Table | ApiTable;
+  database: Database;
+  table: Table;
   question: Question;
   isLoading: boolean;
   isUndoLoading: boolean;
@@ -38,6 +31,7 @@ interface EditTableDataHeaderProps {
 }
 
 export const EditTableDataHeader = ({
+  database,
   table,
   question,
   isLoading,
@@ -65,16 +59,15 @@ export const EditTableDataHeader = ({
 
   return (
     <Stack gap={0}>
-      <Flex
-        p="lg"
-        data-testid="table-data-view-header"
-        bd="1px solid var(--mb-color-border)"
+      <Group
         justify="space-between"
+        align="center"
+        p="0.5rem 1rem 0.5rem 2rem"
+        mih="4rem"
+        bg="var(--mb-color-background)"
+        data-testid="table-data-view-header"
       >
-        <Group gap="sm">
-          <EditTableDataBackButton table={table} />
-          <Title>{t`Editing ${table.display_name}`}</Title>
-        </Group>
+        <TableBreadcrumbs database={database} table={table} isEditMode />
 
         <Group>
           <EditTableDataFilterButton
@@ -125,7 +118,7 @@ export const EditTableDataHeader = ({
             </ActionIcon>
           </Flex>
         </Group>
-      </Flex>
+      </Group>
       <QuestionFiltersHeader
         expanded={areFiltersExpanded}
         question={question}
