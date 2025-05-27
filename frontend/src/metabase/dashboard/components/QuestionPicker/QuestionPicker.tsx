@@ -7,7 +7,6 @@ import { isPublicCollection } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
-import Input from "metabase/core/components/Input";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { isEmbeddingSdk } from "metabase/env";
@@ -17,7 +16,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { Button, Flex, Icon, type IconProps } from "metabase/ui";
+import { Button, Flex, Icon, type IconProps, TextInput } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
@@ -68,21 +67,17 @@ function QuestionPickerInner({
     [databases],
   );
 
-  console.log({ collectionsById, getCollectionIcon, collections });
-
   const onNewQuestion = (type: "native" | "notebook") =>
     dispatch(addDashboardQuestion(type));
 
   return (
     <div className={S.questionPickerRoot}>
-      <Input
+      <TextInput
         className={S.searchInput}
-        fullWidth
         autoFocus
         data-autofocus
         placeholder={t`Search…`}
         value={searchText}
-        onResetClick={() => setSearchText("")}
         onChange={handleSearchTextChange}
       />
 
