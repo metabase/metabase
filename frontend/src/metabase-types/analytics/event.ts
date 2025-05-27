@@ -25,7 +25,7 @@ type CSVUploadClickedEvent = ValidateEvent<{
 
 export type DatabaseAddClickedEvent = ValidateEvent<{
   event: "database_add_clicked";
-  triggered_from: "left-nav" | "db-list";
+  triggered_from: "db-list";
 }>;
 
 type OnboardingChecklistOpenedEvent = ValidateEvent<{

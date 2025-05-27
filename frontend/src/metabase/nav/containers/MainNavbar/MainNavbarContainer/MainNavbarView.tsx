@@ -17,7 +17,6 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import {
   ActionIcon,
@@ -38,7 +37,6 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink } from "../SidebarItems";
-import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
 import {
   trackAddDataModalOpened,
@@ -158,9 +156,6 @@ export function MainNavbarView({
   const canUpload = canCurateRootCollection && canUploadToDatabase;
   const showUploadMenu = hasAttachedDWHFeature && canUpload;
 
-  const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
-  const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
-
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -266,13 +261,6 @@ export function MainNavbarView({
                 />
               </ErrorBoundary>
             </TrashSidebarSection>
-          )}
-          {showAddDatabaseButton && (
-            <SidebarSection>
-              <ErrorBoundary>
-                <AddDatabase />
-              </ErrorBoundary>
-            </SidebarSection>
           )}
         </div>
         <WhatsNewNotification />
