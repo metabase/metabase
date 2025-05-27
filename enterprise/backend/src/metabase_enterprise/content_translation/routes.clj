@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-translation.api.routes
+(ns metabase-enterprise.content-translation.routes
   "Endpoints relating to the translation of user-generated content"
   (:require
    [metabase-enterprise.content-translation.dictionary :as dictionary]
