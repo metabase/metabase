@@ -453,6 +453,7 @@
 (defn- column-metadata->field-ref
   [metadata]
   (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
+        card-column?      (some? (:lib/card-id metadata))
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}
@@ -482,9 +483,10 @@
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id}))
-        id-or-name        ((if inherited-column?
-                             (some-fn :lib/desired-column-alias :name)
-                             (some-fn :id :name))
+        id-or-name        ((cond
+                             inherited-column? (some-fn :lib/desired-column-alias :name)
+                             card-column? :name
+                             :else (some-fn :id :name))
                            metadata)]
     [:field options id-or-name]))
 
