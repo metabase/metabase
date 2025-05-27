@@ -79,16 +79,23 @@
           schemas?        (driver.u/supports? driver :schemas database)
           fields-metadata (if schemas?
                             (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
-                            (fetch-metadata/fields-metadata database))]
+                            (fetch-metadata/fields-metadata database))
+          select-best-matching-name (fn [target-schema target-name]
+                                      (fn [item]
+                                        [(not= (:schema item) target-schema)
+                                         (not= (:name item) target-name)]))]
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
-                         (let [fst     (first table-metadata)
-                               table   (t2/select-one :model/Table
-                                                      :db_id (:id database)
-                                                      :%lower.name (t2.util/lower-case-en (:table-name fst))
-                                                      :%lower.schema (some-> fst :table-schema t2.util/lower-case-en)
-                                                      {:where sync-util/sync-tables-clause})
+                         (let [{:keys [table-name table-schema]} (first table-metadata)
+
+                               table   (->> (t2/select :model/Table
+                                                       :db_id (:id database)
+                                                       :%lower.name (t2.util/lower-case-en table-name)
+                                                       :%lower.schema (some-> table-schema t2.util/lower-case-en)
+                                                       {:where sync-util/sync-tables-clause})
+                                            (sort-by (select-best-matching-name table-schema table-name))
+                                            first)
                                updated (if table
                                          (try
                                            ;; TODO: decouple nested field columns sync from field sync. This will allow
