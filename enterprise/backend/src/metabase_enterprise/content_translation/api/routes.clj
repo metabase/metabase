@@ -1,10 +1,9 @@
 (ns metabase-enterprise.content-translation.api.routes
   "Endpoints relating to the translation of user-generated content"
   (:require
-   [metabase-enterprise.content-translation.api.dictionary :as dictionary]
-   [metabase-enterprise.content-translation.models :as ct]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.content-translation.api.dictionary :as dictionary]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
