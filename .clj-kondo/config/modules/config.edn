@@ -921,6 +921,7 @@
            events
            models
            permissions
+           query-processor
            util}}
 
   sample-data
