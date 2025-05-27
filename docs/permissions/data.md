@@ -34,7 +34,7 @@ You can set the following types of permissions on a database, schema, or table:
 - [Manage table metadata](#manage-table-metadata-permissions)
 - [Manage database](#manage-database-permissions)
 
-If each of your customers has their own database, check out [Database routing](./database-routing.md).
+If you need to change the target database based on who is logged in, check out [Database routing](./database-routing.md). Database routing is particularly useful when each of your customers has their own database.
 
 ## View data permissions
 
