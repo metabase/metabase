@@ -1,3 +1,7 @@
+## [0.54.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.12...embedding-sdk-0.54.13) (2025-05-27)
+
+
+
 ## [0.54.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.11...embedding-sdk-0.54.12) (2025-05-26)
 
 
