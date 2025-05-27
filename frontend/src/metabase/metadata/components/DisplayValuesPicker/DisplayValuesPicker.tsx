@@ -47,28 +47,22 @@ export const DisplayValuesPicker = ({
 
 function getData(options: RemappingValue[], value: RemappingValue) {
   const allOptions = [...options, value];
-  const data = [];
 
-  if (allOptions.includes("original")) {
-    data.push({
+  return [
+    {
+      disabled: !allOptions.includes("original"),
       label: t`Use original value`,
       value: "original",
-    });
-  }
-
-  if (allOptions.includes("foreign")) {
-    data.push({
+    },
+    {
+      disabled: !allOptions.includes("foreign"),
       label: t`Use foreign key`,
       value: "foreign",
-    });
-  }
-
-  if (allOptions.includes("custom")) {
-    data.push({
+    },
+    {
+      disabled: !allOptions.includes("custom"),
       label: t`Custom mapping`,
       value: "custom",
-    });
-  }
-
-  return data;
+    },
+  ];
 }
