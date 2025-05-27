@@ -143,7 +143,7 @@ export type LoadingMessage =
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
-  status: "not-connected" | "syncing" | "active" | "error";
+  status: "not-connected" | "syncing" | "active" | "paused" | "error";
   url?: string;
   message?: string; // only for errors
   created_at?: number;
@@ -179,6 +179,7 @@ const tokenStatusFeatures = [
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
+  "refresh-token-features",
   "sandboxes",
   "scim",
   "serialization",
@@ -242,6 +243,9 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "metabot_v3",
+  "ai_sql_fixer",
+  "ai_sql_generation",
   "database_routing",
   "development-mode",
 ] as const;
@@ -385,6 +389,7 @@ interface PublicSettings {
   "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
@@ -397,9 +402,9 @@ interface PublicSettings {
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
-  "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
+  "enable-sandboxes?": boolean;
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
@@ -420,6 +425,7 @@ interface PublicSettings {
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "persisted-model-refresh-cron-schedule": string;
+  "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
   "session-cookies": boolean | null;
@@ -437,13 +443,14 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "non-table-chart-generated": boolean;
 }
 
 export type UserSettings = {
+  "dismissed-excel-pivot-exports-banner"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
-  "dismissed-onboarding-sidebar-link"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
@@ -497,6 +504,8 @@ export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 export type ColorSettings = Record<string, string>;
 
 export type IllustrationSettingValue = "default" | "none" | "custom";
+export type TimeoutValue = { amount: number; unit: string };
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
@@ -513,6 +522,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "saml-user-provisioning-enabled?"?: boolean;
+  "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

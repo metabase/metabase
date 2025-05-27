@@ -51,7 +51,7 @@ function DataModelAppBase({
   }, [pathname]);
 
   const options = [
-    { name: t`Data`, value: TAB.DATABASE },
+    { name: t`Data model`, value: TAB.DATABASE },
     ...(isAdmin ? [{ name: t`Segments`, value: TAB.SEGMENTS }] : []),
   ];
 

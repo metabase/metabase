@@ -9,8 +9,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
-   [metabase.query-processor.middleware.limit :as limit]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.query-processor.settings :as qp.settings]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [toucan2.core :as t2])
@@ -42,7 +42,7 @@
             (is success? (str "Not able to persist on " driver/*driver*))
             (is (= :persist.check/valid error)))
           (testing "Populates the `cache_info` table with v1 information"
-            (let [schema-name (ddl.i/schema-name (mt/db) (public-settings/site-uuid))
+            (let [schema-name (ddl.i/schema-name (mt/db) (system/site-uuid))
                   query       {:query
                                (first
                                 (sql/format {:select [:key :value]
@@ -50,7 +50,7 @@
                                             {:dialect (can-persist-test-honeysql-quote-style driver/*driver*)}))}
                   values      (into {} (->> query mt/native-query qp/process-query mt/rows))]
               (is (partial= {"settings-version" "1"
-                             "instance-uuid"    (public-settings/site-uuid)}
+                             "instance-uuid"    (system/site-uuid)}
                             (into {} (->> query mt/native-query qp/process-query mt/rows))))
               (let [[low high]       [(.minus (Instant/now) 1 ChronoUnit/MINUTES)
                                       (.plus (Instant/now) 1 ChronoUnit/MINUTES)]
@@ -65,7 +65,7 @@
 (deftest persisted-models-max-rows-test
   (testing "Persisted models should have the full number of rows of the underlying query,
             not limited by `absolute-max-results` (#24793)"
-    (with-redefs [limit/absolute-max-results 3]
+    (with-redefs [qp.settings/absolute-max-results 3]
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
           (mt/with-persistence-enabled! [persist-models!]
@@ -142,7 +142,7 @@
                                       (fn [x]
                                         (swap! bad-refs conj x))]
                               (qp/process-query query))
-                    persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+                    persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
                 (testing "Was persisted"
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
                 (testing "Did not find bad field clauses"
@@ -168,7 +168,7 @@
                            :database (mt/id)
                            :query {:source-table (str "card__" (:id model))}}
                   results (qp/process-query query)
-                  persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+                  persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
               (testing "Was persisted"
                 (is (str/includes? (-> results :data :native_form :query) persisted-schema))))
             (let [query (mt/mbql-query nil
@@ -176,7 +176,7 @@
                            :aggregation [[:count]]
                            :breakout [$products.category]})
                   results (qp/process-query query)
-                  persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+                  persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
               (testing "Was persisted"
                 (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
               (is (= {"Doohickey" 3976, "Gadget" 4939,

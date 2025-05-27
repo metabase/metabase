@@ -44,6 +44,7 @@ Object.assign(Funnel, {
   iconName: "funnel",
   noHeader: true,
   minSize: getMinSize("funnel"),
+  supportsVisualizer: true,
   defaultSize: getDefaultSize("funnel"),
   isSensible({ cols }: DatasetData) {
     return cols.length === 2;
@@ -188,6 +189,7 @@ export function Funnel(props: VisualizationProps) {
     headerIcon,
     settings,
     showTitle,
+    isVisualizerViz,
     actionButtons,
     className,
     onChangeCardAndRun,
@@ -196,6 +198,7 @@ export function Funnel(props: VisualizationProps) {
     getHref,
     isDashboard,
     isEditing,
+    titleMenuItems,
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
@@ -217,6 +220,10 @@ export function Funnel(props: VisualizationProps) {
     );
   }
 
+  // We can't navigate a user to a particular card from a visualizer viz,
+  // so title selection is disabled in this case
+  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+
   return (
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
@@ -224,10 +231,11 @@ export function Funnel(props: VisualizationProps) {
           series={groupedRawSeries}
           settings={settings}
           icon={headerIcon}
-          getHref={getHref}
+          getHref={canSelectTitle ? getHref : undefined}
           actionButtons={actionButtons}
           hasInfoTooltip={!isDashboard || !isEditing}
-          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeCardAndRun={canSelectTitle ? onChangeCardAndRun : undefined}
+          titleMenuItems={titleMenuItems}
         />
       )}
       <FunnelNormal

@@ -42,7 +42,7 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
@@ -144,9 +144,9 @@
                "datetime" ::lib.schema.literal/datetime
                "unit"     ::DateTimeUnit)]])
 
-(def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
+(def ^:internal absolute-datetime
   "Schema for an `:absolute-datetime` clause."
-  [:ref ::absolute-datetime])
+  (with-meta [:ref ::absolute-datetime] {:clause-name :absolute-datetime}))
 
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
@@ -330,18 +330,20 @@
     {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
     ::require-base-type-for-field-name]])
 
-(def ^{:clause-name :field, :added "0.39.0"} field
+(def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
-  [:ref ::field])
+  (with-meta [:ref ::field] {:clause-name :field}))
 
-(def ^{:clause-name :field, :added "0.39.0"} field:id
+(def ^{:added "0.39.0"} field:id
   "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
-  [:and
-   field
-   [:fn
-    {:error/message "Must be a :field with an integer Field ID."}
-    (fn [[_ id-or-name]]
-      (integer? id-or-name))]])
+  (with-meta
+   [:and
+    field
+    [:fn
+     {:error/message "Must be a :field with an integer Field ID."}
+     (fn [[_ id-or-name]]
+       (integer? id-or-name))]]
+   {:clause-name :field}))
 
 (mr/def ::Field
   [:schema
@@ -432,7 +434,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -635,8 +637,7 @@
   x NumericExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :expressions/integer}} integer
-  x [:or NumericExpressionArg
-     StringExpressionArg])
+  x [:or NumericExpressionArg StringExpressionArg])
 
 (defclause ^{:requires-features #{:expressions :expressions/float}} float
   x StringExpressionArg)
@@ -712,10 +713,24 @@
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
-  string StringExpressionArg)
+  string [:or StringExpressionArg DateTimeExpressionArg])
+
+(def ^:private LiteralDatetimeModeString
+  [:enum {:error/message "datetime mode string"
+          :decode/normalize lib.schema.common/normalize-keyword-lower}
+   :iso
+   :simple
+   :unixmilliseconds
+   :unixseconds
+   :unixmicroseconds
+   :unixnanoseconds])
+
+(defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
+  value  StringExpressionArg ;; normally a string, number, or bytes
+  mode   (optional LiteralDatetimeModeString))
 
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now date))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -822,7 +837,8 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
-(def ^:private Emptyable
+(def Emptyable
+  "Schema for a valid is-empty or not-empty argument."
   [:or StringExpressionArg Field])
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
@@ -851,22 +867,20 @@
                      "second-string-or-field" StringExpressionArg
                      "more-strings-or-fields" [:rest StringExpressionArg])]))
 
-(def ^{:clause-name :starts-with} starts-with
+(def starts-with
   "Schema for a valid :starts-with clause."
-  [:ref ::starts-with])
-(def ^{:clause-name :ends-with} ends-with
+  (with-meta [:ref ::starts-with] {:clause-name :starts-with}))
+(def ends-with
   "Schema for a valid :ends-with clause."
-  [:ref ::ends-with])
-(def ^{:clause-name :contains} contains
+  (with-meta [:ref ::ends-with] {:clause-name :ends-with}))
+(def contains
   "Schema for a valid :contains clause."
-  [:ref ::contains])
+  (with-meta [:ref ::contains] {:clause-name :contains}))
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
-(def ^{:sugar       true
-       :clause-name :does-not-contain}
-  does-not-contain
+(def ^:sugar does-not-contain
   "Schema for a valid :does-not-contain clause."
-  [:ref ::does-not-contain])
+  (with-meta [:ref ::does-not-contain] {:clause-name :does-not-contain}))
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
@@ -1583,9 +1597,9 @@
     [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
     [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
 
-(def ^{:clause-name :dimension} dimension
+(def dimension
   "Schema for a valid dimension clause."
-  [:ref ::dimension])
+  (with-meta [:ref ::dimension] {:clause-name :dimension}))
 
 (defclause variable
   target template-tag)

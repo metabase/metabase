@@ -306,11 +306,9 @@
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/->honeysql [:clickhouse :date]
-  [driver [_ value]]
-  (h2x/maybe-cast "Date32"
-                  [:'parseDateTime64 (sql.qp/->honeysql driver value)
-                   [:inline "%Y-%m-%d"]]))
+(defmethod sql.qp/date-dbtype :clickhouse
+  [_driver]
+  :Date32)
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]

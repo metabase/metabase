@@ -35,7 +35,7 @@
 
 (deftest official-collection-tests
   (testing "it should bump up the value of items in official collections"
-    ;; using the ee implementation that isn't wrapped by enable-enhancements? check
+    ;; using the ee implementation that isn't wrapped by premium features token check
     (let [search-string "custom expression examples"
           a             {:id "a" :name "custom expression examples" :model "dashboard"}
           b             {:id "b" :name "examples of custom expressions" :model "dashboard"}

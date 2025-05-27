@@ -363,7 +363,7 @@ describe("scenarios > admin > troubleshooting > logs", () => {
   };
 
   beforeEach(() => {
-    cy.intercept("GET", "/api/util/logs", (request) => {
+    cy.intercept("GET", "/api/logger/logs", (request) => {
       request.reply([log1, log2]);
     }).as("getLogs");
 

@@ -16,6 +16,7 @@ import type {
   DashboardSubscription,
   Database,
   DatabaseXray,
+  Dataset,
   Field,
   FieldDimension,
   FieldId,
@@ -28,6 +29,7 @@ import type {
   ModelIndex,
   NativeQuerySnippet,
   NotificationChannel,
+  ParameterId,
   PopularItem,
   RecentItem,
   Revision,
@@ -103,6 +105,21 @@ export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
+}
+
+export function provideAdhocQueryTags(
+  dataset: Dataset,
+): TagDescription<TagType>[] {
+  return [
+    listTag("database"),
+    idTag("database", dataset.database_id),
+    listTag("field"),
+    ...(dataset.data?.results_metadata?.columns
+      ?.map((column) =>
+        column.id !== undefined ? idTag("field", column.id) : null,
+      )
+      .filter((tag): tag is TagType => tag !== null) ?? []),
+  ];
 }
 
 export function provideAdhocQueryMetadataTags(
@@ -314,6 +331,12 @@ export function provideDashboardListTags(
     listTag("dashboard"),
     ...dashboards.map((dashboard) => idTag("dashboard", dashboard.id)),
   ];
+}
+
+export function provideParameterValuesTags(
+  parameterId: ParameterId,
+): TagDescription<TagType>[] {
+  return [idTag("parameter-values", parameterId)];
 }
 
 export function provideDashboardTags(

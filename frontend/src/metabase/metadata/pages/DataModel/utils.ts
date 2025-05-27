@@ -5,7 +5,7 @@ import type { ParsedRouteParams, RouteParams } from "./types";
 export function parseRouteParams(params: RouteParams): ParsedRouteParams {
   return {
     databaseId: Urls.extractEntityId(params.databaseId),
-    schemaId: params.schemaId,
+    schemaId: params.schemaId?.replace(/^\d+:/, ""),
     tableId: Urls.extractEntityId(params.tableId),
     fieldId: Urls.extractEntityId(params.fieldId),
   };
@@ -20,15 +20,15 @@ export function getUrl(params: ParsedRouteParams): string {
     tableId != null &&
     fieldId != null
   ) {
-    return `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}/field/${fieldId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaId)}/table/${tableId}/field/${fieldId}`;
   }
 
   if (databaseId != null && schemaId != null && tableId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaId)}/table/${tableId}`;
   }
 
   if (databaseId != null && schemaId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaId)}`;
   }
 
   if (databaseId != null) {

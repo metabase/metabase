@@ -77,7 +77,9 @@ H.describeWithSnowplow(
         "Ensure that table is visible in admin without refreshing (metabase#38041)",
       );
 
-      cy.findByTestId("app-bar").button(/gear/).click();
+      cy.findByTestId("app-bar")
+        .findByRole("button", { name: "Settings" })
+        .click();
       H.popover().findByText("Admin settings").click();
 
       cy.findByRole("link", { name: "Table Metadata" }).click();
@@ -119,7 +121,7 @@ H.describeWithSnowplow(
           it(`Can upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "csv_upload_successful",
             });
 
@@ -145,7 +147,7 @@ H.describeWithSnowplow(
           it(`Cannot upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "csv_upload_failed",
             });
 

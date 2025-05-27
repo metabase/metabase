@@ -1,12 +1,12 @@
 (ns metabase.lib.schema.common
   (:require
    [clojure.string :as str]
-   [metabase.types]
+   [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -57,8 +57,8 @@
   [tag :- :keyword x]
   (= (mbql-clause-tag x) tag))
 
-;;; Schema for a string that cannot be blank.
 (mr/def ::non-blank-string
+  "Schema for a string that cannot be blank."
   [:and
    {:error/message "non-blank string"
     :json-schema   {:type "string" :minLength 1}}
@@ -67,8 +67,8 @@
     {:error/message "non-blank string"}
     (complement str/blank?)]])
 
-;;; Schema representing an integer than must also be greater than or equal to zero.
 (mr/def ::int-greater-than-or-equal-to-zero
+  "Schema representing an integer than must also be greater than or equal to zero."
   [:int
    {:error/message "integer greater than or equal to zero"
     :min           0}])

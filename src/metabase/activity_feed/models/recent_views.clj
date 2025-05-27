@@ -34,9 +34,9 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as root]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as root]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -249,6 +249,10 @@
                          :card.database_id
                          :card.display
                          :card.card_schema
+                         :card.result_metadata
+                         :card.dataset_query
+                         :card.entity_id
+                         :card.visualization_settings
                          [:dashboard.id :dashboard_id]
                          [:dashboard.name :dashboard_name]
                          [:card.collection_id :entity-coll-id]
@@ -300,6 +304,10 @@
      :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
+     :result_metadata (:result_metadata card)
+     :dataset_query (:dataset_query card)
+     :entity_id (:entity_id card)
+     :visualization_settings (:visualization_settings card)
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)

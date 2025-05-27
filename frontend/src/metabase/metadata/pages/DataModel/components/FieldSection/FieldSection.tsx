@@ -1,17 +1,21 @@
+import { t } from "ttag";
+
+import { useUpdateFieldMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import {
   DiscardFieldValuesButton,
+  NameDescriptionInput,
   RescanFieldButton,
 } from "metabase/metadata/components";
 import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Stack, Title } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
-import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
@@ -21,13 +25,31 @@ interface Props {
 }
 
 export const FieldSection = ({ databaseId, field }: Props) => {
-  return (
-    <Stack gap={0} h="100%">
-      <Title order={2} pb="md" px="xl" py="lg">
-        {getFieldDisplayName(field)}
-      </Title>
+  const [updateField] = useUpdateFieldMutation();
+  const id = getRawTableFieldId(field);
+  const [sendToast] = useToast();
+  function confirm(message: string) {
+    sendToast({ message });
+  }
 
-      <Stack className={S.container} gap="xl" h="100%" pb="lg" px="xl">
+  return (
+    <Stack gap="lg" h="100%">
+      <NameDescriptionInput
+        name={field.display_name}
+        namePlaceholder={t`Give this field a name`}
+        onNameChange={async (display_name) => {
+          await updateField({ id, display_name });
+          confirm(t`Display name for ${display_name} updated`);
+        }}
+        description={field.description ?? ""}
+        descriptionPlaceholder={t`Give this field a description`}
+        onDescriptionChange={async (description) => {
+          await updateField({ id, description });
+          confirm(t`Description for ${getFieldDisplayName(field)} updated`);
+        }}
+      />
+
+      <Stack gap="xl">
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} />
         <BehaviorSection databaseId={databaseId} field={field} />

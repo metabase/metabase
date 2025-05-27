@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -439,7 +438,8 @@
                         (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
-      ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
+      ;; TODO: Include the time and date binning strategies too;
+      ;; see [[metabase.warehouse-schema.api.table/assoc-field-dimension-options]].
       (for [strat strategies]
         (cond-> strat
           (or (:was-binned field-metadata) existing) (dissoc :default)
@@ -452,8 +452,7 @@
 
 (defn- column-metadata->field-ref
   [metadata]
-  (let [inherited-column? (when-not (::lib.card/force-broken-id-refs metadata)
-                            (#{:source/card :source/native :source/previous-stage} (:lib/source metadata)))
+  (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}

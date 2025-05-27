@@ -16,7 +16,6 @@ export function getIframeQueryWithoutDefaults(
   return optionsToHashParams(
     removeDefaultValueParameters(hashOptions, {
       theme: "light",
-      hide_download_button: false,
       background: true,
     }),
   );
@@ -116,8 +115,8 @@ payload = {
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
-iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
-  ${python.getIframeQuerySource(displayOptions)}`,
+iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${python.getIframeQuerySource(displayOptions)}
+`,
 };
 
 export const ruby = {

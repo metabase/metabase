@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
@@ -31,6 +32,11 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
   const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
 
+  const [sendToast] = useToast();
+  function confirm(message: string) {
+    sendToast({ message, icon: "check" });
+  }
+
   return (
     <Stack gap="md">
       <Box>
@@ -41,11 +47,12 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
         description={t`Where this field should be displayed`}
         label={t`Visibility`}
         value={field.visibility_type}
-        onChange={(visibilityType) => {
-          updateField({
+        onChange={async (visibilityType) => {
+          await updateField({
             id,
             visibility_type: visibilityType,
           });
+          confirm(t`Visibility for ${field.display_name} updated`);
         }}
       />
 
@@ -53,11 +60,12 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
         description={t`How this field should be filtered`}
         label={t`Filtering`}
         value={field.has_field_values}
-        onChange={(hasFieldValues) => {
-          updateField({
+        onChange={async (hasFieldValues) => {
+          await updateField({
             id,
             has_field_values: hasFieldValues,
           });
+          confirm(t`Filtering for ${field.display_name} updated`);
         }}
       />
 
@@ -75,11 +83,16 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
           description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
           label={t`Unfold JSON`}
           value={isFieldJsonUnfolded(field, database)}
-          onChange={(jsonUnfolding) => {
-            updateField({
+          onChange={async (jsonUnfolding) => {
+            await updateField({
               id,
               json_unfolding: jsonUnfolding,
             });
+            if (jsonUnfolding) {
+              confirm(t`JSON unfloding for ${field.display_name} enabled`);
+            } else {
+              confirm(t`JSON unfloding for ${field.display_name} disabled`);
+            }
           }}
         />
       )}

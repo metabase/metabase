@@ -1,5 +1,10 @@
 .sidebar {
   border-right: 1px solid var(--mb-color-border);
+  overflow: auto;
+
+  &.noBorder {
+    border-right: none;
+  }
 }
 
 .tableSectionContainer {

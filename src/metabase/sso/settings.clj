@@ -1,6 +1,7 @@
 (ns metabase.sso.settings
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
    [metabase.util :as u]
@@ -178,6 +179,17 @@
                                     {:status-code 400}))
                     (setting/set-value-of-type! :boolean :google-auth-enabled new-value))
                   (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
+
+(defn- ee-sso-configured? []
+  (when config/ee-available?
+    (setting/get :other-sso-enabled?)))
+
+(defn sso-enabled?
+  "Any SSO provider is configured and enabled"
+  []
+  (or (google-auth-enabled)
+      (ldap-enabled)
+      (ee-sso-configured?)))
 
 (define-multi-setting google-auth-auto-create-accounts-domain
   (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain.")

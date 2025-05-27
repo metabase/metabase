@@ -5,10 +5,10 @@
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,6 +41,13 @@
    :display-name (deferred-tru "Password")
    :type         :password
    :placeholder  "••••••••"})
+
+(def default-role-details
+  "Map of the db default role details field, useful for `connection-properties` implementations"
+  {:name         "role"
+   :display-name (deferred-tru "Role (optional, required for connection impersonation)")
+   :helper-text (deferred-tru "Specify a role to override the database user''s default role.")
+   :placeholder (deferred-tru "user")})
 
 (def default-dbname-details
   "Map of the db name details field, useful for `connection-properties` implementations"
@@ -229,7 +236,7 @@
   {:name   "cloud-ip-address-info"
    :type   :info
    :getter (fn []
-             (when-let [ips (public-settings/cloud-gateway-ips)]
+             (when-let [ips (warehouses/cloud-gateway-ips)]
                (str (deferred-tru
                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
@@ -303,7 +310,7 @@
     ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
     ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
     ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
-    ;; discussion in the `metabase.types` namespace.
+    ;; discussion in the [[metabase.types.core]] namespace.
     java.time.OffsetTime           :type/TimeWithTZ
     java.time.OffsetDateTime       :type/DateTimeWithTZ
     java.time.ZonedDateTime        :type/DateTimeWithZoneID
@@ -341,22 +348,21 @@
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
 (def ^:dynamic *start-of-week*
-  "Used to override the [[metabase.settings.deprecated-grab-bag/start-of-week]] settings.
+  "Used to override the [[metabase.lib-be.core/start-of-week]] settings.
   Primarily being used to calculate week-of-year in US modes where the start-of-week is always Sunday.
   More in (defmethod date [:sql :week-of-year-us])."
   nil)
 
 (mu/defn start-of-week->int :- [:int {:min 0, :max 6, :error/message "Start of week integer"}]
-  "Returns the int value for the current [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting value, which ranges from
-  `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
-  {:added "0.42.0"}
+  "Returns the int value for the current [[metabase.lib-be.core/start-of-week]] Setting value, which
+  ranges from `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value." {:added "0.42.0"}
   []
   (.indexOf days-of-week (or *start-of-week* (setting/get-value-of-type :keyword :start-of-week))))
 
 (defn start-of-week-offset-for-day
   "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the
   offset (as a negative number) needed to adjust a day of week in the range 1..7 with `start-of-week` as one to a day
-  of week in the range 1..7 with [[metabase.settings.deprecated-grab-bag/start-of-week]] as 1."
+  of week in the range 1..7 with [[metabase.lib-be.core/start-of-week]] as 1."
   [start-of-week]
   (let [db-start-of-week     (.indexOf days-of-week start-of-week)
         target-start-of-week (start-of-week->int)
@@ -366,13 +372,13 @@
 
 (mu/defn start-of-week-offset :- :int
   "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
-  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.settings.deprecated-grab-bag/start-of-week]] in
+  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.lib-be.core/start-of-week]] in
   results.
 
   e.g.
 
   If `:my-driver` returns [[driver/db-start-of-week]] as `:sunday` (1 is Sunday, 2 is Monday, and so forth),
-  and [[metabase.settings.deprecated-grab-bag/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
+  and [[metabase.lib-be.core/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
   Sunday), then the offset should be `-1`, because `:monday` returned by the driver (`2`) minus `1` = `1`."
   [driver]
   (start-of-week-offset-for-day (driver/db-start-of-week driver)))

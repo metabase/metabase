@@ -150,9 +150,7 @@
             col
             {:lib/source               :source/previous-stage
              :lib/source-column-alias  source-alias
-             :lib/desired-column-alias (unique-name-fn source-alias)}
-            (when (:metabase.lib.card/force-broken-id-refs col)
-              (select-keys col [:metabase.lib.card/force-broken-id-refs])))
+             :lib/desired-column-alias (unique-name-fn source-alias)})
            ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
@@ -440,9 +438,14 @@
   This is so that parameters can address both the stage before and after the breakouts.
   Adding filters to the result at stage -1 will filter after the breakouts. Filters added at
   stage -2 filter before the breakouts."
-  [query]
-  (if (#{:query :native} (lib.util/normalized-query-type query))
-    (ensure-legacy-filter-stage query)
-    (cond-> query
-      (lib.breakout/breakouts query)
-      append-stage)))
+  ([query] (ensure-filter-stage query -1))
+  ([query stage-number]
+   (if (= (dec (count (:stages query)))
+          (lib.util/canonical-stage-index query stage-number))
+     (if (#{:query :native} (lib.util/normalized-query-type query))
+       (ensure-legacy-filter-stage query)
+       (cond-> query
+         (lib.breakout/breakouts query)
+         append-stage))
+     ;; Leave the query alone if we're targeting a stage other than the last one.
+     query)))

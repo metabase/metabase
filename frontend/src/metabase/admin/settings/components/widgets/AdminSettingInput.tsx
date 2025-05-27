@@ -17,12 +17,12 @@ import {
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
-  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 
-type OptionsInputType = "select" | "radio";
+type SelectInputType = "select";
+type RadioInputType = "radio";
 type TextualInputType = "text" | "number" | "password" | "textarea";
 type BooleanInputType = "boolean";
 
@@ -31,19 +31,28 @@ type InputDetails =
       inputType: TextualInputType;
       options?: never;
       placeholder?: string;
+      searchable?: never;
     }
   | {
-      inputType: OptionsInputType;
+      inputType: SelectInputType;
       options: { label: string; value: string }[];
       placeholder?: string;
+      searchable?: boolean;
+    }
+  | {
+      inputType: RadioInputType;
+      options: { label: string; value: string }[];
+      placeholder?: string;
+      searchable?: never;
     }
   | {
       inputType: BooleanInputType;
       options?: never;
       placeholder?: never;
+      searchable?: never;
     };
 
-export type AdminSettingInputProps<S extends SettingKey> = {
+export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   name: S;
   title?: string;
   description?: React.ReactNode;
@@ -57,7 +66,7 @@ export type AdminSettingInputProps<S extends SettingKey> = {
  * create a special component (in the widgets/ folder) instead of building one-off
  * features into this component
  */
-export function AdminSettingInput<SettingName extends SettingKey>({
+export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   title,
   description,
   name,
@@ -66,6 +75,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   placeholder,
   switchLabel,
   options,
+  searchable,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
   const {
@@ -105,6 +115,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
           placeholder={placeholder}
           inputType={inputType}
           switchLabel={switchLabel}
+          searchable={searchable}
         />
       )}
     </Box>
@@ -114,21 +125,29 @@ export function AdminSettingInput<SettingName extends SettingKey>({
 export function BasicAdminSettingInput({
   name,
   value,
+  disabled,
   onChange,
   options,
   placeholder,
   inputType,
   autoFocus,
   switchLabel,
+  searchable,
 }: {
   name: EnterpriseSettingKey;
   value: any;
   onChange: (newValue: string | boolean | number) => void;
+  disabled?: boolean;
   options?: { label: string; value: string }[];
   placeholder?: string;
   autoFocus?: boolean;
-  inputType: TextualInputType | OptionsInputType | BooleanInputType;
   switchLabel?: React.ReactNode;
+  inputType:
+    | TextualInputType
+    | SelectInputType
+    | RadioInputType
+    | BooleanInputType;
+  searchable?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -146,9 +165,11 @@ export function BasicAdminSettingInput({
       return (
         <Select
           id={name}
-          value={localValue}
+          value={localValue === null ? "" : localValue}
           onChange={handleChange}
           data={options ?? []}
+          disabled={disabled}
+          searchable={searchable}
         />
       );
     case "boolean":
@@ -159,6 +180,7 @@ export function BasicAdminSettingInput({
           onChange={(e) => handleChange(e.target.checked)}
           label={switchLabel ?? (localValue ? t`Enabled` : t`Disabled`)}
           w="auto"
+          disabled={disabled}
         />
       );
     case "radio":
@@ -191,6 +213,7 @@ export function BasicAdminSettingInput({
           value={localValue}
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
+          disabled={disabled}
         />
       );
     case "number":
@@ -205,6 +228,7 @@ export function BasicAdminSettingInput({
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
           type={inputType ?? "text"}
+          disabled={disabled}
           autoFocus={autoFocus}
         />
       );

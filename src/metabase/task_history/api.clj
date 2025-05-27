@@ -5,8 +5,8 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
-   [metabase.task :as task]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :get "/"

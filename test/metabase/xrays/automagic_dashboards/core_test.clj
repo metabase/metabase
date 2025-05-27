@@ -4,29 +4,27 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.query :as query]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [metabase.xrays.automagic-dashboards.dashboard-templates
-    :as dashboard-templates]
+   [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
-   [metabase.xrays.test-util.automagic-dashboards
-    :as automagic-dashboards.test]
-   [ring.util.codec :as codec]
+   [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -229,8 +227,8 @@
     (testing "mbql queries have parameter mappings with field ids"
       (let [table (t2/select-one :model/Table :id (mt/id :products))
             dashboard (magic/automagic-analysis table {})
-            expected-targets (mt/$ids #{[:dimension $products.category]
-                                        [:dimension $products.created_at]})
+            expected-targets (mt/$ids #{[:dimension $products.category {:stage-number 0}]
+                                        [:dimension $products.created_at {:stage-number 0}]})
             actual-targets (into #{}
                                  (comp (mapcat :parameter_mappings)
                                        (map :target))
@@ -246,8 +244,8 @@
           (let [dashboard (magic/automagic-analysis card {})
                 ;; i'm not sure why category isn't picked here
                 expected-targets #{[:dimension
-                                    [:field "CREATED_AT"
-                                     {:base-type :type/DateTimeWithLocalTZ}]]}
+                                    [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
+                                    {:stage-number 0}]}
                 actual-targets (into #{}
                                      (comp (mapcat :parameter_mappings)
                                            (map :target))
@@ -739,6 +737,20 @@
               (is (false? (str/ends-with? question-dashboard-name "model")))
               (is (true? (str/ends-with? question-dashboard-name (format "\"%s\"" (:name question-card))))))))))))
 
+(deftest model-based-automagic-dashboards-have-correct-parameter-mappings-test
+  (testing "Dashcard parameter mappings have valid targets when X-raying models (#58214)"
+    (mt/dataset test-data
+      (mt/with-temp
+        [:model/Card {model-id :id} {:table_id      (mt/id :orders)
+                                     :dataset_query (mt/mbql-query orders)
+                                     :type          :model}]
+        (is (vector? (-> (qp.card-test/run-query-for-card model-id) :data :results_metadata :columns)))
+        (let [model-card (t2/select-one :model/Card model-id)
+              dashboard (magic/automagic-analysis model-card nil)
+              parameter-mappings (eduction (comp (keep :parameter_mappings) cat) (:dashcards dashboard))
+              dimension? (mr/validator mbql.s/dimension)]
+          (is (every? (comp dimension? :target) parameter-mappings)))))))
+
 (deftest test-table-title-test
   (testing "Given the current automagic_dashboards/field/GenericTable.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -900,39 +912,39 @@
 (deftest adhoc-filter-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 7)))))
 
 (deftest adhoc-count-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:field (mt/id :venues :category_id) nil]]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
+                                                                      :breakout [[:field (mt/id :venues :category_id) nil]]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 17)))))
 
 (deftest adhoc-fk-breakout-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
-                                          :source-table (mt/id :checkins)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
+                                                                      :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
+                                                                      :source-table (mt/id :checkins)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 9)))))
 
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
 (deftest join-splicing-test
@@ -942,11 +954,11 @@
                           :condition    [:= [:field (mt/id :categories :id) nil] 1]
                           :strategy     :left-join
                           :alias        "Dealios"}]
-            q           (query/adhoc-query {:query {:source-table (mt/id :venues)
-                                                    :joins join-vec
-                                                    :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
-                                            :type :query
-                                            :database (mt/id)})
+            q           (api.automagic-dashboards/adhoc-query-instance {:query {:source-table (mt/id :venues)
+                                                                                :joins join-vec
+                                                                                :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
+                                                                        :type :query
+                                                                        :database (mt/id)})
             res         (magic/automagic-analysis q {})
             cards       (vec (:dashcards res))
             join-member (get-in cards [2 :card :dataset_query :query :joins])]
@@ -1077,57 +1089,6 @@
   (or (t2/select-one :model/Field :id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
                       {:table table :column column}))))
-
-(deftest filter-referenced-fields-test
-  (testing "X-Ray should work if there's a filter in the question (#19241)"
-    (mt/dataset test-data
-      (let [query (mi/instance
-                   :model/Query
-                   {:database-id   (mt/id)
-                    :table-id      (mt/id :products)
-                    :dataset_query {:database (mt/id)
-                                    :type     :query
-                                    :query    {:source-table (mt/id :products)
-                                               :aggregation  [[:count]]
-                                               :breakout     [[:field (mt/id :products :created_at) {:temporal-unit :year}]]
-                                               :filter       [:=
-                                                              [:field (mt/id :products :category) nil]
-                                                              "Doohickey"]}}})]
-        (testing `magic/filter-referenced-fields
-          (is (= {(mt/id :products :category)   (field! :products :category)
-                  (mt/id :products :created_at) (field! :products :created_at)}
-                 (#'magic/filter-referenced-fields
-                  {:source   (t2/select-one :model/Table :id (mt/id :products))
-                   :database (mt/id)
-                   :entity   query}
-                  [:and
-                   [:=
-                    [:field (mt/id :products :created_at) {:temporal-unit :year}]
-                    "2017-01-01T00:00:00Z"]
-                   [:=
-                    [:field (mt/id :products :category) nil]
-                    "Doohickey"]]))))
-
-        (testing "end-to-end"
-          ;; VERY IMPORTANT! Make sure the Table is FULLY synced (so it gets classified correctly), otherwise the
-          ;; automagic Dashboards won't work (the normal quick sync we do for tests doesn't include everything that's
-          ;; needed)
-          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :products)))
-          (let [query     {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :products)
-                                      :filter       [:= [:field (mt/id :products :category) nil] "Doohickey"]
-                                      :aggregation  [[:count]]
-                                      :breakout     [[:field (mt/id :products :created_at) {:temporal-unit "year"}]]}}
-                cell      [:=
-                           [:field (mt/id :products :created_at) {:temporal-unit "year"}]
-                           "2017-01-01T00:00:00Z"]
-                ->base-64 (fn [x]
-                            (codec/base64-encode (.getBytes (json/encode x) "UTF-8")))]
-            (is (=? {:description "A closer look at the metrics and dimensions used in this saved question."}
-                    (mt/user-http-request
-                     :crowberto :get 200
-                     (format "automagic-dashboards/adhoc/%s/cell/%s" (->base-64 query) (->base-64 cell)))))))))))
 
 (deftest most-specific-definition-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from most-specific-definition"
@@ -1369,7 +1330,7 @@
                                                                   {:base-type :type/DateTime :temporal-unit :year}]
                                                               "2018"]}
                                   :parameters []}
-                q                (query/adhoc-query query-with-joins)
+                q                (api.automagic-dashboards/adhoc-query-instance query-with-joins)
                 section-headings (->> (magic/automagic-analysis q {:show :all})
                                       :dashcards
                                       (keep (comp :text :visualization_settings))
@@ -1384,7 +1345,7 @@
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
-        (let [left                 (query/adhoc-query
+        (let [left                 (api.automagic-dashboards/adhoc-query-instance
                                     (mt/mbql-query orders
                                       {:joins [{:strategy     :left-join
                                                 :alias        "Products"
@@ -1428,7 +1389,7 @@
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
-        (let [left                 (query/adhoc-query
+        (let [left                 (api.automagic-dashboards/adhoc-query-instance
                                     {:database (mt/id)
                                      :type     :query
                                      :query
