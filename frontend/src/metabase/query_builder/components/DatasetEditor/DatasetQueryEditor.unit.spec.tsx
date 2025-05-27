@@ -71,6 +71,7 @@ const setup = async ({
       readOnly={readOnly}
       onResizeStop={_.noop}
       onSetDatabaseId={onSetDatabaseId}
+      isNativeEditorOpen
     />,
   );
 
