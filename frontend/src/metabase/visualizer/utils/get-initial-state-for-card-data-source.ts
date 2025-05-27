@@ -173,28 +173,36 @@ export function getInitialStateForCardDataSource(
       }
 
       if (Array.isArray(originalValue)) {
-        // When there're no sensibile metrics/dimensions,
+        // When there're no sensible metrics/dimensions,
         // "graph.dimensions" and "graph.metrics" are `[null]`
         if (originalValue.filter(Boolean).length === 0) {
           return;
         } else {
           return [
             setting,
-            originalValue.map((originalColumnName) => {
-              const index = columns.findIndex(
-                (col) => col.name === originalColumnName,
-              );
-              return state.columns[index].name;
-            }),
+            originalValue
+              .map((originalColumnName) => {
+                const index = columns.findIndex(
+                  (col) => col.name === originalColumnName,
+                );
+
+                if (index === -1 || !state.columns[index]) {
+                  return null;
+                }
+
+                return state.columns[index].name;
+              })
+              .filter(isNotNull),
           ];
         }
       } else {
         const index = columns.findIndex((col) => col.name === originalValue);
+
         if (!state.columns[index]) {
           return;
         }
 
-        return [setting, state.columns[index]?.name];
+        return [setting, state.columns[index].name];
       }
     })
     .filter(isNotNull);

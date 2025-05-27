@@ -105,6 +105,7 @@ const config = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
+    "app-embed-sdk": "./app-embed-sdk.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -224,6 +225,15 @@ const config = {
           : SRC_PATH + "/lib/noop",
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
+      "sdk-iframe-embedding-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins"
+          : SRC_PATH + "/lib/noop",
+      "sdk-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
+          : SRC_PATH + "/lib/noop",
+      "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
   },
   optimization: {
@@ -260,6 +270,11 @@ const config = {
     new rspack.CssExtractRspackPlugin({
       filename: devMode ? "[name].css" : "[name].[contenthash].css",
       chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
+
+      // We use CSS modules to scope styles, so this is safe to ignore according to the docs:
+      // https://webpack.js.org/plugins/mini-css-extract-plugin/#remove-order-warnings
+      // This is needed due to app-embed-sdk importing the sdk, so the style order is different than the main app.
+      ignoreOrder: true,
     }),
     new OnScriptError(),
     new HtmlWebpackPlugin({
@@ -278,6 +293,12 @@ const config = {
       filename: "../../embed.html",
       chunksSortMode: "manual",
       chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
+      template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-sdk.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin({
@@ -379,4 +400,11 @@ if (devMode) {
   );
 }
 
-module.exports = config;
+const additionalRspackConfig = [];
+
+if (process.env.MB_EDITION === "ee") {
+  // Build the embed.js script for the sdk iframe embedding.
+  additionalRspackConfig.push(require("./rspack.iframe-sdk-embed.config"));
+}
+
+module.exports = [config, ...additionalRspackConfig];

@@ -197,4 +197,42 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.tableInteractiveHeader().findByText("Views").should("exist");
     H.assertQueryBuilderRowCount(1);
   });
+
+  it("should allow brush filtering single-series timeseries charts (VIZ-979)", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // Ensure the brush is disabled for multi-series charts
+    H.getDashboardCard(0).within(() => {
+      cy.findAllByText("Count").should("have.length", 2);
+      cy.findAllByText("Count (Products by Created At (Month))").should(
+        "have.length",
+        2,
+      );
+      applyBrush(200, 300);
+      cy.get("@dataset.all").should("have.length", 0);
+    });
+
+    H.getDashboardCard(3).within(() => {
+      applyBrush(200, 300);
+      cy.wait("@dataset");
+    });
+
+    H.queryBuilderFiltersPanel()
+      .findByText(/Created At is May 1/)
+      .should("exist");
+    H.assertQueryBuilderRowCount(9);
+    H.queryBuilderMain().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
+      cy.findByText("May 2023").should("exist");
+      cy.findByText("December 2023").should("exist");
+    });
+  });
 });
+
+function applyBrush(left: number, right: number) {
+  H.echartsContainer()
+    .trigger("mousedown", left, 100)
+    .trigger("mousemove", left, 100)
+    .trigger("mouseup", right, 100);
+}
