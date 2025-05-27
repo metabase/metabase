@@ -38,4 +38,5 @@
 
 .queryErrorContainer {
   border-radius: 6px;
+  background-color: var(--mb-color-bg-error);
 }

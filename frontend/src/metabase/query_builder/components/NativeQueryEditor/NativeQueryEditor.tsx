@@ -147,11 +147,15 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     super(props);
 
     const { query, viewHeight } = props;
+    const nativeQuery = query.question().query();
     this.state = {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
       mobileShowParameterList: false,
       isPromptInputVisible: false,
+      queryValidationError: nativeQuery
+        ? Lib.validateNativeQuery(nativeQuery)
+        : null,
     };
   }
 
@@ -434,20 +438,21 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               onRightClickSelection={this.handleRightClickSelection}
             />
 
-            {hasEditingSidebar && !readOnly && (
-              <NativeQueryEditorRunButton
-                cancelQuery={this.props.cancelQuery}
-                isResultDirty={this.props.isResultDirty}
-                isRunnable={this.props.isRunnable}
-                isRunning={this.props.isRunning}
-                nativeEditorSelectedText={this.props.nativeEditorSelectedText}
-                runQuery={this.props.runQuery}
-              />
-            )}
+            {hasEditingSidebar &&
+              !readOnly &&
+              !this.state.queryValidationError && (
+                <NativeQueryEditorRunButton
+                  cancelQuery={this.props.cancelQuery}
+                  isResultDirty={this.props.isResultDirty}
+                  isRunnable={this.props.isRunnable}
+                  isRunning={this.props.isRunning}
+                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
+                  runQuery={this.props.runQuery}
+                />
+              )}
 
             {this.state.queryValidationError && (
               <Flex
-                bg="bg-error"
                 pos="absolute"
                 bottom="15px"
                 w="calc(100% - 5.5rem)"
