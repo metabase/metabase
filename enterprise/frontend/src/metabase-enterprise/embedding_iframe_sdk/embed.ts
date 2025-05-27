@@ -43,7 +43,8 @@ class MetabaseEmbed {
       return;
     }
 
-    // The instanceUrl settings cannot be updated after the embed is created
+    // The value of instanceUrl must be the same as the initial value used to create an embed.
+    // This allows users to pass a complete settings object that includes all their settings.
     if (
       settings.instanceUrl &&
       settings.instanceUrl !== this._settings.instanceUrl
