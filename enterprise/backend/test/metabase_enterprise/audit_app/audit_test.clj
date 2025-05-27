@@ -27,6 +27,7 @@
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
   `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
+     (clojure.pprint/print-table (t2/select [:model/Database :id :name]))
      (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
        (mbc/ensure-audit-db-installed!)
        (try
@@ -111,10 +112,11 @@
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
+  ;; clear out the old audit-db instance so that a new one can setup triggers with the temp scheduler
+  (t2/delete! :model/Database :id audit/audit-db-id)
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
     (with-audit-db-restoration
-      (ee-audit/ensure-audit-db-installed!)
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")

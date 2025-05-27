@@ -89,6 +89,4 @@
 (defn add-listeners-to-scheduler!
   "Add triggers to the quartz scheduler, must be initialized before adding."
   []
-  (when-let [scheduler (task/scheduler)]
-    (task/add-trigger-listener! (create-trigger-listener scheduler))
-    (task/add-job-listener! (create-job-execution-listener))))
+  (task/add-job-listener! (create-job-execution-listener)))

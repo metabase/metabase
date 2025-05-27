@@ -4,6 +4,7 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clj-time.core :as time]
+   [clojure.set :as set]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -11,9 +12,11 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
+   [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
@@ -238,6 +241,56 @@
     [:limit {:optional true} [:maybe :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
+(mr/def ::count
+  [:and
+   :int
+   [:fn
+    {:error/message "Valid count, a natural number"}
+    #(<= 0 %)]])
+
+(mr/def ::proportion
+  [:and
+   number?
+   [:fn
+    {:error/message "Valid proportion between (inclusive) 0 and 1."}
+    #(<= 0 % 1)]])
+
+(mr/def ::field-values
+  [:or
+   [:sequential :boolean]
+   [:sequential number?]
+   [:sequential :string]])
+
+(mr/def ::statistics
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:distinct_count {:optional true} [:maybe ::count]]
+   [:percent_null   {:optional true} [:maybe ::proportion]]
+   [:min            {:optional true} [:maybe number?]]
+   [:max            {:optional true} [:maybe number?]]
+   [:avg            {:optional true} [:maybe number?]]
+   [:q1             {:optional true} [:maybe number?]]
+   [:q3             {:optional true} [:maybe number?]]
+   [:sd             {:optional true} [:maybe number?]]
+   [:percent_json   {:optional true} [:maybe ::proportion]]
+   [:percent_url    {:optional true} [:maybe ::proportion]]
+   [:percent_email  {:optional true} [:maybe ::proportion]]
+   [:percent_state  {:optional true} [:maybe ::proportion]]
+   [:average_length {:optional true} [:maybe number?]]
+   [:earliest       {:optional true} [:maybe :string]]
+   [:latest         {:optional true} [:maybe :string]]
+   [:values         {:optional true} [:maybe ::field-values]]])
+
+(mr/def ::field-values-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output
+     [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+      [:field_id :string]
+      [:statistics {:optional true} [:maybe ::statistics]]
+      [:values {:optional true} [:maybe [:sequential :any]]]]]]
+   [:map
+    [:output :string]]])
+
 (mr/def ::field-type
   [:enum {:decode/tool-api-response #(when % (-> % name u/->snake_case_en))}
    "boolean" "date" "datetime" "time" "number" "string"])
@@ -251,11 +304,7 @@
    [:semantic_type {:optional true
                     :decode/tool-api-response #(some-> % name u/->snake_case_en)}
     [:maybe :string]]
-   [:field_values {:optional true} [:or
-                                    [:sequential :boolean]
-                                    [:sequential :double]
-                                    [:sequential :int]
-                                    [:sequential :string]]]])
+   [:field_values {:optional true} ::field-values]])
 
 (mr/def ::columns
   [:sequential ::column])
@@ -273,6 +322,19 @@
     [:output :string]]])
 
 (mr/def ::tool-request [:map [:conversation_id ms/UUIDString]])
+
+(mr/def ::answer-sources-arguments
+  [:and
+   [:map
+    [:with_model_fields                     {:optional true, :default true} :boolean]
+    [:with_model_metrics                    {:optional true, :default true} :boolean]
+    [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]
+    [:with_metric_queryable_dimensions      {:optional true, :default true} :boolean]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:with_model_fields                     :with-fields?
+                               :with_model_metrics                    :with-metrics?
+                               :with_metric_default_temporal_breakout :with-default-temporal-breakout?
+                               :with_metric_queryable_dimensions      :with-queryable-dimensions?})}]])
 
 (mr/def ::subscription-schedule
   (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
@@ -305,6 +367,15 @@
     [:schedule ::subscription-schedule]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
+(mr/def ::field-values-arguments
+  [:and
+   [:map
+    [:entity_type [:enum "table" "model" "metric"]]
+    [:entity_id :int]
+    [:field_id :string]
+    [:limit {:optional true} [:maybe :int]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
 (mr/def ::filter-records-arguments
   [:and
    [:map
@@ -331,7 +402,7 @@
   [:merge
    ::basic-metric
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:queryable_dimensions ::columns]]])
+    [:queryable_dimensions {:optional true} ::columns]]])
 
 (mr/def ::find-metric-result
   [:or
@@ -478,18 +549,22 @@
    [:map [:output :string]]])
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
-  "Create a dashboard subscription."
+  "Return top level meta information about available information sources."
   [_route-params
    _query-params
-   {:keys [conversation_id] :as body} :- ::tool-request
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::answer-sources-arguments]]
+                                                    ::tool-request]
    {:keys [metabot-v3/metabot-id]}]
   (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
   (if-let [collection-name (get-in metabot-v3.config/metabot-config [metabot-id :collection-name])]
-    (doto (-> (mc/decode ::answer-sources-result
-                         (metabot-v3.dummy-tools/answer-sources collection-name)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))
+    (let [options (mc/encode ::answer-sources-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+      (doto (-> (mc/decode ::answer-sources-result
+                           (metabot-v3.dummy-tools/answer-sources collection-name options)
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
@@ -506,6 +581,22 @@
   (let [arguments (mc/encode ::create-dashboard-subscription-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription arguments)
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/field-values" :- [:merge ::field-values-result ::tool-request]
+  "Return statistics and/or values for a given field of a given entity."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::field-values-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :field-values) :llm.log/llm->be)
+  (let [arguments (mc/encode ::field-values-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::field-values-result
+                         (metabot-v3.tools.field-stats/field-values arguments)
+                         (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 

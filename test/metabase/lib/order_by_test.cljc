@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -487,27 +486,26 @@
                   (lib/order-bys query'))))))))
 
 (deftest ^:parallel orderable-columns-with-source-card-e2e-test
-  (binding [lib.card/*force-broken-card-refs* false]
-    (testing "Make sure you can order by a column that comes from a source Card (Saved Question/Model/etc)"
-      (let [query (lib.tu/query-with-source-card)]
-        (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-          (let [name-col (m/find-first #(= (:name %) "USER_ID")
-                                       (lib/orderable-columns query))]
-            (is (=? {:name      "USER_ID"
-                     :base-type :type/Integer}
-                    name-col))
-            (let [query' (lib/order-by query name-col)]
-              (is (=? {:stages
-                       [{:source-card 1
-                         :order-by    [[:asc
-                                        {}
-                                        [:field {:base-type :type/Integer} "USER_ID"]]]}]}
-                      query'))
-              (is (= "My Card, Sorted by User ID ascending"
-                     (lib/describe-query query')))
-              (is (= ["User ID ascending"]
-                     (for [order-by (lib/order-bys query')]
-                       (lib/display-name query' order-by)))))))))))
+  (testing "Make sure you can order by a column that comes from a source Card (Saved Question/Model/etc)"
+    (let [query (lib.tu/query-with-source-card)]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (let [name-col (m/find-first #(= (:name %) "USER_ID")
+                                     (lib/orderable-columns query))]
+          (is (=? {:name      "USER_ID"
+                   :base-type :type/Integer}
+                  name-col))
+          (let [query' (lib/order-by query name-col)]
+            (is (=? {:stages
+                     [{:source-card 1
+                       :order-by    [[:asc
+                                      {}
+                                      [:field {:base-type :type/Integer} "USER_ID"]]]}]}
+                    query'))
+            (is (= "My Card, Sorted by User ID ascending"
+                   (lib/describe-query query')))
+            (is (= ["User ID ascending"]
+                   (for [order-by (lib/order-bys query')]
+                     (lib/display-name query' order-by))))))))))
 
 (deftest ^:parallel orderable-columns-with-join-test
   (is (=? [{:name                     "ID"

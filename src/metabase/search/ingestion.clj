@@ -144,11 +144,25 @@
     ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
     ;; to avoid having to retain the head of the sequences as we work through all the documents.
     ;; Individual engines may also partition the documents further if they prefer
-    (reduce (fn [_ batch] (search.engine/update! e batch)) nil
-            (eduction (partition-all 150) documents-reducible))
-    (reduce (fn [_ batch] (doseq [[group ids] (u/group-by first second batch)]
-                            (search.engine/delete! e group ids))) nil
-            (eduction (partition-all 1000) removed-models-reducible))))
+    (let [timer (u/start-timer)
+          update-report (reduce (fn [_ batch] (search.engine/update! e batch)) nil
+                                (eduction (partition-all 150) documents-reducible))
+          delete-report (reduce (fn [acc batch]
+                                  (->> batch
+                                       (remove nil?)
+                                       (u/group-by first second)
+                                       (map (fn [[group ids]] (search.engine/delete! e group ids)))
+                                       (apply merge-with + acc))) {}
+                                (eduction (partition-all 1000) removed-models-reducible))
+          duration (u/since-ms timer)]
+      (log/debugf "Updated search entries in %.0fms Updated: %s Deleted: %s" duration (sort-by (comp - val) update-report) (sort-by (comp - val) delete-report))
+      (analytics/inc! :metabase-search/index-update-ms duration)
+      (prometheus/observe! :metabase-search/index-update-duration-ms duration)
+      (doseq [[model cnt] (merge-with + update-report delete-report)]
+        (analytics/inc! :metabase-search/index-updates {:model model} cnt)))))
+
+(comment
+  (u/group-by first second [["metric" 124] ["dataset" 124] ["metric" 124] ["other" 5]]))
 
 (defn- extract-model-and-id
   ([update]
@@ -168,7 +182,7 @@
        :and (first (keep (partial extract-model-and-id model) values))))))
 
 (defn bulk-ingest!
-  "Process the given search model updates. Returns the number of search index entries that get updated as a result."
+  "Process the given search model updates."
   [updates]
   (if (seq (search.engine/active-engines))
     (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
@@ -211,22 +225,12 @@
          (track-queue-size!)
          true)))))
 
-(defn report->prometheus!
-  "Send a search index update report to Prometheus"
-  [duration report]
-  (analytics/inc! :metabase-search/index-ms duration)
-  (prometheus/observe! :metabase-search/index-duration-ms duration)
-  (doseq [[model cnt] report]
-    (analytics/inc! :metabase-search/index {:model model} cnt)))
-
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
   (when (seq (search.engine/active-engines))
     (queue/listen! listener-name queue bulk-ingest!
-                   {:success-handler     (fn [result duration _]
-                                           (report->prometheus! duration result)
-                                           (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
+                   {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]
                                           (log/error err "Error indexing search entries")

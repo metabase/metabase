@@ -4,10 +4,8 @@ import { c, t } from "ttag";
 import { useUserSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
@@ -32,9 +30,7 @@ export const BrowseNavSection = ({
 
   const [opened, { toggle }] = useDisclosure(expandBrowse);
 
-  const entityTypes = useSelector(
-    (state) => getEmbedOptions(state).entity_types,
-  );
+  const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const handleToggle = () => {
