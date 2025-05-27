@@ -198,7 +198,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.assertQueryBuilderRowCount(1);
   });
 
-  it("should allow brus filtering single-series timeseries charts (VIZ-979)", () => {
+  it("should allow brush filtering single-series timeseries charts (VIZ-979)", () => {
     createDashboardWithVisualizerDashcards();
 
     // Ensure the brush is disabled for multi-series charts
