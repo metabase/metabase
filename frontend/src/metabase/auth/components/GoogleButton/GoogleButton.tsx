@@ -6,17 +6,12 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Checkbox } from "metabase/ui";
+import { Box, Checkbox } from "metabase/ui";
 
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
-import {
-  AuthError,
-  AuthErrorRoot,
-  GoogleButtonRoot,
-  TextLink,
-} from "./GoogleButton.styled";
+import { AuthError, AuthErrorRoot, TextLink } from "./GoogleButton.styled";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -55,7 +50,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   }, []);
 
   return (
-    <GoogleButtonRoot>
+    <Box>
       {isCard && clientId ? (
         <ErrorBoundary>
           <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
@@ -67,10 +62,10 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
             />
           </GoogleOAuthProvider>
           <Checkbox
-            mt="0.5rem"
+            mt="1rem"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
-            label="Remember me"
+            label={t`Remember me`}
           />
         </ErrorBoundary>
       ) : (
@@ -86,7 +81,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
           ))}
         </AuthErrorRoot>
       )}
-    </GoogleButtonRoot>
+    </Box>
   );
 };
 
