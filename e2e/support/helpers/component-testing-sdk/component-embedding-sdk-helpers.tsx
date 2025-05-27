@@ -22,8 +22,20 @@ export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
 };
 
 export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
-  cy.intercept("GET", AUTH_PROVIDER_URL, async (req) => {
+  cy.intercept("GET", `${AUTH_PROVIDER_URL}**`, async (req) => {
     try {
+      const url = new URL(req.url);
+      const responseParam = url.searchParams.get("response");
+
+      // Return error if response is not json
+      if (responseParam !== "json") {
+        req.reply({
+          statusCode: 400,
+          body: { error: "Invalid response parameter. Expected response=json" },
+        });
+        return;
+      }
+
       const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
       const jwt = await new jose.SignJWT({
         email: user.email,
