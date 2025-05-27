@@ -15,30 +15,30 @@ select
     end as alert_condition,
     case
         when ns.ui_display_type = 'cron/raw' then 'custom'
-        when REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){1}([^ ]+)', 1, 1, '', 2) = '*' or
-             REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){1}([^ ]+)', 1, 1, '', 2), '^[0-9]+/[0-9]+$') then 'by the minute'
-        when REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){3}([^ ]+)', 1, 1, '', 2) != '*' and
-             (REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2) = '?' or
-              REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^[0-9]#1$') or
-              REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^[0-9]L$')) then 'monthly'
-        when REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2) != '?' and
-             REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2) != '*' then 'weekly'
-        when REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){2}([^ ]+)', 1, 1, '', 2) != '*' then 'daily'
+        when REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ ([^ ]+)', 1, 1, '', 1) = '*' or
+             REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ ([^ ]+)', 1, 1, '', 1), '^[0-9]+/[0-9]+$') then 'by the minute'
+        when REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) != '*' and
+             (REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) = '?' or
+              REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^[0-9]#1$') or
+              REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^[0-9]L$')) then 'monthly'
+        when REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) != '?' and
+             REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) != '*' then 'weekly'
+        when REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) != '*' then 'daily'
         else 'hourly'
     end as schedule_type,
     case
-        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^1') then 'sun'
-        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^2') then 'mon'
-        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^3') then 'tue'
-        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^4') then 'wed'
-        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^5') then 'thu'
-        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^6') then 'fri'
-        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2), '^7') then 'sat'
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^1') then 'sun'
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^2') then 'mon'
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^3') then 'tue'
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^4') then 'wed'
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^5') then 'thu'
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^6') then 'fri'
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^7') then 'sat'
         else null
     end as schedule_day,
     case
-        when REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){2}([^ ]+)', 1, 1, '', 2) = '*' then null
-        else cast(REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){2}([^ ]+)', 1, 1, '', 2) as integer)
+        when REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) = '*' then null
+        else cast(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) as integer)
     end as schedule_hour,
     not n.active as archived,
     nh.channel_type as recipient_type,
