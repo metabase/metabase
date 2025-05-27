@@ -17,11 +17,7 @@ import {
   createMockDatabase,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import NewItemMenu from "./NewItemMenu";
 
@@ -101,11 +97,9 @@ async function setup({
     entityTypes
       ? {
           storeInitialState: createMockState({
-            embed: createMockEmbedState({
-              options: createMockEmbedOptions({
-                entity_types: entityTypes,
-              }),
-            }),
+            embeddingDataPicker: {
+              entityTypes,
+            },
           }),
         }
       : undefined,
