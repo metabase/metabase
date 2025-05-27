@@ -69,7 +69,9 @@
    rf
    [(analyze/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
-     (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
+     (let [metadata (merge-final-column-metadata (or (-> result :data :pivot_cols)
+                                                     (-> result :data :cols))
+                                                 metadata)]
        (record! metadata)
        (rf (cond-> result
              (map? result)
