@@ -12,7 +12,7 @@
 
 (def ^:private model->compare-keys
   "A mapping of model to the keys that are used to check if a row is the same."
-  {:model/Notification             [:payload_type :active]
+  {:model/Notification             [:payload_type :active :condition]
    :model/NotificationSubscription [:type :event_name :cron_schedule]
    :model/NotificationSystemEvent  [:event_name :table_id :action]
    :model/NotificationHandler      [:channel_type :active]
@@ -71,6 +71,7 @@
            :active        true
            :payload_type  :notification/system-event
            :payload       {:event_name :event/notification-create}
+           :condition     [:= [:context :object :payload_type] :notification/card]
            :handlers      [{:active       true
                             :channel_type :channel/email
                             :channel_id   nil
@@ -82,7 +83,28 @@
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
                                            :details {:pattern "{{payload.object.creator.email}}"}}]}]}
-
+          ;; table notifications new confirmation
+          {:internal_id   "system-event/table-notification-new-confirmation"
+           :active        true
+           :payload_type  :notification/system-event
+           :payload       {:event_name :event/notification-create}
+           :condition     [:and
+                           [:= [:context :object :payload_type] :notification/system-event]
+                           [:or
+                            [:= [:context :object :payload :event_name] :event/row.created]
+                            [:= [:context :object :payload :event_name] :event/row.updated]
+                            [:= [:context :object :payload :event_name] :event/row.deleted]]]
+           :handlers      [{:active       true
+                            :channel_type :channel/email
+                            :channel_id   nil
+                            :template     {:name         "Table Notification Created Confirmation"
+                                           :channel_type "channel/email"
+                                           :details      {:type "email/handlebars-resource"
+                                                          :subject "You set up a table notification"
+                                                          :path "metabase/channel/email/table_notification_new_confirmation.hbs"
+                                                          :recipient-type "cc"}}
+                            :recipients  [{:type    :notification-recipient/template
+                                           :details {:pattern "{{payload.object.creator.email}}"}}]}]}
           ;; slack token invalid
           {:internal_id   "system-event/slack-token-error"
            :active        true
