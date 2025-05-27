@@ -1,7 +1,5 @@
-import type { Card, UnsavedCard, VirtualCard } from "metabase-types/api";
+import type { Card, UnsavedCard } from "metabase-types/api";
 
-export function isSavedCard(
-  card: Card | UnsavedCard | VirtualCard,
-): card is Card {
+export function isSavedCard(card: Card | UnsavedCard): card is Card {
   return "id" in card && card.id != null;
 }

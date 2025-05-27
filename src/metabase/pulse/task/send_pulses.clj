@@ -130,7 +130,6 @@
       (send-pulse! pulse-id to-send-enabled-channel-ids)
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
-;; called in [driver/report-timezone] setter
 (defn update-send-pulse-triggers-timezone!
   "Update the timezone of all SendPulse triggers if the report timezone changes."
   []

@@ -1,15 +1,14 @@
 (ns metabase.permissions.models.query.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common
-    :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.permissions.path :as permissions.path]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -45,7 +44,7 @@
 
     (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
       (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
+        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
           (is (mi/can-read? card)))
 
         (testing "...but not if you only have Root Collection perms"
@@ -67,11 +66,11 @@
 
     (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
       (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
+        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-readwrite-path collection)})]
           (is (mi/can-write? card)))
 
         (testing "...Collection read perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
+          (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
             (is (not (mi/can-write? card))))
 
           (testing "...nor should write perms for the Root Collection"
@@ -155,7 +154,7 @@
                                      :dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-      (is (= {:paths #{(perms/collection-read-path collection)}}
+      (is (= {:paths #{(permissions.path/collection-read-path collection)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 

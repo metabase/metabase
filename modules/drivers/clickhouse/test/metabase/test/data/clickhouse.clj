@@ -5,12 +5,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.query :as mdb.query]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
@@ -122,7 +122,7 @@
         (catch Throwable e
           (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                           {:driver   driver
-                           :sql-args (into [(str/split-lines (mdb.query/format-sql (first sql-args)))]
+                           :sql-args (into [(str/split-lines (driver/prettify-native-form driver (first sql-args)))]
                                            (rest sql-args))}
                           e)))))))
 
@@ -228,3 +228,35 @@
                                     #_types          (into-array String ["TABLE"]))]
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name perms] table-perms]
+          (jdbc/execute! spec [(format "GRANT SELECT ON %s TO %s" table-name role-name)] {:transaction? false})
+          (when-let [rls-perms (:rls perms)]
+            (let [policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
+                                       (sql.qp/format-honeysql driver rls-perms)))]
+              (jdbc/execute! spec [(format "CREATE ROW POLICY role_policy_%s ON %s AS RESTRICTIVE FOR SELECT USING %s TO %s"
+                                           (mt/random-name) table-name policy-cond role-name)] {:transaction? false}))))))))
+
+(defmethod tx/create-and-grant-roles! :clickhouse
+  [driver details roles user-name _default-role]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    ;; create a new user because the 'default' user is read only
+    (doseq [statement [(format "DROP USER IF EXISTS %s" user-name)
+                       (format "CREATE USER IF NOT EXISTS %s NOT IDENTIFIED;" user-name)]]
+      (jdbc/execute! spec [statement] {:transaction? false})))
+  (sql-jdbc.tx/drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (sql-jdbc.tx/grant-roles-to-user! driver details roles user-name))
+
+(defmethod tx/drop-roles! :clickhouse
+  [driver details roles user-name]
+  (sql-jdbc.tx/drop-roles! driver details roles)
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec
+                   [(format "DROP USER IF EXISTS %s;" user-name)]
+                   {:transaction? false})))

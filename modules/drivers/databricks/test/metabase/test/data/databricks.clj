@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.app-db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -166,7 +165,7 @@
         (catch Throwable e
           (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                           {:driver   driver
-                           :sql-args (into [(str/split-lines (mdb.query/format-sql (first sql-args)))]
+                           :sql-args (into [(str/split-lines (driver/prettify-native-form driver (first sql-args)))]
                                            (rest sql-args))}
                           e)))))))
 

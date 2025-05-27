@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, Loader } from "metabase/ui";
@@ -14,7 +16,6 @@ import {
 import type {
   DashboardId,
   SearchResult,
-  VisualizerCardDataSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
@@ -49,17 +50,29 @@ export function DatasetsList({
   );
 
   const handleAddDataSource = useCallback(
-    (source: VisualizerCardDataSource) => {
-      dispatch(
-        addDataSource({ cardId: source.cardId, cardEntityId: source.sourceId }),
-      );
-      setDataSourceCollapsed(source.id, false);
+    (id: VisualizerDataSourceId) => {
+      trackSimpleEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_added",
+        triggered_from: "visualizer-modal",
+        event_data: id,
+      });
+
+      dispatch(addDataSource(id));
+      setDataSourceCollapsed(id, false);
     },
     [dispatch, setDataSourceCollapsed],
   );
 
   const handleRemoveDataSource = useCallback(
     (source: VisualizerDataSource) => {
+      trackSimpleEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_removed",
+        triggered_from: "visualizer-modal",
+        event_data: source.id,
+      });
+
       dispatch(removeDataSource(source));
       setDataSourceCollapsed(source.id, true);
     },
@@ -67,27 +80,34 @@ export function DatasetsList({
   );
 
   const handleToggleDataSource = useCallback(
-    (item: VisualizerCardDataSource) => {
+    (item: VisualizerDataSource) => {
       if (dataSourceIds.has(item.id)) {
         handleRemoveDataSource(item);
       } else {
-        handleAddDataSource(item);
+        handleAddDataSource(item.id);
       }
     },
     [dataSourceIds, handleAddDataSource, handleRemoveDataSource],
   );
 
   const handleSwapDataSources = useCallback(
-    (item: VisualizerCardDataSource) => {
+    (item: VisualizerDataSource) => {
+      trackSimpleEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_replaced",
+        triggered_from: "visualizer-modal",
+        event_data: item.id,
+      });
+
       dataSources.forEach((dataSource) => {
         handleRemoveDataSource(dataSource);
       });
-      handleAddDataSource(item);
+      handleAddDataSource(item.id);
     },
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
 
-  const { data: result = { data: [] } } = useSearchQuery(
+  const { data: searchResult, isFetching: isSearchLoading } = useSearchQuery(
     search.length > 0
       ? {
           q: search,
@@ -102,54 +122,67 @@ export function DatasetsList({
     },
   );
 
-  const { data: allRecents = [] } = useListRecentsQuery(
-    { include_metadata: true },
-    {
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  const { data: allRecents = [], isLoading: isListRecentsLoading } =
+    useListRecentsQuery(
+      { include_metadata: true },
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
 
   const items = useMemo(() => {
-    if (
-      search.length === 0 ||
-      !Array.isArray(result.data) ||
-      result.data.length === 0
-    ) {
-      return allRecents
-        .filter((maybeCard) =>
-          ["card", "dataset", "metric"].includes(maybeCard.model),
+    if (search.length > 0) {
+      return (searchResult ? searchResult.data : [])
+        .map((item) =>
+          typeof item.id === "number" &&
+          shouldIncludeDashboardQuestion(item, dashboardId)
+            ? {
+                ...createDataSource("card", item.id, item.name),
+                result_metadata: item.result_metadata,
+                display: item.display,
+              }
+            : null,
         )
-        .map((card) => {
-          const entityId = "entity_id" in card ? card.entity_id : null;
-          if (!entityId) {
-            return null;
-          }
-          return {
-            ...createDataSource("card", entityId, card.name),
-            cardId: card.id,
-            display: card.display,
-            result_metadata: card.result_metadata,
-          };
-        })
         .filter(isNotNull);
     }
-    return result.data
-      .map((item) =>
-        typeof item.entity_id === "string" &&
-        shouldIncludeDashboardQuestion(item, dashboardId)
-          ? {
-              ...createDataSource("card", item.entity_id, item.name),
-              cardId: Number(item.id),
-              display: item.display,
-              result_metadata: item.result_metadata,
-            }
-          : null,
+
+    return allRecents
+      .filter((maybeCard) =>
+        ["card", "dataset", "metric"].includes(maybeCard.model),
       )
-      .filter(isNotNull);
-  }, [result, allRecents, search, dashboardId]);
+      .map((card) => ({
+        ...createDataSource("card", card.id, card.name),
+        display: card.display,
+        result_metadata: card.result_metadata,
+      }));
+  }, [searchResult, allRecents, search, dashboardId]);
+
+  if (isListRecentsLoading || isSearchLoading) {
+    return (
+      <Flex
+        gap="xs"
+        direction="column"
+        align="center"
+        justify="center"
+        style={{ height: "100%" }}
+      >
+        <Loader />
+      </Flex>
+    );
+  }
 
   if (items.length === 0) {
-    return <Loader />;
+    return (
+      <Flex
+        gap="xs"
+        direction="column"
+        align="center"
+        justify="center"
+        style={{ height: "100%" }}
+      >
+        <p>{t`No results`}</p>
+      </Flex>
+    );
   }
 
   return (

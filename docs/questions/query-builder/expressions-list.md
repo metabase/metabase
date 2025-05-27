@@ -80,6 +80,7 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Date functions](#date-functions)
 
     - [convertTimezone](./expressions/converttimezone.md)
+    - [datetime](#datetime)
     - [datetimeAdd](./expressions/datetimeadd.md)
     - [datetimeDiff](./expressions/datetimediff.md)
     - [datetimeSubtract](./expressions/datetimesubtract.md)
@@ -708,6 +709,23 @@ Syntax: `convertTimezone(column, target, source)`
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
 See the [database limitations](./expressions/converttimezone.md#limitations) for `convertTimezone`.
+
+### datetime
+
+Converts a datetime string to a datetime.
+
+Syntax: `datetime(column)` 
+
+Example: `datetime("2025-03-20 12:45:04")`
+
+`datetime` supports the following datetime string formats:
+
+```txt
+2025-05-15T22:20:01
+2025-05-15 22:20:01
+```
+
+But some databases may also work with other datetime formats.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 

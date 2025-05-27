@@ -83,13 +83,29 @@
     (when-not (= uses :any)
       (into (sorted-set) uses))))
 
-(defn indirect-deps [deps module]
-  (loop [seen (sorted-set), [dep & more] (direct-deps deps module)]
+(defn indirect-deps
+  "For a module, get a map of dependency => path to this dependency
+
+    (indirect-deps (deps) 'api)
+    ;; =>
+    {permissions [api settings permissions]
+     ...}"
+  [deps module]
+  (loop [seen (sorted-map), [[dep path] & more] (into {}
+                                                      (map (fn [dep]
+                                                             [dep [module]]))
+                                                      (direct-deps deps module))]
     (if-not dep
       seen
-      (let [dep-deps (direct-deps deps dep)
-            new      (set/difference dep-deps seen #{module})]
-        (recur (conj seen dep) (set/union (set more) new))))))
+      (let [path     (conj path dep)
+            dep-deps (direct-deps deps dep)
+            new      (set/difference dep-deps (set (keys seen)) #{module})]
+        (recur (assoc seen dep path)
+               (merge (into {}
+                            (map (fn [new-dep]
+                                   [new-dep path]))
+                            new)
+                      more))))))
 
 (defn module-vars [deps module]
   (let [namespaces (module-namespaces deps module)]
@@ -144,11 +160,32 @@
               (map symbol))
         (api-namespaces deps module)))
 
-(defn direct-circular-deps [deps module]
+(defn direct-circular-deps
+  "Set of modules that `module` has a direct dependency on that also have a direct dependency on `module`."
+  [deps module]
   (into (sorted-set)
         (filter (fn [dep]
                   (contains? (direct-deps deps dep) module)))
         (direct-deps deps module)))
+
+(defn direct-users
+  "Set of modules that have a direct dependency on `module`."
+  [deps module]
+  (into (sorted-set)
+        (mapcat (fn [usage]
+                  (for [dep (:deps usage)
+                        :when (= (:module dep) module)
+                        :when (not= (:module usage) module)]
+                    (:module usage))))
+        deps))
+
+(defn indirect-users
+  "Set of modules that have an direct or indirect dependency on `module`."
+  [deps module]
+  (into (sorted-set)
+        (mapcat (fn [user]
+                  (disj (set (keys (indirect-deps deps user))) module)))
+        (direct-users deps module)))
 
 (defn info [deps config module]
   (let [direct-deps    (direct-deps deps module)
@@ -163,7 +200,9 @@
      :undeclared-api-namespaces (set/difference api-namespaces (api-namespaces-from-config config module))
      :exported-vars             (exported-vars deps module)
      :internal-vars             (module-vars deps module)
-     :circular-deps             (direct-circular-deps deps module))))
+     :circular-deps             (direct-circular-deps deps module)
+     :direct-users              (direct-users deps module)
+     :indirect-users            (indirect-users deps module))))
 
 (defn stats [deps config module]
   (let [info              (info deps config module)
@@ -178,6 +217,8 @@
      :num-undeclared-api-namespaces (count (:undeclared-api-namespaces info))
      :num-exported-vars             (count (:exported-vars info))
      :num-internal-vars             num-internal-vars
+     :num-direct-users              (count (:direct-users info))
+     :num-indirect-users            (count (:indirect-users info))
      :percent-exported-vars         (if (zero? num-internal-vars)
                                       0
                                       (double (/ (count (:exported-vars info))
@@ -227,8 +268,8 @@
   (into []
         (map (fn [module]
                (try
-                 (merge (stats deps config module)
-                        (score deps config module))
+                 (merge (score deps config module)
+                        (stats deps config module))
                  (catch Throwable e
                    (throw (ex-info (format "Error calculating score for module '%s'" module)
                                    {:module module}

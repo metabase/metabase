@@ -8,19 +8,19 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -29,6 +29,13 @@
    (org.apache.logging.log4j Level)))
 
 (set! *warn-on-reflection* true)
+
+;;; these are provided as conveniences because these settings used to live here; prefer getting them from
+;;; `driver.settings` instead going forward.
+(p/import-vars
+ [driver.settings
+  jdbc-data-warehouse-unreturned-connection-timeout-seconds
+  jdbc-data-warehouse-debug-unreturned-connection-stack-traces])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -83,42 +90,6 @@
             :catalog)
    details))
 
-(setting/defsetting jdbc-data-warehouse-max-connection-pool-size
-  "Maximum size of the c3p0 connection pool."
-  :visibility :internal
-  :type       :integer
-  :default    15
-  :audit      :getter
-  :doc "Change this to a higher value if you notice that regular usage consumes all or close to all connections.
-
-When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
-
-For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
-
-(setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
-  terminates JDBC driver queries that run too long. This should be the same as the query timeout in
-  [[metabase.query-processor.context/query-timeout-ms]] and should not be overridden without a very good reason."
-  :visibility :internal
-  :type       :integer
-  :getter     (fn []
-                (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-                    (long (/ qp.pipeline/*query-timeout-ms* 1000))))
-  :setter     :none)
-
-(setting/defsetting jdbc-data-warehouse-debug-unreturned-connection-stack-traces
-  "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
-  [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
-
-  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
-  stack traces in the logs."
-  :visibility :internal
-  :type       :boolean
-  :default    false
-  :export?    false
-  :setter     :none
-  :doc        false) ; This setting is documented in other-env-vars.md.
-
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -135,7 +106,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                                     0 1)
    "initialPoolSize"              (if (:router-database-id database)
                                     0 1)
-   "maxPoolSize"                  (jdbc-data-warehouse-max-connection-pool-size)
+   "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]
@@ -170,7 +141,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; This should be the same as the query timeout. This theoretically shouldn't happen since the QP should kill
    ;; things after a certain timeout but it's better to be safe than sorry -- it seems like in practice some
    ;; connections disappear into the ether
-   "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+   "unreturnedConnectionTimeout"  (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)
    ;; [From dox] If true, and if unreturnedConnectionTimeout is set to a positive value, then the pool will capture
    ;; the stack trace (via an Exception) of all Connection checkouts, and the stack traces will be printed when
    ;; unreturned checked-out Connections timeout. This is intended to debug applications with Connection leaks, that
@@ -183,7 +154,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; compared to the overhead added by testConnectionCheckout, above. The memory usage will depend on the size of the
    ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
    ;; has a smaller-than-average stack).
-   "debugUnreturnedConnectionStackTraces" (u/prog1 (jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
+   "debugUnreturnedConnectionStackTraces" (u/prog1 (driver.settings/jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
                                             (when (and <> (not (logger/level-enabled? 'com.mchange Level/INFO)))
                                               (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
                                                         "is enabled, but INFO logging is not enabled for the"

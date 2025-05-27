@@ -68,7 +68,7 @@
            (ldap/verify-password "cn=Fred Taylor,ou=People,dc=metabase,dc=com", "pa$$word"))))))
 
 (deftest find-test
-  ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
+  ;; there are EE-specific versions of this test in [[metabase-enterprise.sso.integrations.ldap-test]]
   (mt/with-premium-features #{}
     (ldap.test/with-ldap-server!
       (testing "find by username"
@@ -123,7 +123,7 @@
                (ldap/find-user "sbrown20")))))))
 
 (deftest fetch-or-create-user-test
-  ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
+  ;; there are EE-specific versions of this test in [[metabase-enterprise.sso.integrations.ldap-test]]
   (mt/with-premium-features #{}
     (ldap.test/with-ldap-server!
       (testing "a new user is created when they don't already exist"

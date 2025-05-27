@@ -11,8 +11,7 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.app-db.core :as db]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
@@ -133,7 +132,7 @@
    :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (slack/slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
-   :instance_started                     (snowplow/instance-creation)
+   :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
@@ -240,9 +239,9 @@
 
     ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
     ;; (Number of Tables per DB engine)
-    (db-frequencies Table (mdb.query/qualify Database :engine)
-      {:left-join [Database [:= (mdb.query/qualify Database :id)
-                                (mdb.query/qualify Table :db_id)]]})
+    (db-frequencies Table (app-db/qualify Database :engine)
+      {:left-join [Database [:= (app-db/qualify Database :id)
+                                (app-db/qualify Table :db_id)]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
@@ -257,15 +256,15 @@
      ;; Pulses only (filter out Alerts)
      (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
   [& where-conditions]
-  (-> (mdb.query/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
-                        :from      [:pulse]
-                        :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
-                        :where     (into
-                                    [:and
-                                     [:or
-                                      [:= :pulse_card.include_csv true]
-                                      [:= :pulse_card.include_xls true]]]
-                                    where-conditions)})
+  (-> (app-db/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
+                     :from      [:pulse]
+                     :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
+                     :where     (into
+                                 [:and
+                                  [:or
+                                   [:= :pulse_card.include_csv true]
+                                   [:= :pulse_card.include_xls true]]]
+                                 where-conditions)})
       first
       :count))
 
@@ -284,7 +283,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify :model/Pulse :alert_condition) nil]}]
+  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
     {:alerts               (t2/count :model/Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count :model/Pulse :alert_condition [:not= nil], :alert_first_only true)
@@ -354,11 +353,11 @@
   ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
   ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
   ;; any time shifts due to DST. See PR #48204
-  (let [thirty-days-ago (case (db/db-type)
+  (let [thirty-days-ago (case (app-db/db-type)
                           :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
                           :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
                           :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
-        started-at      (case (db/db-type)
+        started-at      (case (app-db/db-type)
                           :postgres "started_at AT TIME ZONE 'UTC'"
                           :h2       "started_at"
                           :mysql    "started_at")
@@ -520,7 +519,7 @@
         (t2/count :model/User {:where [:and
                                        [:<=
                                         :date_joined
-                                        (t/plus (t/offset-date-time (setting/get :instance-creation))
+                                        (t/plus (t/offset-date-time (analytics.settings/instance-creation))
                                                 (t/days activation-days))]
                                        (mi/exclude-internal-content-hsql :model/User)]
                                :limit (inc num-users)})]

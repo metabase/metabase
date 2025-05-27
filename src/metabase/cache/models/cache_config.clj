@@ -3,7 +3,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -100,8 +100,8 @@
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
           current (t2/select-one :model/CacheConfig :model model :model_id model_id {:for :update})]
-      (u/prog1 (mdb.query/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
-                                            (constantly data))
+      (u/prog1 (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
+                                         (constantly data))
         (audit-caching-change! user-id <> current data)))))
 
 (defn delete!

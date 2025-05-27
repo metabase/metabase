@@ -10,7 +10,8 @@
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
-   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.session.settings :as session.settings]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.users.models.user :as user]
@@ -31,6 +32,7 @@
 
 (def ^:private login-throttlers
   {:username   (throttle/make-throttler :username)
+
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
@@ -205,17 +207,10 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(defsetting reset-token-ttl-hours
-  (deferred-tru "Number of hours a password reset is considered valid.")
-  :visibility :internal
-  :type       :integer
-  :default    48
-  :audit      :getter)
-
 (defn reset-token-ttl-ms
   "number of milliseconds a password reset is considered valid."
   []
-  (* (reset-token-ttl-hours) 60 60 1000))
+  (* (session.settings/reset-token-ttl-hours) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."

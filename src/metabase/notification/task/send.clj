@@ -141,9 +141,8 @@
                                [:= :ns.type "notification-subscription/cron"]
                                [:= :n.active true]]}))
 
-;; called in [driver/report-timezone] setter
 (defn update-send-notification-triggers-timezone!
-  "Update the timezone of all SendPulse triggers if the report timezone changes."
+  "Update the timezone of all SendNotification triggers if the report timezone changes."
   []
   (let [triggers              (-> send-notification-job-key task/job-info :triggers)
         new-timezone          (send-notification-timezone)
@@ -166,7 +165,7 @@
 
   Called when starting the instance."
   []
-  (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
+  (assert (task/scheduler) "Scheduler must be started before initializing SendNotification triggers")
 
   ;; Get all existing triggers and subscription IDs
   (let [existing-triggers                  (:triggers (task/job-info send-notification-job-key))

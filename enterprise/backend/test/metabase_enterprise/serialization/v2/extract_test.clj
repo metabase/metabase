@@ -1696,3 +1696,43 @@
                   :tabs [{:name "Tab 1"}
                          {:name "Tab 2"}]}]
                 (by-model "Dashboard" extraction)))))))
+
+(deftest visualizer-dashboard-card-settings-test
+  (testing "visualizer settings transform entity IDs <-> card IDs"
+    (let [card-entity-id "WcMlLFNVcy0iO49mKW3WH"
+          card-id 621]
+      (with-redefs [serdes/*import-fk* (fn [_entity-id _model]
+                                         card-id)
+                    serdes/*export-fk* (fn [_card-id _model]
+                                         card-entity-id)]
+        (testing "transforms sourceId in column mappings"
+          (let [input {:visualization
+                       {:columnValuesMapping
+                        {:COLUMN_1 [{:sourceId (str "card:" card-entity-id)
+                                     :originalName "CREATED_AT"
+                                     :name "COLUMN_1"}]
+                         :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
+                expected {:visualization
+                          {:columnValuesMapping
+                           {:COLUMN_1 [{:sourceId (str "card:" card-id)
+                                        :originalName "CREATED_AT"
+                                        :name "COLUMN_1"}]
+                            :DIMENSION [(str "$_card:" card-id "_name")]}}}
+                result (serdes/import-visualizer-settings input)]
+            (is (= expected result))))
+
+        (testing "transforms sourceId in column mappings"
+          (let [input {:visualization
+                       {:columnValuesMapping
+                        {:COLUMN_1 [{:sourceId (str "card:" card-id)
+                                     :originalName "CREATED_AT"
+                                     :name "COLUMN_1"}]
+                         :DIMENSION [(str "$_card:" card-id "_name")]}}}
+                expected {:visualization
+                          {:columnValuesMapping
+                           {:COLUMN_1 [{:sourceId (str "card:" card-entity-id)
+                                        :originalName "CREATED_AT"
+                                        :name "COLUMN_1"}]
+                            :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
+                result (serdes/export-visualizer-settings input)]
+            (is (= expected result))))))))

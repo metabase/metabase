@@ -2,18 +2,19 @@
   "Tests for /api/user endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.response :as api.response]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users.api :as api.user]
    [metabase.users.models.user :as user]
    [metabase.users.models.user-test :as user-test]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as string]
@@ -51,10 +52,10 @@
 (deftest user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
-      (is (= (get request/response-unauthentic :body)
+      (is (= (get api.response/response-unauthentic :body)
              (client/client :get 401 "user"))))
     (testing "GET /api/user/current"
-      (is (= (get request/response-unauthentic :body)
+      (is (= (get api.response/response-unauthentic :body)
              (client/client :get 401 "user/current"))))))
 
 (deftest user-list-test
@@ -183,7 +184,7 @@
             (doseq [visibility-value [:all :group :none]]
               (mt/with-temporary-setting-values [user-visibility visibility-value]
                 (testing "`user-visibility` setting returns the default value"
-                  (is (= :all (api.user/user-visibility))))
+                  (is (= :all (users.settings/user-visibility))))
 
                 (testing "return all user by default"
                   (is (= [crowberto lucky rasta]

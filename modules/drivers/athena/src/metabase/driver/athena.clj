@@ -293,7 +293,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->DateTime]
   [_driver _semantic-type expr]
-  (h2x/->timestamp expr))
+  (h2x/->timestamp [:replace expr "T" " "]))
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Date]
   [_driver _semantic-type expr]

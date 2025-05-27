@@ -22,9 +22,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
-   [metabase.app-db.core :as mdb]
-   [metabase.classloader.core :as classloader]
-   [metabase.driver :as driver]
+   [metabase.app-db.format :as app-db.format]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -36,11 +34,6 @@
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
-
-(defn format-sql
-  "Return a nicely-formatted version of a `query` string with the current application db driver formatting."
-  [sql]
-  (driver/prettify-native-form (mdb/db-type) sql))
 
 (def ^:private NamespacedKeyword
   [:and :keyword [:fn (comp seq namespace)]])
@@ -112,8 +105,6 @@
 
 (defmethod compile clojure.lang.IPersistentMap
   [honey-sql]
-  ;; make sure metabase.app-db.setup is loaded so the `:metabase.app-db.setup/application-db` gets defined
-  (classloader/require 'metabase.app-db.setup)
   (let [sql-args (try
                    (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
                    (catch Throwable e
@@ -125,7 +116,7 @@
                                      {:honey-sql honey-sql}
                                      e))))]
     (log/tracef "Compiled SQL:\n%s\nparameters: %s"
-                (format-sql (first sql-args))
+                (app-db.format/format-sql (first sql-args))
                 (pr-str (rest sql-args)))
     sql-args))
 
@@ -138,8 +129,6 @@
 
   See namespace documentation for [[metabase.app-db.query]] for pro debugging tips."
   [sql-args-or-honey-sql-map & {:as jdbc-options}]
-  ;; make sure [[metabase.app-db.setup]] gets loaded so default Honey SQL options and the like are loaded.
-  (classloader/require 'metabase.app-db.setup)
   (let [sql-args (compile sql-args-or-honey-sql-map)]
     ;; catch errors running the query and rethrow with the failing generated SQL and the failing Honey SQL form -- this
     ;; will help with debugging stuff. This should mostly be dev-facing because we should hopefully not be committing
@@ -148,7 +137,7 @@
       (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options* jdbc-options)]
         (t2/query sql-args))
       (catch Throwable e
-        (let [formatted-sql (format-sql (first sql-args))]
+        (let [formatted-sql (app-db.format/format-sql (first sql-args))]
           (throw (ex-info (str "Error executing SQL query: " (ex-message e)
                                \newline
                                \newline

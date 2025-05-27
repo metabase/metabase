@@ -5,11 +5,14 @@
    [clojure.data :as data]
    [com.climate.claypoole :as cp]
    [metabase.api.common :as api]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -46,9 +49,9 @@
 (mu/defn- perms-type-for-collection :- CollectionPermissions
   [permissions-set collection-or-id]
   (cond
-    (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-or-id)) :write
-    (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-or-id))      :read
-    :else                                                                                                :none))
+    (perms/set-has-full-permissions? permissions-set (permissions.path/collection-readwrite-path collection-or-id)) :write
+    (perms/set-has-full-permissions? permissions-set (permissions.path/collection-read-path collection-or-id))      :read
+    :else                                                                                                           :none))
 
 (mu/defn- group-permissions-graph :- GroupPermissionsGraph
   "Return the permissions graph for a single group having `permissions-set`."
@@ -73,7 +76,7 @@
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]
                                                  [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]
-    (set (map :id (mdb.query/query honeysql-form)))))
+    (set (map :id (app-db/query honeysql-form)))))
 
 (defn- calculate-perm-groups [collection-namespace group-id->perms collection-ids]
   (into {}
@@ -96,7 +99,7 @@
 (defn- modify-instance-analytics-for-admins
   "In the graph, override the instance analytics collection within the admin group to read."
   [graph]
-  (let [admin-group-id      (:id (perms/admin-group))
+  (let [admin-group-id      (:id (perms-group/admin))
         audit-collection-id (:id (audit/default-audit-collection))]
     (if (nil? audit-collection-id)
       graph
@@ -104,8 +107,8 @@
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
-  works just like the function of the same name in `metabase.permissions.models.permissions`; see also the documentation for that
-  function.
+  works just like the function of the same name in `metabase.permissions.models.permissions`; see also the documentation
+  for that function.
 
   The graph is restricted to a given namespace by the optional `collection-namespace` param; by default, `nil`, which
   restricts it to the 'default' namespace containing normal Card/Dashboard/Pulse Collections.
@@ -196,7 +199,7 @@
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                        [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
-     (when-not force? (perms/check-revision-numbers old-graph new-graph))
+     (when-not force? (perms.u/check-revision-numbers old-graph new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
                            (doseq [[group-id changes] changes]
@@ -204,5 +207,5 @@
                              (update-group-permissions! collection-namespace group-id changes))
                            (:id (create-perms-revision! (:revision old-graph))))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
-         (perms/log-permissions-changes diff-old changes)
+         (perms.u/log-permissions-changes diff-old changes)
          (fill-revision-details! revision-id (assoc old-graph :namespace collection-namespace) changes))))))

@@ -164,6 +164,7 @@
   round
   power
   date
+  datetime
   interval
   relative-datetime
   time

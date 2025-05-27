@@ -27,7 +27,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -471,10 +471,10 @@
         values
         (do
           (log/debugf "Storing FieldValues for Field %s..." field-name)
-          (mdb.query/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                       (constantly {:has_more_values       has_more_values
-                                                    :values                values
-                                                    :human_readable_values human-readable-values}))
+          (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                    (constantly {:has_more_values       has_more_values
+                                                 :values                values
+                                                 :human_readable_values human-readable-values}))
           ::fv-created)
 
         ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist

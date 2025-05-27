@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.collections.models.collection :as collection]
@@ -13,14 +12,15 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -28,14 +28,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
-  :visibility   :authenticated
-  :feature      :email-restrict-recipients
-  :type         :keyword
-  :default      :all
-  :audit        :raw-value)
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -277,7 +269,7 @@
 
       ;; otherwise give them what the setting says on the tin
       :else
-      (case (user-visibility)
+      (case (users.settings/user-visibility)
         :none (just-me)
         :group (within-group)
         :all (all)))))

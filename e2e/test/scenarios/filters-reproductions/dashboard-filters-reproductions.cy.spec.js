@@ -1150,7 +1150,7 @@ describe("issue 21528", () => {
 
     cy.log("The following scenario breaks on 46");
     // Navigating to another page via JavaScript is faster than using `cy.visit("/admin/datamodel")` to load the whole page again.
-    H.appBar().icon("gear").click();
+    H.appBar().findByRole("button", { name: "Settings" }).click();
     H.popover().findByText("Admin settings").click();
     H.appBar().findByText("Table Metadata").click();
     cy.findByRole("main")

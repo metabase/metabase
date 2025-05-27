@@ -67,7 +67,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
@@ -75,6 +74,7 @@
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -190,22 +190,22 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (mdb.query/query {:select    [[:fk-field.id :f1]
-                                           [:fk-table.id :t1]
-                                           [:pk-field.id :f2]
-                                           [:pk-field.table_id :t2]]
-                               :from      [[:metabase_field :fk-field]]
-                               :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                           :fk-table.active]
-                                           [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                           [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                           :pk-field.active]]
-                               :where     [:and
-                                           [:= :database.id database-id]
-                                           [:not= :fk-field.fk_target_field_id nil]
-                                           :fk-field.active]
-                               :order-by [[:fk-field.id :desc]
-                                          [:pk-field.id :desc]]})]
+  (let [rows (mdb/query {:select    [[:fk-field.id :f1]
+                                     [:fk-table.id :t1]
+                                     [:pk-field.id :f2]
+                                     [:pk-field.table_id :t2]]
+                         :from      [[:metabase_field :fk-field]]
+                         :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                     :fk-table.active]
+                                     [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                                     [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                                     :pk-field.active]]
+                         :where     [:and
+                                     [:= :database.id database-id]
+                                     [:not= :fk-field.fk_target_field_id nil]
+                                     :fk-field.active]
+                         :order-by [[:fk-field.id :desc]
+                                    [:pk-field.id :desc]]})]
     (reduce
      (partial merge-with merge)
      {}
@@ -468,7 +468,7 @@
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
   [values            :- [:sequential ms/NonRemappedFieldValue]
-   v->human-readable :- :parameters/human-readable-remapping-map]
+   v->human-readable :- ::parameters.schema/human-readable-remapping-map]
   (map vector
        (map first values)
        (map (fn [[v]]
@@ -493,8 +493,8 @@
                [:metabase_field :dest] [:= :dest.table_id :table.id]]
    :where     [:and
                [:= :source.id field-id]
-               (mdb.query/isa :source.semantic_type :type/PK)
-               (mdb.query/isa :dest.semantic_type :type/Name)]
+               (mdb/isa :source.semantic_type :type/PK)
+               (mdb/isa :dest.semantic_type :type/Name)]
    :limit     1})
 
 (defn- remapped-field-id-query [field-id]
@@ -512,7 +512,7 @@
                          :from      [:metabase_field]
                          :where     [:and
                                      [:= :id field-id]
-                                     (mdb.query/isa :semantic_type :type/FK)]
+                                     (mdb/isa :semantic_type :type/FK)]
                          :limit     1}
                         "fk->pk->name")
                        ;; Implicit PK Field-> [Name] Field remapping
@@ -664,7 +664,7 @@
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ms/PositiveInt
-   v->human-readable :- :parameters/human-readable-remapping-map
+   v->human-readable :- ::parameters.schema/human-readable-remapping-map
    constraints       :- [:maybe Constraints]
    query             :- ms/NonBlankString
    options           :- [:maybe Options]]

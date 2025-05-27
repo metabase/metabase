@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
@@ -48,7 +48,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.query/isa :semantic_type :type/PK)]
+              [:not (app-db/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not-in :base_type skip-fingerprint-base-types]
@@ -64,7 +64,7 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.query/isa :semantic_type :type/PK)]
+            [:not (app-db/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not-in :base_type skip-fingerprint-base-types]
@@ -86,7 +86,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.query/isa :semantic_type :type/PK)]
+              [:not (app-db/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not-in :base_type skip-fingerprint-base-types]
@@ -109,7 +109,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.query/isa :semantic_type :type/PK)]
+              [:not (app-db/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not-in :base_type skip-fingerprint-base-types]
@@ -137,7 +137,7 @@
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb.query/isa :semantic_type :type/PK)]
+                     [:not (app-db/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
                     [:not-in :base_type skip-fingerprint-base-types]]}

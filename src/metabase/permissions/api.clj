@@ -3,14 +3,11 @@
   (:require
    [clojure.data :as data]
    [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.permissions.api.permission-graph :as api.permission-graph]
    [metabase.permissions.core :as perms]
@@ -18,87 +15,15 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-revision :as perms-revision]
    [metabase.permissions.util :as perms.u]
+   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
-   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; v50 Permissions Tutorial settings
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Bryan (7/8/24): The following 2 settings are meant to mitigate any confusion for admins over the new and improved
-;; permissions format. It looks different, so we want to make sure they know what's up.
-;; We don't want to show the modal or banner to admins who started using MB after v50 or who have dismissed them.
-;; We should come back around and delete them from the master branch in a few months.
-
-(defn- instance-create-time []
-  (->> (t2/select-one [:model/User [:%min.date_joined :min]]) :min t/local-date-time))
-
-(defn- v-fifty-migration-time []
-  (let [v50-migration-id "v50.2024-01-04T13:52:51"]
-    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted)))
-
-(defsetting show-updated-permission-modal
-  (deferred-tru
-   "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
-  :visibility :admin
-  :export?    false
-  :default    true
-  :user-local :only
-  :getter (fn [] (if (t/after? (instance-create-time) (v-fifty-migration-time))
-                   false
-                   (setting/get-value-of-type :boolean :show-updated-permission-modal)))
-  :type       :boolean
-  :audit      :never)
-
-(defsetting show-updated-permission-banner
-  (deferred-tru
-   "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
-  :visibility :admin
-  :export?    false
-  :default    true
-  :user-local :only
-  :getter (fn [] (if (t/after? (instance-create-time) (v-fifty-migration-time))
-                   false
-                   (setting/get-value-of-type :boolean :show-updated-permission-banner)))
-  :type       :boolean
-  :audit      :never)
-
-(defn- turn-off-tenants! []
-  ;; TODO: when we have `:model/Tenant`, make sure none exist
-  (when (t2/exists? :model/User :tenant_id [:not= nil])
-    (throw (ex-info (tru "Tenants cannot be turned off, a tenant user exists") {})))
-  (perms-group/delete-all-external-users!))
-
-(defn- turn-on-tenants! []
-  (perms-group/create-all-external-users!))
-
-(defsetting use-tenants
-  (deferred-tru
-   "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
-  :type :boolean
-  :visibility :admin
-  :export? false
-  :default false
-  :feature :tenants
-  :can-read-from-env? false
-  :setter (fn [new-value]
-            (when-not new-value
-              (turn-off-tenants!))
-            (when new-value
-              (turn-on-tenants!))
-            (setting/set-value-of-type! :boolean :use-tenants new-value)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :get "/graph"
   "Fetch a graph of all Permissions."
@@ -194,7 +119,7 @@
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (let [results (mdb.query/query
+  (let [results (mdb/query
                  {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
                   :from      [[:permissions_group_membership :pgm]]
                   :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]

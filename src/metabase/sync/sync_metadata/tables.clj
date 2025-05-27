@@ -9,7 +9,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
@@ -78,16 +77,6 @@
     #"^lobos_migrations$"
     ;; MSSQL
     #"^syncobj_0x.*"})
-
-(defsetting auto-cruft-tables
-  "A list of pattern strings that get converted into additional regexes that match Tables that should automatically be
-  marked as `:cruft`."
-  :type :json
-  :database-local :only
-  :visibility :internal
-  :export? true
-  :default []
-  :encryption :no)
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 

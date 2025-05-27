@@ -80,7 +80,7 @@
                   query)))
 
 (defn remove-permissions-key
-  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
+  "Pre-processing middleware. Removes the `::query-perms/perms` key from the query. This is where we store important permissions
   information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
@@ -95,6 +95,16 @@
    query
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :qp/stage-is-from-source-card))))
+
+(defn remove-gtapped-table-keys
+  "Pre-processing middleware. Removes any instances of the `::query-perms/gtapped-table` key which is added by the
+  row-level-restriction middleware when sandboxes are resolved in a query. Since we rely on this for permission enforcement,
+  we want to disallow users from passing it in themselves (like the functions above)."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join ::query-perms/gtapped-table))))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."

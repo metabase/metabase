@@ -9,7 +9,7 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
@@ -426,7 +426,7 @@
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
-      (doseq [{:keys [field-id field-name table-name field-db-id]} (mdb.query/query
+      (doseq [{:keys [field-id field-name table-name field-db-id]} (app-db/query
                                                                     {:select    [[:field.id :field-id]
                                                                                  [:field.name :field-name]
                                                                                  [:table.name :table-name]
@@ -1367,7 +1367,6 @@
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
-                  :entity-id           true
                   :last-viewed-at      :last_used_at
                   :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection [:= "official" :collection.authority_level]

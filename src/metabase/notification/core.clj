@@ -6,7 +6,6 @@
    [metabase.notification.payload.core]
    [metabase.notification.seed]
    [metabase.notification.send]
-   [metabase.notification.task.send]
    [potemkin :as p]))
 
 (comment
@@ -14,8 +13,7 @@
   metabase.notification.events.notification/keep-me
   metabase.notification.payload.core/keep-me
   metabase.notification.seed/keep-me
-  metabase.notification.send/keep-me
-  metabase.notification.task.send/keep-me)
+  metabase.notification.send/keep-me)
 
 (p/import-vars
  [metabase.notification.card
@@ -25,9 +23,7 @@
  [metabase.notification.seed
   seed-notification!]
  [metabase.notification.send
-  send-notification!]
- [metabase.notification.task.send
-  update-send-notification-triggers-timezone!])
+  send-notification!])
 
 (defmacro with-skip-sending-notification
   "Execute `body` with [[metabase.notification.events.notification/*skip-sending-notification?*]] bound to `skip?`."

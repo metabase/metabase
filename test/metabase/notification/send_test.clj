@@ -10,6 +10,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
+   [metabase.notification.settings :as notification.settings]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -678,7 +679,7 @@
 (deftest no-pool-exhasution-test
   (testing "if there are failure inside the notification thread pool, it should not exhaust the pool (#56379)"
     (let [noti-count (atom 0)
-          queue-size (notification.send/notification-thread-pool-size)]
+          queue-size (notification.settings/notification-thread-pool-size)]
       (with-redefs [notification.payload/notification-payload (fn [& _]
                                                                 (assert false))
                     notification.send/send-notification-sync! (fn [_notification]

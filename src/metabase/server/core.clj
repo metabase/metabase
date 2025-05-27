@@ -5,8 +5,6 @@
   (:require
    [metabase.server.handler]
    [metabase.server.instance]
-   [metabase.server.middleware.auth]
-   [metabase.server.middleware.exceptions]
    [metabase.server.protocols]
    [metabase.server.routes]
    [potemkin :as p]))
@@ -14,8 +12,6 @@
 (comment
   metabase.server.handler/keep-me
   metabase.server.instance/keep-me
-  metabase.server.middleware.auth/keep-me
-  metabase.server.middleware.exceptions/keep-me
   metabase.server.protocols/keep-me
   metabase.server.routes/keep-me)
 
@@ -26,12 +22,6 @@
   instance
   start-web-server!
   stop-web-server!]
- [metabase.server.middleware.auth
-  enforce-authentication
-  enforce-static-api-key]
- [metabase.server.middleware.exceptions
-  message-only-exceptions
-  public-exceptions]
   ;; TODO -- I think all of this stuff probably belongs in [[metabase.request.*]]
  [metabase.server.protocols
   Respond]
