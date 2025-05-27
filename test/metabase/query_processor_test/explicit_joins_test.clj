@@ -775,11 +775,11 @@
                                                       :aggregation  [[:distinct &Products.products.id]]
                                                       :filter       [:= &Products.products.category "Gizmo"]}
                                        :alias        "Q2"
-                                       ;; yes, `!month.products.created_at` is a so-called 'bad reference' (should
-                                       ;; include the `:join-alias`) but this test is also testing that we detect this
-                                       ;; situation and handle it appropriately.
-                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
-                                       :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
+                                       ;; The test matches how MBQL lib generates references today. For `source-query`,
+                                       ;; it will use `:lib/desired-column-alias`, and for the joined column it will
+                                       ;; prefer the field ID.
+                                       :condition    [:= [:field "Products__CREATED_AT" {:base-type :type/DateTime}]
+                                                      !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
                        :limit        3})]
