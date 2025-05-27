@@ -20,7 +20,6 @@ import type {
   UploadFile,
 } from "metabase/collections/types";
 import {
-  isPersonalCollectionChild,
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
@@ -57,7 +56,6 @@ const CollectionContentViewInner = ({
   databases,
   bookmarks,
   collection,
-  collections: collectionList = [],
   collectionId,
   createBookmark,
   deleteBookmark,
@@ -72,7 +70,6 @@ const CollectionContentViewInner = ({
   databases?: Database[];
   bookmarks?: Bookmark[];
   collection: Collection;
-  collections: Collection[];
   collectionId: CollectionId;
   createBookmark: CreateBookmark;
   deleteBookmark: DeleteBookmark;
@@ -234,10 +231,6 @@ const CollectionContentViewInner = ({
             collection={collection}
             isAdmin={isAdmin}
             isBookmarked={isBookmarked}
-            isPersonalCollectionChild={isPersonalCollectionChild(
-              collection,
-              collectionList,
-            )}
             onCreateBookmark={handleCreateBookmark}
             onDeleteBookmark={handleDeleteBookmark}
             canUpload={canCreateUpload}

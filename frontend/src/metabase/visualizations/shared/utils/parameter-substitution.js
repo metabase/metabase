@@ -9,6 +9,7 @@ export function fillParametersInText({
   parameterValues,
   text,
   escapeMarkdown = false,
+  urlEncode = false,
 }) {
   const parametersByTag = dashcard?.parameter_mappings?.reduce(
     (acc, mapping) => {
@@ -18,7 +19,10 @@ export function fillParametersInText({
       );
 
       if (parameter) {
-        const parameterValue = parameterValues[parameter.id];
+        const rawParameterValue = parameterValues[parameter.id];
+        const parameterValue = urlEncode
+          ? encodeURIComponent(rawParameterValue)
+          : rawParameterValue;
         return {
           ...acc,
           [tagId]: { ...parameter, value: parameterValue },

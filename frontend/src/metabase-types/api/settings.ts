@@ -172,6 +172,7 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
+  "embedding-iframe-sdk",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -223,6 +224,7 @@ export const tokenFeatures = [
   "content_verification",
   "embedding",
   "embedding_sdk",
+  "embedding_iframe_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
@@ -447,10 +449,10 @@ interface PublicSettings {
 }
 
 export type UserSettings = {
+  "dismissed-excel-pivot-exports-banner"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
-  "dismissed-onboarding-sidebar-link"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;

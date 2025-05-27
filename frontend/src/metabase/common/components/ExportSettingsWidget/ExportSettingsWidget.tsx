@@ -6,7 +6,7 @@ import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Checkbox, Chip, Group, Radio, Stack, Text } from "metabase/ui";
+import { Checkbox, SegmentedControl, Stack } from "metabase/ui";
 
 interface ExportSettingsWidgetProps {
   formats: ExportFormat[];
@@ -75,52 +75,34 @@ export const ExportSettingsWidget = ({
   const arePivotedExportsEnabled = useSetting("enable-pivoted-exports") ?? true;
 
   const formattingLabel = useFormattingLabel({ isFormattingEnabled });
+  const formatOptions = formats.map((format) => ({
+    label: `.${format}`,
+    value: format,
+  }));
 
   return (
-    <Stack>
-      <Chip.Group
+    <Stack gap="lg">
+      <SegmentedControl
+        w="100%"
+        data={formatOptions}
         value={selectedFormat}
-        onChange={(newValue: string | string[]) => {
-          Array.isArray(newValue)
-            ? onChangeFormat(newValue[0] as ExportFormat)
-            : onChangeFormat(newValue as ExportFormat);
-        }}
-      >
-        <Group gap="xs" wrap="nowrap">
-          {formats.map((format) => (
-            <Chip
-              key={format}
-              value={format}
-              variant="brand"
-            >{`.${format}`}</Chip>
-          ))}
-        </Group>
-      </Chip.Group>
-      {canConfigureFormatting ? (
-        <Stack gap="xs">
-          <Radio.Group
-            value={isFormattingEnabled ? "true" : "false"}
-            onChange={() => onToggleFormatting()}
-          >
-            <Group>
-              <Radio value="true" label={t`Formatted`} />
-              <Radio value="false" label={t`Unformatted`} />
-            </Group>
-          </Radio.Group>
+        onChange={onChangeFormat}
+      />
 
-          <Text
-            data-testid="formatting-description"
-            size="sm"
-            color="text-medium"
-          >
-            {formattingLabel}
-          </Text>
-        </Stack>
+      {canConfigureFormatting ? (
+        <Checkbox
+          data-testid="keep-data-formatted"
+          label={t`Keep the data formatted`}
+          checked={isFormattingEnabled}
+          onChange={() => onToggleFormatting()}
+          description={formattingLabel}
+          styles={{ inner: { alignSelf: "flex-start" } }}
+        />
       ) : null}
       {arePivotedExportsEnabled && canConfigurePivoting ? (
         <Checkbox
           data-testid="keep-data-pivoted"
-          label={t`Keep data pivoted`}
+          label={t`Keep the data pivoted`}
           checked={isPivotingEnabled}
           onChange={() => onTogglePivoting()}
         />

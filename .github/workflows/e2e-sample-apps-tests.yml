@@ -197,11 +197,12 @@ jobs:
     strategy:
       matrix:
         test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
+        environment: ["production", "development"]
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
-    name: e2e-sample-app-${{ matrix.test_suite }}-tests
+    name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
       MB_EDITION: ee
       DISPLAY: ""
@@ -219,6 +220,7 @@ jobs:
       # Sample Apps testing variables
       CYPRESS_CI: true
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+      SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
 

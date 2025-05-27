@@ -10,8 +10,9 @@ import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytic
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Button, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { canShowNativePreview } from "../../utils";
 
 const BUTTON_TEXT = {
   get sql() {
@@ -76,23 +77,4 @@ export const ToggleNativeQueryPreview = ({
   );
 };
 
-interface ToggleNativeQueryPreviewOpts {
-  question: Question;
-  queryBuilderMode: string;
-}
-
-ToggleNativeQueryPreview.shouldRender = ({
-  question,
-  queryBuilderMode,
-}: ToggleNativeQueryPreviewOpts) => {
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isMetric = question.type() === "metric";
-
-  return (
-    !isNative &&
-    !isMetric &&
-    question.database()?.native_permissions === "write" &&
-    queryBuilderMode === "notebook" &&
-    !question.isArchived()
-  );
-};
+ToggleNativeQueryPreview.shouldRender = canShowNativePreview;

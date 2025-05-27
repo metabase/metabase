@@ -94,23 +94,19 @@
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
-  (when (contains? #{:mysql :h2} (mdb/db-type))
-    (t2/update! :model/Database audit-db-id {:engine "postgres"})
-    (when (= :mysql (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema "public"}))
-    (when (= :h2 (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :schema] :name [:lower :name]})
-      (t2/update! :model/Field
-                  {:table_id
-                   [:in
-                    {:select [:id]
-                     :from [(t2/table-name :model/Table)]
-                     :where [:= :db_id audit-db-id]}]}
-                  {:name [:lower :name]}))
-    (log/info "Adjusted Audit DB for loading Analytics Content")))
+  (t2/update! :model/Database audit-db-id {:engine "postgres"})
+  (t2/update! :model/Table {:db_id audit-db-id} {:schema "public" :name [:lower :name]})
+  (t2/update! :model/Field
+              {:table_id
+               [:in
+                {:select [:id]
+                 :from [(t2/table-name :model/Table)]
+                 :where [:= :db_id audit-db-id]}]}
+              {:name [:lower :name]})
+  (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- adjust-audit-db-to-host!
-  [{audit-db-id :id :keys [engine]}]
+  [{audit-db-id :id :keys [engine] :as audit-db}]
   (when (not= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
@@ -125,6 +121,9 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:upper :name]}))
+    (when (= :postgres (mdb/db-type))
+      ;; in postgresql the data should look just like the source
+      (adjust-audit-db-to-source! audit-db))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name (mdb/db-type)))))
 
 (def ^:private analytics-dir-resource
@@ -195,10 +194,10 @@
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
       (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
+        (adjust-audit-db-to-source! audit-db)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
@@ -210,9 +209,9 @@
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-              (audit/last-analytics-checksum! current-checksum))))))
-    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (adjust-audit-db-to-host! audit-db))))
+              (audit/last-analytics-checksum! current-checksum))))
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+          (adjust-audit-db-to-host! audit-db))))))
 
 (defn- maybe-install-audit-db
   []

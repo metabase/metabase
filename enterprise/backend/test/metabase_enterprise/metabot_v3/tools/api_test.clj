@@ -11,6 +11,7 @@
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -64,6 +65,31 @@
           (is (=? {:output output
                    :conversation_id conversation-id}
                   response)))))))
+
+(deftest field-values-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          table-id (mt/id :people)
+          response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/field-values"
+                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                         {:arguments       {:entity_type "table"
+                                                            :entity_id   table-id
+                                                            :field_id    (-> table-id
+                                                                             metabot-v3.tools.u/table-field-id-prefix
+                                                                             (str 4)) ; name
+                                                            :limt        15}
+                                          :conversation_id conversation-id})]
+      (is (=? {:structured_output {:statistics
+                                   {:distinct_count 2499,
+                                    :percent_null 0.0,
+                                    :percent_json 0.0,
+                                    :percent_url 0.0,
+                                    :percent_email 0.0,
+                                    :percent_state 0.0,
+                                    :average_length 13.532}}
+               :conversation_id conversation-id}
+              response)))))
 
 (deftest filter-records-test
   (mt/with-premium-features #{:metabot-v3}
@@ -442,6 +468,35 @@
                                                   :name "Model metric"
                                                   :description "Model metric desc"
                                                   :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)}]))]}
+                           :conversation_id conversation-id}
+                          response))))
+              (testing "Minimal call"
+                (let [conversation-id (str (random-uuid))
+                      ai-token (ai-session-token metabot-id)
+                      response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
+                                                     {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                     {:metabot_id metabot-id
+                                                      :arguments {:with_model_fields                     false
+                                                                  :with_model_metrics                    false
+                                                                  :with_metric_default_temporal_breakout false
+                                                                  :with_metric_queryable_dimensions      false}
+                                                      :conversation_id conversation-id})]
+                  (is (=? {:structured_output
+                           {:metrics [(-> metric-data
+                                          (select-keys [:name :description])
+                                          (assoc :id metric-id
+                                                 :type "metric"
+                                                 :default_time_dimension_field_id nil))
+                                      (-> model-metric-data
+                                          (select-keys [:name :description])
+                                          (assoc :id model-metric-id
+                                                 :type "metric"
+                                                 :default_time_dimension_field_id nil))]
+                            :models [(-> model-data
+                                         (select-keys [:name :description])
+                                         (assoc :id model-id
+                                                :type "model"
+                                                :fields []))]}
                            :conversation_id conversation-id}
                           response)))))))))))
 

@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
 import { screen, within } from "__support__/ui";
@@ -33,15 +34,65 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("how to use Metabase", () => {
-    it.each(["admin", "non-admin"])("should render for %s", async (user) => {
-      await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
-      const link = screen.getByRole("link", { name: /How to use Metabase/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/getting-started");
+  describe("Getting Started section", () => {
+    it("should not render if the instance was created more than 30 days ago", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        instanceCreationDate: dayjs().subtract(31, "days").toISOString(),
+      });
+      const section = screen.queryByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      const onboardingLink = screen.queryByRole("link", {
+        name: /How to use Metabase/i,
+      });
+
+      expect(section).not.toBeInTheDocument();
+      expect(onboardingLink).not.toBeInTheDocument();
     });
 
-    it("should be highlighted if selected", async () => {
+    it("should render if the instance was created less than 30 days ago", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        instanceCreationDate: dayjs().subtract(14, "days").toISOString(),
+      });
+      const section = screen.getByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      const onboardingLink = within(section).getByRole("link", {
+        name: /How to use Metabase/i,
+      });
+
+      expect(section).toBeInTheDocument();
+      expect(onboardingLink).toBeInTheDocument();
+      expect(onboardingLink).toHaveAttribute("href", "/getting-started");
+    });
+
+    it.each(["admin", "non-admin"])("should render for %s", async (user) => {
+      await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
+      const section = screen.getByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      expect(section).toBeInTheDocument();
+    });
+
+    it("should be expanded initially but collapsible", async () => {
+      await setup({ user: createMockUser({ is_superuser: true }) });
+      const sectionTitle = screen.getByRole("heading", {
+        name: /Getting Started/i,
+      });
+
+      expect(sectionTitle).toBeInTheDocument();
+      expect(screen.getByText(/How to use Metabase/i)).toBeInTheDocument();
+
+      await userEvent.click(sectionTitle);
+      expect(sectionTitle).toBeInTheDocument();
+      expect(
+        screen.queryByText(/How to use Metabase/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("'How to use Metabase' link should be highlighted if selected", async () => {
       await setup({
         pathname: "/getting-started",
         user: createMockUser({ is_superuser: true }),
@@ -50,24 +101,6 @@ describe("nav > containers > MainNavbar", () => {
         name: /How to use Metabase/i,
       });
       expect(link).toHaveAttribute("aria-selected", "true");
-    });
-
-    it("should render if the instance was created less than 30 days ago", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        instanceCreationDate: dayjs().subtract(14, "days").toISOString(),
-      });
-      const link = screen.getByRole("link", { name: /How to use Metabase/i });
-      expect(link).toBeInTheDocument();
-    });
-
-    it("should not render if the instance was created more than 30 days ago", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        instanceCreationDate: dayjs().subtract(31, "days").toISOString(),
-      });
-      const link = screen.queryByRole("link", { name: /How to use Metabase/i });
-      expect(link).not.toBeInTheDocument();
     });
   });
 
