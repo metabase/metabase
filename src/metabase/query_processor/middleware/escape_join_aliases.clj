@@ -21,8 +21,8 @@
   (driver/escape-alias driver join-alias))
 
 (defn- driver->escape-fn [driver]
-  (comp (lib.util/unique-name-generator)
-        (partial escape-alias driver)))
+  ;; (comp (lib.util/unique-name-generator)
+  (partial escape-alias driver))
 
 (defn- add-escaped-aliases
   "Walk the query and add an `::alias` key to every join in the query."
