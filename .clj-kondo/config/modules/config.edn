@@ -1424,6 +1424,13 @@
            task
            util}}
 
+  enterprise/content-translation
+  {:api  #{metabase-enterprise.content-translation.api.routes}
+   :uses #{api
+           content-translation
+           util
+           enterprise/api}}
+
   enterprise/content-verification
   {:api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api
