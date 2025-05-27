@@ -165,7 +165,20 @@ export const setupMockJwtEndpoints = ({
     method: "jwt",
   });
 
-  const jwtProviderMock = fetchMock.get(providerUri, providerResponse);
+  const jwtProviderMock = fetchMock.get(
+    (url) => url.startsWith(providerUri),
+    (url) => {
+      const urlObj = new URL(url);
+      const responseParam = urlObj.searchParams.get("response");
+
+      if (responseParam === "json") {
+        return providerResponse;
+      }
+
+      // Return a default response or error for other cases
+      return { status: 400, body: { error: "Invalid request" } };
+    },
+  );
 
   const jwtValidationMock = fetchMock.get(
     `${instanceUrl}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,
@@ -177,12 +190,10 @@ export const setupMockJwtEndpoints = ({
       },
     },
   );
-
   const failureMock = fetchMock.get(failureUrl, {
     status: 500,
     body: { error: failureError },
   });
-
   return {
     ssoInitMock,
     jwtProviderMock,

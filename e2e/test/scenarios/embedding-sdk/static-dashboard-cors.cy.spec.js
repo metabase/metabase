@@ -57,7 +57,9 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       },
       secret: JWT_SHARED_SECRET,
     }).then((jwtToken) => {
-      cy.intercept("GET", "/sso/metabase", { jwt: jwtToken });
+      cy.intercept("GET", "http://localhost/sso/metabase?response=json", {
+        jwt: jwtToken,
+      });
     });
   });
 

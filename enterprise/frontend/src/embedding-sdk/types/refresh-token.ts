@@ -10,6 +10,4 @@ export type UserBackendJwtResponse = {
   jwt: string;
 };
 
-export type MetabaseFetchRequestTokenFn = (
-  url: string,
-) => Promise<UserBackendJwtResponse>;
+export type MetabaseFetchRequestTokenFn = () => Promise<UserBackendJwtResponse>;

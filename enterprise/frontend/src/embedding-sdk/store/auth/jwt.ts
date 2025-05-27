@@ -6,7 +6,7 @@ export async function jwtDefaultRefreshTokenFunction(
   responseUrl: string,
   instanceUrl: string,
   hash: string,
-  customFetchRequestToken: ((url: string) => Promise<any>) | null = null,
+  customFetchRequestToken: (() => Promise<any>) | null = null,
 ) {
   const jwtTokenResponse = await runFetchRequestToken(
     responseUrl,
@@ -54,15 +54,14 @@ export async function jwtDefaultRefreshTokenFunction(
 
 const runFetchRequestToken = async (
   responseUrl: string,
-  customFetchRequestToken: ((url: string) => Promise<any>) | null = null,
+  customFetchRequestToken: (() => Promise<any>) | null = null,
 ) => {
   // Points to the JWT Auth endpoint on the client server
   // This should return {jwt: USER_JWT_TOKEN } with the signed token from the client backend
   try {
-    const clientBackendResponse = await (
-      customFetchRequestToken ?? refreshUserJwt
-    )(responseUrl);
-
+    const clientBackendResponse = customFetchRequestToken
+      ? await customFetchRequestToken()
+      : await refreshUserJwt(responseUrl);
     if (
       typeof clientBackendResponse !== "object" ||
       !("jwt" in clientBackendResponse)
@@ -92,7 +91,9 @@ const runFetchRequestToken = async (
 const refreshUserJwt = async (url: string) => {
   let clientBackendResponse;
   try {
-    clientBackendResponse = await fetch(url, {
+    const urlWithSource = new URL(url);
+    urlWithSource.searchParams.set("response", "json");
+    clientBackendResponse = await fetch(urlWithSource.toString(), {
       method: "GET",
       credentials: "include",
     });
