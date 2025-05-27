@@ -256,8 +256,8 @@
             "Venues__LATITUDE"
             "Venues__LONGITUDE"
             "Venues__PRICE"
-            "CATEGORIES__via__CATEGORY_ID__ID"
-            "CATEGORIES__via__CATEGORY_ID__NAME"]
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
            (map :lib/desired-column-alias columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,

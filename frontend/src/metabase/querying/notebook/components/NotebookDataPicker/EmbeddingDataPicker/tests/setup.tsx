@@ -16,11 +16,7 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
@@ -73,11 +69,9 @@ export function setup({
     entityTypes
       ? {
           storeInitialState: createMockState({
-            embed: createMockEmbedState({
-              options: createMockEmbedOptions({
-                entity_types: entityTypes,
-              }),
-            }),
+            embeddingDataPicker: {
+              entityTypes,
+            },
           }),
         }
       : undefined,

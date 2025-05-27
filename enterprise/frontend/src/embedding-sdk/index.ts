@@ -62,3 +62,5 @@ export type {
   MetabaseFetchRequestTokenFn,
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
+
+export type { EmbeddingEntityType } from "metabase/embedding-sdk/store.ts";

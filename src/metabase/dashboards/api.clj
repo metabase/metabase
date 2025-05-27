@@ -26,6 +26,7 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -115,13 +116,14 @@
   "Create a new Dashboard."
   [_route-params
    _query-params
-   {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :- [:map
-                                                                                                         [:name                ms/NonBlankString]
-                                                                                                         [:parameters          {:optional true} [:maybe [:sequential ms/Parameter]]]
-                                                                                                         [:description         {:optional true} [:maybe :string]]
-                                                                                                         [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
-                                                                                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                                                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
+   :- [:map
+       [:name                ms/NonBlankString]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+       [:description         {:optional true} [:maybe :string]]
+       [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -132,10 +134,10 @@
                         :collection_id       collection_id
                         :collection_position collection_position}
         dash           (t2/with-transaction [_conn]
-                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-                        ;; position, check that and fix up if needed
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! dashboard-data)
-                        ;; Ok, now save the Dashboard
+                         ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
@@ -972,7 +974,7 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:enable_embedding        {:optional true} [:maybe :boolean]]
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
-   [:parameters              {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:parameters              {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
