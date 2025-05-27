@@ -3,13 +3,13 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.channel.urls :as urls]
    [metabase.settings.core :as setting]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.json :as json]
-   [metabase.util.urls :as urls])
+   [metabase.util.json :as json])
   (:import
-   (com.github.jknack.handlebars
-    Options Handlebars Helper)))
+   (com.github.jknack.handlebars Options Handlebars Helper)
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -366,6 +366,16 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
+(defhelper split
+  "Splits strings by a given substring.
+
+   Example:
+   ```
+   {{#each (split recipients \",\")}}<@{{this}}> {{/each}}
+   ```"
+  [^String string [sep] _kparams _options]
+  (.split string (Pattern/quote sep)))
+
 (def ^:private built-in-helpers-info
   (map
    #(assoc % :type :built-in)
@@ -476,6 +486,7 @@
    "ends-with"     #'ends-with
    "json-encode"   #'json-encode
    "regexp"        #'regexp
+   "split"         #'split
    "format-date"   #'format-date
    "now"           #'now
    "card-url"      #'card-url
@@ -484,6 +495,7 @@
 
 ;; Exposing this via settings so FE can find it
 ;; TODO: the better way is to follow metabase.lib's steps by writing this as cljc so FE can access it directly.
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (setting/defsetting default-handlebars-helpers
   "A list of default handlebars helpers."
   :type        :json

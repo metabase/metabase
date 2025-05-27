@@ -1,6 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import { datasetApi } from "metabase/api";
+import { datasetApi, tableApi } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
@@ -16,6 +16,7 @@ import {
   loadMetadataForTable,
 } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
+import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import type {
   Card,
   CardId,
@@ -212,7 +213,9 @@ export type AddEditableTableDashCardToDashboardOpts = NewDashCardOpts & {
 
 export const addEditableTableDashCardToDashboard =
   ({ dashId, tabId, tableId }: AddEditableTableDashCardToDashboardOpts) =>
-  (dispatch: Dispatch) => {
+  async (dispatch: Dispatch, getState: GetState) => {
+    const tempId = generateTemporaryDashcardId();
+
     // this should work as a virtual card until dashboard is saved, then it becomes a normal card. Hence the typecast
     const card = createVirtualCard("table-editable" as VirtualCardDisplay);
 
@@ -221,7 +224,8 @@ export const addEditableTableDashCardToDashboard =
         dashId,
         tabId,
         dashcardOverrides: {
-          card: card as VirtualCard,
+          id: tempId,
+          card: { ...card, table_id: tableId, id: tempId } as VirtualCard,
           visualization_settings: {
             table_id: tableId,
             "editableTable.enabledActions": [
@@ -239,7 +243,40 @@ export const addEditableTableDashCardToDashboard =
       }),
     );
 
-    dispatch(loadMetadataForTable(tableId));
+    await dispatch(loadMetadataForTable(tableId));
+
+    const tableMetadataSelector =
+      tableApi.endpoints.getTableQueryMetadata.select({
+        id: tableId,
+      });
+
+    // We do not have types for RTK redux store, so we need to cast to unknown
+    const tableMetadataQueryCache = tableMetadataSelector(
+      getState() as unknown as Parameters<typeof tableMetadataSelector>[0],
+    );
+
+    if (tableMetadataQueryCache.data) {
+      const { display_name, db_id, fields } = tableMetadataQueryCache.data;
+
+      dispatch(
+        updateEditableTableCardQueryInEditMode({
+          dashcardId: tempId,
+          cardId: tempId,
+          newCard: {
+            ...card,
+            id: tempId,
+            table_id: Number(tableId),
+            name: `${display_name} (unsaved)`,
+            dataset_query: {
+              type: "query",
+              query: { "source-table": tableId },
+              database: db_id,
+            },
+            result_metadata: fields,
+          } as Card,
+        }),
+      );
+    }
   };
 
 export const addIFrameDashCardToDashboard =
@@ -307,13 +344,24 @@ export const addCardWithVisualization =
   ({
     visualization,
     tabId,
-    cards,
   }: {
     visualization: VisualizerVizDefinition;
     tabId: number | null;
-    cards: Card[];
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    const cardIds = getCardIdsFromColumnValueMappings(
+      visualization.columnValuesMapping,
+    );
+    const cards: Card[] = [];
+
+    for (const cardId of cardIds) {
+      await dispatch(Questions.actions.fetch({ id: cardId }));
+      const card: Card = Questions.selectors
+        .getObject(getState(), { entityId: cardId })
+        .card();
+      cards.push(card);
+    }
+
     const [mainCard, ...secondaryCards] = cards;
 
     const dashcardId = generateTemporaryDashcardId();
@@ -345,13 +393,24 @@ export const replaceCardWithVisualization =
   ({
     dashcardId,
     visualization,
-    cards,
   }: {
     dashcardId: DashCardId;
     visualization: VisualizerVizDefinition;
-    cards: Card[];
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    const cardIds = getCardIdsFromColumnValueMappings(
+      visualization.columnValuesMapping,
+    );
+    const cards: Card[] = [];
+
+    for (const cardId of cardIds) {
+      await dispatch(Questions.actions.fetch({ id: cardId }));
+      const card: Card = Questions.selectors
+        .getObject(getState(), { entityId: cardId })
+        .card();
+      cards.push(card);
+    }
+
     const [mainCard, ...secondaryCards] = cards;
 
     const originalDashCard = getDashCardById(getState(), dashcardId);
@@ -478,10 +537,13 @@ export const updateEditableTableCardQueryInEditMode = createThunkAction(
       // set data override to null to show loading state
       dispatch(setEditingDashcardData(dashcardId, cardId, null));
 
+      // Non-saved cards (temporary ID < 0) do not require sync with the server, since there's no card ID to update.
+      // The `isDirty` flag is used to determine if the existing card local state is different from the server state.
+      const isDirty = newCard.id > 0 ? true : false;
       const card: Card = {
         ...newCard,
         // @ts-expect-error - we don't have a type for Store card with additional state
-        isDirty: true,
+        isDirty,
       };
 
       dispatch(

@@ -10,17 +10,17 @@
    Refer to the documentation for those endpoints for further details."
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
+   [metabase.embedding.validation :as embedding.validation]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
-  (validation/check-embedding-enabled)
+  (embedding.validation/check-embedding-enabled)
   (embed/unsign token))
 
 (api.macros/defendpoint :get "/card/:token"

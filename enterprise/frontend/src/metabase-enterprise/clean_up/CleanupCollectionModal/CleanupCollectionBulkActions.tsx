@@ -6,7 +6,7 @@ import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
-import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
+import { UndoListOverlay } from "metabase/containers/UndoListing";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 
@@ -95,16 +95,11 @@ export const CleanupCollectionBulkActions = ({
 
   return (
     <>
-      {undo && (
-        <UndoListOverlay>
-          <UndoToast
-            undo={undo}
-            onUndo={() => undo.actions?.[0]()}
-            onDismiss={() => setUndo(undefined)}
-          />
-        </UndoListOverlay>
-      )}
-
+      <UndoListOverlay
+        undos={undo ? [undo] : []}
+        onUndo={() => undo?.actions?.[0]()}
+        onDismiss={() => setUndo(undefined)}
+      />
       <BulkActionBar
         className={CS.actionBarContainer}
         message={actionMessage}

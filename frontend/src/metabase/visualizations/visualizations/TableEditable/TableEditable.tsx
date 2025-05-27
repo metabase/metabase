@@ -1,9 +1,9 @@
 import { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
-import { Flex, Title } from "metabase/ui";
+import { Flex, Loader, Title } from "metabase/ui";
 import LoadingView from "metabase/visualizations/components/Visualization/LoadingView";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
@@ -83,23 +83,14 @@ export class TableEditable extends Component<
   }
 
   render() {
-    const { dashcard, className, metadata, isEditing } = this.props;
+    const { dashcard, className, isEditing } = this.props;
     const { data, card, question } = this.state;
 
     if (card?.visualization_settings?.table_id && !data && dashcard?.isAdded) {
-      // use case for just added and not yet saved table card
-      const tableId = card?.visualization_settings?.table_id;
-      const table = metadata?.table(tableId);
-
       return (
         <Flex align="center" justify="center" h="100%">
           <div>
-            <Title className={CS.textCentered} p="md" order={2}>
-              {table?.display_name}
-            </Title>
-            <Title p="md" order={4}>
-              {t`This editable table will be populated after this dashboard is saved`}
-            </Title>
+            <Loader />
           </div>
         </Flex>
       );
@@ -113,16 +104,16 @@ export class TableEditable extends Component<
       return <LoadingView isSlow={false} />;
     }
 
-    const visualizationSettings = mergeSettings(
+    const visualizationSettings = getMergedVisualizationSettings(
       card.visualization_settings,
       dashcard.visualization_settings,
     );
 
-    // This is a potential bottleneck, however there's no straightforward optimization inside a class component
-    // However based on props and state configuration it shouldn't be a problem for now
     const hasVisibleColumns =
       !visualizationSettings?.["table.columns"] ||
-      visualizationSettings?.["table.columns"].some((column) => column.enabled);
+      visualizationSettings?.["table.columns"].some(
+        (column: { enabled: boolean }) => column.enabled,
+      );
 
     if (!hasVisibleColumns) {
       return (
@@ -149,3 +140,13 @@ export class TableEditable extends Component<
     );
   }
 }
+
+const getMergedVisualizationSettings = _.memoize(
+  (cardSettings: any, dashcardSettings: any) => {
+    return mergeSettings(cardSettings, dashcardSettings);
+  },
+  (cardSettings: any, dashcardSettings: any) => {
+    // Create a cache key from both settings objects
+    return JSON.stringify([cardSettings, dashcardSettings]);
+  },
+);

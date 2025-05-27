@@ -9,10 +9,10 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn select-table-pk-fields

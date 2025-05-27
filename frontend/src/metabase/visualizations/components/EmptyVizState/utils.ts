@@ -1,21 +1,6 @@
 import { t } from "ttag";
 
-import areaEmptyState from "assets/img/empty-states/visualizations/area.svg";
-import barEmptyState from "assets/img/empty-states/visualizations/bar.svg";
-import comboEmptyState from "assets/img/empty-states/visualizations/combo.svg";
-import funnelEmptyState from "assets/img/empty-states/visualizations/funnel.svg";
-import gaugeEmptyState from "assets/img/empty-states/visualizations/gauge.svg";
-import lineEmptyState from "assets/img/empty-states/visualizations/line.svg";
-import mapEmptyState from "assets/img/empty-states/visualizations/map-region.svg";
-import pieEmptyState from "assets/img/empty-states/visualizations/pie.svg";
-import pivotEmptyState from "assets/img/empty-states/visualizations/pivot.svg";
-import progressEmptyState from "assets/img/empty-states/visualizations/progress.svg";
-import rowEmptyState from "assets/img/empty-states/visualizations/row.svg";
-import sankeyEmptyState from "assets/img/empty-states/visualizations/sankey.svg";
-import scalarEmptyState from "assets/img/empty-states/visualizations/scalar.svg";
-import scatterEmptyState from "assets/img/empty-states/visualizations/scatter.svg";
-import smartscalarEmptyState from "assets/img/empty-states/visualizations/smartscalar.svg";
-import waterfallEmptyState from "assets/img/empty-states/visualizations/waterfall.svg";
+import { getSubpathSafeUrl } from "metabase/lib/urls";
 import type { CardDisplayType } from "metabase-types/api";
 
 /**
@@ -39,9 +24,16 @@ type EmptyVizConfig = {
   docsLink?: string;
 };
 
+// We should not import these large empty-state images directly,
+// because we don't need to inline them as base64 to the SDK bundle.
+// Insead we just define paths to them that is passed to the <img> tag directly.
 const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   area: {
-    imgSrc: areaEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/area.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick a metric and multiple columns to group by.`;
     },
@@ -50,7 +42,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   bar: {
-    imgSrc: barEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/bar.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick a metric and a column to group by.`;
     },
@@ -59,7 +55,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   combo: {
-    imgSrc: comboEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/combo.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick two or more metrics and one or two columns to group by.`;
     },
@@ -68,17 +68,25 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   funnel: {
-    imgSrc: funnelEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/funnel.svg",
+      );
+    },
     get primaryText() {
       return t`Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps.`;
     },
     get secondaryText() {
       return t`Read the docs`;
     },
-    docsLink: "questions/visualizations/funnel",
+    docsLink: getSubpathSafeUrl("questions/visualizations/funnel"),
   },
   gauge: {
-    imgSrc: gaugeEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/gauge.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings.`;
     },
@@ -87,7 +95,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   line: {
-    imgSrc: lineEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/line.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick one or more metrics and a time column to group by.`;
     },
@@ -96,9 +108,13 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   map: {
-    imgSrc: mapEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/map-region.svg",
+      );
+    },
     get primaryText() {
-      return t`Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column.`;
+      return t`Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a column with region names.`;
     },
     get secondaryText() {
       return t`Read the docs`;
@@ -106,7 +122,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     docsLink: "questions/visualizations/map",
   },
   pie: {
-    imgSrc: pieEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/pie.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick a metric and a column to group by.`;
     },
@@ -115,7 +135,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   pivot: {
-    imgSrc: pivotEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/pivot.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by.`;
     },
@@ -124,7 +148,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   progress: {
-    imgSrc: progressEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/progress.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings.`;
     },
@@ -133,7 +161,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   row: {
-    imgSrc: rowEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/row.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick a metric and a column to group by.`;
     },
@@ -142,7 +174,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   sankey: {
-    imgSrc: sankeyEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/sankey.svg",
+      );
+    },
     get primaryText() {
       return t`Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow.`;
     },
@@ -152,14 +188,22 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     docsLink: "questions/visualizations/sankey",
   },
   scalar: {
-    imgSrc: scalarEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/scalar.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick an aggregate metric (such as Average or Sum).`;
     },
     secondaryText: `E.g. Average star rating`,
   },
   scatter: {
-    imgSrc: scatterEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/scatter.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick a metric and a number columns to group by.`;
     },
@@ -168,7 +212,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   smartscalar: {
-    imgSrc: smartscalarEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/smartscalar.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick an aggregate metric (such as the Average or Sum) and a time column to group by.`;
     },
@@ -177,7 +225,11 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   waterfall: {
-    imgSrc: waterfallEmptyState,
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/waterfall.svg",
+      );
+    },
     get primaryText() {
       return t`Then pick a metric and a single column to group by: either time or category.`;
     },
