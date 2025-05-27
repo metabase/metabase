@@ -179,8 +179,7 @@
 ;; custom Redshift type handling
 
 (defn- external-datbaase-type->base-type
-  "Additional type mappings of external columns. Return nil when no matching type is found to avoid short circuit
-  in `sql-jdbc.sync/database-type->base-type :redshift`."
+  "Additional type mappings of external columns. Return nil when no matching type is found."
   [database-type]
   (when (or (string? database-type)
             (instance? clojure.lang.Named database-type))
@@ -229,13 +228,17 @@
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal
             :intervald2s :type/*}   ; interval literal
-           ;; external tables types
-           external-datbaase-type->base-type))
+           ))
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
   (or (database-type->base-type column-type)
-      ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)))
+      (let [assumed-type ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)]
+        (if-not (contains? #{nil :type/*} assumed-type)
+          assumed-type
+          (if-some [external-assumed-type (external-datbaase-type->base-type column-type)]
+            external-assumed-type
+            assumed-type)))))
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
