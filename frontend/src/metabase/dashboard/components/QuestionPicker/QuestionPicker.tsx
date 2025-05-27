@@ -68,6 +68,8 @@ function QuestionPickerInner({
     [databases],
   );
 
+  console.log({ collectionsById, getCollectionIcon, collections });
+
   const onNewQuestion = (type: "native" | "notebook") =>
     dispatch(addDashboardQuestion(type));
 
