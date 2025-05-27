@@ -157,4 +157,4 @@
           (cond-> (:name opts) (assoc :name (:name opts)))))
     {:lib/type :metadata/metric
      :id metric-id
-     :display-name (i18n/tru "Unknown Metric")}))
+     :display-name (fallback-display-name)}))
