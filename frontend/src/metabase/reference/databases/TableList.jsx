@@ -84,7 +84,6 @@ export const separateTablesBySchema = (
 
 class TableList extends Component {
   static propTypes = {
-    style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     database: PropTypes.object.isRequired,
     hasSingleSchema: PropTypes.bool,
@@ -93,31 +92,25 @@ class TableList extends Component {
   };
 
   render() {
-    const {
-      entities,
-      style,
-      database,
-      hasSingleSchema,
-      loadingError,
-      loading,
-    } = this.props;
+    const { entities, database, hasSingleSchema, loadingError, loading } =
+      this.props;
 
     const tables = Object.values(entities);
 
     return (
-      <div style={style} className={CS.full} data-testid="table-list">
-        <ReferenceHeader
-          name={t`Tables in ${database.name}`}
-          type="tables"
-          headerIcon="database"
-        />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
-        >
-          {() =>
-            tables.length > 0 ? (
-              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
+      <div className={CS.full} data-testid="table-list">
+        <div className={cx(CS.wrapper, CS.wrapperTrim)}>
+          <ReferenceHeader
+            name={t`Tables in ${database.name}`}
+            type="tables"
+            headerIcon="database"
+          />
+          <LoadingAndErrorWrapper
+            loading={!loadingError && loading}
+            error={loadingError}
+          >
+            {() =>
+              tables.length > 0 ? (
                 <List>
                   {!hasSingleSchema
                     ? separateTablesBySchema(
@@ -133,14 +126,14 @@ class TableList extends Component {
                           createListItem(table),
                       )}
                 </List>
-              </div>
-            ) : (
-              <div className={S.empty}>
-                <EmptyState {...emptyStateData} />
-              </div>
-            )
-          }
-        </LoadingAndErrorWrapper>
+              ) : (
+                <div className={S.empty}>
+                  <EmptyState {...emptyStateData} />
+                </div>
+              )
+            }
+          </LoadingAndErrorWrapper>
+        </div>
       </div>
     );
   }
