@@ -46,8 +46,9 @@
   {:complete? (empty? queue)
    :items     results})
 
-(defn- walk* [item-type items metadata children-fn {:keys [max-queries]
-                                                    :or   {max-queries 100}}]
+(defn- walk*
+  [item-type items metadata children-fn {:keys [max-queries]
+                                         :or   {max-queries 100}}]
   (reduce
    (fn [state _]
      (step metadata children-fn state))
@@ -74,6 +75,11 @@
 (defn delete-recursively
   "Delete the given items, along with all their descendants."
   [item-type items metadata children-fn delete-fn & {:as opts}]
+  (def item-type item-type)
+  (def opts opts)
+  (def items items)
+  (def metadata metadata)
+  (def children-fn children-fn)
   (let [{:keys [queue results]} (walk* item-type items metadata children-fn opts)]
     (if (seq queue)
       (throw (ex-info "Cannot delete all descendants, as we could not enumerate them" {:queue queue}))

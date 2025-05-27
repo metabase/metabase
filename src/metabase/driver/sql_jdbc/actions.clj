@@ -3,8 +3,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
+   [metabase-enterprise.data-editing.foreign-keys :as fks]
    [metabase.actions.core :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -22,7 +24,9 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.models.database :as database]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection SQLException)))
 
@@ -561,6 +565,113 @@
                                                            (pr-str field-name)))]]
                  [:= [:field field-id nil] value])))
 
+;;;; Foreign Key Cascade Deletion
+
+(mu/defn- build-fk-metadata :- [:map-of ::lib.schema.id/table [:sequential :map]]
+  "Build foreign key relationship metadata for a database.
+  Returns a map of parent-table-id -> [{:table child-table-id, :fk {child-fk-col parent-pk-col}, :pk [child-pk-cols]}]"
+  [database-id :- ::lib.schema.id/database]
+  (actions/cached-value
+   [::build-fk-metadata database-id]
+   (fn []
+     (let [;; Get all FK fields in the database
+           fk-fields (t2/select [:model/Field :id :name :table_id :fk_target_field_id]
+                                :fk_target_field_id [:not= nil]
+                                :active true
+                                :table_id [:in (t2/select-pks-set :model/Table :db_id database-id)])
+           ;; Get all PK fields for target tables
+           target-field-ids (set (keep :fk_target_field_id fk-fields))
+           target-fields (when (seq target-field-ids)
+                           (t2/select [:model/Field :id :name :table_id]
+                                      :id [:in target-field-ids]
+                                      :active true))
+           target-field-id->field (m/index-by :id target-fields)
+           ;; Get PK fields for all tables
+           all-table-ids (set (concat (map :table_id fk-fields)
+                                      (map :table_id target-fields)))
+           pk-fields (t2/select [:model/Field :id :name :table_id]
+                                :semantic_type :type/PK
+                                :active true
+                                :table_id [:in all-table-ids])
+           table-id->pk-fields (group-by :table_id pk-fields)]
+       ;; Build the metadata structure: parent-table-id -> [child-relationships]
+       ;; Format: {:table child-table-id, :fk {child-fk-col parent-pk-col}, :pk [child-pk-cols]}
+       (reduce
+        (fn [metadata {:keys [table_id name fk_target_field_id]}]
+          (when-let [target-field (target-field-id->field fk_target_field_id)]
+            (let [parent-table-id (:table_id target-field)  ; The table being referenced
+                  child-table-id table_id                   ; The table with the FK
+                  child-pk-fields (table-id->pk-fields child-table-id)]
+              ;; Group by parent table, list child relationships
+              (update metadata parent-table-id (fnil conj [])
+                      {:table child-table-id
+                       :fk {(keyword name) (keyword (:name target-field))}  ; {child-fk-col parent-pk-col}
+                       :pk (mapv (comp keyword :name) child-pk-fields)}))))  ; child PK columns
+        {}
+        fk-fields)))))
+
+(defn- lookup-children-in-db
+  "Find child rows that reference the given parent rows via FK relationships"
+  [relationship parents database-id]
+  (let [parents               (map #(update-keys % keyword) parents)
+        {:keys [table fk pk]} relationship]
+    (when (seq parents)
+      (let [driver (driver.u/database->driver database-id)
+            ;; Get the actual table name from the table ID
+            table-name (actions/cached-value
+                        [::table-name table]
+                        #(t2/select-one-fn :name :model/Table :id table))
+            ;; Build WHERE clause to find children
+            where-clause (if (= 1 (count fk))
+                           ;; Single FK column case
+                           (let [[fk-col pk-col] (first fk)
+                                 parent-values (map pk-col parents)]
+                             [:in fk-col parent-values])
+                           ;; Multiple FK columns case
+                           (into [:or]
+                                 (for [parent parents]
+                                   (into [:and]
+                                         (for [[fk-col pk-col] fk]
+                                           [:= fk-col (get parent pk-col)])))))
+            ;; Query for child rows using table name, not ID
+            query {:select pk
+                   :from [(keyword table-name)]
+                   :where where-clause
+                   :limit 1000} ; Safety limit
+            sql-args (sql.qp/format-honeysql driver query)]
+        (log/tracef "Looking up children in table %s (ID: %s) with query: %s" table-name table (pr-str sql-args))
+        (with-jdbc-transaction [conn database-id]
+          [table
+           ;; CASING HACK
+           (map #(update-keys % (comp keyword str/upper-case name))
+                (jdbc/query {:connection conn} sql-args {:transaction? false :keywordize? true}))])))))
+
+(defn- delete-rows-by-pk
+  "Delete rows from a table by their primary key values"
+  [database-id table-id pk-rows]
+  (when (seq pk-rows)
+    (log/debugf "Deleting %d rows from table %d" (count pk-rows) table-id)
+    (let [pk-name->id (table-id->pk-field-name->id database-id table-id)]
+      (doseq [row pk-rows]
+        (let [filter-clause #p (row->mbql-filter-clause pk-name->id row)
+              query {:database database-id
+                     :type :query
+                     :query {:source-table table-id
+                             :filter filter-clause}}]
+          (row-delete!* :table.row/delete (actions/cached-database database-id) query))))))
+
+(defn- delete-with-cascade
+  "Delete rows and all their descendants via FK relationships"
+  [database-id table-id rows]
+  (let [metadata (build-fk-metadata database-id)
+        children-fn (fn [relationship parents]
+                      (lookup-children-in-db relationship parents database-id))
+        delete-fn (fn [items-by-table]
+                    (doseq [[table-id rows] (reverse items-by-table)]
+                      (delete-rows-by-pk database-id table-id rows)))]
+    (log/infof "Starting cascade deletion for table %s with %d rows" table-id (count rows))
+    (fks/delete-recursively table-id rows metadata children-fn delete-fn :max-queries 50)))
+
 ;;;; `:table.row/delete`
 
 (defn- check-rows-have-expected-columns-and-no-other-keys
@@ -603,44 +714,81 @@
                                           (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
+(defn- perform-table-row-delete!
+  "Perform table row deletion with optional cascade support"
+  [_action context inputs {:keys [cascade?] :or {cascade? true}}]
+  (if cascade?
+   ;; Cascade deletion: delete all FK children first
+    (let [database-ids (into #{} (map (comp :id actions/cached-database-via-table-id :table-id)) inputs)
+          _            (when-not (= 1 (count database-ids))
+                         (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
+                                         {:status-code  400
+                                          :database-ids database-ids})))
+          database-id  (first database-ids)
+          all-results  (atom [])]
+       ;; Group by table and perform cascade deletion for each table
+      (doseq [[table-id table-rows] (group-by :table-id inputs)]
+        (let [pk-name->id (table-id->pk-field-name->id database-id table-id)
+              pk-rows     (map #(select-keys (:row %) (keys pk-name->id)) table-rows)
+              _           (check-consistent-row-keys pk-rows)
+              _           (check-rows-have-expected-columns-and-no-other-keys pk-rows (keys pk-name->id))
+              _           (check-unique-rows pk-rows)
+               ;; Perform cascade deletion
+              deleted-counts (delete-with-cascade database-id table-id pk-rows)]
+          (log/infof "Cascade deletion completed for table %s: %s" table-id deleted-counts)
+           ;; Record the results for the original rows
+          (swap! all-results into
+                 (for [row pk-rows]
+                   {:table-id table-id
+                    :op       :deleted
+                    :row      row}))))
+      {:context context
+       :outputs @all-results})
+   ;; Normal deletion without cascade
+    (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+                              (let [database       (actions/cached-database-via-table-id table-id)
+                                    field-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                                [table-id (map keyword (keys field-name->id))]))
+          [errors results]
+          (batch-execution-by-table-id!
+           {:inputs        inputs
+            :row-action    :model.row/delete
+            :row-fn        row-delete!*
+            :validate-fn   (fn [database table-id rows]
+                             (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                               (check-consistent-row-keys rows)
+                               (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
+                               (check-unique-rows rows)))
+            :input-fn      (fn [{db-id :id} table-id row]
+                             {:database db-id
+                              :type     :query
+                              :query    {:source-table table-id
+                                         :filter       (row->mbql-filter-clause
+                                                        (table-id->pk-field-name->id db-id table-id) row)}})})]
+      (when (seq errors)
+        (throw (ex-info (tru "Error(s) deleting rows.")
+                        {:status-code 400
+                         :errors      errors
+                         :results     results})))
+      {:context (record-mutations context results)
+       :outputs (for [{:keys [table-id before]} results]
+                  {:table-id table-id
+                   :op       :deleted
+                   :row      (select-keys
+                              (let [row before]
+                               ;; Hideous workaround for QP and direct JDBC disagreeing on upper versus lower case.
+                                (merge (update-keys row (comp keyword u/upper-case-en name))
+                                       (u/lower-case-map-keys row)
+                                       row))
+                              (table-id->pk-keys table-id))})})))
+
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
-  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
-                            (let [database       (actions/cached-database-via-table-id table-id)
-                                  field-name->id (table-id->pk-field-name->id (:id database) table-id)]
-                              [table-id (map keyword (keys field-name->id))]))
-        [errors results]
-        (batch-execution-by-table-id!
-         {:inputs        inputs
-          :row-action    :model.row/delete
-          :row-fn        row-delete!*
-          :validate-fn   (fn [database table-id rows]
-                           (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
-                             (check-consistent-row-keys rows)
-                             (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
-                             (check-unique-rows rows)))
-          :input-fn      (fn [{db-id :id} table-id row]
-                           {:database db-id
-                            :type     :query
-                            :query    {:source-table table-id
-                                       :filter       (row->mbql-filter-clause
-                                                      (table-id->pk-field-name->id db-id table-id) row)}})})]
-    (when (seq errors)
-      (throw (ex-info (tru "Error(s) deleting rows.")
-                      {:status-code 400
-                       :errors      errors
-                       :results     results})))
-    {:context (record-mutations context results)
-     :outputs (for [{:keys [table-id before]} results]
-                {:table-id table-id
-                 :op       :deleted
-                 :row      (select-keys
-                            (let [row before]
-                              ;; Hideous workaround for QP and direct JDBC disagreeing on upper versus lower case.
-                              (merge (update-keys row (comp keyword u/upper-case-en name))
-                                     (u/lower-case-map-keys row)
-                                     row))
-                            (table-id->pk-keys table-id))})}))
+  (perform-table-row-delete! _action context inputs {}))
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete.cascade]
+  [_action context inputs :- [:sequential ::table-row-input]]
+  (perform-table-row-delete! _action context inputs {:cascade? true}))
 
 ;;;; `bulk/update`
 
