@@ -211,21 +211,21 @@
                                :query               query
                                :group-ids           (when group_id [group_id])
                                :include-deactivated include_deactivated
-                               :tenant-clause       #p (cond
-                                                         (not api/*is-superuser?*)
-                                                         [:= :tenant_id (:tenant_id @api/*current-user*)]
+                               :tenant-clause       (cond
+                                                      (not api/*is-superuser?*)
+                                                      [:= :tenant_id (:tenant_id @api/*current-user*)]
 
-                                                         (contains? params :tenant_id)
-                                                         [:= :tenant_id tenant_id]
+                                                      (contains? params :tenant_id)
+                                                      [:= :tenant_id tenant_id]
 
-                                                         (= tenancy :all)
-                                                         [:inline [:= 1 1]]
+                                                      (= tenancy :all)
+                                                      [:inline [:= 1 1]]
 
-                                                         (= tenancy :external)
-                                                         [:not= :tenant_id nil]
+                                                      (= tenancy :external)
+                                                      [:not= :tenant_id nil]
 
-                                                         :else
-                                                         [:= :tenant_id nil])})]
+                                                      :else
+                                                      [:= :tenant_id nil])})]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
                     (sql.helpers/order-by clauses
