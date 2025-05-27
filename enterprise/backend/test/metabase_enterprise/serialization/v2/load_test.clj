@@ -112,7 +112,6 @@
                      (:location grandchild-dest))))))))))
 
 (deftest deserialization-database-table-field-test
-  (mt/set-ns-log-level! 'metabase-enterprise.serialization :fatal)
   (testing "databases, tables and fields are nested in namespaces"
     (let [serialized (atom nil)
           db1s       (atom nil)
