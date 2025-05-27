@@ -11,6 +11,8 @@ import {
 import {
   getIsLongMetabotConversation,
   getIsProcessing,
+  getLastHistoryValue,
+  getMetabotState,
   getLastAgentMessagesByType,
   getMessages,
   getMetabotVisible,
@@ -33,9 +35,24 @@ export const useMetabotAgent = () => {
     typeof getIsProcessing
   >;
 
+  const metabotState = useSelector(getMetabotState as any) as ReturnType<
+    typeof getMetabotState
+  >;
+
+  const lastHistoryValue = useSelector(
+    getLastHistoryValue as any,
+  ) as ReturnType<typeof getLastHistoryValue>;
+
   const [, sendMessageReq] = useMetabotAgentMutation({
     fixedCacheKey: METABOT_TAG,
   });
+
+  console.log("METABOT FROM SELECTORS", metabotState, lastHistoryValue);
+  console.log(
+    "METABOT FROM CACHE",
+    sendMessageReq.data?.state,
+    sendMessageReq.data?.history,
+  );
 
   return {
     visible: useSelector(getMetabotVisible as any) as ReturnType<
