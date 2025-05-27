@@ -53,19 +53,13 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
     cy.task("signJwt", {
       payload: {
         email: USERS.normal.email,
-        exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
       },
       secret: JWT_SHARED_SECRET,
     }).then((jwtToken) => {
-      const ssoUrl = new URL("/auth/sso", Cypress.config().baseUrl);
-      ssoUrl.searchParams.set("jwt", jwtToken);
-      ssoUrl.searchParams.set("token", "true");
-      cy.request(ssoUrl.toString()).then(({ body }) => {
-        cy.wrap(body).as("metabaseSsoResponse");
+      cy.intercept("GET", "http://localhost/sso/metabase?response=json", {
+        jwt: jwtToken,
       });
-    });
-    cy.get("@metabaseSsoResponse").then((ssoResponse) => {
-      cy.intercept("GET", "/sso/metabase", ssoResponse);
     });
   });
 
@@ -88,7 +82,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.findByText(
-        "Failed to fetch the user, the session might be invalid.",
+        "Unable to connect to instance at http://localhost:4000",
       ).should("be.visible");
     });
   });
@@ -148,7 +142,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.findByText(
-        "Failed to fetch the user, the session might be invalid.",
+        "Unable to connect to instance at http://localhost:4000",
       ).should("be.visible");
     });
   });
