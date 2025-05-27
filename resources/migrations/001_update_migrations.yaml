@@ -11072,47 +11072,6 @@ databaseChangeLog:
             constraintName: idx_search_index_metadata_unique_status
             columnNames: engine, version, lang_code, status
 
-  # The next two changesets replace ON DELETE RESTRICT with ON DELETE SET NULL on fk_field_parent_ref_field_id, which
-  # was changed from ON DELETE CASCADE in #44866. We still have a before-delete method for :model/Field that will do
-  # cascade deletes programatically when deleting individual Fields, but when deleting a Table or Field we want to be
-  # able to do so without having to trigger hundreds of thousands of Toucan before-delete calls.
-  #
-  # See https://metaboat.slack.com/archives/CKZEMT1MJ/p1748370105470209?thread_ts=1748279763.366369&cid=CKZEMT1MJ for
-  # more info.
-  - changeSet:
-      id: v54.2025-05-27T19:32:00
-      author: camsaul
-      comment: Drop fk_field_parent_ref_field_id constraint with ON DELETE RESTRICT
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_field
-            constraintName: fk_field_parent_ref_field_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: metabase_field
-            baseColumnNames: parent_id
-            referencedTableName: metabase_field
-            referencedColumnNames: id
-            constraintName: fk_field_parent_ref_field_id
-            onDelete: RESTRICT
-
-  - changeSet:
-      id: v54.2025-05-27T19:33:00
-      author: camsaul
-      comment: Add fk_field_parent_ref_field_id constraint with ON DELETE SET NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabase_field
-            baseColumnNames: parent_id
-            referencedTableName: metabase_field
-            referencedColumnNames: id
-            constraintName: fk_field_parent_ref_field_id
-            onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_field
-            constraintName: fk_field_parent_ref_field_id
-
   - changeSet:
       id: v55.2025-03-24T16:28:41
       author: bshepherdson
