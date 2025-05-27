@@ -740,13 +740,14 @@
 
          :else
          (let [rff (or rff qp.reducible/default-rff)
-               unagg-column-split (:pivot_unagg_column_split query)
+               unagg-column-split (or (:pivot_unagg_column_split query)
+                                      (-> query :viz-settings :pivot_table.unaggregated_column_split))
                new-pivot-rows     (or (map :name (:rows unagg-column-split))
                                       (:pivot_rows query))
                new-pivot-cols     (or (map :name (:columns unagg-column-split))
                                       (:pivot_cols query))
                base-query         (dissoc query :info :pivot_unagg_column_split)
-               query2 (nest-mbql-query base-query unagg-column-split)
+               query2             (nest-mbql-query base-query unagg-column-split)
                query3             (-> query2
                                       (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
                                                                               :pivot-cols new-pivot-cols
