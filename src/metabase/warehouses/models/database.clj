@@ -288,10 +288,16 @@
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
-  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
-  ;; foreign key constraints in generated columns. #44866
-  (when-some [table-ids (not-empty (t2/select-pks-vec :model/Table :db_id id))]
-    (t2/delete! :model/Field :table_id [:in table-ids]))
+  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with
+  ;; cascade delete foreign key constraints in generated columns. #44866
+  ;;
+  ;; Use a join to do this so we don't end up with a mega query with > 64k parameters (#58491)
+  (t2/query {:delete-from (t2/table-name :model/Field)
+             :where       [:in :id {:select    [[:field.id :id]]
+                                    :from      [[(t2/table-name :model/Field) :field]]
+                                    :left-join [[(t2/table-name :model/Table) :table]
+                                                [:= :field.table_id :table.id]]
+                                    :where     [:= :table.db_id [:inline (u/the-id id)]]}]})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
