@@ -14,6 +14,13 @@
                       (mt/with-premium-features #{:table-data-editing}
                         (thunk))))
 
+(defn- assert-email-contains
+  [email expected-subject body-patterns]
+  (let [expected-body-map (zipmap body-patterns (repeat (count body-patterns) true))]
+    (is (=? {:subject expected-subject
+             :body    [(update-keys expected-body-map str)]}
+            (apply mt/summarize-multipart-single-email email body-patterns)))))
+
 (defn all-handlers
   [http-channel-id]
   [{:channel_type :channel/email
@@ -69,22 +76,17 @@
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
-                     (is (=? {:subject "A new record was added to \"CATEGORIES\" by Crowberto Corv"
-                              :body    [{(format "<strong>A new record was <i>created</i></strong> in <a href=\"%s\" target=\"_blank\">Table CATEGORIES</a> by Crowberto Corv"
-                                                 (urls/table-url (mt/id) (mt/id :categories))) true
-                                         "Field" true
-                                         "Value" true
-                                         "NAME" true
-                                         "New Category" true}]}
-                             (mt/summarize-multipart-single-email
-                              email
-                              #"(?s)<strong>A new record was <i>created</i></strong> in <a href=\".*?\" target=\"_blank\">Table CATEGORIES</a> by Crowberto Corv"
-                              #"Table CATEGORIES"
-                              #"Crowberto Corv"
-                              #"Field"
-                              #"Value"
-                              #"NAME"
-                              #"New Category"))))
+                     (assert-email-contains
+                      email
+                      "A new record was added to \"CATEGORIES\" by Crowberto Corv"
+                      [(re-pattern (format "<strong>A new record was <i>created</i></strong> in <a href=\"%s\" target=\"_blank\">Table CATEGORIES</a> by Crowberto Corv"
+                                           (urls/table-url (mt/id) (mt/id :categories))))
+                       #"Table CATEGORIES"
+                       #"Crowberto Corv"
+                       #"Field"
+                       #"Value"
+                       #"NAME"
+                       #"New Category"]))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
@@ -103,7 +105,7 @@
                      (is (= 1 (count msgs)))
                      (is (=? {:blocks [{:type "section"
                                         :text {:type "mrkdwn"
-                                               :text (format (str "*A record was _updated_* in <%1$s|Table CATEGORIES> by Crowberto Corv\n"
+                                               :text (format (str "*A record was _updated_* in <%s|Table CATEGORIES> by Crowberto Corv\n"
                                                                   "*Changed Fields*\n"
                                                                   "• *NAME*: ~African~ → Updated Category\n"
                                                                   "\n"
@@ -116,28 +118,20 @@
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
-                     (is (=? {:subject "A record was updated in \"CATEGORIES\" by Crowberto Corv"
-                              :body    [{(format "<strong>A record was <i>updated</i></strong> in <a href=\"%s\" target=\"_blank\">Table CATEGORIES</a> by Crowberto Corv"
-                                                 (urls/table-url (mt/id) (mt/id :categories))) true
-                                         "Changed Fields:" true
-                                         "NAME" true
-                                         "African" true
-                                         "Updated Category" true
-                                         "Current Record Details" true
-                                         "Field" true
-                                         "Value" true}]}
-                             (mt/summarize-multipart-single-email
-                              email
-                              #"<strong>A record was <i>updated</i></strong>"
-                              #"Table CATEGORIES"
-                              #"Crowberto Corv"
-                              #"Changed Fields:"
-                              #"NAME"
-                              #"African"
-                              #"Updated Category"
-                              #"Current Record Details"
-                              #"Field"
-                              #"Value"))))
+                     (assert-email-contains
+                      email
+                      "A record was updated in \"CATEGORIES\" by Crowberto Corv"
+                      [(re-pattern (format "<strong>A record was <i>updated</i></strong> in <a href=\"%s\" target=\"_blank\">Table CATEGORIES</a> by Crowberto Corv"
+                                           (urls/table-url (mt/id) (mt/id :categories))))
+                       #"Table CATEGORIES"
+                       #"Crowberto Corv"
+                       #"Changed Fields:"
+                       #"NAME"
+                       #"African"
+                       #"Updated Category"
+                       #"Current Record Details"
+                       #"Field"
+                       #"Value"]))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
@@ -160,31 +154,25 @@
                                                               "*A record was _deleted_* in <%1$s|Table CATEGORIES> by Crowberto Corv.\n"
                                                               "• ~*ID*~: 1\n"
                                                               "• ~*NAME*~: African\n\n"
-                                                              "<%1$s|View table in Metabase>\n"
-                                                              "This record is no longer available")
+                                                              "This record is no longer available\n"
+                                                              "<%1$s|View table in Metabase>")
                                                              (urls/table-url (mt/id) (mt/id :categories)))}}]
                               :channel "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
-                     (is (=? {:subject "A record was deleted from \"CATEGORIES\" by Crowberto Corv"
-                              :body    [{(format "<strong>A record was <i>deleted</i></strong> in <a href=\"%s\" target=\"_blank\">Table CATEGORIES</a> by Crowberto Corv"
-                                                 (urls/table-url (mt/id) (mt/id :categories))) true
-                                         "Field" true
-                                         "Value" true
-                                         "NAME" true
-                                         "African" true
-                                         "This record is no longer available" true}]}
-                             (mt/summarize-multipart-single-email
-                              email
-                              #"<strong>A record was <i>deleted</i>"
-                              #"Table CATEGORIES"
-                              #"Crowberto Corv"
-                              #"Field"
-                              #"Value"
-                              #"NAME"
-                              #"African"
-                              #"This record is no longer available"))))
+                     (assert-email-contains
+                      email
+                      "A record was deleted from \"CATEGORIES\" by Crowberto Corv"
+                      [(re-pattern (format "<strong>A record was <i>deleted</i></strong> in <a href=\"%s\" target=\"_blank\">Table CATEGORIES</a> by Crowberto Corv"
+                                           (urls/table-url (mt/id) (mt/id :categories))))
+                       #"Table CATEGORIES"
+                       #"Crowberto Corv"
+                       #"Field"
+                       #"Value"
+                       #"NAME"
+                       #"African"
+                       #"This record is no longer available"]))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
@@ -211,7 +199,7 @@
                                                            "*Current Record Details*\n"
                                                            "• *ID*: 1\n"
                                                            "• *NAME*: Metabase's Notification\n"
-                                                           "<%1$s|View table in Metabase>\n")
+                                                           "<%1$s|View table in Metabase>")
                                                       (urls/table-url (mt/id) (mt/id :categories)))}}]
                               :channel "#test-pulse"}
                              message)))}))
@@ -318,19 +306,14 @@
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
-                     (is (=? {:subject "A new record was added to \"CATEGORIES\" by Crowberto Corv"
-                              :body    [{"<strong>A new record was <i>created</i></strong> in <a[^>]*>Table CATEGORIES</a> by Crowberto Corv" true
-                                         "Field" true
-                                         "Value" true
-                                         "NAME" true
-                                         "New Category" true}]}
-                             (mt/summarize-multipart-single-email
-                              email
-                              #"<strong>A new record was <i>created</i></strong> in <a[^>]*>Table CATEGORIES</a> by Crowberto Corv"
-                              #"Field"
-                              #"Value"
-                              #"NAME"
-                              #"New Category"))))
+                     (assert-email-contains
+                      email
+                      "A new record was added to \"CATEGORIES\" by Crowberto Corv"
+                      [#"<strong>A new record was <i>created</i></strong> in <a[^>]*>Table CATEGORIES</a> by Crowberto Corv"
+                       #"Field"
+                       #"Value"
+                       #"NAME"
+                       #"New Category"]))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
