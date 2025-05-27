@@ -9,6 +9,7 @@ export function setupGeoJSONEndpoint({
   url: string;
 }) {
   fetchMock.get(`path:/api/geojson`, featureCollection, {
+    name: url,
     query: {
       url,
     },

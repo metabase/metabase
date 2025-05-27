@@ -82,49 +82,6 @@ export default class CustomGeoJSONWidget extends Component {
     await this._saveMap(map.id, null);
   };
 
-  _validateGeoJson = (geoJson) => {
-    if (!geoJson) {
-      throw t`Invalid custom GeoJSON`;
-    }
-
-    if (geoJson.type !== "FeatureCollection" && geoJson.type !== "Feature") {
-      throw t`Invalid custom GeoJSON: does not contain features`;
-    }
-
-    if (geoJson.type === "FeatureCollection") {
-      if (!geoJson.features || geoJson.features.length === 0) {
-        throw t`Invalid custom GeoJSON: does not contain features`;
-      }
-
-      for (const feature of geoJson.features) {
-        if (!feature.properties) {
-          throw t`Invalid custom GeoJSON: feature is missing properties`;
-        }
-      }
-
-      const bounds = computeMinimalBounds(geoJson.features);
-      const northEast = bounds.getNorthEast();
-      const southWest = bounds.getSouthWest();
-
-      if (
-        [
-          [northEast.lat, northEast.lng],
-          [southWest.lat, southWest.lng],
-        ].every(
-          ([lat, lng]) => lat < -90 || lat > 90 || lng < -180 || lng > 180,
-        )
-      ) {
-        throw t`Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude`;
-      }
-    }
-
-    if (geoJson.type === "Feature") {
-      if (!geoJson.properties) {
-        throw t`Invalid custom GeoJSON: feature is missing properties`;
-      }
-    }
-  };
-
   _loadGeoJson = async () => {
     try {
       const { map } = this.state;
@@ -136,7 +93,7 @@ export default class CustomGeoJSONWidget extends Component {
       const geoJson = await GeoJSONApi.load({
         url: map.url,
       });
-      this._validateGeoJson(geoJson);
+      validateGeoJson(geoJson);
       this.setState({
         geoJson: geoJson,
         geoJsonLoading: false,
@@ -498,3 +455,44 @@ const ChoroplethPreview = memo(({ geoJson }) => (
 ));
 
 ChoroplethPreview.displayName = "ChoroplethPreview";
+
+function validateGeoJson(geoJson) {
+  if (!geoJson) {
+    throw t`Invalid custom GeoJSON`;
+  }
+
+  if (geoJson.type !== "FeatureCollection" && geoJson.type !== "Feature") {
+    throw t`Invalid custom GeoJSON: does not contain features`;
+  }
+
+  if (geoJson.type === "FeatureCollection") {
+    if (!geoJson.features || geoJson.features.length === 0) {
+      throw t`Invalid custom GeoJSON: does not contain features`;
+    }
+
+    for (const feature of geoJson.features) {
+      if (!feature.properties) {
+        throw t`Invalid custom GeoJSON: feature is missing properties`;
+      }
+    }
+
+    const bounds = computeMinimalBounds(geoJson.features);
+    const northEast = bounds.getNorthEast();
+    const southWest = bounds.getSouthWest();
+
+    if (
+      [
+        [northEast.lat, northEast.lng],
+        [southWest.lat, southWest.lng],
+      ].every(([lat, lng]) => lat < -90 || lat > 90 || lng < -180 || lng > 180)
+    ) {
+      throw t`Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude`;
+    }
+  }
+
+  if (geoJson.type === "Feature") {
+    if (!geoJson.properties) {
+      throw t`Invalid custom GeoJSON: feature is missing properties`;
+    }
+  }
+}
