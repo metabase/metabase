@@ -169,7 +169,7 @@
   [query]
   ;; add logging around the steps to make this easier to debug.
   (log/debugf "Escaping join aliases\n%s" (u/pprint-to-str query))
-  (if (driver.u/supports? driver/*driver* :global-aliases (lib.metadata/database (qp.store/metadata-provider)))
+  (if (driver.u/supports? driver/*driver* :global-join-aliases (lib.metadata/database (qp.store/metadata-provider)))
     (letfn [(add-escaped-aliases* [query]
               (add-escaped-aliases query (driver->escape-fn driver/*driver*)))
             (add-original->escaped-alias-maps* [query]
