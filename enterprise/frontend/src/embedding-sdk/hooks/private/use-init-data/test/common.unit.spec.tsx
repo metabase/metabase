@@ -25,14 +25,6 @@ describe.each(["jwt", "saml"] as const)(
       fetchMock.restore();
     });
 
-    it("start loading data if instance URL and auth type are valid", async () => {
-      setupCommon(method);
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "loading",
-      );
-    });
-
     it("should set isLoggedIn to true if login is successful", async () => {
       setupCommon(method);
 
@@ -60,6 +52,14 @@ describe.each(["jwt", "saml"] as const)(
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
         "Unable to connect to instance at http://oisin-is-really-cool (status: 500)",
+      );
+    });
+
+    it("start loading data if instance URL and auth type are valid", async () => {
+      setupCommon(method);
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-login-status",
+        "loading",
       );
     });
   },
