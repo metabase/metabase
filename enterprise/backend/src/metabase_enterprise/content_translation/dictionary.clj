@@ -50,11 +50,6 @@
     (str/blank? msgstr)
     (re-matches #"^[,;\s]*$" msgstr))))
 
-(defn- row-has-correct-number-of-fields
-  "Checks if a row has the expected format with exactly 3 columns."
-  [row]
-  (= (count row) 3))
-
 (defn- validate-row
   "Validate a single row of CSV data, returning errors and the updated set of seen translation keys."
   [row-index row seen-keys]

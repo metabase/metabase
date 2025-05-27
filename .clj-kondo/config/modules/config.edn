@@ -1429,7 +1429,7 @@
            util}}
 
   enterprise/content-translation
-  {:api  #{metabase-enterprise.content-translation.api.routes}
+  {:api  #{metabase-enterprise.content-translation.routes}
    :uses #{api
            content-translation
            util
