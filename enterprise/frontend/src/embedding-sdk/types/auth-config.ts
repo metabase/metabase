@@ -8,9 +8,16 @@ type BaseMetabaseAuthConfig = {
 
   /**
    * Specifies a function to fetch the refresh token.
-   * The refresh token should be in the format of { id: string, exp: number }
+   * The refresh token should be in the format of {@link UserBackendJwtResponse}
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
+};
+
+/**
+ * @category MetabaseProvider
+ */
+export type MetabaseAuthConfigWithSSO = BaseMetabaseAuthConfig & {
+  apiKey?: never;
 };
 
 /**
@@ -23,4 +30,6 @@ export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
 /**
  * @category MetabaseProvider
  */
-export type MetabaseAuthConfig = MetabaseAuthConfigWithApiKey;
+export type MetabaseAuthConfig =
+  | MetabaseAuthConfigWithSSO
+  | MetabaseAuthConfigWithApiKey;

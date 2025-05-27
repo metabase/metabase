@@ -3,6 +3,9 @@ export type MetabaseEmbeddingSessionToken = {
   exp: number;
 };
 
+/**
+ * @inline
+ */
 export type UserBackendJwtResponse = {
   jwt: string;
 };

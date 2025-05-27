@@ -6,10 +6,7 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
-import {
-  MetabaseProvider,
-  defineMetabaseAuthConfig,
-} from "embedding-sdk/components/public";
+import { MetabaseProvider } from "embedding-sdk/components/public";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -19,16 +16,10 @@ import {
 
 import { getEmbeddingSdkVersion } from "../config";
 
-// TODO: extract this common setup to a shared util
-const METABASE_INSTANCE_URL = "path:";
+import { createMockSdkConfig } from "./mocks/config";
+import { setupMockJwtEndpoints } from "./mocks/sso";
 
-const defaultAuthConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  fetchRequestToken: () =>
-    Promise.resolve({
-      jwt: "TEST_JWT_TOKEN",
-    }),
-});
+const defaultAuthConfig = createMockSdkConfig();
 
 jest.mock("../config", () => ({
   getEmbeddingSdkVersion: jest.fn(),
@@ -42,6 +33,8 @@ const setup = async ({
   mbVersion: string;
 }) => {
   (getEmbeddingSdkVersion as jest.Mock).mockReturnValue(sdkVersion);
+
+  setupMockJwtEndpoints();
   setupPropertiesEndpoints(
     createMockSettings({
       "token-features": createMockTokenFeatures({

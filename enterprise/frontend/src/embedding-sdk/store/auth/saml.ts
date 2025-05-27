@@ -1,3 +1,4 @@
+import * as MetabaseError from "embedding-sdk/errors";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 
 import { samlTokenStorage } from "./saml-token-storage";
@@ -28,7 +29,7 @@ export const openSamlLoginPopup = async (idpUrl: string) => {
     );
 
     if (!popup) {
-      reject(new Error("Popup blocked. Please allow popups for this site."));
+      reject(MetabaseError.SAML_POPUP_BLOCKED());
       return;
     }
 
@@ -55,7 +56,7 @@ export const openSamlLoginPopup = async (idpUrl: string) => {
       if (popup.closed) {
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
-        reject(new Error("Authentication was canceled"));
+        reject(MetabaseError.SAML_POPUP_CLOSED());
       }
     }, 1000);
 
@@ -66,7 +67,7 @@ export const openSamlLoginPopup = async (idpUrl: string) => {
       if (!popup.closed) {
         popup.close();
       }
-      reject(new Error("Authentication timed out"));
+      reject(MetabaseError.SAML_TIMEOUT());
     }, 60000); // 1 minute timeout
   });
 };

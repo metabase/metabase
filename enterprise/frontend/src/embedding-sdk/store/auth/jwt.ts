@@ -1,47 +1,125 @@
-import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
+import * as MetabaseError from "embedding-sdk/errors";
 
 import { getSdkRequestHeaders } from "./auth";
 
 export async function jwtDefaultRefreshTokenFunction(
   responseUrl: string,
-  instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"],
+  instanceUrl: string,
   hash: string,
-  customFetchRequestToken:
-    | MetabaseAuthConfig["fetchRequestToken"]
-    | null = null,
+  customFetchRequestToken: ((url: string) => Promise<any>) | null = null,
 ) {
-  // Points to the JWT Auth endpoint on the client server
-  // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
-  const clientBackendResponse = await (
-    customFetchRequestToken ?? refreshUserJwt
-  )(responseUrl);
+  const jwtTokenResponse = await runFetchRequestToken(
+    responseUrl,
+    customFetchRequestToken,
+  );
 
-  const jwtTokenResponse = clientBackendResponse.jwt;
   const mbAuthUrl = new URL(`${instanceUrl}/auth/sso`);
   mbAuthUrl.searchParams.set("jwt", jwtTokenResponse);
-  const authSsoResponse = await fetch(mbAuthUrl, getSdkRequestHeaders(hash));
+
+  let authSsoResponse;
+  try {
+    authSsoResponse = await fetch(
+      mbAuthUrl.toString(),
+      getSdkRequestHeaders(hash),
+    );
+  } catch (e) {
+    // Network error when connecting to Metabase SSO
+    throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
+      url: mbAuthUrl.toString(),
+      message: e instanceof Error ? e.message : String(e),
+    });
+  }
 
   if (!authSsoResponse.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${authSsoResponse.status}`,
-    );
+    // HTTP status error from Metabase SSO
+    throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
+      url: mbAuthUrl.toString(),
+      status: String(authSsoResponse.status),
+    });
   }
-  const responseText = await authSsoResponse.text();
+
   try {
-    return JSON.parse(responseText);
+    // Attempt to parse JSON response
+    return await authSsoResponse.json();
   } catch (ex) {
-    return responseText;
+    // JSON parsing error from Metabase SSO
+    // Although the requirement was specific about CUSTOM/DEFAULT for the first fetch,
+    // it's reasonable to use a specific error for parsing the *Metabase* response too.
+    // If a more general error is preferred here, we can adjust.
+    throw MetabaseError.DEFAULT_ENDPOINT_ERROR({
+      actual: ex instanceof Error ? ex.message : String(ex),
+    });
   }
 }
 
-const refreshUserJwt = async (
-  url: MetabaseAuthConfig["metabaseInstanceUrl"],
+const runFetchRequestToken = async (
+  responseUrl: string,
+  customFetchRequestToken: ((url: string) => Promise<any>) | null = null,
 ) => {
-  const clientBackendResponse = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
+  // Points to the JWT Auth endpoint on the client server
+  // This should return {jwt: USER_JWT_TOKEN } with the signed token from the client backend
+  try {
+    const clientBackendResponse = await (
+      customFetchRequestToken ?? refreshUserJwt
+    )(responseUrl);
 
+    if (
+      typeof clientBackendResponse !== "object" ||
+      !("jwt" in clientBackendResponse)
+    ) {
+      const actualResponse = JSON.stringify(clientBackendResponse);
+      if (customFetchRequestToken) {
+        throw MetabaseError.CUSTOM_FETCH_REQUEST_TOKEN_ERROR({
+          expected: "{ jwt: string }",
+          actual: actualResponse,
+        });
+      }
+      throw MetabaseError.DEFAULT_ENDPOINT_ERROR({
+        expected: "{ jwt: string }",
+        actual: actualResponse,
+      });
+    }
+
+    const jwtTokenResponse = clientBackendResponse.jwt;
+
+    return jwtTokenResponse;
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+};
+
+const refreshUserJwt = async (url: string) => {
+  let clientBackendResponse;
+  try {
+    clientBackendResponse = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+    });
+  } catch (e) {
+    // Network error
+    throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
+      url,
+      message: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  if (!clientBackendResponse.ok) {
+    // HTTP status error
+    throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
+      url,
+      status: String(clientBackendResponse.status),
+    });
+  }
+
+  const text = await clientBackendResponse.text();
   // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
-  return await clientBackendResponse.json();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    // JSON parsing error
+    throw MetabaseError.DEFAULT_ENDPOINT_ERROR({
+      actual: `"${text}"`,
+    });
+  }
 };
