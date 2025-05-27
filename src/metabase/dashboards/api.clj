@@ -900,7 +900,7 @@
                   :dataset_query          {:database (:db_id table)
                                            ;; TODO if we keep going down this road, we need to validate that this
                                            ;;      is a coherent and sufficiently restricted query for the given table.
-                                           :query    (or (get-in dashcard [:visualization_settings :initial_dataset_query])
+                                           :query    (or (get-in dashcard [:visualization_settings :initial_dataset_query :query])
                                                          {:source-table table-id})
                                            :type     :query}
                   :description            nil
