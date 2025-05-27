@@ -44,14 +44,13 @@ export const RemappingPicker = ({
         },
   );
   const value = useMemo(() => getValue(field), [field]);
-  const options = useMemo(
-    () => getOptions(field, fkTargetField),
-    [field, fkTargetField],
-  );
-  const isFKMapping = value === "foreign";
+  const options = useMemo(() => {
+    return getOptions(field, fkTargetField);
+  }, [field, fkTargetField]);
+  const isFkMapping = value === "foreign";
 
   const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
-  const hasFKMappingValue = isFKMapping && fkRemappingFieldId !== null;
+  const hasFKMappingValue = isFkMapping && fkRemappingFieldId !== null;
   const { data: fkRemappingField } = useGetFieldQuery(
     hasFKMappingValue
       ? {
