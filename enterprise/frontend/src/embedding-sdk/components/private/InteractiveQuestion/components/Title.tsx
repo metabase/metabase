@@ -1,6 +1,7 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 
 /**
  * @interface
@@ -20,7 +21,10 @@ export type InteractiveQuestionTitleProps = CommonStylingProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const Title = ({ className, style }: InteractiveQuestionTitleProps) => {
+export const Title: SdkFunctionalComponent<InteractiveQuestionTitleProps> = ({
+  className,
+  style,
+}: InteractiveQuestionTitleProps) => {
   const { question } = useInteractiveQuestionContext();
 
   return (

@@ -1,4 +1,5 @@
 import { useQuestionVisualization } from "embedding-sdk/components/private/InteractiveQuestion/hooks/use-question-visualization";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import CS from "metabase/css/core/index.css";
 import { ChartTypeSettings } from "metabase/query_builder/components/chart-type-selector";
 import type { StackProps } from "metabase/ui";
@@ -18,9 +19,9 @@ export type InteractiveQuestionChartTypeSelectorProps = StackProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const ChartTypeSelector = ({
-  ...stackProps
-}: InteractiveQuestionChartTypeSelectorProps) => {
+export const ChartTypeSelector: SdkFunctionalComponent<
+  InteractiveQuestionChartTypeSelectorProps
+> = ({ ...stackProps }: InteractiveQuestionChartTypeSelectorProps) => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 

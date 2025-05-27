@@ -13,6 +13,7 @@ import {
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
@@ -99,31 +100,34 @@ export const StaticDashboardInner = ({
  * @function
  * @category StaticDashboard
  */
-const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
-  ({ dashboardId: initialDashboardId, ...rest }) => {
-    const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
-      type: "dashboard",
-      id: initialDashboardId,
-    });
+const StaticDashboard: SdkFunctionalComponent<StaticDashboardProps> =
+  withPublicComponentWrapper<StaticDashboardProps>(
+    ({ dashboardId: initialDashboardId, ...rest }) => {
+      const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
+        type: "dashboard",
+        id: initialDashboardId,
+      });
 
-    const errorPage = useSdkSelector(getErrorPage);
-    const dispatch = useSdkDispatch();
-    useEffect(() => {
-      if (resolvedDashboardId) {
-        dispatch(setErrorPage(null));
+      const errorPage = useSdkSelector(getErrorPage);
+      const dispatch = useSdkDispatch();
+      useEffect(() => {
+        if (resolvedDashboardId) {
+          dispatch(setErrorPage(null));
+        }
+      }, [dispatch, resolvedDashboardId]);
+
+      if (isLoading) {
+        return <SdkLoader />;
       }
-    }, [dispatch, resolvedDashboardId]);
 
-    if (isLoading) {
-      return <SdkLoader />;
-    }
+      if (!resolvedDashboardId || errorPage?.status === 404) {
+        return <DashboardNotFoundError id={initialDashboardId} />;
+      }
 
-    if (!resolvedDashboardId || errorPage?.status === 404) {
-      return <DashboardNotFoundError id={initialDashboardId} />;
-    }
-
-    return <StaticDashboardInner dashboardId={resolvedDashboardId} {...rest} />;
-  },
-);
+      return (
+        <StaticDashboardInner dashboardId={resolvedDashboardId} {...rest} />
+      );
+    },
+  );
 
 export { EmbedDisplayParams, StaticDashboard };

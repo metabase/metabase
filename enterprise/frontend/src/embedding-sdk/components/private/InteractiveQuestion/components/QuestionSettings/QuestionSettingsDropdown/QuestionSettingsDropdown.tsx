@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 import { InteractiveQuestion } from "embedding-sdk";
 import { FLEXIBLE_SIZE_DEFAULT_HEIGHT } from "embedding-sdk/components/private/FlexibleSizeComponent";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import ToolbarButtonS from "../../../styles/ToolbarButton.module.css";
@@ -26,7 +27,9 @@ export type InteractiveQuestionQuestionSettingsDropdownProps = {
  * @category InteractiveQuestion
  * @param props
  */
-export const QuestionSettingsDropdown = ({
+export const QuestionSettingsDropdown: SdkFunctionalComponent<
+  InteractiveQuestionQuestionSettingsDropdownProps
+> = ({
   height,
   ...popoverProps
 }: InteractiveQuestionQuestionSettingsDropdownProps = {}) => (

@@ -1,3 +1,4 @@
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import {
   type UseDownloadDataParams,
@@ -45,9 +46,9 @@ const DownloadWidgetInner = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const DownloadWidget = (
-  props: InteractiveQuestionDownloadWidgetProps,
-) => {
+export const DownloadWidget: SdkFunctionalComponent<
+  InteractiveQuestionDownloadWidgetProps
+> = (props: InteractiveQuestionDownloadWidgetProps) => {
   const { question, queryResults } = useInteractiveQuestionContext();
   const [result] = queryResults ?? [];
 

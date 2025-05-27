@@ -21,6 +21,7 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -199,6 +200,5 @@ const InteractiveDashboardInner = ({
  * @function
  * @category InteractiveDashboard
  */
-export const InteractiveDashboard = renderOnlyInSdkProvider(
-  InteractiveDashboardInner,
-);
+export const InteractiveDashboard: SdkFunctionalComponent<InteractiveDashboardProps> =
+  renderOnlyInSdkProvider(InteractiveDashboardInner);

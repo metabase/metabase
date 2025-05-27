@@ -6,6 +6,7 @@ import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk/components/private/util/MultiStepPopover";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import type { PopoverProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../../context";
@@ -98,9 +99,9 @@ export const BreakoutDropdownInner = (
  * @category InteractiveQuestion
  * @param props
  */
-export const BreakoutDropdown = (
-  props: InteractiveQuestionBreakoutDropdownProps,
-) => {
+export const BreakoutDropdown: SdkFunctionalComponent<
+  InteractiveQuestionBreakoutDropdownProps
+> = (props: InteractiveQuestionBreakoutDropdownProps) => {
   const { question } = useInteractiveQuestionContext();
 
   if (!question) {

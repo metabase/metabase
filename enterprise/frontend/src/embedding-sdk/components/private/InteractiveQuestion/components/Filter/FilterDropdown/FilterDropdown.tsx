@@ -7,6 +7,7 @@ import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk/components/private/util/MultiStepPopover";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import type { PopoverProps } from "metabase/ui";
@@ -109,9 +110,9 @@ const FilterDropdownInner = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const FilterDropdown = ({
-  withColumnItemIcon,
-}: InteractiveQuestionFilterDropdownProps) => {
+export const FilterDropdown: SdkFunctionalComponent<
+  InteractiveQuestionFilterDropdownProps
+> = ({ withColumnItemIcon }: InteractiveQuestionFilterDropdownProps) => {
   const { question } = useInteractiveQuestionContext();
 
   if (!question) {

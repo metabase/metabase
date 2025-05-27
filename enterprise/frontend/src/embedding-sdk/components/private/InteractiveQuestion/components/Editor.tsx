@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -32,7 +33,7 @@ export type InteractiveQuestionEditorProps = {
  * @category InteractiveQuestion
  * @param props
  */
-export const Editor = ({
+export const Editor: SdkFunctionalComponent<InteractiveQuestionEditorProps> = ({
   onApply = () => {},
 }: InteractiveQuestionEditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source

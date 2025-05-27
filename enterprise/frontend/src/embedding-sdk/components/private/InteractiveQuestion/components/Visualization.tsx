@@ -9,6 +9,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
@@ -29,7 +30,9 @@ export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const QuestionVisualization = ({
+export const QuestionVisualization: SdkFunctionalComponent<
+  InteractiveQuestionQuestionVisualizationProps
+> = ({
   height,
   width,
   className,

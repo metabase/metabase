@@ -1,6 +1,7 @@
 import type { HTMLAttributes, MouseEventHandler } from "react";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
 
@@ -33,7 +34,9 @@ export type InteractiveQuestionEditorButtonProps = {
  * @category InteractiveQuestion
  * @param props
  */
-export const EditorButton = ({
+export const EditorButton: SdkFunctionalComponent<
+  InteractiveQuestionEditorButtonProps
+> = ({
   isOpen = false,
   ...actionIconProps
 }: InteractiveQuestionEditorButtonProps) => {

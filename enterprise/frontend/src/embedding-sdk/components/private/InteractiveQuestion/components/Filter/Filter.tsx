@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { Group, Popover } from "metabase/ui";
 
 import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
@@ -42,7 +43,7 @@ const AddFilterPopover = () => {
  * @category InteractiveQuestion
  * @param props
  */
-export const Filter = ({
+export const Filter: SdkFunctionalComponent<InteractiveQuestionFilterProps> = ({
   withColumnItemIcon,
 }: InteractiveQuestionFilterProps) => (
   <Group>

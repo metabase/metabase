@@ -1,4 +1,5 @@
 import { InteractiveQuestion } from "embedding-sdk";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../context";
@@ -17,9 +18,9 @@ export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const DownloadWidgetDropdown = ({
-  ...popoverProps
-}: InteractiveQuestionDownloadWidgetDropdownProps) => {
+export const DownloadWidgetDropdown: SdkFunctionalComponent<
+  InteractiveQuestionDownloadWidgetDropdownProps
+> = ({ ...popoverProps }: InteractiveQuestionDownloadWidgetDropdownProps) => {
   const { withDownloads } = useInteractiveQuestionContext();
   return (
     <Popover
