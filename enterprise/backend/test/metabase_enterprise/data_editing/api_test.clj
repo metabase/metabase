@@ -102,6 +102,79 @@
             (is (= [[3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
 
+(deftest table-operations-via-action-execute-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (with-open [table-ref (data-editing.tu/open-test-table!)]
+        (let [table-id @table-ref
+              url      "ee/data-editing/action/v2/execute-bulk"]
+          (data-editing.tu/toggle-data-editing-enabled! true)
+          (testing "Initially the table is empty"
+            (is (= [] (table-rows table-id))))
+
+          (testing "POST should insert new rows"
+            (is (= #{{:op "created", :table-id table-id, :row {:id 1, :name "Pidgey", :song "Car alarms"}}
+                     {:op "created", :table-id table-id, :row {:id 2, :name "Spearow", :song "Hold music"}}
+                     {:op "created", :table-id table-id, :row {:id 3, :name "Farfetch'd", :song "The land of lisp"}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/create"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:name "Pidgey" :song "Car alarms"}
+                                                        {:name "Spearow" :song "Hold music"}
+                                                        {:name "Farfetch'd" :song "The land of lisp"}]})))))
+
+            (is (= [[1 "Pidgey" "Car alarms"]
+                    [2 "Spearow" "Hold music"]
+                    [3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id))))
+
+          (testing "PUT should update the relevant rows and columns"
+            (is (= #{{:op "updated", :table-id table-id :row {:id 1, :name "Pidgey",     :song "Join us now and share the software"}}
+                     {:op "updated", :table-id table-id :row {:id 2, :name "Speacolumn", :song "Hold music"}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/update"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:id 1 :song "Join us now and share the software"}
+                                                        {:id 2 :name "Speacolumn"}]}))))
+
+                (is (= #{[1 "Pidgey" "Join us now and share the software"]
+                         [2 "Speacolumn" "Hold music"]
+                         [3 "Farfetch'd" "The land of lisp"]}
+                       (set (table-rows table-id))))))
+
+          ;; Leaning against not adding this action.
+          #_(testing "PUT can also do bulk updates"
+              (is (= #{{:id 1, :name "Pidgey",     :song "The Star-Spangled Banner"}
+                       {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}
+                     (set
+                      (:updated
+                       (mt/user-http-request :crowberto :put 200 url
+                                             {:pks     [{:id 1}
+                                                        {:id 2}]
+                                              :updates {:song "The Star-Spangled Banner"}}))))
+
+                  (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
+                           [2 "Speacolumn" "The Star-Spangled Banner"]
+                           [3 "Farfetch'd" "The land of lisp"]}
+                         (set (table-rows table-id))))))
+
+          (testing "DELETE should remove the corresponding rows"
+            (is (= #{{:op "deleted", :table-id table-id, :row {:id 1}}
+                     {:op "deleted", :table-id table-id, :row {:id 2}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/delete"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:id 1}
+                                                        {:id 2}]})))))
+            (is (= [[3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id)))))))))
+
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}
@@ -722,17 +795,17 @@
         (data-editing.tu/toggle-data-editing-enabled! true)
         (mt/with-actions-enabled
           (testing "no dashcard"
-            (is (= 404 (:status (req {:action-id "dashcard:999999:1"
+            (is (= 404 (:status (req {:action_id "dashcard:999999:1"
                                       :scope     {:dashcard-id 999999}
                                       :input     {}})))))
           (testing "no action"
             (mt/with-temp [:model/Dashboard     dash {}
                            :model/DashboardCard dashcard {:dashboard_id (:id dash)}]
-              (is (= 404 (:status (req {:action-id 999999
+              (is (= 404 (:status (req {:action_id 999999
                                         :scope     {:dashcard-id (:id dashcard)}
                                         :input     {}}))))
               (testing "no dashcard still results in 404"
-                (is (= 404 (:status (req {:action-id 999999, :input {}})))))))
+                (is (= 404 (:status (req {:action_id 999999, :input {}})))))))
           (mt/with-non-admin-groups-no-root-collection-perms
             (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
                                                                       :name [:text]
@@ -780,12 +853,12 @@
                                                                :enabled         true}]}}]
                 (testing "no access to the model"
                   (is (= 403 (:status (req {:user      :rasta
-                                            :action-id (:id action)
+                                            :action_id (:id action)
                                             :scope     {:dashcard-id (:id dashcard)}
                                             :input     {:id 1 :status "approved"}})))))
                 (testing "non-row action modifying a row"
                   (testing "underlying row does not exist, action not executed"
-                    (is (= 400 (:status (req {:action-id (:id action)
+                    (is (= 400 (:status (req {:action_id (:id action)
                                               :scope     {:dashcard-id (:id dashcard)}
                                               :input     {:id     1
                                                           :status "approved"}})))))
@@ -793,8 +866,8 @@
                     (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                           {:rows [{:name "Widgets", :status "waiting"}]})
                     (is (= {:status 200
-                            :body   {:rows-updated 1}}
-                           (-> (req {:action-id (:id action)
+                            :body   {:outputs [{:rows-updated 1}]}}
+                           (-> (req {:action_id (:id action)
                                      :scope     {:dashcard-id (:id dashcard)}
                                      :input     {:id     1
                                                  :status "approved"}})
@@ -802,7 +875,7 @@
                 (testing "dashcard row action modifying a row - implicit action"
                   (let [action-id "dashcard:unknown:abcdef"]
                     (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action-id action-id
+                      (is (= 404 (:status (req {:action_id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
                                                 :input     {:id     2
                                                             :status "approved"}})))))
@@ -810,8 +883,8 @@
                       (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                             {:rows [{:name "Sprockets", :status "waiting"}]})
                       (is (= {:status 200
-                              :body   {:rows-updated 1}}
-                             (-> (req {:action-id action-id
+                              :body   {:outputs [{:rows-updated 1}]}}
+                             (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
                                        :input     {:id     2
                                                    :status "approved"}})
@@ -819,7 +892,7 @@
                 (testing "dashcard row action modifying a row - primitive action"
                   (let [action-id "dashcard:unknown:fedcba"]
                     (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action-id action-id
+                      (is (= 404 (:status (req {:action_id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
                                                 :input     {:id     3
                                                             :status "approved"}})))))
@@ -827,10 +900,10 @@
                       (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                             {:rows [{:name "Braai tongs", :status "waiting"}]})
                       (is (= {:status 200
-                              :body   {:table-id @test-table
-                                       :op "updated"
-                                       :row {:id 3, :name "Braai tongs", :status "approved"}}}
-                             (-> (req {:action-id action-id
+                              :body   {:outputs [{:table-id @test-table
+                                                  :op       "updated"
+                                                  :row      {:id 3, :name "Braai tongs", :status "approved"}}]}}
+                             (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
                                        :input     {:id     3
                                                    :status "approved"}})
@@ -838,7 +911,7 @@
                 (testing "dashcard row action modifying a row - encoded action"
                   (let [action-id "dashcard:unknown:xyzabc"]
                     (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action-id action-id
+                      (is (= 404 (:status (req {:action_id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
                                                 :input     {:id     4
                                                             :status "approved"}})))))
@@ -846,10 +919,10 @@
                       (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                             {:rows [{:name "Salad spinners", :status "waiting"}]})
                       (is (= {:status 200
-                              :body   {:table-id @test-table
-                                       :op "updated"
-                                       :row {:id 4, :name "Salad spinners", :status "approved"}}}
-                             (-> (req {:action-id action-id
+                              :body   {:outputs [{:table-id @test-table
+                                                  :op       "updated"
+                                                  :row      {:id 4, :name "Salad spinners", :status "approved"}}]}}
+                             (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
                                        :input     {:id     4
                                                    :status "approved"}})

@@ -45,13 +45,16 @@
   (for [[table-id diffs] (u/group-by :table-id identity outputs)
         :let [pretty-rows (data-editing/invalidate-and-present! table-id (map :row diffs))]
         [op pretty-row] (map vector (map :op diffs) pretty-rows)]
-    {:table-id table-id, :op op, :row pretty-row}))
+    {:op op, :table-id table-id, :row pretty-row}))
 
 (defn- perform! [action-kw context inputs]
   ;; We could enhance this in future to work more richly with multi-table editable models.
   (let [table-id     (scope->table-id context)
         next-inputs  (map-inputs table-id inputs)]
-    (perform-table-row-action! action-kw context next-inputs post-process)))
+    (perform-table-row-action! action-kw context next-inputs
+                               (if (= :table.row/delete action-kw)
+                                 identity
+                                 post-process))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/create]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]

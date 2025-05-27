@@ -258,17 +258,19 @@
 
 (defn- execute-dashcard-row-action-on-saved-action!
   "Implementation handling a sub-sub-case."
-  [action-id dashcard-id pk params & [_mapping]]
-  (let [action (-> (actions/select-action :id action-id :archived false)
-                   (t2/hydrate :creator)
-                   api/read-check)
+  [action-id dashcard-id pks inputs & [_mapping]]
+  (let [action      (-> (actions/select-action :id action-id :archived false)
+                        (t2/hydrate :creator)
+                        api/read-check)
         ;; TODO flatten this into a single query
         card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
         table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
         fields      (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
         field-names (set (map :name fields))
         pk-fields   (filter #(= :type/PK (:semantic_type %)) fields)
-        [row]       (data-editing/query-db-rows table-id pk-fields [pk])
+        _           (assert (= 1 (count pks)) "Further work needed to handle matching up database to input rows")
+        params      (first inputs)
+        [row]       (data-editing/query-db-rows table-id pk-fields pks)
         _           (api/check-404 row)
         row-params  (->> (:parameters action)
                          (keep (fn [{:keys [id slug]}]
@@ -278,23 +280,24 @@
                          (into {}))
         param-id    (u/index-by (some-fn :slug :id) :id (:parameters action))
         provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
-    (actions/execute-action! action (merge row-params provided))))
+    [(actions/execute-action! action (merge row-params provided))]))
 
 (defn- execute-dashcard-row-action-on-primitive-action!
   "Implementation handling a sub-sub-case."
-  [action-kw scope dashcard-id pk input _mapping]
+  [action-kw scope dashcard-id pks inputs _mapping]
   ;; TODO flatten this into a single query
   (let [card-id   (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
         table-id  (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
         pk-fields (t2/select [:model/Field :id :name :semantic_type] :table_id table-id :semantic_type :type/PK)
-        [row]     (data-editing/query-db-rows table-id pk-fields [pk])
+        _         (assert (= 1 (count pks)) "Further work needed to handle matching up database to input rows")
+        [row]     (data-editing/query-db-rows table-id pk-fields pks)
         _         (api/check-404 row)
         ;; TODO handle custom mapping
-        input     (if (:row input)
-                    (assoc input :row (merge row (:row input)))
-                    (merge row input))]
-    ;; TODO collapse if multiple outputs
-    (first (:outputs (actions/perform-action! action-kw scope [input])))))
+        inputs    (for [input inputs]
+                    (if (:row input)
+                      (assoc input :row (merge row (:row input)))
+                      (merge row input)))]
+    (:outputs (actions/perform-action! action-kw scope inputs))))
 
 (api.macros/defendpoint :post "/row-action/:action-id/execute"
   "Executes an action as a row action. The allows action parameters sharing a name with column names to be derived from a specific row.
@@ -305,7 +308,7 @@
    {:keys [pk params]}   :- [:map
                              [:pk :any]
                              [:params :any]]]
-  (execute-dashcard-row-action-on-saved-action! (parse-long action-id) dashcard-id pk params))
+  (first (execute-dashcard-row-action-on-saved-action! (parse-long action-id) dashcard-id [pk] [params])))
 
 (api.macros/defendpoint :get "/tmp-action"
   "Returns all actions across all tables and models"
@@ -397,27 +400,21 @@
     :else
     (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
-(api.macros/defendpoint :post "/action/v2/execute"
-  " ** The Grand Unification ** "
-  [{}
-   {}
-   {:keys [action-id scope input]}
-   :- [:map
-       [:action-id [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope     ::types/scope.raw]
-       [:input     :map]]]
+(defn- execute!* [action-id scope inputs]
   (let [scope   (actions/hydrate-scope scope)
         unified (fetch-unified-action scope action-id)]
     (cond
       (:action-id unified)
       (let [action (api/read-check (actions/select-action :id (:action-id unified) :archived false))]
-        (execute-saved-action! action input))
+        (api/check-400 (= 1 (count inputs)) "Saved actions currently only support a single input")
+        [(execute-saved-action! action (first inputs))])
       (:action-kw unified)
-      (let [action-kw (keyword (:action-kew unified))]
-        ;; Weird magic currying we've been doing implicitly.
-        (if (and (isa? action-kw :table.row/common) (:table-id unified))
-          (actions/perform-action! action-kw scope {:table-id (:table-id unified), :row input})
-          (actions/perform-action! action-kw scope input)))
+      (let [action-kw (keyword (:action-kw unified))]
+        (:outputs
+         ;; Weird magic currying we've been doing implicitly.
+         (if (and (isa? action-kw :table.row/common) (:table-id unified))
+           (actions/perform-action! action-kw scope (for [i inputs] {:table-id (:table-id unified), :row i}))
+           (actions/perform-action! action-kw scope inputs))))
       (:row-action unified)
       ;; use flat namespace for now, probably want to separate form inputs from pks
       (let [row-action  (:row-action unified)
@@ -427,23 +424,45 @@
             saved-id    (:action-id row-action)
             action-kw   (:action-kw row-action)
             ;; TODO probably take the row separately from inputs
-            pk          input
-            input       (if (seq mapping)
-                          (walk/postwalk-replace {"::root" input} mapping)
-                          input)]
+            pks         inputs
+            inputs      (for [input inputs]
+                          (if (seq mapping)
+                            (walk/postwalk-replace {"::root" input} mapping)
+                            input))]
         (cond
           saved-id
-          (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pk input mapping)
+          (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pks inputs mapping)
           action-kw
           (let [table-id (:table-id row-action)]
             ;; Weird magic currying we've been doing implicitly.
             (if (and table-id (isa? action-kw :table.row/common))
-              (let [pk    input
-                    input {:table-id table-id, :row input}]
-                (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pk input mapping))
-              (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pk input mapping)))))
+              (let [inputs (for [input inputs] {:table-id table-id, :row input})]
+                (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pks inputs mapping))
+              (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pks inputs mapping)))))
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
+
+(api.macros/defendpoint :post "/action/v2/execute"
+  " ** The Grand Unification ** "
+  [{}
+   {}
+   {:keys [action_id scope input]}
+   :- [:map
+       [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+       [:scope     ::types/scope.raw]
+       [:input     :map]]]
+  {:outputs (execute!* action_id scope [input])})
+
+(api.macros/defendpoint :post "/action/v2/execute-bulk"
+  " ** The Grand Unification ** "
+  [{}
+   {}
+   {:keys [action_id scope inputs]}
+   :- [:map
+       [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+       [:scope     ::types/scope.raw]
+       [:inputs    [:sequential :map]]]]
+  {:outputs (execute!* action_id scope inputs)})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
