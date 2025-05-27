@@ -42,6 +42,29 @@
         (dictionary/import-translations! rows)))
     {:success true}))
 
+(defn- format-csv-to-stream [os]
+  (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+        headers ["Language" "String" "Translation"]
+        translations (ct/get-translations)]
+    (try
+      (csv/write-csv writer [headers])
+      (doseq [{:keys [locale msgid msgstr]} translations]
+        (csv/write-csv writer [[locale msgid msgstr]]))
+      (.flush writer)
+      (finally
+        (.close writer)))))
+
+(api.macros/defendpoint :get "/csv"
+  "Provides content translation dictionary in CSV"
+  [_route-params
+   _query-params
+   _body]
+  (sr/streaming-response {:content-type "text/csv; charset=utf-8"
+                          :status 200
+                          :headers {"Content-Disposition" "attachment; filename=\"metabase-content-translation-dictionary.csv\""}}
+                         [os canceled-chan]
+    (format-csv-to-stream os)))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
   (api.macros/ns-handler *ns* +auth))
