@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs, Title } from "metabase/ui";
 
 import S from "./AddDataModal.module.css";
+import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 
 export const AddDataModal = ({
@@ -13,13 +17,18 @@ export const AddDataModal = ({
   onClose: () => void;
   opened: boolean;
 }) => {
+  const [activeTab, setActiveTab] = useState<string | null>("db");
+
+  const isAdmin = useSelector(getUserIsAdmin);
+
   return (
     <Modal.Root opened={opened} onClose={onClose} size="auto">
       <Modal.Overlay />
       <Modal.Content h="30rem">
         <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
           variant="none"
-          defaultValue="db"
           orientation="vertical"
           classNames={{
             list: S.list,
@@ -58,6 +67,11 @@ export const AddDataModal = ({
             </Tabs.List>
           </Box>
           <Box component="main" w="30rem">
+            <PanelsHeader
+              activeTab={activeTab}
+              isAdmin={isAdmin}
+              onClose={onClose}
+            />
             <Tabs.Panel value="db">{"Database content"}</Tabs.Panel>
             <Tabs.Panel value="csv">{"CSV content"}</Tabs.Panel>
             <Tabs.Panel value="gsheet">{"Google Sheets content"}</Tabs.Panel>
