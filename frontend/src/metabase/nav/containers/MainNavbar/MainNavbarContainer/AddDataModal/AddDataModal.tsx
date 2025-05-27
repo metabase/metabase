@@ -4,6 +4,7 @@ import CS from "metabase/css/core/index.css";
 import { Box, Icon, Modal, Tabs, Title } from "metabase/ui";
 
 import S from "./AddDataModal.module.css";
+import { trackAddDataEvent } from "./analytics";
 
 export const AddDataModal = ({
   onClose,
@@ -31,13 +32,18 @@ export const AddDataModal = ({
               <Title order={2} size="lg">{t`Add data`}</Title>
             </Box>
             <Tabs.List px="md" pb="lg">
-              <Tabs.Tab value="db" leftSection={<Icon name="database" />}>
+              <Tabs.Tab
+                value="db"
+                leftSection={<Icon name="database" />}
+                onClick={() => trackAddDataEvent("database_setup_clicked")}
+              >
                 {t`Database`}
               </Tabs.Tab>
               <Tabs.Tab
                 value="csv"
                 leftSection={<Icon name="table2" />}
                 disabled
+                onClick={() => trackAddDataEvent("csv_upload_clicked")}
               >
                 {t`CSV`}
               </Tabs.Tab>
@@ -45,6 +51,7 @@ export const AddDataModal = ({
                 value="gsheet"
                 leftSection={<Icon name="document" />}
                 disabled
+                onClick={() => trackAddDataEvent("sheets_connection_clicked")}
               >
                 {t`Google Sheets`}
               </Tabs.Tab>

@@ -142,6 +142,14 @@ export type VisualizerModalEvent = ValidateEvent<
     }
 >;
 
+export type AddDataModalEvent = ValidateEvent<{
+  event:
+    | "csv_upload_clicked"
+    | "sheets_connection_clicked"
+    | "database_setup_clicked";
+  triggered_from: "add-data-modal";
+}>;
+
 export type AddDataButtonClickedEvent = ValidateEvent<{
   event: "data_add_clicked";
   triggered_from: "getting-started" | "left-nav";
@@ -166,4 +174,5 @@ export type SimpleEvent =
   | NewButtonItemClickedEvent
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
-  | AddDataButtonClickedEvent;
+  | AddDataButtonClickedEvent
+  | AddDataModalEvent;
