@@ -75,7 +75,6 @@ export const Editor = ({
           }}
           setQueryBuilderMode={() => {}}
           hasVisualizeButton={hasVisualizeButton}
-          modelsFilterList={modelsFilterList}
         />
       </ScrollArea>
     )
