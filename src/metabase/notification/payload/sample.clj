@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [rand-nth])
   (:require
    [clojure.string :as str]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util.random :as u.random]
    [metabase.util.time :as u.time]))
 

@@ -355,9 +355,11 @@
 (defn- subtotal-visible?
   "Determines whether a subtotal should be shown for a given row."
   [row-item settings]
-  (let [condense? (true? (:pivot.condense_duplicate_totals settings))
+  (let [condense? (true? (:pivot.condense_duplicate_totals settings true))
         child-count (count (:children row-item))]
-    (or (not condense?) (> child-count 1) (:isCollapsed row-item))))
+    (or (> child-count 1)
+        (not condense?)
+        (:isCollapsed row-item))))
 
 (declare add-subtotal)
 
@@ -373,7 +375,8 @@
                              acc
                              settings)
                (conj! acc child)))
-           (transient []) children)))
+           (transient [])
+           children)))
 
 (defn- add-subtotal
   "Adds subtotal nodes to a row item based on subtotal settings.
@@ -413,7 +416,8 @@
                                (subtotal-visible? row-item settings)
                                acc
                                settings))
-               (transient []) row-tree)))))
+               (transient [])
+               row-tree)))))
 
 (defn display-name-for-col
   "Translated from frontend/src/metabase/lib/formatting/column.ts"

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import type { IconName } from "metabase/ui";
 import type { DashCardId, DashboardTabId } from "metabase-types/api";
@@ -29,6 +29,7 @@ export interface Undo {
   verb?: string;
   subject?: string;
   renderChildren?: (undo: Undo) => ReactNode;
+  ref?: RefObject<HTMLDivElement>;
   onDismiss?: (undoId: string | number) => void;
 }
 

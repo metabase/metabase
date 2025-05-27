@@ -7,13 +7,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.field-values :as field-values]
    [metabase.sync.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -133,7 +133,6 @@
     :db_id       true
     :entity_type :entity/GenericTable
     :id          true
-    :entity_id   true
     :updated_at  true}))
 
 (defn- field-defaults []
@@ -147,7 +146,6 @@
     :database_is_generated false
     :database_is_nullable true
     :id                  true
-    :entity_id           true
     :last_analyzed       false
     :parent_id           false
     :position            0

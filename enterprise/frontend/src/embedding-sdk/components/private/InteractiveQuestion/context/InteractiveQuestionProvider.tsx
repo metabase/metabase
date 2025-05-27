@@ -3,14 +3,13 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
-import { useSdkSelector } from "embedding-sdk/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type { EntityTypeFilterKeys } from "embedding-sdk/types/question";
-import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
+import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type Question from "metabase-lib/v1/Question";
@@ -32,19 +31,6 @@ export const InteractiveQuestionContext = createContext<
 
 const DEFAULT_OPTIONS = {};
 
-const FILTER_MODEL_MAP: Record<EntityTypeFilterKeys, DataPickerValue["model"]> =
-  {
-    table: "table",
-    question: "card",
-    model: "dataset",
-    metric: "metric",
-  };
-const mapEntityTypeFilterToDataPickerModels = (
-  entityTypeFilter: InteractiveQuestionProviderProps["entityTypeFilter"],
-): InteractiveQuestionContextType["modelsFilterList"] => {
-  return entityTypeFilter?.map((entityType) => FILTER_MODEL_MAP[entityType]);
-};
-
 export const InteractiveQuestionProvider = ({
   questionId,
   options = DEFAULT_OPTIONS,
@@ -55,7 +41,7 @@ export const InteractiveQuestionProvider = ({
   onBeforeSave,
   onSave,
   isSaveEnabled = true,
-  entityTypeFilter,
+  entityTypes,
   targetCollection,
   initialSqlParameters,
   withDownloads,
@@ -151,7 +137,6 @@ export const InteractiveQuestionProvider = ({
     mode,
     onSave: handleSave,
     onCreate: handleCreate,
-    modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
     targetCollection,
     withDownloads,
@@ -161,6 +146,12 @@ export const InteractiveQuestionProvider = ({
   useEffect(() => {
     loadAndQueryQuestion();
   }, [loadAndQueryQuestion]);
+
+  const dispatch = useSdkDispatch();
+
+  useEffect(() => {
+    dispatch(setEntityTypes(entityTypes));
+  }, [dispatch, entityTypes]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

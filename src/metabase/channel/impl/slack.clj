@@ -7,14 +7,14 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.slack :as slack]
    [metabase.channel.template.core :as channel.template]
+   [metabase.channel.urls :as urls]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.markdown :as markdown]
-   [metabase.util.urls :as urls]))
+   [metabase.util.markdown :as markdown]))
 
 (defn- notification-recipient->channel
   [notification-recipient]

@@ -3,10 +3,10 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.channel.urls :as urls]
    [metabase.settings.core :as setting]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.json :as json]
-   [metabase.util.urls :as urls])
+   [metabase.util.json :as json])
   (:import
    (com.github.jknack.handlebars Options Handlebars Helper)
    (java.util.regex Pattern)))
@@ -495,6 +495,7 @@
 
 ;; Exposing this via settings so FE can find it
 ;; TODO: the better way is to follow metabase.lib's steps by writing this as cljc so FE can access it directly.
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (setting/defsetting default-handlebars-helpers
   "A list of default handlebars helpers."
   :type        :json

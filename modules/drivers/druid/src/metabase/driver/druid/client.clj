@@ -2,13 +2,13 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

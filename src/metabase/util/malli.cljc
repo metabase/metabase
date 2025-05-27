@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.config :as config]
+       ([metabase.config.core :as config]
         [metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
         [malli.generator :as mg]

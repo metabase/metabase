@@ -4,7 +4,7 @@
   Actual implementation for [[metabase.api.macros/defendpoint]] endpoints lives
   in [[metabase.api.macros.defendpoint.open-api]]. "
   (:require
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -18,7 +18,7 @@
   (open-api-spec [this prefix]
     "Get the OpenAPI spec base object (as a Clojure data structure) associated with a Ring handler. `prefix` is the
     route prefix in the Compojure `context` sense, e.g. `/api/` for [[metabase.api-routes.core/routes]], or
-    `/api/user/` by the time we get to [[metabase.api.user]], etc."))
+    `/api/user/` by the time we get to [[metabase.users.api]], etc."))
 
 (extend-protocol OpenAPISpec
   nil

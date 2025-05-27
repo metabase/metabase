@@ -163,7 +163,6 @@ describe("DataSelector", () => {
     let nextMetadata = createMockMetadata({ databases });
     nextMetadata.schemas = {};
     nextMetadata.tables = {};
-    nextMetadata.fields = {};
     rerenderWith(nextMetadata);
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
@@ -177,7 +176,6 @@ describe("DataSelector", () => {
     // select a schema
     nextMetadata = createMockMetadata({ databases });
     nextMetadata.tables = {};
-    nextMetadata.fields = {};
     rerenderWith(nextMetadata);
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
@@ -332,38 +330,6 @@ describe("DataSelector", () => {
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
     // check for chevron icon
     expect(getIcon("chevrondown")).toBeInTheDocument();
-  });
-
-  it("should auto-advance past db and schema in field picker", async () => {
-    render(
-      <DataSelector
-        steps={["SCHEMA", "TABLE", "FIELD"]}
-        selectedDatabaseId={SAMPLE_DATABASE.id}
-        databases={[SAMPLE_DATABASE]}
-        triggerElement={<div />}
-        metadata={metadata}
-        isOpen={true}
-      />,
-    );
-    await delay(1);
-
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-  });
-
-  it("should select schema in field picker", async () => {
-    render(
-      <DataSelector
-        steps={["SCHEMA", "TABLE", "FIELD"]}
-        selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
-        databases={[MULTI_SCHEMA_DATABASE]}
-        triggerElement={<div />}
-        metadata={metadata}
-        isOpen={true}
-      />,
-    );
-
-    await userEvent.click(screen.getByText("First Schema"));
-    expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
   it("should open database picker with correct database selected", () => {

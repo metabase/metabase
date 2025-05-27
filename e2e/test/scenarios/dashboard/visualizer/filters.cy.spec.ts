@@ -19,13 +19,11 @@ describe("scenarios > dashboard > visualizer > filters", () => {
 
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      entityIdAlias: "productsCountByCategoryQuestionEntityId",
       wrapId: true,
     });
 
     H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY, {
       idAlias: "productsAvgByCreatedAtQuestionId",
-      entityIdAlias: "productsAvgByCreatedAtQuestionEntityId",
       wrapId: true,
     });
   });
@@ -43,8 +41,12 @@ describe("scenarios > dashboard > visualizer > filters", () => {
       H.switchToAddMoreData();
       H.addDataset(PRODUCTS_AVERAGE_BY_CATEGORY.name);
 
-      cy.button("Add to dashboard").click();
+      H.assertWellItemsCount({
+        vertical: 2,
+      });
     });
+
+    H.saveDashcardVisualizerModal("create");
 
     H.setFilter("Text or Category", "Is");
 

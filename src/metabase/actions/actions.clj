@@ -4,7 +4,9 @@
    [clojure.spec.alpha :as s]
    [metabase.actions.events :as actions.events]
    [metabase.actions.scope :as actions.scope]
-   [metabase.api.common :as api] [metabase.driver :as driver]
+   [metabase.actions.settings :as actions.settings]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
@@ -17,21 +19,6 @@
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
-
-(setting/defsetting database-enable-actions
-  (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
-  :default false
-  :type :boolean
-  :visibility :public
-  :database-local :only)
-
-(setting/defsetting database-enable-table-editing
-  (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
-  :default false
-  :type :boolean
-  :visibility :public
-  :database-local :only
-  :export? true)
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -130,7 +117,7 @@
                     {:status-code 400, :database-id db-id})))
 
   (setting/with-database-local-values db-settings
-    (when-not (database-enable-actions)
+    (when-not (actions.settings/database-enable-actions)
       (throw (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
 
@@ -147,7 +134,7 @@
                     {:status-code 400, :database-id db-id})))
 
   (setting/with-database-local-values db-settings
-    (when-not (database-enable-table-editing)
+    (when-not (actions.settings/database-enable-table-editing)
       (throw (ex-info (i18n/tru "Data editing is not enabled.")
                       {:status-code 400, :database-id db-id}))))
 
@@ -246,10 +233,10 @@
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         policy    (or policy
                       (cond
-                        (:model-id scope)                        :model-action
-                        (= "data-grid" (namespace action-kw))    :data-editing
-                        (= "data-editing" (namespace action-kw)) :data-editing
-                        :else                                    :ad-hoc-invocation))
+                        (:model-id scope)                         :model-action
+                        (= "data-grid.row" (namespace action-kw)) :data-editing
+                        (= "data-editing" (namespace action-kw))  :data-editing
+                        :else                                     :ad-hoc-invocation))
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps

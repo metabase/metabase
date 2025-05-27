@@ -3,9 +3,9 @@
    [metabase.api.common
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
-   [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
@@ -35,7 +35,7 @@
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))]
+            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id perms/user-permissions-set)))]
     ;; As mentioned above, do not rebind user-local values to something new, because changes to its value will not be
     ;; propagated to frames further up the stack.
     (letfn [(do-with-user-local-values [thunk]

@@ -5,10 +5,9 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -605,9 +604,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (mdb.query/query {:select [:value]
-                        :from   [:setting]
-                        :where  [:= :key (name setting-key)]})
+  (-> (mdb/query {:select [:value]
+                  :from   [:setting]
+                  :where  [:= :key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test

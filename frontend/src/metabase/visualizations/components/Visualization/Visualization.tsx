@@ -28,7 +28,7 @@ import {
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconName, IconProps } from "metabase/ui";
+import { type IconName, type IconProps, Menu } from "metabase/ui";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -661,6 +661,8 @@ class Visualization extends PureComponent<
             e instanceof ChartSettingsError &&
             visualization?.hasEmptyState &&
             !isDashboard &&
+            // For the SDK the EmptyVizState component in some cases (a small container) looks really weird,
+            // so at least temporarily we don't display it when rendered in the SDK.
             !isEmbeddingSdk
           ) {
             // hide the error and display the empty state instead
@@ -740,6 +742,24 @@ class Visualization extends PureComponent<
     const canSelectTitle =
       this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
 
+    const titleMenuItems = visualizerRawSeries ? (
+      <>
+        <Menu.Label>{t`Questions in this card`}</Menu.Label>
+        {visualizerRawSeries.map((series, index) => (
+          <Menu.Item
+            key={index}
+            onClick={() => {
+              this.handleOnChangeCardAndRun({
+                nextCard: series.card,
+              });
+            }}
+          >
+            {series.card.name}
+          </Menu.Item>
+        ))}
+      </>
+    ) : undefined;
+
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -762,6 +782,7 @@ class Visualization extends PureComponent<
                 icon={headerIcon}
                 actionButtons={extra}
                 hasInfoTooltip={!isDashboard || !isEditing}
+                titleMenuItems={titleMenuItems}
                 width={width}
                 getHref={getHref}
                 onChangeCardAndRun={
@@ -880,6 +901,7 @@ class Visualization extends PureComponent<
                     onUpdateWarnings={onUpdateWarnings}
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
+                    titleMenuItems={hasHeader ? undefined : titleMenuItems}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

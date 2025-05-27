@@ -41,6 +41,7 @@ import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -69,7 +70,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
-  DatabaseId,
   Database as DatabaseType,
   Dataset,
   DatasetData,
@@ -641,10 +641,10 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: {
-    hide_download_button?: boolean | null;
-    downloads?: string | boolean | null;
-  }) => ({ pdf: true, results: true }),
+  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+    pdf: true,
+    results: true,
+  }),
 };
 
 const defaultMetabotContextValue: MetabotContext = {
@@ -670,17 +670,21 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
 
 export type GenerateSqlQueryButtonProps = {
   className?: string;
-  prompt: string;
-  databaseId: DatabaseId;
+  query: Lib.Query;
+  selectedQueryText?: string;
   onGenerateQuery: (queryText: string) => void;
 };
 
 export type PluginAiSqlGeneration = {
   GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+  isEnabled: () => boolean;
+  getPlaceholderText: () => string;
 };
 
 export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
+  isEnabled: () => false,
+  getPlaceholderText: () => "",
 };
 
 export interface AIDashboardAnalysisSidebarProps {
@@ -716,7 +720,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 };
 
 export const PLUGIN_METABOT = {
-  Metabot: () => null as React.ReactElement | null,
+  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
@@ -729,6 +733,8 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  getMetabotVisible: (_state: State) => false,
+  SearchButton: SearchButton,
 };
 
 type DashCardMenuItemGetter = (

@@ -38,6 +38,7 @@ export const colors = {
   "text-medium": "#696E7B",
   "text-light": "#949AAB",
   "text-white": "#FFFFFF",
+  "text-secondary-inverse": "#B7BCBF",
   "bg-black": "#2E353B",
   "bg-dark": "#93A1AB",
   "bg-medium": "#EDF2F5",
