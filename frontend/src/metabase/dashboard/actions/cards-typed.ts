@@ -533,25 +533,37 @@ export const updateEditableTableCardQueryInEditMode = createThunkAction(
     cardId: DashboardCard["card_id"];
     newCard: Card;
   }) =>
-    async (dispatch: Dispatch) => {
+    async (dispatch: Dispatch, getState: GetState) => {
       // set data override to null to show loading state
       dispatch(setEditingDashcardData(dashcardId, cardId, null));
 
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const isSavedDashcard = dashcard.id > 0;
+
       // Non-saved cards (temporary ID < 0) do not require sync with the server, since there's no card ID to update.
       // The `isDirty` flag is used to determine if the existing card local state is different from the server state.
-      const isDirty = newCard.id > 0 ? true : false;
+      const isDirty = isSavedDashcard ? true : false;
       const card: Card = {
         ...newCard,
         // @ts-expect-error - we don't have a type for Store card with additional state
         isDirty,
       };
 
+      const newDashcardAttributes: Partial<DashboardCard> = { card };
+
+      // For new cards we also need to copy card dataset_query to dashcard visualization_settings
+      // To preserve edited filters upon saving the dashboard and creating a new card
+      if (!isSavedDashcard) {
+        newDashcardAttributes.visualization_settings = {
+          ...dashcard.visualization_settings,
+          initial_dataset_query: newCard.dataset_query,
+        };
+      }
+
       dispatch(
         setDashCardAttributes({
           id: dashcardId,
-          attributes: {
-            card: card,
-          },
+          attributes: newDashcardAttributes,
         }),
       );
 
