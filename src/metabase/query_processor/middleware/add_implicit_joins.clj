@@ -34,7 +34,8 @@
          [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
          (when-not (some #{:source-metadata} &parents)
            &match))
-       (into [] distinct)))
+       distinct
+       (into [])))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
   (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name source-fk-join-alias))
@@ -98,7 +99,8 @@
                            distinct
                            not-empty)]
     (->> (fk-field-infos->join-infos k-field-infos)
-         (into [] distinct))))
+         distinct
+         (into []))))
 
 (defn- visible-joins
   "Set of all joins that are visible in the current level of the query or in a nested source query."
