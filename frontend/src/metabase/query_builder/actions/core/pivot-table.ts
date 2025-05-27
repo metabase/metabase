@@ -102,15 +102,9 @@ function checkShouldRerunPivotTableQuestion({
   if (isUnaggregatedData) {
     const currentPivotSettings = currentSettings[UNAGG_COLUMN_SPLIT_SETTING];
     const prevPivotSettings = prevSettings?.[UNAGG_COLUMN_SPLIT_SETTING];
-    // TODO: we can add support for running pivot queries with any settings
-    // once M1 of the simple pivots migration is merged
-    const areCurrentSettingsValid = currentPivotSettings && prevPivotSettings;
-    //(currentPivotSettings.rows?.length > 0 ||
-    //  currentPivotSettings.cols?.length > 0) &&
-    //currentPivotSettings.values?.length > 0;
 
     return (
-      areCurrentSettingsValid &&
+      currentPivotSettings &&
       (shouldRerunForTotals ||
         !_.isEqual(currentPivotSettings, prevPivotSettings))
     );

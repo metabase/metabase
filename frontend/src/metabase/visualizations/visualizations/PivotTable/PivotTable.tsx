@@ -178,12 +178,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     ]);
 
     const pivoted = useMemo(() => {
-      //if (
-      //  data?.pivot_cols == null ||
-      //  !data?.pivot_cols.some(isPivotGroupColumn)
-      //) {
-      //  return null;
-      //}
+      if (data?.pivot_cols == null) {
+        return null;
+      }
 
       try {
         return multiLevelPivot(data, settings);
