@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_embedding_sdk_compatibility: ${{ steps.changes.outputs.e2e_embedding_sdk_compatibility }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -149,7 +149,7 @@ jobs:
     needs: [files-changed, get-build-requirements, get-sample-apps-data]
     if: |
       !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
+      needs.files-changed.outputs.e2e_embedding_sdk_compatibility == 'true' &&
       fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
     runs-on: ubuntu-22.04
     timeout-minutes: 25
