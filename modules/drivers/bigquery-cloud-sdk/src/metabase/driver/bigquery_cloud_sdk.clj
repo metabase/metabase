@@ -32,7 +32,7 @@
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
-                              BigQuery$TableOption BigQueryException BigQueryOptions Dataset
+                              BigQuery$TableOption BigQueryException BigQueryOptions Dataset Job JobInfo
                               Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
                               Table TableDefinition$Type TableId TableResult)
    (com.google.common.collect ImmutableMap)
@@ -575,9 +575,33 @@
           (attempt-job-cancel-fn)
           (throw t))))))
 
+(defn- dry-run-estimate-bytes-processed
+  "Estimates the number of bytes a BigQuery query will process using dry run."
+  [^BigQuery client sql parameters]
+  (try (let [request (-> (QueryJobConfiguration/newBuilder sql)
+                         (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+                         (bigquery.params/set-parameters! parameters)
+                         (.setDryRun true)
+                         (.setUseQueryCache false)
+                         (.build))
+             job (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+             stats (.getStatistics job)
+             byes-processed  (.getTotalBytesProcessed stats)
+             bytes-billed    (.getTotalBytesBilled stats)
+             estimated-bytes (.getEstimatedBytesProcessed stats)
+             bytes-info {:bytes-processed byes-processed
+                         :bytes-billed    bytes-billed
+                         :estimated-bytes estimated-bytes}]
+         (tap> "DRY RUN")
+         (tap> (bean stats))
+         (tap> bytes-info))
+       (catch Exception e
+         (tap> {:error "Failed to estimate bytes processed"
+                :exception (ex-message e)}))))
+
 (defn- bigquery-execute-response
   "Given the initial query page, respond with metadata and a lazy reducible that will page through the rest of the data."
-  [^TableResult page ^BigQuery client respond cancel-chan]
+  [^TableResult page ^BigQuery client respond cancel-chan bytes-info]
   (let [job-id (.getJobId page)
         attempt-job-cancel-fn #(try
                                  (.cancel client job-id)
@@ -590,7 +614,8 @@
                   (-> column
                       (set/rename-keys {:base-type :base_type})
                       (dissoc :database-type :database-position)))
-        cols {:cols columns}
+        cols {:cols columns
+              :bytes-info bytes-info}
         results (eduction (map (fn [^FieldValueList row]
                                  (mapv parse-field-value row parsers)))
                           (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn))]
@@ -611,11 +636,23 @@
                        (try
                          (*page-callback*)
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
-                           (deliver result-promise [:ready result])
+                           (let [job-id (.getJobId result)
+                                 job ^Job  (.getJob client job-id (u/varargs BigQuery$JobOption))
+                                 stats (.getStatistics job)
+                                 byes-processed  (.getTotalBytesProcessed stats)
+                                 bytes-billed    (.getTotalBytesBilled stats)
+                                 estimated-bytes (.getEstimatedBytesProcessed stats)
+                                 bytes-info {:bytes-processed byes-processed
+                                             :bytes-billed    bytes-billed
+                                             :estimated-bytes estimated-bytes}]
+                             (tap> "QUERY")
+                             (tap> (bean stats))
+                             (tap> bytes-info)
+                             (deliver result-promise [:ready result bytes-info]))
                            (throw (ex-info "Null response from query" {})))
                          (catch Throwable t
                            (deliver result-promise [:error t]))))]
-
+    (dry-run-estimate-bytes-processed client sql parameters)
     ;; This `go` is responsible for cancelling the *initial* .query call.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
@@ -626,11 +663,11 @@
 
     ;; Now block the original thread on that promise.
     ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
-    (let [[status result] @result-promise]
+    (let [[status result bytes-info] @result-promise]
       (case status
         :error  (handle-bigquery-exception result sql parameters)
         :cancel (throw-cancelled sql parameters)
-        :ready  (bigquery-execute-response result client respond cancel-chan)))))
+        :ready  (bigquery-execute-response result client respond cancel-chan bytes-info)))))
 
 (mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
