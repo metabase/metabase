@@ -5,13 +5,13 @@
    [java-time.api :as t]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import [java.time
-            LocalDate
-            LocalTime
-            ZoneId
-            ZonedDateTime]))
+   [metabase.test :as mt])
+  (:import
+   (java.time
+    LocalDate
+    LocalTime
+    ZoneId
+    ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -127,10 +127,9 @@
 
 (defmacro with-sample-db-as-dwh [& body]
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
-  `(try
-     (t2/update! :model/Database :id 1 {:is_attached_dwh true})
-     ~@body
-     (finally (t2/update! :model/Database :id 1 {:is_attached_dwh false}))))
+  (let [db-sym (gensym "db-")]
+    `(mt/with-temp [:model/Database ~db-sym {:is_attached_dwh true}]
+       ~@body)))
 
 (deftest post-folder-test
   (with-sample-db-as-dwh
@@ -165,18 +164,18 @@
           (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)]
             (testing (str "when the dwh has never been synced, we should be status=loading.\n"
                           "calling it over and over will return the same result.")
-              (is (partial= {:status "loading", :folder_url gdrive-link :db_id 1, :created-by-id (mt/user->id :crowberto)}
-                            (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder"))))
+              (is (=? {:status "loading", :folder_url gdrive-link :db_id (mt/malli=? :int), :created-by-id (mt/user->id :crowberto)}
+                      (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder"))))
             (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
         (testing "when the local sync time is before the last gdrive connection sync time, we should be status=loading."
           (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2000-01-01T00:00:00Z"))]
-            (is (partial= {:status "loading", :folder_url gdrive-link :db_id 1 :created-by-id (mt/user->id :crowberto)}
-                          (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
+            (is (=? {:status "loading", :folder_url gdrive-link :db_id (mt/malli=? :int) :created-by-id (mt/user->id :crowberto)}
+                    (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
             (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
         (testing "when the local sync time is after the last gdrive connection sync time, then we should be status=complete."
           (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2222-01-01T00:00:00Z"))]
-            (is (partial= {:status "complete" :folder_url gdrive-link :db_id 1}
-                          (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))))))))
+            (is (=? {:status "complete" :folder_url gdrive-link :db_id (mt/malli=? :int)}
+                    (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))))))))
 
 (deftest get-folder-timeout-test
   (with-sample-db-as-dwh

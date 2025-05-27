@@ -624,7 +624,8 @@
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.models.pulse-channel
+           metabase-enterprise.advanced-config.init
+           metabase-enterprise.advanced-config.models.notification
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.crufty}
    :uses #{api db driver models permissions premium-features setup sync util}}
@@ -678,7 +679,7 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses #{enterprise/enhancements}}
+   :uses #{enterprise/advanced-config enterprise/enhancements}}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}

@@ -1,8 +1,8 @@
-(ns metabase-enterprise.advanced-config.models.pulse-channel-test
+(ns metabase-enterprise.advanced-config.models.notification-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
+   [metabase-enterprise.advanced-config.models.notification :as advanced-config.models.notification]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -40,7 +40,7 @@
                 (testing "should fail"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"You cannot create new subscriptions for the domain \"[\w@\.-]+\". Allowed domains are: .+"
+                       #"The following email addresses are not allowed: .*"
                        (thunk))))
                 (testing "should succeed"
                   (is (thunk)))))))))))
@@ -49,10 +49,10 @@
   (testing "Should be able to set the subscription-allowed-domains setting with the email-allow-list feature"
     (mt/with-premium-features #{:email-allow-list}
       (is (= "metabase.com"
-             (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
+             (advanced-config.models.notification/subscription-allowed-domains! "metabase.com")))))
   (testing "Should be unable to set the subscription-allowed-domains setting without the email-allow-list feature"
     (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting subscription-allowed-domains is not enabled because feature :email-allow-list is not available"
-           (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com"))))))
+           (advanced-config.models.notification/subscription-allowed-domains! "metabase.com"))))))

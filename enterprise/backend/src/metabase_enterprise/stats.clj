@@ -1,6 +1,6 @@
 (ns metabase-enterprise.stats
   (:require
-   [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
+   [metabase-enterprise.advanced-config.models.notification :as advanced-config.models.notification]
    [metabase-enterprise.scim.api :as scim-api]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.driver :as driver]
@@ -27,4 +27,4 @@
     :enabled   (t2/exists? :model/GroupTableAccessPolicy)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
-    :enabled   (boolean (some? (advanced-config.models.pulse-channel/subscription-allowed-domains)))}])
+    :enabled   (boolean (some? (advanced-config.models.notification/subscription-allowed-domains)))}])

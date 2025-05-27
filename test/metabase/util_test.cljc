@@ -60,6 +60,16 @@
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
 
+#?(:clj
+   (deftest ^:parallel domain?-test
+     #_{:clj-kondo/ignore [:equals-true]}
+     (are [s expected] (= expected (u/domain? s))
+       "metabase.com"         true
+       "metabase.co.uk"       true
+       "sub.metabase.com"     true
+       "https://metabase.com" false
+       "email@metabase.com"   false)))
+
 (deftest ^:parallel state?-test
   (are [x expected] (= expected
                        (u/state? x))
