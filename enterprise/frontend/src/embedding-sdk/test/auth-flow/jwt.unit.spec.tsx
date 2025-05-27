@@ -27,7 +27,8 @@ const setup = ({
   setupMockJwtEndpoints();
   return {
     ...baseSetup({ authConfig, locale }),
-    getLastAuthProviderApiCall: () => fetchMock.lastCall(MOCK_JWT_PROVIDER_URI),
+    getLastAuthProviderApiCall: () =>
+      fetchMock.lastCall(`${MOCK_JWT_PROVIDER_URI}?response=json`),
   };
 };
 
@@ -40,7 +41,9 @@ describe("Auth Flow - JWT", () => {
     const { rerender } = setup({ authConfig });
 
     await waitForLoaderToBeRemoved();
-    expect(fetchMock.calls(MOCK_JWT_PROVIDER_URI)).toHaveLength(1);
+    expect(
+      fetchMock.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
+    ).toHaveLength(1);
 
     rerender(
       <MetabaseProvider authConfig={authConfig}>
@@ -50,7 +53,9 @@ describe("Auth Flow - JWT", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(fetchMock.calls(MOCK_JWT_PROVIDER_URI)).toHaveLength(1);
+    expect(
+      fetchMock.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
+    ).toHaveLength(1);
 
     expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
 
