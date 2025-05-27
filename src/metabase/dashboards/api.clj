@@ -898,7 +898,10 @@
                   :dashboard_tab_id       tab-id
                   :collection_position    nil
                   :dataset_query          {:database (:db_id table)
-                                           :query    {:source-table table-id}
+                                           ;; TODO if we keep going down this road, we need to validate that this
+                                           ;;      is a coherent and sufficiently restricted query for the given table.
+                                           :query    (or (get-in dashcard [:visualization_settings :initial_dataset_query])
+                                                         {:source-table table-id})
                                            :type     :query}
                   :description            nil
                   :display                "table-editable"
@@ -914,6 +917,7 @@
         ;; This is a downside to creating a new card. If we find more pockets like this, we should pivot to reusing
         ;; the existing card.
         (u/update-if-exists :parameter_mappings #(walk/postwalk (fn [x] (if (:card_id x) (assoc x :card_id card-id) x)) %))
+        (update :visualization_settings dissoc :initial_dataset_query)
         (assoc :dashboard_id dashboard-id
                :card_id card-id))))
 
