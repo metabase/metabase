@@ -6,6 +6,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  assertSdkNotebookEditorUsable,
   createQuestion,
   entityPickerModal,
   entityPickerModalTab,
@@ -19,8 +20,6 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
-
-const { H } = cy;
 
 describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
@@ -38,7 +37,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       </Flex>,
     );
 
-    H.assertSdkNotebookEditorUsable();
+    assertSdkNotebookEditorUsable();
 
     getSdkRoot().within(() => {
       // Should be able to save to a new question right away
