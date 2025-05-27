@@ -22,7 +22,7 @@ const setup = ({ isEnvVar }: { isEnvVar?: boolean }) => {
   const customGeoJSON = {
     "666c2779-15ee-0ad9-f5ab-0ccbcc694efa": {
       name: "Test",
-      url: "https://dataworks.calderdale.gov.uk/download/23331/080/Green Belt GeoJSON.json",
+      url: "https://test.com/download/GeoJSON_one.json",
       region_key: "POLICY_NO",
       region_name: "TABLE_NAME",
     },
@@ -57,14 +57,21 @@ const setup = ({ isEnvVar }: { isEnvVar?: boolean }) => {
 
   setupGeoJSONEndpoint({
     featureCollection: createMockGeoJSONFeatureCollection(),
-    url: "https://test.com/download/GeoJSON.json",
+    url: "https://test.com/download/GeoJSON_one.json",
+  });
+
+  setupGeoJSONEndpoint({
+    featureCollection: createMockGeoJSONFeatureCollection(),
+    url: "https://test.com/download/GeoJSON_two.json",
   });
 
   return renderWithProviders(
     <div>
       <CustomGeoJSONWidget
         setting={geoJSONDefinition}
-        reloadSettings={() => {}}
+        reloadSettings={() => {
+          return Promise.resolve();
+        }}
       />
       <UndoListing />
     </div>,
@@ -81,7 +88,7 @@ describe("CustomGeoJSONWIdget", () => {
       const cells = within(row).getAllByRole("cell");
       expect(cells[0]).toHaveTextContent("Test");
       expect(cells[1]).toHaveTextContent(
-        "https://dataworks.calderdale.gov.uk/download/23331/080/Green Belt GeoJSON.json",
+        "https://test.com/download/GeoJSON_one.json",
       );
     });
     expect(
@@ -104,7 +111,7 @@ describe("CustomGeoJSONWIdget", () => {
     expect(body).toEqual({ value: {} });
   });
 
-  it("should save an updated setting", async () => {
+  it("should add a new map", async () => {
     setup({});
 
     const addButton = screen.getByRole("button", { name: "Add a map" });
@@ -120,7 +127,7 @@ describe("CustomGeoJSONWIdget", () => {
     const nameInput = screen.getByPlaceholderText(
       /e.g. United Kingdom, Brazil, Mars/i,
     );
-    await userEvent.type(nameInput, "Test Map");
+    await userEvent.type(nameInput, "Test Two");
 
     // Load is disabled until URL is added
     expect(await screen.findByRole("button", { name: /Load/i })).toBeDisabled();
@@ -131,7 +138,10 @@ describe("CustomGeoJSONWIdget", () => {
     );
     const loadButton = await screen.findByRole("button", { name: /Load/i });
     expect(loadButton).toBeDisabled();
-    await userEvent.type(urlInput, "https://test.com/download/GeoJSON.json");
+    await userEvent.type(
+      urlInput,
+      "https://test.com/download/GeoJSON_two.json",
+    );
     expect(loadButton).toBeEnabled();
 
     // Load Map
@@ -157,13 +167,71 @@ describe("CustomGeoJSONWIdget", () => {
     const puts = await findRequests("PUT");
     const { body } = puts[0];
     const testMapEntry = Object.values(body.value).find(
-      (item) => (item as CustomGeoJSONMap).name === "Test Map",
+      (item) => (item as CustomGeoJSONMap).name === "Test Two",
     );
     expect(testMapEntry).toEqual({
-      name: "Test Map",
+      name: "Test Two",
       region_key: "scalerank",
       region_name: "featureclass",
-      url: "https://test.com/download/GeoJSON.json",
+      url: "https://test.com/download/GeoJSON_two.json",
+    });
+  });
+
+  it("should edit a map", async () => {
+    setup({});
+
+    await userEvent.click(
+      screen.getByText("https://test.com/download/GeoJSON_one.json"),
+    );
+
+    const modal = screen.getByRole("dialog");
+    expect(modal).toBeInTheDocument();
+    expect(screen.getByText("Edit map")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Cancel/i }));
+
+    const putsAfterCancel = await findRequests("PUT");
+    expect(putsAfterCancel).toHaveLength(1);
+
+    await userEvent.click(
+      screen.getByText("https://test.com/download/GeoJSON_one.json"),
+    );
+    await userEvent.type(screen.getByDisplayValue("Test"), " Edit");
+
+    const urlInput = screen.getByDisplayValue(
+      "https://test.com/download/GeoJSON_one.json",
+    );
+    await userEvent.clear(urlInput);
+    await userEvent.type(
+      urlInput,
+      "https://test.com/download/GeoJSON_two.json",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Refresh/i }));
+
+    // Select map features for key and name
+    const keySelect = within(screen.getByTestId("map-region-key-select"));
+    await userEvent.click(await keySelect.findByTestId("select-button"));
+    await userEvent.click(await screen.findByText("featureclass"));
+
+    const nameSelect = within(screen.getByTestId("map-region-name-select"));
+    await userEvent.click(await nameSelect.findByTestId("select-button"));
+    await userEvent.click(screen.getByText("scalerank"));
+
+    await userEvent.click(screen.getByRole("button", { name: /Save map/i }));
+
+    expect(modal).not.toBeInTheDocument();
+
+    const puts = await findRequests("PUT");
+    const { body } = puts[1];
+    const testMapEntry = Object.values(body.value).find(
+      (item) => (item as CustomGeoJSONMap).name === "Test Edit",
+    );
+    expect(testMapEntry).toEqual({
+      name: "Test Edit",
+      region_key: "featureclass",
+      region_name: "scalerank",
+      url: "https://test.com/download/GeoJSON_two.json",
     });
   });
 
