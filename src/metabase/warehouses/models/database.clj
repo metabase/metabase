@@ -303,7 +303,7 @@
                                                [:= :field.parent_id nil]]}]}
 
                 :mysql
-                {:update    (t2/table-name :model/Field)
+                {:update    [(t2/table-name :model/Field) :field]
                  :left-join [[(t2/table-name :model/Table) :table]
                              [:= :field.table_id :table.id]]
                  :set       {:field.parent_id nil}
