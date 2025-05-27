@@ -4,17 +4,19 @@ import Color from "color";
 import * as d3 from "d3";
 import { Component } from "react";
 import ss from "simple-statistics";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 // eslint-disable-next-line no-restricted-imports -- deprecated sdk import
 import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { Flex } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -195,7 +197,22 @@ class ChoroplethMapInner extends Component {
   render() {
     const details = this._getDetails(this.props);
     if (!details) {
-      return <div>{t`unknown map`}</div>;
+      return (
+        <Flex direction="column" m="auto" maw="24rem">
+          <div className={cx(CS.textCentered, CS.mb4)}>
+            <p>
+              {t`Map not found. Please update the map used in this visualization's settings.`}
+            </p>
+            <p>
+              {jt`To add a new map, visit ${(
+                <Link to="/admin/settings/maps" className={CS.link}>
+                  {t`Admin settings > Maps`}
+                </Link>
+              )}.`}
+            </p>
+          </div>
+        </Flex>
+      );
     }
 
     const {
