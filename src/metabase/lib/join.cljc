@@ -894,12 +894,7 @@
                     (m/distinct-by #(-> % ::target :id))
                     not-empty))
              (filter-clause [x y]
-               ;; DO NOT force broken refs for fields that come from Cards (broken refs in this case means use Field
-               ;; ID refs instead of nominal field literal refs), that will break things if a Card returns the same
-               ;; Field more than once (there would be no way to disambiguate). See #34227 for more info
-               (let [x (dissoc x ::lib.card/force-broken-id-refs)
-                     y (dissoc y ::lib.card/force-broken-id-refs)]
-                 (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y)))]
+               (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
        (or
         ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
         (when-let [fks (fks stage joinable)]
