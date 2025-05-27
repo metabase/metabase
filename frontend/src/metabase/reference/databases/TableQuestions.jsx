@@ -55,18 +55,16 @@ class TableQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,
     metadata: PropTypes.object.isRequired,
-    style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     loading: PropTypes.bool,
     loadingError: PropTypes.object,
   };
 
   render() {
-    const { entities, style, loadingError, loading, table, metadata } =
-      this.props;
+    const { entities, loadingError, loading, table, metadata } = this.props;
 
     return (
-      <div style={style} className={CS.full}>
+      <div>
         <ReferenceHeader
           name={t`Questions about ${this.props.table.display_name}`}
           type="questions"
@@ -78,7 +76,10 @@ class TableQuestions extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
+              <div
+                style={{ maxWidth: "100%" }}
+                className={cx(CS.wrapper, CS.wrapperTrim)}
+              >
                 <List>
                   {Object.values(entities).map(
                     (entity) =>

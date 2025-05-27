@@ -80,6 +80,8 @@
   flex-direction: row;
   align-items: center;
   display: flex;
+  padding-right: 8px;
+  color: var(--muted-color);
 }
 
 .itemIcons {
@@ -98,10 +100,6 @@
 
 .item:hover .icon {
   visibility: visible;
-}
-
-.icon:hover {
-  color: var(--mb-color-brand);
 }
 
 /* CHART ICON */

@@ -98,19 +98,19 @@ class TableList extends Component {
     const tables = Object.values(entities);
 
     return (
-      <div className={CS.full} data-testid="table-list">
-        <div className={cx(CS.wrapper, CS.wrapperTrim)}>
-          <ReferenceHeader
-            name={t`Tables in ${database.name}`}
-            type="tables"
-            headerIcon="database"
-          />
-          <LoadingAndErrorWrapper
-            loading={!loadingError && loading}
-            error={loadingError}
-          >
-            {() =>
-              tables.length > 0 ? (
+      <div data-testid="table-list">
+        <ReferenceHeader
+          name={t`Tables in ${database.name}`}
+          type="tables"
+          headerIcon="database"
+        />
+        <LoadingAndErrorWrapper
+          loading={!loadingError && loading}
+          error={loadingError}
+        >
+          {() =>
+            tables.length > 0 ? (
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {!hasSingleSchema
                     ? separateTablesBySchema(
@@ -126,14 +126,14 @@ class TableList extends Component {
                           createListItem(table),
                       )}
                 </List>
-              ) : (
-                <div className={S.empty}>
-                  <EmptyState {...emptyStateData} />
-                </div>
-              )
-            }
-          </LoadingAndErrorWrapper>
-        </div>
+              </div>
+            ) : (
+              <div className={S.empty}>
+                <EmptyState {...emptyStateData} />
+              </div>
+            )
+          }
+        </LoadingAndErrorWrapper>
       </div>
     );
   }
