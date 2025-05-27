@@ -29,24 +29,6 @@
         resp (metabot-v3/analyze-chart chart-data)]
     {:summary (:analysis resp)}))
 
-(api.macros/defendpoint :post "/analyze-dashboard"
-  "Analyze a dashboard image using an AI vision model. This function sends the image data to a separate external AI service for analysis."
-  [_route-params
-   _query-params
-   {:keys [image_base64 name description tab_name]} :- [:map
-                                                        [:image_base64 :string]
-                                                        [:name {:optional true} [:maybe :string]]
-                                                        [:description {:optional true} [:maybe :string]]
-                                                        [:tab_name {:optional true} [:maybe :string]]]]
-
-  (premium-features/assert-has-feature :ai-entity-analysis "dashboard analysis")
-  (let [dashboard-data {:image_base64 image_base64
-                        :dashboard {:name name
-                                    :description description
-                                    :tab_name tab_name}}
-        resp (metabot-v3/analyze-dashboard dashboard-data)]
-    {:summary (:analysis resp)}))
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/ai-entity-analysis` routes."
   (api.macros/ns-handler *ns* +auth))
