@@ -8,8 +8,11 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -166,37 +169,40 @@
   [query]
   ;; add logging around the steps to make this easier to debug.
   (log/debugf "Escaping join aliases\n%s" (u/pprint-to-str query))
-  (letfn [(add-escaped-aliases* [query]
-            (add-escaped-aliases query (driver->escape-fn driver/*driver*)))
-          (add-original->escaped-alias-maps* [query]
-            (log/tracef "Adding ::alias to joins\n%s" (u/pprint-to-str query))
-            (add-original->escaped-alias-maps query))
-          (merge-original->escaped-maps* [query]
-            (log/tracef "Adding ::original->escaped alias maps\n%s" (u/pprint-to-str query))
-            (merge-original->escaped-maps query))
-          (add-escaped-join-aliases-to-fields* [query]
-            (log/tracef "Adding ::join-alias to :field clauses with :join-alias\n%s" (u/pprint-to-str query))
-            (add-escaped-join-aliases-to-fields query))
-          (add-escaped->original-info* [query]
-            (log/tracef "Adding [:info :alias/escaped->original]\n%s" (u/pprint-to-str query))
-            (add-escaped->original-info query))
-          (replace-original-aliases-with-escaped-aliases* [query]
-            (log/tracef "Replacing original aliases with escaped aliases\n%s" (u/pprint-to-str query))
-            (replace-original-aliases-with-escaped-aliases query))]
-    (let [result (if-not (:query query)
-                   ;; nothing to do if this is a native query rather than MBQL.
-                   query
-                   (-> query
-                       (update :query (fn [inner-query]
-                                        (-> inner-query
-                                            add-escaped-aliases*
-                                            add-original->escaped-alias-maps*
-                                            merge-original->escaped-maps*
-                                            add-escaped-join-aliases-to-fields*)))
-                       add-escaped->original-info*
-                       (update :query replace-original-aliases-with-escaped-aliases*)))]
-      (log/debugf "=>\n%s" (u/pprint-to-str result))
-      result)))
+  (if (driver.u/supports? driver/*driver* :global-aliases (lib.metadata/database (qp.store/metadata-provider)))
+    (letfn [(add-escaped-aliases* [query]
+              (add-escaped-aliases query (driver->escape-fn driver/*driver*)))
+            (add-original->escaped-alias-maps* [query]
+              (log/tracef "Adding ::alias to joins\n%s" (u/pprint-to-str query))
+              (add-original->escaped-alias-maps query))
+            (merge-original->escaped-maps* [query]
+              (log/tracef "Adding ::original->escaped alias maps\n%s" (u/pprint-to-str query))
+              (merge-original->escaped-maps query))
+            (add-escaped-join-aliases-to-fields* [query]
+              (log/tracef "Adding ::join-alias to :field clauses with :join-alias\n%s" (u/pprint-to-str query))
+              (add-escaped-join-aliases-to-fields query))
+            (add-escaped->original-info* [query]
+              (log/tracef "Adding [:info :alias/escaped->original]\n%s" (u/pprint-to-str query))
+              (add-escaped->original-info query))
+            (replace-original-aliases-with-escaped-aliases* [query]
+              (log/tracef "Replacing original aliases with escaped aliases\n%s" (u/pprint-to-str query))
+              (replace-original-aliases-with-escaped-aliases query))]
+      (let [result (if-not (:query query)
+                     ;; nothing to do if this is a native query rather than MBQL.
+                     query
+                     (-> query
+                         (update :query (fn [inner-query]
+                                          (-> inner-query
+                                              add-escaped-aliases*
+                                              add-original->escaped-alias-maps*
+                                              merge-original->escaped-maps*
+                                              add-escaped-join-aliases-to-fields*)))
+                         add-escaped->original-info*
+                         (update :query replace-original-aliases-with-escaped-aliases*)))]
+        (log/debugf "=>\n%s" (u/pprint-to-str result))
+        result))
+    (do (log/debugf "Skipping escaping join aliases \n%s" (u/pprint-to-str query))
+        query)))
 
 ;;; The stuff below is used by the [[metabase.query-processor.middleware.annotate]] middleware when generating results
 ;;; metadata to restore the escaped aliases back to what they were in the original query so things don't break if you

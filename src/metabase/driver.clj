@@ -672,6 +672,9 @@
     ;; Does this driver support sandboxing with saved questions?
     :saved-question-sandboxing
 
+    ;; Are aliases in queries for this driver globally scoped (which means that names must be globally unique)?
+    :global-aliases
+
     ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
 
