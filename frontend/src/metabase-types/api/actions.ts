@@ -1,5 +1,3 @@
-import type { FieldId } from "metabase-types/api/field";
-
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
@@ -229,7 +227,7 @@ export type UserProvidedRowActionFieldSettings = RowActionFieldSettingsBase & {
 
 export type RowDataRowActionFieldSettings = RowActionFieldSettingsBase & {
   sourceType: "row-data"; // get data from row
-  sourceValueTarget: FieldId;
+  sourceValueTarget: string; // DatasetColumn.name
 };
 
 export type ConstantRowActionFieldSettings = RowActionFieldSettingsBase & {

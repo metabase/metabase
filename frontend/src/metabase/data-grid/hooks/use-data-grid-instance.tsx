@@ -201,16 +201,13 @@ export const useDataGridInstance = <TData, TValue>({
         handleExpandButtonClick,
       ),
     );
-    const columns = columnRowSelectOptions
-      ? [
-          columnRowSelectOptions,
-          rowIdColumnDefinition,
-          ...dataColumns,
-          rowActionsColumnDefinition,
-        ]
-      : [rowIdColumnDefinition, ...dataColumns, rowActionsColumnDefinition];
 
-    return columns.filter(isNotNull);
+    return [
+      columnRowSelectOptions,
+      rowIdColumnDefinition,
+      ...dataColumns,
+      rowActionsColumnDefinition,
+    ].filter(isNotNull);
   }, [
     rowId,
     columnsOptions,

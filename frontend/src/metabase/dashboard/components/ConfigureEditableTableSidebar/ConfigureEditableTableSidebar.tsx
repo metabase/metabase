@@ -9,7 +9,7 @@ import { getDashCardById, getSidebar } from "../../selectors";
 
 import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
 import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
-import { ConfigureEditableTableActions } from "./actions/ConfigureEditableTableActions";
+import { ConfigureDashcardEditableTableActions } from "./actions/ConfigureDashcardEditableTableActions";
 
 interface ConfigureEditableTableSidebarProps {
   dashboard: Dashboard;
@@ -54,7 +54,7 @@ export function ConfigureEditableTableSidebar({
               <ConfigureEditableTableFilters dashcard={dashcard} />
             </Tabs.Panel>
             <Tabs.Panel value="actions">
-              <ConfigureEditableTableActions
+              <ConfigureDashcardEditableTableActions
                 dashboard={dashboard}
                 dashcard={dashcard}
               />
