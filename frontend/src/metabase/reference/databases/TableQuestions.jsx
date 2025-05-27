@@ -76,10 +76,7 @@ class TableQuestions extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div
-                style={{ maxWidth: "100%" }}
-                className={cx(CS.wrapper, CS.wrapperTrim)}
-              >
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {Object.values(entities).map(
                     (entity) =>
