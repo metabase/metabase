@@ -89,7 +89,8 @@
                            u/lower-case-en)
         ->unit {:get-hour :hour-of-day
                 :get-month :month-of-year
-                :get-quarter :quarter-of-year}]
+                :get-quarter :quarter-of-year
+                :get-year :year-of-era}]
     (lib.util.match/match-one expr
       [(_ :guard #{:= :in}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} is at {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
@@ -117,7 +118,7 @@
                 (count args)
                 (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
-      [(_ :guard #{:= :in}) _ [(f :guard #{:get-month :get-quarter}) _ (a :guard temporal?)] (b :guard int?)]
+      [(_ :guard #{:= :in}) _ [(f :guard #{:get-month :get-quarter :get-year}) _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} is in {1}" (->unbucketed-display-name a) (u.time/format-unit b (->unit f)))
 
       [(_ :guard #{:!= :not-in}) _ [:get-month _ (a :guard temporal?)] (b :guard int?)]
@@ -126,13 +127,16 @@
       [(_ :guard #{:!= :not-in}) _ [:get-quarter _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (u.time/format-unit b :quarter-of-year))
 
-      [(_ :guard #{:= :in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      [(_ :guard #{:!= :not-in}) _ [:get-year _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (u.time/format-unit b :year))
+
+      [(_ :guard #{:= :in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
       (i18n/tru "{0} is one of {1} {2} selections"
                 (->unbucketed-display-name a)
                 (count args)
                 (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
-      [(_ :guard #{:!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      [(_ :guard #{:!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
       (i18n/tru "{0} excludes {1} {2} selections"
                 (->unbucketed-display-name a)
                 (count args)
