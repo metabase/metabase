@@ -12,14 +12,22 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when target element is not found", () => {
     expect(() => {
-      new MetabaseEmbed({ ...defaultSettings, target: "#not-existent-target" });
+      new MetabaseEmbed({
+        ...defaultSettings,
+        questionId: 1,
+        target: "#not-existent-target",
+      });
     }).toThrow('cannot find embed container "#not-existent-target"');
   });
 
   it("throws when target element is undefined", () => {
     expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({ ...defaultSettings, target: undefined });
+      new MetabaseEmbed({
+        ...defaultSettings,
+        questionId: 1,
+        // @ts-expect-error -- we are testing for incorrect configuration
+        target: undefined,
+      });
     }).toThrow("target must be provided");
   });
 
@@ -82,5 +90,11 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).toThrow(
       "the exploration template can't be used with dashboardId or questionId",
     );
+  });
+
+  it("throws when neither question id, dashboard id, or template are provided", () => {
+    expect(() => {
+      new MetabaseEmbed({ ...defaultSettings });
+    }).toThrow("either dashboardId, questionId, or template must be provided");
   });
 });
