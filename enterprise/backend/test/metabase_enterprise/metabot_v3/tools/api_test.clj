@@ -469,6 +469,35 @@
                                                   :description "Model metric desc"
                                                   :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)}]))]}
                            :conversation_id conversation-id}
+                          response))))
+              (testing "Minimal call"
+                (let [conversation-id (str (random-uuid))
+                      ai-token (ai-session-token metabot-id)
+                      response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
+                                                     {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                     {:metabot_id metabot-id
+                                                      :arguments {:with_model_fields                     false
+                                                                  :with_model_metrics                    false
+                                                                  :with_metric_default_temporal_breakout false
+                                                                  :with_metric_queryable_dimensions      false}
+                                                      :conversation_id conversation-id})]
+                  (is (=? {:structured_output
+                           {:metrics [(-> metric-data
+                                          (select-keys [:name :description])
+                                          (assoc :id metric-id
+                                                 :type "metric"
+                                                 :default_time_dimension_field_id nil))
+                                      (-> model-metric-data
+                                          (select-keys [:name :description])
+                                          (assoc :id model-metric-id
+                                                 :type "metric"
+                                                 :default_time_dimension_field_id nil))]
+                            :models [(-> model-data
+                                         (select-keys [:name :description])
+                                         (assoc :id model-id
+                                                :type "model"
+                                                :fields []))]}
+                           :conversation_id conversation-id}
                           response)))))))))))
 
 (deftest ^:parallel get-current-user-test

@@ -126,10 +126,11 @@
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
 (mu/defn- matching-join? :- :boolean
-  [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
-   column                                                :- ::lib.schema.metadata/column]
+  [[_ref-kind {:keys [join-alias source-field source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
+   column                                                                        :- ::lib.schema.metadata/column]
   (if source-field
-    (clojure.core/= source-field (:fk-field-id column))
+    (and (clojure.core/= source-field (:fk-field-id column))
+         (clojure.core/= source-field-join-alias (:fk-join-alias column)))
     ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
     ;; an own column.
     (clojure.core/= (column-join-alias column) join-alias)))
