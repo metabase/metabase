@@ -205,8 +205,11 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     // Ensure the brush is disabled for multi-series charts
     H.getDashboardCard(0).within(() => {
-      cy.findAllByText("Count").should("have.length", 2);
-      cy.findAllByText("Count (Products by Created At (Month))").should(
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
         "have.length",
         2,
       );
@@ -215,6 +218,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
 
     H.getDashboardCard(3).within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       applyBrush(200, 300);
       cy.wait("@dataset");
     });
