@@ -7,7 +7,6 @@
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
    [metabase.permissions.path]
-   [metabase.permissions.query]
    [metabase.permissions.user]
    [metabase.permissions.util]
    [potemkin :as p]))
@@ -19,7 +18,6 @@
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
   metabase.permissions.path/keep-me
-  metabase.permissions.query/keep-me
   metabase.permissions.user/keep-me
   metabase.permissions.util/keep-me)
 
@@ -74,8 +72,6 @@
   application-perms-path
   collection-read-path
   collection-readwrite-path]
- [metabase.permissions.query
-  check-run-permissions-for-query]
  [metabase.permissions.user
   user-permissions-set]
  [metabase.permissions.util
