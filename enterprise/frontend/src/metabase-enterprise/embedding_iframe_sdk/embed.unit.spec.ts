@@ -47,6 +47,19 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).toThrow("can't use both dashboardId and questionId at the same time");
   });
 
+  it("does not throw an error when instanceUrl is updated to be the same", () => {
+    expect(() => {
+      const embed = new MetabaseEmbed({
+        ...defaultSettings,
+        instanceUrl: "https://foo-bar-baz.com",
+        questionId: 10,
+        target: document.createElement("div"),
+      });
+
+      embed.updateSettings({ instanceUrl: "https://foo-bar-baz.com" });
+    }).not.toThrow();
+  });
+
   it("throws when question id is provided in the exploration template", () => {
     expect(() => {
       new MetabaseEmbed({

@@ -43,7 +43,11 @@ class MetabaseEmbed {
       return;
     }
 
-    if (settings.instanceUrl) {
+    // The instanceUrl settings cannot be updated after the embed is created
+    if (
+      settings.instanceUrl &&
+      settings.instanceUrl !== this._settings.instanceUrl
+    ) {
       raiseError("instanceUrl cannot be updated after the embed is created");
     }
 
@@ -126,7 +130,9 @@ class MetabaseEmbed {
     }
 
     if (settings.dashboardId && settings.questionId) {
-      raiseError("can't use both dashboardId and questionId at the same time");
+      raiseError(
+        "can't use both dashboardId and questionId at the same time. to change the question to a dashboard, set the questionId to null (and vice-versa)",
+      );
     }
 
     if (!settings.target) {

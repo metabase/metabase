@@ -144,7 +144,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       });
   });
 
-  it("does not allow updating instanceUrl via embed.updateSettings", () => {
+  it("does not allow changing the value of instanceUrl via embed.updateSettings", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       questionId: ORDERS_QUESTION_ID,
     });
