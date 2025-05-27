@@ -300,7 +300,7 @@
                                                [:= :field.table_id :table.id]]
                                    :where     [:and
                                                [:= :table.db_id [:inline (u/the-id database-id)]]
-                                               [:= :field.parent_id nil]]}]}
+                                               [:not= :field.parent_id nil]]}]}
 
                 :mysql
                 {:update    [(t2/table-name :model/Field) :field]
@@ -309,7 +309,7 @@
                  :set       {:field.parent_id nil}
                  :where     [:and
                              [:= :table.db_id [:inline (u/the-id database-id)]]
-                             [:= :field.parent_id nil]]})]
+                             [:not= :field.parent_id nil]]})]
     (t2/query query)))
 
 (t2/define-before-delete :model/Database
