@@ -535,25 +535,29 @@
               _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
               field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
               create!      #(mt/user-http-request :crowberto :post 200 url {:rows %})
-              update!      #(mt/user-http-request :crowberto :put  200 url {:rows %})]
+              update!      #(mt/user-http-request :crowberto :put  200 url {:rows %})
+              expect-field-values
+              (fn [expect] ; redundantly pass expect get ok-ish assert errors (preserve last val)
+                (let [last-res (volatile! nil)]
+                  (or (u/poll {:thunk (fn [] (vreset! last-res (field-values)))
+                               :done? #(= expect %)
+                               :timeout-ms 1000
+                               :interval-ms 1})
+                      @last-res)))]
           (is (= [] (field-values)))
+
           (create! [{:n "a"}])
-          ;; It's async
-          (Thread/sleep 10)
-          (is (= ["a"] (field-values)))
+          (is (= ["a"] (expect-field-values ["a"])))
+
           (create! [{:n "b"} {:n "c"}])
-          ;; It's async
-          (Thread/sleep 10)
-          (is (= ["a" "b" "c"] (field-values)))
+          (is (= ["a" "b" "c"] (expect-field-values ["a" "b" "c"])))
+
           (update! [{:id 2, :n "d"}])
-          ;; It's async
-          (Thread/sleep 10)
-          (is (= ["a" "c" "d"] (field-values)))
+          (is (= ["a" "c" "d"] (expect-field-values ["a" "c" "d"])))
+
           (create! [{:n "a"}])
           (update! [{:id 1, :n "e"}])
-          ;; It's async
-          (Thread/sleep 10)
-          (is (= ["a" "c" "d" "e"] (field-values))))))))
+          (is (= ["a" "c" "d" "e"] (expect-field-values ["a" "c" "d" "e"]))))))))
 
 (deftest get-row-action-test
   (let [url #(format "ee/data-editing/row-action/%s" %)
