@@ -12,7 +12,10 @@ import { Box } from "metabase/ui";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
-import { SdkIframeInvalidLicenseError } from "./SdkIframeError";
+import {
+  SdkIframeApiKeyInProductionError,
+  SdkIframeInvalidLicenseError,
+} from "./SdkIframeError";
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus();
@@ -29,6 +32,11 @@ export const SdkIframeEmbedRoute = () => {
   // the token feature is not present, we show an error message
   if (!embedSettings._isLocalhost && !hasEmbedTokenFeature) {
     return <SdkIframeInvalidLicenseError />;
+  }
+
+  // Using API keys in production is not allowed. SSO is required.
+  if (!embedSettings._isLocalhost && embedSettings.apiKey) {
+    return <SdkIframeApiKeyInProductionError />;
   }
 
   const { theme, locale } = embedSettings;
