@@ -10274,6 +10274,39 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v52.2025-05-28T00:00:01
+      author: edpaget
+      comment: set perms/download-results to no when a table has perms/view-data blocked
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            sqlCheck:
+              expectedResult: 0
+              sql: >-
+                SELECT count(*) FROM (
+                    SELECT group_id, db_id, table_id
+                    FROM data_permissions
+                    WHERE (perm_type = 'perms/view-data' AND perm_value = 'blocked')
+                        OR (perm_type = 'perms/download-results' AND perm_value <> 'no')
+                    GROUP BY group_id, db_id, table_id
+                    HAVING count(*) = 2
+                )
+      changes:
+        - sql: >-
+            UPDATE data_permissions as update_dp SET perm_value = 'no'
+            WHERE EXISTS (
+                SELECT 1 FROM data_permissions as dp
+                WHERE dp.group_id = update_dp.group_id
+                    AND dp.db_id = update_dp.db_id
+                    AND dp.table_id = update_dp.table_id
+                    AND dp.perm_type = 'perms/view-data'
+                    AND dp.perm_value = 'blocked'
+                    AND update_dp.perm_type = 'perms/download-results'
+                    AND update_dp.perm_value <> 'no'
+            )
+      rollback: # not needed
+
+  - changeSet:
       id: v53.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column
