@@ -121,7 +121,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: ${{ job.status == 'failure' }}
-          message: "📝 One or more internal Metabase types were accidentally exported from the `@metabase/embedding‑sdk‑react` package in this pull request.<br/><br/>Publishing these types would change the public API and may drastically change generated SDK documentation.<br/><br/>Please update the code so internal types remain private and the public API stays unchanged."
+          message: "📝 Some exported from `@metabase/embedding-sdk-react` types reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name(s) of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it and a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
           include-log: true
 
   sdk-e2e-tests:
