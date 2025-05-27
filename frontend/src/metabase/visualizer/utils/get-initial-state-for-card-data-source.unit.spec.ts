@@ -55,6 +55,65 @@ describe("getInitialStateForCardDataSource", () => {
     expect(initialState.display).toEqual("bar");
   });
 
+  it("should ignore superfluous columns (VIZ-1035)", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "CREATED_AT",
+            base_type: "type/DateTime",
+            effective_type: "type/DateTime",
+            semantic_type: null,
+            unit: "month",
+          }),
+          createMockColumn({
+            name: "SOME_METRIC",
+            database_type: "int8",
+            semantic_type: "type/Quantity",
+            base_type: "type/BigInteger",
+          }),
+          createMockColumn({
+            name: "SOME_OTHER_METRIC",
+            database_type: "int8",
+            semantic_type: "type/Quantity",
+            base_type: "type/BigInteger",
+          }),
+        ],
+      }),
+    });
+
+    const card = createMockCard({
+      display: "table",
+      name: "TablyMcTableface",
+      visualization_settings: {},
+    });
+
+    const state = getInitialStateForCardDataSource(card, dataset);
+
+    expect(state.columnValuesMapping).toEqual({
+      COLUMN_1: [
+        {
+          name: "COLUMN_1",
+          originalName: "CREATED_AT",
+          sourceId: "card:1",
+        },
+      ],
+      COLUMN_2: [
+        {
+          name: "COLUMN_2",
+          originalName: "SOME_METRIC",
+          sourceId: "card:1",
+        },
+      ],
+    });
+
+    expect(state.settings).toEqual({
+      "card.title": "TablyMcTableface",
+      "graph.dimensions": ["COLUMN_1"],
+      "graph.metrics": ["COLUMN_2"],
+    });
+  });
+
   it("should compute default viz settings when card's viz type isn't supported by the visualizer", () => {
     const dataset = createMockDataset({
       data: createMockDatasetData({

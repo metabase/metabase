@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
@@ -334,3 +335,36 @@
                                         :value "Gizmo"
                                         :target ["variable" ["template-tag" "x"]]
                                         :id uuid}]}))))))))
+
+(deftest clickhouse-native-query-with-uuid-filter-test
+  (mt/test-driver :clickhouse
+    (let [uuid-1 (random-uuid)
+          uuid-2 (random-uuid)]
+      (mt/dataset
+        (mt/dataset-definition "uuid_filter_db"
+                               ["uuid_filter_table"
+                                [{:field-name "uuid"
+                                  :base-type {:native "UUID"}
+                                  :semantic-type :type/PK}
+                                 {:field-name "value"
+                                  :base-type :type/Integer}]
+                                [[uuid-1 10]
+                                 [uuid-2 20]]])
+        (let [query {:database   (mt/id)
+                     :type       :native
+                     :native     {:query         "select sum(value) from `uuid_filter_db`.`uuid_filter_table` where {{uuid}}"
+                                  :template-tags {"uuid" {:type         :dimension
+                                                          :dimension    ["field" (mt/id :uuid_filter_table :uuid) nil]
+                                                          :default      [(str uuid-2)]
+                                                          :name         "uuid"
+                                                          :display-name "UUID"
+                                                          :widget-type  "id"}}}
+                     :parameters [{:type   "id"
+                                   :target [:dimension [:template-tag "uuid"]]
+                                   :value  [(str uuid-2)]}]}]
+          (is (= [[20]]
+                 (mt/formatted-rows [int]
+                                    (qp/process-query query))))
+          (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
+                      (format "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('%s' AS UUID))" uuid-2))
+                 (:query (qp.compile/compile-with-inline-parameters query)))))))))
