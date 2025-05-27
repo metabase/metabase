@@ -44,6 +44,11 @@ export const getLastSentContext = createSelector(
   (metabot) => metabot.lastSentContext,
 );
 
+export const getLastHistoryValue = createSelector(
+  getMetabot,
+  (metabot) => metabot.lastHistoryValue,
+);
+
 export const getMetabotConversationId = createSelector(
   getMetabot,
   (metabot) => metabot.conversationId,

@@ -2,7 +2,7 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotChatContext } from "metabase-types/api";
+import type { MetabotChatContext, MetabotHistory } from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
 
@@ -19,6 +19,7 @@ export type MetabotChatMessage =
 export interface MetabotState {
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
+  lastHistoryValue: MetabotHistory | undefined;
   conversationId: string | undefined;
   messages: MetabotChatMessage[];
   visible: boolean;
@@ -28,6 +29,7 @@ export interface MetabotState {
 export const metabotInitialState: MetabotState = {
   isProcessing: false,
   lastSentContext: undefined,
+  lastHistoryValue: undefined,
   conversationId: undefined,
   messages: [],
   visible: false,
@@ -53,6 +55,7 @@ export const metabot = createSlice({
     },
     clearMessages: (state) => {
       state.messages = [];
+      state.isProcessing = false;
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -68,6 +71,10 @@ export const metabot = createSlice({
     builder
       .addCase(sendMessageRequest.pending, (state, action) => {
         state.lastSentContext = action.meta.arg.context;
+        state.lastHistoryValue = action.meta.arg.history;
+      })
+      .addCase(sendMessageRequest.fulfilled, (state, action) => {
+        state.lastHistoryValue = action.payload?.data?.history;
       })
       .addCase(logout.pending, () => metabotInitialState);
   },
