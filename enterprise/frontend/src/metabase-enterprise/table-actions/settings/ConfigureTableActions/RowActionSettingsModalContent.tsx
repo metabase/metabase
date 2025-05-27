@@ -9,23 +9,24 @@ import EditableText from "metabase/core/components/EditableText/EditableText";
 import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Title } from "metabase/ui";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
-  EditableTableRowActionDisplaySettings,
-  Field,
   RowActionFieldSettings,
+  TableActionDisplaySettings,
   WritebackAction,
 } from "metabase-types/api";
 
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
 import S from "./RowActionSettingsModalContent.module.css";
-import { isValidMapping } from "./utils";
+import { cleanEmptyVisibility, isValidMapping } from "./utils";
 
 interface Props {
   action: WritebackAction | null | undefined;
-  rowActionSettings: EditableTableRowActionDisplaySettings | undefined;
-  tableColumns: Field[];
+  rowActionSettings: TableActionDisplaySettings | undefined;
+  tableColumns: BasicTableViewColumn[];
   onClose: () => void;
   onSubmit: (actionParams: {
+    id?: string;
     action: WritebackAction;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
@@ -90,9 +91,16 @@ export function RowActionSettingsModalContent({
     };
   }, [isEditMode, rowActionSettings?.parameterMappings, writeableParameters]);
 
-  const getIsFormInvalid = (values: { parameters: RowActionFieldSettings[] }) =>
-    selectedAction != null &&
-    values.parameters.some((mapping) => !isValidMapping(mapping));
+  const getIsFormInvalid = (values: {
+    parameters: RowActionFieldSettings[];
+  }) => {
+    return (
+      selectedAction != null &&
+      values.parameters.some(
+        (mapping) => !isValidMapping(mapping, tableColumns),
+      )
+    );
+  };
 
   const handlePickAction = (action: WritebackAction) => {
     setSelectedAction(action);
@@ -102,15 +110,16 @@ export function RowActionSettingsModalContent({
     (values: { parameters: RowActionFieldSettings[] }) => {
       if (selectedAction) {
         onSubmit({
+          id: rowActionSettings?.id,
           action: selectedAction,
           name: actionName,
-          parameterMappings: values.parameters || [],
+          parameterMappings: cleanEmptyVisibility(values.parameters || []),
         });
       }
 
       onClose();
     },
-    [selectedAction, onClose, onSubmit, actionName],
+    [selectedAction, onClose, onSubmit, rowActionSettings?.id, actionName],
   );
 
   return (
