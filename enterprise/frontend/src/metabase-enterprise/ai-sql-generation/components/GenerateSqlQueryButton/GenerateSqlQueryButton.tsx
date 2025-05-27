@@ -12,7 +12,7 @@ export function GenerateSqlQueryButton({
   selectedQueryText,
   onGenerateQuery,
 }: GenerateSqlQueryButtonProps) {
-  const [generateSql, { isLoading }] = useLazyGenerateSqlQueryQuery();
+  const [generateSql, { isFetching }] = useLazyGenerateSqlQueryQuery();
   const request = getRequest(query, selectedQueryText);
 
   const handleClick = async () => {
@@ -35,7 +35,7 @@ export function GenerateSqlQueryButton({
         h="fit-content"
         bd="none"
         leftSection={<Icon name="metabot" size={18} />}
-        loading={isLoading}
+        loading={isFetching}
         disabled={request == null}
         aria-label={t`Generate SQL based on the prompt`}
         onClick={handleClick}

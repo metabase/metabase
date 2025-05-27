@@ -59,6 +59,8 @@
                               ;; server and the columns themselves. Since this isn't something we can really change in
                               ;; the query itself don't present the option to the users in the UI
                               :case-sensitivity-string-filter-options false
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :describe-fields                        true
                               :describe-fks                           true
                               :convert-timezone                       true
@@ -191,6 +193,7 @@
     driver.common/default-dbname-details
     driver.common/default-user-details
     driver.common/default-password-details
+    driver.common/default-role-details
     driver.common/cloud-ip-address-info
     driver.common/default-ssl-details
     default-ssl-cert-details
@@ -1026,6 +1029,16 @@
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types
   (mdb/query-canceled-exception? :mysql e))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/default-database-role :mysql
+  [_driver database]
+  (-> database :details :role))
+
+(defmethod driver.sql/set-role-statement :mysql
+  [_driver role]
+  (format "SET ROLE '%s';" role))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
