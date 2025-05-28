@@ -109,6 +109,36 @@ export type WritebackQueryAction = WritebackActionBase & QueryAction;
 export type WritebackImplicitQueryAction = WritebackActionBase &
   ImplicitQueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
+
+export interface TableActionParameter extends Omit<Parameter, "name" | "type"> {
+  id: string;
+  "display-name": string;
+  type: string;
+  target: ParameterTarget;
+  slug: string;
+  required: boolean;
+  "is-auto-increment": boolean;
+}
+
+// TableAction represents actions that operate on database tables
+export interface TableAction
+  extends Omit<
+    WritebackActionBase,
+    | "type"
+    | "model_id"
+    | "parameters"
+    | "visualization_settings"
+    | "database_id"
+  > {
+  table_id: number;
+  table_name: string;
+  database_id?: DatabaseId;
+  database_enabled_actions: boolean;
+  kind: string;
+  visualization_settings: ActionFormSettings;
+  parameters: TableActionParameter[];
+}
+
 export type WritebackAction = WritebackActionBase &
   (QueryAction | ImplicitQueryAction | HttpAction);
 
