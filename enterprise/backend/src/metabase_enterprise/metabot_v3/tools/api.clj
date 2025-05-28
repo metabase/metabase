@@ -24,6 +24,7 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -798,7 +799,7 @@
       (if (:metabase-user-id request)
         ;; request relying on metabot-id are going to fail
         (handler request respond raise)
-        (respond request/response-unauthentic)))))
+        (respond api.response/response-unauthentic)))))
 
 (def ^{:arglists '([handler])} +tool-session
   "Wrap `routes` so they may only be accessed with proper authentication credentials."
