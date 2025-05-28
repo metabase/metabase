@@ -10,18 +10,10 @@ interface RequiredParamToggleProps {
   value: boolean;
   onChange: (value: boolean) => void;
   disabledTooltip: React.ReactNode;
-  showTooltip?: boolean;
 }
 
 export function RequiredParamToggle(props: RequiredParamToggleProps) {
-  const {
-    disabled,
-    value,
-    onChange,
-    uniqueId,
-    disabledTooltip,
-    showTooltip = true,
-  } = props;
+  const { disabled, value, onChange, uniqueId, disabledTooltip } = props;
   const id = `required_param_toggle_${uniqueId}`;
 
   return (
@@ -35,7 +27,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
       <div>
         <label className={S.SettingRequiredLabel} htmlFor={id}>
           {t`Always require a value`}
-          {disabled && showTooltip && (
+          {disabled && (
             <HoverCard position="top-end" shadow="xs">
               <HoverCard.Target>
                 <Icon name="info_filled" />
