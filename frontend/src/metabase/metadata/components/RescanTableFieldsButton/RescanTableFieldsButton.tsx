@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useRescanTableFieldValuesMutation } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useToast } from "metabase/common/hooks";
+import { useTemporaryState } from "metabase/hooks/use-temporary-state";
 import { Button } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
@@ -13,39 +11,23 @@ interface Props {
 }
 
 export const RescanTableFieldsButton = ({ tableId }: Props) => {
-  const dispatch = useDispatch();
-
-  const [started, setStarted] = useState(false);
-  const timeoutIdRef = useRef<number>();
-  const [rescanTableFieldValues, { error }] =
-    useRescanTableFieldValuesMutation();
+  const [rescanTableFieldValues] = useRescanTableFieldValuesMutation();
+  const [started, setStarted] = useTemporaryState(false);
+  const [sendToast] = useToast();
 
   const handleClick = async () => {
-    const response = await rescanTableFieldValues(tableId);
+    const { error } = await rescanTableFieldValues(tableId);
 
-    if (!response.error) {
+    if (error) {
+      sendToast({
+        icon: "warning",
+        message: t`Failed to start scan`,
+        toastColor: "error",
+      });
+    } else {
       setStarted(true);
-
-      window.clearTimeout(timeoutIdRef.current);
-      timeoutIdRef.current = window.setTimeout(() => setStarted(false), 2000);
     }
   };
-
-  useUnmount(() => {
-    window.clearTimeout(timeoutIdRef.current);
-  });
-
-  useEffect(() => {
-    if (error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          message: t`Failed to start scan`,
-          toastColor: "error",
-        }),
-      );
-    }
-  }, [dispatch, error]);
 
   return (
     <Button variant="default" onClick={handleClick}>
