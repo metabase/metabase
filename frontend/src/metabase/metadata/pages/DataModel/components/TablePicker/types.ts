@@ -1,11 +1,4 @@
-import type {
-  Database,
-  DatabaseId,
-  Schema,
-  SchemaId,
-  Table,
-  TableId,
-} from "metabase-types/api";
+import type { DatabaseId, SchemaId, Table, TableId } from "metabase-types/api";
 
 export type NodeKey = string;
 
@@ -31,7 +24,6 @@ export type DatabaseNode = {
   key: NodeKey;
   value: { databaseId: DatabaseId };
   children: SchemaNode[];
-  data?: Database;
 };
 
 export type SchemaNode = {
@@ -40,7 +32,6 @@ export type SchemaNode = {
   key: string;
   value: { databaseId: DatabaseId; schemaId: SchemaId };
   children: TableNode[];
-  data?: Schema;
 };
 
 export type TableNode = {
@@ -49,7 +40,7 @@ export type TableNode = {
   key: string;
   value: { databaseId: DatabaseId; schemaId: SchemaId; tableId: TableId };
   children: [];
-  data?: Table;
+  table?: Table;
 };
 
 export type DatabaseItem = Omit<DatabaseNode, "children">;
@@ -78,7 +69,7 @@ type LoadingItem = {
   value?: TreePath;
   label?: string;
   parent?: NodeKey;
-  data: null;
+  table?: undefined;
 };
 
 export type ExpandedState = {

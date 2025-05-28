@@ -93,7 +93,6 @@ export function Results({
             key,
             level,
             parent,
-            data,
           } = item;
           const isActive = type === "table" && _.isEqual(path, value);
 
@@ -225,12 +224,14 @@ export function Results({
                     </Box>
                   )}
                 </Flex>
-                {type === "table" && value?.tableId !== undefined && data && (
-                  <TableVisibilityToggle
-                    className={S.visibilityToggle}
-                    table={data}
-                  />
-                )}
+                {type === "table" &&
+                  value?.tableId !== undefined &&
+                  item.table && (
+                    <TableVisibilityToggle
+                      className={S.visibilityToggle}
+                      table={item.table}
+                    />
+                  )}
               </Flex>
             </Fragment>
           );
