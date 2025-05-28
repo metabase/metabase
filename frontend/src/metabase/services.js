@@ -325,7 +325,7 @@ export const UtilApi = {
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link
     // and it can be deployed at subpath
-    const path = "/api/util/diagnostic_info/connection_pool_info";
+    const path = "/api/bug-reporting/connection-pool-details";
     const { href } = new URL(api.basename + path, location.origin);
 
     return href;

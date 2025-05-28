@@ -32,7 +32,7 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
   return (
     <Stack gap="md">
       <Box>
-        <SectionPill icon="model" title={t`Metadata`} />
+        <SectionPill title={t`Metadata`} />
       </Box>
 
       <SemanticTypeAndTargetPicker
