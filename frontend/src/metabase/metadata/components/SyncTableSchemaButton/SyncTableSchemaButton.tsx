@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useSyncTableSchemaMutation } from "metabase/api";
@@ -7,9 +8,10 @@ import { Button } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 export function SyncTableSchemaButton({ tableId }: { tableId: TableId }) {
-  const [started, setStarted] = useState(0);
   const [syncTableSchema] = useSyncTableSchemaMutation();
   const [sendToast] = useToast();
+  const [started, setStarted] = useState(false);
+  const timeoutIdRef = useRef<number>();
 
   const handleClick = async () => {
     const { error } = await syncTableSchema(tableId);
@@ -21,14 +23,15 @@ export function SyncTableSchemaButton({ tableId }: { tableId: TableId }) {
         toastColor: "error",
       });
     } else {
-      setStarted((started) => started + 1);
+      setStarted(true);
+      window.clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = window.setTimeout(() => setStarted(false), 2000);
     }
   };
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => setStarted(0), 2000);
-    return () => window.clearTimeout(timeoutId);
-  }, [started]);
+  useUnmount(() => {
+    window.clearTimeout(timeoutIdRef.current);
+  });
 
   return (
     <Button variant="default" onClick={handleClick}>
