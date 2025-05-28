@@ -197,6 +197,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
 
     H.saveDashcardVisualizerModal("create");
+    cy.wait("@cardQuery");
+    cy.wait("@cardQuery");
+    cy.wait("@cardQuery");
     H.saveDashboard();
 
     // Making sure the card renders
