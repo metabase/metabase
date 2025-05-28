@@ -1,8 +1,7 @@
-(ns metabase.api.common.validation
+(ns metabase.permissions.validation
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]))
@@ -15,7 +14,8 @@
 
   ([perm-type require-superuser?]
    (if-let [f (and (premium-features/enable-advanced-permissions?)
-                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
+                   config/ee-available?
+                   (requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
      (api/check-403 (f perm-type))
      (when require-superuser?
        (api/check-superuser)))))
@@ -46,10 +46,9 @@
    (check-manager-of-group group-or-id true))
 
   ([group-or-id require-superuser?]
-   (when config/ee-available?
-     (classloader/require 'metabase-enterprise.advanced-permissions.common))
    (if-let [f (and (premium-features/enable-advanced-permissions?)
-                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-manager-of-group?))]
+                   config/ee-available?
+                   (requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-manager-of-group?))]
      (api/check-403 (or api/*is-superuser?* (f group-or-id)))
      (when require-superuser?
        (api/check-superuser)))))

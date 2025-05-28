@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -15,7 +14,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.permissions.core :as perms]
+   [metabase.permissions.validation :as validation]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.card :as queries.card]
    [metabase.queries.metadata :as queries.metadata]
@@ -23,6 +22,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -489,7 +489,7 @@
                             [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
-  (perms/check-run-permissions-for-query query)
+  (query-perms/check-run-permissions-for-query query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (collection/check-write-perms-for-collection
@@ -518,7 +518,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (perms/check-run-permissions-for-query (:dataset_query card-updates)))))
+      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
