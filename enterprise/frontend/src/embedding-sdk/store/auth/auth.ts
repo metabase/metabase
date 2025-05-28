@@ -170,7 +170,7 @@ const getRefreshToken = async ({
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       metabaseInstanceUrl,
-      hash,
+      getSdkRequestHeaders(hash),
       customGetRequestToken,
     );
   }
