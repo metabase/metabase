@@ -95,4 +95,98 @@ H.describeWithSnowplow(
   },
 );
 
+describe("Add data modal", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should work properly for admins", () => {
+    cy.signInAsAdmin();
+    cy.visit("/");
+    H.navigationSidebar()
+      .findByRole("tab", { name: /^Data/i })
+      .findByLabelText("Add data")
+      .should("be.visible")
+      .click();
+
+    addDataModal().within(() => {
+      cy.log("Admin should be able to manage databases");
+      cy.findByRole("link", { name: "Manage databases" }).should(
+        "have.attr",
+        "href",
+        "/admin/databases",
+      );
+
+      cy.log("Elevated engines should be shown initially");
+      cy.findAllByRole("option")
+        .should("have.length", 6)
+        .and("contain", "MySQL")
+        .and("contain", "PostgreSQL")
+        .and("contain", "SQL Server")
+        .and("contain", "Amazon Redshift")
+        .and("contain", "BigQuery")
+        .and("contain", "Snowflake");
+
+      cy.log("The list is initially not expanded");
+      cy.findByText("Show more").should("be.visible");
+
+      cy.log("Searching automatically expands the list");
+      cy.findByPlaceholderText("Search databases").type("re");
+      cy.findAllByRole("option").should("contain", "Presto");
+
+      cy.log(
+        "Collapsing the list resets search value and shows the initial elevated engines list",
+      );
+      cy.findByText("Hide").click();
+      cy.findByPlaceholderText("Search databases").should("have.value", "");
+      cy.findAllByRole("option")
+        .should("have.length", 6)
+        .and("contain", "MySQL")
+        .and("contain", "PostgreSQL")
+        .and("contain", "SQL Server")
+        .and("contain", "Amazon Redshift")
+        .and("contain", "BigQuery")
+        .and("contain", "Snowflake")
+        .and("not.contain", "Presto");
+
+      cy.log("Admin can manually expand the list");
+      cy.findByText("Show more").click();
+      cy.findAllByRole("option").should("have.length.greaterThan", 6);
+
+      cy.log("Clicking on an engine opens the database form for that engine");
+      cy.findByText("Snowflake").click();
+      cy.location("pathname").should("eq", "/admin/databases/create");
+      cy.location("search").should("eq", "?engine=snowflake");
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Add a database").should("be.visible");
+      cy.findByLabelText("Database type").should("contain", "Snowflake");
+    });
+  });
+
+  it("should show empty state for non-admins", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    H.navigationSidebar()
+      .findByRole("tab", { name: /^Data/i })
+      .findByLabelText("Add data")
+      .should("be.visible")
+      .click();
+
+    addDataModal().within(() => {
+      cy.findByRole("heading", { name: "Add a database" }).should("be.visible");
+      cy.findByText(
+        "Start exploring in minutes. We support more than 20 data connectors.",
+      ).should("be.visible");
+      cy.findByRole("alert").should(
+        "contain",
+        "To add a new database, please contact your administrator.",
+      );
+
+      cy.findByRole("link", { name: "Manage databases" }).should("not.exist");
+    });
+  });
+});
+
 const addDataModal = () => cy.findByRole("dialog", { name: "Add data" });
