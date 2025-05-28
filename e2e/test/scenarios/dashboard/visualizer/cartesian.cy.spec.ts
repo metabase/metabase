@@ -47,7 +47,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
       idAlias: "productsCountByCreatedAtAndCategoryQuestionId",
-      entityIdAlias: "productsCountByCreatedAtAndCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
@@ -197,9 +196,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     H.saveDashcardVisualizerModal("create");
     // Wait for card queries before saving the dashboard
     H.getDashboardCard(0).within(() => {
-      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
-        "exist",
-      );
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
 
