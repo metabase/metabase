@@ -42,7 +42,7 @@ export default class RevisionHistory extends Component {
                   t`Segments`,
                   `/admin/datamodel/segments?table=${segment.table_id}`,
                 ],
-                [t`Segment` + t` History`],
+                [t`Segment History`],
               ]}
             />
             <div
