@@ -4,10 +4,7 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
-
-(def ^:private http-status-ok 200)
 
 (api.macros/defendpoint :post
   "/upload-dictionary"
@@ -25,9 +22,7 @@
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (dictionary/import-translations! {:filename (get-in multipart-params ["file" :filename])
                                     :file     (get-in multipart-params ["file" :tempfile])})
-  {:status http-status-ok
-   :headers {"Content-Type" "application/json"}
-   :body (json/encode {:success true})})
+  {:success true})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
