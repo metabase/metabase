@@ -10,6 +10,18 @@ export const germanFieldNames: NonEmpty<DictionaryArray> = [
   { locale: "de", msgid: "Price", msgstr: "Preis" },
 ];
 
+export const germanFieldValues: NonEmpty<DictionaryArray> = [
+  { locale: "de", msgid: "Doohickey", msgstr: "Dingsbums" },
+  { locale: "de", msgid: "Gadget", msgstr: "Gerät" },
+  { locale: "de", msgid: "Gizmo", msgstr: "Apparat" },
+  { locale: "de", msgid: "Widget", msgstr: "Steuerelement" },
+  {
+    locale: "de",
+    msgid: "Rustic Paper Wallet",
+    msgstr: "Rustikale Papierbörse",
+  },
+];
+
 export const portugueseFieldNames: DictionaryArray = [
   { locale: "pt-BR", msgid: "Title", msgstr: "Título" },
   { locale: "pt-BR", msgid: "Vendor", msgstr: "Fornecedor" },

@@ -15,8 +15,8 @@ export const useTranslateContent = (): ContentTranslationFunction => {
   const dictionary = data?.data;
 
   return useCallback(
-    <T extends string | null | undefined>(msgid: T) =>
-      translateContentString(dictionary, locale, msgid),
+    <T = string | null | undefined>(msgid: T) =>
+      translateContentString<T>(dictionary, locale, msgid),
     [locale, dictionary],
   );
 };

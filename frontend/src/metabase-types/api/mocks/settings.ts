@@ -165,7 +165,6 @@ export const createMockSettings = (
     ["es", "Spanish"],
     ["ko", "Korean"],
     ["pt_BR", "Portuguese (Brazil)"],
-    ["zh", "Chinese"],
     ["zh_CN", "Chinese (China)"],
     ["zh_HK", "Chinese (Hong Kong SAR China)"],
     ["zh_TW", "Chinese (Taiwan)"],
