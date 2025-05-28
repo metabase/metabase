@@ -8,6 +8,18 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defmacro with-clean-metabots
+  "Macro to reset the Metabots table to an empty state before a test and restore it after the test runs."
+  [& body]
+  `(let [original-entities# (t2/select [:model/Metabot])]
+     (try
+       (t2/delete! :model/Metabot)
+       ~@body
+       (finally
+         (t2/delete! :model/Metabot)
+         (when (seq original-entities#)
+           (t2/insert! :model/Metabot original-entities#))))))
+
 (set! *warn-on-reflection* true)
 
 (deftest metabot-entities-get-cards-test
@@ -188,21 +200,22 @@
 (deftest metabots-list-test
   (testing "GET /api/ee/metabot-v3/metabots"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temp [:model/Metabot {metabot-id-1 :id} {:name "Alpha Metabot"}
-                     :model/Metabot {metabot-id-2 :id} {:name "Beta Metabot"}
-                     :model/Metabot {metabot-id-3 :id} {:name "Gamma Metabot"}]
+      (with-clean-metabots
+        (mt/with-temp [:model/Metabot {metabot-id-1 :id} {:name "Alpha Metabot"}
+                       :model/Metabot {metabot-id-2 :id} {:name "Beta Metabot"}
+                       :model/Metabot {metabot-id-3 :id} {:name "Gamma Metabot"}]
 
-        (testing "should return all metabots in alphabetical order by name"
-          (let [{response :items} (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/metabots")]
-            (is (= 3 (count response)))
-            (is (= ["Alpha Metabot" "Beta Metabot" "Gamma Metabot"]
-                   (mapv :name response)))
-            (is (= [metabot-id-1 metabot-id-2 metabot-id-3]
-                   (mapv :id response)))))
+          (testing "should return all metabots in alphabetical order by name"
+            (let [{response :items} (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/metabots")]
+              (is (= 3 (count response)))
+              (is (= ["Alpha Metabot" "Beta Metabot" "Gamma Metabot"]
+                     (mapv :name response)))
+              (is (= [metabot-id-1 metabot-id-2 metabot-id-3]
+                     (mapv :id response)))))
 
-        (testing "should require superuser permissions"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "ee/metabot-v3/metabots"))))))))
+          (testing "should require superuser permissions"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "ee/metabot-v3/metabots")))))))))
 
 (deftest metabot-entities-delete-collection-test
   (testing "DELETE /api/ee/metabot-v3/metabots/:id/entities/:model-type/:model-id"
