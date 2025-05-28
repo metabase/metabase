@@ -1,9 +1,10 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import PropTypes from "prop-types";
-import { Component, memo, useState } from "react";
+import { type ChangeEvent, memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { isErrorWithMessage } from "metabase/admin/performance/utils";
+import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
+import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Modal from "metabase/components/Modal";
@@ -13,185 +14,157 @@ import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/uuid";
-import { GeoJSONApi, SettingsApi } from "metabase/services";
 import { Button } from "metabase/ui";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import type {
+  CustomGeoJSONMap,
+  CustomGeoJSONSetting,
+  GeoJSONData,
+} from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 
-export default class CustomGeoJSONWidget extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      map: null,
-      originalMap: null,
-      geoJson: null,
-      geoJsonLoading: false,
-      geoJsonError: null,
-    };
-  }
+const CustomGeoJSONWidget = () => {
+  const [map, setMap] = useState<CustomGeoJSONMap | null>(null);
+  const [originalMap, setOriginalMap] = useState<CustomGeoJSONMap | null>(null);
+  const [currentId, setCurrentId] = useState<string | undefined>();
+  const [
+    triggerLoadGeoJSON,
+    { data: geoJson, error: geoJsonError, isLoading: geoJsonLoading },
+  ] = useLazyLoadGeoJSONQuery();
 
-  static propTypes = {
-    setting: PropTypes.object.isRequired,
-    reloadSettings: PropTypes.func.isRequired,
-  };
-  static defaultProps = {};
+  const {
+    value: settingValue,
+    updateSetting,
+    settingDetails,
+  } = useAdminSetting("custom-geojson");
 
-  _saveMap = async (id, map) => {
-    const { setting } = this.props;
+  const customGeoJsonSetting = settingValue as CustomGeoJSONSetting;
+  const mapsExcludingBuiltIns = getMapsExcludingBuiltIns(customGeoJsonSetting);
 
-    const value = {};
-    for (const [existingId, existingMap] of Object.entries(setting.value)) {
-      if (!existingMap.builtin) {
-        value[existingId] = { ...existingMap, id: undefined };
-      }
-    }
-    if (map) {
-      value[id] = { ...map, id: undefined };
-    } else {
-      delete value[id];
-    }
+  const handleSave = useCallback(async (): Promise<void> => {
+    if (map && map.region_key && map.region_name && currentId) {
+      const newValue = { ...mapsExcludingBuiltIns, [currentId]: map };
 
-    try {
-      await SettingsApi.put({
+      await updateSetting({
         key: "custom-geojson",
-        value: value,
+        value: newValue,
       });
-
-      await this.props.reloadSettings();
-    } catch (e) {
-      console.warn("Save failed: ", e);
-      throw e;
+      setMap(null);
+      setOriginalMap(null);
     }
-  };
+  }, [currentId, map, mapsExcludingBuiltIns, updateSetting]);
 
-  _save = async () => {
-    const { map } = this.state;
-    await this._saveMap(map.id, map);
-    this.setState({ map: null, originalMap: null });
-  };
+  const handleCancel = useCallback(async (): Promise<void> => {
+    setMap(null);
+    setOriginalMap(null);
+  }, []);
 
-  _cancel = async () => {
-    const { map, originalMap } = this.state;
-    await this._saveMap(map.id, originalMap);
-    this.setState({ map: null, originalMap: null });
-  };
-
-  _delete = async (map) => {
-    await this._saveMap(map.id, null);
-  };
-
-  _loadGeoJson = async () => {
-    try {
-      const { map } = this.state;
-      this.setState({
-        geoJson: null,
-        geoJsonLoading: true,
-        geoJsonError: null,
+  const handleDelete = useCallback(
+    async (mapId: string): Promise<void> => {
+      const newValue = { ...mapsExcludingBuiltIns };
+      delete newValue[mapId];
+      await updateSetting({
+        key: "custom-geojson",
+        value: newValue,
       });
-      const geoJson = await GeoJSONApi.load({
-        url: map.url,
-      });
-      validateGeoJson(geoJson);
-      this.setState({
-        geoJson: geoJson,
-        geoJsonLoading: false,
-        geoJsonError: null,
-      });
-    } catch (e) {
-      this.setState({
-        geoJson: null,
-        geoJsonLoading: false,
-        geoJsonError: e,
-      });
-      console.warn("map fetch failed", e);
-    }
-  };
+    },
+    [mapsExcludingBuiltIns, updateSetting],
+  );
 
-  render() {
-    const { setting } = this.props;
+  const handleAddMap = useCallback(() => {
+    setMap({
+      name: "",
+      url: "",
+      region_key: "",
+      region_name: "",
+    });
+    setOriginalMap(null);
+    setCurrentId(uuid());
+  }, []);
 
-    if (!setting.value || setting.is_env_setting) {
-      return null;
-    }
+  const handleEditMap = useCallback(
+    (mapToEdit: CustomGeoJSONMap, mapId: string) => {
+      setMap({ ...mapToEdit });
+      setOriginalMap(mapToEdit);
+      setCurrentId(mapId);
+      triggerLoadGeoJSON({ url: mapToEdit.url });
+    },
+    [triggerLoadGeoJSON],
+  );
 
-    return (
-      <div className={CS.flexFull}>
-        <div className={cx(CS.flex, CS.justifyBetween)}>
-          <SettingHeader
-            id={setting.key}
-            title={setting.display_name}
-            description={setting.description}
-          />
-          {!this.state.map && (
-            <button
-              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
-              onClick={() =>
-                this.setState({
-                  map: {
-                    id: uuid(),
-                    name: "",
-                    url: "",
-                    region_key: null,
-                    region_name: null,
-                  },
-                  originalMap: null,
-                  geoJson: null,
-                  geoJsonLoading: false,
-                  geoJsonError: null,
-                })
-              }
-            >
-              {t`Add a map`}
-            </button>
-          )}
-        </div>
-        <ListMaps
-          maps={Object.entries(setting.value).map(([key, value]) => ({
-            ...value,
-            id: key,
-          }))}
-          onEditMap={(map) =>
-            this.setState(
-              {
-                map: {
-                  ...map,
-                },
-                originalMap: map,
-                geoJson: null,
-                geoJsonLoading: false,
-                geoJsonError: null,
-              },
-              this._loadGeoJson,
-            )
-          }
-          onDeleteMap={this._delete}
-        />
-        {this.state.map ? (
-          <Modal wide>
-            <div className={CS.p4}>
-              <EditMap
-                map={this.state.map}
-                originalMap={this.state.originalMap}
-                onMapChange={(map) => this.setState({ map })}
-                geoJson={this.state.geoJson}
-                geoJsonLoading={this.state.geoJsonLoading}
-                geoJsonError={this.state.geoJsonError}
-                onLoadGeoJson={this._loadGeoJson}
-                onCancel={this._cancel}
-                onSave={this._save}
-              />
-            </div>
-          </Modal>
-        ) : null}
-      </div>
-    );
+  const handleMapChange = useCallback((updatedMap: CustomGeoJSONMap) => {
+    setMap(updatedMap);
+  }, []);
+
+  if (
+    !customGeoJsonSetting ||
+    !settingDetails ||
+    settingDetails.is_env_setting
+  ) {
+    return null;
   }
+
+  return (
+    <div className={CS.flexFull}>
+      <div className={cx(CS.flex, CS.justifyBetween)}>
+        <SettingHeader
+          id={settingDetails.key}
+          title={settingDetails.display_name}
+          description={settingDetails.description}
+        />
+        {!map && (
+          <button
+            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
+            onClick={handleAddMap}
+          >
+            {t`Add a map`}
+          </button>
+        )}
+      </div>
+      <ListMaps
+        maps={customGeoJsonSetting}
+        onEditMap={handleEditMap}
+        onDeleteMap={handleDelete}
+      />
+      {map ? (
+        <Modal wide>
+          <div className={CS.p4}>
+            <EditMap
+              map={map}
+              originalMap={originalMap}
+              onMapChange={handleMapChange}
+              geoJson={geoJson}
+              geoJsonLoading={geoJsonLoading}
+              geoJsonError={
+                geoJsonError
+                  ? isErrorWithMessage(geoJsonError) || "Error"
+                  : undefined
+              }
+              onLoadGeoJson={() => triggerLoadGeoJSON({ url: map.url })}
+              onCancel={handleCancel}
+              onSave={handleSave}
+            />
+          </div>
+        </Modal>
+      ) : null}
+    </div>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default CustomGeoJSONWidget;
+
+interface ListMapsProps {
+  maps: CustomGeoJSONSetting;
+  onEditMap: (map: CustomGeoJSONMap, mapId: string) => void;
+  onDeleteMap: (mapId: string) => void;
 }
 
-const ListMaps = ({ maps, onEditMap, onDeleteMap }) => {
-  const [mapToDelete, setMapToDelete] = useState(undefined);
+const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
+  const [mapIdToDelete, setMapIdToDelete] = useState<string | undefined>(
+    undefined,
+  );
   return (
     <section>
       <table className={AdminS.ContentTable}>
@@ -202,21 +175,27 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => {
           </tr>
         </thead>
         <tbody>
-          {maps
-            .filter((map) => !map.builtin)
-            .map((map) => (
-              <tr key={map.id}>
-                <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
+          {Object.entries(maps)
+            .filter(([, map]) => !map.builtin)
+            .map(([mapId, map]) => (
+              <tr key={mapId}>
+                <td
+                  className={CS.cursorPointer}
+                  onClick={() => onEditMap(map, mapId)}
+                >
                   {map.name}
                 </td>
-                <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
+                <td
+                  className={CS.cursorPointer}
+                  onClick={() => onEditMap(map, mapId)}
+                >
                   <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
                 </td>
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
                     color="danger"
-                    onClick={() => setMapToDelete(map)}
+                    onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>
               </tr>
@@ -224,20 +203,34 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => {
         </tbody>
       </table>
       <ConfirmModal
-        opened={Boolean(mapToDelete)}
+        opened={Boolean(mapIdToDelete)}
         title={t`Delete custom map`}
         onConfirm={() => {
-          onDeleteMap(mapToDelete);
-          setMapToDelete(undefined);
+          if (mapIdToDelete) {
+            onDeleteMap(mapIdToDelete);
+            setMapIdToDelete(undefined);
+          }
         }}
-        onClose={() => setMapToDelete(undefined)}
+        onClose={() => setMapIdToDelete(undefined)}
       />
     </section>
   );
 };
 
-const GeoJsonPropertySelect = ({ value, onChange, geoJson, dataTestId }) => {
-  const options = {};
+interface GeoJsonPropertySelectProps {
+  value: string | null;
+  onChange: (value: string) => void;
+  geoJson: GeoJSONData | undefined;
+  dataTestId: string;
+}
+
+const GeoJsonPropertySelect = ({
+  value,
+  onChange,
+  geoJson,
+  dataTestId,
+}: GeoJsonPropertySelectProps) => {
+  const options: Record<string, any[]> = {};
   if (geoJson) {
     if (geoJson.type === "FeatureCollection") {
       for (const feature of geoJson.features) {
@@ -257,8 +250,10 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson, dataTestId }) => {
   return (
     <div data-testid={dataTestId}>
       <Select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={value || ""}
+        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+          onChange(e.target.value)
+        }
         placeholder={t`Select…`}
       >
         {Object.entries(options).map(([name, values]) => (
@@ -284,12 +279,19 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson, dataTestId }) => {
   );
 };
 
+interface SettingContainerProps {
+  name?: string;
+  description?: string;
+  className?: string;
+  children: React.ReactNode;
+}
+
 const SettingContainer = ({
   name,
   description,
   className = CS.py1,
   children,
-}) => (
+}: SettingContainerProps) => (
   <div className={className}>
     {name && (
       <div className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.my1)}>
@@ -303,6 +305,18 @@ const SettingContainer = ({
   </div>
 );
 
+interface EditMapProps {
+  map: CustomGeoJSONMap;
+  onMapChange: (map: CustomGeoJSONMap) => void;
+  originalMap: CustomGeoJSONMap | null;
+  geoJson: GeoJSONData | undefined;
+  geoJsonLoading: boolean;
+  geoJsonError: any;
+  onLoadGeoJson: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+}
+
 const EditMap = ({
   map,
   onMapChange,
@@ -313,7 +327,7 @@ const EditMap = ({
   onLoadGeoJson,
   onCancel,
   onSave,
-}) => (
+}: EditMapProps) => (
   <div data-testid="edit-map-modal">
     <div className={CS.flex}>
       <div className={CS.flexNoShrink}>
@@ -331,7 +345,9 @@ const EditMap = ({
               )}
               placeholder={t`e.g. United Kingdom, Brazil, Mars`}
               value={map.name}
-              onChange={(e) => onMapChange({ ...map, name: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                onMapChange({ ...map, name: e.target.value })
+              }
             />
           </div>
         </SettingContainer>
@@ -350,7 +366,9 @@ const EditMap = ({
               )}
               placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
               value={map.url}
-              onChange={(e) => onMapChange({ ...map, url: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                onMapChange({ ...map, url: e.target.value })
+              }
             />
             <button
               disabled={!map.url}
@@ -366,7 +384,7 @@ const EditMap = ({
         </SettingContainer>
         <div className={cx({ disabled: !geoJson })}>
           <SettingContainer
-            description={t`Which property specifies the region’s identifier?`}
+            description={t`Which property specifies the region's identifier?`}
           >
             <GeoJsonPropertySelect
               value={map.region_key}
@@ -376,7 +394,7 @@ const EditMap = ({
             />
           </SettingContainer>
           <SettingContainer
-            description={t`Which property specifies the region’s display name?`}
+            description={t`Which property specifies the region's display name?`}
           >
             <GeoJsonPropertySelect
               value={map.region_name}
@@ -450,49 +468,28 @@ const EditMap = ({
   </div>
 );
 
-const ChoroplethPreview = memo(({ geoJson }) => (
+interface ChoroplethPreviewProps {
+  geoJson: GeoJSONData | undefined;
+}
+
+const ChoroplethPreview = memo(({ geoJson }: ChoroplethPreviewProps) => (
   <LeafletChoropleth geoJson={geoJson} />
 ));
 
 ChoroplethPreview.displayName = "ChoroplethPreview";
 
-function validateGeoJson(geoJson) {
-  if (!geoJson) {
-    throw t`Invalid custom GeoJSON`;
+function getMapsExcludingBuiltIns(
+  allMaps: CustomGeoJSONSetting,
+): CustomGeoJSONSetting {
+  if (!allMaps) {
+    return {};
   }
-
-  if (geoJson.type !== "FeatureCollection" && geoJson.type !== "Feature") {
-    throw t`Invalid custom GeoJSON: does not contain features`;
-  }
-
-  if (geoJson.type === "FeatureCollection") {
-    if (!geoJson.features || geoJson.features.length === 0) {
-      throw t`Invalid custom GeoJSON: does not contain features`;
-    }
-
-    for (const feature of geoJson.features) {
-      if (!feature.properties) {
-        throw t`Invalid custom GeoJSON: feature is missing properties`;
-      }
-    }
-
-    const bounds = computeMinimalBounds(geoJson.features);
-    const northEast = bounds.getNorthEast();
-    const southWest = bounds.getSouthWest();
-
-    if (
-      [
-        [northEast.lat, northEast.lng],
-        [southWest.lat, southWest.lng],
-      ].every(([lat, lng]) => lat < -90 || lat > 90 || lng < -180 || lng > 180)
-    ) {
-      throw t`Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude`;
+  const mapsExcludingBuiltIns: CustomGeoJSONSetting = {};
+  for (const [id, map] of Object.entries(allMaps)) {
+    if (!map.builtin) {
+      mapsExcludingBuiltIns[id] = map;
     }
   }
 
-  if (geoJson.type === "Feature") {
-    if (!geoJson.properties) {
-      throw t`Invalid custom GeoJSON: feature is missing properties`;
-    }
-  }
+  return mapsExcludingBuiltIns;
 }
