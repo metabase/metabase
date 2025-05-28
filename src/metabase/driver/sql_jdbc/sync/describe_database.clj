@@ -102,13 +102,13 @@
                       (pr-str table-name)))
       true
       (catch Throwable e
-        (let [allow? (driver/query-canceled? driver e)]
-          (log/infof (if allow?
-                       "%s: Assuming SELECT privileges: caught timeout exception"
-                       "%s: Assuming no SELECT privileges: caught exception")
-                     (str (when table-schema
-                            (str (pr-str table-schema) \.))
-                          (pr-str table-name)))
+        (let [allow? (driver/query-canceled? driver e)
+              table-str (str (when table-schema
+                               (str (pr-str table-schema) \.))
+                             (pr-str table-name))]
+          (if allow?
+            (log/infof "%s: Assuming SELECT privileges: caught timeout exception" table-str)
+            (log/infof e "%s: Assuming no SELECT privileges: caught exception" table-str))
           ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
           ;; affecting anything higher
           (try (when-not (.getAutoCommit conn)
