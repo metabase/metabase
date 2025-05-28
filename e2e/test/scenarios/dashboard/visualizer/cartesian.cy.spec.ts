@@ -197,12 +197,17 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
 
     H.saveDashcardVisualizerModal("create");
-    cy.wait("@cardQuery");
-    cy.wait("@cardQuery");
-    cy.wait("@cardQuery");
+    // Wait for card queries before saving the dashboard
+    H.getDashboardCard(0).within(() => {
+      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+        "exist",
+      );
+      cy.findByText("Created At: Month").should("exist");
+    });
+
     H.saveDashboard();
 
-    // Making sure the card renders
+    // Making sure the card renders after saving the dashboard
     H.getDashboardCard(0).within(() => {
       cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
         "exist",
