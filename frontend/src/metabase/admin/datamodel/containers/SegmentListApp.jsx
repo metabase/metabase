@@ -19,7 +19,7 @@ class SegmentListAppInner extends Component {
 
     return (
       <div
-        className={cx(CS.px3, CS.pb2, CS.wrapper)}
+        className={cx(CS.px3, CS.pb2, CS.wrapper, CS.scrollY)}
         data-testid="segment-list-app"
       >
         <div className={cx(CS.flex, CS.py2)}>
