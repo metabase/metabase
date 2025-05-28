@@ -47,6 +47,7 @@ import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type { HoveredObject } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -67,6 +68,7 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
+  DatasetColumn,
   DatasetError,
   DatasetErrorType,
   Group,
@@ -76,24 +78,15 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  Series,
   TableId,
   Timeline,
   TimelineEvent,
   User,
 } from "metabase-types/api";
-import type {
-  AdminPath,
-  AdminPathKey,
-  Dispatch,
-  State,
-} from "metabase-types/store";
+import type { AdminPath, AdminPathKey, State } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
-import type {
-  AdminPathKey,
-  Dispatch as ReduxDispatch,
-  State,
-} from "metabase-types/store";
+import type { Dispatch as ReduxDispatch } from "metabase-types/store";
 
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
@@ -732,17 +725,26 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
   ContentTranslationConfiguration: PluginPlaceholder,
-  useTranslateContent: (): ContentTranslationFunction => {
+  useTranslateContent: <
+    T = string | null | undefined,
+  >(): ContentTranslationFunction => {
     // In OSS, the input is not translated
-    return useCallback(
-      <T extends string | null | undefined>(arg: T) => arg,
-      [],
-    );
+    return useCallback(<U = T>(arg: U) => arg, []);
   },
   translateDisplayNames: <T extends object>(
     obj: T,
     _tc: ContentTranslationFunction,
   ) => obj,
+  shouldTranslateFieldValuesOfColumn: (_col: DatasetColumn) => false,
+  translateFieldValuesInHoveredObject: (
+    obj: HoveredObject | null,
+    _tc?: ContentTranslationFunction,
+  ) => obj,
+  translateFieldValuesInSeries: (
+    obj: Series,
+    _tc: ContentTranslationFunction,
+  ) => obj,
+  translateSeries: (obj: Series, _tc: ContentTranslationFunction) => obj,
 };
 
 export const PLUGIN_DB_ROUTING = {
