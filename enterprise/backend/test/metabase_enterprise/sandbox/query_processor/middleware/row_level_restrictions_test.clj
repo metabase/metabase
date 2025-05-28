@@ -17,7 +17,6 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -34,9 +33,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
-
-(comment
-  query-perms/keep-me)
 
 (defn- identifier
   ([table-key]
@@ -203,8 +199,8 @@
                                                                                       :semantic_type     :type/FK
                                                                                       :database_type     "INTEGER"
                                                                                       :name              "USER_ID"}]]]
-                                          ::row-level-restrictions/gtap? true
-                                          ::query-perms/gtapped-table    $$checkins}
+                                          ::row-level-restrictions/gtap?   true
+                                          :query-permissions/gtapped-table $$checkins}
                            :joins        [{:source-query
                                            {:source-table                  $$venues
                                             :fields                        [$venues.id $venues.name $venues.category_id
@@ -217,8 +213,8 @@
                                                                                        :semantic_type     :type/Category
                                                                                        :database_type     "INTEGER"
                                                                                        :name              "PRICE"}]]
-                                            ::row-level-restrictions/gtap? true
-                                            ::query-perms/gtapped-table    $$venues}
+                                            ::row-level-restrictions/gtap?   true
+                                            :query-permissions/gtapped-table $$venues}
                                            :alias     "v"
                                            :strategy  :left-join
                                            :condition [:= $venue_id &v.venues.id]}]
@@ -230,9 +226,9 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted}
-                                                                       :perms/create-queries {(mt/id :checkins) :query-builder
-                                                                                              (mt/id :venues) :query-builder}}}})
+                   :query-permissions/perms {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted}
+                                                     :perms/create-queries {(mt/id :checkins) :query-builder
+                                                                            (mt/id :venues) :query-builder}}}})
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -253,7 +249,7 @@
                               :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                           "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                           "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
-                                             ::query-perms/gtapped-table    $$venues
+                                             :query-permissions/gtapped-table $$venues
                                              :params []}}
 
                    ::row-level-restrictions/original-metadata [{:base_type     :type/Integer
@@ -262,7 +258,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/create-queries :query-builder-and-native}}})
+                   :query-permissions/perms {:gtaps {:perms/create-queries :query-builder-and-native}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))
