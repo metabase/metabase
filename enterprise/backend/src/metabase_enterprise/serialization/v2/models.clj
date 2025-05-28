@@ -15,7 +15,6 @@
    "Card"
    "Collection"
    "Dashboard"
-   "Metabot"
    "NativeQuerySnippet"
    "Timeline"])
 
@@ -24,6 +23,7 @@
   (concat data-model
           content
           ["FieldValues"
+           "Metabot"
            "Setting"]))
 
 (def inlined-models

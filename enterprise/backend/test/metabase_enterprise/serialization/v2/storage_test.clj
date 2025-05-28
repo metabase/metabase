@@ -72,7 +72,7 @@
                          :model/Card        c3          {:name "parent card" :collection_id (:id parent)}
                          :model/Card        c4          {:name "child card" :collection_id (:id child)}
                          :model/Dashboard   d1          {:name "parent dash" :collection_id (:id parent)}]
-        (let [export (into [] (extract/extract nil))]
+        (let [export (into [] (extract/extract {:no-metabot true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
@@ -105,6 +105,7 @@
                          :model/NativeQuerySnippet c3          {:name "parent snippet" :collection_id (:id parent)}
                          :model/NativeQuerySnippet c4          {:name "child snippet" :collection_id (:id child)}]
         (let [export (into [] (extract/extract {:no-settings   true
+                                                :no-metabot    true
                                                 :no-data-model true}))]
           (storage/store! export dump-dir)
           (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
@@ -230,7 +231,8 @@
             f1  (ts/create! :model/Field :name "parent" :table_id (:id t))
             _f2 (ts/create! :model/Field :name "child" :table_id (:id t) :parent_id (:id f1))]
         (serdes/with-cache
-          (-> (extract/extract {:no-settings true})
+          (-> (extract/extract {:no-settings true
+                                :no-metabot    true})
               (storage/store! dump-dir)))
         (testing "we get correct names for nested fields"
           (is (= #{["parent.yaml"]

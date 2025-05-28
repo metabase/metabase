@@ -1269,7 +1269,7 @@
                                                                                                     :id        mapping-id
                                                                                                     :dimension dimension}}}}})}}}]
 
-      (testing "selecting a collection includes settings and data model by default"
+      (testing "selecting a collection includes settings metabot and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
                (->> {:targets [["Collection" coll1-id]]}
                     extract/extract
