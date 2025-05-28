@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -22,7 +21,7 @@
   false)
 
 (deftest ^:parallel table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (let [expected [["20th Century Cafe"]
                     ["25°"]
                     ["33 Taps"]

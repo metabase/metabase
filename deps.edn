@@ -252,7 +252,7 @@
     djblue/portal                {:mvn/version "0.59.1"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.7"}                     ; test runner
-    io.github.tonsky/clj-reload  {:mvn/version "0.9.6"}                     ; reloader
+    io.github.tonsky/clj-reload  {:mvn/version "0.9.7"}                     ; reloader
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -267,7 +267,7 @@
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
     rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
     ring/ring-devel              {:mvn/version "1.14.1"}                    ; reload clojure files on the fly
-    ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
+    ring/ring-mock               {:mvn/version "0.6.1"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
