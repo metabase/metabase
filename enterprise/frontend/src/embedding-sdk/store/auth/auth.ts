@@ -15,12 +15,13 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { Settings } from "metabase-types/api";
 
+import {
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  samlTokenStorage,
+} from "../../../embedding/auth-common";
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
-
-import { jwtDefaultRefreshTokenFunction } from "./jwt";
-import { openSamlLoginPopup } from "./saml";
-import { samlTokenStorage } from "./saml-token-storage";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
