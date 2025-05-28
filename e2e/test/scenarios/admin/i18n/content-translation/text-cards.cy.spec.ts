@@ -10,7 +10,7 @@ const textCardTranslations: DictionaryArray = [
   { locale: "de", msgid: "Sample Heading", msgstr: "Beispielüberschrift" },
 ];
 
-describe("scenarios > dashboard > content translation of text cards and headings", () => {
+describe("scenarios > content translation > dashboard text cards and headings", () => {
   describe("ee", () => {
     before(() => {
       H.restore();
