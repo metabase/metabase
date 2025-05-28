@@ -64,6 +64,22 @@
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
+(api.macros/defendpoint :get "/dictionary/:token"
+  "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   {:keys [locale]}]
+  ;; this will error if bad
+  (unsign-and-translate-ids token)
+  (if locale
+    (t2/select :model/ContentTranslation :locale locale)
+    api/generic-204-no-content)
+  )
+
 (api.macros/defendpoint :get "/card/:token"
   "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
