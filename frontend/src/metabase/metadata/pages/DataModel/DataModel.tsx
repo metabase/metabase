@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -21,32 +22,16 @@ import {
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
-interface Props {
-  params: RouteParams;
-}
-
 const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 
-export const DataModel = ({ params }: Props) => {
-  const { databaseId, tableId, schemaId, fieldId } = parseRouteParams(params);
-  const isEmptyStateShown =
-    databaseId == null || tableId == null || fieldId == null;
-  const {
-    data: table,
-    error,
-    isLoading,
-  } = useGetTableQueryMetadataQuery(
-    tableId == null
-      ? skipToken
-      : {
-          id: tableId,
-          include_sensitive_fields: true,
-          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-        },
-  );
-  const field = table?.fields?.find((field) => field.id === fieldId);
-  const [previewType, setPreviewType] = usePreviewType();
-
+export const DataModel = ({
+  params,
+  children,
+}: {
+  params: RouteParams;
+  children: ReactNode;
+}) => {
+  const { databaseId, tableId, schemaId } = parseRouteParams(params);
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`} bg="bg-light">
       <Stack
@@ -76,6 +61,32 @@ export const DataModel = ({ params }: Props) => {
         </Box>
       </Stack>
 
+      {children ?? <DataModelEditor params={params} />}
+    </Flex>
+  );
+};
+
+export function DataModelEditor({ params }: { params: RouteParams }) {
+  const { databaseId, tableId, fieldId } = parseRouteParams(params);
+  const isEmptyStateShown =
+    databaseId == null || tableId == null || fieldId == null;
+  const {
+    data: table,
+    error,
+    isLoading,
+  } = useGetTableQueryMetadataQuery(
+    tableId == null
+      ? skipToken
+      : {
+          id: tableId,
+          include_sensitive_fields: true,
+          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+        },
+  );
+  const field = table?.fields?.find((field) => field.id === fieldId);
+  const [previewType, setPreviewType] = usePreviewType();
+  return (
+    <>
       {tableId && (
         <Box className={S.sidebar} flex="0 0 25%" h="100%" miw="400px">
           <Box p="xl" pb="lg">
@@ -159,6 +170,6 @@ export const DataModel = ({ params }: Props) => {
           )}
         </>
       )}
-    </Flex>
+    </>
   );
-};
+}

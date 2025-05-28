@@ -117,10 +117,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
             to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
           />
-          <Route path="segments" component={SegmentListApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
+          <Route title={t`Segments`} path="segments" component={DataModel}>
+            <IndexRoute component={SegmentListApp} />
+          </Route>
+          <Route path="segment" component={DataModel}>
+            <Route path="create" component={SegmentApp} />
+            <Route path=":id" component={SegmentApp} />
+            <Route path=":id/revisions" component={RevisionHistoryApp} />
+          </Route>
         </Route>
       </Route>
       {/* PEOPLE */}
