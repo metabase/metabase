@@ -35,6 +35,7 @@ interface EditTableDataHeaderProps {
   onUndo: () => void;
   onRedo: () => void;
   onRequestDeleteBulk: () => void;
+  onRequestBulkEditing: () => void;
 }
 
 export const EditTableDataHeader = ({
@@ -50,6 +51,7 @@ export const EditTableDataHeader = ({
   onUndo,
   onRedo,
   onRequestDeleteBulk,
+  onRequestBulkEditing,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -90,6 +92,11 @@ export const EditTableDataHeader = ({
             onClick={() => onCreate()}
             disabled={shouldDisableActions}
           >{t`New record`}</Button>
+          <Button
+            leftSection={<Icon name="pencil" />}
+            onClick={onRequestBulkEditing}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >{t`Edit`}</Button>
           <Button
             leftSection={<Icon name="trash" />}
             variant="filled"

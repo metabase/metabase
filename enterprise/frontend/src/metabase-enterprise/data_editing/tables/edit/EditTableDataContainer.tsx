@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
@@ -22,6 +23,7 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
+import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
@@ -142,6 +144,11 @@ export const EditTableDataContainer = ({
     setRowSelection,
   });
 
+  const [
+    isBulkEditingRequested,
+    { open: requestBulkEditing, close: closeBulkEditing },
+  ] = useDisclosure();
+
   useMount(() => {
     dispatch(closeNavbar());
   });
@@ -175,6 +182,7 @@ export const EditTableDataContainer = ({
             onUndo={undo}
             onRedo={redo}
             onRequestDeleteBulk={requestDeleteBulk}
+            onRequestBulkEditing={requestBulkEditing}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
@@ -229,6 +237,14 @@ export const EditTableDataContainer = ({
         }
         fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
+        hasDeleteAction
+      />
+      <EditBulkRowsModal
+        opened={isBulkEditingRequested}
+        datasetColumns={datasetData.cols}
+        fieldMetadataMap={tableFieldMetadataMap}
+        onClose={closeBulkEditing}
+        selectedRowIndices={selectedRowIndices}
         hasDeleteAction
       />
       <DeleteBulkRowConfirmationModal

@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { memo, useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
@@ -37,6 +38,7 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
+import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
@@ -162,9 +164,10 @@ export const EditTableDashcardVisualization = memo(
       visualizationSettings,
     );
 
-    const { hasCreateAction, hasDeleteAction } = useBuiltInActions(
+    const { hasCreateAction /*, hasDeleteActio */ } = useBuiltInActions(
       visualizationSettings?.["editableTable.enabledActions"],
     );
+    const hasDeleteAction = true;
 
     const {
       tableActions,
@@ -198,6 +201,11 @@ export const EditTableDashcardVisualization = memo(
       question,
     });
 
+    const [
+      isBulkEditingRequested,
+      { open: requestBulkEditing, close: closeBulkEditing },
+    ] = useDisclosure();
+
     const shouldDisableActions = isUndoLoading || isRedoLoading;
 
     return (
@@ -213,29 +221,39 @@ export const EditTableDashcardVisualization = memo(
 
           {!isEditing && (
             <Group gap="sm" align="center">
+              <ActionIcon
+                size="md"
+                onClick={requestBulkEditing}
+                disabled={shouldDisableActions || !selectedRowIndices.length}
+              >
+                <Icon
+                  name="pencil"
+                  tooltip={
+                    selectedRowIndices.length
+                      ? t`Edit selected records`
+                      : t`Select records to edit`
+                  }
+                />
+              </ActionIcon>
               {hasDeleteAction && (
-                <>
-                  <ActionIcon
-                    size="md"
-                    onClick={requestDeleteBulk}
-                    disabled={
-                      shouldDisableActions || !selectedRowIndices.length
+                <ActionIcon
+                  size="md"
+                  onClick={requestDeleteBulk}
+                  disabled={shouldDisableActions || !selectedRowIndices.length}
+                >
+                  <Icon
+                    name="trash"
+                    tooltip={
+                      selectedRowIndices.length
+                        ? t`Delete selected records`
+                        : t`Select records to delete`
                     }
-                  >
-                    <Icon
-                      name="trash"
-                      tooltip={
-                        selectedRowIndices.length
-                          ? t`Delete`
-                          : t`Select rows for deletion`
-                      }
-                    />
-                  </ActionIcon>
-                  <Box h={rem(16)}>
-                    <Divider orientation="vertical" h="100%" />
-                  </Box>
-                </>
+                  />
+                </ActionIcon>
               )}
+              <Box h={rem(16)}>
+                <Divider orientation="vertical" h="100%" />
+              </Box>
               <ActionIcon
                 size="md"
                 onClick={undo}
@@ -336,6 +354,15 @@ export const EditTableDashcardVisualization = memo(
           fieldMetadataMap={tableFieldMetadataMap}
           isLoading={isInserting}
           columnsConfig={columnsConfig}
+        />
+        <EditBulkRowsModal
+          opened={isBulkEditingRequested}
+          datasetColumns={data.cols}
+          fieldMetadataMap={tableFieldMetadataMap}
+          hasDeleteAction={hasDeleteAction}
+          columnsConfig={columnsConfig}
+          onClose={closeBulkEditing}
+          selectedRowIndices={selectedRowIndices}
         />
         <Modal
           isOpen={isActionExecuteModalOpen}
