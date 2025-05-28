@@ -34,7 +34,6 @@ const metabotContext = "{0} is the name of an AI assistant";
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
   const { data } = useListMetabotsQuery();
-
   const metabotName =
     data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
   const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
