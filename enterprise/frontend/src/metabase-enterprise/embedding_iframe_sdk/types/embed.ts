@@ -23,7 +23,7 @@ export type SdkIframeEmbedMessage = {
 export interface DashboardEmbedOptions {
   dashboardId: number | string;
 
-  drillThroughEnabled?: boolean;
+  isDrillThroughEnabled?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 
@@ -39,7 +39,7 @@ export interface DashboardEmbedOptions {
 export interface QuestionEmbedOptions {
   questionId: number | string;
 
-  drillThroughEnabled?: boolean;
+  isDrillThroughEnabled?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 

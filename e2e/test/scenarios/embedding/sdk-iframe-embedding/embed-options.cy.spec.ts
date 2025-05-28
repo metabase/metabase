@@ -12,10 +12,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     cy.signOut();
   });
 
-  it("shows a static question with drillThroughEnabled=false", () => {
+  it("shows a static question with isDrillThroughEnabled=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       questionId: ORDERS_QUESTION_ID,
-      drillThroughEnabled: false,
+      isDrillThroughEnabled: false,
     });
 
     cy.wait("@getCardQuery");
@@ -33,10 +33,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
-  it("shows a static dashboard using drillThroughEnabled=false, withTitle=false, withDownloads=true", () => {
+  it("shows a static dashboard using isDrillThroughEnabled=false, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      drillThroughEnabled: false,
+      isDrillThroughEnabled: false,
       withTitle: false,
       withDownloads: true,
     });
@@ -59,10 +59,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
-  it("renders an interactive question with drillThroughEnabled=true, withTitle=false, withDownloads=true", () => {
+  it("renders an interactive question with isDrillThroughEnabled=true, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       questionId: ORDERS_QUESTION_ID,
-      drillThroughEnabled: true,
+      isDrillThroughEnabled: true,
       withDownloads: true,
       withTitle: false,
     });
@@ -86,10 +86,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
-  it("renders an interactive dashboard with drillThroughEnabled=true, withDownloads=true, withTitle=false", () => {
+  it("renders an interactive dashboard with isDrillThroughEnabled=true, withDownloads=true, withTitle=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      drillThroughEnabled: true,
+      isDrillThroughEnabled: true,
       withDownloads: true,
       withTitle: false,
     });
