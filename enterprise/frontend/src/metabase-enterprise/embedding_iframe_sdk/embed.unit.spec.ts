@@ -12,8 +12,11 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when target element is not found", () => {
     expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({ ...defaultSettings, target: "#not-existent-target" });
+      new MetabaseEmbed({
+        ...defaultSettings,
+        dashboardId: 1,
+        target: "#not-existent-target",
+      });
     }).toThrow('cannot find embed container "#not-existent-target"');
   });
 
@@ -98,4 +101,19 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       new MetabaseEmbed({ ...defaultSettings });
     }).toThrow("either dashboardId, questionId, or template must be provided");
   });
+
+  it.each([["view-content" as const], ["curate-content" as const]])(
+    "throws when initialCollection is not provided for the %s template",
+    (template: "view-content" | "curate-content") => {
+      expect(() => {
+        // @ts-expect-error -- we are testing for incorrect configuration
+        new MetabaseEmbed({
+          ...defaultSettings,
+          template,
+        });
+      }).toThrow(
+        `initialCollection must be provided for the ${template} template`,
+      );
+    },
+  );
 });

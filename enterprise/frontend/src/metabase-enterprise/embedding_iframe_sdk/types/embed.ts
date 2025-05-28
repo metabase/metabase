@@ -63,11 +63,20 @@ export interface ExplorationEmbedOptions {
   dashboardId?: never;
 }
 
-export interface CurationEmbedOptions {
-  template: "curation";
-  collectionId: CollectionId;
+export interface CurateContentEmbedOptions {
+  template: "curate-content";
+  initialCollection: CollectionId;
 
-  isReadOnly?: boolean;
+  entityTypes?: CollectionBrowserEntityTypes[];
+
+  questionId?: never;
+  dashboardId?: never;
+}
+
+export interface ViewContentEmbedOptions {
+  template: "view-content";
+  initialCollection: CollectionId;
+
   entityTypes?: CollectionBrowserEntityTypes[];
 
   questionId?: never;
@@ -94,7 +103,8 @@ type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
-  | CurationEmbedOptions;
+  | CurateContentEmbedOptions
+  | ViewContentEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
