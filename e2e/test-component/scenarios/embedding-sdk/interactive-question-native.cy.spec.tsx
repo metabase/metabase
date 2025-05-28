@@ -38,7 +38,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("e2e/supports passing sql parameters to native questions", () => {
+  it("supports passing sql parameters to native questions", () => {
     mountInteractiveQuestion({ initialSqlParameters: { ID: ORDERS_ID } });
 
     cy.wait("@cardQuery").then(({ response }) => {
