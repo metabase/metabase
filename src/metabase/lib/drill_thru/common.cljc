@@ -5,6 +5,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -53,27 +54,30 @@
   [query]
   (> (count (lib.metadata.calculation/primary-keys query)) 1))
 
+(defn- find-column-in-source-table-fields
+  [query stage-number column]
+  (if-let [table-id (lib.util/source-table-id query)]
+    (->> (lib.metadata/fields query table-id)
+         (lib.equality/find-matching-column query stage-number column))
+    column))
+
 (defn primary-key?
   "Is `column` a primary key of `query`?
 
-  Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] AND `column` is found in the list returned
-  by [[lib.metadata.calculation/primary-keys]]."
+  Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] and `column` is found in the source table's
+  fields, when available. "
   [query stage-number column]
   (boolean (and (lib.types.isa/primary-key? column)
-                (->> query
-                     lib.metadata.calculation/source-table-fields-or-returned-columns
-                     (lib.equality/find-matching-column query stage-number column)))))
+                (find-column-in-source-table-fields query stage-number column))))
 
 (defn foreign-key?
   "Is `column` a foreign key of `query`?
 
-  Returns true iff `column` satisfies [[lib.types.isa/foreign-key?]] AND `column` is found in the list returned
-  by [[lib.metadata.calculation/foreign-keys]]."
+  Returns true iff `column` satisfies [[lib.types.isa/foreign-key?]] and `column` is found in the source table's
+  fields, when available. "
   [query stage-number column]
   (boolean (and (lib.types.isa/foreign-key? column)
-                (->> query
-                     lib.metadata.calculation/source-table-fields-or-returned-columns
-                     (lib.equality/find-matching-column query stage-number column)))))
+                (find-column-in-source-table-fields query stage-number column))))
 
 (defn drill-value->js
   "Convert a drill value to a JS value."
