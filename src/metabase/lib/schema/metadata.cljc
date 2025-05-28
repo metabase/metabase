@@ -158,7 +158,7 @@
    [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
    ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
    ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
-   ;; referenced by a name, normally when it's coming from a card or a previus query stage.
+   ;; referenced by a name, normally when it's coming from a card or a previous query stage.
    [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; if this is a field from another table (implicit join), this is the join alias of the source field.
    [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
