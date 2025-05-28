@@ -93,6 +93,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
 
+## Database routing
+
+See [Database routing](../../permissions/database-routing.md).
+
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).

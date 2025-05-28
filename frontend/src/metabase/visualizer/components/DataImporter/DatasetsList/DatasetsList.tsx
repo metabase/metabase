@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
@@ -49,22 +50,22 @@ export function DatasetsList({
   );
 
   const handleAddDataSource = useCallback(
-    (id: VisualizerDataSourceId) => {
+    (source: VisualizerDataSource) => {
       trackSimpleEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_added",
         triggered_from: "visualizer-modal",
-        event_data: id,
+        event_data: source.id,
       });
 
-      dispatch(addDataSource(id));
-      setDataSourceCollapsed(id, false);
+      dispatch(addDataSource(source.id));
+      setDataSourceCollapsed(source.id, false);
     },
     [dispatch, setDataSourceCollapsed],
   );
 
   const handleRemoveDataSource = useCallback(
-    (source: VisualizerDataSource) => {
+    (source: VisualizerDataSource, forget?: boolean) => {
       trackSimpleEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_removed",
@@ -72,21 +73,10 @@ export function DatasetsList({
         event_data: source.id,
       });
 
-      dispatch(removeDataSource(source));
+      dispatch(removeDataSource({ source, forget }));
       setDataSourceCollapsed(source.id, true);
     },
     [dispatch, setDataSourceCollapsed],
-  );
-
-  const handleToggleDataSource = useCallback(
-    (item: VisualizerDataSource) => {
-      if (dataSourceIds.has(item.id)) {
-        handleRemoveDataSource(item);
-      } else {
-        handleAddDataSource(item.id);
-      }
-    },
-    [dataSourceIds, handleAddDataSource, handleRemoveDataSource],
   );
 
   const handleSwapDataSources = useCallback(
@@ -99,14 +89,14 @@ export function DatasetsList({
       });
 
       dataSources.forEach((dataSource) => {
-        handleRemoveDataSource(dataSource);
+        handleRemoveDataSource(dataSource, true);
       });
-      handleAddDataSource(item.id);
+      handleAddDataSource(item);
     },
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
 
-  const { data: result = { data: [] } } = useSearchQuery(
+  const { data: searchResult, isFetching: isSearchLoading } = useSearchQuery(
     search.length > 0
       ? {
           q: search,
@@ -121,45 +111,67 @@ export function DatasetsList({
     },
   );
 
-  const { data: allRecents = [] } = useListRecentsQuery(
-    { include_metadata: true },
-    {
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  const { data: allRecents = [], isLoading: isListRecentsLoading } =
+    useListRecentsQuery(
+      { include_metadata: true },
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
 
   const items = useMemo(() => {
-    if (
-      search.length === 0 ||
-      !Array.isArray(result.data) ||
-      result.data.length === 0
-    ) {
-      return allRecents
-        .filter((maybeCard) =>
-          ["card", "dataset", "metric"].includes(maybeCard.model),
+    if (search.length > 0) {
+      return (searchResult ? searchResult.data : [])
+        .map((item) =>
+          typeof item.id === "number" &&
+          shouldIncludeDashboardQuestion(item, dashboardId)
+            ? {
+                ...createDataSource("card", item.id, item.name),
+                result_metadata: item.result_metadata,
+                display: item.display,
+              }
+            : null,
         )
-        .map((card) => ({
-          ...createDataSource("card", card.id, card.name),
-          display: card.display,
-          result_metadata: card.result_metadata,
-        }));
+        .filter(isNotNull);
     }
-    return result.data
-      .map((item) =>
-        typeof item.id === "number" &&
-        shouldIncludeDashboardQuestion(item, dashboardId)
-          ? {
-              ...createDataSource("card", item.id, item.name),
-              result_metadata: item.result_metadata,
-              display: item.display,
-            }
-          : null,
+
+    return allRecents
+      .filter((maybeCard) =>
+        ["card", "dataset", "metric"].includes(maybeCard.model),
       )
-      .filter(isNotNull);
-  }, [result, allRecents, search, dashboardId]);
+      .map((card) => ({
+        ...createDataSource("card", card.id, card.name),
+        display: card.display,
+        result_metadata: card.result_metadata,
+      }));
+  }, [searchResult, allRecents, search, dashboardId]);
+
+  if (isListRecentsLoading || isSearchLoading) {
+    return (
+      <Flex
+        gap="xs"
+        direction="column"
+        align="center"
+        justify="center"
+        style={{ height: "100%" }}
+      >
+        <Loader />
+      </Flex>
+    );
+  }
 
   if (items.length === 0) {
-    return <Loader />;
+    return (
+      <Flex
+        gap="xs"
+        direction="column"
+        align="center"
+        justify="center"
+        style={{ height: "100%" }}
+      >
+        <p>{t`No results`}</p>
+      </Flex>
+    );
   }
 
   return (
@@ -169,7 +181,7 @@ export function DatasetsList({
           key={index}
           item={item}
           onSwap={handleSwapDataSources}
-          onToggle={handleToggleDataSource}
+          onToggle={handleAddDataSource}
           onRemove={handleRemoveDataSource}
           selected={dataSourceIds.has(item.id)}
         />

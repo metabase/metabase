@@ -1,3 +1,4 @@
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import {
@@ -194,6 +195,43 @@ describe("updateVizSettingsWithRefs", () => {
     expect(result).toEqual({
       "graph.series_order_dimension": "COLUMN_1",
       colors: { COLUMN_1: "#000" },
+    });
+  });
+
+  it("should not modify graph.tooltip_columns when value is not in columnsToRefs", () => {
+    const settings: VisualizationSettings = {
+      "graph.tooltip_columns": ["other_field"],
+      colors: { avg: "#000" },
+    };
+    const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result).toEqual({
+      "graph.tooltip_columns": ["other_field"],
+      colors: { COLUMN_1: "#000" },
+    });
+  });
+
+  it("should update graph.tooltip_columns with column references", () => {
+    const settings: VisualizationSettings = {
+      "graph.tooltip_columns": [
+        getColumnKey({ name: "avg" }),
+        getColumnKey({ name: "sum" }),
+      ],
+    };
+    const columnsToRefs = {
+      avg: "COLUMN_1",
+      sum: "COLUMN_2",
+    };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result).toEqual({
+      "graph.tooltip_columns": [
+        getColumnKey({ name: "COLUMN_1" }),
+        getColumnKey({ name: "COLUMN_2" }),
+      ],
     });
   });
 });
