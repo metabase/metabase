@@ -786,4 +786,5 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+  getContentTranslationDictionaryUrl: null as string | null,
 };
