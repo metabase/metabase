@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Draggable,
   Droppable,
@@ -11,6 +11,8 @@ import _ from "underscore";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Box, Button, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
@@ -21,6 +23,7 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ColumnNameAndBinning,
   ColumnNameAndBinningSplitSetting,
+  ColumnNameSplitSetting,
   DatasetColumn,
   FieldReference,
   PivotAggregation,
@@ -69,7 +72,7 @@ const AddBreakoutPopover = ({
           breakout={undefined}
           breakoutIndex={undefined}
           onAddBreakout={onAddBreakout}
-          onUpdateBreakoutColumn={() => {}}
+          onUpdateBreakoutColumn={() => { }}
           onClose={close}
         />
       </Popover.Dropdown>
@@ -190,6 +193,8 @@ export const ChartSettingFieldsPartition = ({
   aggregatedColumns,
   canEditColumns,
 }: ChartSettingFieldPartitionProps) => {
+  const dispatch = useDispatch();
+
   const [pendingAggCols, setPendingAggCols] = useState<
     RemappingHydratedDatasetColumn[] | null
   >(null);
@@ -288,6 +293,8 @@ export const ChartSettingFieldsPartition = ({
   // the query from the viz settings to pass into the aggregation selection
   // popover
   const aggregatedQuery = useMemo(() => {
+    return query;
+
     if (!canEditColumns) {
       return query;
     }
@@ -303,8 +310,8 @@ export const ChartSettingFieldsPartition = ({
     return aggregations.reduce((accQuery, agg) => {
       const columnObj = agg.column
         ? breakoutColumns.find(
-            (col) => Lib.displayInfo(query, -1, col).name === agg.column?.name,
-          )
+          (col) => Lib.displayInfo(query, -1, col).name === agg.column?.name,
+        )
         : undefined;
 
       const operator = operators.find(
@@ -322,39 +329,37 @@ export const ChartSettingFieldsPartition = ({
 
   const updatedValue = useMemo(() => {
     // Pre-aggregated pivots: just look up columns by name
-    if (!canEditColumns) {
-      return _.mapObject(value || {}, (columnNames) =>
-        columnNames
-          .map((columnName) => columns.find((col) => col.name === columnName))
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
-      );
-    }
+    return _.mapObject(value || {}, (columnNames) =>
+      columnNames
+        .map((columnName) => columns.find((col) => col.name === columnName))
+        .filter((col): col is RemappingHydratedDatasetColumn => col != null),
+    );
 
     // Unaggregated pivots: look up by name & binning in the pivot result
     // columns (aggregatedColumns), when available
-    return _.mapObject(value || {}, (partitionValue, partition) => {
-      if (partition === "values") {
-        const aggregations = partitionValue as PivotAggregation[];
-        const cols = aggregations.map((_agg, aggIndex) => {
-          return (pendingAggCols || aggregatedColumns)?.find((col) => {
-            return col?.aggregation_index === aggIndex;
-          });
-        });
-        return cols;
-      } else {
-        // For dimension partitions (rows, columns)
-        const dimensionItems = partitionValue as (
-          | string
-          | ColumnNameAndBinning
-        )[];
-        return dimensionItems
-          .map((item) => {
-            const columnName = typeof item === "string" ? item : item.name;
-            return aggregatedColumns?.find((col) => col.name === columnName);
-          })
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null);
-      }
-    });
+    //return _.mapObject(value || {}, (partitionValue, partition) => {
+    //  if (partition === "values") {
+    //    const aggregations = partitionValue as PivotAggregation[];
+    //    const cols = aggregations.map((_agg, aggIndex) => {
+    //      return (pendingAggCols || aggregatedColumns)?.find((col) => {
+    //        return col?.aggregation_index === aggIndex;
+    //      });
+    //    });
+    //    return cols;
+    //  } else {
+    //    // For dimension partitions (rows, columns)
+    //    const dimensionItems = partitionValue as (
+    //      | string
+    //      | ColumnNameAndBinning
+    //    )[];
+    //    return dimensionItems
+    //      .map((item) => {
+    //        const columnName = typeof item === "string" ? item : item.name;
+    //        return aggregatedColumns?.find((col) => col.name === columnName);
+    //      })
+    //      .filter((col): col is RemappingHydratedDatasetColumn => col != null);
+    //  }
+    //});
   }, [canEditColumns, columns, aggregatedColumns, pendingAggCols, value]);
 
   const onAddBreakout = (
@@ -377,31 +382,64 @@ export const ChartSettingFieldsPartition = ({
     });
   };
 
-  const onAddAggregation = (query: Lib.Query) => {
-    const aggs = Lib.aggregations(query, -1);
-    const aggDetails = aggs.map((agg) => {
-      const aggDisplay = Lib.displayInfo(query, -1, agg);
-      const column = Lib.aggregationColumn(query, -1, agg);
-      const bucket = column && Lib.temporalBucket(column);
-      const bucketName = bucket
-        ? Lib.displayInfo(query, 0, bucket).shortName
-        : null;
-      const columnDetails = column && {
-        name: Lib.displayInfo(query, -1, column).name,
-        binning: bucketName,
-      };
+  const onAddAggregation = useCallback(
+    async (query: Lib.Query) => {
+      await dispatch(updateQuestion(question.setQuery(query)));
 
-      return {
-        name: aggDisplay.name,
-        column: columnDetails,
-      };
-    });
 
-    onChange({
-      ...value,
-      values: aggDetails,
-    } as ColumnNameAndBinningSplitSetting);
-  };
+      const aggs = Lib.aggregations(query, -1);
+      const aggDetails = aggs.map((agg) => {
+        const aggDisplay = Lib.displayInfo(query, -1, agg);
+        //const column = Lib.aggregationColumn(query, -1, agg);
+        //const bucket = column && Lib.temporalBucket(column);
+        //const bucketName = bucket
+        //  ? Lib.displayInfo(query, 0, bucket).shortName
+        //  : null;
+        //const columnDetails = column && {
+        //  name: Lib.displayInfo(query, -1, column).name,
+        //  binning: bucketName,
+        //};
+
+        return aggDisplay.name;
+      });
+
+
+      onChange({
+        ...value,
+        values: aggDetails,
+      } as ColumnNameSplitSetting);
+    },
+    [dispatch, onChange, question, value]
+  )
+  //
+  //  (query: Lib.Query) => {
+  //await dispatch(updateQuestion(question.setQuery(query)))
+  //
+  //
+  //const aggs = Lib.aggregations(query, -1);
+  //const aggDetails = aggs.map((agg) => {
+  //  const aggDisplay = Lib.displayInfo(query, -1, agg);
+  //  const column = Lib.aggregationColumn(query, -1, agg);
+  //  const bucket = column && Lib.temporalBucket(column);
+  //  const bucketName = bucket
+  //    ? Lib.displayInfo(query, 0, bucket).shortName
+  //    : null;
+  //  const columnDetails = column && {
+  //    name: Lib.displayInfo(query, -1, column).name,
+  //    binning: bucketName,
+  //  };
+  //
+  //  return {
+  //    name: aggDisplay.name,
+  //    column: columnDetails,
+  //  };
+  //});
+  //
+  //onChange({
+  //  ...value,
+  //  values: aggDetails,
+  //} as ColumnNameAndBinningSplitSetting);
+  //};
 
   const onRemoveBreakout = (
     partition: keyof PivotTableColumnSplitSetting,
@@ -413,30 +451,39 @@ export const ChartSettingFieldsPartition = ({
     });
   };
 
-  const onRemoveAggregation = (
-    partition: keyof PivotTableColumnSplitSetting,
-    index: number,
-  ) => {
-    if (!aggregatedColumns) {
-      return;
-    }
+  const onRemoveAggregation = useCallback(
+    async (partition: keyof PivotTableColumnSplitSetting, index: number) => {
 
-    const updated = aggregatedColumns
-      .filter((col) => col.aggregation_index !== index)
-      .map((col) => {
-        // Adjust aggregation_index of columns that came after the removed index
-        if (col.aggregation_index != null && col.aggregation_index > index) {
-          return { ...col, aggregation_index: col.aggregation_index - 1 };
-        }
-        return col;
+      const query = question.query();
+
+      const removedAggName = value[partition][index];
+      const aggs = Lib.aggregations(query, -1);
+      const removed = aggs.filter((agg) => {
+        const display = Lib.displayInfo(query, -1, agg);
+        // TODO: make this robust to duplicate column names
+        return display.name === removedAggName;
       });
 
-    setPendingAggCols(updated);
-    onChange({
-      ...value,
-      [partition]: columnRemove(value[partition], index),
-    });
-  };
+      const removedQuery = Lib.removeClause(query, -1, removed[0]);
+      await dispatch(updateQuestion(question.setQuery(removedQuery)));
+
+      const updated = columns
+        .filter((col) => col.aggregation_index !== index)
+        .map((col) => {
+          // Adjust aggregation_index of columns that came after the removed index
+          if (col.aggregation_index != null && col.aggregation_index > index) {
+            return { ...col, aggregation_index: col.aggregation_index - 1 };
+          }
+          return col;
+        });
+
+      setPendingAggCols(updated);
+      onChange({
+        ...value,
+        [partition]: columnRemove(value[partition], index),
+      });
+    },
+    [columns, dispatch, onChange, question, value]);
 
   const emptyColumnMessage = canEditColumns
     ? t`Add fields here`
