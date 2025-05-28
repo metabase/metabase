@@ -787,6 +787,14 @@
                                             keys
                                             (zipmap (repeat :unrestricted)))]
               (set-table-permissions! group-or-id :perms/view-data view-data-table-perms)))
+          (when (= :perms/view-data perm-type)
+            ;; if we are setting the view data permissions to blocked update create-queries and download-results to also
+            ;; mark them as no. This conforms with the behaviour of the set-database-permissions! function
+            (let [no-permissions (-> (filter (fn [[_ value]] (= value :blocked)) table-perms)
+                                     keys
+                                     (zipmap (repeat :no)))]
+              (set-table-permissions! group-or-id :perms/create-queries no-permissions)
+              (set-table-permissions! group-or-id :perms/download-results no-permissions)))
           (if existing-db-perm
             (when (not= values #{existing-db-perm-value})
               ;; If we're setting any table permissions to a value that is different from the database-level permission,
