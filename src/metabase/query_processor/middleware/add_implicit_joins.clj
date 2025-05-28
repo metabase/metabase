@@ -86,7 +86,8 @@
                              :strategy      :left-join
                              :condition     [:= [:field
                                                  (or fk-field-name fk-field-id)
-                                                 (m/assoc-some {:base-type (:base-type fk-field)}
+                                                 (m/assoc-some nil
+                                                               :base-type (when fk-field-name (:base-type fk-field))
                                                                :join-alias fk-join-alias)]
                                              [:field pk-id {:join-alias alias-for-join}]]
                              :fk-field-id   fk-field-id}
