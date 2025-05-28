@@ -554,7 +554,7 @@
                   ((some-fn :source-query :source-table) form))
              (vary-meta (add-alias-info* form) assoc ::transformed true)
 
-             (:strategy form)
+             (and (:strategy form) (:alias form))
              (update form :alias (partial driver/escape-alias driver/*driver*))
 
              (:join-alias form)
