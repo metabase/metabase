@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
-import { ActionIcon, Box, Flex, Icon, Tabs, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import { getDashCardById, getSidebar } from "../../selectors";
 
 import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
 import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
-import { ConfigureEditableTableActions } from "./actions/ConfigureEditableTableActions";
+import { ConfigureDashcardEditableTableActions } from "./actions/ConfigureDashcardEditableTableActions";
 
 interface ConfigureEditableTableSidebarProps {
   dashboard: Dashboard;
@@ -30,23 +30,13 @@ export function ConfigureEditableTableSidebar({
     return null;
   }
 
-  const isUnsavedDashcard = dashcard.id < 0;
-
   return (
     <>
       <Sidebar data-testid="add-table-sidebar">
         <Tabs defaultValue="columns">
           <Tabs.List px="md" pt="sm">
             <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>
-            <Tabs.Tab value="filters" disabled={isUnsavedDashcard}>
-              {isUnsavedDashcard ? (
-                <Tooltip label={t`Please save the card to modify filters`}>
-                  <span>{t`Filters`}</span>
-                </Tooltip>
-              ) : (
-                t`Filters`
-              )}
-            </Tabs.Tab>
+            <Tabs.Tab value="filters">{t`Filters`}</Tabs.Tab>
             <Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>
 
             <Flex flex="1" justify="flex-end" align="center">
@@ -64,7 +54,7 @@ export function ConfigureEditableTableSidebar({
               <ConfigureEditableTableFilters dashcard={dashcard} />
             </Tabs.Panel>
             <Tabs.Panel value="actions">
-              <ConfigureEditableTableActions
+              <ConfigureDashcardEditableTableActions
                 dashboard={dashboard}
                 dashcard={dashcard}
               />

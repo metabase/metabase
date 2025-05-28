@@ -14,7 +14,12 @@ export const TableList = ({ onSelect }: TableListProps) => {
 
   const filteredTables = useMemo(() => {
     return tables
-      ?.filter(({ db }) => db?.settings?.["database-enable-table-editing"])
+      ?.filter(({ db }) => {
+        const hasDbSetting = db?.settings?.["database-enable-table-editing"];
+        const isServiceTable = db?.is_audit;
+
+        return hasDbSetting && !isServiceTable;
+      })
       .sort((a, b) => {
         // sort by db name, then table name
         const aDbName = a.db?.name || "";

@@ -6,6 +6,8 @@
   (:import
    (java.time ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (defsetting notification-thread-pool-size
   "The size of the thread pool used to send notifications."
   :default    3

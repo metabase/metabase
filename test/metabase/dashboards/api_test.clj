@@ -1795,6 +1795,60 @@
                                                             :visualization_settings {:table_id (mt/id :products)}))]
               (is (not= card-id (:card_id (first (:dashcards new-resp))))))))))))
 
+(deftest e2e-create-editable-table-with-filter-card
+  (testing "PUT /api/dashboard/:id with a placeholder for an editable table, that includes a filter.\n"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [:model/Dashboard               {dashboard-id :id}  {}]
+        (let [table-id (mt/id :venues)
+              dash-map {:tabs      [{:id   -1
+                                     :name "New tab"}]
+                        :dashcards [{:id                     -1
+                                     :size_x                 1
+                                     :size_y                 1
+                                     :col                    3
+                                     :row                    3
+                                     :dashboard_tab_id       -1
+                                     :visualization_settings {:table_id              table-id
+                                                              :initial_dataset_query
+                                                              {:query {:source-table table-id
+                                                                       :limit       [:= [:field (mt/id :venues :id) nil] 1]}}}}]}
+              url      (format "dashboard/%d" dashboard-id)
+              resp     (mt/user-http-request :rasta :put 200 url dash-map)
+              card-id  (:card_id (first (:dashcards resp)))]
+          (testing "the dashcard gets turned into something richer, that supports filtering."
+            (is (=? [{:id                     (mt/malli=? [:fn pos-int?])
+                      :size_x                 1
+                      :size_y                 1
+                      :col                    3
+                      :row                    3
+                      :card_id                int?
+                      :visualization_settings {:table_id table-id}}]
+                    (:dashcards resp))))
+          (testing "the initial query is correct"
+            (is (= {:type     :query
+                    :database (mt/id)
+                    :query    {:source-table (mt/id :venues),
+                               :limit        [:= [:field (mt/id :venues :id) nil] 1]}}
+                   (t2/select-one-fn :dataset_query :model/Card (:card_id (first (:dashcards resp)))))))
+          (testing "the dataset query setting is stripped"
+            (is (not (contains? (:visualization_settings (first (:dashcards resp))) :initial_dataset_query))))
+          (testing "the setting is ignored for existing editables"
+            (let [new-resp    (mt/user-http-request :rasta :put 200 url
+                                                    (update-in dash-map [:dashcards 0] assoc
+                                                               :card_id card-id
+                                                               :visualization_settings {:table_id (mt/id :venues)
+                                                                                        :initial_dataset_query
+                                                                                        {:source-table (mt/id :venues)
+                                                                                         :filter       [:= 0 1]}}))
+                  new-card-id (:card_id (first (:dashcards new-resp)))]
+              (is (= card-id new-card-id))
+              (is (= {:type     :query
+                      :database (mt/id)
+                      :query    {:source-table (mt/id :venues),
+                                 :limit        [:= [:field (mt/id :venues :id) nil] 1]}}
+                     (t2/select-one-fn :dataset_query :model/Card new-card-id))))))))))
+
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
     (mt/test-helpers-set-global-values!
