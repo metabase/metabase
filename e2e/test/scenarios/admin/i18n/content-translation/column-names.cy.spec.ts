@@ -11,7 +11,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-describe("scenarios > admin > localization > content translation of column names", () => {
+describe("scenarios > content translation > column names", () => {
   describe("ee", () => {
     describe("after uploading related German translations", () => {
       beforeEach(() => {

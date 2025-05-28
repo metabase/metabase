@@ -4,10 +4,8 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import {
-  maybeTranslateDisplayNames,
-  useTranslateContent,
-} from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
@@ -80,9 +78,13 @@ export function PublicOrEmbeddedQuestionView({
         floating={!titled}
       />
     ) : null;
-  const rawSeries = [{ card, data: result?.data }] as RawSeries;
+
+  const untranslatedRawSeries = [{ card, data: result?.data }] as RawSeries;
   const tc = useTranslateContent();
-  const maybeTranslatedRawSeries = maybeTranslateDisplayNames(rawSeries, tc);
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.translateSeries(
+    untranslatedRawSeries,
+    tc,
+  );
 
   return (
     <EmbedFrame
@@ -114,7 +116,7 @@ export function PublicOrEmbeddedQuestionView({
           <Visualization
             isNightMode={theme === "night"}
             error={result?.error?.toString()}
-            rawSeries={maybeTranslatedRawSeries}
+            rawSeries={rawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,
