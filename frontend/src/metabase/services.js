@@ -339,6 +339,11 @@ export function setEmbedDashboardEndpoints(token) {
   setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
 }
 
+export function setEmbedDictionaryEndpoints(token) {
+  PLUGIN_API.getContentTranslationDictionaryUrl = () =>
+    `${encodeURIComponent(token)}/api/embed/dictionary}`;
+}
+
 function GET_with(url, omitKeys) {
   return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
