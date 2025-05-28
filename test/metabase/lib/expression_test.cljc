@@ -6,12 +6,12 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
@@ -315,23 +315,46 @@
     (is (= (lib/visible-columns query)
            (lib/expressionable-columns query nil)))))
 
-(deftest ^:parallel expressionable-columns-exclude-expressions-containing-offset
-  (testing "expressionable-columns should filter out expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/expressionable-columns query -1 2)))))))
+(deftest ^:parallel expressions-cannot-contain-aggregation-functions
+  (testing "expressions should not contain aggregation function calls (#41344)"
+    (let [mp lib.tu/metadata-provider-with-metric
+          query (lib/query mp (meta/table-metadata :checkins))
+          user-id-col (meta/field-metadata :checkins :user-id)]
+      (testing "Zero arg functions"
+        (are [f] (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                                   (lib/expression query "expr" (f)))
+          lib/count
+          lib/cum-count))
+      (testing "Single arg functions"
+        (are [f] (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                                   (lib/expression query "expr" (f user-id-col)))
+          lib/avg
+          lib/distinct
+          lib/max
+          lib/median
+          lib/min
+          lib/stddev
+          lib/sum
+          lib/cum-sum
+          lib/var))
+      (testing "Special functions"
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/count-where (lib/< user-id-col 2)))))
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/distinct-where user-id-col (lib/< user-id-col 2)))))
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/percentile user-id-col 0.75))))
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/share (lib/< user-id-col 2)))))
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/sum-where user-id-col (lib/< user-id-col 2)))))
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/* 2 (lib.metadata/metric mp 1))))))
+      (testing "Nesting"
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/- (lib/* 100 (lib/count)) 42))))
+        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
+                              (lib/expression query "expr" (lib/* 100 (lib/offset user-id-col -1)))))))))
 
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
