@@ -4,11 +4,11 @@
   Currently only used for http channels."
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.validation :as validation]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]

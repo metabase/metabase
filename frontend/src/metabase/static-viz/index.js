@@ -57,13 +57,13 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
   const { columnValuesMapping } = dashcardSettings.visualization;
   const datasets = rawSeries.reduce((acc, series) => {
     if (series.card.id) {
-      acc[`card:${series.card.entity_id}`] = series;
+      acc[`card:${series.card.id}`] = series;
     }
     return acc;
   }, {});
 
   const dataSources = rawSeries.map((series) =>
-    createDataSource("card", series.card.entity_id, series.card.name),
+    createDataSource("card", series.card.id, series.card.name),
   );
 
   const columns = getVisualizationColumns(

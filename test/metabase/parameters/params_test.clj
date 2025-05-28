@@ -6,6 +6,7 @@
    [metabase.parameters.params :as params]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel wrap-field-id-if-needed-test
@@ -118,7 +119,65 @@
                                           :dimensions         []}]}
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields
-                  mt/derecordize))))))
+                  mt/derecordize)))))
+  (testing "should ignore invalid parameter mappings"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Dashboard    dashboard  {:parameters [{:id "p1" :type :number/=}
+                                                                  {:id "p2" :type :number/=}
+                                                                  {:id "p3" :type :number/=}
+                                                                  {:id "p4" :type :number/=}
+                                                                  {:id "p5" :type :string/=}
+                                                                  {:id "p6" :type :string/=}
+                                                                  {:id "p7" :type :number/=}]}
+                     :model/Card          card      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]
+                                                                                             :breakout    [$category]})}
+                     :model/DashboardCard _dashcard {:dashboard_id       (u/the-id dashboard)
+                                                     :card_id            (u/the-id card)
+                                                     :parameter_mappings [;; p1 - no :stage-number, -1 is implied, id-based ref
+                                                                          {:card_id (u/the-id card)
+                                                                           :parameter_id "p1"
+                                                                           :target  [:dimension
+                                                                                     [:field (mt/id :products :id) nil]]}
+                                                                          ;; p2 - no :stage-number, -1 is implied, name-based ref
+                                                                          {:card_id (u/the-id card)
+                                                                           :parameter_id "p2"
+                                                                           :target  [:dimension
+                                                                                     [:field "ID" {:base-type :type/BigInteger}]]}
+                                                                          ;; p3 - explicit :stage-number, id-based ref
+                                                                          {:card_id (u/the-id card)
+                                                                           :parameter_id "p3"
+                                                                           :target  [:dimension
+                                                                                     [:field (mt/id :products :id) nil]
+                                                                                     {:stage-number 0}]}
+                                                                          ;; p4 - explicit :stage-number, name-based ref
+                                                                          {:card_id (u/the-id card)
+                                                                           :parameter_id "p4"
+                                                                           :target  [:dimension
+                                                                                     [:field "ID" {:base-type :type/BigInteger}]
+                                                                                     {:stage-number 0}]}
+                                                                          ;; p5 - explicit :stage-number, post-aggregation stage
+                                                                          {:card_id (u/the-id card)
+                                                                           :parameter_id "p5"
+                                                                           :target  [:dimension
+                                                                                     [:field "CATEGORY" {:base-type :type/Text}]
+                                                                                     {:stage-number 1}]}
+                                                                          ;; p6 - explicit :stage-number, not existing stage
+                                                                          {:card_id (u/the-id card)
+                                                                           :parameter_id "p6"
+                                                                           :target  [:dimension
+                                                                                     [:field "CATEGORY" {:base-type :type/Text}]
+                                                                                     {:stage-number 2}]}]}]
+        (let [param-fields (-> (t2/hydrate dashboard :param_fields) :param_fields)]
+          (is (=? {"p1" [{:id (mt/id :products :id)}]
+                   "p2" [{:id (mt/id :products :id)}]
+                   "p3" [{:id (mt/id :products :id)}]
+                   "p4" [{:id (mt/id :products :id)}]
+                   "p5" [{:id (mt/id :products :category)}]}
+                  param-fields))
+          ;; invalid :stage-number
+          (is (not (contains? param-fields "p6")))
+          ;; no mapping
+          (is (not (contains? param-fields "p7"))))))))
 
 (deftest ^:parallel card->template-tag-test
   (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"

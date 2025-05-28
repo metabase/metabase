@@ -151,6 +151,10 @@
 ;;; |                                          Temporal Casting                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/cast-temporal-string [:starburst :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (h2x/->timestamp [:replace expr "T" " "]))
+
 (defmethod sql.qp/cast-temporal-string [:starburst :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_ _coercion-strategy expr]
   [:date_parse expr (h2x/literal "%Y%m%d%H%i%s")])

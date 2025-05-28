@@ -42,11 +42,11 @@
  [metabase.analytics.settings
 
   anon-tracking-enabled
-  anon-tracking-enabled!]
+  anon-tracking-enabled!
+  instance-creation]
 
  [metabase.analytics.snowplow
 
-  instance-creation
   track-event!]
 
  [metabase.analytics.stats

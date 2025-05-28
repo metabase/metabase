@@ -4,6 +4,7 @@
    [metabase-enterprise.llm.tasks.describe-question :refer [describe-question]]
    [metabase.analyze.query-results :as qr]
    [metabase.api.macros :as api.macros]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :post "/card/summarize"
@@ -13,8 +14,8 @@
    body :- [:map
             [:dataset                {:optional true} [:maybe :boolean]]
             [:dataset_query          ms/Map]
-            [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
-            [:parameter_mappings     {:optional true} [:maybe [:sequential ms/ParameterMapping]]]
+            [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+            [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
             [:description            {:optional true} [:maybe ms/NonBlankString]]
             [:display                ms/NonBlankString]
             [:visualization_settings ms/Map]

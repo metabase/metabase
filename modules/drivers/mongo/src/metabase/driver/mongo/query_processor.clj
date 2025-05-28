@@ -679,6 +679,11 @@
                 rvalue]}
       :day)))
 
+(defmethod ->rvalue :datetime [[_ expr]]
+  (let [rvalue (->rvalue expr)]
+    {"$dateFromString" {:dateString rvalue
+                        :onError    rvalue}}))
+
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
   {"$dateAdd" {:startDate (->rvalue inp)

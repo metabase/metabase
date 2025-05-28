@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -407,7 +408,7 @@
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
-   :coerce {:parameters [:maybe [:sequential ms/Parameter]]}})
+   :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]

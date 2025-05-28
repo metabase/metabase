@@ -172,6 +172,7 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
+  "embedding-iframe-sdk",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -223,6 +224,7 @@ export const tokenFeatures = [
   "content_verification",
   "embedding",
   "embedding_sdk",
+  "embedding_iframe_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
@@ -389,6 +391,7 @@ interface PublicSettings {
   "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
@@ -424,6 +427,7 @@ interface PublicSettings {
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "persisted-model-refresh-cron-schedule": string;
+  "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
   "session-cookies": boolean | null;
@@ -445,10 +449,10 @@ interface PublicSettings {
 }
 
 export type UserSettings = {
+  "dismissed-excel-pivot-exports-banner"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
-  "dismissed-onboarding-sidebar-link"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;

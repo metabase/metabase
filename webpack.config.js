@@ -233,6 +233,11 @@ const config = {
           : SRC_PATH + "/lib/noop",
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
+      "sdk-specific-imports": SRC_PATH + "/lib/noop",
+      "sdk-iframe-embedding-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins"
+          : SRC_PATH + "/lib/noop",
     },
   },
   cache: useFilesystemCache
@@ -289,6 +294,11 @@ const config = {
     new MiniCssExtractPlugin({
       filename: devMode ? "[name].css" : "[name].[contenthash].css",
       chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
+
+      // We use CSS modules to scope styles, so this is safe to ignore according to the docs:
+      // https://webpack.js.org/plugins/mini-css-extract-plugin/#remove-order-warnings
+      // This is needed due to app-embed-sdk importing the sdk, so the style order is different than the main app.
+      ignoreOrder: true,
     }),
     new OnScriptError(),
     new HtmlWebpackPlugin({

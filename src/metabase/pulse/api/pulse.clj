@@ -9,10 +9,8 @@
    [hiccup.page :refer [html5]]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common]
-   [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
@@ -24,6 +22,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
@@ -248,7 +247,7 @@
   (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.slack/slack-configured?))
-                       (assoc-in [:email :configured] (email/email-configured?))
+                       (assoc-in [:email :configured] (channel.settings/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
                  (perms/sandboxed-or-impersonated-user?)

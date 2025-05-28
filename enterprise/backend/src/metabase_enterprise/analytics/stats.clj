@@ -1,8 +1,8 @@
 (ns metabase-enterprise.analytics.stats
   (:require
-   [metabase-enterprise.advanced-config.models.notification :as advanced-config.models.notification]
+   [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.scim.core :as scim]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [toucan2.core :as t2]))
@@ -27,4 +27,4 @@
     :enabled   (t2/exists? :model/GroupTableAccessPolicy)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
-    :enabled   (boolean (some? (advanced-config.models.notification/subscription-allowed-domains)))}])
+    :enabled   (boolean (some? (advanced-config.settings/subscription-allowed-domains)))}])

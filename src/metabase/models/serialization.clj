@@ -1502,6 +1502,40 @@
         (update-keys #(-> % json/decode export-visualizations json/encode))
         (update-vals export-viz-click-behavior))))
 
+(defn- export-card-dimension-ref
+  [s]
+  (if-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:(\d+)_name$" s))]
+    (str "$_card:" (*export-fk* (parse-long card-id) :model/Card) "_name")
+    s))
+
+(defn- export-visualizer-source-id
+  [source-id]
+  (when (string? source-id)
+    (if-let [card-id (second (re-matches #"^card:(\d+)$" source-id))]
+      (str "card:" (*export-fk* (parse-long card-id) :model/Card))
+      source-id)))
+
+(defn export-visualizer-settings
+  "Update embedded card ids to entity ids in visualizer dashcard settings"
+  [settings]
+  (m/update-existing-in
+   settings
+   [:visualization :columnValuesMapping]
+   (fn [mapping]
+     (into {}
+           (for [[k cols] mapping]
+             (let [updated-cols (cond
+                                  ;; e.g. [{:sourceId "card:119"} ...]
+                                  (and (coll? cols) (map? (first cols)))
+                                  (mapv #(update % :sourceId export-visualizer-source-id) cols)
+
+                                  ;; e.g. ["$_card:119_name"] for funnel dimensions
+                                  (and (coll? cols) (string? (first cols)))
+                                  (mapv export-card-dimension-ref cols)
+
+                                  :else cols)]
+               [k updated-cols]))))))
+
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
   [settings]
@@ -1510,6 +1544,7 @@
         export-visualizations
         export-viz-link-card
         export-viz-click-behavior
+        export-visualizer-settings
         export-pivot-table
         (update :column_settings export-column-settings))))
 
@@ -1550,6 +1585,40 @@
         (update-keys #(-> % name json/decode import-visualizations json/encode))
         (update-vals import-viz-click-behavior))))
 
+(defn- import-card-dimension-ref
+  [s]
+  (if-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:([A-Za-z0-9_\-]{21})_name$" s))]
+    (str "$_card:" (*import-fk* card-id :model/Card) "_name")
+    s))
+
+(defn- import-visualizer-source-id
+  [source-id]
+  (when (string? source-id)
+    (if-let [card-entity-id (second (re-matches #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
+      (str "card:" (*import-fk* card-entity-id :model/Card))
+      source-id)))
+
+(defn import-visualizer-settings
+  "Update embedded entity ids to card ids in visualizer dashcard settings"
+  [settings]
+  (m/update-existing-in
+   settings
+   [:visualization :columnValuesMapping]
+   (fn [mapping]
+     (into {}
+           (for [[k cols] mapping]
+             (let [updated-cols (cond
+                                   ;; e.g. [{:sourceId "card:..."} ...]
+                                  (and (coll? cols) (map? (first cols)))
+                                  (mapv #(update % :sourceId import-visualizer-source-id) cols)
+
+                                   ;; e.g. ["$_card:<id>_name"] for funnel dimensions
+                                  (and (coll? cols) (string? (first cols)))
+                                  (mapv import-card-dimension-ref cols)
+
+                                  :else cols)]
+               [k updated-cols]))))))
+
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
@@ -1559,6 +1628,7 @@
         import-visualizations
         import-viz-link-card
         import-viz-click-behavior
+        import-visualizer-settings
         import-pivot-table
         (update :column_settings import-column-settings))))
 

@@ -3,9 +3,8 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.eid-translation.impl :as eid-translation]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.eid-translation.settings :as eid-translation.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -67,25 +66,12 @@
 
 ;; -------------------- Entity Id Translation Analytics --------------------
 
-;;; TODO -- I think most of this stuff should get moved into the `eid-translation` module
-
-;;; TODO -- move into a `.settings` namespace
-(defsetting entity-id-translation-counter
-  (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
-  :encryption :no
-  :visibility :internal
-  :export?    false
-  :audit      :never
-  :type       :json
-  :default    eid-translation/default-counter
-  :doc false)
-
 (mu/defn- update-translation-count!
   "Update the entity-id translation counter with the results of a batch of entity-id translations."
   [results :- [:sequential eid-translation/Status]]
   (let [processed-result (frequencies results)]
-    (entity-id-translation-counter!
-     (merge-with + processed-result (entity-id-translation-counter)))))
+    (eid-translation.settings/entity-id-translation-counter!
+     (merge-with + processed-result (eid-translation.settings/entity-id-translation-counter)))))
 
 (mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
                                                     ;; We want to pass incorrectly formatted entity-ids through here,

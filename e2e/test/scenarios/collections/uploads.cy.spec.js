@@ -77,7 +77,9 @@ H.describeWithSnowplow(
         "Ensure that table is visible in admin without refreshing (metabase#38041)",
       );
 
-      cy.findByTestId("app-bar").button(/gear/).click();
+      cy.findByTestId("app-bar")
+        .findByRole("button", { name: "Settings" })
+        .click();
       H.popover().findByText("Admin settings").click();
 
       cy.findByRole("link", { name: "Table Metadata" }).click();

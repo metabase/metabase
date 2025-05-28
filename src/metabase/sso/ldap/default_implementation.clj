@@ -118,7 +118,7 @@
 
 (defenterprise-schema find-user :- [:maybe UserInfo]
   "Get user information for the supplied username."
-  metabase-enterprise.enhancements.integrations.ldap
+  metabase-enterprise.sso.integrations.ldap
   [ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
    username        :- ms/NonBlankString
    settings        :- LDAPSettings]
@@ -147,7 +147,7 @@
 
 (defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf :model/User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
-  metabase-enterprise.enhancements.integrations.ldap
+  metabase-enterprise.sso.integrations.ldap
   [{:keys [first-name last-name email groups]} :- UserInfo
    {:keys [sync-groups?], :as settings}        :- LDAPSettings]
   (let [user     (t2/select-one [:model/User :id :last_login :first_name :last_name :is_active]

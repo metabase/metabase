@@ -27,6 +27,10 @@
 (mr/def ::retry-overrides
   (mut/optional-keys [:ref ::retry-config]))
 
+;;; these kondo warnings are ignored for now because I'm planning on moving this namespace out of `util` to eliminate
+;;; the dependency of `util` of `settings` -- will fix them after this namespace gets moved. -- Cam
+
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-max-attempts
   (deferred-tru "The maximum number of attempts for an event.")
   :type :integer
@@ -34,21 +38,25 @@
              1
              7))
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds.")
   :type :integer
   :default 500)
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-multiplier
   (deferred-tru "The delay multiplier between attempts.")
   :type :double
   :default 2.0)
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-randomization-factor
   (deferred-tru "The randomization factor of the retry delay.")
   :type :double
   :default 0.1)
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-max-interval-millis
   (deferred-tru "The maximum delay between attempts.")
   :type :integer

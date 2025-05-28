@@ -1,5 +1,7 @@
 import { type Dispatch, configureStore } from "@reduxjs/toolkit";
 
+import { reducer as embeddingDataPickerReducer } from "../embedding-data-picker";
+
 import {
   DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
   embed as embedReducer,
@@ -8,20 +10,20 @@ import {
 
 describe("embed reducer", () => {
   describe("setInitialUrlOptions", () => {
-    it("should set default options", () => {
+    it("should set default options", async () => {
       const store = createMockStore();
 
-      store.dispatch(setInitialUrlOptions({ search: "" }));
+      await store.dispatch(setInitialUrlOptions({ search: "" }));
 
       expect(store.getState().embed.options).toEqual(
         DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
       );
     });
 
-    it("should set options from search", () => {
+    it("should set options from search", async () => {
       const store = createMockStore();
 
-      store.dispatch(
+      await store.dispatch(
         setInitialUrlOptions({ search: "top_nav=false&new_button=true" }),
       );
 
@@ -52,7 +54,7 @@ describe("embed reducer", () => {
         );
 
         // The default value is `["model", "table"]`, so we know these 2 types are set correctly.
-        expect(store.getState().embed.options.entity_types).toEqual([
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "table",
           "model",
         ]);
@@ -67,7 +69,9 @@ describe("embed reducer", () => {
           }),
         );
 
-        expect(store.getState().embed.options.entity_types).toEqual(["model"]);
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
+          "model",
+        ]);
       });
 
       it('should accept comma separated "entity_types" option', () => {
@@ -79,7 +83,7 @@ describe("embed reducer", () => {
           }),
         );
 
-        expect(store.getState().embed.options.entity_types).toEqual([
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "model",
           "table",
         ]);
@@ -94,7 +98,7 @@ describe("embed reducer", () => {
           }),
         );
 
-        expect(store.getState().embed.options.entity_types).toEqual([
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "table",
           "model",
         ]);
@@ -110,7 +114,7 @@ describe("embed reducer", () => {
         );
 
         // Default value
-        expect(store.getState().embed.options.entity_types).toEqual([
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "model",
           "table",
         ]);
@@ -126,7 +130,7 @@ describe("embed reducer", () => {
         );
 
         // Default value
-        expect(store.getState().embed.options.entity_types).toEqual([
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "model",
           "table",
         ]);
@@ -138,7 +142,7 @@ describe("embed reducer", () => {
         );
 
         // Default value
-        expect(store.getState().embed.options.entity_types).toEqual([
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "model",
           "table",
         ]);
@@ -154,7 +158,9 @@ describe("embed reducer", () => {
         );
 
         // Default value
-        expect(store.getState().embed.options.entity_types).toEqual(["table"]);
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
+          "table",
+        ]);
       });
     });
   });
@@ -162,7 +168,10 @@ describe("embed reducer", () => {
 
 const createMockStore = () => {
   const store = configureStore({
-    reducer: { embed: embedReducer },
+    reducer: {
+      embed: embedReducer,
+      embeddingDataPicker: embeddingDataPickerReducer,
+    },
   });
   return store as typeof store & { dispatch: Dispatch };
 };

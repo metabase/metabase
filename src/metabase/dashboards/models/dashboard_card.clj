@@ -33,6 +33,13 @@
           :visualization_settings {}}
          dashcard))
 
+;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
+(t2/define-after-select :model/DashboardCard
+  [dashcard]
+  (if (contains? dashcard :visualization_settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    dashcard))
+
 (declare series)
 
 ;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
@@ -88,7 +95,7 @@
           dashcard-id->series (when (seq dashcard-ids)
                                 (as-> (t2/select
                                        [:model/Card :id :name :description :display :dataset_query :type :database_id
-                                        :visualization_settings :collection_id :card_schema :series.dashboardcard_id :entity_id]
+                                        :visualization_settings :collection_id :card_schema :series.dashboardcard_id]
                                        {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
                                         :where     [:in :series.dashboardcard_id dashcard-ids]
                                         :order-by  [[:series.position :asc]]}) series

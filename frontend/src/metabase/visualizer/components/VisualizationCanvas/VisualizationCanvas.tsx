@@ -2,6 +2,8 @@ import produce from "immer";
 import { useState } from "react";
 import { t } from "ttag";
 
+import metabot from "assets/img/metabot-96x96.svg";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
@@ -9,8 +11,11 @@ import {
   Center,
   Flex,
   Icon,
+  Image,
   Loader,
+  Stack,
   Text,
+  Title,
   Tooltip,
 } from "metabase/ui";
 import { isCartesianChart } from "metabase/visualizations";
@@ -27,7 +32,6 @@ import { useVisualizerUi } from "../VisualizerUiContext";
 
 import { HorizontalWell } from "./HorizontalWell";
 import { ScatterFloatingWell } from "./ScatterFloatingWell";
-import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
 import S from "./VisualizationCanvas.module.css";
 
@@ -64,7 +68,14 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
   if (!display && !isLoading) {
     return (
       <Center h="100%" w="100%" mx="auto" className={className}>
-        <StartFromViz />
+        <Flex direction="column" align="center" gap={12}>
+          <Image src={metabot} mb={10} h={96} w={96} />
+          <Title size="h3" c="text">{t`Start by selecting a dataset`}</Title>
+          <Title
+            size="h5"
+            c="text-light"
+          >{t`Find something to visualize in the column on the left.`}</Title>
+        </Flex>
       </Center>
     );
   }
@@ -106,7 +117,17 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           style={{ gridArea: "bottom-left" }}
         >
           <Tooltip label={t`View as table`}>
-            <ActionIcon onClick={() => setTabularPreviewOpen(true)}>
+            <ActionIcon
+              data-testid="visualizer-view-as-table-button"
+              onClick={() => {
+                trackSimpleEvent({
+                  event: "visualizer_view_as_table_clicked",
+                  triggered_from: "visualizer-modal",
+                });
+
+                setTabularPreviewOpen(true);
+              }}
+            >
               <Icon name="table" />
             </ActionIcon>
           </Tooltip>
@@ -124,7 +145,12 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           className={`${S.SwapAffordance} ${isSwapAffordanceVisible ? S.visible : ""}`}
         >
           <Center className={S.SwapAffordanceIcon}>
-            <Icon name="sync" />
+            <Stack align="center" gap="xs" p="xs">
+              <Icon name="sync" />
+              <Text c="white" size="sm">
+                {t`Replace`}
+              </Text>
+            </Stack>
           </Center>
         </Center>
       </Box>

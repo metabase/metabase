@@ -19,10 +19,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -776,8 +774,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
             (mt/with-temp [:model/Collection collection {}
                            :model/Card       card-1 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
@@ -799,7 +797,7 @@
                              (mi/can-read? object)))))))
 
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
-                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/with-test-user :rasta
                   (doseq [[object-name object] {"Collection" collection
                                                 "Card 1"     card-1
@@ -841,36 +839,36 @@
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
         (mt/with-temp [:model/Collection source-card-collection {}
                        :model/Collection dest-card-collection   {}]
-          (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+          (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
 
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
           (mt/with-temp [:model/Collection dest-card-collection]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             (mt/with-temp [:model/Collection source-card-collection]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 

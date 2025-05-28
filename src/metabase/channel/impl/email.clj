@@ -11,6 +11,7 @@
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
@@ -44,7 +45,7 @@
                                  :message      message
                                  :bcc?         (if recipient-type
                                                  (= :bcc recipient-type)
-                                                 (email/bcc-enabled?))}))
+                                                 (channel.settings/bcc-enabled?))}))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Render Utils                                             ;;

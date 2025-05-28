@@ -1,3 +1,4 @@
+const { H } = cy;
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -6,6 +7,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  assertSdkNotebookEditorUsable,
   createQuestion,
   entityPickerModal,
   entityPickerModalTab,
@@ -36,24 +38,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       </Flex>,
     );
 
-    // Wait until the entity picker modal is visible
-    getSdkRoot().contains("Pick your starting data");
-
-    popover().within(() => {
-      cy.findByText("Orders").click();
-    });
+    assertSdkNotebookEditorUsable();
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should not show a loading indicator again as the question has not changed (metabase#47564)
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      // Should show a visualization after clicking "Visualize"
-      // and should not show an error message (metabase#55398)
-      cy.findByText("Question not found").should("not.exist");
-      cy.findByText("110.93").should("be.visible"); // table data
-
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
     });
@@ -153,5 +140,65 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     // The question title's header should be updated.
     getSdkRoot().contains("My Orders");
+  });
+
+  it("should respect `entityTypes` prop", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+    cy.intercept("POST", "/api/card").as("createCard");
+
+    const MODEL_COUNT = 14;
+    const TABLE_COUNT = 4;
+
+    cy.log('1. `entityTypes` = ["table"]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" entityTypes={["table"]} />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Orders Model" }).should("not.exist");
+      cy.findAllByRole("link").should("have.length", TABLE_COUNT);
+    });
+
+    cy.log('2. `entityTypes` = ["model"]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" entityTypes={["model"]} />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("not.exist");
+      cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      cy.findAllByRole("link").should("have.length", MODEL_COUNT);
+    });
+
+    cy.log('3. `entityTypes` = ["model", "table]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["model", "table"]}
+        />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
+    });
   });
 });
