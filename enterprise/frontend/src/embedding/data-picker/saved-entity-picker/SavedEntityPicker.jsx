@@ -46,6 +46,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
 };
 
 function SavedEntityPicker({
+  type,
   onBack,
   onSelect,
   collections,
@@ -56,7 +57,7 @@ function SavedEntityPicker({
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
-    const modelFilter = (model) => CARD_INFO.model.model === model;
+    const modelFilter = (model) => CARD_INFO[type].model === model;
 
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -89,7 +90,7 @@ function SavedEntityPicker({
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
       ...buildCollectionTree(preparedCollections, modelFilter),
     ];
-  }, [collections, rootCollection, currentUser]);
+  }, [collections, rootCollection, currentUser, type]);
 
   const initialCollection = useMemo(
     () => findCollectionById(collectionTree, collectionId) ?? collectionTree[0],
@@ -116,7 +117,7 @@ function SavedEntityPicker({
           data-testid="saved-entity-back-navigation"
         >
           <Icon name="chevronleft" className={CS.mr1} />
-          {CARD_INFO.model.title}
+          {CARD_INFO[type].title}
         </a>
         <Box m="0.5rem 0" data-testid="saved-entity-collection-tree">
           <Tree
@@ -127,6 +128,7 @@ function SavedEntityPicker({
         </Box>
       </Box>
       <SavedEntityList
+        type={type}
         collection={selectedCollection}
         selectedId={tableId}
         databaseId={databaseId}

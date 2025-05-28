@@ -16,6 +16,7 @@ import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
+  type: "model" | "question";
   selectedId: string;
   databaseId: DatabaseId;
   collection?: Collection;
@@ -23,6 +24,7 @@ interface SavedEntityListProps {
 }
 
 const SavedEntityList = ({
+  type,
   selectedId,
   databaseId,
   collection,
@@ -40,7 +42,7 @@ const SavedEntityList = ({
     collection && !isVirtualCollection
       ? {
           id: collection.id,
-          models: [CARD_INFO.model.model],
+          models: [CARD_INFO[type].model],
           sort_column: "name",
           sort_direction: SortDirection.Asc,
         }
@@ -77,7 +79,7 @@ const SavedEntityList = ({
                   size="small"
                   name={name}
                   icon={{
-                    name: CARD_INFO.model.icon,
+                    name: CARD_INFO[type].icon,
                     size: 16,
                   }}
                   onSelect={() => onSelect(virtualTableId)}

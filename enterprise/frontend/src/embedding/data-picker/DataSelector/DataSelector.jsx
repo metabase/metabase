@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -82,43 +81,6 @@ export class UnconnectedDataSelector extends Component {
     };
   }
 
-  static propTypes = {
-    selectedDataBucketId: PropTypes.string,
-    selectedDatabaseId: PropTypes.number,
-    selectedSchemaId: PropTypes.string,
-    selectedTableId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    databases: PropTypes.array.isRequired,
-    setDatabaseFn: PropTypes.func,
-    setFieldFn: PropTypes.func,
-    setSourceTableFn: PropTypes.func,
-    hideSingleSchema: PropTypes.bool,
-    hideSingleDatabase: PropTypes.bool,
-    useOnlyAvailableDatabase: PropTypes.bool,
-    useOnlyAvailableSchema: PropTypes.bool,
-    isInitiallyOpen: PropTypes.bool,
-    isQuerySourceModel: PropTypes.bool,
-    tableFilter: PropTypes.func,
-    canChangeDatabase: PropTypes.bool,
-    containerClassName: PropTypes.string,
-    canSelectModel: PropTypes.bool,
-    canSelectTable: PropTypes.bool,
-
-    // from search entity list loader
-    allError: PropTypes.bool,
-    allFetched: PropTypes.bool,
-    allLoaded: PropTypes.bool,
-    allLoading: PropTypes.bool,
-    loaded: PropTypes.bool,
-    loading: PropTypes.bool,
-    fetched: PropTypes.bool,
-    fetch: PropTypes.func,
-    create: PropTypes.func,
-    update: PropTypes.func,
-    delete: PropTypes.func,
-    reload: PropTypes.func,
-    list: PropTypes.arrayOf(PropTypes.object),
-  };
-
   static defaultProps = {
     isInitiallyOpen: false,
     useOnlyAvailableDatabase: true,
@@ -129,8 +91,6 @@ export class UnconnectedDataSelector extends Component {
     hasTriggerExpandControl: true,
     isPopover: true,
     isMantine: false,
-    canSelectModel: true,
-    canSelectTable: true,
   };
 
   isPopoverOpen() {
@@ -333,6 +293,17 @@ export class UnconnectedDataSelector extends Component {
     return this.props.loading;
   };
 
+  getCardType() {
+    const { selectedDataBucketId, savedEntityType } = this.state;
+    switch (true) {
+      case selectedDataBucketId === DATA_BUCKET.MODELS ||
+        savedEntityType === "model":
+        return "model";
+      default:
+        return "question";
+    }
+  }
+
   hasModels = () => {
     const { availableModels, canSelectModel, loaded } = this.props;
     return loaded && canSelectModel && availableModels.includes("dataset");
@@ -341,6 +312,14 @@ export class UnconnectedDataSelector extends Component {
   hasUsableModels = () => {
     // As models are actually saved questions, nested queries must be enabled
     return this.hasModels() && this.props.hasNestedQueriesEnabled;
+  };
+
+  hasSavedQuestions = () => {
+    const { canSelectQuestion } = this.props;
+    return (
+      this.state.databases.some((database) => database.is_saved_questions) &&
+      canSelectQuestion
+    );
   };
 
   isJoinStep() {
@@ -363,7 +342,8 @@ export class UnconnectedDataSelector extends Component {
   async hydrateActiveStep() {
     if (
       this.isSavedEntitySelected() ||
-      this.state.selectedDataBucketId === DATA_BUCKET.MODELS
+      this.state.selectedDataBucketId === DATA_BUCKET.MODELS ||
+      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
     ) {
       await this.switchToStep(DATABASE_STEP);
     } else if (
@@ -388,7 +368,7 @@ export class UnconnectedDataSelector extends Component {
         // query source is a table
         await this.switchToStep(SCHEMA_STEP);
       }
-    } else if (!this.hasUsableModels()) {
+    } else if (!this.hasUsableModels() && !this.hasSavedQuestions()) {
       await this.switchToStep(DATABASE_STEP);
     } else {
       await this.switchToStep(DATA_BUCKET_STEP);
@@ -458,8 +438,12 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
-    // data bucket step doesn't make a lot of sense when there're no models
-    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableModels()) {
+    // data bucket step doesn't make a lot of sense when there're no models or saved questions
+    if (
+      steps[index] === DATA_BUCKET_STEP &&
+      !this.hasUsableModels() &&
+      !this.hasSavedQuestions()
+    ) {
       return null;
     }
 
@@ -695,6 +679,12 @@ export class UnconnectedDataSelector extends Component {
     if (selectedDataBucketId === DATA_BUCKET.MODELS || this.hasUsableModels()) {
       this.previousStep();
     }
+    if (
+      selectedDataBucketId === DATA_BUCKET.SAVED_QUESTION ||
+      this.hasSavedQuestions()
+    ) {
+      this.previousStep();
+    }
     this.setState({ isSavedEntityPickerShown: false, savedEntityType: null });
   };
 
@@ -706,7 +696,7 @@ export class UnconnectedDataSelector extends Component {
     const hasBackButton =
       hasPreviousStep &&
       steps.includes(DATA_BUCKET_STEP) &&
-      this.hasUsableModels();
+      (this.hasUsableModels() || this.hasSavedQuestions());
 
     const props = {
       ...this.state,
@@ -733,6 +723,7 @@ export class UnconnectedDataSelector extends Component {
               dataTypes={getDataTypes({
                 hasModels: this.hasModels(),
                 hasTables: this.props.canSelectTable,
+                hasSavedQuestions: this.hasSavedQuestions(),
                 hasNestedQueriesEnabled,
               })}
               {...props}
@@ -809,6 +800,7 @@ export class UnconnectedDataSelector extends Component {
         return (
           <SavedEntityPicker
             collectionId={selectedCollectionId}
+            type={this.getCardType()}
             tableId={selectedTable?.id}
             databaseId={currentDatabaseId}
             onSelect={this.handleSavedEntitySelect}

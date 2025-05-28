@@ -112,6 +112,7 @@ export function EmbeddingDataPicker({
       }
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
+      canSelectQuestion={entityTypes.includes("question")}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}
