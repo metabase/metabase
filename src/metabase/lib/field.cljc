@@ -7,6 +7,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -179,7 +180,8 @@
    stage-number
    metadata
    [_tag {source-uuid :lib/uuid
-          :keys [base-type binning effective-type ident join-alias source-field source-field-join-alias temporal-unit]
+          :keys [base-type binning effective-type ident join-alias source-field source-field-name
+                 source-field-join-alias temporal-unit]
           :as opts}
     :as field-ref]]
   (let [metadata (merge
@@ -201,6 +203,7 @@
       source-field            (-> (assoc :fk-field-id source-field)
                                   (update :ident lib.metadata.ident/implicitly-joined-ident
                                           (:ident (lib.metadata/field query source-field))))
+      source-field-name       (assoc :fk-field-name source-field-name)
       source-field-join-alias (assoc :fk-join-alias source-field-join-alias)
       join-alias              (-> (lib.join/with-join-alias join-alias)
                                   (update :ident lib.metadata.ident/explicitly-joined-ident
@@ -456,7 +459,7 @@
 
 (defn- column-metadata->field-ref
   [metadata]
-  (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
+  (let [inherited-column? (lib.field.util/inherited-column? metadata)
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}
@@ -486,6 +489,9 @@
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id})
+                                 (when-let [source-field-name (when-not inherited-column?
+                                                                (:fk-field-name metadata))]
+                                   {:source-field-name source-field-name})
                                  (when-let [source-field-join-alias (when-not inherited-column?
                                                                       (:fk-join-alias metadata))]
                                    {:source-field-join-alias source-field-join-alias}))
