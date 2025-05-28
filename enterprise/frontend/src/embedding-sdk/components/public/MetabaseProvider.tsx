@@ -159,6 +159,7 @@ export const MetabaseProviderInternal = ({
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
             <LocaleProvider
               locale={locale || instanceLocale}
+              shouldWaitForLocale
               lazyLoadDateLocales={lazyLoadDateLocales}
             >
               {children}
