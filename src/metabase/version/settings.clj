@@ -1,6 +1,6 @@
 (ns metabase.version.settings
   (:require
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]

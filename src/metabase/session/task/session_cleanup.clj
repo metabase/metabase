@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.task.core :as task]
    [toucan2.core :as t2]))

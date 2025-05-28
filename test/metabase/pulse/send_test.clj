@@ -9,12 +9,10 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.render.js.svg]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -326,7 +324,7 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-temporary-setting-values [limit/attachment-row-limit 30]
+        (mt/with-temporary-setting-values [attachment-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert

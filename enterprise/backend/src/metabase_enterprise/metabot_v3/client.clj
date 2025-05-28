@@ -6,27 +6,18 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
-
-(defsetting ai-proxy-base-url
-  (deferred-tru "URL for the a AI Proxy service")
-  :type       :string
-  :encryption :no
-  :default    "http://localhost:8000"
-  :visibility :internal
-  :export?    false)
 
 (def ^:dynamic ^:private *debug* false)
 
@@ -69,25 +60,25 @@
         (deliver response-status (some-> <> :status))))))
 
 (defn- agent-v2-endpoint-url []
-  (str (ai-proxy-base-url) "/v2/agent"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent"))
 
 (defn- metric-selection-endpoint-url []
-  (str (ai-proxy-base-url) "/v1/select-metric"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/select-metric"))
 
 (defn- find-outliers-endpoint-url []
-  (str (ai-proxy-base-url) "/v1/find-outliers"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/find-outliers"))
 
 (defn- fix-sql-endpoint []
-  (str (ai-proxy-base-url) "/v1/sql/fix"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/sql/fix"))
 
 (defn- generate-sql-endpoint []
-  (str (ai-proxy-base-url) "/v1/sql/generate"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/sql/generate"))
 
 (defn- analyze-chart-endpoint []
-  (str (ai-proxy-base-url) "/v1/analyze/chart/"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/chart"))
 
 (defn- analyze-dashboard-endpoint []
-  (str (ai-proxy-base-url) "/v1/analyze/dashboard/"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/dashboard"))
 
 (mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a V2 request to the AI Proxy."

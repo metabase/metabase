@@ -5,8 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.email :as email]
-   [metabase.config :as config]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -63,7 +63,7 @@
 
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
-    (if-not (email/email-configured?)
+    (if-not (channel.settings/email-configured?)
       (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/insert-new-user! user)
         (user/set-permissions-groups! <> [(perms/all-users-group) (perms/admin-group)])

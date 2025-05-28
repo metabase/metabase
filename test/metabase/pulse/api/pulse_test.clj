@@ -4,12 +4,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.response :as api.response]
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
-   [metabase.http-client :as client]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -19,9 +19,9 @@
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.queries.api.card-test :as api.card-test]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.http-client :as client]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -97,8 +97,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body request/response-unauthentic) (client/client :get 401 "pulse")))
-  (is (= (:body request/response-unauthentic) (client/client :put 401 "pulse/13"))))
+  (is (= (:body api.response/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body api.response/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/pulse                                                 |

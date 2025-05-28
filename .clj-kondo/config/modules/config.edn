@@ -35,7 +35,8 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api
-           metabase.actions.core}
+           metabase.actions.core
+           metabase.actions.init}
    :uses #{analytics
            api
            collections
@@ -44,6 +45,8 @@
            lib
            model-persistence
            models
+           permissions
+           public-sharing
            queries
            query-processor
            search
@@ -81,6 +84,7 @@
            internal-stats
            lib-be
            models
+           permissions
            premium-features
            session
            settings
@@ -101,30 +105,24 @@
            sync
            util}}
 
+  ;; TODO -- consolidate these into a `.core` API namespace.
   api
-  {:api #{metabase.api.auth
-          metabase.api.common
-          metabase.api.common.validation
+  {:api #{metabase.api.common
+          metabase.api.common.internal
           metabase.api.docs
-          metabase.api.logger
+          metabase.api.init
           metabase.api.macros
           metabase.api.open-api
+          metabase.api.response
           metabase.api.routes.common
+          metabase.api.settings
           metabase.api.util
           metabase.api.util.handlers}
-   :uses #{analytics
-           api-routes
-           classloader
-           config
-           embedding
+   :uses #{config
            events
-           logger
            models
-           premium-features
-           server
            settings
-           util
-           enterprise/advanced-permissions}}
+           util}}
 
   api-keys
   {:api  #{metabase.api-keys.api
@@ -142,14 +140,14 @@
    :uses :any}
 
   app-db
-  {:api  #{metabase.app-db.core
-           metabase.app-db.query
+  {:api  #{metabase.app-db.cluster-lock ; TODO FIXME
+           metabase.app-db.core
+           metabase.app-db.init
            metabase.app-db.setup}
    :uses #{auth-provider
            classloader
            config
            connection-pool
-           driver
            task
            util}}
 
@@ -170,6 +168,13 @@
   {:api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
 
+  batch-processing
+  {:api  #{metabase.batch-processing.core
+           metabase.batch-processing.init}
+   :uses #{app-db
+           settings
+           util}}
+
   bookmarks
   {:api  #{metabase.bookmarks.api}
    :uses #{api
@@ -185,6 +190,7 @@
            app-db
            config
            driver
+           permissions
            premium-features
            settings
            util}}
@@ -213,7 +219,8 @@
            metabase.channel.render.core
            metabase.channel.settings
            metabase.channel.slack
-           metabase.channel.template.core}
+           metabase.channel.template.core
+           metabase.channel.urls}
    :uses #{analytics
            api
            app-db
@@ -266,8 +273,8 @@
            util}}
 
   cmd
-  {:api  #{metabase.cmd
-           metabase.cmd.copy
+  {:api  #{metabase.cmd.copy
+           metabase.cmd.core
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
@@ -308,7 +315,7 @@
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
-  {:api  #{metabase.config}
+  {:api  #{metabase.config.core}
    :uses #{}}
 
   ;; this is not actually a real module, but comes from one of our libraries.
@@ -322,6 +329,7 @@
 
   dashboards
   {:api  #{metabase.dashboards.api
+           metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
@@ -334,6 +342,7 @@
            channel
            collections
            config
+           embedding
            events
            lib
            lib-be
@@ -343,6 +352,7 @@
            public-sharing
            pulse
            queries
+           query-permissions
            query-processor
            request
            revisions
@@ -369,6 +379,7 @@
           metabase.driver.init
           metabase.driver.mysql
           metabase.driver.postgres
+          metabase.driver.settings
           metabase.driver.sql
           metabase.driver.sql-jdbc.connection
           metabase.driver.sql-jdbc.execute
@@ -394,9 +405,7 @@
            lib-be
            logger
            models
-           notification
            premium-features
-           pulse
            query-processor
            secrets
            settings
@@ -409,16 +418,17 @@
 
   eid-translation
   {:api  #{metabase.eid-translation.api
-           metabase.eid-translation.core}
+           metabase.eid-translation.core
+           metabase.eid-translation.init}
    :uses #{api
            settings
            util}}
 
   embedding
   {:api  #{metabase.embedding.api
-           metabase.embedding.app-origins-sdk
            metabase.embedding.init
-           metabase.embedding.settings}
+           metabase.embedding.settings
+           metabase.embedding.validation}
    :uses #{analytics
            api
            config
@@ -443,7 +453,7 @@
            util}}
 
   formatter
-  {:api  #{metabase.formatter}
+  {:api  #{metabase.formatter.core}
    :uses #{appearance
            models
            system
@@ -455,6 +465,7 @@
   {:api  #{metabase.geojson.api
            metabase.geojson.init}
    :uses #{api
+           permissions
            settings
            util}}
 
@@ -498,6 +509,7 @@
           metabase.lib.field
           metabase.lib.filter
           metabase.lib.ident
+          metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
           metabase.lib.metadata.cached-provider
@@ -539,14 +551,18 @@
    :uses #{lib
            models
            settings
-           task
            util}}
 
   logger
-  {:api  #{metabase.logger
+  {:api  #{metabase.logger.api
+           metabase.logger.core
            metabase.logger.init}
-   :uses #{classloader
-           config}}
+   :uses #{analytics
+           api
+           classloader
+           config
+           permissions
+           util}}
 
   login-history
   {:api #{metabase.login-history.api
@@ -569,6 +585,7 @@
            events
            lib
            models
+           permissions
            premium-features
            settings
            queries
@@ -644,6 +661,7 @@
            metabase.parameters.field
            metabase.parameters.init
            metabase.parameters.params
+           metabase.parameters.schema
            metabase.parameters.shared}
    :uses #{api
            app-db
@@ -662,6 +680,7 @@
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
+           metabase.permissions.init
            ;; TODO -- move these into the API namespace.
            metabase.permissions.models.application-permissions-revision
            metabase.permissions.models.collection-permission-graph-revision
@@ -669,22 +688,20 @@
            metabase.permissions.models.data-permissions
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
-           metabase.permissions.models.query.permissions
-           metabase.permissions.util}
+           metabase.permissions.path
+           metabase.permissions.util
+           metabase.permissions.validation}
    :uses #{api
            app-db
            audit-app
            collections
            config
-           legacy-mbql
-           lib
            models
            premium-features
-           query-processor
            request
-           server
            settings
-           util}}
+           util
+           enterprise/advanced-permissions}}
 
   pivot
   {:api #{metabase.pivot.core}
@@ -727,7 +744,8 @@
   public-sharing
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
-           metabase.public-sharing.init}
+           metabase.public-sharing.init
+           metabase.public-sharing.validation}
    :uses #{actions
            analytics
            api
@@ -747,8 +765,7 @@
   pulse
   {:api  #{metabase.pulse.api
            metabase.pulse.core
-           metabase.pulse.init
-           metabase.pulse.task.send-pulses}
+           metabase.pulse.init}
    :uses #{api
            app-db
            channel
@@ -785,6 +802,8 @@
            collections
            config
            content-verification
+           dashboards
+           embedding
            events
            legacy-mbql
            lib
@@ -796,6 +815,7 @@
            public-sharing
            pulse
            query-analysis
+           query-permissions
            query-processor
            request
            revisions
@@ -814,6 +834,17 @@
            query-processor
            settings
            task
+           util}}
+
+  query-permissions
+  {:api  #{metabase.query-permissions.core}
+   :uses #{api
+           legacy-mbql
+           lib
+           models
+           permissions
+           query-processor
+           request
            util}}
 
   query-processor
@@ -855,8 +886,10 @@
    :uses #{analytics
            analyze
            api
+           app-db
            appearance
            audit-app
+           batch-processing
            cache
            config
            driver
@@ -871,6 +904,7 @@
            permissions
            pivot
            premium-features
+           query-permissions
            queries
            request
            settings
@@ -885,7 +919,7 @@
            metabase.request.init}
    :uses #{api
            config
-           permissions
+           permissions ; FIXME
            session
            settings
            users
@@ -900,7 +934,7 @@
            dashboards
            events
            models
-           permissions
+           query-permissions
            util}}
 
   sample-data
@@ -977,7 +1011,6 @@
            session
            settings
            system
-           users
            util
            enterprise/sso}}
 
@@ -1011,13 +1044,15 @@
            config
            events
            models
+           permissions
            premium-features
            util
            enterprise/advanced-permissions}}
 
   setup
   {:api  #{metabase.setup.api
-           metabase.setup.core}
+           metabase.setup.core
+           metabase.setup.init}
    :uses #{analytics
            api
            app-db
@@ -1128,7 +1163,8 @@
            util}}
 
   types
-  {:api  #{metabase.types}
+  {:api  #{metabase.types.core
+           metabase.types.init}
    :uses #{util}}
 
   upload
@@ -1167,8 +1203,8 @@
            metabase.users.models.user-parameter-value}
    :uses #{analytics
            api
-           app-db
            appearance
+           batch-processing
            channel
            collections
            config
@@ -1188,14 +1224,7 @@
   util
   {:api :any
    :uses #{classloader
-           app-db
-           channel
            config
-           dashboards
-           driver
-           legacy-mbql
-           lib
-           parameters
            settings
            system}}
 
@@ -1213,11 +1242,13 @@
            metabase.view-log.init}
    :uses #{analytics
            api
+           app-db
            audit-app
+           batch-processing
            events
            models
-           permissions
            premium-features
+           query-permissions
            util}}
 
   warehouse-schema
@@ -1296,18 +1327,18 @@
            legacy-mbql
            lib
            models
-           permissions
            settings
            queries
+           query-permissions
            query-processor
            util
            warehouse-schema}}
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.models.notification
            metabase-enterprise.advanced-config.init
-           metabase-enterprise.advanced-config.file}
+           metabase-enterprise.advanced-config.file
+           metabase-enterprise.advanced-config.settings}
    :uses #{api
            api-keys
            app-db
@@ -1325,13 +1356,14 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
-           enterprise/impersonation
            lib
            permissions
            premium-features
+           query-permissions
            query-processor
            util
-           warehouses}}
+           warehouses
+           enterprise/impersonation}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
@@ -1370,7 +1402,8 @@
    :uses :any}
 
   enterprise/audit-app
-  {:api  #{metabase-enterprise.audit-app.api.routes}
+  {:api  #{metabase-enterprise.audit-app.api.routes
+           metabase-enterprise.audit-app.init}
    :uses #{api
            app-db
            audit-app
@@ -1381,6 +1414,7 @@
            permissions
            plugins
            premium-features
+           query-permissions
            query-processor
            settings
            sync
@@ -1442,15 +1476,6 @@
            warehouse-schema
            warehouses}}
 
-  enterprise/enhancements
-  {:api  #{metabase-enterprise.enhancements.init}
-   :uses #{premium-features
-           settings
-           sso
-           users
-           util
-           enterprise/sso}}
-
   enterprise/gsheets
   {:api  #{metabase-enterprise.gsheets.api
            metabase-enterprise.gsheets.init}
@@ -1491,12 +1516,15 @@
    :uses #{analytics
            analyze
            api
+           parameters
            query-processor
            settings
            util}}
 
   enterprise/metabot-v3
-  {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
+  {:api #{metabase-enterprise.metabot-v3.api
+          metabase-enterprise.metabot-v3.core
+          metabase-enterprise.metabot-v3.init
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
            app-db
@@ -1506,6 +1534,7 @@
            lib
            lib-be
            models
+           permissions
            premium-features
            pulse
            query-processor
@@ -1542,6 +1571,7 @@
            models
            permissions
            premium-features
+           query-permissions
            query-processor
            request
            users
@@ -1602,8 +1632,8 @@
 
   enterprise/sso
   {:api #{metabase-enterprise.sso.api.routes
-          metabase-enterprise.sso.integrations.sso-settings
-          metabase-enterprise.sso.integrations.sso-utils}
+          metabase-enterprise.sso.init
+          metabase-enterprise.sso.settings}
    :uses #{api
            appearance
            channel
@@ -1616,6 +1646,7 @@
            settings
            sso
            system
+           users
            util
            enterprise/scim}}
 
@@ -1648,9 +1679,8 @@
  :linters
  {:metabase/modules
   {:ignored-namespace-patterns
-   #{"-test$"                           ; anything ending in `-test`
-     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                      ; anything that contains `test.impl`
-     "test-setup"                       ; anything that contains `test-setup`
-     "^metabase(?:-enterprise)?\\.test" ; anything starting with `metabase.test` or `metabase-enterprise.test`
-     "^metabase\\.http-client$"}}}}     ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                               ; anything ending in `-test`
+     "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                          ; anything that contains `test.impl`
+     "test-setup"                           ; anything that contains `test-setup`
+     "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`

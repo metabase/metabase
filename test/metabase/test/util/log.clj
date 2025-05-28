@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [mb.hawk.parallel]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.util.namespaces :as shared.ns]))
 
 (set! *warn-on-reflection* true)

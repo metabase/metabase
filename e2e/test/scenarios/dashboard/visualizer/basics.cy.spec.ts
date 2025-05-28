@@ -28,52 +28,42 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.createQuestion(ORDERS_COUNT_BY_CREATED_AT, {
       idAlias: "ordersCountByCreatedAtQuestionId",
-      entityIdAlias: "ordersCountByCreatedAtQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
-      entityIdAlias: "ordersCountByProductCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
       idAlias: "productsCountByCreatedAtQuestionId",
-      entityIdAlias: "productsCountByCreatedAtQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      entityIdAlias: "productsCountByCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE, {
       idAlias: "productsCountByCategoryPieQuestionId",
-      entityIdAlias: "productsCountByCategoryPieQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
       idAlias: "landingPageViewsScalarQuestionId",
-      entityIdAlias: "landingPageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.CHECKOUT_PAGE_VIEWS, {
       idAlias: "checkoutPageViewsScalarQuestionId",
-      entityIdAlias: "checkoutPageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.PAYMENT_DONE_PAGE_VIEWS, {
       idAlias: "paymentDonePageViewsScalarQuestionId",
-      entityIdAlias: "paymentDonePageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(STEP_COLUMN_CARD, {
       idAlias: "stepColumnQuestionId",
-      entityIdAlias: "stepColumnQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(VIEWS_COLUMN_CARD, {
       idAlias: "viewsColumnQuestionId",
-      entityIdAlias: "viewsColumnQuestionEntityId",
       wrapId: true,
     });
   });
@@ -214,6 +204,71 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.findDashCardAction(dashCard(), "Edit visualization").click();
     H.modal().button("Save").should("be.disabled");
+  });
+
+  it("should allow clicking on the title", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // Click on both series of the first chart
+    // Series 1
+    H.showUnderlyingQuestion(0, ORDERS_COUNT_BY_CREATED_AT.name);
+
+    cy.get("@ordersCountByCreatedAtQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-orders-by-created-at-month`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
+
+    // Series 2
+    H.showUnderlyingQuestion(0, PRODUCTS_COUNT_BY_CREATED_AT.name);
+    cy.get("@productsCountByCreatedAtQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-created-at-month`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
+
+    // Click on the third chart (a pie)
+    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY.name);
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
+
+    // Click on the fifth chart (a funnel)
+    H.showUnderlyingQuestion(4, STEP_COLUMN_CARD.name);
+    cy.get("@stepColumnQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-step-column`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
+  });
+
+  it("should open underlying questions in the ellipsis menu if the card has no title", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // This card HAS a title, so it should NOT have the "View question(s)" option
+    H.getDashboardCard(0).realHover();
+    H.getDashboardCardMenu(0).click();
+    H.popover().findByText("View question(s)").should("not.exist");
+
+    // This card has NO title, so it SHOULD have the "View question(s)" option
+    H.editDashboard();
+    H.showDashcardVisualizerModal(2);
+    H.modal().within(() => {
+      cy.findByTestId("visualizer-title").clear().blur();
+    });
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
+    H.getDashboardCard(2).realHover();
+    H.getDashboardCardMenu(2).click();
+    H.popover().within(() => {
+      cy.findByText("View question(s)").should("exist");
+      cy.findByText("View question(s)").realHover();
+    });
+
+    cy.findByTestId("dashcard-menu-open-underlying-question").within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CATEGORY.name).click();
+    });
+
+    cy.url().should("contain", "83-products-by-category");
   });
 
   it("should rename a dashboard card", () => {
@@ -455,28 +510,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
   });
 
-  it("should allow changing the viz when no dataset is selected (VIZ-929)", () => {
-    createDashboardWithVisualizerDashcards();
-    H.editDashboard();
-
-    H.showDashcardVisualizerModal(3);
-
-    H.removeDataSource(PRODUCTS_COUNT_BY_CREATED_AT.name);
-
-    H.modal().within(() => {
-      cy.findByText("Scatterplot").click();
-    });
-
-    H.switchToAddMoreData();
-
-    H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
-
-    // For now let's just check we're not crashing
-    // and as a follow up we should check that columns are actually assigned properly
-    // but for now that's require too big a change
-    cy.findAllByText("Something’s gone wrong").should("not.exist");
-  });
-
   it("should not store all computed settings in visualizer settings (VIZ-905)", () => {
     H.createDashboard().then(({ body: { id: dashboardId } }) => {
       H.visitDashboard(dashboardId);
@@ -555,6 +588,20 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       });
 
       ensureVisualizerCardsAreRendered();
+    });
+  });
+
+  it("show a message when there are no search results", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByText("Add more data").click();
+      cy.findByPlaceholderText("Search for something").type("non-existing");
+
+      cy.findByText("No results").should("exist");
     });
   });
 });

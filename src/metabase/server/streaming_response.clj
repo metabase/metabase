@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.walk :as walk]
    [compojure.response]
+   [metabase.api.common.internal]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
@@ -266,7 +267,11 @@
   ;; async responses only
   compojure.response/Sendable
   (send* [this request respond* _raise]
-    (respond* (compojure.response/render this request))))
+    (respond* (compojure.response/render this request)))
+
+  metabase.api.common.internal/EndpointResponse
+  (wrap-response-if-needed [this]
+    this))
 
 (defn- render [^StreamingResponse streaming-response gzip?]
   (let [{:keys [headers content-type], :as options} (.options streaming-response)]

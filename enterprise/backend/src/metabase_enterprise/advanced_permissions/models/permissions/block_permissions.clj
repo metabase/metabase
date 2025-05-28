@@ -3,8 +3,8 @@
    [metabase.api.common :as api]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
@@ -22,8 +22,8 @@
   run if the current User has unrestricted data permissions from another Group. See the namespace documentation for
   [[metabase.collections.models.collection]] for more details."
   :feature :advanced-permissions
-  [{{gtap-perms :gtaps} ::query-perms/perms, database-id :database :as query}]
-  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)
+  [{database-id :database :as query}]
+  (let [{:keys [table-ids card-ids]} (query-perms/query->source-ids query)
         table-permissions            (map (partial data-perms/table-permission-for-user api/*current-user-id*
                                                    :perms/view-data database-id)
                                           table-ids)]
@@ -31,8 +31,6 @@
     (or
      (not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
      (= #{:unrestricted} (set table-permissions))
-     ;; Don't block a query if we have native access implicitly granted to power a sandbox
-     (and native? (= :query-builder-and-native (:perms/create-queries gtap-perms)))
      (throw-block-permissions-exception))
 
     ;; Recursively check block permissions for any Cards referenced by the query

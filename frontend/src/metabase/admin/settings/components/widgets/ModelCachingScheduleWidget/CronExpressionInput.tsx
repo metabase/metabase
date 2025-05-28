@@ -92,10 +92,10 @@ function CustomScheduleInputHint() {
     <ExternalLink
       key="doc"
       href={CRON_SYNTAX_DOC_URL}
-    >{t`cron syntax`}</ExternalLink>
+    >{t`quartz cron syntax`}</ExternalLink>
   );
   return (
-    <Text>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by spaces`}</Text>
+    <Text>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields, starting from minutes, separated by spaces`}</Text>
   );
 }
 

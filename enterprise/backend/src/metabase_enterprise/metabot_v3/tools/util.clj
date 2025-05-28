@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -87,9 +89,8 @@
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
-  (when-let [table (t2/select-one (into [:model/Table :id] fields) id)]
-    (when (mi/can-read? table)
-      table)))
+  (-> (t2/select-one (into [:model/Table :id] fields) id)
+      api/read-check))
 
 (defn get-card
   "Retrieve the card with `id` from the app DB."
@@ -109,6 +110,29 @@
                    :archived false
                    {:order-by [:id]})
         (->> (filter mi/can-read?)))))
+
+(defn card-query
+  "Return a query based on the model with ID `model-id`."
+  [card-id]
+  (when-let [card (get-card card-id)]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+      (lib/query mp (cond-> (lib.metadata/card mp card-id)
+                      ;; pivot questions have strange result-columns so we work with the dataset-query
+                      (#{:question} (:type card)) (get :dataset-query))))))
+
+(defn metric-query
+  "Return a query based on the model with ID `model-id`."
+  [metric-id]
+  (when-let [card (get-card metric-id)]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+      (lib/query mp (lib.metadata/metric mp metric-id)))))
+
+(defn table-query
+  "Return a query based on the table with ID `table-id`."
+  [table-id]
+  (when-let [table (get-table table-id :db_id)]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+      (lib/query mp (lib.metadata/table mp table-id)))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]

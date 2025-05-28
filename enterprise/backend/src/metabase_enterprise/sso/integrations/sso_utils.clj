@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
@@ -115,3 +115,8 @@
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
+
+(defn is-embedding-sdk-header?
+  "Check if the client has indicated it is from the react embedding sdk"
+  [request]
+  (= (get-in request [:headers "x-metabase-client"]) "embedding-sdk-react"))

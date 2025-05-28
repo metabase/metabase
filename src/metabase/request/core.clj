@@ -4,6 +4,7 @@
    [metabase.request.cookies]
    [metabase.request.current]
    [metabase.request.session]
+   [metabase.request.settings]
    [metabase.request.util]
    [potemkin :as p]))
 
@@ -11,6 +12,7 @@
   metabase.request.cookies/keep-me
   metabase.request.current/keep-me
   metabase.request.session/keep-me
+  metabase.request.settings/keep-me
   metabase.request.util/keep-me)
 
 ;; TODO -- move stuff in [[metabase.server.middleware.session]]
@@ -24,8 +26,6 @@
   metabase-embedded-session-cookie
   metabase-session-cookie
   metabase-session-timeout-cookie
-  session-timeout
-  session-timeout!
   set-session-cookies
   set-session-timeout-cookie]
  [metabase.request.current
@@ -40,6 +40,9 @@
   do-as-admin
   do-with-current-user
   with-current-user]
+ [metabase.request.settings
+  session-timeout
+  session-timeout!]
  [metabase.request.util
   DeviceInfo
   api-call?
@@ -51,6 +54,4 @@
   geocode-ip-addresses
   https?
   ip-address
-  public?
-  response-forbidden
-  response-unauthentic])
+  public?])

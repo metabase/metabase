@@ -5,7 +5,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.cache-backend.interface :as i]

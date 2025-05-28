@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.auth-provider.impl :as auth-provider]
-   [metabase.http-client :as client]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.http-client :as client]
    [metabase.util.json :as json]
    [metabase.warehouses.api :as api.database]))
 

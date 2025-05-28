@@ -36,7 +36,7 @@
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as root]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]

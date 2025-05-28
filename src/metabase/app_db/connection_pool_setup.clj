@@ -2,7 +2,7 @@
   "Code for creating the connection pool for the application DB and setting it as the default Toucan connection."
   (:require
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])

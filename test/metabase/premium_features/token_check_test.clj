@@ -6,7 +6,7 @@
    [diehard.circuit-breaker :as dh.cb]
    [mb.hawk.parallel]
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.token-check :as token-check]

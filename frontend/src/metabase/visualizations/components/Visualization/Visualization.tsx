@@ -618,6 +618,7 @@ class Visualization extends PureComponent<
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
+      titleMenuItems,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -758,6 +759,7 @@ class Visualization extends PureComponent<
                 icon={headerIcon}
                 actionButtons={extra}
                 hasInfoTooltip={!isDashboard || !isEditing}
+                titleMenuItems={titleMenuItems}
                 width={width}
                 getHref={getHref}
                 onChangeCardAndRun={
@@ -876,6 +878,7 @@ class Visualization extends PureComponent<
                     onUpdateWarnings={onUpdateWarnings}
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
+                    titleMenuItems={hasHeader ? undefined : titleMenuItems}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

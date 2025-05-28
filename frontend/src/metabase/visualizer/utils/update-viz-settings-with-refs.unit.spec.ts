@@ -1,11 +1,15 @@
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
+import {
+  updateVizSettingsKeysWithRefs,
+  updateVizSettingsWithRefs,
+} from "./update-viz-settings-with-refs";
 
-describe("updateVizSettingsWithRefs", () => {
+describe("updateVizSettingsKeysWithRefs", () => {
   it("should handle empty objects", () => {
-    expect(updateVizSettingsWithRefs({}, {})).toEqual({});
-    expect(updateVizSettingsWithRefs({}, { avg: "COLUMN_1" })).toEqual({});
+    expect(updateVizSettingsKeysWithRefs({}, {})).toEqual({});
+    expect(updateVizSettingsKeysWithRefs({}, { avg: "COLUMN_1" })).toEqual({});
   });
 
   it("should convert column names to references in keys", () => {
@@ -17,7 +21,7 @@ describe("updateVizSettingsWithRefs", () => {
     };
     const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
 
-    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+    const result = updateVizSettingsKeysWithRefs(settings, columnsToRefs);
 
     expect(result).toEqual({
       colors: {
@@ -40,7 +44,7 @@ describe("updateVizSettingsWithRefs", () => {
     };
     const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
 
-    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+    const result = updateVizSettingsKeysWithRefs(settings, columnsToRefs);
 
     expect(result).toEqual({
       series: {
@@ -63,7 +67,7 @@ describe("updateVizSettingsWithRefs", () => {
     };
     const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
 
-    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+    const result = updateVizSettingsKeysWithRefs(settings, columnsToRefs);
 
     expect(result).toEqual({
       dimensions: [
@@ -95,7 +99,7 @@ describe("updateVizSettingsWithRefs", () => {
       ['["name","avg"]']: "COLUMN_3",
     };
 
-    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+    const result = updateVizSettingsKeysWithRefs(settings, columnsToRefs);
 
     expect(result).toEqual({
       series_settings: {
@@ -125,7 +129,7 @@ describe("updateVizSettingsWithRefs", () => {
     };
     const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
 
-    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+    const result = updateVizSettingsKeysWithRefs(settings, columnsToRefs);
 
     expect(result).toEqual({
       deep: {
@@ -143,7 +147,7 @@ describe("updateVizSettingsWithRefs", () => {
     };
     const columnsToRefs = { avg: "COLUMN_1" };
 
-    updateVizSettingsWithRefs(settings, columnsToRefs);
+    updateVizSettingsKeysWithRefs(settings, columnsToRefs);
 
     expect(settings).toEqual({
       colors: { avg: "#000" },
@@ -155,10 +159,79 @@ describe("updateVizSettingsWithRefs", () => {
       colors: { avg: "#000", sum: "#fff" },
     };
 
-    const result = updateVizSettingsWithRefs(settings, {});
+    const result = updateVizSettingsKeysWithRefs(settings, {});
 
     expect(result).toEqual({
       colors: { avg: "#000", sum: "#fff" },
+    });
+  });
+});
+
+describe("updateVizSettingsWithRefs", () => {
+  it("should not modify graph.series_order_dimension when value is not in columnsToRefs", () => {
+    const settings: VisualizationSettings = {
+      "graph.series_order_dimension": "other_field",
+      colors: { avg: "#000" },
+    };
+    const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result).toEqual({
+      "graph.series_order_dimension": "other_field",
+      colors: { COLUMN_1: "#000" },
+    });
+  });
+
+  it("should update graph.series_order_dimension with column reference", () => {
+    const settings: VisualizationSettings = {
+      "graph.series_order_dimension": "avg",
+      colors: { avg: "#000" },
+    };
+    const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result).toEqual({
+      "graph.series_order_dimension": "COLUMN_1",
+      colors: { COLUMN_1: "#000" },
+    });
+  });
+
+  it("should not modify graph.tooltip_columns when value is not in columnsToRefs", () => {
+    const settings: VisualizationSettings = {
+      "graph.tooltip_columns": ["other_field"],
+      colors: { avg: "#000" },
+    };
+    const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result).toEqual({
+      "graph.tooltip_columns": ["other_field"],
+      colors: { COLUMN_1: "#000" },
+    });
+  });
+
+  it("should update graph.tooltip_columns with column references", () => {
+    const settings: VisualizationSettings = {
+      "graph.tooltip_columns": [
+        getColumnKey({ name: "avg" }),
+        getColumnKey({ name: "sum" }),
+      ],
+    };
+    const columnsToRefs = {
+      avg: "COLUMN_1",
+      sum: "COLUMN_2",
+    };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result).toEqual({
+      "graph.tooltip_columns": [
+        getColumnKey({ name: "COLUMN_1" }),
+        getColumnKey({ name: "COLUMN_2" }),
+      ],
     });
   });
 });

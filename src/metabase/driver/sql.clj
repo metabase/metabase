@@ -34,6 +34,7 @@
                  :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset
+                 :expressions/datetime
                  :expressions/date
                  :expressions/text
                  :distinct-where]]
@@ -64,7 +65,7 @@
                    :query  query
                    :params params)
       (seq referenced-card-ids)
-      (update :metabase.permissions.models.query.permissions/referenced-card-ids set/union referenced-card-ids))))
+      (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))
 
 (defmulti json-field-length
   "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.

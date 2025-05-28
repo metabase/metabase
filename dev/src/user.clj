@@ -39,8 +39,8 @@
 (u/ignore-exceptions
   (classloader/require 'pjstadig.humane-test-output)
  ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
- ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config]] so we don't load that namespace
- ;; before we load [[metabase.core.bootstrap]]
+ ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
+ ;; namespace before we load [[metabase.core.bootstrap]]
   (when-not (= (env/env :mb-run-mode) "test")
     ((resolve 'pjstadig.humane-test-output/activate!))))
 

@@ -2,16 +2,15 @@
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
    [clojure.set :as set]
-   [metabase.api.common
-    :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.walk :as lib.walk]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
@@ -80,11 +79,11 @@
                   query)))
 
 (defn remove-permissions-key
-  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
+  "Pre-processing middleware. Removes the `:query-permissions/perms` key from the query. This is where we store important permissions
   information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
-  (dissoc query ::query-perms/perms))
+  (dissoc query :query-permissions/perms))
 
 (defn remove-source-card-keys
   "Pre-processing middleware. Removes any instances of the `:qp/stage-is-from-source-card` key which is added by the
@@ -95,6 +94,16 @@
    query
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :qp/stage-is-from-source-card))))
+
+(defn remove-gtapped-table-keys
+  "Pre-processing middleware. Removes any instances of the `:query-permissions/gtapped-table` key which is added by the
+  row-level-restriction middleware when sandboxes are resolved in a query. Since we rely on this for permission
+  enforcement, we want to disallow users from passing it in themselves (like the functions above)."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join :query-permissions/gtapped-table))))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."

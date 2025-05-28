@@ -1,7 +1,7 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
@@ -161,9 +161,9 @@
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
                                         :smart        [[[:case
-                                                         (mdb.query/isa :semantic_type :type/PK)       0
-                                                         (mdb.query/isa :semantic_type :type/Name)     1
-                                                         (mdb.query/isa :semantic_type :type/Temporal) 2
+                                                         (app-db/isa :semantic_type :type/PK)       0
+                                                         (app-db/isa :semantic_type :type/Name)     1
+                                                         (app-db/isa :semantic_type :type/Temporal) 2
                                                          :else                                     3]
                                                         :asc]
                                                        [:%lower.name :asc]]
@@ -213,7 +213,7 @@
    #(t2/select-fn->fn :table_id :id
                       :model/Field
                       :table_id        [:in (map :id tables)]
-                      :semantic_type   (mdb.query/isa :type/PK)
+                      :semantic_type   (app-db/isa :type/PK)
                       :visibility_type [:not-in ["sensitive" "retired"]])
    :id))
 

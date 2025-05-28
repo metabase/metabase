@@ -4,18 +4,18 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
@@ -30,9 +30,9 @@
 ;; authentication test on every single individual endpoint
 
 (deftest ^:parallel unauthenticated-test
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "table")))
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []

@@ -3,9 +3,9 @@
   (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
   (:require
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.types]))
+   [metabase.types.core]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 (defn ^:export isa?
   "Decide if `_column` is a subtype of the type denoted by the keyword `type-kw`.

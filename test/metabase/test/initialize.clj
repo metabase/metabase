@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [mb.hawk.init]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.notification.core :as notification]
    [metabase.util :as u]
    [metabase.util.log :as log]))

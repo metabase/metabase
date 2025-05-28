@@ -7,9 +7,10 @@
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.validation :as validation]
+   [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -80,7 +81,7 @@
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
 (api.macros/defendpoint :get "/:action-id"
@@ -186,7 +187,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/read-check :model/Action id :archived false)]
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
@@ -201,7 +202,7 @@
                     [:id ms/PositiveInt]]]
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
   (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})

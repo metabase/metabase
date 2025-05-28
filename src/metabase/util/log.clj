@@ -8,7 +8,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.format :as u.format]
    [metabase.util.log.capture]
    [net.cgrand.macrovich :as macros])
@@ -85,8 +85,8 @@
   [level x & more]
   `(do
      ~(config/build-type-case
-        :dev
-        `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
+       :dev
+       `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
      ~(macros/case
         :cljs (glogi-logp (str *ns*) level x more)
         :clj  (tools-logp *ns*       level x more))))
@@ -97,8 +97,8 @@
   [level x & args]
   `(do
      ~(config/build-type-case
-        :dev
-        `(metabase.util.log.capture/capture-logf ~(str *ns*) ~level ~x ~@args))
+       :dev
+       `(metabase.util.log.capture/capture-logf ~(str *ns*) ~level ~x ~@args))
      ~(macros/case
         :cljs (glogi-logf (str *ns*) level x args)
         :clj  (tools-logf *ns*       level x args))))

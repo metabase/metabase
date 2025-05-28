@@ -12,7 +12,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.core :as appearance]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]

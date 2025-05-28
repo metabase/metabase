@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

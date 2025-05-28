@@ -31,12 +31,10 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.createQuestion(ORDERS_COUNT_BY_CREATED_AT, {
       idAlias: "ordersCountByCreatedAtQuestionId",
-      entityIdAlias: "ordersCountByCreatedAtQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
-      entityIdAlias: "ordersCountByProductCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
@@ -45,7 +43,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
       idAlias: "productsCountByCreatedAtQuestionId",
-      entityIdAlias: "productsCountByCreatedAtQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
@@ -59,37 +56,30 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      entityIdAlias: "productsCountByCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE, {
       idAlias: "productsCountByCategoryPieQuestionId",
-      entityIdAlias: "productsCountByCategoryPieQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
       idAlias: "landingPageViewsScalarQuestionId",
-      entityIdAlias: "landingPageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.CHECKOUT_PAGE_VIEWS, {
       idAlias: "checkoutPageViewsScalarQuestionId",
-      entityIdAlias: "checkoutPageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.PAYMENT_DONE_PAGE_VIEWS, {
       idAlias: "paymentDonePageViewsScalarQuestionId",
-      entityIdAlias: "paymentDonePageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(STEP_COLUMN_CARD, {
       idAlias: "stepColumnQuestionId",
-      entityIdAlias: "stepColumnQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(VIEWS_COLUMN_CARD, {
       idAlias: "viewsColumnQuestionId",
-      entityIdAlias: "viewsColumnQuestionEntityId",
       wrapId: true,
     });
   });
@@ -207,9 +197,17 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
 
     H.saveDashcardVisualizerModal("create");
+    // Wait for card queries before saving the dashboard
+    H.getDashboardCard(0).within(() => {
+      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+        "exist",
+      );
+      cy.findByText("Created At: Month").should("exist");
+    });
+
     H.saveDashboard();
 
-    // Making sure the card renders
+    // Making sure the card renders after saving the dashboard
     H.getDashboardCard(0).within(() => {
       cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
         "exist",
@@ -259,6 +257,84 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
         "Category",
       );
+    });
+  });
+
+  it("should handle implicit viz settings (VIZ-947)", () => {
+    function assertDataSourceColumnSelected(
+      columnName: string,
+      isSelected = true,
+    ) {
+      H.assertDataSourceColumnSelected(
+        PIVOT_TABLE_CARD.name,
+        columnName,
+        isSelected,
+      );
+    }
+
+    H.createQuestion(PIVOT_TABLE_CARD);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(PIVOT_TABLE_CARD.name);
+
+    H.modal().within(() => {
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity", false);
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.chartPathWithFillColor("#88BF4D").should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
+
+      // Add Category column
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Product → Category").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity", false);
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category");
+      H.chartLegendItems().should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Add Average of Quantity column
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Average of Quantity").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category");
+      H.chartLegendItems().should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Remove dimensions
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Created At: Year",
+      );
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Product → Category",
+      );
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year", false);
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.echartsContainer().should("not.exist");
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 0);
+
+      // Add a dimension back
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Created At: Year").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.echartsContainer().should("exist");
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.chartLegendItems().should("have.length", 2);
     });
   });
 
@@ -463,6 +539,63 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
           .findAllByTestId("well-item")
           .should("have.length", 1);
         H.chartLegend().should("not.exist");
+      });
+    });
+
+    it("should show only enabled series in the visualizer based on the card's viz settings", () => {
+      const visualization_settings = {
+        ...ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.visualization_settings,
+        "graph.series_order": [
+          {
+            name: "Gadget",
+            enabled: false,
+            color: "#F9D45C",
+            key: "Gadget",
+          },
+          {
+            key: "Doohickey",
+            color: "#88BF4D",
+            enabled: true,
+            name: "Doohickey",
+          },
+          {
+            key: "Gizmo",
+            color: "#A989C5",
+            enabled: true,
+            name: "Gizmo",
+          },
+          {
+            name: "Widget",
+            enabled: false,
+            color: "#F2A86F",
+            key: "Widget",
+          },
+        ],
+        "graph.series_order_dimension": "CATEGORY",
+      };
+
+      H.createDashboardWithQuestions({
+        questions: [
+          {
+            ...ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
+            visualization_settings,
+          },
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.getDashboardCard(0)
+        .findAllByTestId("legend-item")
+        .should("have.length", 2);
+
+      H.editDashboard();
+      H.showDashcardVisualizerModal(0);
+
+      H.modal().within(() => {
+        cy.findAllByTestId("legend-item").should("have.length", 2);
+        cy.button("Settings").click();
+        cy.findAllByTestId("series-name-input").should("have.length", 2);
       });
     });
   });

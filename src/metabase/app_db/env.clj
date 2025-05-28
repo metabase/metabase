@@ -24,7 +24,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.app-db.data-source :as mdb.data-source]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))

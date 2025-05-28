@@ -26,7 +26,7 @@
                 metabase.parameters.shared
                 metabase.pivot.core
                 metabase.pivot.js
-                metabase.types
+                metabase.types.core
                 metabase.util.currency
                 metabase.util.devtools
                 metabase.util.formatting.constants

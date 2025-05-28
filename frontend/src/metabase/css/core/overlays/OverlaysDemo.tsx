@@ -3,7 +3,6 @@ import {
   type Dispatch,
   type ReactNode,
   type SetStateAction,
-  memo,
   useState,
 } from "react";
 import _ from "underscore";
@@ -13,7 +12,7 @@ import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import Toaster from "metabase/components/Toaster";
-import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
+import { UndoListOverlay } from "metabase/containers/UndoListing";
 import LegacySelect, { Option } from "metabase/core/components/Select";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {
@@ -221,9 +220,11 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
     <Stack p="lg">
       <Launchers />
       {undoCount > 0 && (
-        <UndoListOverlay>
-          <UndoToasts undoCount={undoCount} setUndoCount={setUndoCount} />
-        </UndoListOverlay>
+        <UndoListOverlay
+          undos={getToasts(undoCount)}
+          onUndo={() => setUndoCount((c) => c - 1)}
+          onDismiss={() => setUndoCount((c) => c - 1)}
+        />
       )}
       {Array.from({ length: actionToastCount }).map((_value, index) => (
         <BulkActionBarPortal
@@ -407,26 +408,10 @@ const SimpleModal = ({
   </MantineModal.Root>
 );
 
-const UndoToasts = memo(function UndoToasts({
-  undoCount,
-  setUndoCount,
-}: {
-  undoCount: number;
-  setUndoCount: Dispatch<SetStateAction<number>>;
-}) {
-  return (
-    <>
-      {Array.from({ length: undoCount }).map((_, index) => (
-        <UndoToast
-          undo={createMockUndo({
-            message: `Undo-style toast text content`,
-          })}
-          onUndo={() => {}}
-          onDismiss={() => setUndoCount((c) => c - 1)}
-          key={`undo-toast-${index}`}
-          aria-label="Undo-style toast content"
-        />
-      ))}
-    </>
+function getToasts(length: number) {
+  return Array.from({ length }).map(() =>
+    createMockUndo({
+      message: `Undo-style toast text content`,
+    }),
   );
-});
+}

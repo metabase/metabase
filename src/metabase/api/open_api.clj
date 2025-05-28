@@ -4,7 +4,7 @@
   Actual implementation for [[metabase.api.macros/defendpoint]] endpoints lives
   in [[metabase.api.macros.defendpoint.open-api]]. "
   (:require
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]

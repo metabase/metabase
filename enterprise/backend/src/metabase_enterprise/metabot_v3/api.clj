@@ -146,6 +146,14 @@
               :model_id model-id)
   api/generic-204-no-content)
 
+(api.macros/defendpoint :get "/v2/prompt-suggestions"
+  "Get a set of suggested LLM prompts for the current user."
+  [_route-params
+   _query-params
+   _body]
+  (metabot-v3.context/log {:api :get-prompts} :llm.log/fe->be)
+  {:prompts []})
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
   (api.macros/ns-handler *ns* +auth))

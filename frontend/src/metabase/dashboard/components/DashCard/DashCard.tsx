@@ -322,10 +322,7 @@ function DashCardInner({
     let initialState: VisualizerVizDefinitionWithColumns;
 
     if (isVisualizerDashboardCard(dashcard)) {
-      initialState = getInitialStateForVisualizerCard(
-        dashcard,
-        datasets,
-      ).visualizationEntityWithColumns;
+      initialState = getInitialStateForVisualizerCard(dashcard, datasets);
     } else if (series.length > 1) {
       initialState = getInitialStateForMultipleSeries(series);
     } else {

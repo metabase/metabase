@@ -56,7 +56,7 @@
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
    ;; Sync index info if the database supports it
    (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-indexes-summary)
-   ;; Sync the metadata metadata table if it exists.
+   ;; Sync the metabase metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 
 (mu/defn sync-db-metadata!

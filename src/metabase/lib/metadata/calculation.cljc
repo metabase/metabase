@@ -1,6 +1,6 @@
 (ns metabase.lib.metadata.calculation
   (:require
-   #?(:clj [metabase.config :as config])
+   #?(:clj [metabase.config.core :as config])
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]

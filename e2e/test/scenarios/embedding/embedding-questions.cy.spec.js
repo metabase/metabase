@@ -348,7 +348,7 @@ describe("scenarios > embedding > questions > downloads", () => {
         cy.findByRole("button", { name: "Download results" }).click();
 
         H.popover().within(() => {
-          cy.findAllByText("Download").should("have.length", 2);
+          cy.findByText("Download");
           cy.findByText(".csv");
           cy.findByText(".xlsx");
           cy.findByText(".json");

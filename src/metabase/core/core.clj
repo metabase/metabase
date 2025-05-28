@@ -9,7 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.initialization-status :as init-status]
@@ -18,7 +18,7 @@
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -213,8 +213,7 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
-  (classloader/require 'metabase.cmd)
-  ((resolve 'metabase.cmd/run-cmd) cmd init-fn args))
+  ((requiring-resolve 'metabase.cmd.core/run-cmd) cmd init-fn args))
 
 ;;; -------------------------------------------------- Tracing -------------------------------------------------------
 

@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.analyze.schema :as analyze.schema]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]

@@ -1,13 +1,13 @@
 (ns metabase.query-processor.middleware.update-used-cards
   (:require
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.batch-processing.core :as grouper]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.cluster-lock :as cluster-lock]
-   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}

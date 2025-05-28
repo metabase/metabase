@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.statistics-handler :as statistics-handler]
    [metabase.util :as u]

@@ -19,8 +19,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
@@ -323,7 +323,7 @@
 (defn- apply-gtap
   "Apply a GTAP to map m (e.g. a Join or inner query), replacing its `:source-table`/`:source-query` with the GTAP
   `:source-query`."
-  [m gtap]
+  [{:keys [source-table] :as m} gtap]
   ;; Only infer source query metadata for JOINS that use `:fields :all`. That's the only situation in which we
   ;; absolutely *need* to infer source query metadata (we need to know the columns returned by the source query so we
   ;; can generate the join against ALL fields). It's better not to infer the source metadata if we don't NEED to,
@@ -331,9 +331,10 @@
   ;; columns as the Table it replaces, but this constraint is not enforced anywhere. If we infer metadata and the GTAP
   ;; turns out *not* to match exactly, the query could break. So only infer it in cases where the query would
   ;; definitely break otherwise.
-  (u/prog1 (merge
-            (dissoc m :source-table :source-query)
-            (gtap->source gtap))
+  (u/prog1 (-> (merge
+                (dissoc m :source-table :source-query)
+                (gtap->source gtap))
+               (assoc-in [:source-query :query-permissions/gtapped-table] source-table))
     (log/tracef "Applied GTAP: replaced\n%swith\n%s"
                 (u/pprint-to-str 'yellow m)
                 (u/pprint-to-str 'green <>))))
@@ -368,7 +369,7 @@
       original-query
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
-          (update-in [::query-perms/perms :gtaps]
+          (update-in [:query-permissions/perms :gtaps]
                      (fn [required-perms] (merge required-perms
                                                  (sandboxes->required-perms (vals table-id->gtap)))))))))
 
@@ -416,7 +417,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::query-perms/perms :gtaps])))
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [:query-permissions/perms :gtaps])))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

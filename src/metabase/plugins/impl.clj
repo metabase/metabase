@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]

@@ -62,7 +62,7 @@ describe("Logs", () => {
     });
 
     it("should call UtilApi.logs every 1 second", async () => {
-      fetchMock.get("path:/api/util/logs", []);
+      fetchMock.get("path:/api/logger/logs", []);
       setup();
       await waitFor(() => [
         expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
@@ -71,7 +71,7 @@ describe("Logs", () => {
     });
 
     it("should skip calls to UtilsApi.logs if last request is still in-flight", async () => {
-      fetchMock.get("path:/api/util/logs", []);
+      fetchMock.get("path:/api/logger/logs", []);
       let resolve: any;
       utilSpy.mockReturnValueOnce(new Promise((res) => (resolve = res)));
       setup();
@@ -98,7 +98,7 @@ describe("Logs", () => {
     });
 
     it("should display no results if there are no logs", async () => {
-      fetchMock.get("path:/api/util/logs", []);
+      fetchMock.get("path:/api/logger/logs", []);
       setup();
       await waitFor(() => {
         expect(
@@ -109,7 +109,7 @@ describe("Logs", () => {
     });
 
     it("should filter out logs not matching the query", async () => {
-      fetchMock.get("path:/api/util/logs", [log]);
+      fetchMock.get("path:/api/logger/logs", [log]);
       setup({
         location: createMockLocation({
           pathname: PATHNAME,
@@ -125,7 +125,7 @@ describe("Logs", () => {
     });
 
     it("should not filter out logs matching the query", async () => {
-      fetchMock.get("path:/api/util/logs", [log]);
+      fetchMock.get("path:/api/logger/logs", [log]);
       setup({
         location: createMockLocation({
           pathname: PATHNAME,
@@ -139,7 +139,7 @@ describe("Logs", () => {
     });
 
     it("should display results if server responds with logs", async () => {
-      fetchMock.get("path:/api/util/logs", [log]);
+      fetchMock.get("path:/api/logger/logs", [log]);
       setup();
       await waitFor(() => {
         expect(
@@ -151,7 +151,7 @@ describe("Logs", () => {
 
     it("should display server error message if an error occurs", async () => {
       const errMsg = `An unexpected error occured.`;
-      fetchMock.get("path:/api/util/logs", {
+      fetchMock.get("path:/api/logger/logs", {
         status: 500,
         body: { message: errMsg },
       });
@@ -165,7 +165,7 @@ describe("Logs", () => {
     });
 
     it("should stop polling on unmount", async () => {
-      fetchMock.get("path:/api/util/logs", [log]);
+      fetchMock.get("path:/api/logger/logs", [log]);
       const { unmount } = setup();
       expect(
         await screen.findByText(new RegExp(log.process_uuid)),

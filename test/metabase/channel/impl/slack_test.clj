@@ -4,7 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.util :as u]))
 

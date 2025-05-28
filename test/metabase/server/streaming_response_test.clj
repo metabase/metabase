@@ -4,12 +4,12 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.http-client :as client]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)

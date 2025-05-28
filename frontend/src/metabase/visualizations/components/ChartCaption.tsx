@@ -19,6 +19,7 @@ interface ChartCaptionProps {
   hasInfoTooltip?: boolean;
   width?: number;
   getHref?: () => string | undefined;
+  titleMenuItems?: React.ReactNode;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
 }
 
@@ -31,6 +32,7 @@ const ChartCaption = ({
   onChangeCardAndRun,
   getHref,
   width,
+  titleMenuItems,
 }: ChartCaptionProps) => {
   const title = settings["card.title"] ?? series?.[0].card.name ?? "";
   const description = settings["card.description"];
@@ -53,6 +55,7 @@ const ChartCaption = ({
       hasInfoTooltip={hasInfoTooltip}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
       width={width}
+      titleMenuItems={titleMenuItems}
     />
   );
 };

@@ -631,7 +631,7 @@
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
-  {:exec-fn   metabase.cloverage-runner/run-project
+  {:exec-fn   metabase.test.cloverage-runner/run-project
    :exec-args {:fail-threshold 69
                :codecov?       true
                ;; don't instrument logging forms, since they won't get executed as part of tests anyway

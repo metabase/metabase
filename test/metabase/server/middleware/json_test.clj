@@ -2,9 +2,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.http-client]
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.test-handler :as server.test-handler]
+   [metabase.test.http-client]
    [metabase.util.json :as json]))
 
 (comment mw.json/keep-me) ; so custom Cheshire encoders are loaded
@@ -23,7 +23,7 @@
   [method url ^String body]
   ((server.test-handler/test-handler)
    {:method method
-    :uri     (str metabase.http-client/*url-prefix* url)
+    :uri     (str metabase.test.http-client/*url-prefix* url)
     :headers {"content-type" "application/json"}
     :body    (io/input-stream (.getBytes body))}
    #(-> (:body %)

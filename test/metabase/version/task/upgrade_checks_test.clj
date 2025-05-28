@@ -2,7 +2,7 @@
   (:require
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.version.settings :as version.settings]
    [metabase.version.task.upgrade-checks :as upgrade-checks]))
 

@@ -387,6 +387,24 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
+  it("should not show you the parent collection in recents or search results", () => {
+    H.visitCollection(THIRD_COLLECTION_ID);
+    H.openCollectionMenu();
+    H.popover().findByText("Move").click();
+    H.entityPickerModal().within(() => {
+      cy.findByRole("button", { name: /First collection / }).should("exist");
+      cy.findByRole("button", { name: /Second collection/ }).should(
+        "not.exist",
+      );
+
+      cy.findByPlaceholderText("Search…").type("coll");
+      cy.findByRole("button", { name: /Robert Tableton/ }).should("exist");
+      cy.findByRole("button", { name: /Second collection/ }).should(
+        "not.exist",
+      );
+    });
+  });
+
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       H.restore();
