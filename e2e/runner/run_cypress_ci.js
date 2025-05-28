@@ -6,7 +6,13 @@ const { printBold } = require("./cypress-runner-utils");
 const modeOrTestSuite = process.argv?.[2]?.trim();
 
 const availableModes = ["start", "snapshot"];
-const availableTestSuites = ["e2e", "component", "shoppy-e2e"];
+const availableTestSuites = [
+  "e2e",
+  "component",
+  "metabase-nodejs-react-sdk-embedding-sample-e2e",
+  "metabase-nextjs-sdk-embedding-sample-e2e",
+  "shoppy-e2e",
+];
 
 if (
   !availableModes.includes(modeOrTestSuite) &&
