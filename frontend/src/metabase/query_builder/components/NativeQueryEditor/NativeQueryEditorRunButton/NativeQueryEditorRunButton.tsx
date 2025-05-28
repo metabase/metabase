@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isMac } from "metabase/lib/browser";
+import { METAKEY } from "metabase/lib/browser";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 
 import S from "./NativeQueryEditorRunButton.module.css";
@@ -28,7 +28,7 @@ const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
     const command = nativeEditorSelectedText
       ? t`Run selected text`
       : t`Run query`;
-    const shortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
+    const shortcut = t`(${METAKEY} + enter)`;
     return command + " " + shortcut;
   };
 
