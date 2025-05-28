@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import { lighten } from "metabase/lib/colors";
 import { Box, type BoxProps, Icon, type IconProps } from "metabase/ui";
 
-import { LegendLabel as BaseLegendLabel } from "./LegendLabel";
+import { LegendLabel as BaseLegendLabel } from "../LegendLabel";
 
 export const LegendCaptionRoot = styled.div`
   display: flex;
