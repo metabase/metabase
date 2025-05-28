@@ -5,6 +5,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import type { RemappingValue } from "../DisplayValuesPicker";
 
@@ -68,4 +69,8 @@ function hasMappableNumeralValues(field: Field): boolean {
       (key) => typeof key === "number" || key === null,
     )
   );
+}
+
+export function is403Error(error: unknown): boolean {
+  return isObject(error) && error.status === 403;
 }

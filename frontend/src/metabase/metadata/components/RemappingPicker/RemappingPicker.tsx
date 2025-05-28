@@ -11,7 +11,7 @@ import {
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Flex, Select, type SelectProps, Stack } from "metabase/ui";
+import { Alert, Flex, Select, type SelectProps, Stack } from "metabase/ui";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
 import {
@@ -25,6 +25,7 @@ import {
   getFkTargetTableEntityNameOrNull,
   getOptions,
   getValue,
+  is403Error,
 } from "./utils";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
@@ -42,7 +43,7 @@ export const RemappingPicker = ({
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
-  const { data: fkTargetField } = useGetFieldQuery(
+  const { data: fkTargetField, error: fkTargetFieldError } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
       : {
@@ -77,6 +78,7 @@ export const RemappingPicker = ({
       : skipToken,
   );
   const fkRemappingField = hasFkMappingValue ? fkRemappingFieldData : undefined;
+  const isFieldsAccessRestricted = is403Error(fkTargetFieldError);
 
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
@@ -177,10 +179,28 @@ export const RemappingPicker = ({
               }
             />
           )}
+
+          {hasChanged && hasFkMappingValue && <NamingTip mt="md" />}
         </>
       )}
 
-      {hasChanged && hasFkMappingValue && <NamingTip mt="md" />}
+      {value === "custom" && (
+        <>
+          {isFieldsAccessRestricted && (
+            <Alert mt="md">
+              {t`You need unrestricted data access on this table to map custom display values.`}
+            </Alert>
+          )}
+
+          {!isFieldsAccessRestricted && (
+            <>
+              {hasChanged && <NamingTip />}
+
+              <span>valueremappings</span>
+            </>
+          )}
+        </>
+      )}
     </Stack>
   );
 };
