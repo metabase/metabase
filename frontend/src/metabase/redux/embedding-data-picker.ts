@@ -38,9 +38,10 @@ const embeddingDataPickerSlice = createSlice({
 function normalizeEntityTypes(
   entityTypes: EmbeddingEntityType[],
 ): EmbeddingEntityType[] {
-  const ALLOWED_ENTITY_TYPES: EmbeddingDataPickerState["entityTypes"] = [
+  const ALLOWED_ENTITY_TYPES: EmbeddingEntityType[] = [
     "model",
     "table",
+    "question",
   ];
 
   const filteredEntityTypes = entityTypes.filter((type) =>
