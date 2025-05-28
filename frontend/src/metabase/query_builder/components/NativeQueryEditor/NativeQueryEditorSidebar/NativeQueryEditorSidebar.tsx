@@ -75,12 +75,7 @@ export const NativeQueryEditorSidebar = (
     engine != null && getEngineNativeType(engine) === "sql";
 
   return (
-    <Flex
-      component="aside"
-      align="center"
-      data-testid="native-query-editor-sidebar"
-      gap="lg"
-    >
+    <Flex component="aside" data-testid="native-query-editor-sidebar" gap="lg">
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}

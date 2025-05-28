@@ -10,6 +10,7 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
+import { Box } from "metabase/ui";
 
 const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
@@ -177,9 +178,9 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <div className={cx(CS.p2, CS.textBold)} data-testid="selected-database">
+  <Box p="md" fw="bold" data-testid="selected-database">
     {database.name}
-  </div>
+  </Box>
 );
 
 SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
