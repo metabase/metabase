@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ActionIcon, Group, Icon, Text, Tooltip } from "metabase/ui";
-import type { WritebackAction } from "metabase-types/api";
+import type { TableAction, WritebackAction } from "metabase-types/api";
 
 type RowActionItemProps = {
   action: WritebackAction;

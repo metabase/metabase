@@ -12,6 +12,7 @@ import { Box, Button, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
   RowActionFieldSettings,
+  TableAction,
   TableActionDisplaySettings,
   WritebackAction,
   WritebackParameter,
@@ -22,13 +23,13 @@ import S from "./RowActionSettingsModalContent.module.css";
 import { cleanEmptyVisibility, isValidMapping } from "./utils";
 
 interface Props {
-  action: WritebackAction | null | undefined;
+  action: WritebackAction | TableAction | null | undefined;
   rowActionSettings: TableActionDisplaySettings | undefined;
   tableColumns: BasicTableViewColumn[];
   onClose: () => void;
   onSubmit: (actionParams: {
     id?: string;
-    action: WritebackAction;
+    action: WritebackAction | TableAction;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
@@ -112,11 +113,6 @@ export function RowActionSettingsModalContent({
   const handleSubmit = useCallback(
     (values: { parameters: RowActionFieldSettings[] }) => {
       if (selectedAction) {
-        const name =
-          "table_name" in selectedAction
-            ? actionName ||
-              `${selectedAction.table_name} (${selectedAction.name})`
-            : actionName;
         onSubmit({
           id: rowActionSettings?.id,
           action: selectedAction,
