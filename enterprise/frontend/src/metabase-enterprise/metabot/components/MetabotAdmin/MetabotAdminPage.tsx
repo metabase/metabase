@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -29,8 +29,16 @@ import type {
 
 import { useMetabotIdPath } from "./utils";
 
+const metabotContext = "{0} is the name of an AI assistant";
+
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
+  const { data } = useListMetabotsQuery();
+
+  const metabotName =
+    data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
+  const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
+
   return (
     <ErrorBoundary>
       <Flex p="xl">
@@ -38,11 +46,20 @@ export function MetabotAdminPage() {
         <Stack px="xl">
           <SettingHeader
             id="configure-metabot"
-            title={t`Configure Metabot`}
-            // eslint-disable-next-line no-literal-metabase-strings -- admin settings
-            description={t`Metabot is Metabase's AI agent. To help Metabot more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
+            title={c(metabotContext).t`Configure ${metabotName}`}
+            // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+            description={c(metabotContext)
+              .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
           />
-          <MetabotConfigurationPane metabotId={metabotId} />
+          {isEmbeddedMetabot && (
+            <Text c="text-medium" maw="40rem">
+              {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
+            </Text>
+          )}
+          <MetabotConfigurationPane
+            metabotId={metabotId}
+            metabotName={metabotName}
+          />
         </Stack>
       </Flex>
     </ErrorBoundary>
@@ -85,8 +102,10 @@ function MetabotNavPane() {
 
 function MetabotConfigurationPane({
   metabotId,
+  metabotName,
 }: {
   metabotId: MetabotId | null;
+  metabotName: string;
 }) {
   const { data: entityList, isLoading } = useListMetabotsEntitiesQuery(
     metabotId ?? skipToken,
@@ -134,7 +153,10 @@ function MetabotConfigurationPane({
 
   return (
     <Box>
-      <SettingHeader id="allow-metabot" title={t`Collection Metabot can use`} />
+      <SettingHeader
+        id="allow-metabot"
+        title={c(metabotContext).t`Collection ${metabotName} can use`}
+      />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
         <Button onClick={open}>

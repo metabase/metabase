@@ -36,6 +36,10 @@ const metabots = [
     id: 2,
     name: "Metabot Two",
   },
+  {
+    id: 3,
+    name: "Embedded Metabot Three",
+  },
 ];
 
 const entities = {
@@ -57,6 +61,7 @@ const entities = {
       collection_name: "Collection Two Prime",
     },
   ] as MetabotApiEntity[],
+  3: [],
   recents: [
     {
       id: 31,
@@ -177,10 +182,19 @@ describe("MetabotAdminPage", () => {
     await setup(1, {
       1: [],
       2: [],
+      3: [],
       recents: [],
     });
     expect(await screen.findByText("Pick a collection")).toBeInTheDocument();
 
     expect(screen.queryByLabelText("trash icon")).not.toBeInTheDocument();
+  });
+
+  it("should show special copy for embedded metabot", async () => {
+    await setup(3);
+
+    expect(
+      await screen.findByText(/embedding the metabot component/i),
+    ).toBeInTheDocument();
   });
 });
