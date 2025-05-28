@@ -749,4 +749,5 @@ export const PLUGIN_TENANTS = {
   userStrategyRoute: null as React.ReactElement | null,
   tenantsRoutes: null as React.ReactElement | null,
   EditUserStrategySettingsButton: PluginPlaceholder,
+  FormTenantWidget: PluginPlaceholder,
 };

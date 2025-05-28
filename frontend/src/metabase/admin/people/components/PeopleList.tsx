@@ -17,7 +17,14 @@ import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import type { GroupId, GroupInfo, Member, User } from "metabase-types/api";
+import type {
+  GroupId,
+  GroupInfo,
+  Member,
+  Tenant,
+  User,
+  UserTenancy,
+} from "metabase-types/api";
 
 import { ACTIVE_STATUS, type ActiveStatus } from "../constants";
 
@@ -31,6 +38,7 @@ interface PeopleListQueryProps {
     status: ActiveStatus;
     page: number;
     pageSize: number;
+    tenancy: UserTenancy;
   };
 }
 
@@ -40,6 +48,8 @@ interface PeopleListProps extends PeopleListQueryProps {
   isAdmin: boolean;
   onNextPage?: () => void;
   onPreviousPage: () => void;
+  external?: boolean;
+  tenants: Tenant[];
 }
 
 export const PeopleList = ({
@@ -47,8 +57,10 @@ export const PeopleList = ({
   currentUser,
   groups,
   query,
+  tenants,
   onNextPage,
   onPreviousPage,
+  external = false,
 }: PeopleListProps) => {
   const { modalContent, show } = useConfirmation();
 
@@ -57,6 +69,7 @@ export const PeopleList = ({
     status: query.status === "active" ? undefined : query.status,
     limit: query.pageSize,
     offset: query.pageSize * query.page,
+    tenancy: query.tenancy,
   });
 
   const users = data?.data || defaultUsersValue;
@@ -176,7 +189,7 @@ export const PeopleList = ({
                 </Fragment>
               ) : (
                 <Fragment>
-                  <th>{t`Groups`}</th>
+                  {external ? <th>{t`Tenant`}</th> : <th>{t`Groups`}</th>}
                   <th>{t`Last Login`}</th>
                   <th />
                 </Fragment>
@@ -191,6 +204,7 @@ export const PeopleList = ({
                   user={user}
                   showDeactivated={showDeactivated}
                   groups={groups}
+                  tenants={tenants}
                   userMemberships={membershipsByUser[user.id]}
                   isCurrentUser={isCurrentUser(user)}
                   isAdmin={isAdmin}
