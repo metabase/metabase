@@ -45,7 +45,7 @@ export const ContentTranslationConfiguration = () => {
     }
 
     const blob = await response.blob();
-    const filename = "metabase-content-dictionary.csv";
+    const filename = "metabase-content-translation-dictionary.csv";
     openSaveDialog(filename, blob);
   };
 
