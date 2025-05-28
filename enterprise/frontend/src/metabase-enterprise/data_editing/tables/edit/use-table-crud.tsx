@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import {
   useDeleteTableRowsMutation,
   useInsertTableRowsMutation,
@@ -25,8 +27,6 @@ import type {
 import { useTableCrudOptimisticUpdate } from "./use-table-crud-optimistic-update";
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 import { getRowPkKeyValue } from "./utils";
-import { addUndo } from "metabase/redux/undo";
-import { t } from "ttag";
 
 export const useTableCRUD = ({
   tableId,
@@ -246,7 +246,6 @@ export const useTableCRUD = ({
         scope,
       });
 
-      // TODO: Ask if this is enought or should we filter the row by actual 'deleted' operation status?
       if (response.data?.outputs) {
         stateUpdateStrategy.onRowsDeleted(rows);
         dispatch(

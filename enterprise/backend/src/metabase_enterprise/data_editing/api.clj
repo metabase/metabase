@@ -10,6 +10,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]

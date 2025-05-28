@@ -45,17 +45,29 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, scope, noOp }) => ({
+      query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/undo`,
-        body: { "table-id": tableId, scope, "no-op": noOp },
+        url: `/api/ee/data-editing/action/v2/execute`,
+        body: {
+          input: {
+            "table-id": tableId,
+          },
+          scope,
+          action_id: "data-editing/undo",
+        },
       }),
     }),
     tableRedo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, scope, noOp }) => ({
+      query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/redo`,
-        body: { "table-id": tableId, scope, "no-op": noOp },
+        url: `/api/ee/data-editing/action/v2/execute`,
+        body: {
+          input: {
+            "table-id": tableId,
+          },
+          scope,
+          action_id: "data-editing/redo",
+        },
       }),
     }),
     getActions: builder.query<Array<WritebackAction | TableAction>, void>({

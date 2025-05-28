@@ -15,13 +15,19 @@ export type TableEditingScope =
   | { "table-id": ConcreteTableId }
   | { "dashcard-id": number };
 
+type ExecuteOutput<Op extends "created" | "updated" | "deleted"> = {
+  op: Op;
+  row: RowCellsWithPkValue;
+  "table-id": TableId;
+};
+
 export type TableInsertRowsRequest = {
   rows: RowCellsWithPkValue[];
   scope?: TableEditingScope;
 };
 
 export type TableInsertRowsResponse = {
-  outputs: { op: "created"; row: RowCellsWithPkValue; "table-id": TableId }[];
+  outputs: ExecuteOutput<"created">[];
 };
 
 export type TableUpdateRowsRequest = {
@@ -30,7 +36,7 @@ export type TableUpdateRowsRequest = {
 };
 
 export type TableUpdateRowsResponse = {
-  outputs: { op: "updated"; row: RowCellsWithPkValue; "table-id": TableId }[];
+  outputs: ExecuteOutput<"updated">[];
 };
 
 export type TableDeleteRowsRequest = {
@@ -39,7 +45,7 @@ export type TableDeleteRowsRequest = {
 };
 
 export type TableDeleteRowsResponse = {
-  outputs: { op: "deleted"; row: RowCellsWithPkValue; "table-id": TableId }[];
+  outputs: ExecuteOutput<"deleted">[];
 };
 
 export type UpdateCellValueHandlerParams = {
@@ -56,18 +62,10 @@ export type UpdatedRowHandlerParams = {
 export type TableUndoRedoRequest = {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;
-
-  /**
-   * When true, the API will only return the batch number of the next undo operation
-   * without actually performing the undo. This is useful for checking if an undo operation
-   * is available before attempting it.
-   */
-  noOp?: boolean;
 };
 
 export type TableOperation = [string, Record<string, RowValue>];
 
 export type TableUndoRedoResponse = {
-  batch_num?: number;
-  result?: Record<ConcreteTableId, TableOperation[]>;
+  outputs?: ExecuteOutput<"created" | "updated" | "deleted">[];
 };
