@@ -206,7 +206,12 @@
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
 
 (defn- execute-table-action! [action-kw table-id request-parameters]
-  (actions/perform-action-with-single-input-and-output action-kw {:table-id table-id :arg request-parameters}))
+  ;; removing nils for update is a tmp hack to ignore inputs that have not been interacted with from the FE
+  ;; we should have the FE omit these keys longer term
+  (let [request-parameters' (case action-kw
+                              :table.row/update (u/remove-nils request-parameters)
+                              request-parameters)]
+    (actions/perform-action-with-single-input-and-output action-kw {:table-id table-id :arg request-parameters'})))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters

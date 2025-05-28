@@ -15,6 +15,7 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   getEmbedOptions,
@@ -658,6 +659,22 @@ export const getHasModelActionsEnabled = createSelector(
     );
 
     return hasModelActionsEnabled;
+  },
+);
+
+export const getHasDataEditingEnabled = createSelector(
+  [getMetadata],
+  (metadata) => {
+    if (!metadata) {
+      return false;
+    }
+
+    const databases = metadata.databasesList();
+    const hasDataEditingEnabled = Object.values(databases).some((database) =>
+      PLUGIN_DATA_EDITING.isDatabaseTableEditingEnabled(database),
+    );
+
+    return hasDataEditingEnabled;
   },
 );
 
