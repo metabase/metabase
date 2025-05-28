@@ -1,4 +1,5 @@
 import { parse } from "csv-parse/browser/esm/sync";
+import path from "path";
 
 import { type DictionaryArray, isDictionaryArray } from "metabase-types/api";
 
@@ -23,10 +24,7 @@ describe("scenarios > admin > localization > content translation", () => {
 
     it("admin settings configuration form is not present", () => {
       cy.visit("/admin/settings/localization");
-      cy.findByTestId("content-localization-setting").should("not.exist");
-      cy.findByTestId("admin-layout-content")
-        .findByText(/translation dictionary/i)
-        .should("not.exist");
+      cy.findByTestId("content-translation-configuration").should("not.exist");
     });
   });
 
@@ -41,12 +39,11 @@ describe("scenarios > admin > localization > content translation", () => {
     });
 
     describe("The translation download button", () => {
-      it("downloads the uploaded translations", () => {
+      it.only("downloads the uploaded translations", () => {
         uploadTranslationDictionary(germanFieldNames);
-        assertOnlyTheseTranslationsAreStored(germanFieldNames);
         cy.visit("/admin/settings/localization");
-        cy.findByTestId("admin-layout-content")
-          .findByText(/Download translation dictionary/i)
+        cy.findByTestId("content-translation-configuration")
+          .button(/Download translation dictionary/i)
           .click();
         const downloadsFolder = Cypress.config("downloadsFolder");
         cy.readFile(

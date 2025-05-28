@@ -21,6 +21,7 @@ import {
 import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 
 export const ContentTranslationConfiguration = () => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
@@ -33,7 +34,7 @@ export const ContentTranslationConfiguration = () => {
   >();
 
   const triggerDownload = async () => {
-    const response = await fetch("/api/content-translation/dictionary", {
+    const response = await fetch("/api/content-translation/csv", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -50,20 +51,29 @@ export const ContentTranslationConfiguration = () => {
   };
 
   return (
-    <Stack gap="sm" maw="38rem">
-      <Text>
-        <Markdown
-          components={{
-            strong: ({ children }: { children: ReactNode }) => (
-              <ExternalLink href={availableLocalesDocsUrl}>
-                {children}
-              </ExternalLink>
-            ),
-          }}
-        >
-          {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations.`}
-        </Markdown>
-      </Text>
+    <Stack
+      gap="sm"
+      maw="38rem"
+      aria-labelledby="content-translation-header"
+      data-testid="content-translation-configuration"
+    >
+      <SettingHeader
+        id="content-translation-header"
+        title={t`Content translation`}
+        description={
+          <Markdown
+            components={{
+              strong: ({ children }: { children: ReactNode }) => (
+                <ExternalLink href={availableLocalesDocsUrl}>
+                  {children}
+                </ExternalLink>
+              ),
+            }}
+          >
+            {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations.`}
+          </Markdown>
+        }
+      />
       <Group>
         <Button
           onClick={triggerDownload}
