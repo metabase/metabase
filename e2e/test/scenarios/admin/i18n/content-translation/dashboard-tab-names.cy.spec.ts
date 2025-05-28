@@ -28,6 +28,7 @@ describe("scenarios > content translation > dashboard tab names", () => {
     H.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
     });
+    cy.signInAsNormalUser();
     cy.findByRole("tab", { name: "Reiter 1" });
   });
 });
