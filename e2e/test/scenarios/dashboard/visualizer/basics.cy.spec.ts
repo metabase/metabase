@@ -559,4 +559,18 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       ensureVisualizerCardsAreRendered();
     });
   });
+
+  it("show a message when there are no search results", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByText("Add more data").click();
+      cy.findByPlaceholderText("Search for something").type("non-existing");
+
+      cy.findByText("No results").should("exist");
+    });
+  });
 });
