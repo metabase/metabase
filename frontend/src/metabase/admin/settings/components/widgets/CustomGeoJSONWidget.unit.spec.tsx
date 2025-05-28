@@ -3,10 +3,11 @@ import userEvent from "@testing-library/user-event";
 import {
   setupGeoJSONEndpoint,
   setupPropertiesEndpoints,
+  setupSettingEndpoint,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { findRequests } from "__support__/utils";
 import { UndoListing } from "metabase/containers/UndoListing";
 import type { CustomGeoJSONMap } from "metabase-types/api";
@@ -15,10 +16,11 @@ import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import CustomGeoJSONWidget from "./CustomGeoJSONWidget";
 
-const setup = ({ isEnvVar }: { isEnvVar?: boolean }) => {
+const setup = async ({ isEnvVar }: { isEnvVar?: boolean }) => {
   const customGeoJSON = {
     "666c2779-15ee-0ad9-f5ab-0ccbcc694efa": {
       name: "Test",
@@ -54,6 +56,10 @@ const setup = ({ isEnvVar }: { isEnvVar?: boolean }) => {
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([geoJSONDefinition]);
+  setupSettingEndpoint({
+    settingKey: "custom-geojson",
+    settingValue: customGeoJSON,
+  });
 
   setupGeoJSONEndpoint({
     featureCollection: createMockGeoJSONFeatureCollection(),
@@ -65,22 +71,26 @@ const setup = ({ isEnvVar }: { isEnvVar?: boolean }) => {
     url: "https://test.com/download/GeoJSON_two.json",
   });
 
-  return renderWithProviders(
+  renderWithProviders(
     <div>
-      <CustomGeoJSONWidget
-        setting={geoJSONDefinition}
-        reloadSettings={() => {
-          return Promise.resolve();
-        }}
-      />
+      <CustomGeoJSONWidget />
       <UndoListing />
     </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+      },
+    },
   );
+
+  if (!isEnvVar) {
+    await screen.findByRole("button", { name: "Add a map" });
+  }
 };
 
 describe("CustomGeoJSONWIdget", () => {
   it("render correctly", async () => {
-    setup({});
+    await setup({});
     const tableRows = screen.getAllByRole("row");
 
     // first row contains the table headers
@@ -97,7 +107,7 @@ describe("CustomGeoJSONWIdget", () => {
   });
 
   it("should remove a saved map", async () => {
-    setup({});
+    await setup({});
 
     await userEvent.click(screen.getByRole("button", { name: /Remove/i }));
     const modal = screen.getByRole("dialog");
@@ -112,7 +122,7 @@ describe("CustomGeoJSONWIdget", () => {
   });
 
   it("should add a new map", async () => {
-    setup({});
+    await setup({});
 
     const addButton = screen.getByRole("button", { name: "Add a map" });
     await userEvent.click(addButton);
@@ -164,6 +174,11 @@ describe("CustomGeoJSONWIdget", () => {
     await userEvent.click(saveButton);
     expect(modal).not.toBeInTheDocument();
 
+    await waitFor(() => {
+      const toasts = screen.getAllByLabelText("check_filled icon");
+      expect(toasts).toHaveLength(1);
+    });
+
     const puts = await findRequests("PUT");
     const { body } = puts[0];
     const testMapEntry = Object.values(body.value).find(
@@ -178,7 +193,7 @@ describe("CustomGeoJSONWIdget", () => {
   });
 
   it("should edit a map", async () => {
-    setup({});
+    await setup({});
 
     await userEvent.click(
       screen.getByText("https://test.com/download/GeoJSON_one.json"),
@@ -191,7 +206,7 @@ describe("CustomGeoJSONWIdget", () => {
     await userEvent.click(screen.getByRole("button", { name: /Cancel/i }));
 
     const putsAfterCancel = await findRequests("PUT");
-    expect(putsAfterCancel).toHaveLength(1);
+    expect(putsAfterCancel).toHaveLength(0);
 
     await userEvent.click(
       screen.getByText("https://test.com/download/GeoJSON_one.json"),
@@ -222,8 +237,13 @@ describe("CustomGeoJSONWIdget", () => {
 
     expect(modal).not.toBeInTheDocument();
 
+    await waitFor(() => {
+      const toasts = screen.getAllByLabelText("check_filled icon");
+      expect(toasts).toHaveLength(1);
+    });
+
     const puts = await findRequests("PUT");
-    const { body } = puts[1];
+    const { body } = puts[0];
     const testMapEntry = Object.values(body.value).find(
       (item) => (item as CustomGeoJSONMap).name === "Test Edit",
     );
@@ -236,7 +256,7 @@ describe("CustomGeoJSONWIdget", () => {
   });
 
   it("should not render the widget if set by an environment variable", async () => {
-    setup({
+    await setup({
       isEnvVar: true,
     });
 

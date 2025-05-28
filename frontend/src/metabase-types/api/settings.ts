@@ -307,7 +307,7 @@ export type CustomGeoJSONMap = {
   builtin?: boolean;
 };
 
-type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
+export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
   "admin-email": string;
