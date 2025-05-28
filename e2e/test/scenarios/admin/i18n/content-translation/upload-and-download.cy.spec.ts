@@ -1,4 +1,7 @@
-import type { DictionaryArray, DictionaryResponse } from "metabase-types/api";
+import { parse } from "csv-parse/browser/esm/sync";
+
+import { type DictionaryArray, isDictionaryArray } from "metabase-types/api";
+
 import {
   germanFieldNames,
   nonAsciiFieldNames,
@@ -8,7 +11,6 @@ import {
   assertOnlyTheseTranslationsAreStored,
   uploadTranslationDictionary,
 } from "./helpers/e2e-content-translation-helpers";
-import { parse } from "csv-parse/browser/esm/sync";
 
 const { H } = cy;
 
@@ -124,7 +126,7 @@ describe("scenarios > admin > localization > content translation", () => {
 
 export const parseCSVFromString = (str: string): DictionaryArray => {
   try {
-    const strings = parse(str, {
+    const strings: unknown = parse(str, {
       delimiter: [",", "\t", "\n"],
       skip_empty_lines: true,
       relax_column_count: true,
@@ -133,7 +135,10 @@ export const parseCSVFromString = (str: string): DictionaryArray => {
       quote: '"',
       escape: "\\",
     }).flat();
-    return strings;
+    if (isDictionaryArray(strings)) {
+      return strings;
+    }
+    throw new Error("Invalid dictionary");
   } catch (err) {
     return [];
   }
