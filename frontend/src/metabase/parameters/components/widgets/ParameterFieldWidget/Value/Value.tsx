@@ -4,6 +4,7 @@ import { isValidElement } from "react";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import type { DashboardId, Parameter } from "metabase-types/api";
 
 import RemappedValue from "./RemappedValue";
 
@@ -14,6 +15,10 @@ export const Value = ({
   value: unknown;
   displayValue?: unknown;
   hide?: boolean;
+  autoLoad?: boolean;
+  parameter?: Parameter;
+  cardId?: number;
+  dashboardId?: DashboardId;
 } & OptionsType) => {
   const tc = useTranslateContent<unknown>();
 

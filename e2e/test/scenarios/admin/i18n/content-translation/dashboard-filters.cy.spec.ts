@@ -18,6 +18,7 @@ const questionDetails: StructuredQuestionDetails = {
   name: "Products question",
   query: {
     "source-table": PRODUCTS_ID,
+    limit: 30,
   },
 };
 
