@@ -49,22 +49,6 @@ export const AddDataModal = ({
               >
                 {t`Database`}
               </Tabs.Tab>
-              <Tabs.Tab
-                value="csv"
-                leftSection={<Icon name="table2" />}
-                disabled
-                onClick={() => trackAddDataEvent("csv_upload_clicked")}
-              >
-                {t`CSV`}
-              </Tabs.Tab>
-              <Tabs.Tab
-                value="gsheet"
-                leftSection={<Icon name="document" />}
-                disabled
-                onClick={() => trackAddDataEvent("sheets_connection_clicked")}
-              >
-                {t`Google Sheets`}
-              </Tabs.Tab>
             </Tabs.List>
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
@@ -76,8 +60,6 @@ export const AddDataModal = ({
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel canSeeContent={isAdmin} />
             </Tabs.Panel>
-            <Tabs.Panel value="csv">{"CSV content"}</Tabs.Panel>
-            <Tabs.Panel value="gsheet">{"Google Sheets content"}</Tabs.Panel>
           </Box>
         </Tabs>
       </Modal.Content>
