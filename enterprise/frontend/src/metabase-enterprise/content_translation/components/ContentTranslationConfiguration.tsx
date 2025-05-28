@@ -1,10 +1,16 @@
-import { type ChangeEvent, type ReactNode, useCallback, useRef } from "react";
+import {
+  type ChangeEvent,
+  type ReactNode,
+  useCallback,
+  useRef,
+  useState,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { UploadInput } from "metabase/components/upload";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { openSaveDialog } from "metabase/lib/dom";
 import Markdown from "metabase/core/components/Markdown";
 import {
   Form,
@@ -12,6 +18,7 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
+import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
@@ -21,17 +28,20 @@ export const ContentTranslationConfiguration = () => {
     "configuring-metabase/localization",
     { anchor: "supported-languages" },
   ).url;
+  const [downloadErrorMessage, setDownloadErrorMessage] = useState<
+    string | null
+  >();
 
   const triggerDownload = async () => {
     const response = await fetch("/api/content-translation/dictionary", {
-      method: "POST",
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
 
     if (!response.ok) {
-      throw new Error("Network response was not ok");
+      setDownloadErrorMessage(t`Couldn't download this file`);
     }
 
     const blob = await response.blob();
@@ -72,6 +82,11 @@ export const ContentTranslationConfiguration = () => {
           <UploadForm />
         </FormProvider>
       </Group>
+      {downloadErrorMessage && (
+        <Text role="alert" c="danger">
+          {downloadErrorMessage}
+        </Text>
+      )}
     </Stack>
   );
 };
