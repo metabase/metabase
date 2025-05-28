@@ -1,13 +1,12 @@
 (ns metabase-enterprise.content-translation.api.routes
   "Endpoints relating to the translation of user-generated content"
   (:require
+   [clojure.data.csv :as csv]
    [metabase-enterprise.content-translation.api.dictionary :as dictionary]
    [metabase-enterprise.content-translation.models :as ct]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.query-processor.streaming.csv :as csv]
-   [metabase.streaming-response :as sr]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.server.streaming-response :as sr]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
