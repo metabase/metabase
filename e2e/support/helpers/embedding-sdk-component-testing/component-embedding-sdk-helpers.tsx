@@ -5,11 +5,10 @@ import {
 import type { JSX } from "react";
 import React from "react";
 
-import { AUTH_PROVIDER_URL, METABASE_INSTANCE_URL } from "e2e/support/helpers";
+import { METABASE_INSTANCE_URL } from "e2e/support/helpers";
 import { ThemeProvider } from "metabase/ui";
 
 export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
-  authProviderUri: AUTH_PROVIDER_URL,
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
 };
 
