@@ -154,7 +154,7 @@ const getRefreshToken = async (
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       url,
-      hash,
+      getSdkRequestHeaders(hash),
       customFetchRequestToken,
     );
   }
