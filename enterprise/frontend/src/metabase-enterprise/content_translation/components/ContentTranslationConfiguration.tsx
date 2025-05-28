@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import { UploadInput } from "metabase/components/upload";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { openSaveDialog } from "metabase/lib/dom";
 import Markdown from "metabase/core/components/Markdown";
 import {
   Form,
@@ -11,7 +12,7 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 export const ContentTranslationConfiguration = () => {
@@ -20,6 +21,23 @@ export const ContentTranslationConfiguration = () => {
     "configuring-metabase/localization",
     { anchor: "supported-languages" },
   ).url;
+
+  const triggerDownload = async () => {
+    const response = await fetch("/api/content-translation/dictionary", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+
+    const blob = await response.blob();
+    const filename = "metabase-content-dictionary.csv";
+    openSaveDialog(filename, blob);
+  };
 
   return (
     <Stack gap="sm" maw="38rem">
@@ -36,16 +54,24 @@ export const ContentTranslationConfiguration = () => {
           {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations.`}
         </Markdown>
       </Text>
-
-      <FormProvider
-        // We're only using Formik to make the appearance of the submit button
-        // depend on the form's status. We're not using Formik's other features
-        // here.
-        initialValues={{}}
-        onSubmit={() => {}}
-      >
-        <UploadForm />
-      </FormProvider>
+      <Group>
+        <Button
+          onClick={triggerDownload}
+          leftSection={<Icon name="download" />}
+          maw="20rem"
+        >
+          {t`Download translation dictionary`}
+        </Button>
+        <FormProvider
+          // We're only using Formik to make the appearance of the submit button
+          // depend on the form's status. We're not using Formik's other features
+          // here.
+          initialValues={{}}
+          onSubmit={() => {}}
+        >
+          <UploadForm />
+        </FormProvider>
+      </Group>
     </Stack>
   );
 };
