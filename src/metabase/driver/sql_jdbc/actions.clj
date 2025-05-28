@@ -349,7 +349,7 @@
         source-table (get-in query [:query :source-table])
         {:keys [from where]} (mbql-query->raw-hsql driver query)
         update-hsql  (-> {:update (first from)
-                          :set    (cast-values driver update-row (u/the-id database) source-table)
+                          :set    (cast-values driver (update-keys update-row u/qualified-name) (u/the-id database) source-table)
                           :where  where}
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
@@ -546,7 +546,7 @@
 
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
 
-(mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
+(mu/defn- table-id->pk-field-name->id :- [:map-of :keyword ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
@@ -555,29 +555,30 @@
    #(into {}
           (comp (filter (fn [{:keys [semantic-type], :as _field}]
                           (isa? semantic-type :type/PK)))
-                (map (juxt :name :id)))
+                (map (juxt (comp keyword :name) :id)))
           (qp.store/with-metadata-provider database-id
             (lib.metadata.protocols/fields
              (qp.store/metadata-provider)
              table-id)))))
 
-(defn- row->mbql-filter-clause
+(mu/defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
   value build an appropriate MBQL filter clause."
   [field-name->id row]
+  ;; TODO we should fix it upstream, maybe we should keyword everywhere
   (when (empty? row)
     (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
                     {:field-name->id field-name->id, :row row, :status-code 400})))
   (into [:and] (for [[field-name value] row
-                     :let               [field-id (get field-name->id (u/qualified-name field-name))
-                                         ;; if the field isn't in `field-name->id` then it's an error in our code. Not
-                                         ;; i18n'ed because this is not something that should be User facing unless our
-                                         ;; backend code is broken.
-                                         ;;
-                                         ;; Unknown column names in user input WILL NOT trigger this error.
-                                         ;; [[row->mbql-filter-clause]] is only used for *known* PK columns that are
-                                         ;; used for the MBQL `:filter` clause. Unknown columns will trigger an error in
-                                         ;; the DW but not here.
+                     :let               [field-id (get field-name->id field-name)
+                                        ;; if the field isn't in `field-name->id` then it's an error in our code. Not
+                                        ;; i18n'ed because this is not something that should be User facing unless our
+                                        ;; backend code is broken.
+                                        ;;
+                                        ;; Unknown column names in user input WILL NOT trigger this error.
+                                        ;; [[row->mbql-filter-clause]] is only used for *known* PK columns that are
+                                        ;; used for the MBQL `:filter` clause. Unknown columns will trigger an error in
+                                        ;; the DW but not here.
                                          _ (assert field-id
                                                    (format "Field %s is not present in field-name->id map"
                                                            (pr-str field-name)))]]
@@ -612,6 +613,59 @@
           {}
           fk-fields))))))
 
+(defn- build-pk-filter-clause
+  "Build an efficient filter clause for matching rows by primary key.
+  Uses IN clause for single PK, OR of AND clauses for composite PK."
+  [pk-name->id pk-rows]
+  (cond
+    (= 1 (count pk-rows))
+    (row->mbql-filter-clause pk-name->id (first pk-rows))
+
+    (= 1 (count pk-name->id))
+    (let [[pk-name pk-field-id] (first pk-name->id)
+          pk-values             (map #(get % (keyword pk-name)) pk-rows)]
+      (into [:in [:field pk-field-id nil]] pk-values))
+
+    :else
+    (into [:or]
+          (map #(row->mbql-filter-clause pk-name->id %) pk-rows))))
+
+(defn- build-fk-filter-clause
+  "Build an efficient filter clause for matching rows by foreign key.
+  Uses IN clause for single FK, OR of AND clauses for composite FK."
+  [fk parent-rows]
+  (if (= 1 (count fk))
+    ;; Single FK column - use IN clause
+    (let [[fk-col pk-col] (first fk)
+          parent-values (map pk-col parent-rows)]
+      [:in fk-col parent-values])
+    ;; Composite FK - use OR of AND clauses
+    (into [:or]
+          (for [parent parent-rows]
+            (into [:and]
+                  (for [[fk-col pk-col] fk]
+                    [:= fk-col (get parent pk-col)]))))))
+
+(defn- delete-rows-by-pk!
+  "Delete rows from a table by their primary key values"
+  [database-id table-id pk-rows]
+  (when (seq pk-rows)
+    (let [database       (actions/cached-database database-id)
+          driver         (:engine database)
+          pk-name->id    (table-id->pk-field-name->id database-id table-id)
+          filter-clause  (build-pk-filter-clause pk-name->id pk-rows)
+          {:keys [from where]} (mbql-query->raw-hsql driver {:database database-id
+                                                             :type     :query
+                                                             :query    {:source-table table-id
+                                                                        :filter       filter-clause}})
+          delete-hsql    (-> {:delete-from (first from)
+                              :where       where}
+                             (prepare-query driver :table.row/delete))
+          sql-args      (sql.qp/format-honeysql driver delete-hsql)]
+      (with-jdbc-transaction [conn database-id]
+        (with-auto-parse-sql-exception driver database :table.row/delete
+          (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))))))
+
 (defn- lookup-children-in-db
   "Find child rows that reference the given parent rows via FK relationships"
   [relationship parent-rows database-id]
@@ -623,15 +677,7 @@
                           (fn []
                             (qp.store/with-metadata-provider database-id
                               (:name (lib.metadata.protocols/table (qp.store/metadata-provider) table)))))
-            where-clause (if (= 1 (count fk))
-                           (let [[fk-col pk-col] (first fk)
-                                 parent-values (map pk-col parent-rows)]
-                             [:in fk-col parent-values])
-                           (into [:or]
-                                 (for [parent parent-rows]
-                                   (into [:and]
-                                         (for [[fk-col pk-col] fk]
-                                           [:= fk-col (get parent pk-col)])))))
+            where-clause (build-fk-filter-clause fk parent-rows)
             query {:select pk
                    :from   [(keyword table-name)]
                    :where  where-clause
@@ -640,32 +686,20 @@
           [table
            (query-rows driver conn table query)])))))
 
-(defn- delete-rows-by-pk
-  "Delete rows from a table by their primary key values"
-  [database-id table-id pk-rows]
-  (when (seq pk-rows)
-    (log/debugf "Deleting %d rows from table %d" (count pk-rows) table-id)
-    (let [pk-name->id (table-id->pk-field-name->id database-id table-id)]
-      (doseq [row pk-rows]
-        (let [filter-clause (row->mbql-filter-clause pk-name->id row)
-              query {:database database-id
-                     :type :query
-                     :query {:source-table table-id
-                             :filter filter-clause}}]
-          (row-delete!* :table.row/delete (actions/cached-database database-id) query))))))
-
-(defn- delete-with-cascade
+(defn- delete-row-with-cascade!
   "Delete rows and all their descendants via FK relationships"
-  [database-id table-id rows]
+  [database-id table-id row]
   ;; TODO this is not ok because we're building metadata for a whole database, which could have a lots of entries
   ;; will need to rework foreign_key to make this work nicely
   (let [metadata    (build-fk-metadata database-id)
         children-fn (fn [relationship parent-rows]
                       (lookup-children-in-db relationship parent-rows database-id))
-        delete-fn (fn [items-by-table]
-                    (doseq [[table-id rows] (reverse items-by-table)]
-                      (delete-rows-by-pk database-id table-id rows)))]
-    (fks/delete-recursively table-id rows metadata children-fn delete-fn :max-queries 50)))
+        delete-fn   (fn [items-by-table]
+                      (doseq [[table-id rows] (reverse items-by-table)]
+                        (delete-rows-by-pk! database-id table-id rows)))
+        table-pks   (keys (table-id->pk-field-name->id database-id table-id))
+        row-pk      #p (select-keys #p row #p table-pks)]
+    (fks/delete-recursively table-id [row-pk] metadata children-fn delete-fn :max-queries 50)))
 
 ;;;; `:table.row/delete`
 
@@ -711,35 +745,37 @@
 
 (defn- row-delete!*-cascade
   [_action database query]
-  (let [table-id      (get-in query [:query :source-table])
-        database-id   (:id database)
-        pk-name->id   (table-id->pk-field-name->id database-id table-id)
-        filter-clause (get-in query [:query :filter])
-        row           (into {} (for [clause (rest filter-clause)
-                                     :when (and (vector? clause)
-                                                (= (first clause) :=)
-                                                (= (count clause) 3)
-                                                (vector? (second clause))
-                                                (= (first (second clause)) :field))
-                                     :let [field-id (second (second clause))
-                                           value (nth clause 2)
-                                           field-name (some (fn [[name id]] (when (= id field-id) name))
-                                                            pk-name->id)]]
-                                 [(keyword field-name) value]))]
-    (delete-with-cascade database-id table-id [row])
-    {:table-id table-id
-     :db-id    database-id
-     :before   row
-     :after    nil}))
+  (let [table-id             (get-in query [:query :source-table])
+        database-id          (:id database)
+        driver               (:engine database)
+        {:keys [from where]} (mbql-query->raw-hsql driver query)]
+    (with-jdbc-transaction [conn database-id]
+      (let [row-before (->> (prepare-query {:select [:*] :from from :where where} driver _action)
+                            (query-rows driver conn table-id)
+                            first)]
+        (when-not row-before
+          (throw (ex-info (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                          {:status-code 400})))
+        ;; Use the actual row data for cascade deletion
+        (delete-row-with-cascade! database-id table-id row-before)
+        {:table-id table-id
+         :db-id    database-id
+         :before   row-before
+         :after    nil}))))
+
+(defn keywordize-row-inputs
+  [inputs]
+  (mapv #(update % :row (fn [x] (update-keys x keyword))) inputs))
 
 (defn- perform-table-row-delete!
   "Perform table row deletion with optional cascade support"
   [_action context inputs {:keys [cascade?] :or {cascade? true}}]
-  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+  (let [inputs            (keywordize-row-inputs inputs)
+        table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database       (actions/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (map keyword (keys field-name->id))]))
-        row-fn (if cascade? row-delete!*-cascade row-delete!*)
+        row-fn             (if cascade? row-delete!*-cascade row-delete!*)
         [errors results]
         (batch-execution-by-table-id!
          {:inputs        inputs
@@ -785,8 +821,8 @@
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
-  [row      :- ::lib.schema.actions/row
-   pk-names :- [:set :string]]
+  [row      :- ::lib.schema.actions/row-keywordized
+   pk-names :- [:set :keyword]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
     (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
@@ -796,8 +832,8 @@
 
 (mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
-  [row      :- ::lib.schema.actions/row
-   pk-names :- [:set :string]]
+  [row      :- ::lib.schema.actions/row-keywordized
+   pk-names :- [:set :keyword]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)
       (throw (ex-info (tru "Invalid update row map: no non-PK columns. Got {0}, all of which are PKs."
@@ -809,7 +845,8 @@
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/update]
   [_action context inputs :- [:sequential ::table-row-input]]
-  (let [[errors results]
+  (let [inputs (keywordize-row-inputs inputs)
+        [errors results]
         (batch-execution-by-table-id!
          {:inputs     inputs
           :row-action :model.row/update
