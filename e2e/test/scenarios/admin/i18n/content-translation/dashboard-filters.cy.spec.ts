@@ -99,11 +99,15 @@ describe("scenarios > content translation > dashboard filters and field values",
 
             cy.log("Before filtering, multiple categories are shown");
             cy.findByTestId("table-body").within(() => {
-              ["Dingsbums", "Gerät", "Apparat", "Steuerelement"].forEach(
-                (cat) =>
-                  cy
-                    .findAllByText(new RegExp(cat))
-                    .should("have.length.greaterThan", 2),
+              cy.findAllByText(/Dingsbums/).should(
+                "have.length.greaterThan",
+                2,
+              );
+              cy.findAllByText(/Apparat/).should("have.length.greaterThan", 2);
+              cy.findAllByText(/Gerät/).should("have.length.greaterThan", 2);
+              cy.findAllByText(/Steuerelement/).should(
+                "have.length.greaterThan",
+                2,
               );
             });
 
@@ -133,9 +137,8 @@ describe("scenarios > content translation > dashboard filters and field values",
               } else {
                 cy.findByText(/Apparat/).should("not.exist");
               }
-              ["Gerät", "Steuerelement"].forEach((cat) =>
-                cy.findAllByText(new RegExp(cat)).should("not.exist"),
-              );
+              cy.findByText(/Gerät/).should("not.exist");
+              cy.findByText(/Steuerelement/).should("not.exist");
             });
           });
         });
