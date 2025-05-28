@@ -5,6 +5,7 @@
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest diff-keys-test
@@ -47,7 +48,17 @@
 
 (defn- undo-via-api! [user-id scope]
   (fast-reload-response
-   (mt/user-http-request user-id :post "/ee/data-editing/undo" {:scope scope})))
+   #_(mt/user-http-request user-id :post "/ee/data-editing/undo" {:scope scope})
+   (u/for-map [[table-id diffs]
+               (group-by :table-id
+                         (:outputs
+                          #p
+                           (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
+                                                 {:action_id "data-editing/undo"
+                                                  :scope     scope
+                                                  :input     {}})))]
+     [table-id (for [{:keys [action-type row]} diffs]
+                 [(keyword action-type) row])])))
 
 (defn- redo-via-api! [user-id scope]
   (fast-reload-response
