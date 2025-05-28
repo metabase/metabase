@@ -11,7 +11,6 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -25,7 +24,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -286,37 +284,23 @@
            (not *normalizing-details*))
       normalize-details)))
 
-(mu/defn- set-all-field-parent-ids-to-null!
-  "Set all Field parent_ids to NULL, since its FK relationship is `ON DELETE RESTRICT` as of #44866. If we do this then
-  the normal ON DELETE CASCADE relationship from Database => Table => Field will take care of the rest."
-  [database-id :- ::lib.schema.id/database]
-  (let [query (case (mdb/db-type)
-                (:postgres :h2)
-                {:update (t2/table-name :model/Field)
-                 :set    {:parent_id nil}
-                 :where  [:in :id {:select    [[:field.id :id]]
-                                   :from      [[(t2/table-name :model/Field) :field]]
-                                   :left-join [[(t2/table-name :model/Table) :table]
-                                               [:= :field.table_id :table.id]]
-                                   :where     [:and
-                                               [:= :table.db_id [:inline (u/the-id database-id)]]
-                                               [:not= :field.parent_id nil]]}]}
-
-                :mysql
-                {:update    [(t2/table-name :model/Field) :field]
-                 :left-join [[(t2/table-name :model/Table) :table]
-                             [:= :field.table_id :table.id]]
-                 :set       {:field.parent_id nil}
-                 :where     [:and
-                             [:= :table.db_id [:inline (u/the-id database-id)]]
-                             [:not= :field.parent_id nil]]})]
-    (t2/query query)))
-
 (t2/define-before-delete :model/Database
-  [{database-id :id, driver :engine, :as database}]
+  [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
-  (set-all-field-parent-ids-to-null! database-id)
+  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with
+  ;; cascade delete foreign key constraints in generated columns. #44866
+  ;;
+  ;; Use a join to do this so we don't end up with a mega query with > 64k parameters (#58491)
+  ;;
+  ;; TODO -- this is an absolutely horrible way to deal with deleting Fields belonging to a Database, there can be
+  ;; literally hundreds of thousands of fields and we do an individual follow-on DELETE in :model/Field before-delete
+  ;; for each one. I really think we should have kept the FK as an ON DELETE CASCADE. -- Cam
+  (t2/delete! :model/Field :id [:in {:select    [[:field.id :id]]
+                                     :from      [[(t2/table-name :model/Field) :field]]
+                                     :left-join [[(t2/table-name :model/Table) :table]
+                                                 [:= :field.table_id :table.id]]
+                                     :where     [:= :table.db_id [:inline (u/the-id id)]]}])
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
