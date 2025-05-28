@@ -65,12 +65,7 @@ function getTableFields(table: Table | undefined): Field[] {
 function hasMappableNumeralValues(
   fieldValues: FieldValue[] | undefined,
 ): boolean {
-  const remapping = new Map(
-    getRemappings({
-      remappings: [], // TODO: field.remappings?
-      values: fieldValues,
-    }),
-  );
+  const remapping = getFieldRemappedValues(fieldValues);
 
   // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
   // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -84,4 +79,15 @@ function hasMappableNumeralValues(
 
 export function is403Error(error: unknown): boolean {
   return isObject(error) && error.status === 403;
+}
+
+export function getFieldRemappedValues(
+  fieldValues: FieldValue[] | undefined,
+): Map<number, string> {
+  return new Map(
+    getRemappings({
+      remappings: [], // TODO: field.remappings?
+      values: fieldValues,
+    }),
+  );
 }

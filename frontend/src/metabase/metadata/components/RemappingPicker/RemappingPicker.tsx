@@ -8,6 +8,7 @@ import {
   useGetFieldQuery,
   useGetFieldValuesQuery,
   useGetTableQueryMetadataQuery,
+  useUpdateFieldValuesMutation,
 } from "metabase/api";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -24,6 +25,7 @@ import { CustomMappingModal } from "./CustomMappingModal";
 import { NamingTip } from "./NamingTip";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 import {
+  getFieldRemappedValues,
   getFkTargetTableEntityNameOrNull,
   getOptions,
   getValue,
@@ -83,6 +85,7 @@ export const RemappingPicker = ({
   const fkRemappingField = hasFkMappingValue ? fkRemappingFieldData : undefined;
   const isFieldsAccessRestricted = is403Error(fkTargetFieldError);
 
+  const [updateFieldValues] = useUpdateFieldValuesMutation();
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
@@ -198,7 +201,12 @@ export const RemappingPicker = ({
           {!isFieldsAccessRestricted && (
             <>
               {hasChanged && <NamingTip mt="md" />}
-              <CustomMappingModal />
+              <CustomMappingModal
+                value={getFieldRemappedValues(fieldValues?.values)}
+                onChange={(remappings) => {
+                  updateFieldValues({ id, values: Array.from(remappings) });
+                }}
+              />
             </>
           )}
         </>
