@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { isValidElement } from "react";
 
 import { useTranslateContent } from "metabase/i18n/hooks";

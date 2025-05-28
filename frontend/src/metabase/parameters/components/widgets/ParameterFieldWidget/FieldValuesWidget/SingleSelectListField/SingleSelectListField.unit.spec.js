@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import ValueComponent from "../../Value";
+import { Value as ValueComponent } from "../../Value";
 
 import SingleSelectListField from "./index";
 
