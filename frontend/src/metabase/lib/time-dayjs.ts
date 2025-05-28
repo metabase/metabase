@@ -1,7 +1,7 @@
 import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { t } from "ttag";
 
-import dayjs from "metabase/lib/dayjs";
 import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
