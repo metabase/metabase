@@ -202,9 +202,13 @@ export const RemappingPicker = ({
             <>
               {hasChanged && <NamingTip mt="md" />}
               <CustomMappingModal
+                isOpen // TODO
                 value={getFieldRemappedValues(fieldValues?.values)}
                 onChange={(remappings) => {
                   updateFieldValues({ id, values: Array.from(remappings) });
+                }}
+                onClose={() => {
+                  /**TODO */
                 }}
               />
             </>
