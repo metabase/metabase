@@ -102,7 +102,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).toThrow("either dashboardId, questionId, or template must be provided");
   });
 
-  it.each([["view-content" as const], ["curate-content" as const]])(
+  it.each([["view-content"], ["curate-content"]] as const)(
     "throws when initialCollection is not provided for the %s template",
     (template: "view-content" | "curate-content") => {
       expect(() => {
