@@ -205,6 +205,8 @@ jobs:
       MB_EDITION: ee
       DISPLAY: ""
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_IS_EMBEDDING_SDK: true
       TZ: US/Pacific # to make node match the instance tz
@@ -313,6 +315,8 @@ jobs:
       MB_EDITION: ee
       DISPLAY: ""
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_IS_EMBEDDING_SDK: true
       TZ: US/Pacific # to make node match the instance tz
