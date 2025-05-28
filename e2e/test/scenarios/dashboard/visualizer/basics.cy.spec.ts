@@ -273,7 +273,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText(PRODUCTS_COUNT_BY_CATEGORY.name).click();
     });
 
-    cy.url().should("contain", "83-products-by-category");
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
   });
 
   it("should rename a dashboard card", () => {
