@@ -38,10 +38,10 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableDeleteRowsResponse,
       TableDeleteRowsRequest
     >({
-      query: ({ tableId, rows, scope }) => ({
+      query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/table/${tableId}/delete`,
-        body: { rows, scope },
+        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        body: { inputs: rows, scope, action_id: "data-grid.row/delete" },
       }),
     }),
     tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({

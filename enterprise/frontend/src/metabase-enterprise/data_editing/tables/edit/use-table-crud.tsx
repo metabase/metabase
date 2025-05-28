@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import {
   useDeleteTableRowsMutation,
   useInsertTableRowsMutation,
@@ -24,6 +25,8 @@ import type {
 import { useTableCrudOptimisticUpdate } from "./use-table-crud-optimistic-update";
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 import { getRowPkKeyValue } from "./utils";
+import { addUndo } from "metabase/redux/undo";
+import { t } from "ttag";
 
 export const useTableCRUD = ({
   tableId,
@@ -36,6 +39,7 @@ export const useTableCRUD = ({
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 }) => {
+  const dispatch = useDispatch();
   const {
     cellsWithFailedUpdatesMap,
     handleCellValueUpdateError,
@@ -221,12 +225,17 @@ export const useTableCRUD = ({
 
       const response = await deleteTableRows({
         rows,
-        tableId: tableId,
         scope,
       });
 
-      if (response.data?.success) {
+      // TODO: Ask if this is enought or should we filter the row by actual 'deleted' operation status?
+      if (response.data?.outputs) {
         stateUpdateStrategy.onRowsDeleted(rows);
+        dispatch(
+          addUndo({
+            message: t`${rows.length} rows deleted successfully`,
+          }),
+        );
       }
 
       if (response.error) {
@@ -238,9 +247,9 @@ export const useTableCRUD = ({
     [
       datasetData,
       deleteTableRows,
-      tableId,
       scope,
       stateUpdateStrategy,
+      dispatch,
       handleGenericUpdateError,
     ],
   );
