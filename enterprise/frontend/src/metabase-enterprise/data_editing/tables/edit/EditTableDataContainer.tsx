@@ -146,6 +146,20 @@ export const EditTableDataContainer = ({
     dispatch(closeNavbar());
   });
 
+  // Do not trigger leave confirmation modals on modal URL change
+  const handleIsLeaveLocationAllowed = useCallback(
+    (location: Location | undefined) => {
+      if (
+        location?.pathname.startsWith(getTableEditPathname(databaseId, tableId))
+      ) {
+        return true;
+      }
+
+      return false;
+    },
+    [databaseId, tableId],
+  );
+
   if (!database || isLoading || !fakeTableQuestion) {
     // TODO: show loader
     return null;
@@ -242,6 +256,7 @@ export const EditTableDataContainer = ({
         isUpdating={isUpdating}
         isDeleting={isDeleting}
         isInserting={isInserting}
+        isLocationAllowed={handleIsLeaveLocationAllowed}
       />
     </>
   );
