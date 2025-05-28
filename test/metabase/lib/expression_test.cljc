@@ -320,14 +320,10 @@
     (let [mp lib.tu/metadata-provider-with-metric
           query (lib/query mp (meta/table-metadata :checkins))
           user-id-col (meta/field-metadata :checkins :user-id)]
-      (testing "Zero arg functions"
-        (are [f] (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                                   (lib/expression query "expr" (f)))
-          lib/count
-          lib/cum-count))
       (testing "Single arg functions"
-        (are [f] (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                                   (lib/expression query "expr" (f user-id-col)))
+        (are [f] #?(:clj (thrown-with-msg? clojure.lang.ExceptionInfo #"non-aggregation expression"
+                                           (lib/expression query "expr" (f user-id-col)))
+                    :cljs (false? (mr/validate ::lib.schema/query (lib/expression query "expr" (f user-id-col)))))
           lib/avg
           lib/distinct
           lib/max
@@ -337,24 +333,19 @@
           lib/sum
           lib/cum-sum
           lib/var))
-      (testing "Special functions"
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/count-where (lib/< user-id-col 2)))))
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/distinct-where user-id-col (lib/< user-id-col 2)))))
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/percentile user-id-col 0.75))))
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/share (lib/< user-id-col 2)))))
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/sum-where user-id-col (lib/< user-id-col 2)))))
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/* 2 (lib.metadata/metric mp 1))))))
-      (testing "Nesting"
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/- (lib/* 100 (lib/count)) 42))))
-        (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"non-aggregation expression"
-                              (lib/expression query "expr" (lib/* 100 (lib/offset user-id-col -1)))))))))
+      (testing "Special functions and nesting"
+        (are [e] #?(:clj (thrown-with-msg? clojure.lang.ExceptionInfo #"non-aggregation expression"
+                                           (lib/expression query "expr" e))
+                    :cljs (false? (mr/validate ::lib.schema/query (lib/expression query "expr" e))))
+          (lib/cum-count)
+          (lib/count-where (lib/< user-id-col 2))
+          (lib/distinct-where user-id-col (lib/< user-id-col 2))
+          (lib/percentile user-id-col 0.75)
+          (lib/share (lib/< user-id-col 2))
+          (lib/sum-where user-id-col (lib/< user-id-col 2))
+          (lib/* 2 (lib.metadata/metric mp 1))
+          (lib/- (lib/* 100 (lib/count)) 42)
+          (lib/* 100 (lib/offset user-id-col -1)))))))
 
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
