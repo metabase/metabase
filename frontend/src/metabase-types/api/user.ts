@@ -20,6 +20,7 @@ export interface BaseUser {
   last_login: string;
   first_login: string;
   updated_at: string;
+  tenant_id: number;
 }
 
 export interface User extends BaseUser {
@@ -97,6 +98,7 @@ export type ListUsersRequest = {
   query?: string;
   group_id?: number;
   include_deactivated?: boolean;
+  tenancy: UserTenancy;
 } & PaginationRequest;
 
 export type ListUsersResponse = {
@@ -141,3 +143,5 @@ export type GetUserKeyValueRequest = UserKeyValueKey;
 export type UpdateUserKeyValueRequest = UserKeyValue & {
   expires_at?: string;
 };
+
+export type UserTenancy = "internal" | "external" | "all";

@@ -23,6 +23,7 @@ import type {
   GroupInfo,
   Member,
   Membership,
+  Tenant,
   User,
 } from "metabase-types/api";
 
@@ -37,6 +38,7 @@ interface PeopleListRowProps {
   user: User;
   showDeactivated: boolean;
   groups: GroupInfo[];
+  tenants: Tenant[];
   userMemberships: Membership[];
   isCurrentUser: boolean;
   isAdmin: boolean;
@@ -50,6 +52,7 @@ export const PeopleListRow = ({
   user,
   showDeactivated,
   groups,
+  tenants,
   userMemberships,
   isCurrentUser,
   isAdmin,
@@ -58,6 +61,7 @@ export const PeopleListRow = ({
   onChange,
   isConfirmModalOpen,
 }: PeopleListRowProps) => {
+  const isExternal = !!user.tenant_id;
   const membershipsByGroupId = useMemo(
     () =>
       userMemberships?.reduce((acc, membership) => {
@@ -70,6 +74,10 @@ export const PeopleListRow = ({
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
+
+  const tenantName = isExternal
+    ? tenants.find((tenant) => tenant.id === user.tenant_id)?.name
+    : null;
 
   return (
     <tr key={user.id}>
@@ -96,7 +104,11 @@ export const PeopleListRow = ({
           <td>
             <Tooltip label={t`Reactivate this account`}>
               <ForwardRefLink
-                to={Urls.reactivateUser(user.id)}
+                to={
+                  isExternal
+                    ? Urls.reactivateTenantsUser(user.id)
+                    : Urls.reactivateUser(user.id)
+                }
                 className={S.refreshLink}
               >
                 <Icon name="refresh" size={20} />
@@ -107,16 +119,20 @@ export const PeopleListRow = ({
       ) : (
         <Fragment>
           <td>
-            <MembershipSelect
-              groups={groups}
-              memberships={membershipsByGroupId}
-              isCurrentUser={isCurrentUser}
-              isUserAdmin={user.is_superuser}
-              onAdd={onAdd}
-              onRemove={onRemove}
-              onChange={onChange}
-              isConfirmModalOpen={isConfirmModalOpen}
-            />
+            {isExternal ? (
+              tenantName
+            ) : (
+              <MembershipSelect
+                groups={groups}
+                memberships={membershipsByGroupId}
+                isCurrentUser={isCurrentUser}
+                isUserAdmin={user.is_superuser}
+                onAdd={onAdd}
+                onRemove={onRemove}
+                onChange={onChange}
+                isConfirmModalOpen={isConfirmModalOpen}
+              />
+            )}
           </td>
           <td>
             {user.last_login ? dayjs(user.last_login).fromNow() : t`Never`}
@@ -133,7 +149,11 @@ export const PeopleListRow = ({
                 <Menu.Dropdown>
                   <Menu.Item
                     component={ForwardRefLink}
-                    to={Urls.editUser(user.id)}
+                    to={
+                      isExternal
+                        ? Urls.editTenantUser(user.id)
+                        : Urls.editUser(user.id)
+                    }
                   >
                     {t`Edit user`}
                   </Menu.Item>
@@ -154,7 +174,11 @@ export const PeopleListRow = ({
                   {!isCurrentUser && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={Urls.deactivateUser(user.id)}
+                      to={
+                        isExternal
+                          ? Urls.deactivateTenantlUser(user.id)
+                          : Urls.deactivateUser(user.id)
+                      }
                       c="danger"
                     >
                       {t`Deactivate user`}

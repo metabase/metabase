@@ -10,9 +10,16 @@ import type {
 export function newUser() {
   return `/admin/people/new`;
 }
+export function newTenantUser() {
+  return "/admin/tenants/people/new";
+}
 
 export function editUser(userId: UserId) {
   return `/admin/people/${userId}/edit`;
+}
+
+export function editTenantUser(userId: UserId) {
+  return `/admin/tenants/people/${userId}/edit`;
 }
 
 export function resetPassword(userId: UserId) {
@@ -27,8 +34,16 @@ export function deactivateUser(userId: UserId) {
   return `/admin/people/${userId}/deactivate`;
 }
 
+export function deactivateTenantlUser(userId: UserId) {
+  return `/admin/tenants/people/${userId}/deactivate`;
+}
+
 export function reactivateUser(userId: UserId) {
   return `/admin/people/${userId}/reactivate`;
+}
+
+export function reactivateTenantsUser(userId: UserId) {
+  return `/admin/tenants/people/${userId}/reactivate`;
 }
 
 // TODO: move to EE urls

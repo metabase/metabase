@@ -9,6 +9,9 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Flex } from "metabase/ui";
+// TODO: Fix this
+//eslint-disable-next-line no-restricted-imports
+import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { ActiveStatusFilter } from "../components/ActiveStatusFilter";
 import { PeopleList } from "../components/PeopleList";
@@ -18,15 +21,27 @@ import { usePeopleQuery } from "../hooks/use-people-query";
 
 const PAGE_SIZE = 25;
 
-export function PeopleListingApp({ children }: { children: React.ReactNode }) {
+export function PeopleListingApp({
+  children,
+  external = false,
+}: {
+  children?: React.ReactNode;
+  external: boolean;
+}) {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
 
   const {
     data: groups = [],
-    isLoading,
-    error,
-  } = useListPermissionsGroupsQuery();
+    isLoading: isLoadingGroups,
+    error: groupsError,
+  } = useListPermissionsGroupsQuery(undefined, { skip: external });
+
+  const {
+    data: tenants,
+    isLoading: isLoadingTenants,
+    error: tenantsError,
+  } = useListTenantsQuery({ status: "active" }, { skip: !external });
 
   const {
     query,
@@ -36,20 +51,23 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
     updateStatus,
     handleNextPage,
     handlePreviousPage,
-  } = usePeopleQuery(PAGE_SIZE);
+  } = usePeopleQuery(PAGE_SIZE, external ? "external" : "internal");
 
   return (
-    <LoadingAndErrorWrapper error={error} loading={isLoading || !currentUser}>
+    <LoadingAndErrorWrapper
+      error={groupsError || tenantsError}
+      loading={isLoadingGroups || isLoadingTenants || !currentUser}
+    >
       <AdminPaneLayout
         title={t`People`}
         titleActions={
           <Flex gap="sm">
             {isAdmin && status === ACTIVE_STATUS.active && (
-              <Link to={Urls.newUser()}>
+              <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
                 <Button variant="filled">{t`Invite someone`}</Button>
               </Link>
             )}
-            <PLUGIN_TENANTS.EditUserStrategySettingsButton />
+            {!external && <PLUGIN_TENANTS.EditUserStrategySettingsButton />}
           </Flex>
         }
         headerContent={
@@ -71,7 +89,9 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
       >
         {currentUser && (
           <PeopleList
+            external={external}
             groups={groups}
+            tenants={tenants?.data || []}
             isAdmin={isAdmin}
             currentUser={currentUser}
             query={query}
