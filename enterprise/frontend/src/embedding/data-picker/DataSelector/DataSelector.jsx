@@ -83,8 +83,6 @@ export class UnconnectedDataSelector extends Component {
 
   static defaultProps = {
     isInitiallyOpen: false,
-    useOnlyAvailableDatabase: true,
-    useOnlyAvailableSchema: true,
     hideSingleSchema: true,
     hideSingleDatabase: false,
     canChangeDatabase: true,
@@ -376,7 +374,6 @@ export class UnconnectedDataSelector extends Component {
   }
 
   // for steps where there's a single option sometimes we want to automatically select it
-  // if `useOnlyAvailable*` prop is provided
   skipSteps() {
     const { readOnly } = this.props;
     const { activeStep } = this.state;
@@ -385,24 +382,27 @@ export class UnconnectedDataSelector extends Component {
       return;
     }
 
-    if (
-      activeStep === DATABASE_STEP &&
-      this.props.useOnlyAvailableDatabase &&
-      this.props.selectedDatabaseId == null
-    ) {
+    if (activeStep === DATABASE_STEP && this.props.selectedDatabaseId == null) {
       const databases = this.getDatabases();
       if (databases && databases.length === 1) {
         this.onChangeDatabase(databases[0]);
       }
     }
-    if (
-      activeStep === SCHEMA_STEP &&
-      this.props.useOnlyAvailableSchema &&
-      this.props.selectedSchemaId == null
-    ) {
+    if (activeStep === SCHEMA_STEP && this.props.selectedSchemaId == null) {
       const { schemas } = this.state;
       if (schemas && schemas.length === 1) {
         this.onChangeSchema(schemas[0]);
+      }
+    }
+    if (activeStep === DATA_BUCKET_STEP) {
+      const dataTypes = getDataTypes({
+        hasModels: this.hasModels(),
+        hasTables: this.props.canSelectTable,
+        hasSavedQuestions: this.hasSavedQuestions(),
+        hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
+      });
+      if (dataTypes.length === 1) {
+        this.onChangeDataBucket(dataTypes[0].id);
       }
     }
   }
@@ -430,11 +430,7 @@ export class UnconnectedDataSelector extends Component {
     index -= 1;
 
     // possibly skip another step backwards
-    if (
-      steps[index] === SCHEMA_STEP &&
-      this.props.useOnlyAvailableSchema &&
-      this.state.schemas.length === 1
-    ) {
+    if (steps[index] === SCHEMA_STEP && this.state.schemas.length === 1) {
       index -= 1;
     }
 
