@@ -18,10 +18,10 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableInsertRowsResponse,
       TableInsertRowsRequest
     >({
-      query: ({ tableId, rows, scope }) => ({
+      query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/table/${tableId}`,
-        body: { rows, scope },
+        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        body: { inputs: rows, scope, action_id: "data-grid.row/create" },
       }),
     }),
     updateTableRows: builder.mutation<

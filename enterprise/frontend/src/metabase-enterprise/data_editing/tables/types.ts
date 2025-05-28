@@ -16,13 +16,12 @@ export type TableEditingScope =
   | { "dashcard-id": number };
 
 export type TableInsertRowsRequest = {
-  tableId: ConcreteTableId;
   rows: RowCellsWithPkValue[];
   scope?: TableEditingScope;
 };
 
 export type TableInsertRowsResponse = {
-  "created-rows": Record<string, RowValue>[];
+  outputs: { op: "created"; row: RowCellsWithPkValue; "table-id": TableId }[];
 };
 
 export type TableUpdateRowsRequest = {

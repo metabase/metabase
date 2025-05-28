@@ -193,13 +193,19 @@ export const useTableCRUD = ({
   const handleRowCreate = useCallback(
     async (data: Record<string, RowValue>): Promise<boolean> => {
       const response = await insertTableRows({
-        tableId: tableId,
         rows: [data],
         scope,
       });
 
       if (!response.error && response.data) {
-        stateUpdateStrategy.onRowsCreated(response.data["created-rows"]);
+        stateUpdateStrategy.onRowsCreated(
+          response.data.outputs.map((output) => output.row),
+        );
+        dispatch(
+          addUndo({
+            message: t`Record successfully created`,
+          }),
+        );
       } else {
         handleGenericUpdateError(response.error);
       }
@@ -208,10 +214,10 @@ export const useTableCRUD = ({
     },
     [
       insertTableRows,
-      tableId,
       handleGenericUpdateError,
       scope,
       stateUpdateStrategy,
+      dispatch,
     ],
   );
 
@@ -245,7 +251,7 @@ export const useTableCRUD = ({
         stateUpdateStrategy.onRowsDeleted(rows);
         dispatch(
           addUndo({
-            message: t`${rows.length} rows deleted successfully`,
+            message: t`${rows.length} rows successfully deleted`,
           }),
         );
       }
