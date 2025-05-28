@@ -63,9 +63,9 @@ export const RemappingPicker = ({
     return getOptions(field, fkTargetTable);
   }, [field, fkTargetTable]);
 
-  const isFkMapping = value === "foreign";
+  const isFkMapping = value === "foreign" || isChoosingInitialFkTarget;
   const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
-  const hasFkMappingValue = isFkMapping && fkRemappingFieldId != null;
+  const hasFkMappingValue = isFkMapping && fkRemappingFieldId !== null;
   const { data: fkRemappingFieldData } = useGetFieldQuery(
     hasFkMappingValue
       ? {
@@ -136,7 +136,7 @@ export const RemappingPicker = ({
         {...props}
       />
 
-      {(value === "foreign" || isChoosingInitialFkTarget) && (
+      {isFkMapping && (
         <>
           <Flex ml={12}>
             <SubInputIllustration />
@@ -172,7 +172,7 @@ export const RemappingPicker = ({
         </>
       )}
 
-      {hasChanged && hasFkMappingValue && <NamingTip />}
+      {hasChanged && hasFkMappingValue && <NamingTip mt="md" />}
     </Stack>
   );
 };

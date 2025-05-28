@@ -1,17 +1,11 @@
 import { t } from "ttag";
 
-export const NamingTip = () => (
-  <div
-  // className={cx(
-  //   CS.bordered,
-  //   CS.rounded,
-  //   CS.p1,
-  //   CS.mt1,
-  //   CS.mb2,
-  //   CS.borderBrand,
-  // )}
-  >
-    <span /* className={cx(CS.textBrand, CS.textBold)} */>{t`Tip: `}</span>
+import { Alert, type AlertProps } from "metabase/ui";
+
+type Props = Omit<AlertProps, "title" | "children">;
+
+export const NamingTip = (props: Props) => (
+  <Alert title={t`Tip`} {...props}>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
-  </div>
+  </Alert>
 );
