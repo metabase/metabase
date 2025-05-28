@@ -1,6 +1,8 @@
 (ns metabase-enterprise.content-translation.routes
   "Endpoints relating to the translation of user-generated content"
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -24,7 +26,9 @@
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when-not (instance? java.io.File file)
       (throw (ex-info (tru "No file provided") {:status-code 400})))
-    (dictionary/import-translations! file))
+    (with-open [rdr (io/reader file)]
+      (let [[_header & rows] (csv/read-csv rdr)]
+        (dictionary/import-translations! rows))))
   {:success true})
 
 (def ^{:arglists '([request respond raise])} routes

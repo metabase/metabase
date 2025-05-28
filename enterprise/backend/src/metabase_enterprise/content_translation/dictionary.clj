@@ -1,11 +1,8 @@
 (ns metabase-enterprise.content-translation.dictionary
   "Implementation of dictionary upload and retrieval logic for content translations"
   (:require
-   [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util.i18n :as i18n :refer [tru]]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,17 +27,6 @@
   (when (contains? seen-keys translation-key)
     (tru "Row {0}: The string \"{1}\" is translated into locale \"{2}\" earlier in the file"
          (+ row-index 2) trimmed-msgid locale)))
-
-(defn- read-csv-file
-  "Read CSV file content, skipping the header row. Throws a formatted exception if parsing fails."
-  [reader]
-  (try
-    (rest (csv/read-csv reader))
-    (catch Exception e
-      (log/error e "Error parsing CSV file")
-      (throw (ex-info (tru "Please upload a valid CSV file.")
-                      {:status-code http-status-unprocessable
-                       :errors [(tru "Invalid CSV format: {0}" (.getMessage e))]})))))
 
 (defn is-msgstr-usable
   "Check if the translation string is usable. It should not be blank or contain only commas, whitespace, or semicolons."
@@ -67,31 +53,27 @@
 
 (defn import-translations!
   "Import translations from CSV and insert or update rows in the content_translation table."
-  [file]
-  (with-open [reader (io/reader file)]
-    ; Validate all rows before proceeding
-    (let [csv-data (read-csv-file reader)
-          errors (seq
-                  (:errors (reduce (fn [{:keys [seen-keys] :as m} [row-index row]]
-                                     (let [{row-errors :errors updated-seen-keys :seen-keys} (validate-row row-index row seen-keys)]
-                                       (-> m
-                                           (update :seen-keys #(apply conj %1 %2) updated-seen-keys)
-                                           (update :errors #(apply conj %1 %2) row-errors))))
-                                   {:seen-keys #{}
-                                    :errors []}
-                                   (map-indexed vector csv-data))))
-          _ (when (seq errors)
-              (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
-                              {:status-code http-status-unprocessable
-                               :errors errors})))
-          usable-rows (for [[locale msgid msgstr] csv-data
-                            :let [trimmed-msgid (str/trim msgid)
-                                  trimmed-msgstr (str/trim msgstr)]
-                            :when (is-msgstr-usable trimmed-msgstr)]
-                        {:locale locale :msgid trimmed-msgid :msgstr trimmed-msgstr})]
-      (t2/with-transaction [_tx]
-        ;; Replace all existing entries
-        (t2/delete! :model/ContentTranslation)
-        ;; Insert all usable rows at once
-        (when-not (empty? usable-rows)
-          (t2/insert! :model/ContentTranslation usable-rows))))))
+  [rows]
+  (let [errors (:errors (reduce (fn [{:keys [seen-keys] :as m} [row-index row]]
+                                  (let [{row-errors :errors updated-seen-keys :seen-keys} (validate-row row-index row seen-keys)]
+                                    (-> m
+                                        (update :seen-keys #(apply conj %1 %2) updated-seen-keys)
+                                        (update :errors #(apply conj %1 %2) row-errors))))
+                                {:seen-keys #{}
+                                 :errors []}
+                                (map-indexed vector rows)))
+        _ (when (seq errors)
+            (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
+                            {:status-code http-status-unprocessable
+                             :errors errors})))
+        usable-rows (for [[locale msgid msgstr] rows
+                          :let [trimmed-msgid (str/trim msgid)
+                                trimmed-msgstr (str/trim msgstr)]
+                          :when (is-msgstr-usable trimmed-msgstr)]
+                      {:locale locale :msgid trimmed-msgid :msgstr trimmed-msgstr})]
+    (t2/with-transaction [_tx]
+      ;; Replace all existing entries
+      (t2/delete! :model/ContentTranslation)
+      ;; Insert all usable rows at once
+      (when-not (empty? usable-rows)
+        (t2/insert! :model/ContentTranslation usable-rows)))))
