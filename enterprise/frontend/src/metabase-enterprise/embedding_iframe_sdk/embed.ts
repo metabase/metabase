@@ -127,6 +127,8 @@ class MetabaseEmbed {
       );
     }
 
+    settings.template;
+
     if (
       settings.template === "exploration" &&
       (settings.dashboardId || settings.questionId)

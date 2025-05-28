@@ -12,11 +12,8 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when target element is not found", () => {
     expect(() => {
-      new MetabaseEmbed({
-        ...defaultSettings,
-        questionId: 1,
-        target: "#not-existent-target",
-      });
+      // @ts-expect-error -- we are testing for incorrect configuration
+      new MetabaseEmbed({ ...defaultSettings, target: "#not-existent-target" });
     }).toThrow('cannot find embed container "#not-existent-target"');
   });
 
@@ -47,6 +44,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when both question id and dashboard id are provided", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({
         ...defaultSettings,
         questionId: 10,
@@ -70,6 +68,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when question id is provided in the exploration template", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({
         ...defaultSettings,
         template: "exploration",
@@ -82,6 +81,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when dashboard id is provided in the exploration template", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({
         ...defaultSettings,
         template: "exploration",
@@ -94,6 +94,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when neither question id, dashboard id, or template are provided", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({ ...defaultSettings });
     }).toThrow("either dashboardId, questionId, or template must be provided");
   });
