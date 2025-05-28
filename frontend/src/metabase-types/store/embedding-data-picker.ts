@@ -1,5 +1,12 @@
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
-
 export interface EmbeddingDataPickerState {
   entityTypes: EmbeddingEntityType[];
 }
+
+export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
+  "model",
+  "table",
+];
+
+export type EmbeddingEntityType = "model" | "table";
+
+export type EmbeddingDataPicker = "staged" | "simple";

@@ -4,9 +4,9 @@ import _ from "underscore";
 
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
+  type EmbeddingDataPickerState,
   type EmbeddingEntityType,
-} from "metabase/embedding-sdk/store";
-import type { EmbeddingDataPickerState } from "metabase-types/store/embedding-data-picker";
+} from "metabase-types/store/embedding-data-picker";
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
   entityTypes: DEFAULT_EMBEDDING_ENTITY_TYPES,

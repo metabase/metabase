@@ -1,7 +1,7 @@
 import type {
   EmbeddingDataPicker,
   EmbeddingEntityType,
-} from "metabase/embedding-sdk/store";
+} from "./embedding-data-picker";
 
 export interface InteractiveEmbeddingOptions {
   font: string | undefined;
