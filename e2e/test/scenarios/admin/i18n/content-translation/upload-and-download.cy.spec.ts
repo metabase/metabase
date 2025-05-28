@@ -1,5 +1,6 @@
-import { parse } from "csv-parse/browser/esm/sync";
 import path from "path";
+
+import { parse } from "csv-parse/browser/esm/sync";
 
 import { type DictionaryArray, isDictionaryArray } from "metabase-types/api";
 
@@ -39,7 +40,7 @@ describe("scenarios > admin > localization > content translation", () => {
     });
 
     describe("The translation download button", () => {
-      it.only("downloads the uploaded translations", () => {
+      it("downloads the uploaded translations", () => {
         uploadTranslationDictionary(germanFieldNames);
         cy.visit("/admin/settings/localization");
         cy.findByTestId("content-translation-configuration")
@@ -52,7 +53,7 @@ describe("scenarios > admin > localization > content translation", () => {
             "metabase-content-translation-dictionary.csv",
           ),
         ).then((fileContents) => {
-          expect(fileContents).to.include('"de","Rating","Bewertung"');
+          expect(fileContents).to.include("de,Rating,Bewertung");
         });
       });
     });

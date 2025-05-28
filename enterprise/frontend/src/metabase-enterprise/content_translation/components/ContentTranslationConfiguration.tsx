@@ -8,6 +8,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useDocsUrl } from "metabase/common/hooks";
 import { UploadInput } from "metabase/components/upload";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -21,7 +22,6 @@ import {
 import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 
 export const ContentTranslationConfiguration = () => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
@@ -34,7 +34,7 @@ export const ContentTranslationConfiguration = () => {
   >();
 
   const triggerDownload = async () => {
-    const response = await fetch("/api/content-translation/csv", {
+    const response = await fetch("/api/ee/content-translation/csv", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
