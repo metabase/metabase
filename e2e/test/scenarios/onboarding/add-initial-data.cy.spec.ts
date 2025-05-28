@@ -45,7 +45,7 @@ H.describeWithSnowplow(
       });
     });
 
-    describe("Add initial database", () => {
+    describe("Add data modal", () => {
       beforeEach(() => {
         H.resetSnowplow();
         H.restore();
@@ -54,15 +54,35 @@ H.describeWithSnowplow(
         H.enableTracking();
       });
 
-      it("should track the button click", () => {
+      it("should track the button click from the 'Getting Started' section", () => {
         cy.visit("/");
-        cy.findByTestId("main-navbar-root").findByText("Add database").click();
-        cy.location("pathname").should("eq", "/admin/databases/create");
+        H.navigationSidebar()
+          .findByRole("tab", { name: /^Getting Started/i })
+          .findByLabelText("Add data")
+          .should("be.visible")
+          .click();
+        addDataModal().should("be.visible");
         H.expectUnstructuredSnowplowEvent({
-          event: "database_add_clicked",
+          event: "data_add_clicked",
+          triggered_from: "getting-started",
+        });
+      });
+
+      it("should track the button click from the 'Getting Started' section", () => {
+        cy.visit("/");
+        H.navigationSidebar()
+          .findByRole("tab", { name: /^Data/i })
+          .findByLabelText("Add data")
+          .should("be.visible")
+          .click();
+        addDataModal().should("be.visible");
+        H.expectUnstructuredSnowplowEvent({
+          event: "data_add_clicked",
           triggered_from: "left-nav",
         });
       });
     });
   },
 );
+
+const addDataModal = () => cy.findByRole("dialog", { name: "Add data" });

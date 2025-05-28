@@ -4,7 +4,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Icon, Modal, Tabs, Title } from "metabase/ui";
+import { Box, Icon, Modal, Tabs } from "metabase/ui";
 
 import S from "./AddDataModal.module.css";
 import { DatabasesPanel } from "./Panels/DatabasesPanel";
@@ -39,7 +39,7 @@ export const AddDataModal = ({
         >
           <Box component="nav" w="14rem" className={CS.borderRight}>
             <Box component="header" className={S.header}>
-              <Title order={2} size="lg">{t`Add data`}</Title>
+              <Modal.Title fz="lg">{t`Add data`}</Modal.Title>
             </Box>
             <Tabs.List px="md" pb="lg">
               <Tabs.Tab

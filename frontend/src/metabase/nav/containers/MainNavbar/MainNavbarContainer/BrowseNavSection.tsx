@@ -65,6 +65,7 @@ export const BrowseNavSection = ({
           <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
         </Group>
         <Button
+          aria-label="Add data"
           variant="subtle"
           leftSection={<Icon name="add_data" />}
           h="auto"
