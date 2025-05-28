@@ -162,6 +162,12 @@
                            (assoc :join-alias (::join-alias options))
                            (dissoc ::join-alias))]))
 
+(defn- replace-alias! [form key alias-store]
+  (let [old-alias (key form)
+        new-alias (driver/escape-alias driver/*driver* old-alias)]
+    (swap! alias-store assoc new-alias old-alias)
+    (assoc form key new-alias)))
+
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
   aliases as case-insensitive, even if table names themselves are not); escape all join aliases
@@ -202,21 +208,23 @@
                          (update :query replace-original-aliases-with-escaped-aliases*)))]
         (log/debugf "=>\n%s" (u/pprint-to-str result))
         result))
-    (do (log/debugf "Doing simple escaping of join aliases \n%s" (u/pprint-to-str query))
-        (walk/postwalk
-         (fn [form]
-           (if (map? form)
-             (cond
-               (and (:strategy form)
-                    (:alias form))
-               (update form :alias (partial driver/escape-alias driver/*driver*))
+    (do (let [escaped-aliases (atom {})]
+          (log/debugf "Doing simple escaping of join aliases \n%s" (u/pprint-to-str query))
+          (cond-> (walk/postwalk
+                   (fn [form]
+                     (if (map? form)
+                       (cond
+                         (and (:strategy form)
+                              (:alias form))
+                         (replace-alias! form :alias escaped-aliases)
 
-               (:join-alias form)
-               (update form :join-alias (partial driver/escape-alias driver/*driver*))
+                         (:join-alias form)
+                         (replace-alias! form :join-alias escaped-aliases)
 
-               :else form)
-             form))
-         query))))
+                         :else form)
+                       form))
+                   query)
+            (seq @escaped-aliases) (assoc-in [:info :alias/escaped->original] @escaped-aliases))))))
 
 ;;; The stuff below is used by the [[metabase.query-processor.middleware.annotate]] middleware when generating results
 ;;; metadata to restore the escaped aliases back to what they were in the original query so things don't break if you
