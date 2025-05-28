@@ -72,6 +72,7 @@ export const getBarLabelLayout =
     dataset: ChartDataset,
     settings: ComputedVisualizationSettings,
     seriesDataKey: DataKey,
+    chartMeasurements: ChartMeasurements,
   ): BarSeriesOption["labelLayout"] =>
   (params) => {
     const { dataIndex, rect } = params;
@@ -84,14 +85,22 @@ export const getBarLabelLayout =
       return {};
     }
 
+    // TODO: Use `hasBottomSpace` in `dy` calculation
+    // TODO: Remove `position: "top" | "insideBottom"` in getDataLabelSeriesOption and use getBarLabelLayout for all bar chart series (totals)
+    const hasBottomSpace =
+      rect.y + CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset <
+      chartMeasurements.bounds.bottom;
+    // eslint-disable-next-line no-console
+    console.log({ hasBottomSpace });
+
     const barHeight = rect.height;
-    const labelOffset =
-      barHeight / 2 +
-      CHART_STYLE.seriesLabels.size / 2 +
-      CHART_STYLE.seriesLabels.offset;
+    const barEdge = (barHeight / 2) * -Math.sign(labelValue);
+    const lineHeight = 1.25;
+    const textHeight = CHART_STYLE.seriesLabels.size * lineHeight;
+    const yOffset = -(textHeight / 2 + CHART_STYLE.seriesLabels.offset);
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
-      dy: labelValue < 0 ? labelOffset : -labelOffset,
+      dy: barEdge + yOffset,
     };
   };
 
@@ -387,7 +396,7 @@ function getDataLabelSeriesOption(
   seriesOption: LineSeriesOption | BarSeriesOption,
   settings: ComputedVisualizationSettings,
   formatter: (params: CallbackDataParams) => string,
-  position: "top" | "bottom",
+  position: "top" | "insideBottom",
   renderingContext: RenderingContext,
   showInBlur = true,
 ) {
@@ -511,7 +520,12 @@ const buildEChartsBarSeries = (
           seriesModel.dataKey,
           chartMeasurements.stackedBarTicksRotation,
         )
-      : getBarLabelLayout(dataset, settings, seriesModel.dataKey),
+      : getBarLabelLayout(
+          dataset,
+          settings,
+          seriesModel.dataKey,
+          chartMeasurements,
+        ),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -546,7 +560,7 @@ const buildEChartsBarSeries = (
               return isZero ? 0 : value;
             },
           ),
-          sign === "+" ? "top" : "bottom",
+          sign === "+" ? "top" : "insideBottom",
           renderingContext,
           false,
         ),
@@ -839,7 +853,7 @@ export const getStackTotalsSeries = (
             chartWidth,
             settings,
           ),
-        "bottom",
+        "insideBottom",
         renderingContext,
       ),
     ];
