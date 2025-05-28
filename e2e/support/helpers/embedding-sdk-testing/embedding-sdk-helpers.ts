@@ -5,8 +5,10 @@ import {
   AUTH_PROVIDER_URL,
   JWT_SHARED_SECRET,
   METABASE_INSTANCE_URL,
+  restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
   cy.intercept("GET", `${AUTH_PROVIDER_URL}**`, async (req) => {
@@ -50,11 +52,12 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
 export function signInAsAdminAndEnableEmbeddingSdk() {
   Cypress.config("baseUrl", METABASE_INSTANCE_URL);
 
-  signInAsAdminAndEnableEmbeddingSdkForE2e();
+  restore();
 
+  cy.signInAsAdmin();
+  setTokenFeatures("all");
+  enableJwtAuth();
   cy.request("PUT", "/api/setting", {
-    "jwt-enabled": true,
-    "jwt-identity-provider-uri": AUTH_PROVIDER_URL,
-    "jwt-shared-secret": JWT_SHARED_SECRET,
+    "enable-embedding-sdk": true,
   });
 }

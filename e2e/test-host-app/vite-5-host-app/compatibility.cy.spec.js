@@ -1,5 +1,7 @@
-import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing";
+import {
+  mockAuthProviderAndJwtSignIn,
+  signInAsAdminAndEnableEmbeddingSdk,
+} from "e2e/support/helpers/embedding-sdk-testing";
 
 const TIMEOUT_MS = 40000;
 
@@ -8,7 +10,7 @@ const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
 describe("Embedding SDK: vite-5-host-app compatibility", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForE2e();
+    signInAsAdminAndEnableEmbeddingSdk();
     mockAuthProviderAndJwtSignIn();
   });
 

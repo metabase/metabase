@@ -5,12 +5,10 @@ services:
       dockerfile: ./client/Dockerfile
       args:
         VITE_METABASE_INSTANCE_URL: "http://localhost:${MB_PORT}"
-        VITE_AUTH_PROVIDER_URI: "http://auth-provider/sso"
         WATCH: '${WATCH}'
     environment:
       CLIENT_PORT: "${CLIENT_PORT}"
       VITE_METABASE_INSTANCE_URL: "http://localhost:${MB_PORT}"
-      VITE_AUTH_PROVIDER_URI: "http://auth-provider/sso"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
