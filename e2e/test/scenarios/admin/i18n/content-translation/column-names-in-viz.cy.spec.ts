@@ -20,12 +20,12 @@ describe("scenarios > admin > localization > content translation of column names
       H.setTokenFeatures("all");
 
       uploadTranslationDictionary(germanFieldNames);
-      H.snapshot("translations-uploaded");
+      H.snapshot("translations-for-viz");
     });
 
     beforeEach(() => {
       interceptContentTranslationRoutes();
-      H.restore("translations-uploaded" as any);
+      H.restore("translations-for-viz" as any);
     });
 
     const columnX = "PRICE";

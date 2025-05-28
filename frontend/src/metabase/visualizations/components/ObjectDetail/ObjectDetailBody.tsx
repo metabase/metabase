@@ -1,3 +1,5 @@
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type {
   DatasetData,
@@ -26,7 +28,7 @@ export interface ObjectDetailBodyProps {
 }
 
 export function ObjectDetailBody({
-  data,
+  data: untranslatedData,
   objectName,
   zoomedRow,
   settings,
@@ -37,6 +39,12 @@ export function ObjectDetailBody({
   tableForeignKeyReferences,
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
+  const tc = useTranslateContent();
+  const data = PLUGIN_CONTENT_TRANSLATION.translateDisplayNames(
+    untranslatedData,
+    tc,
+  );
+
   return (
     <ObjectDetailBodyWrapper>
       <DetailsTable
