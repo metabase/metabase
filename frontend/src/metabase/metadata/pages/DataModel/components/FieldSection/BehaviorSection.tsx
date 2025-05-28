@@ -39,7 +39,7 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
   return (
     <Stack gap="md">
       <Box>
-        <SectionPill icon="filter" title={t`Behavior`} />
+        <SectionPill title={t`Behavior`} />
       </Box>
 
       <FieldVisibilityPicker
