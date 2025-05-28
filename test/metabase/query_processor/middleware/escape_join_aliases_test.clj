@@ -13,6 +13,10 @@
 
 (driver/register! ::custom-escape :abstract? true)
 
+(defmethod driver/database-supports? [::custom-escape :global-join-aliases]
+  [_ _ _]
+  true)
+
 (defmethod driver/escape-alias ::custom-escape
   [_driver s]
   (driver.impl/truncate-alias s 12))
@@ -47,11 +51,11 @@
                     ::escape/original->escaped
                     {"Products" "Products", "Q2" "Q2"}}}))))
 
-(defn- add-escaped-aliases-h2 [query]
-  (driver/with-driver :h2
+(defn- add-escaped-aliases-mongo [query]
+  (driver/with-driver :mongo
     (do-with-metadata-provider
      (fn []
-       (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn :h2))))))
+       (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn :mongo))))))
 
 (defn- add-escaped-aliases-custom-escape [query]
   (driver/with-driver ::custom-escape
@@ -101,7 +105,7 @@
                                     [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]
      :order-by     [[:asc [:field 6 {:join-alias "Products", :temporal-unit :month}]]]}
 
-    #'add-escaped-aliases-h2
+    #'add-escaped-aliases-mongo
     {:source-query {:source-table 1
                     :joins        [{:source-table  2
                                     :alias         "Products"
@@ -353,7 +357,7 @@
                                     [:field 6 {:join-alias "Products", :temporal-unit :month}]
                                     [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
 
-    #'add-escaped-aliases-h2
+    #'add-escaped-aliases-mongo
     {:source-query {:source-table 1
                     :joins        [{:source-table  2
                                     :alias         "Products"
@@ -492,7 +496,7 @@
   (testing "Should ensure all join aliases are unique, ignoring case"
     ;; some Databases treat table/subquery aliases as case-insensitive and thus `Cat` and `cat` would be considered the
     ;; same thing. That's EVIL! Make sure we deduplicate.
-    (driver/with-driver :h2
+    (driver/with-driver :mongo
       (is (= {:database 1
               :type     :query
               :query    {:source-table 1
@@ -522,7 +526,7 @@
 
 (deftest ^:parallel deduplicate-alias-names-test-2
   (testing "no need to include alias info if they have not changed"
-    (driver/with-driver :h2
+    (driver/with-driver :mongo
       (let [query {:database 1
                    :type     :query
                    :query    {:joins  [{:source-table 2
@@ -608,7 +612,7 @@
                                                  [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]
                   :order-by     [[:asc [:field 6 {:join-alias "Products", :temporal-unit :month}]]]}
           :info  {:alias/escaped->original {"Products_2" "Products"}}}
-         (driver/with-driver :h2
+         (driver/with-driver :mongo
            (escape-join-aliases
             {:query {:source-query {:source-table 1
                                     :joins        [{:source-table 2
@@ -658,7 +662,7 @@
                                                      [:field 6 {:join-alias "Products", :temporal-unit :month}]
                                                      [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
               :info  {:alias/escaped->original {"Products_2" "Products"}}}
-             (driver/with-driver :h2
+             (driver/with-driver :mongo
                (escape-join-aliases
                 {:query {:source-query {:source-table 1
                                         :joins        [{:source-table 2
@@ -691,7 +695,7 @@
                                                                      [:field 4 nil]
                                                                      [:field 5 {:join-alias "Products_2"}]]}]}]}
               :info  {:alias/escaped->original {"Products_2" "Products"}}}
-             (driver/with-driver :h2
+             (driver/with-driver :mongo
                (escape-join-aliases
                 {:query {:source-query {:source-table 1
                                         :joins        [{:source-table 2
