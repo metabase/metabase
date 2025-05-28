@@ -348,31 +348,29 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:clickhouse :value]
-  [driver value]
-  (let [[_ value {base-type :base_type}] value]
-    (when (some? value)
-      (condp #(isa? %2 %1) base-type
-        :type/IPAddress [:'toIPv4 value]
-        :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
-                     (try
-                       (UUID/fromString value)
-                       (catch IllegalArgumentException _
-                         (h2x/with-type-info value {:database-type "varchar"}))))
-        (sql.qp/->honeysql driver value)))))
+  [driver [_ value {base-type :base_type effective-type :effective_type}]]
+  (when (some? value)
+    (condp #(isa? %2 %1) (or effective-type base-type)
+      :type/IPAddress [:'toIPv4 value]
+      :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
+                   (try
+                     (UUID/fromString value)
+                     (catch IllegalArgumentException _
+                       (h2x/with-type-info value {:database-type "String"}))))
+      (sql.qp/->honeysql driver value))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :=]
   [driver [op field value]]
-  (if (coll? value)
-    (let [[qual valuevalue fieldinfo] value
-          hsql-field (sql.qp/->honeysql driver field)
+  (if (and (coll? value)
+           (let [[qual valuevalue fieldinfo] value]
+             (and (isa? qual :value)
+                  (isa? (:base_type fieldinfo) :type/Text)
+                  (nil? valuevalue))))
+    (let [hsql-field (sql.qp/->honeysql driver field)
           hsql-value (sql.qp/->honeysql driver value)]
-      (if (and (isa? qual :value)
-               (isa? (:base_type fieldinfo) :type/Text)
-               (nil? valuevalue))
-        [:or
-         [:= hsql-field hsql-value]
-         [:= [:'empty hsql-field] 1]]
-        ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value])))
+      [:or
+       [:= hsql-field hsql-value]
+       [:= [:'empty hsql-field] 1]])
     ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
@@ -420,10 +418,10 @@
 
 (defn- maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
-   Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
+   Comparing UUID fields with these operations requires casting for the positionUTF8, startsWithUTF8, and endsWithUTF8 functions."
   [field]
   (if (uuid-field? field)
-    (h2x/maybe-cast "TEXT" (sql.qp/->honeysql :clickhouse field))
+    (sql.qp/->honeysql :clickhouse [:text field])
     (sql.qp/->honeysql :clickhouse field)))
 
 (defn- clickhouse-string-fn
