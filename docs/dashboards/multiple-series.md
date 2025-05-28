@@ -51,7 +51,9 @@ You can layer multiple questions on a single dashboard card. You can even layer 
 
 If necessary, the X and Y axes will automatically update. Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
 
-Once you have your chart looking how you'd like, click **Save**.
+5. (Optional) **Rename your chart** to reflect the combined data.
+
+6. **Save** your changes.
 
 ## Combining number charts
 
