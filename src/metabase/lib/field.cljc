@@ -495,10 +495,8 @@
                                  (when-let [source-field-join-alias (when-not inherited-column?
                                                                       (:fk-join-alias metadata))]
                                    {:source-field-join-alias source-field-join-alias}))
-        id-or-name        ((if inherited-column?
-                             (some-fn :lib/desired-column-alias :name)
-                             (some-fn :id :name))
-                           metadata)]
+        id-or-name        (or (lib.field.util/field-ref-name metadata)
+                              ((some-fn :id :name) metadata))]
     [:field options id-or-name]))
 
 (defmethod lib.ref/ref-method :metadata/column

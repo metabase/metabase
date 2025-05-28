@@ -4,11 +4,12 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]))
 
-(mu/defn inherited-column? :- :boolean
+(mu/defn- inherited-column? :- :boolean
   [column :- ::lib.schema.metadata/column]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
-(mu/defn fk-field-name :- [:maybe :string]
-  [fk-column :- ::lib.schema.metadata/column]
-  (when (inherited-column? fk-column)
-    ((some-fn :lib/desired-column-alias :name) fk-column)))
+(mu/defn field-ref-name :- [:maybe :string]
+  "If the field ref for this `column` should be name-based, returns the name used in the field ref."
+  [column :- ::lib.schema.metadata/column]
+  (when (inherited-column? column)
+    ((some-fn :lib/desired-column-alias :name) column)))
