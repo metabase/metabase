@@ -63,7 +63,7 @@ export function computeQuestionPivotTable(options: Options) {
 function checkShouldRerunPivotTableQuestion({
   isPivot,
   wasPivot,
-  hasBreakouts,
+  //hasBreakouts,
   currentQuestion,
   question,
 }: {
@@ -97,24 +97,23 @@ function checkShouldRerunPivotTableQuestion({
     (currentShowRowTotals === false && newShowRowTotals === true) ||
     (currentShowColumnTotals === false && newShowColumnTotals === true);
 
-  const isUnaggregatedData = !hasBreakouts;
+  //const isUnaggregatedData = !hasBreakouts;
 
-  if (isUnaggregatedData) {
-    const currentPivotSettings = currentSettings[UNAGG_COLUMN_SPLIT_SETTING];
-    const prevPivotSettings = prevSettings?.[UNAGG_COLUMN_SPLIT_SETTING];
+  //if (isUnaggregatedData) {
+  //  const currentPivotSettings = currentSettings[UNAGG_COLUMN_SPLIT_SETTING];
+  //  const prevPivotSettings = prevSettings?.[UNAGG_COLUMN_SPLIT_SETTING];
+  //
+  //  return (
+  //    currentPivotSettings &&
+  //    (shouldRerunForTotals ||
+  //      !_.isEqual(currentPivotSettings, prevPivotSettings))
+  //  );
+  //} else {
+  const currentPivotSettings = currentSettings[PREAGG_COLUMN_SPLIT_SETTING];
+  const prevPivotSettings = prevSettings?.[PREAGG_COLUMN_SPLIT_SETTING];
 
-    return (
-      currentPivotSettings &&
-      (shouldRerunForTotals ||
-        !_.isEqual(currentPivotSettings, prevPivotSettings))
-    );
-  } else {
-    const currentPivotSettings = currentSettings[PREAGG_COLUMN_SPLIT_SETTING];
-    const prevPivotSettings = prevSettings?.[PREAGG_COLUMN_SPLIT_SETTING];
-
-    return (
-      shouldRerunForTotals ||
-      !_.isEqual(currentPivotSettings, prevPivotSettings)
-    );
-  }
+  return (
+    shouldRerunForTotals || !_.isEqual(currentPivotSettings, prevPivotSettings)
+  );
+  //}
 }

@@ -362,25 +362,36 @@ export const ChartSettingFieldsPartition = ({
     //});
   }, [canEditColumns, columns, aggregatedColumns, pendingAggCols, value]);
 
-  const onAddBreakout = (
-    partition: keyof PivotTableColumnSplitSetting,
-    column: Lib.ColumnMetadata,
-  ) => {
-    const binning = Lib.binning(column);
-    const binningInfo = binning ? Lib.displayInfo(query, 0, binning) : null;
-    const bucket = Lib.temporalBucket(column);
-    const bucketName = bucket
-      ? Lib.displayInfo(query, 0, bucket).shortName
-      : null;
-    const columnName = Lib.displayInfo(question.query(), -1, column).name;
-    onChange({
-      ...value,
-      [partition]: columnAdd(value[partition], -1, {
-        name: columnName,
-        binning: binningInfo || bucketName,
-      }),
-    });
-  };
+  const onAddBreakout = useCallback(
+    async (
+      partition: keyof PivotTableColumnSplitSetting,
+      column: Lib.ColumnMetadata,
+    ) => {
+      const modifiedQuery = Lib.breakout(query, -1, column);
+      await dispatch(updateQuestion(question.setQuery(modifiedQuery)));
+
+      //const binning = Lib.binning(column);
+      //const binningInfo = binning ? Lib.displayInfo(query, 0, binning) : null;
+      //const bucket = Lib.temporalBucket(column);
+      //const bucketName = bucket
+      //  ? Lib.displayInfo(query, 0, bucket).shortName
+      //  : null;
+      const columnName = Lib.displayInfo(question.query(), -1, column).name;
+
+      onChange({
+        ...value,
+        [partition]: columnAdd(value[partition], -1, columnName),
+      });
+
+
+      //onChange({
+      //  ...value,
+      //  [partition]: columnAdd(value[partition], -1, {
+      //    name: columnName,
+      //    binning: binningInfo || bucketName,
+      //  }),
+      //});
+    }, [query, question, value, onChange]);
 
   const onAddAggregation = useCallback(
     async (query: Lib.Query) => {
@@ -402,8 +413,6 @@ export const ChartSettingFieldsPartition = ({
 
         return aggDisplay.name;
       });
-
-
       onChange({
         ...value,
         values: aggDetails,
@@ -497,7 +506,7 @@ export const ChartSettingFieldsPartition = ({
         const AggregationOrBreakoutPopover =
           partitionType === "metric" ? (
             <AddAggregationPopover
-              query={aggregatedQuery}
+              query={query}
               onAddAggregation={onAddAggregation}
             />
           ) : (
