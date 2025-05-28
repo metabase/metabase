@@ -38,7 +38,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
         handlers.open();
       }
 
-      dispatch(removeDataSource(source));
+      dispatch(removeDataSource({ source }));
     },
     [dataSources.length, handlers, dispatch],
   );

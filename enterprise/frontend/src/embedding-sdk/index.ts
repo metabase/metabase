@@ -26,7 +26,7 @@ export type {
   LoginStatus,
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,
-  MetabaseAuthConfigWithProvider,
+  MetabaseAuthConfigWithSSO,
   MetabaseClickActionPluginsConfig,
   MetabaseColors,
   MetabaseClickAction,
@@ -55,6 +55,7 @@ export type {
 } from "./types";
 
 export type {
+  UserBackendJwtResponse,
   MetabaseFetchRequestTokenFn,
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
