@@ -2,7 +2,9 @@ import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
+  validateSessionToken,
 } from "embedding/auth-common";
+import { MetabaseError } from "embedding-sdk/errors/base";
 
 import type {
   SdkIframeEmbedMessage,
@@ -198,6 +200,7 @@ class MetabaseEmbed {
 
   private async _authenticate() {
     const refreshToken = await this._getRefreshToken();
+    validateSessionToken(refreshToken);
 
     if (refreshToken) {
       this._sendMessage("metabase.embed.submitRequestToken", { refreshToken });
@@ -245,19 +248,8 @@ class MetabaseEmbed {
   }
 }
 
-class MetabaseEmbedError extends Error {
-  constructor(message: string) {
-    super(message);
-
-    // eslint-disable-next-line no-literal-metabase-strings -- used in error messages
-    this.name = "MetabaseEmbedError";
-
-    Object.setPrototypeOf(this, MetabaseEmbedError.prototype);
-  }
-}
-
 const raiseError = (message: string) => {
-  throw new MetabaseEmbedError(message);
+  throw new MetabaseError("EMBED_ERROR", message);
 };
 
 const warn = (...messages: unknown[]) =>
