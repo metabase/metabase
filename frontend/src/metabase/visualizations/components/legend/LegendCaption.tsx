@@ -5,13 +5,11 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
 
-import LegendActions from "../LegendActions";
-
+import LegendActions from "./LegendActions";
 import {
   LegendCaptionRoot,
   LegendDescriptionIcon,
@@ -79,9 +77,6 @@ export const LegendCaption = ({
     }
   }, [getHref]);
 
-  const tc = useTranslateContent();
-  const translatedTitle = tc(title);
-
   const titleElement = (
     <LegendLabel
       className={cx(
@@ -94,9 +89,7 @@ export const LegendCaption = ({
       onFocus={handleFocus}
       onMouseEnter={handleMouseEnter}
     >
-      <Ellipsified data-testid="legend-caption-title">
-        {translatedTitle}
-      </Ellipsified>
+      <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
       {titleMenuItems && (
         <Icon
           style={{ flexShrink: 0, marginRight: 10 }}

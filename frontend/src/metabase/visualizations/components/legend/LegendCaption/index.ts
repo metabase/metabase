@@ -1,1 +1,0 @@
-export { LegendCaption } from "./LegendCaption";
