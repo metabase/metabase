@@ -15,7 +15,6 @@
    "Card"
    "Collection"
    "Dashboard"
-   "Metabot"
    "NativeQuerySnippet"
    "Timeline"])
 
