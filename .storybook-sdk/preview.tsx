@@ -56,3 +56,15 @@ const globalTypes: GlobalTypes = {
   },
 };
 
+/*
+ * Initializes MSW
+ * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
+ * to learn how to customize it
+ */
+
+initialize({
+  onUnhandledRequest: "bypass",
+});
+const preview = { parameters, decorators, globalTypes, loaders: [mswLoader] };
+
+export default preview;

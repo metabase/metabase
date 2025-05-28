@@ -394,7 +394,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -449,7 +449,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -509,7 +509,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -575,7 +575,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -636,7 +636,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -692,7 +692,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -749,7 +749,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -812,7 +812,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -875,7 +875,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -930,7 +930,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -987,7 +987,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -1044,7 +1044,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -1150,7 +1150,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1212,7 +1212,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1274,7 +1274,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1345,7 +1345,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1402,7 +1402,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1460,7 +1460,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1523,7 +1523,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1587,7 +1587,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1649,7 +1649,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1707,7 +1707,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1766,7 +1766,7 @@ describe.skip("scenarios > question", () => {
           H.popover().button("Done").click();
 
           cy.get("@questionId").then((questionId) => {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,

@@ -40,8 +40,13 @@ export function getUpdatedSettingsForDisplay(
     if (targetIsCartesian) {
       return;
     }
+
     if (targetDisplay === "pie") {
       return cartesianToPie(columnValuesMapping, columns, settings);
+    }
+
+    if (targetDisplay === "funnel") {
+      return cartesianToFunnel(columnValuesMapping, columns, settings);
     }
   }
 
@@ -53,6 +58,10 @@ export function getUpdatedSettingsForDisplay(
         settings,
         targetDisplay,
       );
+    }
+
+    if (targetDisplay === "funnel") {
+      return pieToFunnel(columnValuesMapping, columns, settings);
     }
   }
 
@@ -78,6 +87,54 @@ export function getUpdatedSettingsForDisplay(
     settings: _.pick(settings, "card.title"),
   };
 }
+
+const cartesianToFunnel = (
+  columnValuesMapping: ColumnValuesMapping,
+  columns: DatasetColumn[],
+  settings: VisualizationSettings,
+) => {
+  const {
+    "graph.metrics": metrics = [],
+    "graph.dimensions": dimensions = [],
+    "card.title": cardTitle,
+  } = settings;
+
+  return {
+    settings: {
+      "card.title": cardTitle,
+      "funnel.metric": metrics[0],
+      "funnel.dimension": dimensions[0],
+      "graph.metrics": metrics,
+      "graph.dimensions": dimensions,
+    },
+    columns,
+    columnValuesMapping,
+  };
+};
+
+const pieToFunnel = (
+  columnValuesMapping: ColumnValuesMapping,
+  columns: DatasetColumn[],
+  settings: VisualizationSettings,
+) => {
+  const {
+    "pie.metric": metric,
+    "pie.dimension": dimension,
+    "card.title": cardTitle,
+  } = settings;
+
+  return {
+    columns,
+    columnValuesMapping,
+    settings: {
+      "card.title": cardTitle,
+      "funnel.metric": metric,
+      "funnel.dimension": dimension,
+      "graph.metrics": [metric].filter(isNotNull) as string[],
+      "graph.dimensions": [dimension].filter(isNotNull) as string[],
+    },
+  };
+};
 
 const cartesianToPie = (
   columnValuesMapping: ColumnValuesMapping,
@@ -156,16 +213,22 @@ const funnelToCartesian = (
   const {
     "funnel.metric": metric,
     "funnel.dimension": dimension,
+    "graph.dimensions": preservedDimensions = [],
+    "graph.metrics": preservedMetrics = [],
     ...otherSettings
   } = settings;
+
+  const metrics = [metric].filter(isNotNull);
+  const dimensions = [dimension].filter(isNotNull);
 
   return {
     columns,
     columnValuesMapping,
     settings: {
       ...otherSettings,
-      "graph.metrics": [metric].filter(isNotNull),
-      "graph.dimensions": [dimension].filter(isNotNull),
+      "graph.metrics": metrics.length > 0 ? metrics : preservedMetrics,
+      "graph.dimensions":
+        dimensions.length > 0 ? dimensions : preservedDimensions,
     },
   };
 };

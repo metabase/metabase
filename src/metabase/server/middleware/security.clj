@@ -5,11 +5,12 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.config :as config]
-   [metabase.embedding.app-origins-sdk :as aos]
+   [metabase.config.core :as config]
+   [metabase.embedding.settings :as embedding.settings]
    [metabase.request.core :as request]
+   [metabase.server.settings :as server.settings]
+
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -149,7 +150,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
+                  :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
@@ -246,7 +247,7 @@
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                           (aos/embedding-app-origins-sdk))
+                           (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)

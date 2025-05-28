@@ -78,7 +78,6 @@
                                   :dbms_version
                                   :created_at
                                   :creator_id
-                                  :entity_id
                                   :timezone
                                   :auto_run_queries
                                   :cache_ttl
@@ -110,7 +109,6 @@
  :Field                          [:name
                                   :display_name
                                   :description
-                                  :entity_id
                                   :created_at
                                   :active
                                   :visibility_type
@@ -146,7 +144,6 @@
  :Table                          [:name
                                   :display_name
                                   :description
-                                  :entity_id
                                   :created_at
                                   :db_id
                                   :schema

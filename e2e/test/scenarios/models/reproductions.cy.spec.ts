@@ -1477,6 +1477,39 @@ describe("issue 56698", () => {
   });
 });
 
+describe("issue 57557", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should not allow to see the query definition for a user without data permissions (metabase#57557)", () => {
+    cy.log("create a native model");
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        name: "Native model",
+        native: { query: "select 1 union all select 2" },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.log("verify that query editing functionality is hidden");
+    cy.signIn("nodata");
+    cy.get("@modelId").then((modelId) =>
+      H.visitModel(Number(modelId), { hasDataAccess: false }),
+    );
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Edit metadata").should("be.visible");
+      cy.findByText("Edit query definition").should("not.exist");
+      cy.findByText("Edit metadata").click();
+    });
+    cy.findByTestId("editor-tabs-query").should("be.disabled");
+    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+  });
+});
+
 describe("issue 56775", () => {
   const MODEL_NAME = "Model 56775";
 

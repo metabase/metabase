@@ -84,7 +84,6 @@
            :base_type "type/Text"}
           {:database_type "INTEGER",
            :name "pivot-grouping",
-           :expression_name "pivot-grouping",
            :source "breakout",
            :field_ref ["expression" "pivot-grouping"],
            :effective_type "type/Integer",

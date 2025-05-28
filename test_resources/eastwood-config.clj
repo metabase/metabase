@@ -53,7 +53,7 @@
 
 (disable-warning
  {:linter               :wrong-arity
-  :function-symbol      'metabase.http-client/client
+  :function-symbol      'metabase.test.http-client/client
   :arglists-for-linting '([& args])})
 
 (disable-warning
@@ -63,7 +63,7 @@
 
 (disable-warning
  {:linter               :wrong-arity
-  :function-symbol      'metabase.http-client/client-full-response
+  :function-symbol      'metabase.test.http-client/client-full-response
   :arglists-for-linting '([& args])})
 
 (disable-warning
@@ -79,7 +79,7 @@
 (disable-warning
  {:linter                      :suspicious-expression
   :for-macro                   'clojure.core/let
-  :if-inside-macroexpansion-of #{'metabase.models.collection-test/with-collection-in-location}
+  :if-inside-macroexpansion-of #{'metabase.collections.models.collection-test/with-collection-in-location}
   :within-depth                10})
 
 (disable-warning

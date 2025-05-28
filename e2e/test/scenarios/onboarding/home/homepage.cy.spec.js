@@ -41,19 +41,31 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for a user database", () => {
       cy.signInAsAdmin();
-      cy.addSQLiteDatabase();
 
-      cy.visit("/");
-      cy.wait("@getXrayCandidates");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Here are some explorations of");
-      cy.findAllByRole("link").contains("sqlite");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Number With Nulls").click();
+      const dbId = 2;
 
-      cy.wait("@getXrayDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays");
+      H.restore("withSqlite");
+
+      H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
+        // we first set the semantic type of the num field to Category,
+        // else no X-rays would be computed
+        cy.request("PUT", `/api/field/${NUM}`, {
+          semantic_type: "type/Category",
+          has_field_values: "none",
+        });
+
+        cy.visit("/");
+        cy.wait("@getXrayCandidates");
+
+        cy.findByText("Here are some explorations of");
+        cy.findAllByRole("link").contains("sqlite");
+
+        cy.findByText("Number With Nulls").click();
+
+        cy.wait("@getXrayDashboard");
+
+        cy.findByText("More X-rays");
+      });
     });
 
     it("homepage should not flicker when syncing databases and showing xrays", () => {
@@ -583,7 +595,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.undoToast().findByText("Changes saved").should("be.visible");
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "admin",
     });
@@ -598,7 +610,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
     H.modal().findByText("Save").click();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });
@@ -610,7 +622,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     cy.log("From the app bar");
     H.newButton().should("be.visible").click();
     cy.findByRole("dialog").should("be.visible");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "app-bar",
     });
@@ -618,7 +630,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     cy.log("Track closing the button as well");
     H.newButton().should("be.visible").click();
     cy.findByRole("dialog").should("not.exist");
-    H.expectGoodSnowplowEvent(
+    H.expectUnstructuredSnowplowEvent(
       {
         event: "new_button_clicked",
         triggered_from: "app-bar",
@@ -634,7 +646,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
 
     cy.findByRole("dialog").should("be.visible");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "empty-collection",
     });
@@ -650,7 +662,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.newButton().should("be.visible").click();
     cy.findByRole("dialog").findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_button_item_clicked",
       triggered_from: "dashboard",
     });
@@ -665,7 +677,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
     cy.findByRole("dialog").findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectGoodSnowplowEvent(
+    H.expectUnstructuredSnowplowEvent(
       {
         event: "new_button_item_clicked",
         triggered_from: "dashboard",

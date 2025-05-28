@@ -3,19 +3,20 @@
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
-   [metabase.formatter :as formatter]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.timeline.core :as timeline]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
@@ -146,7 +147,7 @@
     card
     {:keys [cols rows viz-settings], :as _data}]
    (let [remapping-lookup (create-remapping-lookup cols)
-         row-limit        (min (public-settings/attachment-table-row-limit) 100)]
+         row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
       (query-results->header-row remapping-lookup card cols)
       (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
@@ -228,12 +229,12 @@
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
-                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                       :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)
                                       filtered-cols
                                       viz-settings
                                       minibar-cols)
-                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
+                                     (render-truncation-warning (channel.settings/attachment-table-row-limit) (count rows))]]
     {:content     table-body
      :attachments nil}))
 
@@ -299,7 +300,7 @@
   [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)
+    (cond-> {:colors (appearance/application-colors)
              :visualization_settings (or viz-settings {})}
       x-col-settings
       (assoc :x x-col-settings)
@@ -311,7 +312,7 @@
   is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
   that will handle this but this is here in the meantime."
   ([value]
-   (format-percentage value (get-in (public-settings/custom-formatting) [:type/Number :number_separators])))
+   (format-percentage value (get-in (appearance/custom-formatting) [:type/Number :number_separators])))
   ([value [decimal grouping]]
    (let [base "#,###.##%"
          fmt (if (or decimal grouping)

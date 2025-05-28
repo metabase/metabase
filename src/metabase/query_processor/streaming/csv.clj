@@ -2,13 +2,12 @@
   (:require
    [clojure.data.csv]
    [medley.core :as m]
-   [metabase.formatter :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.formatter.core :as formatter]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.performance :as perf])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -87,12 +86,12 @@
   (let [writer                  (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         ordered-formatters      (volatile! nil)
         pivot-data              (volatile! nil)
-        enable-pivoted-exports? (public-settings/enable-pivoted-exports)]
+        enable-pivoted-exports? (qp.settings/enable-pivoted-exports)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
-        (let [col-names            (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+        (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
               pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
@@ -134,14 +133,12 @@
                                                       (formatter (streaming.common/format-value r)))
                                                     @ordered-formatters ordered-row)
                                          (m/remove-nth pivot-grouping-index))]
-                  (write-csv writer [formatted-row])
-                  (.flush writer)))
+                  (write-csv writer [formatted-row])))
               ;; All other results: write directly to the CSV
               (let [formatted-row (perf/mapv (fn [formatter r]
                                                (formatter (streaming.common/format-value r)))
                                              @ordered-formatters ordered-row)]
-                (write-csv writer [formatted-row])
-                (.flush writer))))))
+                (write-csv writer [formatted-row]))))))
 
       (finish! [_ _]
         (when (and (contains? @pivot-data :data) enable-pivoted-exports?)

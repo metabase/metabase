@@ -3,7 +3,7 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]

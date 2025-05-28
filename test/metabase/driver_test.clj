@@ -3,11 +3,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.classloader.core :as classloader]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -39,7 +39,7 @@
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
     (with-redefs [driver.impl/hierarchy (make-hierarchy)] ;; To simulate :h2 not being registed yet.
       (driver/the-driver :h2))
-    (is (= @@#'classloader/shared-context-classloader
+    (is (= @classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread))))))
 
 (deftest available?-test

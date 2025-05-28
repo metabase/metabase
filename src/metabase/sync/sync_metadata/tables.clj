@@ -9,7 +9,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
@@ -79,16 +78,6 @@
     ;; MSSQL
     #"^syncobj_0x.*"})
 
-(defsetting auto-cruft-tables
-  "A list of pattern strings that get converted into additional regexes that match Tables that should automatically be
-  marked as `:cruft`."
-  :type :json
-  :database-local :only
-  :visibility :internal
-  :export? true
-  :default []
-  :encryption :no)
-
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
 (mu/defn- update-database-metadata!
@@ -105,8 +94,8 @@
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
   (let [is-crufty? (if (= sync-stage ::update)
                      ;; TODO: we should add an updated_by column to metabase_table in
-                     ;; [[metabase.api.table/update-table!*]] to track occasions where the table was updated by an
-                     ;; admin, and respect their choices during an update.
+                     ;; [[metabase.warehouse-schema.api.table/update-table!*]] to track occasions where the table was
+                     ;; updated by an admin, and respect their choices during an update.
                      ;;
                      ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
                      ;; during update steps. This is also how we handled this before the addition of auto-cruft-tables.

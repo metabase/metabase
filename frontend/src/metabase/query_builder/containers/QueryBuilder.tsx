@@ -32,6 +32,7 @@ import type {
   BookmarkId,
   Bookmark as BookmarkType,
   Card,
+  Series,
   Timeline,
 } from "metabase-types/api";
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
@@ -185,6 +186,10 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isLoadingComplete: getIsLoadingComplete(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
+    didFirstNonTableChartGenerated: getSetting(
+      state,
+      "non-table-chart-generated",
+    ),
 
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),
@@ -237,7 +242,27 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB,
     route,
     queryBuilderMode,
+    didFirstNonTableChartGenerated,
+    setDidFirstNonTableChartRender,
   } = props;
+
+  const didTrackFirstNonTableChartGeneratedRef = useRef(
+    didFirstNonTableChartGenerated,
+  );
+  const handleVisualizationRendered = useCallback(
+    (series: Series) => {
+      const isNonTable = series[0].card.display !== "table";
+      if (
+        !didFirstNonTableChartGenerated &&
+        !didTrackFirstNonTableChartGeneratedRef.current &&
+        isNonTable
+      ) {
+        setDidFirstNonTableChartRender(card);
+        didTrackFirstNonTableChartGeneratedRef.current = true;
+      }
+    },
+    [card, didFirstNonTableChartGenerated, setDidFirstNonTableChartRender],
+  );
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(
@@ -429,6 +454,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         onDismissToast={onDismissToast}
         onConfirmToast={onConfirmToast}
         isShowingToaster={isShowingToaster}
+        onVisualizationRendered={handleVisualizationRendered}
       />
 
       <LeaveRouteConfirmModal

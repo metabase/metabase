@@ -104,7 +104,7 @@
     :renameTrigger
     :renameView
     ;; assumes all custom changes use the `def-migration` or `define-reversible-migration` in
-    ;; metabase.db.custom-migrations
+    ;; [[metabase.app-db.custom-migrations]]
     :customChange})
 
 (defn- major-version

@@ -3,8 +3,8 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.task :as task]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

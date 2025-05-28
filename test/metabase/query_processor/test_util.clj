@@ -11,13 +11,13 @@
    [clojure.test :refer :all]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
@@ -193,7 +193,7 @@
                :source_alias (let [table-name (if (qp.store/initialized?)
                                                 (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
                                                 (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
-                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
+                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col) nil))))))
 
 (declare cols)
 

@@ -300,6 +300,29 @@
                                  (m/find-first (comp #{"metadata"} :name))
                                  :steps
                                  (m/find-first (comp #{"sync-fields"} first)))]
+        (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info)))))
+
+  (testing "Two tables with same lower-case name can be synced (SEM-258)"
+    (one-off-dbs/with-blank-db
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
+                         "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                         ;; Keep DB open until we say otherwise :)
+                         "SET DB_CLOSE_DELAY -1;"
+                         ;; create table & load data
+                         "DROP TABLE IF EXISTS \"birds\";"
+                         "DROP TABLE IF EXISTS \"BIRDS\";"
+                         "CREATE TABLE \"birds\" (\"event\" VARCHAR);"
+                         "CREATE TABLE \"BIRDS\" (\"event\" VARCHAR);"
+                         "GRANT ALL ON \"birds\" TO GUEST;"
+                         "GRANT ALL ON \"BIRDS\" TO GUEST;"
+                         "INSERT INTO \"birds\" (\"event\") VALUES ('a'), ('b')"
+                         "INSERT INTO \"BIRDS\" (\"event\") VALUES ('c'), ('d')"]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (let [sync-info (sync/sync-database! (mt/db))
+            field-sync-info (->> sync-info
+                                 (m/find-first (comp #{"metadata"} :name))
+                                 :steps
+                                 (m/find-first (comp #{"sync-fields"} first)))]
         (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info))))))
 
 (mt/defdataset country
@@ -385,3 +408,11 @@
              (->> (db->fields db)
                   (mapv :visibility_type)
                   frequencies))))))
+
+(deftest sync-fields-resilient-to-non-existence-test
+  (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table (SEM-39)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [table (t2/instance :model/Table {:id 321 :name "tbl"})]
+        (is (not= ::thrown
+                  (try (sync-fields/sync-fields-for-table! (mt/db) table)
+                       (catch Throwable _ ::thrown))))))))

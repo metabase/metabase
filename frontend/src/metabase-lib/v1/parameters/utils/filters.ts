@@ -50,6 +50,8 @@ function isParameterCompatibleWithColumn(
       return isString && isAddress;
     case "number":
       return isNumeric && !isID;
+    case "boolean":
+      return isBoolean;
     case "string":
       return (
         (isString || (isBoolean && hasFieldValues === "list")) && !isAddress

@@ -3,7 +3,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
-import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
+import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
 import { formatField, stripId } from "metabase/lib/formatting";
 import {
   getFieldValues,

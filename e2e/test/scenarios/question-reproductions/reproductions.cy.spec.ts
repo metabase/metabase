@@ -128,7 +128,7 @@ describe("issue 39487", () => {
       .findAllByTestId("notebook-cell-item")
       .first()
       .click();
-    H.popover().scrollTo("bottom");
+    H.popover().findByTestId("popover-content").scrollTo("bottom");
     H.popover().button("Update filter").should("be.visible").click();
   });
 
@@ -384,5 +384,86 @@ describe("issue 54817", () => {
     H.openOrdersTable();
     H.filter();
     H.popover().findByPlaceholderText(placeholder).should("be.focused");
+  });
+});
+
+describe("issue 57398", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show the query running state when navigating back (metabase#57398)", () => {
+    H.openProductsTable();
+    H.filter();
+    H.popover().within(() => {
+      cy.log("1st filter");
+      cy.findByText("Category").click();
+      cy.findByText("Widget").click();
+      cy.findByLabelText("Add another filter").click();
+
+      cy.log("2st filter");
+      cy.findByText("Vendor").click();
+      cy.findByText("Alfreda Konopelski II Group").click();
+      cy.findByLabelText("Add another filter").click();
+    });
+
+    cy.log("delay the response to be able to verify the running state");
+    cy.intercept("POST", "/api/dataset", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(5000);
+      });
+    });
+
+    cy.go("back");
+    H.queryBuilderMain().findByTestId("loading-indicator").should("be.visible");
+    H.queryBuilderFiltersPanel().within(() => {
+      cy.findByText("Category is Widget").should("be.visible");
+      cy.findByText("Vendor is Alfreda Konopelski II Group").should(
+        "not.exist",
+      );
+    });
+  });
+});
+
+describe("issue 46845", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to run a query with an implicit join via a join (metabase#46845)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+
+    cy.log("add a self-join");
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.popover().findByText("Product ID").click();
+    H.popover().findByText("User ID").click();
+
+    cy.log("add a filter for an implicit column from the source table");
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findAllByText("Product").should("have.length", 2).first().click();
+      cy.findByText("Vendor").click();
+      cy.findByText("Alfreda Konopelski II Group").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("add a filter for the column but from the joined table");
+    H.getNotebookStep("filter").icon("add").click();
+    H.popover().within(() => {
+      cy.findAllByText("Product").should("have.length", 2).last().click();
+      cy.findByText("Vendor").click();
+      cy.findByText("Aufderhar-Boehm").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("assert query results");
+    H.visualize();
+    H.assertQueryBuilderRowCount(91);
   });
 });

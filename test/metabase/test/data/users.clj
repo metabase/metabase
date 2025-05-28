@@ -3,10 +3,10 @@
   (:require
    [clojure.test :as t]
    [medley.core :as m]
-   [metabase.db :as mdb]
-   [metabase.http-client :as client]
+   [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -85,20 +85,37 @@
   [username :- TestUserName]
   (m/mapply fetch-or-create-user! (user->info username)))
 
-(def ^{:arglists '([] [user-name])} user->id
-  "Creates user if needed. With zero args, returns map of user name to ID. With 1 arg, returns ID of that User. Creates
-  User(s) if needed. Memoized.
+;;; Memoize results the first time we run outside of a transaction (i.e., outside of `with-temp`) -- the users will
+;;; be created globally and can be used from this point on regardless of transaction status.
+;;;
+;;; If we run INSIDE of a transaction before the test users have been created globally then do not memoize the IDs,
+;;; since the users will get discarded and we will need to recreate them next time around.
+(let [f                 (fn []
+                          (zipmap usernames
+                                  (map (comp u/the-id fetch-user) usernames)))
+      memoized          (mdb/memoize-for-application-db f)
+      created-globally? (atom false)
+      f*                (fn []
+                          (cond
+                            @created-globally?
+                            (memoized)
 
-    (user->id)        ; -> {:rasta 4, ...}
+                            (mdb/in-transaction?)
+                            (f)
+
+                            :else
+                            (u/prog1 (memoized)
+                              (reset! created-globally? true))))]
+  (mu/defn user->id
+    "Creates user if needed. With zero args, returns map of user name to ID. With 1 arg, returns ID of that User. Creates
+  User(s) if needed. Memoized if not ran inside of a transaction.
+
+    (user->id) ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (mdb/memoize-for-application-db
-   (fn
-     ([]
-      (zipmap usernames (map user->id usernames)))
-
-     ([user-name]
-      {:pre [(contains? usernames user-name)]}
-      (u/the-id (fetch-user user-name))))))
+    ([]
+     (f*))
+    ([user-name :- TestUserName]
+     (get (f*) user-name))))
 
 (defn user-descriptor
   "Returns \"admin\" or \"non-admin\" for a given user.
@@ -125,14 +142,14 @@
 
 (defonce ^:private tokens (atom {}))
 
-;;; This is done by hitting the app DB directly instead of hitting [[metabase.http-client/authenticate]] to avoid
+;;; This is done by hitting the app DB directly instead of hitting [[metabase.test.http-client/authenticate]] to avoid
 ;;; deadlocks in MySQL that I haven't been able to figure out yet. The session endpoint updates User last_login and
 ;;; updated_at which requires a lock on that User row which other parallel test threads seem to already have for one
 ;;; reason or another...
 ;;;
 ;;;    DRIVERS=mysql clj -X:dev:user/mysql:ee:ee-dev:test :only metabase.query-processor.card-test
 ;;;
-;;; consistently fails for me when using [[metabase.http-client/authenticate]] instead of the code below. See #48489 for
+;;; consistently fails for me when using [[metabase.test.http-client/authenticate]] instead of the code below. See #48489 for
 ;;; more info
 (mu/defn ^:private authenticate! :- ms/UUIDString
   "Create a new `:model/Session` for one of the test users."

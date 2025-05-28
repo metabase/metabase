@@ -49,6 +49,7 @@ export function DashboardParameterPanel({
   );
   const { isSticky, isStickyStateChanging } = useIsParameterPanelSticky({
     parameterPanelRef,
+    disabled: !allowSticky || !hasVisibleParameters,
   });
 
   const shouldApplyThemeChangeTransition = !isStickyStateChanging && isSticky;

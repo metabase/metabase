@@ -32,7 +32,7 @@ describe("mergeData", () => {
       dataSources: [
         {
           id: "card:73",
-          sourceId: `entity_73`,
+          sourceId: 73,
           type: "card",
           name: "bar chart yo",
         },

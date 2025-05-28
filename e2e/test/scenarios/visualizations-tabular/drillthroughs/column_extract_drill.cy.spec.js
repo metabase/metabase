@@ -417,7 +417,7 @@ H.describeWithSnowplow("extract action", () => {
       extraction: "Extract day, month…",
     });
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "column_extract_via_column_header",
       custom_expressions_used: ["get-year"],
       database_id: SAMPLE_DB_ID,

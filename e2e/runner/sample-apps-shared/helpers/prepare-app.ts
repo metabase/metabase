@@ -1,5 +1,4 @@
 import fs from "fs";
-
 import * as path from "path";
 
 const ROOT_FOLDER_PATH = path.resolve(__dirname, "../../../..");

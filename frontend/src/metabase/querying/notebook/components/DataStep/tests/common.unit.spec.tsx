@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, getIcon, screen, within } from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
+import { checkNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -119,7 +120,9 @@ describe("DataStep", () => {
     const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
     const query = Lib.queryFromTableOrCardMetadata(
       metadataProvider,
-      Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
+      checkNotNull(
+        Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
+      ),
     );
     const step = createMockNotebookStep({ query });
     setup({ step });

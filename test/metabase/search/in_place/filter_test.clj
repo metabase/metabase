@@ -4,7 +4,7 @@
   #_{:clj-kondo/ignore [:consistent-alias]}
   (:require
    [clojure.test :refer :all]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]

@@ -1,149 +1,119 @@
 /* TODO: rtl support */
 
-@keyframes chat-bar-slide-in {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 2rem);
-    transform-origin: top;
-  }
-
-  100% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-    transform-origin: top;
-  }
-}
-
 .container {
-  width: 30rem;
-  position: absolute;
-  left: 50%;
-  bottom: 1.5rem;
-  box-shadow: 0 2px 13.8px -1px #1871bf52;
-  border-radius: 22px;
-  z-index: 199; /* -1 of the default 200 for modals */
-  animation: chat-bar-slide-in 300ms ease forwards;
-  transition-property: transform, opacity;
+  --padding-x: 1.5rem;
+
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.innerContainer {
-  padding: 0 1rem;
-  border-radius: 22px;
+.header {
+  /* top padding is set to visually align w/ the dashboard action buttons */
+  padding: 1.25rem var(--padding-x) 1rem;
+  display: flex;
   align-items: center;
-  box-sizing: border-box;
-  border: solid 1.5px transparent;
-  background: var(--mb-color-bg-white);
-  transition: background 150ms ease;
+  justify-content: space-between;
 }
 
-.innerContainer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to right, #2e96f1, #d932f4);
-  z-index: -1;
-  margin: -1.5px;
-  border-radius: 24px;
+.inputContainer {
+  padding: 0 0.75rem 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 3px 6px 0 #0000000d;
+  min-height: 3rem;
+  border: 1px solid var(--mb-color-border);
+
+  &:has(.textarea textarea:focus) {
+    border-color: var(--mb-color-brand);
+  }
 }
 
-.innerContainerLoading {
+.inputContainerLoading {
   background: var(--mb-color-bg-light);
 }
 
-.innerContainerExpanded {
-  padding: 1rem;
+.inputContainerExpanded {
+  padding: 1rem var(--padding-x);
   align-items: flex-start;
   height: 8rem;
 }
 
-.input {
-  caret-color: var(--mb-color-brand);
-}
+.textarea textarea {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  padding: 0.5rem 0;
+  line-height: 1.7;
+  color: var(--mb-color-text-dark);
 
-.textarea {
-  textarea {
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    outline: none;
-    width: 100%;
-    caret-color: var(--mb-color-brand);
-    padding: 0.5rem 0;
-    line-height: 1.7;
-    color: var(--mb-color-text-dark);
+  &:focus {
+    border-color: var(--mb-color-brand);
   }
 }
 
-.textareaExpanded {
-  textarea {
-    padding: 0;
-  }
+.textareaExpanded textarea {
+  padding: 0;
 }
 
-.textareaLoading {
-  textarea {
-    font-weight: bold;
-
-    &:disabled {
-      opacity: 1;
-      background: transparent;
-    }
-  }
+.textareaLoading textarea:disabled {
+  opacity: 1;
+  background: transparent;
 }
 
-/* nesting the style above keeps it from getting applied */
-.textareaLoading textarea::placeholder,
-.textareaLoading textarea:disabled::placeholder {
-  color: var(--mb-color-brand);
-}
-
-@keyframes responses-slide-in {
-  0% {
-    opacity: 0;
-    transform: translate(0, 0.5rem);
-    transform-origin: top;
-  }
-
-  100% {
-    opacity: 1;
-    transform: translate(0, 0);
-    transform-origin: top;
-  }
-}
-
-.responses {
-  position: absolute;
-  left: 0;
-  bottom: 100%;
-  margin-bottom: 0.25rem;
-  pointer-events: none; /* allow user to click through transparent area behind repsonses */
-  animation: responses-slide-in 150ms ease forwards;
-  transition-property: transform, opacity;
-}
-
-.response {
-  padding: 0.5rem 1rem;
+.messagesContainer {
+  padding: 1rem var(--padding-x) 1.5rem;
+  height: 100%;
   display: flex;
-  background: var(--mb-color-brand);
+  flex-direction: column;
+  overflow: auto;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+}
+
+.messageContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.messageContainerUser {
+  align-items: flex-end;
+  align-self: flex-end;
+  max-width: 80%;
+  min-width: 6rem;
+  width: fit-content;
+}
+
+.message {
   font-size: 0.875rem;
-  font-weight: 700;
+  line-height: 1.4 !important;
+}
+
+.messageUser {
+  padding: 0.5rem 1rem;
   border-radius: 1rem;
-  color: white;
-  pointer-events: auto;
-  margin-bottom: 0.25rem;
-  position: relative;
+  background: var(--mb-color-bg-medium);
 }
 
-.responseMessage {
-  flex-grow: 1;
+.messageActions {
+  opacity: 0;
+  transition: all 150ms linear;
 }
 
-button.responseDismissBtn {
-  color: #cbe2f7;
-  height: 1rem;
-  cursor: pointer;
-  margin-left: 0.5rem;
+.messageContainer:hover .messageActions,
+.messageContainer:last-child.messageContainerAgent .messageActions {
+  opacity: 1;
+}
+
+.textInputContainer {
+  padding: 0 1rem 1rem;
 }

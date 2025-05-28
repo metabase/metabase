@@ -4,14 +4,15 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
@@ -610,12 +611,12 @@
 
 (defn- init-workbook
   "Initializes the provided workbook, and returns the created sheet"
-  [{:keys [workbook ordered-cols col-count col-settings format-rows? pivot?]}]
+  [{:keys [workbook ordered-cols col-count viz-settings format-rows? pivot?]}]
   (let [sheet (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (track-n-cols-for-autosizing! (or col-count (count ordered-cols)) sheet)
     (when (not pivot?)
       (setup-header-row! sheet (count ordered-cols))
-      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or col-settings []) format-rows?)))
+      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or viz-settings {})  format-rows?)))
     sheet))
 
 (defn get-formatter
@@ -663,8 +664,8 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
                           pivot?       false}} :data}
-               {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [pivot-spec       (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
+               viz-settings]
+        (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
                                                                 pivot-export-options) ordered-cols))
@@ -683,7 +684,7 @@
                       :pivot-export-options pivot-export-options})
             (let [sheet (init-workbook {:workbook     workbook
                                         :ordered-cols non-pivot-cols
-                                        :col-settings col-settings
+                                        :viz-settings viz-settings
                                         :format-rows? true})]
               (set-no-style-custom-helper! sheet)
               (vreset! styles (generate-styles workbook viz-settings non-pivot-cols format-rows?))

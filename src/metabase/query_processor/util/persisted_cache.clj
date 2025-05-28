@@ -9,7 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.malli :as mu]))
 
 (mu/defn can-substitute?
@@ -39,7 +39,7 @@
             (sql.u/quote-name
              driver
              :table
-             (ddl.i/schema-name {:id database-id} (public-settings/site-uuid)))
+             (ddl.i/schema-name {:id database-id} (system/site-uuid)))
             (sql.u/quote-name
              driver
              :table

@@ -7,7 +7,6 @@ import {
 import { refreshSiteSettings } from "metabase/redux/settings";
 import {
   EmailApi,
-  GoogleApi,
   LdapApi,
   SamlApi,
   SettingsApi,
@@ -157,19 +156,6 @@ export const updateSamlSettings = createThunkAction(
   function (settings) {
     return async function (dispatch) {
       const result = await SamlApi.updateSettings(settings);
-      await dispatch(reloadSettings());
-      return result;
-    };
-  },
-);
-
-export const UPDATE_GOOGLE_SETTINGS =
-  "metabase/admin/settings/UPDATE_GOOGLE_SETTINGS";
-export const updateGoogleSettings = createThunkAction(
-  UPDATE_GOOGLE_SETTINGS,
-  function (settings) {
-    return async function (dispatch) {
-      const result = await GoogleApi.updateSettings(settings);
       await dispatch(reloadSettings());
       return result;
     };

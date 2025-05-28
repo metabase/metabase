@@ -14,11 +14,10 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
-   [metabase.models.resolution]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -26,7 +25,6 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
@@ -35,16 +33,10 @@
    [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
   (:import
-   (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
    (java.sql Blob)
-   (java.util.zip GZIPInputStream)
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  ;; load this so dynamic model resolution works as expected
-  metabase.models.resolution/keep-me)
 
 (p/import-vars
  [models.dispatch
@@ -207,7 +199,7 @@
                             ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
                             ;; preserve the existing metadata provider.
                             (:lib/metadata query)
-                            ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                            ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
                              (u/the-id (some #(get query %) [:database "database"]))))]
     (lib/query metadata-provider query)))
 
@@ -459,22 +451,21 @@
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
    :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
 
-(defn decompress
-  "Decompress `compressed-bytes`."
-  [compressed-bytes]
-  (if (instance? Blob compressed-bytes)
-    (recur (blob->bytes compressed-bytes))
-    (with-open [bis     (ByteArrayInputStream. compressed-bytes)
-                bif     (BufferedInputStream. bis)
-                gz-in   (GZIPInputStream. bif)
-                data-in (DataInputStream. gz-in)]
-      (nippy/thaw-from-in! data-in))))
+#_(defn decompress
+    "Decompress `compressed-bytes`."
+    [compressed-bytes]
+    (if (instance? Blob compressed-bytes)
+      (recur (blob->bytes compressed-bytes))
+      (with-open [bis     (ByteArrayInputStream. compressed-bytes)
+                  bif     (BufferedInputStream. bis)
+                  gz-in   (GZIPInputStream. bif)
+                  data-in (DataInputStream. gz-in)]
+        (nippy/thaw-from-in! data-in))))
 
-#_{:clj-kondo/ignore [:unused-public-var]}
-(def transform-compressed
-  "Transform for compressed fields."
-  {:in identity
-   :out decompress})
+#_(def transform-compressed
+    "Transform for compressed fields."
+    {:in identity
+     :out decompress})
 
 ;; --- predefined hooks
 
@@ -492,9 +483,7 @@
   and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
   max (nanosecond) resolution)."
   []
-  (classloader/require 'metabase.driver.sql.query-processor)
-  (let [db-type ((requiring-resolve 'metabase.db/db-type))]
-    ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
+  (h2x/current-datetime-honeysql-form ((requiring-resolve 'metabase.app-db.core/db-type))))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
@@ -661,6 +650,14 @@
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
+(defmulti visible-filter-clause
+  "Return a honey SQL query fragment that will limit another query to only selecting records visible to the supplied user
+  by filtering on a supplied column or honeysql expression, using a the map of permission type->minimum permission-level.
+
+  Defaults to returning a no-op false statement 0=1."
+  {:arglists '([model column-or-exp user-info perm-type->perm-level])}
+  dispatch-on-model)
+
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
   of [[can-read?]] and/or [[can-write?]]."
@@ -764,6 +761,10 @@
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
+
+(defmethod visible-filter-clause :default
+  [_m _column-or-expression _user-info _perm-type->perm-level]
+  [:= [:inline 0] [:inline 1]])
 
 ;;;; [[to-json]]
 

@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -64,7 +64,7 @@
 
 (defmethod ddl.i/check-can-persist :postgres
   [{driver :engine, :as database}]
-  (let [schema-name (ddl.i/schema-name database (public-settings/site-uuid))
+  (let [schema-name (ddl.i/schema-name database (system/site-uuid))
         table-name  (format "persistence_check_%s" (rand-int 10000))
         steps       [[:persist.check/create-schema
                       (fn check-schema [conn]

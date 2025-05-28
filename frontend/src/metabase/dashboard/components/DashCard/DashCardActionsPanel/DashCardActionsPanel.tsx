@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
@@ -177,15 +178,24 @@ function DashCardActionsPanelInner({
     }
 
     if (
+      dashcard &&
       !isVisualizerDashboardCard(dashcard) &&
-      !isVisualizerSupportedVisualization(dashcard?.card.display)
+      !isVisualizerSupportedVisualization(dashcard?.card.display) &&
+      !isVirtualDashCard(dashcard) &&
+      onEditVisualization
     ) {
       buttons.push(
         <DashCardActionButton
           key="visualizer-button"
           tooltip={t`Visualize another way`}
           aria-label={t`Visualize another way`}
-          onClick={onEditVisualization}
+          onClick={() => {
+            trackSimpleEvent({
+              event: "visualize_another_way_clicked",
+              triggered_from: "dashcard-actions-panel",
+            });
+            onEditVisualization();
+          }}
         >
           <DashCardActionButton.Icon name="add_data" />
         </DashCardActionButton>,

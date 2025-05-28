@@ -17,17 +17,15 @@ interface LoadingViewProps {
 }
 
 function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
-  if (!expectedDuration) {
-    return null;
-  }
-
   return (
     <SlowQueryMessageContainer>
       <ShortMessage>{t`Still Waiting…`}</ShortMessage>
       {isSlow === "usually-slow" ? (
         <div>
           {jt`This usually takes an average of ${(
-            <Duration key="duration">{duration(expectedDuration)}</Duration>
+            <Duration key="duration">
+              {duration(expectedDuration ?? 0)}
+            </Duration>
           )}, but is currently taking longer.`}
         </div>
       ) : (

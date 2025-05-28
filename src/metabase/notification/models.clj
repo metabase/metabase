@@ -7,7 +7,6 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
@@ -161,17 +160,6 @@
                   :model/NotificationCard)
                 payload-id))
   instance)
-
-(defmethod audit-log/model-details :model/Notification
-  [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
-  (merge
-   (select-keys fully-hydrated-notification [:id :payload_type :payload_id :creator_id :active])
-   {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
-    :handlers      (map (fn [handler]
-                          (merge (select-keys [:id :channel_type :channel_id :template_id :active]
-                                              handler)
-                                 {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details]) (:recipients handler))}))
-                        handlers)}))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                               :model/NotificationSubscription                                   ;;
@@ -375,9 +363,9 @@
   (mu/validate-throw ::NotificationRecipient recipient))
 
 (defenterprise validate-email-domains!
-  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting, if set.
-  This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the `:email-allow-list` feature."
-  metabase-enterprise.advanced-config.models.notification
+  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting,
+  if set. This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the
+  `:email-allow-list` feature." metabase-enterprise.advanced-config.models.notification
   [_email-addresses]
   nil)
 

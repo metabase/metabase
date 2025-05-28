@@ -8,12 +8,11 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.config :as config]
-   [metabase.formatter :as formatter]
+   [metabase.config.core :as config]
+   [metabase.formatter.core :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))
@@ -426,9 +425,9 @@
 
 (deftest render-funnel-visualizer
   (testing "Visualizer funnel charts render"
-    (let [test-card-1 {:id 192 :name "SCALAR 3"}
-          test-card-2 {:id 191 :name "SCALAR 2"}
-          test-card-3 {:id 190 :name "SCALAR 1"}
+    (let [test-card-1 {:id 192 :entity_id "abc" :name "SCALAR 3"}
+          test-card-2 {:id 191 :entity_id "def" :name "SCALAR 2"}
+          test-card-3 {:id 190 :entity_id "ghi" :name "SCALAR 1"}
           test-dashcard {:series-results
                          [{:result {:data {:rows [[420]] :cols [{:name "count"}]}}
                            :card test-card-2}
@@ -444,11 +443,11 @@
                              :display_name "DIMENSION"}],
                            :columnValuesMapping
                            {:COLUMN_1
-                            [{:sourceId "card:192", :originalName "count", :name "COLUMN_1"}
-                             {:sourceId "card:191", :originalName "count", :name "COLUMN_2"}
-                             {:sourceId "card:190", :originalName "count", :name "COLUMN_3"}],
+                            [{:sourceId "card:abc", :originalName "count", :name "COLUMN_1"}
+                             {:sourceId "card:def", :originalName "count", :name "COLUMN_2"}
+                             {:sourceId "card:ghi", :originalName "count", :name "COLUMN_3"}],
                             :DIMENSION
-                            ["$_card:192_name" "$_card:191_name" "$_card:190_name"]},
+                            ["$_card:abc_name" "$_card:def_name" "$_card:ghi_name"]},
                            :settings
                            {:card.title "My new visualization",
                             :funnel.metric "COLUMN_1",
@@ -1009,7 +1008,7 @@
 
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
-    (mt/with-temporary-setting-values [public-settings/start-of-week "monday"]
+    (mt/with-temporary-setting-values [start-of-week "monday"]
       (mt/dataset test-data
         (let [q    (mt/mbql-query products
                      {:aggregation [[:sum $price]]
@@ -1032,9 +1031,9 @@
 
 (deftest render-correct-custom-date-style
   (testing "The static-viz respects custom formatting for temporal axis label"
-    (mt/with-temporary-setting-values [public-settings/custom-formatting {:type/Temporal
-                                                                          {:date_style "YYYY/M/D"
-                                                                           :date_separator "/"}}]
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal
+                                                          {:date_style "YYYY/M/D"
+                                                           :date_separator "/"}}]
       (mt/dataset test-data
         (let [q    (mt/mbql-query products
                      {:aggregation [[:count]]
@@ -1058,7 +1057,7 @@
   (when config/ee-available?
     (testing "The static-viz respects custom whitelabel colors"
       (mt/with-premium-features #{:whitelabel}
-        (mt/with-temporary-setting-values [public-settings/application-colors {:accent0 "#0005FF"}]
+        (mt/with-temporary-setting-values [application-colors {:accent0 "#0005FF"}]
           (mt/dataset test-data
             (let [q    (mt/mbql-query products
                          {:aggregation [[:count]]

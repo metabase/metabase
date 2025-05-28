@@ -25,7 +25,7 @@
 (defn- dashcards-schema-check
   [dashcards]
   (testing "check if all cards in dashcards contain the required fields"
-    (doseq [card dashcards]
+    (doseq [dashcard dashcards]
       (is (malli= [:map
                    [:id                     [:or :string :int]]
                    [:dashboard_tab_id       [:maybe :int]]
@@ -33,8 +33,12 @@
                    [:col                    :int]
                    [:size_x                 :int]
                    [:size_y                 :int]
+                   [:parameter_mappings     {:optional true} [:maybe [:sequential [:map
+                                                                                   [:parameter_id :string]
+                                                                                   [:card_id :string]
+                                                                                   [:target [:cat :string [:sequential :any] :map]]]]]]
                    [:visualization_settings [:maybe :map]]]
-                  card)))))
+                  dashcard)))))
 
 (defn- api-call!
   ([template args]
@@ -181,6 +185,24 @@
                                                                 :type          :model}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-fn collection-id card-id)))))))
+
+(deftest model-joins-xray-test
+  (testing "Models with joins should not result in invalid parameter targets"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id}       {:table_id      (mt/id :orders)
+                                                            :collection_id collection-id
+                                                            :dataset_query (mt/mbql-query orders
+                                                                             {:joins        [{:source-table $$reviews
+                                                                                              :alias        "Reviews"
+                                                                                              :ident        "HfWxcPle1nlw1XR_JRkCS"
+                                                                                              :condition    [:=
+                                                                                                             $product_id
+                                                                                                             [:field %reviews.id {:join-alias "Reviews"}]]
+                                                                                              :fields       :all}]})
+                                                            :type          :model}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+        (is (some? (api-call! "model/%s" [card-id] #(revoke-collection-permissions! collection-id))))))))
 
 (deftest adhoc-query-xray-test
   (let [query (magic.util/encode-base64-json

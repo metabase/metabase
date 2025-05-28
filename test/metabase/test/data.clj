@@ -37,12 +37,12 @@
    [clojure.test :as t]
    [colorize.core :as colorize]
    [mb.hawk.init]
-   [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -304,11 +304,11 @@
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
   created from `h2-app-db-script`. After `body` is finished, the original app DB bindings are restored.
 
-  Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
+  Makes use of functionality in the [[metabase.app-db.schema-migrations-test.impl]] namespace since that already does what
   we need."
   {:style/indent 0}
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
-     (mdb/finish-db-setup)
+     (mdb/finish-db-setup!)
      ~@body))

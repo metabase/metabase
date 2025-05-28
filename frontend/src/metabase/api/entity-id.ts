@@ -70,7 +70,7 @@ export const entityIdApi = Api.injectEndpoints({
         // but the types might actually be busted.
         const result = (await baseQuery({
           method: "POST",
-          url: `/api/util/entity_id`,
+          url: `/api/eid-translation/translate`,
           body: {
             entity_ids: requestEntities,
           },

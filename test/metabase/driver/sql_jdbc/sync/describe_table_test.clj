@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql :as driver.sql]
@@ -517,8 +517,8 @@
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
-                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
-                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
                  (mysql-test/db->fields (mt/db)))))
         (testing "Nested field columns are correct"
           (is (= #{{:name              "jsoncol → mybool"
@@ -576,7 +576,7 @@
                                                                    []
 
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
-                    metadata-queries/nested-field-sample-limit 4]
+                    table-rows-sample/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
           (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))

@@ -290,7 +290,7 @@
             (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
             (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
               (testing "updated field is re-fingerprinted and analyzed"
-                (is (=? {:semantic_type  :type/Category
+                (is (=? {:semantic_type  nil
                          :fingerprint    (mt/malli=? :map)
                          :base_type      :type/Integer
                          :effective_type :type/Integer}

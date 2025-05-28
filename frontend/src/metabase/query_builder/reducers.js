@@ -107,7 +107,10 @@ export const uiControls = handleActions(
     },
 
     [RESET_UI_CONTROLS]: {
-      next: (state, { payload }) => DEFAULT_UI_CONTROLS,
+      next: (state) => ({
+        ...DEFAULT_UI_CONTROLS,
+        isRunning: state.isRunning,
+      }),
     },
 
     [INITIALIZE_QB]: {

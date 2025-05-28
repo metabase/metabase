@@ -1,10 +1,11 @@
 (ns metabase.driver.ddl.interface
   (:require
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
@@ -66,9 +67,9 @@
     ;; "2023-03-29T14:01:27.871697Z"
     :value (.format DateTimeFormatter/ISO_INSTANT (Instant/now))}
    {:key   "instance-uuid"
-    :value (public-settings/site-uuid)}
+    :value (system/site-uuid)}
    {:key   "instance-name"
-    :value (public-settings/site-name)}])
+    :value (appearance/site-name)}])
 
 (defn populate-kv-table-honey-sql-form
   "The honeysql form that populates the persisted schema `cache_info` table."

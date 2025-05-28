@@ -1201,17 +1201,6 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.findByTestId("dashcard").findByText("Orders");
-
-    // Verify the card is visible when it returned an error
-    H.filterWidget().click();
-    H.dashboardParametersPopover().within(() => {
-      cy.findByPlaceholderText("Enter an ID").type("text{enter}");
-      cy.button("Add filter").click();
-    });
-
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("There was a problem displaying this chart.");
-    });
   });
 
   describe("warn before leave", () => {
@@ -1356,7 +1345,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       H.saveDashboard();
       validateIFrame("https://example.com");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_iframe_card_created",
         target_id: id,
         event_detail: "example.com",
@@ -1370,7 +1359,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     const newTitle = "New title";
     cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
     H.saveDashboard();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_saved",
     });
   });
@@ -1402,7 +1391,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       /orders in a dashboard/i,
     );
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_link_card_created",
     });
   });
@@ -1423,7 +1412,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
         .click({ force: true }) // disable
         .click({ force: true }); // enable
 
-      H.expectGoodSnowplowEvent(
+      H.expectUnstructuredSnowplowEvent(
         {
           event: "card_set_to_hide_when_no_results",
           dashboard_id: ORDERS_DASHBOARD_ID,
@@ -1485,7 +1474,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     cy.findByLabelText("Toggle width").click();
     H.popover().findByText("Full width").click();
     H.assertDashboardFullWidth();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
       full_width: true,
     });
@@ -1500,7 +1489,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     cy.findByLabelText("Toggle width").click();
     H.popover().findByText("Full width").click();
     H.assertDashboardFixedWidth();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
       full_width: false,
     });

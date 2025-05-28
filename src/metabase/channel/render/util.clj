@@ -14,17 +14,16 @@
        (filter (complement string?))))
 
 (defn- value-source->card-id
-  "Parses the card id as an int out of a visualizer value source map
-   e.g. {:sourceId 'card:191', ...} -> 191"
+  "Extracts the card entity_id out of a visualizer value source map
+   e.g. {:sourceId 'card:UfzksyybSdOZv1wM7jYnn', ...} -> 'UfzksyybSdOZv1wM7jYnn'"
   [{:keys [sourceId]}]
-  (parse-long (second (str/split sourceId #":"))))
+  (second (str/split sourceId #":")))
 
 (defn- name-source->card-id
-  "Extracts card id from a name source string e.g. '$_card:191_name'"
+  "Extracts card entity_id from a name source string e.g. '$_card:UfzksyybSdOZv1wM7jYnn_name'"
   [value]
   (try
-    (when-let [id-str (second (re-find #":(\d+)_" value))]
-      (parse-long id-str))
+    (second (re-find #":([^_]+)_" value))
     (catch Exception _
       nil)))
 
@@ -36,6 +35,66 @@
   (boolean
    (and (some? dashcard)
         (get-in dashcard [:visualization_settings :visualization]))))
+
+(defn is-scalar-funnel?
+  "Check if the visualization is a scalar funnel.
+   Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"
+  [{:keys [display settings]}]
+  (and (= display "funnel")
+       (= (get settings :funnel.metric) "METRIC")
+       (= (get settings :funnel.dimension) "DIMENSION")))
+
+(defn- process-column-mapping
+  "Processes a single mapping entry to create a visualization column.
+   Returns nil for string mappings (name references) or when required data is missing."
+  [mapping series-data]
+  (when-not (string? mapping) ;; Skip string values which are name references
+    (let [card-entity-id (value-source->card-id mapping)
+          card-with-data (u/find-first-map series-data [:card :entity_id] card-entity-id)
+          original-column (u/find-first-map
+                           (get-in card-with-data [:data :cols])
+                           [:name]
+                           (:originalName mapping))
+          card-name (get-in card-with-data [:card :name])]
+      (when (and original-column card-name)
+        (assoc original-column
+               :name (:name mapping)
+               :display_name (str card-name ": " (:display_name original-column)))))))
+
+(defn get-visualization-columns
+  "Creates visualization columns for a visualizer entity.
+   Similar to the frontend implementation in src/metabase/visualizer/utils/get-visualization-columns.ts"
+  [visualizer-definition series-data]
+  (let [{:keys [columnValuesMapping settings] :as viz-def} visualizer-definition]
+    (cond
+      ;; Scalar funnel uses pre-defined metric and dimension columns
+      (is-scalar-funnel? viz-def)
+      (let [metric-column-name (get settings :funnel.metric)
+            dimension-column-name (get settings :funnel.dimension)
+            main-card-with-data (first series-data)
+            base-type (get-in main-card-with-data [:data :cols 0 :base_type])]
+        [{:name metric-column-name
+          :display_name metric-column-name
+          :base_type (or base-type :type/Number)
+          :semantic_type :type/Quantity}
+         {:name dimension-column-name
+          :display_name dimension-column-name
+          :base_type :type/Text
+          :semantic_type :type/Category}])
+
+      ;; For all other chart types, create visualization columns from column mappings
+      ;; TODO: Non scalar visualizer funnels are currently not officially supported
+      :else
+      (reduce
+       (fn [columns [_ column-mappings]]
+         (concat
+          columns
+          (filter some?
+                  (map
+                   #(process-column-mapping % series-data)
+                   column-mappings))))
+       []
+       columnValuesMapping))))
 
 (defn merge-visualizer-data
   "Takes visualizer dashcard series/column data and returns a row-major matrix of data
@@ -82,12 +141,15 @@
 
    The input `series-data` is the dashcard data series results from QP as a vector of maps, [{:card {...} :data {...}, ...]"
   [series-data {:keys [columns columnValuesMapping] :as visualizer-settings}]
-  (let [source-mappings-with-vals   (extract-value-sources columnValuesMapping)
+  (let [viz-columns (if (seq columns)
+                      columns
+                      (get-visualization-columns visualizer-settings series-data))
+        source-mappings-with-vals   (extract-value-sources columnValuesMapping)
         ;; Create map from virtual column name e.g. 'COLUMN_1' to a vector of values only for value sources
         remapped-col-name->vals     (reduce
                                      (fn [acc {:keys [name originalName] :as source-mapping}]
-                                       (let [ref-card-id      (value-source->card-id source-mapping)
-                                             card-with-data   (u/find-first-map series-data [:card :id] ref-card-id)
+                                       (let [ref-card-entity-id (value-source->card-id source-mapping)
+                                             card-with-data   (u/find-first-map series-data [:card :entity_id] ref-card-entity-id)
                                              card-cols        (get-in card-with-data [:data :cols])
                                              card-rows        (get-in card-with-data [:data :rows])
                                              col-idx-in-card  (first (u/find-first-map-indexed card-cols [:name] originalName))]
@@ -104,15 +166,15 @@
                                          (->> source-mappings
                                               (mapcat
                                                (fn [source-mapping]
-                                                 ;; Source is a name ref so just return the name of the card with matching :id
-                                                 (if-let [card-id (name-source->card-id source-mapping)]
-                                                   (let [card (:card (u/find-first-map series-data [:card :id] card-id))]
+                                                 ;; Source is a name reference string, lookup card by entity_id to get its name
+                                                 (if-let [card-entity-id (name-source->card-id source-mapping)]
+                                                   (let [card (:card (u/find-first-map series-data [:card :entity_id] card-entity-id))]
                                                      (some-> (:name card) vector))
                                                    ;; Source is actual column data
                                                    (get remapped-col-name->vals (:name source-mapping)))))
                                               vec)))
-                                     columns)]
+                                     viz-columns)]
     {:viz-settings (:settings visualizer-settings)
-     :cols columns
+     :cols viz-columns
      ;; Return in row-major format
      :rows (apply mapv vector unzipped-rows)}))

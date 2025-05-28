@@ -38,6 +38,7 @@ import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -60,20 +61,21 @@ import type {
   CollectionInstanceAnaltyicsConfig,
   DashCardId,
   Dashboard,
-  DatabaseId,
+  DashboardId,
   Database as DatabaseType,
   Dataset,
   DatasetError,
   DatasetErrorType,
-  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  ParameterId,
   Pulse,
   Revision,
   TableId,
   Timeline,
+  TimelineEvent,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
@@ -563,6 +565,11 @@ export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK = {
+  hasValidLicense: () => false,
+  SdkIframeEmbedRoute: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -625,10 +632,10 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: {
-    hide_download_button?: boolean | null;
-    downloads?: string | boolean | null;
-  }) => ({ pdf: true, results: true }),
+  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+    pdf: true,
+    results: true,
+  }),
 };
 
 const defaultMetabotContextValue: MetabotContext = {
@@ -654,17 +661,21 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
 
 export type GenerateSqlQueryButtonProps = {
   className?: string;
-  prompt: string;
-  databaseId: DatabaseId;
+  query: Lib.Query;
+  selectedQueryText?: string;
   onGenerateQuery: (queryText: string) => void;
 };
 
 export type PluginAiSqlGeneration = {
   GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+  isEnabled: () => boolean;
+  getPlaceholderText: () => string;
 };
 
 export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
+  isEnabled: () => false,
+  getPlaceholderText: () => "",
 };
 
 export interface AIDashboardAnalysisSidebarProps {
@@ -678,6 +689,7 @@ export interface AIQuestionAnalysisSidebarProps {
   className?: string;
   onClose?: () => void;
   timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
 }
 
 export type PluginAIEntityAnalysis = {
@@ -699,7 +711,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 };
 
 export const PLUGIN_METABOT = {
-  Metabot: () => null as React.ReactElement | null,
+  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
@@ -712,6 +724,8 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  getMetabotVisible: (_state: State) => false,
+  SearchButton: SearchButton,
 };
 
 type DashCardMenuItemGetter = (
@@ -744,9 +758,14 @@ export const PLUGIN_DB_ROUTING = {
 };
 
 export const PLUGIN_API = {
-  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
-  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
-    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
-  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
-    `/api/field/${fieldId}/search/${searchFieldId}`,
+  getRemappedCardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/card/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+  getRemappedDashboardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };
