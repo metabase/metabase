@@ -117,20 +117,11 @@
   [_ {:keys [user-id invocation-stack scope]} diffs]
   (let [table-ids        (distinct (map :table-id diffs))
         table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
-        table->keymap    (u/for-map [table-id table-ids
-                                     :let [fields (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)]]
-                           [table-id (merge (u/for-map [f fields]
-                                              [(keyword (u/lower-case-en f)) (keyword f)])
-                                            (u/for-map [f fields]
-                                              [(keyword (u/upper-case-en f)) (keyword f)])
-                                            (let [kws (map keyword fields)]
-                                              (zipmap kws kws)))])
         diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
-                                     :when (or before after)
-                                     :let [keymap (table->keymap table-id)]]
+                                     :when (or before after)]
                            [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
-                                  :before (when before (update-keys before keymap))
-                                  :after  (when after (update-keys after keymap))}])]
+                                  :before before
+                                  :after  after}])]
     ;; undo snapshots, but only if we're not executing an undo
     ;; TODO fix tests that execute actions without a user scope
     (when user-id

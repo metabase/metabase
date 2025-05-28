@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase-enterprise.data-editing.foreign-keys :as fks]
@@ -25,7 +24,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection SQLException)))
@@ -279,6 +277,26 @@
    [:context :map]
    [:outputs [:sequential output-schema]]])
 
+(defn- correct-columns-name
+  "Ensure each rows have column name match with fields name.
+  Some drivers like h2 have weird issue with casing."
+  [table-id rows]
+  (let [fields (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)
+        keymap (merge (u/for-map [f fields]
+                        [(keyword (u/lower-case-en f)) (keyword f)])
+                      (u/for-map [f fields]
+                        [(keyword (u/upper-case-en f)) (keyword f)])
+                      (let [kws (map keyword fields)]
+                        (zipmap kws kws)))]
+    (map #(update-keys % keymap) rows)))
+
+(defn- query-rows
+  [driver conn table-id query]
+  (as-> query res
+    (sql.qp/format-honeysql driver res)
+    (jdbc/query {:connection conn} res {:transaction? false :keywordize? true})
+    (correct-columns-name table-id res)))
+
 (defn- row-delete!* [action database query]
   (let [db-id                (u/the-id database)
         driver               (:engine database)
@@ -289,11 +307,10 @@
         sql-args             (sql.qp/format-honeysql driver delete-hsql)]
     ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
     (with-jdbc-transaction [conn db-id]
-      (let [row-before   (as-> {:select [:*] :from from :where where} %
-                           (prepare-query % driver action)
-                           (sql.qp/format-honeysql driver %)
-                           (jdbc/query {:connection conn} % {:transaction? false})
-                           (first %))
+      (let [table-id     (-> query :query :source-table)
+            row-before   (->> (prepare-query {:select [:*] :from from :where where} driver action)
+                              (query-rows driver conn table-id)
+                              first)
             ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
             rows-deleted (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
@@ -332,11 +349,10 @@
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn (u/the-id database)]
-      (let [row-before   (as-> {:select [:*] :from from :where where} %
-                           (prepare-query % driver action)
-                           (sql.qp/format-honeysql driver %)
-                           (jdbc/query {:connection conn} % {:transaction? false})
-                           (first %))
+      (let [table-id     (-> query :query :source-table)
+            row-before   (->> (prepare-query {:select [:*] :from from :where where} driver action)
+                              (query-rows driver conn table-id)
+                              first)
             ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
             rows-updated (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))
@@ -345,11 +361,9 @@
                                              (tru "Sorry, the row you''re trying to update doesn''t exist")
                                              (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                                            {:status-code 400})))
-            row-after    (as-> {:select [:*] :from from :where where} %
-                           (prepare-query % driver action)
-                           (sql.qp/format-honeysql driver %)
-                           (jdbc/query {:connection conn} % {:transaction? false})
-                           (first %))]
+            row-after    (->> (prepare-query {:select [:*] :from from :where where} driver action)
+                              (query-rows driver conn table-id)
+                              first)]
         {:table-id (-> query :query :source-table)
          :db-id    (u/the-id database)
          :before   row-before
@@ -392,7 +406,7 @@
 ;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
 ;;; the newly created row. This function will `SELECT` the newly created row
 ;;; assuming that `result` is a map from column names to the generated values.
-(mu/defmethod select-created-row :default :- [:maybe [:map-of :string :any]]
+(mu/defmethod select-created-row :default :- [:maybe [:map-of :keyword :any]]
   [driver create-hsql conn result]
   (let [select-hsql     (-> create-hsql
                             (dissoc :insert-into :values)
@@ -401,11 +415,9 @@
                                    ;; :and with a single clause will be optimized in HoneySQL
                                    :where (into [:and]
                                                 (for [[col val] result]
-                                                  [:= (keyword col) val]))))
-        select-sql-args (sql.qp/format-honeysql driver select-hsql)]
+                                                  [:= (keyword col) val]))))]
     (log/tracef ":model.row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
-    (log/tracef ":model.row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
-    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
+    (first (query-rows driver conn 1 select-hsql))))
 
 (defn- row-create!* [action database {:keys [create-row] :as query}]
   (let [db-id       (u/the-id database)
@@ -418,18 +430,19 @@
     (log/tracef ":model.row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
     (log/tracef ":model.row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn db-id]
-      (let [result (with-auto-parse-sql-exception driver database action
+      (let [table-id (-> query :query :source-table)
+            result (with-auto-parse-sql-exception driver database action
                      (jdbc/execute! {:connection conn} sql-args {:return-keys  true
                                                                  :identifiers  identity
                                                                  :transaction? false
-                                                                 :keywordize?  false}))
+                                                                 :keywordize?  true}))
             _      (log/tracef ":model.row/create INSERT returned\n\n%s" (u/pprint-to-str result))
-            row    (update-keys (select-created-row driver create-hsql conn result) keyword)]
+            row    (first (correct-columns-name table-id [(select-created-row driver create-hsql conn result)]))]
         (log/tracef ":model.row/create returned row %s" (pr-str row))
         {:table-id (-> query :query :source-table)
          :db-id    (u/the-id database)
-         :before nil
-         :after  row}))))
+         :before   nil
+         :after    row}))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::row]])
   [action context inputs :- [:sequential ::mbql.s/Query]]
@@ -616,18 +629,12 @@
   (let [parents               (map #(update-keys % keyword) parents)
         {:keys [table fk pk]} relationship]
     (when (seq parents)
-      (let [driver (driver.u/database->driver database-id)
-            ;; Get the actual table name from the table ID
-            table-name (actions/cached-value
-                        [::table-name table]
-                        #(t2/select-one-fn :name :model/Table :id table))
-            ;; Build WHERE clause to find children
+      (let [driver       (driver.u/database->driver database-id)
+            table-name   (t2/select-one-fn :name :model/Table :id table)
             where-clause (if (= 1 (count fk))
-                           ;; Single FK column case
                            (let [[fk-col pk-col] (first fk)
                                  parent-values (map pk-col parents)]
                              [:in fk-col parent-values])
-                           ;; Multiple FK columns case
                            (into [:or]
                                  (for [parent parents]
                                    (into [:and]
@@ -635,16 +642,12 @@
                                            [:= fk-col (get parent pk-col)])))))
             ;; Query for child rows using table name, not ID
             query {:select pk
-                   :from [(keyword table-name)]
-                   :where where-clause
-                   :limit 1000} ; Safety limit
-            sql-args (sql.qp/format-honeysql driver query)]
-        (log/tracef "Looking up children in table %s (ID: %s) with query: %s" table-name table (pr-str sql-args))
+                   :from   [(keyword table-name)]
+                   :where  where-clause
+                   :limit  1000}] ; Safety limit
         (with-jdbc-transaction [conn database-id]
           [table
-           ;; CASING HACK
-           (map #(update-keys % (comp keyword str/upper-case name))
-                (jdbc/query {:connection conn} sql-args {:transaction? false :keywordize? true}))])))))
+           (query-rows driver conn table query)])))))
 
 (defn- delete-rows-by-pk
   "Delete rows from a table by their primary key values"
@@ -653,7 +656,7 @@
     (log/debugf "Deleting %d rows from table %d" (count pk-rows) table-id)
     (let [pk-name->id (table-id->pk-field-name->id database-id table-id)]
       (doseq [row pk-rows]
-        (let [filter-clause #p (row->mbql-filter-clause pk-name->id row)
+        (let [filter-clause (row->mbql-filter-clause pk-name->id row)
               query {:database database-id
                      :type :query
                      :query {:source-table table-id
@@ -716,7 +719,7 @@
 
 (defn- perform-table-row-delete!
   "Perform table row deletion with optional cascade support"
-  [_action context inputs {:keys [cascade?] :or {cascade? true}}]
+  [_action context inputs {:keys [cascade?] :or {cascade? false}}]
   (if cascade?
    ;; Cascade deletion: delete all FK children first
     (let [database-ids (into #{} (map (comp :id actions/cached-database-via-table-id :table-id)) inputs)

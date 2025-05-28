@@ -2,7 +2,8 @@
   (:require
    [clojure.set :as set]
    [metabase.util :as u])
-  (:import (clojure.lang PersistentQueue)))
+  (:import
+   (clojure.lang PersistentQueue)))
 
 #_(defn lookup-children-in-db [{:keys [table fk pk]} parents]
     (jdbc/query
@@ -16,12 +17,14 @@
                                              [:= fk-col (get p pk-col)])))))
       :limit  501}))
 
-(defn- pop-queue [{:keys [queue] :as state}]
+(defn- pop-queue
+  [{:keys [queue] :as state}]
   (if-let [nxt (peek queue)]
     [nxt (update state :queue pop)]
     [nil state]))
 
-(defn- queue-items [state item-type items]
+(defn- queue-items
+  [state item-type items]
   (if-not (seq items)
     state
     (let [new-items (remove (set (get-in state [:results item-type])) items)]
@@ -29,7 +32,8 @@
           (update :queue conj [item-type new-items])
           (update-in [:results item-type] (fnil into #{}) new-items)))))
 
-(defn- step [metadata children-fn state]
+(defn- step
+  [metadata children-fn state]
   (let [[[parent-type items] state'] (pop-queue state)]
     (if-not parent-type
       state'
@@ -41,7 +45,8 @@
                 state'
                 child-keys)))))
 
-(defn- state->results [{:keys [results queue]}]
+(defn- state->results
+  [{:keys [results queue]}]
   ;; This is not precise; we should check whether there is at least one child for what's in the queue.
   {:complete? (empty? queue)
    :items     results})
@@ -75,11 +80,6 @@
 (defn delete-recursively
   "Delete the given items, along with all their descendants."
   [item-type items metadata children-fn delete-fn & {:as opts}]
-  (def item-type item-type)
-  (def opts opts)
-  (def items items)
-  (def metadata metadata)
-  (def children-fn children-fn)
   (let [{:keys [queue results]} (walk* item-type items metadata children-fn opts)]
     (if (seq queue)
       (throw (ex-info "Cannot delete all descendants, as we could not enumerate them" {:queue queue}))
