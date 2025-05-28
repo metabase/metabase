@@ -5,6 +5,7 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk";
+import type { UserBackendJwtResponse } from "embedding-sdk/types/refresh-token";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
@@ -20,7 +21,7 @@ export type SdkIframeEmbedMessage =
     }
   | {
       type: "metabase.embed.submitRequestToken";
-      data: { refreshToken: string };
+      data: { refreshToken: UserBackendJwtResponse };
     };
 
 // --- Embed Option Interfaces ---
