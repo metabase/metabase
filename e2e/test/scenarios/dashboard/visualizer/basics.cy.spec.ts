@@ -4,6 +4,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
+  PRODUCTS_AVERAGE_BY_CREATED_AT,
   PRODUCTS_COUNT_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
@@ -32,6 +33,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
+      wrapId: true,
+    });
+    H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
+      idAlias: "productsAverageByCreatedAtQuestionId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
@@ -268,7 +273,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText(PRODUCTS_COUNT_BY_CATEGORY.name).click();
     });
 
-    cy.url().should("contain", "83-products-by-category");
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
   });
 
   it("should rename a dashboard card", () => {
@@ -420,7 +427,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
 
     // TODO editing a dashcard when it isn't done loading
-    // causes the visualizr modal to be in error for some reason
+    // causes the visualizer modal to be in error for some reason
     // this should be fixed in the future
     cy.wait(1000);
 
@@ -431,6 +438,54 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").should("be.disabled");
       cy.get("@redoButton").should("be.disabled");
       cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
+    });
+  });
+
+  it("should replace a dataset without remembering removing the current ones (metabase#57897)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByLabelText("Back").as("undoButton");
+      cy.findByLabelText("Forward").as("redoButton");
+
+      cy.get("@undoButton").should("be.disabled");
+      cy.get("@redoButton").should("be.disabled");
+
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.assertWellItems({
+        vertical: ["Count", "Count (Products by Created At (Month))"],
+      });
+
+      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+
+      H.assertWellItems({
+        vertical: [
+          "Count",
+          "Count (Products by Created At (Month))",
+          "Average of Price",
+        ],
+      });
+
+      H.selectDataset(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
+
+      H.assertWellItems({
+        pieMetric: ["Count"],
+        pieDimensions: ["Category"],
+      });
+
+      cy.get("@undoButton").click();
+      H.assertWellItems({
+        vertical: [
+          "Count",
+          "Count (Products by Created At (Month))",
+          "Average of Price",
+        ],
+      });
     });
   });
 
