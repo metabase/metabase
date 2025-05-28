@@ -103,7 +103,7 @@
     :is-implicitly-joinable false}))
 
 (defmethod display-info-for-group-method :group-type/join.implicit
-  [query stage-number {:keys [fk-field-id fk-field-name], :as _column-group}]
+  [query stage-number {:keys [fk-field-id fk-field-name fk-join-alias], :as _column-group}]
   (merge
    (when-let [;; TODO: This is clumsy and expensive; there is likely a neater way to find the full FK column.
               ;; Note that using `lib.metadata/field` is out - we need to respect metadata overrides etc. in models, and
@@ -112,6 +112,7 @@
                              (lib.metadata.calculation/visible-columns query stage-number)
                              (m/find-first #(and (= (:id %) fk-field-id)
                                                  (= (lib.field.util/fk-field-name %) fk-field-name)
+                                                 (= (lib.join.util/current-join-alias %) fk-join-alias)
                                                  (:fk-target-field-id %))))]
      (let [fk-info (lib.metadata.calculation/display-info query stage-number fk-column)]
        ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
