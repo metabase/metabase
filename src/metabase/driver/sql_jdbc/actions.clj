@@ -23,8 +23,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.sql Connection SQLException)))
 
@@ -281,7 +280,13 @@
   "Ensure each rows have column name match with fields name.
   Some drivers like h2 have weird issue with casing."
   [table-id rows]
-  (let [fields (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)
+  (let [fields (actions/cached-value
+                [::correct-columns-name table-id]
+                (fn []
+                  (let [database (actions/cached-database-via-table-id table-id)]
+                    (mapv :name
+                          (qp.store/with-metadata-provider (:id database)
+                            (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))))
         keymap (merge (u/for-map [f fields]
                         [(keyword (u/lower-case-en f)) (keyword f)])
                       (u/for-map [f fields]
@@ -587,41 +592,25 @@
   (actions/cached-value
    [::build-fk-metadata database-id]
    (fn []
-     (let [;; Get all FK fields in the database
-           fk-fields (t2/select [:model/Field :id :name :table_id :fk_target_field_id]
-                                :fk_target_field_id [:not= nil]
-                                :active true
-                                :table_id [:in (t2/select-pks-set :model/Table :db_id database-id)])
-           ;; Get all PK fields for target tables
-           target-field-ids (set (keep :fk_target_field_id fk-fields))
-           target-fields (when (seq target-field-ids)
-                           (t2/select [:model/Field :id :name :table_id]
-                                      :id [:in target-field-ids]
-                                      :active true))
-           target-field-id->field (m/index-by :id target-fields)
-           ;; Get PK fields for all tables
-           all-table-ids (set (concat (map :table_id fk-fields)
-                                      (map :table_id target-fields)))
-           pk-fields (t2/select [:model/Field :id :name :table_id]
-                                :semantic_type :type/PK
-                                :active true
-                                :table_id [:in all-table-ids])
-           table-id->pk-fields (group-by :table_id pk-fields)]
-       ;; Build the metadata structure: parent-table-id -> [child-relationships]
-       ;; Format: {:table child-table-id, :fk {child-fk-col parent-pk-col}, :pk [child-pk-cols]}
-       (reduce
-        (fn [metadata {:keys [table_id name fk_target_field_id]}]
-          (when-let [target-field (target-field-id->field fk_target_field_id)]
-            (let [parent-table-id (:table_id target-field)  ; The table being referenced
-                  child-table-id table_id                   ; The table with the FK
-                  child-pk-fields (table-id->pk-fields child-table-id)]
-              ;; Group by parent table, list child relationships
-              (update metadata parent-table-id (fnil conj [])
-                      {:table child-table-id
-                       :fk {(keyword name) (keyword (:name target-field))}  ; {child-fk-col parent-pk-col}
-                       :pk (mapv (comp keyword :name) child-pk-fields)}))))  ; child PK columns
-        {}
-        fk-fields)))))
+     (qp.store/with-metadata-provider database-id
+       (let [all-tables          (lib.metadata.protocols/tables (qp.store/metadata-provider))
+             all-fields          (mapcat #(lib.metadata.protocols/fields (qp.store/metadata-provider) (:id %)) all-tables)
+             fk-fields           (filter #(and (:fk-target-field-id %) (:active %)) all-fields)
+             pk-fields           (filter #(isa? (:semantic-type %) :type/PK) all-fields)
+             field-id->field     (into {} (map (juxt :id identity)) all-fields)
+             table-id->pk-fields (group-by :table-id pk-fields)]
+         (reduce
+          (fn [metadata {:keys [table-id name fk-target-field-id]}]
+            (if-let [target-field (field-id->field fk-target-field-id)]
+              (let [parent-table-id (:table-id target-field)
+                    child-pk-fields (table-id->pk-fields table-id)]
+                (update metadata parent-table-id (fnil conj [])
+                        {:table table-id
+                         :fk    {(keyword name) (keyword (:name target-field))}
+                         :pk    (mapv (comp keyword :name) child-pk-fields)}))
+              metadata))
+          {}
+          fk-fields))))))
 
 (defn- lookup-children-in-db
   "Find child rows that reference the given parent rows via FK relationships"
@@ -629,7 +618,11 @@
   (let [{:keys [table fk pk]} relationship]
     (when (seq parent-rows)
       (let [driver       (driver.u/database->driver database-id)
-            table-name   (t2/select-one-fn :name :model/Table :id table)
+            table-name   (actions/cached-value
+                          [::table-name table]
+                          (fn []
+                            (qp.store/with-metadata-provider database-id
+                              (:name (lib.metadata.protocols/table (qp.store/metadata-provider) table)))))
             where-clause (if (= 1 (count fk))
                            (let [[fk-col pk-col] (first fk)
                                  parent-values (map pk-col parent-rows)]
@@ -664,7 +657,9 @@
 (defn- delete-with-cascade
   "Delete rows and all their descendants via FK relationships"
   [database-id table-id rows]
-  (let [metadata (build-fk-metadata database-id)
+  ;; TODO this is not ok because we're building metadata for a whole database, which could have a lots of entries
+  ;; will need to rework foreign_key to make this work nicely
+  (let [metadata    (build-fk-metadata database-id)
         children-fn (fn [relationship parent-rows]
                       (lookup-children-in-db relationship parent-rows database-id))
         delete-fn (fn [items-by-table]
