@@ -11,8 +11,9 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
+import { samlTokenStorage } from "../../embedding/auth-common/saml-token-storage";
+
 import { initAuth, refreshTokenAsync } from "./auth";
-import { samlTokenStorage } from "./auth/saml-token-storage";
 import { getSessionTokenState } from "./selectors";
 
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
