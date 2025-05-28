@@ -4,6 +4,7 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :post
@@ -20,8 +21,10 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  (dictionary/import-translations! {:filename (get-in multipart-params ["file" :filename])
-                                    :file     (get-in multipart-params ["file" :tempfile])})
+  (let [file (get-in multipart-params ["file" :tempfile])]
+    (when-not (instance? java.io.File file)
+      (throw (ex-info (tru "No file provided") {:status-code 400})))
+    (dictionary/import-translations! file))
   {:success true})
 
 (def ^{:arglists '([request respond raise])} routes

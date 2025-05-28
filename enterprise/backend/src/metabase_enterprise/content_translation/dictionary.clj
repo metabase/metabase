@@ -67,7 +67,7 @@
 
 (defn import-translations!
   "Import translations from CSV and insert or update rows in the content_translation table."
-  [{:keys [file]}]
+  [file]
   (with-open [reader (io/reader file)]
     ; Validate all rows before proceeding
     (let [csv-data (read-csv-file reader)
