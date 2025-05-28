@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-431-extract-jwt-saml-auth-functions-to-an-isolated-shared-module",
     "hash": "3b5acfca4c6a028aa9018c2022144d8b0d5cf525"
+  },
+  "upstream": {
+    "branch": "emb-433-sso-authentication-in-embedjs-for-new-iframe-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 58567,
+        "gqlID": "PR_kwDOAczgH86X-GBS"
+      }
+    }
   }
 }
