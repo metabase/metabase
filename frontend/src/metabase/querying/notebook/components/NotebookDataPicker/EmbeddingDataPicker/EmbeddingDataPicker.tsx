@@ -1,6 +1,7 @@
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
+import { getEmbedOptions } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
@@ -48,6 +49,9 @@ export function EmbeddingDataPicker({
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
 
   const entityTypes = useSelector(getEntityTypes);
+  const forceMultiStagedDataPicker = useSelector(
+    (state) => getEmbedOptions(state).data_picker === "staged",
+  );
 
   // a table or a virtual table (card)
   const sourceTable = useSourceTable(query);
@@ -62,7 +66,9 @@ export function EmbeddingDataPicker({
   }
 
   const shouldUseSimpleDataPicker =
-    dataSourceCountData != null && dataSourceCountData.total < 100;
+    !forceMultiStagedDataPicker &&
+    dataSourceCountData != null &&
+    dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker

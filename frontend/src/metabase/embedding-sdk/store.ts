@@ -4,3 +4,5 @@ export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
 ];
 
 export type EmbeddingEntityType = "model" | "table";
+
+export type EmbeddingDataPicker = "staged" | "simple";
