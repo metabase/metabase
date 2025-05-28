@@ -90,8 +90,8 @@ function checkShouldRerunPivotTableQuestion({
   let currentShowColumnTotals = false;
   if (rawSeries && rawSeries[0]?.data?.["pivot-export-options"]) {
     const pivotOptions = rawSeries[0].data["pivot-export-options"];
-    currentShowRowTotals = pivotOptions["show-row-totals"];
-    currentShowColumnTotals = pivotOptions["show-column-totals"];
+    currentShowRowTotals = pivotOptions["show-row-totals"] ?? false;
+    currentShowColumnTotals = pivotOptions["show-column-totals"] ?? false;
   }
 
   const newShowRowTotals = question.setting("pivot.show_row_totals");
