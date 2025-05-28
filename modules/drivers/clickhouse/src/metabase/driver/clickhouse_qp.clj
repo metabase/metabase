@@ -353,20 +353,27 @@
     (when (some? value)
       (condp #(isa? %2 %1) base-type
         :type/IPAddress [:'toIPv4 value]
+        :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
+                     (try
+                       (UUID/fromString value)
+                       (catch IllegalArgumentException _
+                         (h2x/with-type-info value {:database-type "varchar"}))))
         (sql.qp/->honeysql driver value)))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :=]
   [driver [op field value]]
-  (let [[qual valuevalue fieldinfo] value
-        hsql-field (sql.qp/->honeysql driver field)
-        hsql-value (sql.qp/->honeysql driver value)]
-    (if (and (isa? qual :value)
-             (isa? (:base_type fieldinfo) :type/Text)
-             (nil? valuevalue))
-      [:or
-       [:= hsql-field hsql-value]
-       [:= [:'empty hsql-field] 1]]
-      ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
+  (if (coll? value)
+    (let [[qual valuevalue fieldinfo] value
+          hsql-field (sql.qp/->honeysql driver field)
+          hsql-value (sql.qp/->honeysql driver value)]
+      (if (and (isa? qual :value)
+               (isa? (:base_type fieldinfo) :type/Text)
+               (nil? valuevalue))
+        [:or
+         [:= hsql-field hsql-value]
+         [:= [:'empty hsql-field] 1]]
+        ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value])))
+    ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
   [driver [op field value]]
@@ -404,9 +411,24 @@
   [_ dt amount unit]
   (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))]))
 
+(defn- uuid-field?
+  [x]
+  (and (mbql.u/mbql-clause? x)
+       (isa? (or (:effective-type (get x 2))
+                 (:base-type (get x 2)))
+             :type/UUID)))
+
+(defn- maybe-cast-uuid-for-text-compare
+  "For :contains, :starts-with, and :ends-with.
+   Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
+  [field]
+  (if (uuid-field? field)
+    (h2x/maybe-cast "TEXT" (sql.qp/->honeysql :clickhouse field))
+    (sql.qp/->honeysql :clickhouse field)))
+
 (defn- clickhouse-string-fn
   [fn-name field value options]
-  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+  (let [hsql-field (maybe-cast-uuid-for-text-compare field)
         hsql-value (sql.qp/->honeysql :clickhouse value)]
     (if (get options :case-sensitive true)
       [fn-name hsql-field hsql-value]
@@ -428,7 +450,7 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :contains]
   [_ [_ field value options]]
-  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+  (let [hsql-field (maybe-cast-uuid-for-text-compare field)
         hsql-value (sql.qp/->honeysql :clickhouse value)
         position-fn (if (get options :case-sensitive true)
                       :'positionUTF8
