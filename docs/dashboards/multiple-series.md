@@ -45,13 +45,13 @@ You can layer multiple questions on a single dashboard card. You can even layer 
 
 ![Edit visualization](./images/edit-visualization.png)
 
-4. **Add more data**. Click on "Add more data" in the upper left. Metabase will list questions in the left sidebar. Valid questions that you can plot on the card will have a plus sign **+**. You can also swap out the card's current question for a different question.
+4. **Add more data**. Click on "Add more data" in the upper left. Metabase will list questions in the left sidebar. Valid questions that you can plot on the card will have a plus sign **+**. You can also swap out the card's current question for a different question, which may update the list of compatible questions.
 
 ![Add data](./images/add-data.png)
 
 If necessary, the X and Y axes will automatically update. Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
 
-Once you have your chart looking how you'd like, click **Save**. Metabase will show your changes on the card in the dashboard. Depending on how dense your data is, at this point you might want to consider enlarging your chart to make sure the data is legible.
+Once you have your chart looking how you'd like, click **Save**.
 
 ## Combining number charts
 
