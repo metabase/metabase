@@ -7,8 +7,8 @@ import type {
   MetabotEntity,
   MetabotId,
   MetabotInfo,
-  PaginationResponse,
   MetabotPromptSuggestions,
+  PaginationResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -78,6 +78,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/metabot-v3/metabots/${metabotId}/entities/${entityModel}/${entityId}`,
       }),
       invalidatesTags: ["metabot-entities-list"],
+    }),
     getSuggestedMetabotPrompts: builder.query<MetabotPromptSuggestions, void>({
       query: () => ({
         method: "GET",
@@ -94,4 +95,5 @@ export const {
   useListMetabotsEntitiesQuery,
   useUpdateMetabotEntitiesMutation,
   useDeleteMetabotEntitiesMutation,
+  useGetSuggestedMetabotPromptsQuery,
 } = metabotApi;
