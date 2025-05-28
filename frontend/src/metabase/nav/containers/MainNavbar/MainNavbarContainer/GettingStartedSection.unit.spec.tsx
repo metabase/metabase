@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import { createMockState } from "metabase-types/store/mocks";
@@ -15,15 +17,26 @@ const setup = ({
     jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
   }
 
-  return renderWithProviders(
-    <GettingStartedSection nonEntityItem={{ type: "collection" }}>
+  const onModalOpen = jest.fn();
+
+  renderWithProviders(
+    <GettingStartedSection
+      nonEntityItem={{ type: "collection" }}
+      onModalOpen={onModalOpen}
+    >
       {hasChildren && "Child"}
     </GettingStartedSection>,
     { storeInitialState: createMockState() },
   );
+
+  return { onModalOpen };
 };
 
 describe("GettingStartedSection", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("should render the section title", () => {
     setup();
     expect(screen.getByText("Getting Started")).toBeInTheDocument();
@@ -56,5 +69,16 @@ describe("GettingStartedSection", () => {
     setup({ hasChildren: false, isEmbeddingIframe: true });
     expect(screen.queryByText("Getting Started")).not.toBeInTheDocument();
     expect(screen.queryByText("How to use Metabase")).not.toBeInTheDocument();
+  });
+
+  it("should render the 'Add data' button", () => {
+    setup();
+    expect(screen.getByLabelText("Add data")).toBeInTheDocument();
+  });
+
+  it("should trigger the modal on 'Add data' click", async () => {
+    const { onModalOpen } = setup();
+    await userEvent.click(screen.getByText("Add data"));
+    expect(onModalOpen).toHaveBeenCalledTimes(1);
   });
 });
