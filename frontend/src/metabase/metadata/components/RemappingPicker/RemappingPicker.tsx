@@ -143,32 +143,40 @@ export const RemappingPicker = ({
             <SubInputIllustration />
           </Flex>
 
-          <FieldDataSelector
-            databases={[database]}
-            isInitiallyOpen={isChoosingInitialFkTarget}
-            selectedDatabase={database}
-            selectedDatabaseId={database.id}
-            selectedField={fkRemappingField}
-            selectedFieldId={fkRemappingField?.id}
-            selectedTable={fkTargetTable}
-            selectedTableId={fkTargetTable?.id}
-            setFieldFn={handleFkRemappingFieldChange}
-            triggerElement={
-              <Select
-                data={[
-                  {
-                    label: fkRemappingField?.display_name ?? t`Choose a field`,
-                    value: "choose-a-field",
-                  },
-                ]}
-                dropdownOpened={false}
-                error={!fkRemappingField} // TODO: improve with "touched"
-                onClick={(event) => event.preventDefault()}
-                value="choose-a-field"
-                w="100%"
-              />
-            }
-          />
+          {/**
+           * FieldDataSelector won't work correctly when databases are present
+           * but fkTargetTable is not. It would go to "schema" step of DataSelector
+           * which does not exist in FieldDataSelector, hence this conditional render.
+           **/}
+          {fkTargetTable && (
+            <FieldDataSelector
+              databases={[database]}
+              isInitiallyOpen={isChoosingInitialFkTarget}
+              selectedDatabase={database}
+              selectedDatabaseId={database.id}
+              selectedField={fkRemappingField}
+              selectedFieldId={fkRemappingField?.id}
+              selectedTable={fkTargetTable}
+              selectedTableId={fkTargetTable?.id}
+              setFieldFn={handleFkRemappingFieldChange}
+              triggerElement={
+                <Select
+                  data={[
+                    {
+                      label:
+                        fkRemappingField?.display_name ?? t`Choose a field`,
+                      value: "choose-a-field",
+                    },
+                  ]}
+                  dropdownOpened={false}
+                  error={!fkRemappingField} // TODO: improve with "touched"
+                  onClick={(event) => event.preventDefault()}
+                  value="choose-a-field"
+                  w="100%"
+                />
+              }
+            />
+          )}
         </>
       )}
 
