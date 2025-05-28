@@ -26,12 +26,13 @@ export type TableInsertRowsResponse = {
 };
 
 export type TableUpdateRowsRequest = {
-  tableId: ConcreteTableId;
   rows: RowCellsWithPkValue[];
   scope?: TableEditingScope;
 };
 
-export type TableUpdateRowsResponse = { updated: Record<string, RowValue>[] };
+export type TableUpdateRowsResponse = {
+  outputs: { op: "updated"; row: RowCellsWithPkValue; "table-id": TableId }[];
+};
 
 export type TableDeleteRowsRequest = {
   rows: RowCellsWithPkValue[];

@@ -96,7 +96,6 @@ export const useTableCRUD = ({
 
       try {
         const response = await updateTableRows({
-          tableId: tableId,
           rows: [updatedRowWithPk],
           scope,
         });
@@ -109,12 +108,19 @@ export const useTableCRUD = ({
           });
         }
 
-        if (response.data?.updated) {
-          stateUpdateStrategy.onRowsUpdated(response.data.updated);
+        if (response.data) {
+          stateUpdateStrategy.onRowsUpdated(
+            response.data.outputs.map((output) => output.row),
+          );
           handleCellValueUpdateSuccess({
             columnName,
             rowPkValue,
           });
+          dispatch(
+            addUndo({
+              message: t`Successfully updated`,
+            }),
+          );
         }
 
         return !response.error;
@@ -132,10 +138,10 @@ export const useTableCRUD = ({
       datasetData,
       stateUpdateStrategy,
       updateTableRows,
-      tableId,
       scope,
       handleCellValueUpdateError,
       handleCellValueUpdateSuccess,
+      dispatch,
     ],
   );
 
@@ -155,13 +161,19 @@ export const useTableCRUD = ({
       };
 
       const response = await updateTableRows({
-        tableId: tableId,
         rows: [updatedRowWithPk],
         scope,
       });
 
       if (!response.error && response.data) {
-        stateUpdateStrategy.onRowsUpdated(response.data.updated);
+        stateUpdateStrategy.onRowsUpdated(
+          response.data.outputs.map((output) => output.row),
+        );
+        dispatch(
+          addUndo({
+            message: t`Successfully updated`,
+          }),
+        );
       } else {
         handleGenericUpdateError(response.error);
       }
@@ -171,10 +183,10 @@ export const useTableCRUD = ({
     [
       datasetData,
       updateTableRows,
-      tableId,
       scope,
-      handleGenericUpdateError,
       stateUpdateStrategy,
+      dispatch,
+      handleGenericUpdateError,
     ],
   );
 
