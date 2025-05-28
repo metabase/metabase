@@ -5,7 +5,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn inherited-column? :- :boolean
-  "True if this `column` is from coming directly from a card, a native query, or a previous query stage."
+  "Is the `column` coming directly from a card, a native query, or a previous query stage?"
   [column :- ::lib.schema.metadata/column]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
