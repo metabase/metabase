@@ -3,6 +3,7 @@ import {
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
   samlTokenStorage,
+  validateSessionToken,
 } from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
