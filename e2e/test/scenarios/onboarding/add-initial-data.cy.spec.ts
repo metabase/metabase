@@ -68,7 +68,7 @@ H.describeWithSnowplow(
         });
       });
 
-      it("should track the button click from the 'Getting Started' section", () => {
+      it("should track the button click from the 'Data' section", () => {
         cy.visit("/");
         H.navigationSidebar()
           .findByRole("tab", { name: /^Data/i })
@@ -79,6 +79,16 @@ H.describeWithSnowplow(
         H.expectUnstructuredSnowplowEvent({
           event: "data_add_clicked",
           triggered_from: "left-nav",
+        });
+
+        // TODO: Extract into a separate test once we add csv and google sheets tabs
+        addDataModal()
+          .findAllByRole("tab")
+          .filter(":contains(Database)")
+          .click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "database_setup_clicked",
+          triggered_from: "add-data-modal",
         });
       });
     });
