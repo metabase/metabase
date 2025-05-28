@@ -8,7 +8,6 @@ import {
 } from "metabase/databases/utils/engine";
 import { useSelector } from "metabase/lib/redux";
 import {
-  // Box,
   Button,
   Center,
   Combobox,
@@ -17,7 +16,6 @@ import {
   ScrollArea,
   Stack,
   Text,
-  TextInput,
   useCombobox,
 } from "metabase/ui";
 
@@ -44,9 +42,16 @@ export const DatabaseEngineList = ({
 
   return (
     <Stack gap="lg" h="100%">
-      <Combobox store={combobox}>
+      <Combobox
+        store={combobox}
+        classNames={{
+          search: S.search,
+          options: S.options,
+          option: S.option,
+        }}
+      >
         <Combobox.EventsTarget>
-          <TextInput
+          <Combobox.Search
             placeholder={t`Search databases`}
             leftSection={<Icon name="search" />}
             value={search}
@@ -60,22 +65,29 @@ export const DatabaseEngineList = ({
 
         {databasesList.length > 0 ? (
           <ScrollArea type="hover" scrollHideDelay={300}>
-            <Combobox.Options className={S.dbList}>
+            <Combobox.Options>
               {databasesList.map(({ value: engineKey, name }) => {
                 return (
-                  <li key={engineKey} onClick={() => onSelect(engineKey)}>
+                  <Combobox.Option
+                    key={engineKey}
+                    value={engineKey}
+                    onClick={() => onSelect(engineKey)}
+                  >
                     <Group gap="sm">
                       <DatabaseLogo db={engineKey} />
                       <span>{name}</span>
                     </Group>
-                  </li>
+                  </Combobox.Option>
                 );
               })}
             </Combobox.Options>
 
             <ListToggle
+              aria-expanded={isExpanded}
               isExpanded={isExpanded}
               onClick={() => {
+                combobox.updateSelectedOptionIndex();
+
                 if (isExpanded) {
                   setSearch("");
                 }
@@ -116,7 +128,7 @@ const NoDatabaseFound = () => {
       c="text-medium"
       m="0 auto"
     >
-      <Center className={S.noResultsIcon}>
+      <Center className={S.noResultsIcon} w="3rem" h="3rem">
         <Icon name="database" c="inherit" />
       </Center>
       <Text

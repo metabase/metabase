@@ -1,9 +1,16 @@
-.dbList {
+.search {
+  width: 100%;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+}
+
+.options {
   padding: 0;
   margin-bottom: var(--mantine-spacing-sm);
 
-  li {
+  .option {
     padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-radius: 0;
     border-left: 1px solid var(--mb-color-border);
     border-right: 1px solid var(--mb-color-border);
     border-bottom: 1px solid var(--mb-color-border);
@@ -33,8 +40,6 @@
 }
 
 .noResultsIcon {
-  height: 3rem;
-  width: 3rem;
   background-color: var(--mb-color-bg-medium);
   border-radius: 100%;
   color: var(--mb-color-text-medium);
