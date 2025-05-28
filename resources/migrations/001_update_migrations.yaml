@@ -10277,20 +10277,7 @@ databaseChangeLog:
       id: v52.2025-05-28T00:00:01
       author: edpaget
       comment: set perms/download-results to no when a table has perms/view-data blocked
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            sqlCheck:
-              expectedResult: 0
-              sql: >-
-                SELECT count(*) FROM (
-                    SELECT group_id, db_id, table_id
-                    FROM data_permissions
-                    WHERE (perm_type = 'perms/view-data' AND perm_value = 'blocked')
-                        OR (perm_type = 'perms/download-results' AND perm_value <> 'no')
-                    GROUP BY group_id, db_id, table_id
-                    HAVING count(*) = 2
-                )
+      preConditions: # change is safe to run regardless
       changes:
         - sql: >-
             UPDATE data_permissions as update_dp SET perm_value = 'no'
