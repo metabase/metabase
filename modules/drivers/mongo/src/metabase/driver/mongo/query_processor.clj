@@ -9,28 +9,27 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and $avg $concat $cond
-                                            $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
-                                            $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
-                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year
-                                            $setWindowFields]]
+   [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and
+                                            $avg $concat $cond $dayOfMonth
+                                            $dayOfWeek $dayOfYear $divide $eq
+                                            $expr $group $gt $gte $hour $limit
+                                            $literal $lookup $lt $lte $match
+                                            $max $min $minute $mod $month
+                                            $multiply $ne $not $or $project
+                                            $regexMatch $second
+                                            $setWindowFields $size $skip $sort
+                                            $strcasecmp $subtract $sum
+                                            $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -149,8 +148,8 @@
   (some->> join-alias (str "join_alias_")))
 
 (defn- get-mongo-version []
-  (qp.store/cached ::version
-    (driver/dbms-version :mongo (lib.metadata/database (qp.store/metadata-provider)))))
+  (driver-api/cached ::version
+                     (driver/dbms-version :mongo (driver-api/database (driver-api/metadata-provider)))))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -166,7 +165,7 @@
 (defn- field-name-components [{:keys [parent-id], field-name :name, :as _field}]
   (concat
    (when parent-id
-     (field-name-components (lib.metadata/field (qp.store/metadata-provider) parent-id)))
+     (field-name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
    [field-name]))
 
 (mu/defn field->name
@@ -238,12 +237,12 @@
 
       (isa? coercion :Coercion/ISO8601->Date)
       (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
-                      {:type              qp.error-type/unsupported-feature
+                      {:type              driver-api/unsupported-feature
                        :coercion-strategy coercion}))
 
       (isa? coercion :Coercion/ISO8601->Time)
       (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
-                      {:type              qp.error-type/unsupported-feature
+                      {:type              driver-api/unsupported-feature
                        :coercion-strategy coercion}))
 
       (isa? coercion :Coercion/DateTime->Date)
@@ -266,13 +265,13 @@
 ;;
 (defmethod ->lvalue :aggregation
   [[_ index]]
-  (annotate/aggregation-name (:query *query*) (mbql.u/aggregation-at-index *query* index *nesting-level*)))
+  (driver-api/aggregation-name (:query *query*) (mbql.u/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
   [[_ id-or-name {:keys [join-alias] ::add/keys [source-alias]} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
-        (->lvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+        (->lvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                          ::source-alias source-alias
                          ::join-field (get-join-alias join-alias))))
     (scope-with-join-field (name id-or-name) (get-join-alias join-alias) source-alias)))
@@ -286,7 +285,7 @@
 
 (defn- day-of-week
   [column]
-  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek {:date column :timezone (qp.timezone/results-timezone-id)}}
+  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek {:date column :timezone (driver-api/results-timezone-id)}}
                                                     (driver.common/start-of-week-offset :mongo))]
     {$cond {:if   {$eq [day_of_week 0]}
             :then 7
@@ -300,9 +299,9 @@
                           (* 24 60 60 1000)]}]})
 
 (defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {:$dateToParts {:timezone (qp.timezone/results-timezone-id)
+  (mongo-let [parts {:$dateToParts {:timezone (driver-api/results-timezone-id)
                                     :date column}}]
-    {:$dateFromParts (into {:timezone (qp.timezone/results-timezone-id)}
+    {:$dateFromParts (into {:timezone (driver-api/results-timezone-id)}
                            (for [part (concat (take-while (partial not= resolution)
                                                           [:year :month :day :hour :minute :second :millisecond])
                                               [resolution])]
@@ -326,7 +325,7 @@
 
 (defn- extract
   [op column]
-  {op {:date column :timezone (qp.timezone/results-timezone-id)}})
+  {op {:date column :timezone (driver-api/results-timezone-id)}})
 
 (defn- with-rvalue-temporal-bucketing
   [field unit]
@@ -340,7 +339,7 @@
                 (if supports-dateTrunc?
                   {:$dateTrunc {:date column
                                 :unit (name unit)
-                                :timezone (qp.timezone/results-timezone-id)
+                                :timezone (driver-api/results-timezone-id)
                                 :startOfWeek (name (lib-be/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
@@ -375,12 +374,12 @@
           :quarter
           (if supports-dateTrunc?
             (truncate :quarter)
-            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (qp.timezone/results-timezone-id)}}]
+            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
               {:$dateFromParts {:year  :$$parts.year
                                 :month {$subtract [:$$parts.month
                                                    {$mod [{$add [:$$parts.month 2]}
                                                           3]}]}
-                                :timezone (qp.timezone/results-timezone-id)}}))
+                                :timezone (driver-api/results-timezone-id)}}))
 
           :quarter-of-year
           {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
@@ -397,7 +396,7 @@
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (->rvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
                                  ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
@@ -445,7 +444,7 @@
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database (driver-api/metadata-provider)))
                                    "UTC"))
         t           (condp = (class t)
                       java.time.LocalDate      t
@@ -479,7 +478,7 @@
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
   (let [t (-> (t/zoned-date-time)
-              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
+              (t/with-zone-same-instant (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database (driver-api/metadata-provider)))
                                                        "UTC"))))]
     ($date-from-string
      (t/offset-date-time
@@ -662,7 +661,7 @@
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :now [[_]]
-  (if (driver/database-supports? :mongo :now (lib.metadata/database (qp.store/metadata-provider)))
+  (if (driver/database-supports? :mongo :now (driver-api/database (driver-api/metadata-provider)))
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))
@@ -921,7 +920,7 @@
   clause in :source-query clauses."
   [join-or-query]
   (or (-> join-or-query :collection)
-      (some->> join-or-query :source-table (lib.metadata/table (qp.store/metadata-provider)) :name)
+      (some->> join-or-query :source-table (driver-api/table (driver-api/metadata-provider)) :name)
       (some-> join-or-query :source-query recur)))
 
 (defn- localize-join-alias
@@ -1055,7 +1054,7 @@
    (for [field-or-expr breakout-fields]
      [(field-alias field-or-expr) (format "$_id.%s" (field-alias field-or-expr))])
    (for [ag aggregations
-         :let [ag-name (annotate/aggregation-name (:query *query*) ag)]]
+         :let [ag-name (driver-api/aggregation-name (:query *query*) ag)]]
      [ag-name true])))
 
 (defmulti ^:private expand-aggregation
@@ -1084,7 +1083,7 @@
                            pred)]
     {:group {(subs count-where-expr 1) (aggregation->rvalue [:count-where pred])
              (subs count-expr 1)       (aggregation->rvalue [:count])}
-     :post  [{(annotate/aggregation-name (:query *query*) ag) {$divide [count-where-expr count-expr]}}]}))
+     :post  [{(driver-api/aggregation-name (:query *query*) ag) {$divide [count-where-expr count-expr]}}]}))
 
 ;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
 ;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
@@ -1093,24 +1092,24 @@
   (let [[_ expr]    (unwrap-named-ag ag)
         stddev-expr (name (gensym "$stddev-"))]
     {:group {(subs stddev-expr 1) (aggregation->rvalue [:stddev expr])}
-     :post  [{(annotate/aggregation-name (:query *query*) ag) {:$pow [stddev-expr 2]}}]}))
+     :post  [{(driver-api/aggregation-name (:query *query*) ag) {:$pow [stddev-expr 2]}}]}))
 
 (defmethod expand-aggregation :cum-sum
   [ag]
   (let [[_ expr] (unwrap-named-ag ag)
         sum-expr (name (gensym "$sum-"))]
     {:group {(subs sum-expr 1) (aggregation->rvalue [:sum expr])}
-     :window {(annotate/aggregation-name (:query *query*) ag) sum-expr}}))
+     :window {(driver-api/aggregation-name (:query *query*) ag) sum-expr}}))
 
 (defmethod expand-aggregation :cum-count
   [ag]
   (let [count-expr (name (gensym "$count-"))]
     {:group {(subs count-expr 1) (aggregation->rvalue [:count])}
-     :window {(annotate/aggregation-name (:query *query*) ag) count-expr}}))
+     :window {(driver-api/aggregation-name (:query *query*) ag) count-expr}}))
 
 (defmethod expand-aggregation :default
   [ag]
-  {:group {(annotate/aggregation-name (:query *query*) ag) (aggregation->rvalue ag)}})
+  {:group {(driver-api/aggregation-name (:query *query*) ag) (aggregation->rvalue ag)}})
 
 (defn- extract-aggregations
   "Extract aggregation expressions embedded in `aggr-expr` using `parent-name`
@@ -1145,7 +1144,7 @@
 
          (aggregation-op op)
          (let [aliases-taken (set (vals aggregations-seen))
-               aggr-name (annotate/aggregation-name (:query *query*) aggr-expr)
+               aggr-name (driver-api/aggregation-name (:query *query*) aggr-expr)
                desired-alias (str parent-name "~" aggr-name)
                ;; find a free alias by appending increasing integers
                ;; to the desired alias
@@ -1211,7 +1210,7 @@
   fields generated by the groups. Each map in the `:post` vector may (and
   usually does) refer to the fields introduced by the preceding maps."
   [aggr-expr]
-  (let [aggr-name (annotate/aggregation-name (:query *query*) aggr-expr)
+  (let [aggr-name (driver-api/aggregation-name (:query *query*) aggr-expr)
         [aggr-expr' aggregations-seen] (->> (extract-aggregations aggr-expr aggr-name)
                                             (simplify-extracted-aggregations aggr-name)
                                             adjust-distinct-aggregations)
@@ -1273,7 +1272,7 @@
   "Calculates the appropriate sort and partition fields for a `$setWindowFields` stage."
   [id breakouts order-by]
   (let [finest-temporal-index
-        (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
+        (driver-api/finest-temporal-breakout-index breakouts 2)
 
         sort-index (or finest-temporal-index
                        (dec (count breakouts)))
@@ -1407,7 +1406,7 @@
   (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
                                    (if (and (= agg-type :field)
                                             (integer? field-id))
-                                     (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) field-id)]
+                                     (let [{:keys [parent-id], :as field} (driver-api/field (driver-api/metadata-provider) field-id)]
                                        (if parent-id
                                          (update acc parent-id conj (u/the-id field))
                                          acc))
@@ -1444,7 +1443,7 @@
         cumulative-order-by
         (when-let [finest-temporal-index
                    (and (seq (filter (fn [[_ [agg-type]]] (#{:cum-sum :cum-count} agg-type)) aggregation))
-                        (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakout 2))]
+                        (driver-api/finest-temporal-breakout-index breakout 2))]
           (let [id (projection-group-map breakout)]
             (as-> (keys id) lst
               (m/remove-nth finest-temporal-index lst)
@@ -1532,7 +1531,7 @@
       (:collection &match))))
 
 (defn- log-aggregation-pipeline [form]
-  (when-not qp.i/*disable-qp-logging*
+  (when-not driver-api/*disable-qp-logging*
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
                 (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
@@ -1552,7 +1551,7 @@
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-                      {:type  qp.error-type/invalid-query
+                      {:type  driver-api/invalid-query
                        :query s}
                       e)))))
 
@@ -1587,7 +1586,7 @@
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
-                                (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id))
+                                (:name (driver-api/table (driver-api/metadata-provider) source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))

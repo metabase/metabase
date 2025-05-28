@@ -4,8 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
@@ -14,13 +12,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -31,10 +23,25 @@
   (:import
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
-   (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
-                              BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
-                              Table TableDefinition$Type TableId TableResult)
+   (com.google.cloud.bigquery
+    BigQuery
+    BigQuery$DatasetListOption
+    BigQuery$JobOption
+    BigQuery$TableDataListOption
+    BigQuery$TableOption
+    BigQueryException
+    BigQueryOptions
+    Dataset
+    Field
+    Field$Mode
+    FieldValue
+    FieldValueList
+    QueryJobConfiguration
+    Schema
+    Table
+    TableDefinition$Type
+    TableId
+    TableResult)
    (com.google.common.collect ImmutableMap)
    (java.util Iterator)))
 
@@ -58,8 +65,8 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
-        mb-version (:tag config/mb-version-info)
-        run-mode   (name config/run-mode)
+        mb-version (:tag driver-api/mb-version-info)
+        run-mode   (name driver-api/run-mode)
         user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
@@ -481,7 +488,7 @@
 
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                  {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
+                  {:type driver-api/invalid-query, :sql sql, :parameters parameters}
                   e)))
 
 (defn- throw-cancelled [sql parameters]
@@ -508,7 +515,7 @@
 
 (defn- effective-query-timezone-id [database]
   (if (get-in database [:details :use-jvm-timezone])
-    (qp.timezone/system-timezone-id)
+    (driver-api/system-timezone-id)
     "UTC"))
 
 (defn- build-bigquery-request [^String sql parameters]
@@ -607,7 +614,7 @@
         request (build-bigquery-request sql parameters)
         query-future (future
                        ;; ensure the classloader is available within the future.
-                       (classloader/the-classloader)
+                       (driver-api/the-classloader)
                        (try
                          (*page-callback*)
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
@@ -658,13 +665,13 @@
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
-  (let [database (lib.metadata/database (qp.store/metadata-provider))]
+  (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
-                  (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
+                  (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (*process-native* respond database sql params qp.pipeline/*canceled-chan*)))))
+        (*process-native* respond database sql params driver-api/*canceled-chan*)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

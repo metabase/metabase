@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql :as driver.sql]
@@ -21,7 +21,6 @@
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.secrets.core :as secret]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -31,8 +30,17 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
-   (java.sql Connection DatabaseMetaData ResultSet SQLException Types)
-   (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime)
+   (java.sql
+    Connection
+    DatabaseMetaData
+    ResultSet
+    SQLException
+    Types)
+   (java.time
+    Instant
+    LocalDateTime
+    OffsetDateTime
+    ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
@@ -184,7 +192,7 @@
         finish-fn (partial (if (:ssl details) ssl-spec non-ssl-spec) details)
         ;; the v$session.program value has a max length of 48 (see T4Connection), so we have to make it more terse than
         ;; the usual config/mb-version-and-process-identifier string and ensure we truncate to a length of 48
-        prog-nm   (as-> (format "MB %s %s" (config/mb-version-info :tag) config/local-process-uuid) s
+        prog-nm   (as-> (format "MB %s %s" (driver-api/mb-version-info :tag) driver-api/local-process-uuid) s
                     (subs s 0 (min 48 (count s))))]
     (-> (merge spec details)
         (assoc prog-name-property prog-nm)
@@ -288,7 +296,7 @@
     (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
     (-> (if has-timezone?
           expr
-          [:from_tz expr (or source-timezone (qp.timezone/results-timezone-id))])
+          [:from_tz expr (or source-timezone (driver-api/results-timezone-id))])
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
@@ -412,7 +420,7 @@
   [unit x]
   (let [x (cond-> x
             (h2x/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
-            (h2x/at-time-zone (qp.timezone/results-timezone-id)))]
+            (h2x/at-time-zone (driver-api/results-timezone-id)))]
     (trunc unit x)))
 
 (defmethod sql.qp/datetime-diff [:oracle :year]

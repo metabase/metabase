@@ -15,7 +15,6 @@
    [metabase.driver.sql.query-processor.empty-string-is-null
     :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -136,7 +135,7 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           expr
-          (h2x/at-time-zone expr (or source-timezone (qp.timezone/results-timezone-id))))
+          (h2x/at-time-zone expr (or source-timezone (driver-api/results-timezone-id))))
         (h2x/at-time-zone target-timezone)
         (h2x/with-database-type-info "timestamp"))))
 

@@ -2,8 +2,8 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -36,12 +36,12 @@
       (let [{:keys [status body]} (request-fn url options)]
         (when (not= status 200)
           (throw (ex-info (tru "Druid request error [{0}]: {1}" status (pr-str body))
-                          {:type qp.error-type/db})))
+                          {:type driver-api/db})))
         (try
           (json/decode+kw body)
           (catch Throwable e
             (throw (ex-info (tru "Failed to parse Druid response body: {0}" (pr-str body))
-                            {:type qp.error-type/db}
+                            {:type driver-api/db}
                             e)))))
       (catch Throwable e
         (let [response (u/ignore-exceptions
@@ -50,7 +50,7 @@
           (throw (ex-info (or (:errorMessage response)
                               (.getMessage e))
                           (merge
-                           {:type            qp.error-type/db
+                           {:type            driver-api/db
                             :request-url     url
                             :request-options options}
                            (when response
@@ -77,7 +77,7 @@
         (throw e))
       (catch Throwable e
         (let [e' (ex-info (.getMessage e)
-                          {:type  qp.error-type/db
+                          {:type  driver-api/db
                            :query query}
                           e)]
           (log/error e' "Error running query")

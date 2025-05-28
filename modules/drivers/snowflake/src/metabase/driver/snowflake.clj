@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -22,16 +23,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.secrets.core :as secret]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -41,8 +34,18 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
-   (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.sql
+    Connection
+    DatabaseMetaData
+    ResultSet
+    Types)
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
    (java.util Properties)
    (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
 
@@ -295,7 +298,7 @@
   ;; https://docs.snowflake.com/en/sql-reference/functions/dateadd
   (let [db-type     (h2x/database-type hsql-form)
         return-type (if (and (= db-type "date")
-                             (not (contains? lib.schema.temporal-bucketing/date-bucketing-units unit)))
+                             (not (contains? driver-api/date-bucketing-units unit)))
                       "timestamp_ntz"
                       db-type)]
     (-> [:dateadd
@@ -308,7 +311,7 @@
   "Convert timestamps with time zones (`timestamp_tz`) to timestamps that should be interpreted in the session
   timezone (`timestamp_ltz`) so various datetime extraction and truncation operations work as expected."
   [expr]
-  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)]
+  (let [report-timezone (driver-api/report-timezone-id-if-supported)]
     (if (and report-timezone
              (= (h2x/database-type expr) "timestamptz"))
       [:to_timestamp_ltz expr]
@@ -370,7 +373,7 @@
   (throw (ex-info (tru "Snowflake doesn''t support extract us week")
                   {:driver driver
                    :form   expr
-                   :type   qp.error-type/invalid-query})))
+                   :type   driver-api/invalid-query})))
 
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
@@ -386,10 +389,10 @@
    timestamptz type and the unit is day, week, month, quarter or year."
   [unit x y]
   (let [x (if (h2x/is-of-type? x "timestamptz")
-            [:convert_timezone (qp.timezone/results-timezone-id) x]
+            [:convert_timezone (driver-api/results-timezone-id) x]
             x)
         y (if (h2x/is-of-type? y "timestamptz")
-            [:convert_timezone (qp.timezone/results-timezone-id) y]
+            [:convert_timezone (driver-api/results-timezone-id) y]
             y)]
     [:datediff [:raw (name unit)] x y]))
 
@@ -397,7 +400,7 @@
   "Same as `extract` but converts the arg to the results time zone if it's a timestamptz."
   [unit x]
   (let [x (if (h2x/is-of-type? x "timestamptz")
-            [:convert_timezone (qp.timezone/results-timezone-id) x]
+            [:convert_timezone (driver-api/results-timezone-id) x]
             x)]
     (extract unit x)))
 
@@ -485,8 +488,8 @@
 (defn- query-db-name []
   ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements
   ;; it won't be, *but* they should already be qualified by database name anyway
-  (when (qp.store/initialized?)
-    (db-name (lib.metadata/database (qp.store/metadata-provider)))))
+  (when (driver-api/initialized?)
+    (db-name (driver-api/database (driver-api/metadata-provider)))))
 
 ;; unless we're currently using a table alias, we need to prepend Table and Field identifiers with the DB name for the
 ;; query
@@ -537,12 +540,12 @@
     (-> (if timestamptz?
           [:convert_timezone target-timezone hsql-form]
           [:to_timestamp_ntz
-           [:convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone hsql-form]])
+           [:convert_timezone (or source-timezone (driver-api/results-timezone-id)) target-timezone hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
 
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
   [driver [_ amount unit]]
-  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
+  (driver-api/maybe-cacheable-relative-datetime-honeysql
    driver unit amount
    sql.qp/*parent-honeysql-col-type-info*))
 
@@ -577,8 +580,8 @@
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
-  (qp.store/with-metadata-provider (u/the-id database)
-    (let [table-metadata   (lib.metadata/table (qp.store/metadata-provider) (:id table))
+  (driver-api/with-metadata-provider (u/the-id database)
+    (let [table-metadata   (driver-api/table (driver-api/metadata-provider) (:id table))
           table-identifier (sql.qp/->honeysql driver table-metadata)
           query            {:select [:*]
                             :from   [[table-identifier]]}]
@@ -588,7 +591,7 @@
   [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
-    (qp.store/with-metadata-provider (u/the-id database)
+    (driver-api/with-metadata-provider (u/the-id database)
       (let [schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
         (sql-jdbc.execute/do-with-connection-with-options
@@ -664,9 +667,9 @@
 
 (defn- table->db-name
   [table]
-  (qp.store/with-metadata-provider (:db_id table)
-    (-> (qp.store/metadata-provider)
-        lib.metadata/database
+  (driver-api/with-metadata-provider (:db_id table)
+    (-> (driver-api/metadata-provider)
+        driver-api/database
         db-name)))
 
 ;; The Snowflake JDBC driver is buggy: schema and table name are interpreted as patterns
@@ -806,7 +809,7 @@
   [_ sql remark]
   (str sql "\n\n-- " remark))
 
-(defmethod qp.util/query->remark :snowflake
+(defmethod driver-api/query->remark :snowflake
   [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
       query-type :type,
       database-id :database}]
@@ -819,7 +822,7 @@
                 :dashboardId dashboard-id
                 :databaseId  database-id
                 :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                :serverId    (system/site-uuid)}))
+                :serverId    (driver-api/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

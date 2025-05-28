@@ -3,16 +3,14 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [java-time.api :as t]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -141,8 +139,8 @@
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
                                     ;; desugars to [:or [:= 'field 1] ...].
-                                    mbql.u/desugar-filter-clause
-                                    qp.wrap-value-literals/wrap-value-literals-in-mbql
+                                    driver-api/desugar-filter-clause
+                                    driver-api/wrap-value-literals-in-mbql
                                     mongo.qp/compile-filter
                                     json/encode)]
             [(conj acc compiled-clause) missing])
@@ -158,7 +156,7 @@
 
       (params/ReferencedCardQuery? v)
       (throw (ex-info (tru "Cannot run query: MongoDB doesn''t support saved questions reference: {0}" k)
-                      {:type qp.error-type/invalid-query}))
+                      {:type driver-api/invalid-query}))
 
       (= v params/no-value)
       [acc (conj missing k)]
@@ -191,7 +189,7 @@
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
-                       {:type qp.error-type/driver}))))
+                       {:type driver-api/driver}))))
    [[] nil]
    xs))
 
@@ -199,7 +197,7 @@
   (let [[replaced missing] (substitute* param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
-                      {:type qp.error-type/invalid-query})))
+                      {:type driver-api/invalid-query})))
     (when (seq replaced)
       (str/join replaced))))
 

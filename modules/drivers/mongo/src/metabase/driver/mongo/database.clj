@@ -1,8 +1,6 @@
 (ns metabase.driver.mongo.database
   "This namespace contains functions for work with mongo specific database and database details."
   (:require
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
    [metabase.util.i18n :refer [tru]])
   (:import
@@ -35,8 +33,8 @@
   [database]
   (let [db-details
         (cond
-          (integer? database)             (qp.store/with-metadata-provider database
-                                            (:details (lib.metadata.protocols/database (qp.store/metadata-provider))))
+          (integer? database)             (driver-api/with-metadata-provider database
+                                            (:details (driver-api/database (driver-api/metadata-provider))))
           (string? database)              {:dbname database}
           (:dbname (:details database))   (:details database) ; entire Database obj
           (:dbname database)              database            ; connection details map only

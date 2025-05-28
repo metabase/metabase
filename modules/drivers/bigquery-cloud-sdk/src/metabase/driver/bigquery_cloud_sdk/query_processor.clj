@@ -5,18 +5,14 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -60,8 +56,8 @@
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
   []
-  (when (qp.store/initialized?)
-    (when-let [{:keys [details], driver :engine, :as database} (lib.metadata/database (qp.store/metadata-provider))]
+  (when (driver-api/initialized?)
+    (when-let [{:keys [details], driver :engine, :as database} (driver-api/database (driver-api/metadata-provider))]
       ;; this is mostly here to catch tests that do something dumb like try to run a BigQuery tests with a MBQL query
       ;; targeting the H2 test database
       (when driver
@@ -293,7 +289,7 @@
     nil
 
     (integer? id-or-name)
-    (temporal-type (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+    (temporal-type (driver-api/field (driver-api/metadata-provider) id-or-name))
 
     effective-type
     (base-type->temporal-type effective-type)
@@ -334,7 +330,7 @@
 
 (defn- throw-unsupported-conversion [from to]
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
-                  {:type qp.error-type/invalid-query})))
+                  {:type driver-api/invalid-query})))
 
 (defmethod ->temporal-type [:date LocalTime]           [_ _t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date OffsetTime]          [_ _t] (throw-unsupported-conversion "time" "date"))
@@ -381,7 +377,7 @@
                       target-type)
           (let [expr (if-let [report-zone (when (or (= current-type :timestamp)
                                                     (= target-type :timestamp))
-                                            (qp.timezone/requested-timezone-id))]
+                                            (driver-api/requested-timezone-id))]
                        [target-type x (h2x/literal report-zone)]
                        [target-type x])]
             (with-temporal-type expr target-type)))
@@ -439,7 +435,7 @@
 (defn- trunc
   "Generate a SQL call an appropriate truncation function, depending on the temporal type of `expr`."
   [unit expr]
-  [::trunc expr unit (qp.timezone/requested-timezone-id)])
+  [::trunc expr unit (driver-api/requested-timezone-id)])
 
 (def ^:private valid-date-extract-units
   #{:dayofweek :day :dayofyear :week :isoweek :month :quarter :year :isoyear})
@@ -493,7 +489,7 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (with-temporal-type (extract* unit expr (qp.timezone/requested-timezone-id)) nil))
+      (with-temporal-type (extract* unit expr (driver-api/requested-timezone-id)) nil))
 
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
@@ -561,7 +557,7 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           hsql-form
-          [:timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))])
+          [:timestamp hsql-form (or source-timezone (driver-api/results-timezone-id))])
         (datetime target-timezone)
         (with-temporal-type :datetime))))
 
@@ -681,12 +677,12 @@
       ;; may call in turn.
       (let [field-clause (with-temporal-type field-clause (temporal-type field-clause))
             stored-field  (when (integer? id-or-name)
-                            (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                            (driver-api/field (driver-api/metadata-provider) id-or-name))
             result       (parent-method driver field-clause)
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
-        (if (and (lib.field/json-field? stored-field)
+        (if (and (driver-api/json-field? stored-field)
                  (or (::sql.qp/forced-alias opts)
                      (= source-table ::add/source)))
           (keyword source-alias)
@@ -710,7 +706,7 @@
     (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                          (pr-str db-type))
                     {:found db-type
-                     :type  qp.error-type/invalid-query}))))
+                     :type  driver-api/invalid-query}))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
   [driver [_ x y unit]]
@@ -952,7 +948,7 @@
   (let [current-type (temporal-type expr)]
     (when (#{[:date :time] [:time :date]} [current-type target-type])
       (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
-                      {:type qp.error-type/invalid-query}))))
+                      {:type driver-api/invalid-query}))))
   ;; [[add-interval-form]] might return something of a different type than `target-type`, depending on unit... in that
   ;; case, just wrap the original `::add-interval` clause in a `cast` expression instead.
   (let [new-form (add-interval-form (->temporal-type target-type expr) amount unit)]
@@ -976,7 +972,7 @@
         compiled      (parent-method driver outer-query)]
     (assoc compiled
            :table-name (or (when-let [source-table-id (get-in outer-query [:query :source-table])]
-                             (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
+                             (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
                            sql.qp/source-query-alias)
            :mbql?      true)))
 
@@ -1007,7 +1003,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk
   [_driver]
-  [::current-moment nil (qp.timezone/requested-timezone-id)])
+  [::current-moment nil (driver-api/requested-timezone-id)])
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :now]
   [driver _clause]
@@ -1032,7 +1028,7 @@
         result              (parent-method driver field-filter)]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]
-                                                             (let [request-time-zone-id (qp.timezone/requested-timezone-id)]
+                                                             (let [request-time-zone-id (driver-api/requested-timezone-id)]
                                                                (map (fn [arg]
                                                                       (if (instance? java.time.temporal.Temporal arg)
                                                                         ;; Since we add the zone as part of the

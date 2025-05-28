@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -15,12 +16,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util :as qp.util]
-   [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -28,7 +24,12 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)))
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -228,8 +229,8 @@
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                                                (lib.metadata/database (qp.store/metadata-provider)))
+       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
+                                                                                                (driver-api/database (driver-api/metadata-provider)))
                                                                   (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
@@ -272,7 +273,7 @@
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-   [:raw (quote-literal-for-database driver (lib.metadata/database (qp.store/metadata-provider)) pattern)]])
+   [:raw (quote-literal-for-database driver (driver-api/database (driver-api/metadata-provider)) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
@@ -321,7 +322,7 @@
 
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
-  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
+  (driver-api/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
 (defmethod sql.qp/->honeysql [:redshift java.time.LocalDate]
   [_driver t]
@@ -456,20 +457,20 @@
                                         [:field (field-id :guard integer?) _]
                                         (when (contains? (set &parents) :dimension)
                                           field-id))]
-                    [(:name (lib.metadata/field (qp.store/metadata-provider) field-id))
+                    [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
         user-parameters))
 
-(defmethod qp.util/query->remark :redshift
+(defmethod driver-api/query->remark :redshift
   [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
        (json/encode {:dashboard_id        dashboard-id
                      :chart_id            card-id
                      :optional_user_id    executed-by
-                     :optional_account_id (system/site-uuid)
+                     :optional_account_id (driver-api/site-uuid)
                      :filter_values       (field->parameter-value query)})
        " */ "
-       (qp.util/default-query->remark query)))
+       (driver-api/default-query->remark query)))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]

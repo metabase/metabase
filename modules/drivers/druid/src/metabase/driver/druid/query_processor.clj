@@ -2,18 +2,12 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.druid.js :as druid.js]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -95,7 +89,7 @@
 (defmethod ->rvalue :field
   [[_ id-or-name]]
   (if (integer? id-or-name)
-    (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+    (:name (driver-api/field (driver-api/metadata-provider) id-or-name))
     id-or-name))
 
 (defmethod ->rvalue :absolute-datetime
@@ -126,7 +120,7 @@
 (defmethod dimension-or-metric? :field
   [[_ id-or-name options]]
   (let [{:keys [base-type database-type]} (if (integer? id-or-name)
-                                            (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                                            (driver-api/field (driver-api/metadata-provider) id-or-name)
                                             options)]
     (cond
       (str/includes? database-type "[metric]") :metric
@@ -143,7 +137,7 @@
     :context     {:queryId (random-query-id)}}
    (case query-type
      ::scan               {:queryType :scan
-                           :limit     limit/absolute-max-results}
+                           :limit     driver-api/absolute-max-results}
      ::total              {:queryType :timeseries}
      ::grouped-timeseries {:queryType :timeseries}
      ::topN               {:queryType :topN
@@ -154,7 +148,7 @@
 
 (defn- handle-source-table
   [_query-type {source-table-id :source-table} druid-query]
-  (let [{source-table-name :name} (lib.metadata/table (qp.store/metadata-provider) source-table-id)]
+  (let [{source-table-name :name} (driver-api/table (driver-api/metadata-provider) source-table-id)]
     (assoc-in druid-query [:query :dataSource] source-table-name)))
 
 ;;; ---------------------- handle-filter. See http://druid.io/docs/latest/querying/filters.html ----------------------
@@ -249,7 +243,7 @@
                  :value         (->rvalue pattern)
                  :caseSensitive (get options :case-sensitive true)}}
     (throw (ex-info (tru "Dynamic patterns are not supported.")
-                    {:type qp.error-type/invalid-query
+                    {:type driver-api/invalid-query
                      :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :starts-with
@@ -259,7 +253,7 @@
                  (str (escape-like-filter-pattern (->rvalue pattern)) \%)
                  (get options :case-sensitive true))
     (throw (ex-info (tru "Dynamic patterns are not supported.")
-                    {:type qp.error-type/invalid-query
+                    {:type driver-api/invalid-query
                      :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :ends-with
@@ -269,7 +263,7 @@
                  (str \% (escape-like-filter-pattern (->rvalue pattern)))
                  (get options :case-sensitive true))
     (throw (ex-info (tru "Dynamic patterns are not supported.")
-                    {:type qp.error-type/invalid-query
+                    {:type driver-api/invalid-query
                      :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :=
@@ -584,7 +578,7 @@
 (defn- hyper-unique?
   [[_ field-id]]
   {:pre [(pos-int? field-id)]}
-  (isa? (:base-type (lib.metadata/field (qp.store/metadata-provider) field-id))
+  (isa? (:base-type (driver-api/field (driver-api/metadata-provider) field-id))
         :type/DruidHyperUnique))
 
 (defn- ag:distinct
@@ -683,7 +677,7 @@
   [query-type
    ag-clause :- ::mbql.s/Aggregation
    druid-query]
-  (let [output-name               (annotate/aggregation-name *query* ag-clause)
+  (let [output-name               (driver-api/aggregation-name *query* ag-clause)
         [ag-type ag-field & args] (lib.util.match/match-one ag-clause
                                     [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
                                     _                             &match)]
@@ -693,7 +687,7 @@
                                        (create-aggregation-clause output-name ag-type ag-field args)
                                        (catch Throwable e
                                          (throw (ex-info (tru "Error creating aggregation clause")
-                                                         {:type        qp.error-type/driver
+                                                         {:type        driver-api/driver
                                                           :clause-name output-name
                                                           :ag-type     ag-type
                                                           :ag-field    ag-field
@@ -740,11 +734,11 @@
     ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
     [:aggregation-options ag _]
     (merge (expression-post-aggregation (second expression))
-           {:name (annotate/aggregation-name *query* expression)})
+           {:name (driver-api/aggregation-name *query* expression)})
 
     _
     {:type   :arithmetic
-     :name   (annotate/aggregation-name *query* expression)
+     :name   (driver-api/aggregation-name *query* expression)
      :fn     operator
      :fields (vec (for [arg args]
                     (lib.util.match/match-one arg
@@ -894,7 +888,7 @@
                       :month   "P1M"
                       :quarter "P3M"
                       :year    "P1Y")
-          :timeZone (qp.timezone/results-timezone-id)}
+          :timeZone (driver-api/results-timezone-id)}
          ;; Druid uses Monday for the start of its weekly calculations. Metabase uses Sundays. When grouping by week,
          ;; the origin keypair will use the date specified as it's start of the week. The below date is the first
          ;; Sunday after Epoch. The date itself isn't significant, it just uses it to figure out what day it should
@@ -959,7 +953,7 @@
   [field-clause]
   (lib.util.match/match-one field-clause
     [:field (id :guard integer?) _]
-    (:name (lib.metadata/field (qp.store/metadata-provider) id))
+    (:name (driver-api/field (driver-api/metadata-provider) id))
 
     [:field (field-name :guard string?) _]
     field-name))
@@ -1042,7 +1036,7 @@
       true
 
       [:field (id :guard pos-int?) _opts]
-      (lib.types.isa/temporal? (lib.metadata/field (qp.store/metadata-provider) id)))))
+      (driver-api/temporal? (driver-api/field (driver-api/metadata-provider) id)))))
 
 ;; Handle order by timstamp field
 (defmethod handle-order-by ::grouped-timeseries
@@ -1120,7 +1114,7 @@
   #15414, adjust it back to the old known working value. had to work around."
   [limit]
   (cond-> limit
-    (= limit limit/absolute-max-results) inc))
+    (= limit driver-api/absolute-max-results) inc))
 
 (defmethod handle-limit ::scan
   [_ {limit :limit} druid-query]
@@ -1215,6 +1209,6 @@
         (build-druid-query query)
         (catch Throwable e
           (throw (ex-info (tru "Error generating Druid query")
-                          {:type         qp.error-type/driver
+                          {:type         driver-api/driver
                            :source-query query}
                           e)))))))
