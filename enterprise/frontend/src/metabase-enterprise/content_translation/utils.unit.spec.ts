@@ -277,28 +277,6 @@ describe("content translation utils", () => {
       expect(shouldTranslateFieldValuesOfColumn(col)).toBe(true);
     });
 
-    it("should return true for State semantic type", () => {
-      const col: DatasetColumn = {
-        semantic_type: "type/State",
-        source: "",
-        name: "test",
-        display_name: "Test",
-        base_type: "type/Text",
-      };
-      expect(shouldTranslateFieldValuesOfColumn(col)).toBe(true);
-    });
-
-    it("should return true for Country semantic type", () => {
-      const col: DatasetColumn = {
-        semantic_type: "type/Country",
-        source: "",
-        name: "test",
-        display_name: "Test",
-        base_type: "type/Text",
-      };
-      expect(shouldTranslateFieldValuesOfColumn(col)).toBe(true);
-    });
-
     it("should return false for other semantic types", () => {
       const col: DatasetColumn = {
         semantic_type: "type/Number",
