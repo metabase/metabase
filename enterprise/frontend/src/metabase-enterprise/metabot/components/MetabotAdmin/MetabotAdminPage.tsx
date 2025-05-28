@@ -46,8 +46,7 @@ export function MetabotAdminPage() {
           <SettingHeader
             id="configure-metabot"
             title={c(metabotContext).t`Configure ${metabotName}`}
-            description={// eslint-disable-next-line no-literal-metabase-strings -- admin ui
-            c(metabotContext)
+            description={c(metabotContext) // eslint-disable-next-line no-literal-metabase-strings -- admin ui
               .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
           />
           {isEmbeddedMetabot && (
