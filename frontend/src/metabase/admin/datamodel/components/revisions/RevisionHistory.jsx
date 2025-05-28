@@ -31,7 +31,7 @@ export default class RevisionHistory extends Component {
     return (
       <LoadingAndErrorWrapper
         loading={!segment || !revisions}
-        className={cx(CS.wrapper, CS.scrollY)}
+        className={cx(CS.wrapper, CS.scrollY, CS.bgWhite)}
       >
         {() => (
           <>
