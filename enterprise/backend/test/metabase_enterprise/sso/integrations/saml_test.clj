@@ -578,6 +578,38 @@
              (finally
                (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
 
+(deftest existing-user-reactivated-if-provisioning-is-on
+  (testing "An existing user will be reactivated upon login"
+    (with-other-sso-types-disabled!
+      (do-with-some-validators-disabled!
+       (fn []
+         (with-saml-default-setup!
+           (try
+             (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
+             ;; login once to create the user
+             (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
+                                                          default-redirect-uri)]
+               (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
+             ;; deactivate the user
+             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
+             (testing "We can reactivate a user with a new login"
+               (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
+                                                            default-redirect-uri)]
+                 (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
+                 (is (t2/select-one-fn :is_active [:model/User :is_active] :email "newuser@metabase.com"))))
+             ;; deactivate the user again
+             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
+             (testing "We can't reactivate the user if user provisioning is disabled."
+               (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
+                             appearance.settings/site-name (constantly "test")]
+                 (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
+                                                              default-redirect-uri)]
+                   ;; we get a `401`
+                   (is (client/client-real-response :post 401 "/auth/sso" req-options))
+                   (is (not (t2/select-one-fn :is_active [:model/User :is_active] :email "newuser@metabase.com"))))))
+             (finally
+               (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
+
 (defn- group-memberships [user-or-id]
   (when-let [group-ids (seq (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
     (t2/select-fn-set :name :model/PermissionsGroup :id [:in group-ids])))
