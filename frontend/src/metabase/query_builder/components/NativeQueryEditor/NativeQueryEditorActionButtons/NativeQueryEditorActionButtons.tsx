@@ -12,7 +12,7 @@ import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
-import NativeQueryEditorSidebarS from "./NativeQueryEditorSidebar.module.css";
+import S from "./NativeQueryEditorActionButtons.module.css";
 
 const ICON_SIZE = 18;
 
@@ -23,7 +23,7 @@ export type Features = {
   promptInput?: boolean;
 };
 
-interface NativeQueryEditorSidebarProps {
+interface NativeQueryEditorActionButtonsProps {
   question: Question;
   nativeEditorSelectedText?: string;
   features: Features;
@@ -47,8 +47,8 @@ interface NativeQueryEditorSidebarProps {
   onGenerateQuery: (queryText: string) => void;
 }
 
-export const NativeQueryEditorSidebar = (
-  props: NativeQueryEditorSidebarProps,
+export const NativeQueryEditorActionButtons = (
+  props: NativeQueryEditorActionButtonsProps,
 ) => {
   const {
     question,
@@ -75,7 +75,11 @@ export const NativeQueryEditorSidebar = (
     engine != null && getEngineNativeType(engine) === "sql";
 
   return (
-    <Flex component="aside" data-testid="native-query-editor-sidebar" gap="lg">
+    <Flex
+      component="aside"
+      data-testid="native-query-editor-action-buttons"
+      gap="lg"
+    >
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
@@ -92,7 +96,7 @@ export const NativeQueryEditorSidebar = (
         <Tooltip label={t`Auto-format`}>
           <Button
             variant="subtle"
-            className={NativeQueryEditorSidebarS.SidebarButton}
+            className={S.button}
             aria-label={t`Auto-format`}
             p={0}
             leftSection={<Icon name="format_code" size={ICON_SIZE} />}

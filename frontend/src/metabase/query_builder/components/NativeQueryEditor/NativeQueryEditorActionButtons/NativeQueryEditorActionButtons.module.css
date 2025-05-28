@@ -1,4 +1,4 @@
-.SidebarButton {
+.button {
   color: var(--mb-color-text-primary);
   transition: color 0.3s linear;
   border: none;

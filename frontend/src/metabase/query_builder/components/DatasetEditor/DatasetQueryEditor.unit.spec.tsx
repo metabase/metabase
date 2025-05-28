@@ -109,7 +109,7 @@ describe("DatasetQueryEditor", () => {
     await setup({ isActive: true });
 
     expect(
-      screen.getByTestId("native-query-editor-sidebar"),
+      screen.getByTestId("native-query-editor-action-buttons"),
     ).toBeInTheDocument();
   });
 
@@ -123,7 +123,7 @@ describe("DatasetQueryEditor", () => {
     await setup({ isActive: false });
 
     expect(
-      screen.queryByTestId("native-query-editor-sidebar"),
+      screen.queryByTestId("native-query-editor-action-buttons"),
     ).not.toBeInTheDocument();
   });
 
@@ -136,7 +136,7 @@ describe("DatasetQueryEditor", () => {
     const onSetDatabaseId = jest.fn();
 
     expect(
-      screen.getByTestId("native-query-editor-sidebar"),
+      screen.getByTestId("native-query-editor-action-buttons"),
     ).toBeInTheDocument();
 
     rerender(
@@ -152,7 +152,7 @@ describe("DatasetQueryEditor", () => {
     );
 
     expect(
-      screen.queryByTestId("native-query-editor-sidebar"),
+      screen.queryByTestId("native-query-editor-action-buttons"),
     ).not.toBeInTheDocument();
   });
 });

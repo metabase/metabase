@@ -45,9 +45,9 @@ import {
 } from "./CodeMirrorEditor";
 import DataSourceSelectors from "./DataSourceSelectors";
 import S from "./NativeQueryEditor.module.css";
+import type { Features as SidebarFeatures } from "./NativeQueryEditorActionButtons";
+import { NativeQueryEditorActionButtons } from "./NativeQueryEditorActionButtons";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
-import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
-import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
 import { VisibilityToggler } from "./VisibilityToggler";
 import { MIN_HEIGHT_LINES } from "./constants";
@@ -359,7 +359,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             )}
             <Flex ml="auto" gap="lg" mr="lg" mt="md">
               {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
-                <NativeQueryEditorSidebar
+                <NativeQueryEditorActionButtons
                   features={sidebarFeatures}
                   onShowPromptInput={this.togglePromptVisibility}
                   onFormatQuery={this.formatQuery}
