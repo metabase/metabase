@@ -85,22 +85,20 @@ export const getBarLabelLayout =
       return {};
     }
 
-    // TODO: Use `hasBottomSpace` in `dy` calculation
     // TODO: Remove `position: "top" | "insideBottom"` in getDataLabelSeriesOption and use getBarLabelLayout for all bar chart series (totals)
+    const lineHeight = 1.25;
+    const textHeight = CHART_STYLE.seriesLabels.size * lineHeight;
     const hasBottomSpace =
-      rect.y + CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset <
+      rect.y + textHeight + CHART_STYLE.seriesLabels.offset <
       chartMeasurements.bounds.bottom;
-    // eslint-disable-next-line no-console
-    console.log({ hasBottomSpace });
 
     const barHeight = rect.height;
     const barEdge = (barHeight / 2) * -Math.sign(labelValue);
-    const lineHeight = 1.25;
-    const textHeight = CHART_STYLE.seriesLabels.size * lineHeight;
-    const yOffset = -(textHeight / 2 + CHART_STYLE.seriesLabels.offset);
+    const yOffset = textHeight / 2 + CHART_STYLE.seriesLabels.offset;
+    const yOffsetDirection = labelValue < 0 && hasBottomSpace ? 1 : -1;
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
-      dy: barEdge + yOffset,
+      dy: barEdge + yOffset * yOffsetDirection,
     };
   };
 
