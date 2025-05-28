@@ -648,9 +648,7 @@
                                              :as   source}]
                                          (-> (id->target-fields fk-target-field-id)
                                              (assoc ::fk-field-id   source-field-id
-                                                    ::fk-field-name (when (lib.field.util/inherited-column? source)
-                                                                      ((some-fn :lib/desired-column-alias :name)
-                                                                       source))
+                                                    ::fk-field-name (lib.field.util/fk-field-name source)
                                                     ::fk-join-alias (:metabase.lib.join/join-alias source)
                                                     ::fk-ident          fk-ident))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
