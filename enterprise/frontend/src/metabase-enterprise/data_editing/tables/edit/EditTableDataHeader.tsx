@@ -8,7 +8,8 @@ import { getFilterItems } from "metabase/querying/filters/components/FilterPanel
 import { ActionIcon, Button, Flex, Group, Icon, Stack } from "metabase/ui";
 import { TableNotificationsTrigger } from "metabase-enterprise/data_editing/alerts/TableNotificationsModals/TableNotificationsTrigger/TableNotificationsTrigger";
 import type Question from "metabase-lib/v1/Question";
-import type { Database, Table } from "metabase-types/api";
+import type TableV1 from "metabase-lib/v1/metadata/Table";
+import type { Database } from "metabase-types/api";
 
 import { TableBreadcrumbs } from "../common/TableBreadcrumbs";
 
@@ -16,7 +17,7 @@ import { EditTableDataFilterButton } from "./EditTableDataFilterButton";
 
 interface EditTableDataHeaderProps {
   database: Database;
-  table: Table;
+  table: TableV1;
   question: Question;
   isLoading: boolean;
   isUndoLoading: boolean;
