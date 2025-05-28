@@ -23,7 +23,8 @@
   border-radius: 8px;
   cursor: pointer;
 
-  &:hover {
+  &:hover,
+  &.active {
     background-color: var(--mb-color-brand-lighter);
     color: var(--mb-color-brand);
 

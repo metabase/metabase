@@ -26,9 +26,11 @@ const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 
 export const DataModel = ({
   params,
+  location,
   children,
 }: {
   params: RouteParams;
+  location: Location;
   children: ReactNode;
 }) => {
   const { databaseId, tableId, schemaId } = parseRouteParams(params);
@@ -48,16 +50,7 @@ export const DataModel = ({
           tableId={tableId}
         />
         <Box mx="xl" py="sm" className={S.footer}>
-          <Flex
-            component={Link}
-            to="/admin/datamodel/segments"
-            className={S.segmentsLink}
-            gap="sm"
-            p="sm"
-          >
-            <Icon name="pie" className={S.segmentsIcon} />
-            {t`Segments`}
-          </Flex>
+          <SegmentsLink location={location} />
         </Box>
       </Stack>
 
@@ -65,6 +58,25 @@ export const DataModel = ({
     </Flex>
   );
 };
+
+function SegmentsLink({ location }: { location: Location }) {
+  const isActive =
+    location?.pathname?.startsWith("/admin/datamodel/segments") ||
+    location?.pathname?.startsWith("/admin/datamodel/segment/");
+
+  return (
+    <Flex
+      component={Link}
+      to="/admin/datamodel/segments"
+      className={cx(S.segmentsLink, { [S.active]: isActive })}
+      gap="sm"
+      p="sm"
+    >
+      <Icon name="pie" className={S.segmentsIcon} />
+      {t`Segments`}
+    </Flex>
+  );
+}
 
 export function DataModelEditor({ params }: { params: RouteParams }) {
   const { databaseId, tableId, fieldId } = parseRouteParams(params);
