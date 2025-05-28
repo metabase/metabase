@@ -6,7 +6,7 @@ import {
   shouldTranslateFieldValuesOfColumn,
   translateContentString,
   translateDisplayNames,
-  translateHoveredObject,
+  translateFieldValuesInHoveredObject,
 } from "./utils";
 
 describe("content translation utils", () => {
@@ -344,14 +344,14 @@ describe("content translation utils", () => {
     });
 
     it("should return object with null data when passed null", () => {
-      const result = translateHoveredObject(null, mockTc);
+      const result = translateFieldValuesInHoveredObject(null, mockTc);
       expect(result).toEqual({ data: undefined });
       expect(mockTc).not.toHaveBeenCalled();
     });
 
     it("should return object unchanged when data is undefined", () => {
       const obj: HoveredObject = { index: 1 };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
       expect(result).toEqual({ index: 1, data: undefined });
       expect(mockTc).not.toHaveBeenCalled();
     });
@@ -370,7 +370,7 @@ describe("content translation utils", () => {
           { col: categoryCol, value: "Blue", key: "test2" },
         ],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
         { col: categoryCol, value: "translated_Red", key: "test1" },
@@ -391,7 +391,7 @@ describe("content translation utils", () => {
       const obj: HoveredObject = {
         data: [{ col: stateCol, value: "California", key: "test1" }],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
         { col: stateCol, value: "translated_California", key: "test1" },
@@ -410,7 +410,7 @@ describe("content translation utils", () => {
       const obj: HoveredObject = {
         data: [{ col: countryCol, value: "United States", key: "test1" }],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
         { col: countryCol, value: "translated_United States", key: "test1" },
@@ -429,7 +429,7 @@ describe("content translation utils", () => {
       const obj: HoveredObject = {
         data: [{ col: numberCol, value: "123", key: "test1" }],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
         { col: numberCol, value: "123", key: "test1" },
@@ -451,7 +451,7 @@ describe("content translation utils", () => {
           { col: categoryCol, value: null, key: "test2" },
         ],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
         { col: categoryCol, value: 123, key: "test1" },
@@ -464,7 +464,7 @@ describe("content translation utils", () => {
       const obj: HoveredObject = {
         data: [{ col: null, value: "test", key: "test1" }],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
         { col: null, value: "test", key: "test1" },
@@ -486,7 +486,7 @@ describe("content translation utils", () => {
         value: "some value",
         data: [{ col: categoryCol, value: "Red", key: "test1" }],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result).toEqual({
         index: 5,
@@ -519,7 +519,7 @@ describe("content translation utils", () => {
           { col: categoryCol, value: "Blue", key: "test3" },
         ],
       };
-      const result = translateHoveredObject(obj, mockTc);
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
         { col: categoryCol, value: "translated_Red", key: "test1" },

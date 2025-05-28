@@ -238,15 +238,15 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
 
-      return memoize((value, rowIndex) => {
+      return memoize((untranslatedValue, rowIndex) => {
         const clicked = getCellClickedObject(columnIndex, rowIndex);
 
-        const maybeTranslatedValue =
+        const value =
           PLUGIN_CONTENT_TRANSLATION.shouldTranslateFieldValuesOfColumn(col)
-            ? tc(value)
-            : value;
+            ? tc(untranslatedValue)
+            : untranslatedValue;
 
-        return formatValue(maybeTranslatedValue, {
+        return formatValue(value, {
           ...columnSettings,
           type: "cell",
           jsx: true,

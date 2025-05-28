@@ -6,7 +6,7 @@ import type { ContentTranslationFunction } from "metabase-lib";
 import type {
   DatasetColumn,
   DictionaryArray,
-  RawSeries,
+  Series,
 } from "metabase-types/api";
 
 /** Translate a user-generated string
@@ -76,7 +76,7 @@ export const shouldTranslateFieldValuesOfColumn = (col: DatasetColumn) =>
   col.semantic_type === "type/State" ||
   col.semantic_type === "type/Country";
 
-export const translateHoveredObject = (
+export const translateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,
   tc?: ContentTranslationFunction,
 ) => {
@@ -101,15 +101,15 @@ export const translateHoveredObject = (
   };
 };
 
-export const translateSomeFieldValues = (
-  series: RawSeries,
+export const translateFieldValuesInSeries = (
+  series: Series,
   tc: ContentTranslationFunction,
 ) => {
   return series.map((singleSeries) => {
     if (!singleSeries.data) {
       return singleSeries;
     }
-    const { rows = [], cols = [] } = singleSeries.data;
+    const { rows, cols } = singleSeries.data;
     const indexesOfColsToTranslate = cols.reduce<number[]>(
       (acc, col, index) =>
         shouldTranslateFieldValuesOfColumn(col) ? [...acc, index] : acc,
@@ -130,17 +130,17 @@ export const translateSomeFieldValues = (
   });
 };
 
-export const translateRawSeries = (
-  rawSeries: RawSeries,
+export const translateSeries = (
+  series: Series,
   tc: ContentTranslationFunction,
 ) => {
-  const withTranslatedDisplayNames = translateDisplayNames(rawSeries, tc);
+  const withTranslatedDisplayNames = translateDisplayNames(series, tc);
 
   // Do not translate field values here if display is a map, since this can
   // disrupt the map
-  if (rawSeries?.[0]?.card?.display === "map") {
+  if (series?.[0]?.card?.display === "map") {
     return withTranslatedDisplayNames;
   }
 
-  return translateSomeFieldValues(withTranslatedDisplayNames, tc);
+  return translateFieldValuesInSeries(withTranslatedDisplayNames, tc);
 };

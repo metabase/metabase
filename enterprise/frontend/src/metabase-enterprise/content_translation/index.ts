@@ -6,9 +6,9 @@ import { useTranslateContent } from "./use-translate-content";
 import {
   shouldTranslateFieldValuesOfColumn,
   translateDisplayNames,
-  translateHoveredObject,
-  translateRawSeries,
-  translateSomeFieldValues,
+  translateFieldValuesInHoveredObject,
+  translateFieldValuesInSeries,
+  translateSeries,
 } from "./utils";
 
 if (hasPremiumFeature("content_translation")) {
@@ -18,8 +18,8 @@ if (hasPremiumFeature("content_translation")) {
     translateDisplayNames,
     ContentTranslationConfiguration,
     shouldTranslateFieldValuesOfColumn,
-    translateHoveredObject,
-    translateSomeFieldValues,
-    translateRawSeries,
+    translateFieldValuesInHoveredObject,
+    translateFieldValuesInSeries,
+    translateSeries,
   });
 }

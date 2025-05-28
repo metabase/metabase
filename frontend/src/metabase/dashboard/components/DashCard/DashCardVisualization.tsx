@@ -153,7 +153,7 @@ export function DashCardVisualization({
   }, [dashcard.card, metadata]);
 
   const tc = useTranslateContent();
-  const rawSeries = PLUGIN_CONTENT_TRANSLATION.translateRawSeries(
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.translateSeries(
     untranslatedRawSeries,
     tc,
   );

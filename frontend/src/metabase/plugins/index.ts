@@ -78,6 +78,7 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  Series,
   TableId,
   Timeline,
   TimelineEvent,
@@ -760,12 +761,15 @@ export const PLUGIN_CONTENT_TRANSLATION = {
     _tc: ContentTranslationFunction,
   ) => obj,
   shouldTranslateFieldValuesOfColumn: (_col: DatasetColumn) => false,
-  translateHoveredObject: (
+  translateFieldValuesInHoveredObject: (
     obj: HoveredObject | null,
     _tc?: ContentTranslationFunction,
   ) => obj,
-  translateSomeFieldValues: (obj: any, _tc: ContentTranslationFunction) => obj,
-  translateRawSeries: <T>(obj: T, _tc: ContentTranslationFunction): T => obj,
+  translateFieldValuesInSeries: (
+    obj: Series,
+    _tc: ContentTranslationFunction,
+  ) => obj,
+  translateSeries: (obj: Series, _tc: ContentTranslationFunction) => obj,
 };
 
 export const PLUGIN_DB_ROUTING = {
