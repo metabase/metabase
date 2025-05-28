@@ -10280,17 +10280,15 @@ databaseChangeLog:
       preConditions: # change is safe to run regardless
       changes:
         - sql: >-
-            UPDATE data_permissions as update_dp SET perm_value = 'no'
-            WHERE EXISTS (
-                SELECT 1 FROM data_permissions as dp
-                WHERE dp.group_id = update_dp.group_id
-                    AND dp.db_id = update_dp.db_id
-                    AND dp.table_id = update_dp.table_id
-                    AND dp.perm_type = 'perms/view-data'
-                    AND dp.perm_value = 'blocked'
-                    AND update_dp.perm_type = 'perms/download-results'
-                    AND update_dp.perm_value <> 'no'
-            )
+            UPDATE data_permissions SET perm_value = 'no'
+            JOIN data_permissions as dp
+                ON dp.group_id = group_id
+                AND dp.db_id = db_id
+                AND dp.table_id = table_id
+                AND dp.perm_type = 'perms/view-data'
+                AND dp.perm_value = 'blocked'
+            WHERE update_dp.perm_type = 'perms/download-results'
+                AND update_dp.perm_value <> 'no'
       rollback: # not needed
 
   - changeSet:
