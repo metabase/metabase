@@ -1,7 +1,12 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import type { DictionaryArray } from "metabase-types/api";
+import type { HoveredObject } from "metabase/visualizations/types";
+import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 
-import { translateContentString, translateDisplayNames } from "./utils";
+import {
+  translateContentString,
+  translateDisplayNames,
+  translateFieldValuesInHoveredObject,
+} from "./utils";
 
 describe("content translation utils", () => {
   describe("translateContentString", () => {
@@ -256,6 +261,191 @@ describe("content translation utils", () => {
       expect(translateDisplayNames([], mockTc)).toEqual([]);
       expect(translateDisplayNames({}, mockTc)).toEqual({});
       expect(mockTc).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("translateFieldValuesInHoveredObject", () => {
+    const mockTc = jest.fn(
+      ((str: string) => `translated_${str}`) as ContentTranslationFunction,
+    );
+
+    beforeEach(() => {
+      mockTc.mockClear();
+      mockTc.mockImplementation((str: string) => `translated_${str}`);
+    });
+
+    it("should return object with null data when passed null", () => {
+      const result = translateFieldValuesInHoveredObject(null, mockTc);
+      expect(result).toEqual({ data: undefined });
+      expect(mockTc).not.toHaveBeenCalled();
+    });
+
+    it("should return object unchanged when data is undefined", () => {
+      const obj: HoveredObject = { index: 1 };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+      expect(result).toEqual({ index: 1, data: undefined });
+      expect(mockTc).not.toHaveBeenCalled();
+    });
+
+    it("should translate string values for categorical columns", () => {
+      const categoryCol: DatasetColumn = {
+        semantic_type: "type/Category",
+        source: "",
+        name: "category",
+        display_name: "Category",
+        base_type: "type/Text",
+      };
+      const obj: HoveredObject = {
+        data: [
+          { col: categoryCol, value: "Red", key: "test1" },
+          { col: categoryCol, value: "Blue", key: "test2" },
+        ],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result?.data).toEqual([
+        { col: categoryCol, value: "translated_Red", key: "test1" },
+        { col: categoryCol, value: "translated_Blue", key: "test2" },
+      ]);
+      expect(mockTc).toHaveBeenCalledWith("Red");
+      expect(mockTc).toHaveBeenCalledWith("Blue");
+    });
+
+    it("should translate string values for country columns", () => {
+      const countryCol: DatasetColumn = {
+        semantic_type: "type/Country",
+        source: "",
+        name: "country",
+        display_name: "Country",
+        base_type: "type/Text",
+      };
+      const obj: HoveredObject = {
+        data: [
+          { col: countryCol, value: "Vietnam", key: "test1" },
+          { col: countryCol, value: "Rwanda", key: "test2" },
+        ],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result?.data).toEqual([
+        { col: countryCol, value: "translated_Vietnam", key: "test1" },
+        { col: countryCol, value: "translated_Rwanda", key: "test2" },
+      ]);
+      expect(mockTc).toHaveBeenCalledWith("Vietnam");
+      expect(mockTc).toHaveBeenCalledWith("Rwanda");
+    });
+
+    it("should not translate values for non-categorical columns", () => {
+      const numberCol: DatasetColumn = {
+        semantic_type: "type/Number",
+        source: "",
+        name: "amount",
+        display_name: "Amount",
+        base_type: "type/Integer",
+      };
+      const obj: HoveredObject = {
+        data: [{ col: numberCol, value: "123", key: "test1" }],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result?.data).toEqual([
+        { col: numberCol, value: "123", key: "test1" },
+      ]);
+      expect(mockTc).not.toHaveBeenCalled();
+    });
+
+    it("should not translate non-string values", () => {
+      const categoryCol: DatasetColumn = {
+        semantic_type: "type/Category",
+        source: "",
+        name: "category",
+        display_name: "Category",
+        base_type: "type/Text",
+      };
+      const obj: HoveredObject = {
+        data: [
+          { col: categoryCol, value: 123, key: "test1" },
+          { col: categoryCol, value: null, key: "test2" },
+        ],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result?.data).toEqual([
+        { col: categoryCol, value: 123, key: "test1" },
+        { col: categoryCol, value: null, key: "test2" },
+      ]);
+      expect(mockTc).not.toHaveBeenCalled();
+    });
+
+    it("should not translate values when col is null", () => {
+      const obj: HoveredObject = {
+        data: [{ col: null, value: "test", key: "test1" }],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result?.data).toEqual([
+        { col: null, value: "test", key: "test1" },
+      ]);
+      expect(mockTc).not.toHaveBeenCalled();
+    });
+
+    it("should preserve other properties of the hovered object", () => {
+      const categoryCol: DatasetColumn = {
+        semantic_type: "type/Category",
+        source: "",
+        name: "category",
+        display_name: "Category",
+        base_type: "type/Text",
+      };
+      const obj: HoveredObject = {
+        index: 5,
+        seriesIndex: 2,
+        value: "some value",
+        data: [{ col: categoryCol, value: "Red", key: "test1" }],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result).toEqual({
+        index: 5,
+        seriesIndex: 2,
+        value: "some value",
+        data: [{ col: categoryCol, value: "translated_Red", key: "test1" }],
+      });
+      expect(mockTc).toHaveBeenCalledWith("Red");
+    });
+
+    it("should handle mixed column types in data array", () => {
+      const categoryCol: DatasetColumn = {
+        semantic_type: "type/Category",
+        source: "",
+        name: "category",
+        display_name: "Category",
+        base_type: "type/Text",
+      };
+      const numberCol: DatasetColumn = {
+        semantic_type: "type/Number",
+        source: "",
+        name: "amount",
+        display_name: "Amount",
+        base_type: "type/Integer",
+      };
+      const obj: HoveredObject = {
+        data: [
+          { col: categoryCol, value: "Red", key: "test1" },
+          { col: numberCol, value: "100", key: "test2" },
+          { col: categoryCol, value: "Blue", key: "test3" },
+        ],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result?.data).toEqual([
+        { col: categoryCol, value: "translated_Red", key: "test1" },
+        { col: numberCol, value: "100", key: "test2" },
+        { col: categoryCol, value: "translated_Blue", key: "test3" },
+      ]);
+      expect(mockTc).toHaveBeenCalledWith("Red");
+      expect(mockTc).toHaveBeenCalledWith("Blue");
+      expect(mockTc).toHaveBeenCalledTimes(2);
     });
   });
 });
