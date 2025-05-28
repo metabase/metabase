@@ -2,11 +2,14 @@
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -66,19 +69,39 @@
     (not-empty (filterv #(lib.underlying/breakout-sourced? query (:column %))
                         row))))
 
+(mu/defn- card-sourced-name-based-breakout-column? :- :boolean
+  [query  :- ::lib.schema/query
+   column :- ::lib.schema.metadata/column]
+  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
+        card-sourced? (boolean (lib.util/source-card-id query))
+        has-id? (boolean (:id column))]
+    (and breakout-sourced? card-sourced? (not has-id?))))
+
 (mu/defn- possible-model-mapped-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
   (let [breakout-sourced? (= :source/breakouts (:lib/source column))
         model-sourced? (lib.card/source-card-is-model? query)
-        has-id? (:id column)]
-    (and breakout-sourced? model-sourced? (boolean has-id?))))
+        has-id? (boolean (:id column))]
+    (and breakout-sourced? model-sourced? has-id?)))
 
 (mu/defn- day-bucketed-breakout-column? :- :boolean
   [column :- ::lib.schema.metadata/column]
   (let [breakout-sourced? (= :source/breakouts (:lib/source column))
         day-bucketed? (= (:metabase.lib.field/temporal-unit column) :day)]
     (and breakout-sourced? day-bucketed?)))
+
+(mu/defn matching-filterable-column :- [:maybe ::lib.schema.metadata/column]
+  "Return the matching column found in the stage's [[lib.filter/filterable-columns]]."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column-ref   :- ::lib.schema.ref/ref
+   column       :- ::lib.schema.metadata/column]
+  (let [columns (lib.filter/filterable-columns query stage-number)]
+    (or (lib.equality/find-matching-column query stage-number column-ref columns)
+        (and (:lib/source-uuid column)
+             (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
+                           columns)))))
 
 (mu/defn breakout->resolved-column :- ::lib.schema.metadata/column
   "Given a breakout sourced column, return the resolved metadata for the column in this stage."
@@ -111,8 +134,22 @@
      column
      (let [field-ref (cond-> (lib.ref/ref column)
                        (not preserve-type?) (update 1 dissoc :base-type :effective-type))
-           resolved-column  (lib.metadata.calculation/metadata query stage-number field-ref)
-           underlying-unit  (::lib.underlying/temporal-unit column)
-           matching-column  (some-> resolved-column
-                                    (m/assoc-some ::lib.underlying/temporal-unit underlying-unit))]
-       (or matching-column column)))))
+           resolved-column  (lib.metadata.calculation/metadata query stage-number field-ref)]
+       (or resolved-column column)))))
+
+(mu/defn breakout->filterable-column :- ::lib.schema.metadata/column
+  "Given a breakout sourced column, return the matching filterable-column in this stage."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column-ref   :- ::lib.schema.ref/ref
+   column       :- ::lib.schema.metadata/column]
+  ;; TODO: This is a hack to workaround field refs confusion that should be fixed by the field refs overhaul. Remove
+  ;; this function once the field refs overhaul lands.
+  ;;
+  ;; https://github.com/metabase/metabase/issues/53604
+  (if-not (or (card-sourced-name-based-breakout-column? query column)
+              (possible-model-mapped-breakout-column? query column)
+              (day-bucketed-breakout-column? column))
+    column
+    (let [filterable-column (matching-filterable-column query stage-number column-ref column)]
+      (or filterable-column column))))
