@@ -7,6 +7,7 @@
     (metabase.test/set-ns-log-level! 'metabase.query-processor.middleware.escape-join-aliases :trace)"
   (:require
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -201,8 +202,21 @@
                          (update :query replace-original-aliases-with-escaped-aliases*)))]
         (log/debugf "=>\n%s" (u/pprint-to-str result))
         result))
-    (do (log/debugf "Skipping escaping join aliases \n%s" (u/pprint-to-str query))
-        query)))
+    (do (log/debugf "Doing simple escaping of join aliases \n%s" (u/pprint-to-str query))
+        (walk/postwalk
+         (fn [form]
+           (if (map? form)
+             (cond
+               (and (:strategy form)
+                    (:alias form))
+               (update form :alias (partial driver/escape-alias driver/*driver*))
+
+               (:join-alias form)
+               (update form :join-alias (partial driver/escape-alias driver/*driver*))
+
+               :else form)
+             form))
+         query))))
 
 ;;; The stuff below is used by the [[metabase.query-processor.middleware.annotate]] middleware when generating results
 ;;; metadata to restore the escaped aliases back to what they were in the original query so things don't break if you

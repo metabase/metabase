@@ -421,9 +421,7 @@
              {::nfc-path nfc-path})
            (when-let [position (clause->position inner-query field-clause)]
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
-              ::position      position})
-           (when-let [join-alias (:join-alias field-clause)]
-             {:join-alias (driver/escape-alias driver/*driver* join-alias)}))))
+              ::position      position}))))
 
 (defmulti ^:private aggregation-name
   {:arglists '([mbql-clause])}
@@ -543,23 +541,13 @@
   ### `::position`
 
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
-  column index).
-
-  Also, escapes all join aliases, both in field clauses and join clauses."
+  column index)."
   [query-or-inner-query]
   (walk/postwalk
    (fn [form]
-     (if (map? form)
-       (cond (and (not (:strategy form))
-                  ((some-fn :source-query :source-table) form))
-             (vary-meta (add-alias-info* form) assoc ::transformed true)
-
-             (and (:strategy form) (:alias form))
-             (update form :alias (partial driver/escape-alias driver/*driver*))
-
-             (:join-alias form)
-             (update form :join-alias (partial driver/escape-alias driver/*driver*))
-
-             :else form)
+     (if (and (map? form)
+              ((some-fn :source-query :source-table) form)
+              (not (:strategy form)))
+       (vary-meta (add-alias-info* form) assoc ::transformed true)
        form))
    query-or-inner-query))
