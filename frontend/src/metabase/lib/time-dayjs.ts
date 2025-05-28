@@ -1,6 +1,8 @@
 import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
+import { t } from "ttag";
 
+import dayjs from "metabase/lib/dayjs";
+import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 const DAYLIGHT_SAVINGS_CHANGE_TOLERANCE: Record<string, number> = {
@@ -83,4 +85,86 @@ export function parseTimestamp(
     result = dayjs.utc(value);
   }
   return isLocal ? result.local() : result;
+}
+
+export function parseTime(value: Dayjs | string | Date): Dayjs {
+  if (dayjs.isDayjs(value)) {
+    return value;
+  } else if (typeof value === "string") {
+    return dayjs(value, [
+      "HH:mm:ss.sss[Z]",
+      "HH:mm:SS.sss",
+      "HH:mm:SS",
+      "HH:mm",
+    ]);
+  }
+
+  return dayjs.utc(value as Date);
+}
+
+export function getRelativeTime(timestamp: string) {
+  return dayjs(timestamp).fromNow();
+}
+
+export function getRelativeTimeAbbreviated(timestamp: string) {
+  return getRelativeTime(timestamp);
+}
+
+export function formatFrame(frame: "first" | "last" | "mid") {
+  switch (frame) {
+    case "first":
+      return t`first`;
+    case "last":
+      return t`last`;
+    case "mid":
+      return t`15th (Midpoint)`;
+    default:
+      return frame;
+  }
+}
+
+export function getDateStyleFromSettings() {
+  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+  return customFormattingSettings?.["type/Temporal"]?.date_style;
+}
+
+export function getTimeStyleFromSettings() {
+  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+  return customFormattingSettings?.["type/Temporal"]?.time_style;
+}
+
+const TIME_FORMAT_24_HOUR = "HH:mm";
+
+export function has24HourModeSetting() {
+  const timeStyle = getTimeStyleFromSettings();
+  return timeStyle === TIME_FORMAT_24_HOUR;
+}
+
+export function hoursToSeconds(hours: number) {
+  return hours * 60 * 60;
+}
+
+export function msToHours(ms: number) {
+  const hours = msToMinutes(ms) / 60;
+  return hours;
+}
+
+export function msToMinutes(ms: number) {
+  return msToSeconds(ms) / 60;
+}
+
+export function msToSeconds(ms: number) {
+  return ms / 1000;
+}
+
+export function isValidTimeInterval(interval: number, unit: string) {
+  if (!interval) {
+    return false;
+  }
+
+  const now = dayjs();
+  const newTime = dayjs().add(interval, unit);
+  const diff = now.diff(newTime, "years");
+
+  return !Number.isNaN(diff);
 }

@@ -1,7 +1,7 @@
 import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { has24HourModeSetting } from "metabase/lib/time";
+import { has24HourModeSetting } from "metabase/lib/time-dayjs";
 import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
 
 function intToOption(n: number) {

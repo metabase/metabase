@@ -16,7 +16,7 @@ import {
 } from "metabase/lib/formatting";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 import { connect } from "metabase/lib/redux";
-import { formatFrame } from "metabase/lib/time";
+import { formatFrame } from "metabase/lib/time-dayjs";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
