@@ -65,7 +65,7 @@
   "Is `column` a primary key of `query`?
 
   Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] and `column` is found in the source table's
-  fields, when available. "
+  fields, when available."
   [query stage-number column]
   (boolean (and (lib.types.isa/primary-key? column)
                 (find-column-in-source-table-fields query stage-number column))))
@@ -74,7 +74,7 @@
   "Is `column` a foreign key of `query`?
 
   Returns true iff `column` satisfies [[lib.types.isa/foreign-key?]] and `column` is found in the source table's
-  fields, when available. "
+  fields, when available."
   [query stage-number column]
   (boolean (and (lib.types.isa/foreign-key? column)
                 (find-column-in-source-table-fields query stage-number column))))
