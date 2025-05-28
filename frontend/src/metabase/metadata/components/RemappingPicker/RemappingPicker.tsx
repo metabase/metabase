@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -13,9 +12,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Flex, Select, type SelectProps, Stack } from "metabase/ui";
-import { getRemappings } from "metabase-lib/v1/queries/utils/field";
-import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
-import type { Database, Field, FieldId, Table } from "metabase-types/api";
+import type { Database, Field, FieldId } from "metabase-types/api";
 
 import {
   DisplayValuesPicker,
@@ -24,6 +21,11 @@ import {
 
 import { NamingTip } from "./NamingTip";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
+import {
+  getFkTargetTableEntityNameOrNull,
+  getOptions,
+  getValue,
+} from "./utils";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   database: Database;
@@ -174,65 +176,3 @@ export const RemappingPicker = ({
     </Stack>
   );
 };
-
-function getOptions(field: Field, fkTargetTable: Table | undefined) {
-  const options: RemappingValue[] = ["original"];
-
-  if (hasForeignKeyTargetFields(field, fkTargetTable)) {
-    options.push("foreign");
-  }
-
-  if (hasMappableNumeralValues(field)) {
-    options.push("custom");
-  }
-
-  return options;
-}
-
-function getValue(field: Field): RemappingValue {
-  if (_.isEmpty(field.dimensions)) {
-    return "original";
-  }
-
-  if (field.dimensions?.[0]?.type === "external") {
-    return "foreign";
-  }
-
-  if (field.dimensions?.[0]?.type === "internal") {
-    return "custom";
-  }
-
-  throw new Error(t`Unrecognized mapping type`);
-}
-
-function hasForeignKeyTargetFields(
-  field: Field,
-  fkTargetTable: Table | undefined,
-): boolean {
-  return isFK(field) && getTableFields(fkTargetTable).length > 0;
-}
-
-function getTableFields(table: Table | undefined): Field[] {
-  return table?.fields ?? [];
-}
-
-function hasMappableNumeralValues(field: Field): boolean {
-  const remapping = new Map(getRemappings(field));
-
-  // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
-  // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
-  return (
-    remapping.size > 0 &&
-    [...remapping.keys()].every(
-      (key) => typeof key === "number" || key === null,
-    )
-  );
-}
-
-function getFkTargetTableEntityNameOrNull(
-  targetTable: Table | undefined,
-): FieldId | undefined {
-  const fields = getTableFields(targetTable);
-  const nameField = fields.find((field) => isEntityName(field));
-  return nameField ? getRawTableFieldId(nameField) : undefined;
-}
