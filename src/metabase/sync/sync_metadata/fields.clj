@@ -69,6 +69,14 @@
      ;; `sync-instances`
      (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
 
+(defn- select-best-matching-name
+  "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
+   Items with matching `:schema` and `:name` are prioritized, with exact matches ranked higher than non-exact matches."
+  [target-schema target-name]
+  (fn [item]
+    [(not= (:schema item) target-schema)
+     (not= (:name item) target-name)]))
+
 (mu/defn sync-fields! :- [:map
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
@@ -79,11 +87,7 @@
           schemas?        (driver.u/supports? driver :schemas database)
           fields-metadata (if schemas?
                             (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
-                            (fetch-metadata/fields-metadata database))
-          select-best-matching-name (fn [target-schema target-name]
-                                      (fn [item]
-                                        [(not= (:schema item) target-schema)
-                                         (not= (:name item) target-name)]))]
+                            (fetch-metadata/fields-metadata database))]
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
