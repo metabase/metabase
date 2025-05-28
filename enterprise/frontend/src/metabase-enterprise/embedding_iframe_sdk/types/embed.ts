@@ -8,15 +8,20 @@ import type {
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
-export type SdkIframeEmbedTagMessage = {
-  type: "metabase.embed.iframeReady";
-};
+export type SdkIframeEmbedTagMessage =
+  | { type: "metabase.embed.iframeReady" }
+  | { type: "metabase.embed.requestRefreshToken" };
 
 /** Events that the sdk embed route listens for */
-export type SdkIframeEmbedMessage = {
-  type: "metabase.embed.setSettings";
-  data: SdkIframeEmbedSettings;
-};
+export type SdkIframeEmbedMessage =
+  | {
+      type: "metabase.embed.setSettings";
+      data: SdkIframeEmbedSettings;
+    }
+  | {
+      type: "metabase.embed.submitRequestToken";
+      data: { refreshToken: string };
+    };
 
 // --- Embed Option Interfaces ---
 
