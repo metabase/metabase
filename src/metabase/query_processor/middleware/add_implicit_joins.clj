@@ -86,9 +86,11 @@
                              :strategy      :left-join
                              :condition     [:= [:field
                                                  (or fk-field-name fk-field-id)
-                                                 (when fk-join-alias {:join-alias fk-join-alias})]
+                                                 (m/assoc-some {:base-type (:base-type fk-field)}
+                                                               :join-alias fk-join-alias)]
                                              [:field pk-id {:join-alias alias-for-join}]]
                              :fk-field-id   fk-field-id}
+                            :fk-field-name fk-field-name
                             :fk-join-alias fk-join-alias)
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
@@ -99,7 +101,9 @@
                            (map (fn [clause]
                                   (lib.util.match/match-one clause
                                     [:field (id :guard integer?) (opts :guard (every-pred :source-field (complement :join-alias)))]
-                                    {:fk-field-id (:source-field opts), :fk-join-alias (:source-field-join-alias opts)})))
+                                    (m/assoc-some {:fk-field-id (:source-field opts)}
+                                                  :fk-field-name (:source-field-name opts)
+                                                  :fk-join-alias (:source-field-join-alias opts)))))
                            distinct
                            not-empty)]
     (->> (fk-field-infos->join-infos k-field-infos)
