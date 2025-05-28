@@ -67,7 +67,7 @@ export const RemappingPicker = ({
   const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
   const hasFkMappingValue = isFkMapping && fkRemappingFieldId !== null;
   const { data: fkRemappingFieldData } = useGetFieldQuery(
-    hasFkMappingValue
+    isFkMapping && fkRemappingFieldId != null
       ? {
           id: fkRemappingFieldId,
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
@@ -116,7 +116,6 @@ export const RemappingPicker = ({
   };
 
   const handleFkRemappingFieldChange = (fkFieldId: FieldId) => {
-    setHasChanged(false);
     setIsChoosingInitialFkTarget(false);
 
     createFieldDimension({
@@ -161,11 +160,10 @@ export const RemappingPicker = ({
                   },
                 ]}
                 dropdownOpened={false}
+                error={!fkRemappingField} // TODO: improve with "touched"
                 onClick={(event) => event.preventDefault()}
                 value="choose-a-field"
                 w="100%"
-                // hasValue={hasFKMappingValue}
-                // hasError={!fkRemappingField}
               />
             }
           />
