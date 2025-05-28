@@ -9,14 +9,14 @@ export const translateToGerman: ContentTranslationFunction = (msgid) => {
     Gadget: "Gerät",
     Widget: "Apparat",
   };
-  return _.get(dictionary, msgid || "", msgid);
+  return _.get(dictionary, msgid as string, msgid);
 };
 
 export const translateToJapanese: ContentTranslationFunction = (msgid) => {
   const dictionary = {
     Products: "グッズ",
   };
-  return _.get(dictionary, msgid || "", msgid);
+  return _.get(dictionary, msgid as string, msgid);
 };
 
 export const portugueseDictionary: DictionaryResponse["data"] = [
