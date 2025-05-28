@@ -24,8 +24,8 @@ export const DatabasesPanel = ({
   return canSeeContent ? (
     <DatabaseEngineList onSelect={handleDatabaseSelect} />
   ) : (
-    <Stack gap="lg" align="center">
-      <Center component="img" src={illustration} w="6rem" h="6rem" />
+    <Stack gap="lg" align="center" justify="center" pt="3rem">
+      <Center component="img" src={illustration} w="3rem" />
       <Box component="header" ta="center">
         <Title order={2} size="h4" mb="xs">{t`Add a database`}</Title>
         <Text
