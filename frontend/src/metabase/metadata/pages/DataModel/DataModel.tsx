@@ -22,8 +22,6 @@ import {
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
-const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
-
 export const DataModel = ({
   params,
   location,
@@ -35,7 +33,7 @@ export const DataModel = ({
 }) => {
   const { databaseId, tableId, schemaId } = parseRouteParams(params);
   return (
-    <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`} bg="bg-light">
+    <Flex h="100%" bg="bg-light">
       <Stack
         className={S.sidebar}
         flex="0 0 25%"
@@ -54,7 +52,7 @@ export const DataModel = ({
         </Box>
       </Stack>
 
-      {children ?? <DataModelEditor params={params} />}
+      {children}
     </Flex>
   );
 };
