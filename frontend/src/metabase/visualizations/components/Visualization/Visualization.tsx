@@ -632,10 +632,11 @@ class Visualization extends PureComponent<
     // these may be overridden below
     const { series, hovered: untranslatedHoveredObject, clicked } = this.state;
 
-    let hovered = PLUGIN_CONTENT_TRANSLATION.translateHoveredObject(
-      untranslatedHoveredObject,
-      tc,
-    );
+    let hovered =
+      PLUGIN_CONTENT_TRANSLATION.translateFieldValuesInHoveredObject(
+        untranslatedHoveredObject,
+        tc,
+      );
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);

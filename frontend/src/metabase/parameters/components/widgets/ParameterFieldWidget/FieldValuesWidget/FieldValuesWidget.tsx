@@ -32,9 +32,9 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import { Loader } from "metabase/ui";
 import {
   type ComboboxItem,
+  Loader,
   MultiAutocomplete,
   MultiAutocompleteOption,
   MultiAutocompleteValue,

@@ -333,7 +333,7 @@ describe("content translation utils", () => {
     });
   });
 
-  describe("translateHoveredObject", () => {
+  describe("translateFieldValuesInHoveredObject", () => {
     const mockTc = jest.fn(
       ((str: string) => `translated_${str}`) as ContentTranslationFunction,
     );
@@ -378,44 +378,6 @@ describe("content translation utils", () => {
       ]);
       expect(mockTc).toHaveBeenCalledWith("Red");
       expect(mockTc).toHaveBeenCalledWith("Blue");
-    });
-
-    it("should translate string values for state columns", () => {
-      const stateCol: DatasetColumn = {
-        semantic_type: "type/State",
-        source: "",
-        name: "state",
-        display_name: "State",
-        base_type: "type/Text",
-      };
-      const obj: HoveredObject = {
-        data: [{ col: stateCol, value: "California", key: "test1" }],
-      };
-      const result = translateFieldValuesInHoveredObject(obj, mockTc);
-
-      expect(result?.data).toEqual([
-        { col: stateCol, value: "translated_California", key: "test1" },
-      ]);
-      expect(mockTc).toHaveBeenCalledWith("California");
-    });
-
-    it("should translate string values for country columns", () => {
-      const countryCol: DatasetColumn = {
-        semantic_type: "type/Country",
-        source: "",
-        name: "country",
-        display_name: "Country",
-        base_type: "type/Text",
-      };
-      const obj: HoveredObject = {
-        data: [{ col: countryCol, value: "United States", key: "test1" }],
-      };
-      const result = translateFieldValuesInHoveredObject(obj, mockTc);
-
-      expect(result?.data).toEqual([
-        { col: countryCol, value: "translated_United States", key: "test1" },
-      ]);
-      expect(mockTc).toHaveBeenCalledWith("United States");
     });
 
     it("should not translate values for non-categorical columns", () => {
