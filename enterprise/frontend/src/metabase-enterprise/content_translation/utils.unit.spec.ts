@@ -3,7 +3,6 @@ import type { HoveredObject } from "metabase/visualizations/types";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 
 import {
-  shouldTranslateFieldValuesOfColumn,
   translateContentString,
   translateDisplayNames,
   translateFieldValuesInHoveredObject,
@@ -265,52 +264,6 @@ describe("content translation utils", () => {
     });
   });
 
-  describe("shouldTranslateFieldValuesOfColumn", () => {
-    it("should return true for Category semantic type", () => {
-      const col: DatasetColumn = {
-        semantic_type: "type/Category",
-        source: "",
-        name: "test",
-        display_name: "Test",
-        base_type: "type/Text",
-      };
-      expect(shouldTranslateFieldValuesOfColumn(col)).toBe(true);
-    });
-
-    it("should return false for other semantic types", () => {
-      const col: DatasetColumn = {
-        semantic_type: "type/Number",
-        source: "",
-        name: "test",
-        display_name: "Test",
-        base_type: "type/Integer",
-      };
-      expect(shouldTranslateFieldValuesOfColumn(col)).toBe(false);
-    });
-
-    it("should return false for null semantic type", () => {
-      const col: DatasetColumn = {
-        semantic_type: null,
-        source: "",
-        name: "test",
-        display_name: "Test",
-        base_type: "type/Text",
-      };
-      expect(shouldTranslateFieldValuesOfColumn(col)).toBe(false);
-    });
-
-    it("should return false for undefined semantic type", () => {
-      const col: DatasetColumn = {
-        semantic_type: undefined,
-        source: "",
-        name: "test",
-        display_name: "Test",
-        base_type: "type/Text",
-      };
-      expect(shouldTranslateFieldValuesOfColumn(col)).toBe(false);
-    });
-  });
-
   describe("translateFieldValuesInHoveredObject", () => {
     const mockTc = jest.fn(
       ((str: string) => `translated_${str}`) as ContentTranslationFunction,
@@ -356,6 +309,30 @@ describe("content translation utils", () => {
       ]);
       expect(mockTc).toHaveBeenCalledWith("Red");
       expect(mockTc).toHaveBeenCalledWith("Blue");
+    });
+
+    it("should translate string values for country columns", () => {
+      const countryCol: DatasetColumn = {
+        semantic_type: "type/Country",
+        source: "",
+        name: "country",
+        display_name: "Country",
+        base_type: "type/Text",
+      };
+      const obj: HoveredObject = {
+        data: [
+          { col: countryCol, value: "Vietnam", key: "test1" },
+          { col: countryCol, value: "Rwanda", key: "test2" },
+        ],
+      };
+      const result = translateFieldValuesInHoveredObject(obj, mockTc);
+
+      expect(result?.data).toEqual([
+        { col: countryCol, value: "translated_Vietnam", key: "test1" },
+        { col: countryCol, value: "translated_Rwanda", key: "test2" },
+      ]);
+      expect(mockTc).toHaveBeenCalledWith("Vietnam");
+      expect(mockTc).toHaveBeenCalledWith("Rwanda");
     });
 
     it("should not translate values for non-categorical columns", () => {
