@@ -76,6 +76,7 @@
   ;; this will error if bad
   (unsign-and-translate-ids token)
   (if locale
+    ;; todo: use a defenterprise instead of this direct select
     (t2/select :model/ContentTranslation :locale locale)
     api/generic-204-no-content)
   )
