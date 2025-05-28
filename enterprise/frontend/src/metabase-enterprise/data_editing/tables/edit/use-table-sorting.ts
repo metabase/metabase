@@ -1,24 +1,27 @@
 import { useCallback } from "react";
 
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type { DatasetColumn } from "metabase-types/api";
+import type FieldV1 from "metabase-lib/v1/metadata/Field";
+import type { DatasetColumn, Field } from "metabase-types/api";
 
-export const useTableSorting = ({ question }: { question: Question }) => {
+export const useTableSorting = ({
+  question,
+  handleQuestionChange,
+}: {
+  question: Question | undefined;
+  handleQuestionChange?: (newQuestion: Question) => void;
+}) => {
   const getColumnSortDirection = useCallback(
-    (columnOrField: DatasetColumn | Field) => {
+    (columnOrField: DatasetColumn | Field | FieldV1) => {
       if (!question || !columnOrField) {
         return;
       }
 
-      const query = question.query();
-      const stageIndex = -1;
-      const column = Lib.findMatchingColumn(
-        query,
-        stageIndex,
-        Lib.fromLegacyColumn(query, stageIndex, columnOrField),
-        Lib.orderableColumns(query, stageIndex),
+      const { query, stageIndex, column } = getQueryColumn(
+        question,
+        columnOrField,
       );
 
       if (column != null) {
@@ -34,5 +37,55 @@ export const useTableSorting = ({ question }: { question: Question }) => {
     [question],
   );
 
-  return { getColumnSortDirection };
+  const handleChangeColumnSort = useCallback(
+    (field: Field) => {
+      if (!question) {
+        return;
+      }
+
+      const { query, stageIndex, column } = getQueryColumn(question, field);
+
+      if (column) {
+        const sortDirection = getColumnSortDirection(field);
+
+        let newQuery: Query;
+        if (sortDirection === "asc" || sortDirection === "desc") {
+          const clauses = Lib.orderBys(query, stageIndex);
+          newQuery = Lib.changeDirection(query, clauses[0]);
+        } else {
+          newQuery = Lib.orderBy(
+            Lib.removeOrderBys(query, stageIndex),
+            stageIndex,
+            column,
+          );
+        }
+
+        const newQuestion = question.setQuery(newQuery);
+        handleQuestionChange?.(newQuestion);
+      }
+    },
+    [question, getColumnSortDirection, handleQuestionChange],
+  );
+
+  return { getColumnSortDirection, handleChangeColumnSort };
+};
+
+const getQueryColumn = (
+  question: Question,
+  columnOrField: DatasetColumn | Field | FieldV1,
+) => {
+  const query = question.query();
+  const stageIndex = -1;
+  const column = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    Lib.fromLegacyColumn(query, stageIndex, columnOrField),
+    Lib.orderableColumns(query, stageIndex),
+  );
+
+  return {
+    query,
+    stageIndex,
+    column,
+  };
 };
