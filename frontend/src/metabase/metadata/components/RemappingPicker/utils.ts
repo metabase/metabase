@@ -4,7 +4,7 @@ import _ from "underscore";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId, Table } from "metabase-types/api";
+import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import type { RemappingValue } from "../DisplayValuesPicker";
@@ -17,14 +17,18 @@ export function getFkTargetTableEntityNameOrNull(
   return nameField ? getRawTableFieldId(nameField) : undefined;
 }
 
-export function getOptions(field: Field, fkTargetTable: Table | undefined) {
+export function getOptions(
+  field: Field,
+  fieldValues: FieldValue[] | undefined,
+  fkTargetTable: Table | undefined,
+) {
   const options: RemappingValue[] = ["original"];
 
   if (hasForeignKeyTargetFields(field, fkTargetTable)) {
     options.push("foreign");
   }
 
-  if (hasMappableNumeralValues(field)) {
+  if (hasMappableNumeralValues(fieldValues)) {
     options.push("custom");
   }
 
@@ -58,8 +62,15 @@ function getTableFields(table: Table | undefined): Field[] {
   return table?.fields ?? [];
 }
 
-function hasMappableNumeralValues(field: Field): boolean {
-  const remapping = new Map(getRemappings(field));
+function hasMappableNumeralValues(
+  fieldValues: FieldValue[] | undefined,
+): boolean {
+  const remapping = new Map(
+    getRemappings({
+      remappings: [], // TODO: field.remappings?
+      values: fieldValues,
+    }),
+  );
 
   // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
   // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)

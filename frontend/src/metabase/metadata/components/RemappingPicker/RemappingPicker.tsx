@@ -6,6 +6,7 @@ import {
   useCreateFieldDimensionMutation,
   useDeleteFieldDimensionMutation,
   useGetFieldQuery,
+  useGetFieldValuesQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -19,6 +20,7 @@ import {
   type RemappingValue,
 } from "../DisplayValuesPicker";
 
+import { CustomMappingModal } from "./CustomMappingModal";
 import { NamingTip } from "./NamingTip";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 import {
@@ -60,11 +62,12 @@ export const RemappingPicker = ({
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
   );
+  const { data: fieldValues } = useGetFieldValuesQuery(id);
 
   const value = useMemo(() => getValue(field), [field]);
   const options = useMemo(() => {
-    return getOptions(field, fkTargetTable);
-  }, [field, fkTargetTable]);
+    return getOptions(field, fieldValues?.values, fkTargetTable);
+  }, [field, fieldValues, fkTargetTable]);
 
   const isFkMapping = value === "foreign" || isChoosingInitialFkTarget;
   const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
@@ -149,7 +152,7 @@ export const RemappingPicker = ({
            * FieldDataSelector won't work correctly when databases are present
            * but fkTargetTable is not. It would go to "schema" step of DataSelector
            * which does not exist in FieldDataSelector, hence this conditional render.
-           **/}
+           */}
           {fkTargetTable && (
             <FieldDataSelector
               databases={[database]}
@@ -194,9 +197,8 @@ export const RemappingPicker = ({
 
           {!isFieldsAccessRestricted && (
             <>
-              {hasChanged && <NamingTip />}
-
-              <span>valueremappings</span>
+              {hasChanged && <NamingTip mt="md" />}
+              <CustomMappingModal />
             </>
           )}
         </>
