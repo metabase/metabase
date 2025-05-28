@@ -165,7 +165,8 @@
 (defn- replace-alias! [form key alias-store]
   (let [old-alias (key form)
         new-alias (driver/escape-alias driver/*driver* old-alias)]
-    (swap! alias-store assoc new-alias old-alias)
+    (when (not= old-alias new-alias)
+      (swap! alias-store assoc new-alias old-alias))
     (assoc form key new-alias)))
 
 (defn- simple-escape-aliases [query]
