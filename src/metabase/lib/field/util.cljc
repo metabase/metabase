@@ -6,7 +6,7 @@
 
 (mu/defn inherited-column? :- :boolean
   [column :- ::lib.schema.metadata/column]
-  (#{:source/card :source/native :source/previous-stage} (:lib/source column)))
+  (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
 (mu/defn fk-field-name :- [:maybe :string]
   [fk-column :- ::lib.schema.metadata/column]
