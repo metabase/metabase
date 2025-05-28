@@ -56,10 +56,11 @@ export const DatabaseEngineList = ({
             leftSection={<Icon name="search" />}
             value={search}
             onChange={(event) => {
-              setSearch(event.currentTarget.value);
+              const searchTerm = event.currentTarget.value;
+              setSearch(searchTerm);
+              setIsExpanded(searchTerm.length > 0);
               combobox.updateSelectedOptionIndex();
             }}
-            disabled={!isExpanded}
           />
         </Combobox.EventsTarget>
 
