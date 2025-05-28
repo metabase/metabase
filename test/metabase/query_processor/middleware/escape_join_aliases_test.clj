@@ -496,6 +496,7 @@
   (testing "Should ensure all join aliases are unique, ignoring case"
     ;; some Databases treat table/subquery aliases as case-insensitive and thus `Cat` and `cat` would be considered the
     ;; same thing. That's EVIL! Make sure we deduplicate.
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (driver/with-driver :mongo
       (is (= {:database 1
               :type     :query
@@ -526,6 +527,7 @@
 
 (deftest ^:parallel deduplicate-alias-names-test-2
   (testing "no need to include alias info if they have not changed"
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (driver/with-driver :mongo
       (let [query {:database 1
                    :type     :query
@@ -612,6 +614,7 @@
                                                  [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]
                   :order-by     [[:asc [:field 6 {:join-alias "Products", :temporal-unit :month}]]]}
           :info  {:alias/escaped->original {"Products_2" "Products"}}}
+         #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
          (driver/with-driver :mongo
            (escape-join-aliases
             {:query {:source-query {:source-table 1
@@ -662,6 +665,7 @@
                                                      [:field 6 {:join-alias "Products", :temporal-unit :month}]
                                                      [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
               :info  {:alias/escaped->original {"Products_2" "Products"}}}
+             #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
              (driver/with-driver :mongo
                (escape-join-aliases
                 {:query {:source-query {:source-table 1
@@ -695,6 +699,7 @@
                                                                      [:field 4 nil]
                                                                      [:field 5 {:join-alias "Products_2"}]]}]}]}
               :info  {:alias/escaped->original {"Products_2" "Products"}}}
+             #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
              (driver/with-driver :mongo
                (escape-join-aliases
                 {:query {:source-query {:source-table 1
