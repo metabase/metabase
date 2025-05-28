@@ -199,6 +199,11 @@ class MetabaseEmbed {
   }
 
   private async _authenticate() {
+    // If we are using an API key, we don't need to authenticate via SSO.
+    if (this._settings.apiKey) {
+      return;
+    }
+
     const refreshToken = await this._getRefreshToken();
     validateSessionToken(refreshToken);
 
