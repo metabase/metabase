@@ -7,7 +7,6 @@
    [metabase.config :as config]
    [metabase.permissions.api :as api.permissions]
    [metabase.permissions.api-test-util :as perm-test-util]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -323,7 +322,7 @@
                      :model/Database         {db-id :id}  {}
                      :model/Table            {table-id :id} {:db_id db-id, :schema "PUBLIC"}]
         (mt/with-no-data-perms-for-all-users!
-          (perms/add-user-to-group! (mt/user->id :rasta) group)
+          (t2/insert! :model/PermissionsGroupMembership {:user_id (mt/user->id :rasta) :group_id (u/the-id group)})
           ;; First set both permissions to unrestricted/full
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
