@@ -27,7 +27,7 @@
 
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (let [db         (t2/select-one :model/Database (mt/id))
             driver     :h2
             table-name (str "temp_table_" (u/lower-case-en (random-uuid)))]

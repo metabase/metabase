@@ -124,7 +124,7 @@
   run-mbql-query
   with-db
   with-temp-copy-of-db
-  with-empty-h2-app-db]
+  with-empty-h2-app-db!]
 
  [data.impl
   *db-is-temp-copy?*]
