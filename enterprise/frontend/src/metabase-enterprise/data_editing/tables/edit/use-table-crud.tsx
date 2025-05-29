@@ -18,9 +18,11 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  RowCellsWithPkValue,
   RowPkValue,
   TableEditingScope,
   UpdateCellValueHandlerParams,
+  UpdatedRowBulkHandlerParams,
   UpdatedRowHandlerParams,
 } from "../types";
 
@@ -145,8 +147,8 @@ export const useTableCRUD = ({
     ],
   );
 
-  const handleRowUpdate = useCallback(
-    async ({ updatedData, rowIndex }: UpdatedRowHandlerParams) => {
+  const handleRowUpdateBulk = useCallback(
+    async ({ updatedData, rowIndices }: UpdatedRowBulkHandlerParams) => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -154,14 +156,19 @@ export const useTableCRUD = ({
         return false;
       }
 
-      const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
-      const updatedRowWithPk = {
-        ...updatedData,
-        ...pkRecord,
-      };
+      const updatedRows: RowCellsWithPkValue[] = [];
+
+      for (const rowIndex of rowIndices) {
+        const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
+
+        updatedRows.push({
+          ...updatedData,
+          ...pkRecord,
+        });
+      }
 
       const response = await updateTableRows({
-        rows: [updatedRowWithPk],
+        rows: updatedRows,
         scope,
       });
 
@@ -188,6 +195,13 @@ export const useTableCRUD = ({
       dispatch,
       handleGenericUpdateError,
     ],
+  );
+
+  const handleRowUpdate = useCallback(
+    async ({ updatedData, rowIndex }: UpdatedRowHandlerParams) => {
+      return handleRowUpdateBulk({ updatedData, rowIndices: [rowIndex] });
+    },
+    [handleRowUpdateBulk],
   );
 
   const handleRowCreate = useCallback(
@@ -288,6 +302,7 @@ export const useTableCRUD = ({
     handleCellValueUpdate,
     handleRowCreate,
     handleRowUpdate,
+    handleRowUpdateBulk,
     handleRowDelete,
     handleRowDeleteBulk,
   };
