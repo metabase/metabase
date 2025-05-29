@@ -21,10 +21,10 @@ export function CANNOT_CONNECT_TO_INSTANCE({
   );
 }
 
-export function INVALID_PREFERRED_AUTH_METHOD({ method }: { method: string }) {
+export function INVALID_AUTH_METHOD({ method }: { method: string }) {
   return new MetabaseError(
-    "INVALID_PREFERRED_AUTH_METHOD",
-    `Invalid preferred authentication method: '${method}'. Allowed values are 'saml' or 'jwt'.`,
+    "INVALID_AUTH_METHOD",
+    `Invalid auth method: '${method}'. Allowed values are 'saml' or 'jwt'.`,
     { method },
   );
 }

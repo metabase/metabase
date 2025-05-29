@@ -37,7 +37,7 @@ describe("Auth Flow - JWT", () => {
   it("should initialize the auth flow only once, not on rerenders", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      preferredAuthMethod: "jwt",
+      authMethod: "jwt",
     });
     const { rerender } = setup({ authConfig });
     await waitForLoaderToBeRemoved();
@@ -62,7 +62,7 @@ describe("Auth Flow - JWT", () => {
     setupMockSamlEndpoints();
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      preferredAuthMethod: "jwt",
+      authMethod: "jwt",
     });
     setup({ authConfig });
     await waitForLoaderToBeRemoved();

@@ -13,16 +13,16 @@ type BaseMetabaseAuthConfig = {
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
   /**
-   * Preferred authentication method.
+   * Which authentication method to use.
    * This should be provided when the instance has more than one configured authentication method.
    */
-  preferredAuthMethod?: MetabasePreferredAuthMethod;
+  authMethod?: MetabaseAuthMethod;
 };
 
 /**
  * @category MetabaseProvider
  **/
-export type MetabasePreferredAuthMethod = "saml" | "jwt";
+export type MetabaseAuthMethod = "saml" | "jwt";
 
 /**
  * @category MetabaseProvider

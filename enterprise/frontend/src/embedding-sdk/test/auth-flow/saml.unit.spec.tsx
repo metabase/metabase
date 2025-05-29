@@ -36,7 +36,7 @@ describe("Auth Flow - SAML", () => {
   it("should initialize the auth flow only once, not on rerenders", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      preferredAuthMethod: "saml",
+      authMethod: "saml",
     });
     const { rerender, popup } = setup({ authConfig });
     await waitForLoaderToBeRemoved();
@@ -62,7 +62,7 @@ describe("Auth Flow - SAML", () => {
     setupMockJwtEndpoints();
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      preferredAuthMethod: "saml",
+      authMethod: "saml",
     });
 
     // Should fallback to error from backend

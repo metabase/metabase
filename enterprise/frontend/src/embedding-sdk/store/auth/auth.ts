@@ -9,7 +9,7 @@ import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
-import type { MetabasePreferredAuthMethod } from "embedding-sdk/types";
+import type { MetabaseAuthMethod } from "embedding-sdk/types";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -25,24 +25,29 @@ import { samlTokenStorage } from "./saml-token-storage";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
-  async (authConfig: MetabaseAuthConfig, { dispatch }) => {
+  async (
+    { metabaseInstanceUrl, authMethod: authMethod, apiKey }: MetabaseAuthConfig,
+    { dispatch },
+  ) => {
     // remove any stale tokens that might be there from a previous session=
     samlTokenStorage.remove();
 
     // Setup JWT or API key
     const isValidInstanceUrl =
-      authConfig.metabaseInstanceUrl &&
-      authConfig.metabaseInstanceUrl?.length > 0;
-    const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
+      metabaseInstanceUrl && metabaseInstanceUrl?.length > 0;
+    const isValidApiKeyConfig = apiKey && getIsLocalhost();
 
     if (isValidApiKeyConfig) {
       // API key setup
-      api.apiKey = authConfig.apiKey;
+      api.apiKey = apiKey;
     } else if (isValidInstanceUrl) {
       // SSO setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(authConfig.metabaseInstanceUrl),
+          getOrRefreshSession({
+            metabaseInstanceUrl,
+            authMethod: authMethod,
+          }),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
@@ -51,7 +56,10 @@ export const initAuth = createAsyncThunk(
       try {
         // verify that the session is actually valid before proceeding
         await dispatch(
-          getOrRefreshSession(authConfig.metabaseInstanceUrl),
+          getOrRefreshSession({
+            metabaseInstanceUrl,
+            authMethod: authMethod,
+          }),
         ).unwrap();
       } catch (e) {
         // TODO: Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
@@ -97,13 +105,19 @@ export const initAuth = createAsyncThunk(
 export const refreshTokenAsync = createAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
   async (
-    url: MetabaseAuthConfig["metabaseInstanceUrl"],
+    {
+      metabaseInstanceUrl,
+      authMethod: authMethod,
+    }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "authMethod">,
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const customGetRefreshToken =
-      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
-    // No access to preferredAuthMethod here, so default to 'jwt'
-    const session = await getRefreshToken(url, customGetRefreshToken, "jwt");
+      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? undefined;
+    const session = await getRefreshToken({
+      metabaseInstanceUrl,
+      authMethod: authMethod,
+      fetchRequestToken: customGetRefreshToken,
+    });
 
     if (!session || typeof session !== "object") {
       throw MetabaseError.INVALID_SESSION_OBJECT({
@@ -135,16 +149,17 @@ export const refreshTokenAsync = createAsyncThunk(
   },
 );
 
-const getRefreshToken = async (
-  url: MetabaseAuthConfig["metabaseInstanceUrl"],
-  customFetchRequestToken:
-    | MetabaseAuthConfig["fetchRequestToken"]
-    | null = null,
-  preferredAuthMethod?: MetabasePreferredAuthMethod,
-) => {
+const getRefreshToken = async ({
+  metabaseInstanceUrl,
+  authMethod: authMethod,
+  fetchRequestToken: customGetRequestToken,
+}: Pick<
+  MetabaseAuthConfig,
+  "metabaseInstanceUrl" | "fetchRequestToken" | "authMethod"
+>) => {
   const urlResponseJson = await connectToInstanceAuthSso(
-    url,
-    preferredAuthMethod,
+    metabaseInstanceUrl,
+    authMethod,
   );
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
@@ -153,9 +168,9 @@ const getRefreshToken = async (
   if (method === "jwt") {
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
-      url,
+      metabaseInstanceUrl,
       hash,
-      customFetchRequestToken,
+      customGetRequestToken,
     );
   }
   throw new Error(
@@ -172,21 +187,17 @@ const sessionSchema = Yup.object({
 
 async function connectToInstanceAuthSso(
   url: string,
-  preferredAuthMethod?: MetabasePreferredAuthMethod,
+  authMethod?: MetabaseAuthMethod,
 ) {
-  if (
-    preferredAuthMethod &&
-    preferredAuthMethod !== "jwt" &&
-    preferredAuthMethod !== "saml"
-  ) {
-    throw MetabaseError.INVALID_PREFERRED_AUTH_METHOD({
-      method: preferredAuthMethod,
+  if (authMethod && authMethod !== "jwt" && authMethod !== "saml") {
+    throw MetabaseError.INVALID_AUTH_METHOD({
+      method: authMethod,
     });
   }
 
   let ssoUrl = `${url}/auth/sso`;
-  if (preferredAuthMethod) {
-    ssoUrl += `?${preferredAuthMethod}=true`;
+  if (authMethod) {
+    ssoUrl += `?${authMethod}=true`;
   }
 
   try {

@@ -63,27 +63,27 @@ describe.each(["jwt", "saml"] as const)(
       );
     });
 
-    it("raises an error for invalid preferredAuthMethod", async () => {
+    it("raises an error for invalid authMethod", async () => {
       expect(() =>
         setupCommon(method, {
-          preferredAuthMethod: "invalid" as any,
+          authMethod: "invalid" as any,
         }),
       ).toThrow(/Invalid authentication method/);
     });
   },
 );
 
-describe("useInitData - preferred authentication method", () => {
+describe("useInitData - specifying authentication methods", () => {
   it("should handle when both auths are available", async () => {
     setupMockJwtEndpoints();
     setupMockSamlEndpoints();
-    setup({ preferredAuthMethod: "jwt" });
+    setup({ authMethod: "jwt" });
     expect(await screen.findByTestId("test-component")).toBeInTheDocument();
   });
 
   it("should handle when no auths are available", async () => {
     fetchMock.get("/auth/sso", 404);
-    setup({ preferredAuthMethod: "jwt" });
+    setup({ authMethod: "jwt" });
     expect(await screen.findByTestId("test-component")).toHaveAttribute(
       "data-login-status",
       "error",
