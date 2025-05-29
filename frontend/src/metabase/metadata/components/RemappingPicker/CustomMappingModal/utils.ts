@@ -1,7 +1,9 @@
 import type { Mapping } from "./types";
 
 export function areMappingsEqual(a: Mapping, b: Mapping): boolean {
-  return a.size === b.size && [...a].every(([k, v]) => b.get(k) === v);
+  return (
+    a.size === b.size && [...a].every(([key, value]) => b.get(key) === value)
+  );
 }
 
 export function fillMissingMappings(mappings: Mapping): Mapping {
