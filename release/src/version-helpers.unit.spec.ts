@@ -779,7 +779,7 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("filterAllowedPrereleaseIdentifiers", () => {
+  describe("filterOutNonSupportedPrereleaseIdentifiers", () => {
     function createTags(tags: string[]): string[] {
       return tags.map((tag) => `refs/tags/embedding-sdk-${tag}`);
     }
