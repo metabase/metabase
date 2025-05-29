@@ -780,28 +780,14 @@ describe("version-helpers", () => {
   });
 
   describe("filterOutNonSupportedPrereleaseIdentifiers", () => {
-    function createTags(tags: string[]): string[] {
-      return tags.map((tag) => `refs/tags/embedding-sdk-${tag}`);
+    function createTags(versions: string[]): Tag[] {
+      return versions.map(
+        (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
+      );
     }
 
     it("should ignore prerelease labels that are not `nightly` when passing refs", () => {
-      const filteredTags = filterOutNonSupportedPrereleaseIdentifiers(
-        createTags([
-          "0.55.0",
-          "0.55.0-nightly",
-          "0.55.0-rc1",
-          "0.55.0-rc2",
-          "0.55.0-beta",
-          "0.55.0-alpha",
-          "0.55.5-metabot",
-        ]),
-      );
-
-      expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
-    });
-
-    it("should ignore prerelease labels that are not `nightly` when passing versions", () => {
-      const filteredTags = filterOutNonSupportedPrereleaseIdentifiers([
+      const filteredTags = createTags([
         "0.55.0",
         "0.55.0-nightly",
         "0.55.0-rc1",
@@ -809,9 +795,9 @@ describe("version-helpers", () => {
         "0.55.0-beta",
         "0.55.0-alpha",
         "0.55.5-metabot",
-      ]);
+      ]).filter(filterOutNonSupportedPrereleaseIdentifiers);
 
-      expect(filteredTags).toEqual(["0.55.0", "0.55.0-nightly"]);
+      expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
     });
   });
 });

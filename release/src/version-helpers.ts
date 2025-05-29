@@ -1,4 +1,3 @@
-import _ from "underscore";
 import type { GithubProps, Tag } from "./types";
 
 // https://regexr.com/7l1ip
@@ -214,40 +213,27 @@ export async function getLastEmbeddingSdkReleaseTag({
     ref: `tags/embedding-sdk-0.${majorVersion}`,
   });
 
-  const versions = _.compose(
-    filterOutNonSupportedPrereleaseIdentifiers,
-    getVersionsFromTags,
-  )(tags);
-
   const lastRelease = getLastReleaseFromTags({
-    tags: versions,
+    tags: tags.filter(filterOutNonSupportedPrereleaseIdentifiers),
   });
 
   return lastRelease;
 }
 
 /**
- * This function takes a list of GitHub tag objects and return a list of semver version strings
- */
-function getVersionsFromTags(tags: Tag[]) {
-  return tags.map((tag) => tag.ref.replace("refs/tags/embedding-sdk-", ""));
-}
-
-/**
  *
- * @param versions a list of semver version for example ["0.55.1-nightly", "0.55.3", "0.55.5-metabot"]
+ * @param tag a GitHub tag objects
  */
-export function filterOutNonSupportedPrereleaseIdentifiers(versions: string[]) {
-  return versions.filter((version) => {
-    const versionContainsOnlyNumbers = /\d+\.\d+\.\d+$/.exec(version);
+export function filterOutNonSupportedPrereleaseIdentifiers(tag: Tag) {
+  const prereleaseIdentifier = /\d+\.\d+\.\d+-(?<prerelease>\w+)$/.exec(tag.ref)
+    ?.groups?.prerelease;
 
-    return (
-      versionContainsOnlyNumbers ||
-      ALLOWED_SDK_PRERELEASE_IDENTIFIERS.some((allowedPrereleaseIdentifier) =>
-        version.endsWith(`-${allowedPrereleaseIdentifier}`),
-      )
-    );
-  });
+  console.log("prereleaseIdentifier", prereleaseIdentifier, tag.ref);
+
+  return (
+    !prereleaseIdentifier ||
+    ALLOWED_SDK_PRERELEASE_IDENTIFIERS.includes(prereleaseIdentifier)
+  );
 }
 
 export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
