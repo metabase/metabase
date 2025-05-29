@@ -41,9 +41,9 @@ export const CustomMappingModal = ({
               <td>
                 <Text fw="bold">{t`Original value`}</Text>
               </td>
-              <td>
+              <Box component="td" w="30%">
                 <Text fw="bold">{t`Mapped value`}</Text>
-              </td>
+              </Box>
             </tr>
           </thead>
 
@@ -51,7 +51,7 @@ export const CustomMappingModal = ({
             {[...remapping].map(([original, mapped], index) => (
               <tr key={index}>
                 <td>{original}</td>
-                <Box component="td" w="30%">
+                <td>
                   <TextInput
                     value={mapped}
                     onChange={(event) => {
@@ -63,7 +63,7 @@ export const CustomMappingModal = ({
                       });
                     }}
                   />
-                </Box>
+                </td>
               </tr>
             ))}
           </tbody>
