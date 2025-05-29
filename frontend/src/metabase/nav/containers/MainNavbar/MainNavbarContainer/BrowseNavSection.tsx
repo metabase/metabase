@@ -79,7 +79,12 @@ export const BrowseNavSection = ({
         </Button>
       </Flex>
 
-      <Collapse in={opened} transitionDuration={0} role="tabpanel">
+      <Collapse
+        in={opened}
+        transitionDuration={0}
+        role="tabpanel"
+        aria-expanded={opened}
+      >
         {(!isEmbeddingIframe || entityTypes.includes("model")) && (
           <PaddedSidebarLink
             icon="model"
