@@ -14,6 +14,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
 import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
+import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
@@ -44,10 +45,13 @@ if (true || hasPremiumFeature("tenants")) {
             <IndexRedirect to="/admin/tenants/people" />
             <ModalRoute
               path="edit"
+              // @ts-expect-error - params prop can't be infered
               modal={(props) => <EditUserModal {...props} external />}
               noWrap
             />
+            {/* @ts-expect-error - params prop can't be infered */}
             <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
+            {/* @ts-expect-error - params prop can't be infered */}
             <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
           </Route>
         </Route>
@@ -67,4 +71,5 @@ if (true || hasPremiumFeature("tenants")) {
     EditUserStrategySettingsButton;
 
   PLUGIN_TENANTS.FormTenantWidget = FormTenantWidget;
+  PLUGIN_TENANTS.TenantDisplayName = TenantDisplayName;
 }

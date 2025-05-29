@@ -21,7 +21,6 @@ import type {
   GroupId,
   GroupInfo,
   Member,
-  Tenant,
   User,
   UserTenancy,
 } from "metabase-types/api";
@@ -49,7 +48,6 @@ interface PeopleListProps extends PeopleListQueryProps {
   onNextPage?: () => void;
   onPreviousPage: () => void;
   external?: boolean;
-  tenants: Tenant[];
 }
 
 export const PeopleList = ({
@@ -57,7 +55,6 @@ export const PeopleList = ({
   currentUser,
   groups,
   query,
-  tenants,
   onNextPage,
   onPreviousPage,
   external = false,
@@ -204,7 +201,6 @@ export const PeopleList = ({
                   user={user}
                   showDeactivated={showDeactivated}
                   groups={groups}
-                  tenants={tenants}
                   userMemberships={membershipsByUser[user.id]}
                   isCurrentUser={isCurrentUser(user)}
                   isAdmin={isAdmin}
