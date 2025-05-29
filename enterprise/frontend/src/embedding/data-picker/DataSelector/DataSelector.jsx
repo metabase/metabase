@@ -218,16 +218,11 @@ export class UnconnectedDataSelector extends Component {
     const {
       fetchFields,
       fetchQuestion,
-      selectedDataBucketId,
       selectedTableId: sourceId,
     } = this.props;
 
     if (!this.isSearchLoading() && !activeStep) {
       await this.hydrateActiveStep();
-    }
-
-    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
-      this.showSavedEntityPicker({ entityType: "model" });
     }
 
     if (sourceId) {
