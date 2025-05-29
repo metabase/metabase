@@ -9,7 +9,7 @@
   [column :- ::lib.schema.metadata/column]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
-(mu/defn desired-column-name :- [:maybe :string]
+(mu/defn inherited-column-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref."
   [column :- ::lib.schema.metadata/column]
   (when (inherited-column? column)

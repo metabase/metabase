@@ -111,7 +111,7 @@
               fk-column (->> (lib.util/query-stage query stage-number)
                              (lib.metadata.calculation/visible-columns query stage-number)
                              (m/find-first #(and (= (:id %) fk-field-id)
-                                                 (= (lib.field.util/desired-column-name %) fk-field-name)
+                                                 (= (lib.field.util/inherited-column-name %) fk-field-name)
                                                  (= (lib.join.util/current-join-alias %) fk-join-alias)
                                                  (:fk-target-field-id %))))]
      (let [fk-info (lib.metadata.calculation/display-info query stage-number fk-column)]
