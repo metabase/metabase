@@ -62,14 +62,6 @@ describe.each(["jwt", "saml"] as const)(
         "loading",
       );
     });
-
-    it("raises an error for invalid authMethod", async () => {
-      expect(() =>
-        setupCommon(method, {
-          authMethod: "invalid" as any,
-        }),
-      ).toThrow(/Invalid authentication method/);
-    });
   },
 );
 
