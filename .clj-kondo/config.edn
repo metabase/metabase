@@ -378,7 +378,6 @@
     metabase.util.macros                      u.macros
     metabase.util.malli                       mu
     metabase.util.malli.schema                ms
-    metabase.util.markdown                    markdown
     metabase.util.password                    u.password
     metabase.util.ui-logic                    ui-logic
     metabase.xrays.core                       xrays

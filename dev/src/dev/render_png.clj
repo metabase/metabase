@@ -14,7 +14,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util.markdown :as markdown]
+   [metabase.channel.markdown :as markdown]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
