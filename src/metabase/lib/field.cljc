@@ -35,11 +35,12 @@
 (mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
+   join-alias       :- [:maybe ::lib.schema.common/non-blank-string]
    column-metadatas :- [:sequential ::lib.schema.metadata/column]]
-  (or (some (fn [k]
-              (m/find-first #(= (get % k) column-name)
-                            column-metadatas))
-            [:lib/desired-column-alias :name])
+  (or (m/find-first (fn [column]
+                      (and (= column-name ((if join-alias :name (some-fn :lib/desired-column-alias :name)) column))
+                           (= (lib.join.util/current-join-alias column) join-alias)))
+                    column-metadatas)
       (do
         (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
                    (pr-str column-name)
@@ -55,7 +56,8 @@
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column-name  :- ::lib.schema.common/non-blank-string]
+   column-name  :- ::lib.schema.common/non-blank-string
+   join-alias   :- [:maybe ::lib.schema.common/non-blank-string]]
   (when-not *recursive-column-resolution-by-name*
     (binding [*recursive-column-resolution-by-name* true]
       (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
@@ -75,11 +77,11 @@
                                       (log/warnf "Cannot resolve column %s: stage has no metadata"
                                                  (pr-str column-name)))]
         (when-let [column (and (seq stage-columns)
-                               (resolve-column-name-in-metadata column-name stage-columns))]
+                               (resolve-column-name-in-metadata column-name join-alias stage-columns))]
           (cond-> column
             previous-stage-number (-> (dissoc :table-id
                                               ::binning ::temporal-unit)
-                                      (lib.join/with-join-alias nil)
+                                      (lib.join/with-join-alias join-alias)
                                       (assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                       (assoc :lib/source :source/previous-stage))))))))
 
@@ -122,12 +124,11 @@
                       {:was-binned (boolean was-binned)}))
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
-                  (cond
-                    (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
-                    join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
-                    :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name)})))]
+                  (if (integer? id-or-name)
+                    (or (lib.equality/resolve-field-id query stage-number id-or-name)
+                        {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
+                    (or (resolve-column-name query stage-number id-or-name join-alias)
+                        {:lib/type :metadata/column, :name (str id-or-name)})))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
