@@ -21,6 +21,7 @@ interface BreakoutColumnListItemProps {
   stageIndex: number;
   item: Lib.ColumnDisplayInfo & { column: Lib.ColumnMetadata };
   breakout?: Lib.BreakoutClause;
+  isPinned?: boolean;
   onAddBreakout: (column: Lib.ColumnMetadata) => void;
   onUpdateBreakout: (
     breakout: Lib.BreakoutClause,
@@ -54,6 +55,7 @@ export function BreakoutColumnListItem({
   stageIndex,
   item,
   breakout,
+  isPinned = false,
   onAddBreakout,
   onUpdateBreakout,
   onRemoveBreakout,
@@ -79,7 +81,7 @@ export function BreakoutColumnListItem({
     [breakout, onRemoveBreakout],
   );
 
-  const { displayName } = item;
+  const displayName = isPinned ? item.longDisplayName : item.displayName;
 
   return (
     <HoverParent

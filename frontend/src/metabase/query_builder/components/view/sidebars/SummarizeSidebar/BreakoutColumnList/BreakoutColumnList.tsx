@@ -127,6 +127,7 @@ export function BreakoutColumnList({
                 stageIndex={stageIndex}
                 item={item}
                 breakout={item.breakout}
+                isPinned
                 onAddBreakout={onAddBreakout}
                 onUpdateBreakout={onUpdateBreakout}
                 onRemoveBreakout={handleRemovePinnedBreakout}
