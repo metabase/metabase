@@ -10,6 +10,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -311,7 +312,9 @@
 
         editable-tables
         (when (seq editable-databases)
-          (t2/select :model/Table :db_id [:in (map :id editable-databases)]))
+          (t2/select :model/Table
+                     :db_id [:in (map :id editable-databases)]
+                     :active true))
 
         fields
         (when (seq editable-tables)
@@ -323,8 +326,9 @@
         table-actions
         (for [t editable-tables
               op [:table.row/create :table.row/update :table.row/delete]
-              :let [fields (fields-by-table (:id t))]]
-          (actions/table-primitive-action t fields op))
+              :let [fields (fields-by-table (:id t))
+                    action (actions/table-primitive-action t fields op)]]
+          (assoc action :table_name (:name t)))
 
         saved-actions
         (for [a (actions/select-actions nil :archived false)]

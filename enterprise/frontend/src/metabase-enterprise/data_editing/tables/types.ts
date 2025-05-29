@@ -2,6 +2,7 @@ import type {
   ConcreteTableId,
   DatasetColumn,
   RowValue,
+  TableId,
 } from "metabase-types/api";
 
 export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
@@ -14,31 +15,38 @@ export type TableEditingScope =
   | { "table-id": ConcreteTableId }
   | { "dashcard-id": number };
 
+type ExecuteOutput<Op extends "created" | "updated" | "deleted"> = {
+  op: Op;
+  row: RowCellsWithPkValue;
+  "table-id": TableId;
+};
+
 export type TableInsertRowsRequest = {
-  tableId: ConcreteTableId;
   rows: RowCellsWithPkValue[];
   scope?: TableEditingScope;
 };
 
 export type TableInsertRowsResponse = {
-  "created-rows": Record<string, RowValue>[];
+  outputs: ExecuteOutput<"created">[];
 };
 
 export type TableUpdateRowsRequest = {
-  tableId: ConcreteTableId;
   rows: RowCellsWithPkValue[];
   scope?: TableEditingScope;
 };
 
-export type TableUpdateRowsResponse = { updated: Record<string, RowValue>[] };
+export type TableUpdateRowsResponse = {
+  outputs: ExecuteOutput<"updated">[];
+};
 
 export type TableDeleteRowsRequest = {
-  tableId: ConcreteTableId;
   rows: RowCellsWithPkValue[];
   scope?: TableEditingScope;
 };
 
-export type TableDeleteRowsResponse = { success: boolean };
+export type TableDeleteRowsResponse = {
+  outputs: ExecuteOutput<"deleted">[];
+};
 
 export type UpdateCellValueHandlerParams = {
   updatedData: RowCellsWithPkValue;
@@ -54,18 +62,10 @@ export type UpdatedRowHandlerParams = {
 export type TableUndoRedoRequest = {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;
-
-  /**
-   * When true, the API will only return the batch number of the next undo operation
-   * without actually performing the undo. This is useful for checking if an undo operation
-   * is available before attempting it.
-   */
-  noOp?: boolean;
 };
 
 export type TableOperation = [string, Record<string, RowValue>];
 
 export type TableUndoRedoResponse = {
-  batch_num?: number;
-  result?: Record<ConcreteTableId, TableOperation[]>;
+  outputs?: ExecuteOutput<"created" | "updated" | "deleted">[];
 };

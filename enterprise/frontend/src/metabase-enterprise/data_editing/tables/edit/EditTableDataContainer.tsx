@@ -30,6 +30,7 @@ import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
 import { useEditingTableRowSelection } from "./use-table-row-selection";
+import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -142,9 +143,28 @@ export const EditTableDataContainer = ({
     setRowSelection,
   });
 
+  const { getColumnSortDirection, handleChangeColumnSort } = useTableSorting({
+    question: fakeTableQuestion,
+    handleQuestionChange,
+  });
+
   useMount(() => {
     dispatch(closeNavbar());
   });
+
+  // Do not trigger leave confirmation modals on modal URL change
+  const handleIsLeaveLocationAllowed = useCallback(
+    (location: Location | undefined) => {
+      if (
+        location?.pathname.startsWith(getTableEditPathname(databaseId, tableId))
+      ) {
+        return true;
+      }
+
+      return false;
+    },
+    [databaseId, tableId],
+  );
 
   if (!database || isLoading || !fakeTableQuestion) {
     // TODO: show loader
@@ -163,6 +183,7 @@ export const EditTableDataContainer = ({
       <Stack className={S.container} gap={0} data-testid="edit-table-data-root">
         {table && (
           <EditTableDataHeader
+            database={database}
             table={table}
             question={fakeTableQuestion}
             isLoading={isFetching}
@@ -188,10 +209,12 @@ export const EditTableDataContainer = ({
                 data={datasetData}
                 fieldMetadataMap={tableFieldMetadataMap}
                 cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
+                getColumnSortDirection={getColumnSortDirection}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={openEditRowModal}
                 onRowSelectionChange={setRowSelection}
                 rowSelection={rowSelection}
+                onColumnSort={handleChangeColumnSort}
               />
             </Box>
             <Flex
@@ -242,6 +265,7 @@ export const EditTableDataContainer = ({
         isUpdating={isUpdating}
         isDeleting={isDeleting}
         isInserting={isInserting}
+        isLocationAllowed={handleIsLeaveLocationAllowed}
       />
     </>
   );

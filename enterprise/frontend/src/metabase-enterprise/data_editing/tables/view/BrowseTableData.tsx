@@ -2,27 +2,23 @@ import { useMemo } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useGetTableDataQuery, useGetTableQuery } from "metabase/api";
+import {
+  useGetDatabaseQuery,
+  useGetTableDataQuery,
+  useGetTableQuery,
+} from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import { TableNotificationsTrigger } from "metabase-enterprise/data_editing/alerts/TableNotificationsModals/TableNotificationsTrigger/TableNotificationsTrigger";
 import Question from "metabase-lib/v1/Question";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
+import { TableBreadcrumbs } from "../common/TableBreadcrumbs";
 import { getTableEditPathname } from "../edit/url";
 
 import S from "./BrowseTableData.module.css";
@@ -47,6 +43,7 @@ export const BrowseTableData = ({
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { data: table } = useGetTableQuery({ id: tableId });
+  const { data: database } = useGetDatabaseQuery({ id: databaseId });
 
   const { data: datasetData } = useGetTableDataQuery({
     tableId,
@@ -79,18 +76,12 @@ export const BrowseTableData = ({
       <Group
         justify="space-between"
         align="center"
-        px="1.5rem"
-        py="1rem"
+        p="0.5rem 1rem 0.5rem 2rem"
+        mih="4rem"
         bg="var(--mb-color-background)"
       >
-        <Group gap="sm">
-          <Icon
-            name="table"
-            color="var(--mb-color-text-secondary)"
-            size="1.5rem"
-          />
-          <Title>{table.display_name}</Title>
-        </Group>
+        <TableBreadcrumbs database={database} table={table} />
+
         <Group gap="md">
           <Button
             leftSection={<Icon name="insight" />}
