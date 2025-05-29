@@ -352,6 +352,7 @@
            public-sharing
            pulse
            queries
+           query-permissions
            query-processor
            request
            revisions
@@ -687,7 +688,6 @@
            metabase.permissions.models.data-permissions
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
-           metabase.permissions.models.query.permissions
            metabase.permissions.path
            metabase.permissions.util
            metabase.permissions.validation}
@@ -696,11 +696,8 @@
            audit-app
            collections
            config
-           legacy-mbql
-           lib
            models
            premium-features
-           query-processor
            request
            settings
            util
@@ -818,6 +815,7 @@
            public-sharing
            pulse
            query-analysis
+           query-permissions
            query-processor
            request
            revisions
@@ -836,6 +834,17 @@
            query-processor
            settings
            task
+           util}}
+
+  query-permissions
+  {:api  #{metabase.query-permissions.core}
+   :uses #{api
+           legacy-mbql
+           lib
+           models
+           permissions
+           query-processor
+           request
            util}}
 
   query-processor
@@ -895,6 +904,7 @@
            permissions
            pivot
            premium-features
+           query-permissions
            queries
            request
            settings
@@ -924,7 +934,7 @@
            dashboards
            events
            models
-           permissions
+           query-permissions
            util}}
 
   sample-data
@@ -1237,8 +1247,8 @@
            batch-processing
            events
            models
-           permissions
            premium-features
+           query-permissions
            util}}
 
   warehouse-schema
@@ -1317,9 +1327,9 @@
            legacy-mbql
            lib
            models
-           permissions
            settings
            queries
+           query-permissions
            query-processor
            util
            warehouse-schema}}
@@ -1349,6 +1359,7 @@
            lib
            permissions
            premium-features
+           query-permissions
            query-processor
            util
            warehouses
@@ -1403,6 +1414,7 @@
            permissions
            plugins
            premium-features
+           query-permissions
            query-processor
            settings
            sync
@@ -1558,6 +1570,7 @@
            models
            permissions
            premium-features
+           query-permissions
            query-processor
            request
            users
