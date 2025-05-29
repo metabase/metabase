@@ -6,9 +6,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.sync.analyze.fingerprint :as analyze.fingerprint]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
+   [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -232,6 +234,11 @@
   (if include-editable-data-model?
     (api/write-check table)
     (api/read-check table))
+  (try
+    (analyze.fingerprint/fingerprint-table! table)
+    (catch Throwable t
+      (log/errorf "Fingerprinting of table %d failed" (:id table))
+      (log/debug t)))
   (let [db (t2/select-one :model/Database :id (:db_id table))]
     (-> table
         (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
@@ -251,6 +258,13 @@
   (when (seq ids)
     (let [tables (->> (t2/select :model/Table :id [:in ids])
                       (filter mi/can-read?))
+          ;; brute force for now
+          _ (doseq [table tables]
+              (try
+                (analyze.fingerprint/fingerprint-table! table)
+                (catch Throwable t
+                  (log/errorf "Fingerprinting of table %d failed" (:id table))
+                  (log/debug t))))
           tables (t2/hydrate tables
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments

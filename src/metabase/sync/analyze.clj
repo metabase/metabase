@@ -96,9 +96,9 @@
           total-tables tables-classified))
 
 (defn- make-analyze-steps [log-fn]
-  [(sync-util/create-sync-step "fingerprint-fields"
-                               #(sync.fingerprint/fingerprint-fields-for-db! % log-fn)
-                               fingerprint-fields-summary)
+  [#_(sync-util/create-sync-step "fingerprint-fields"
+                                 #(sync.fingerprint/fingerprint-fields-for-db! % log-fn)
+                                 fingerprint-fields-summary)
    (sync-util/create-sync-step "classify-fields"
                                #(classify/classify-fields-for-db! % log-fn)
                                classify-fields-summary)
