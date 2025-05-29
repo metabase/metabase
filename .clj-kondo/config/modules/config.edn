@@ -295,6 +295,28 @@
            task
            util}}
 
+<<<<<<< HEAD
+||||||| parent of 5d8cc509f77 (Content translation: validate uploads (#57544))
+  content-verification
+  {:api  #{metabase.content-verification.core
+           metabase.content-verification.init}
+   :uses #{app-db
+           models
+           util}}
+
+=======
+  content-translation
+  {:api  #{metabase.content-translation.api}
+   :uses #{api}}
+
+  content-verification
+  {:api  #{metabase.content-verification.core
+           metabase.content-verification.init}
+   :uses #{app-db
+           models
+           util}}
+
+>>>>>>> 5d8cc509f77 (Content translation: validate uploads (#57544))
   cmd
   {:team "Admin Webapp"
    :api  #{metabase.cmd.copy
@@ -1555,6 +1577,13 @@
            query-processor
            task
            util}}
+
+  enterprise/content-translation
+  {:api  #{metabase-enterprise.content-translation.routes}
+   :uses #{api
+           content-translation
+           util
+           enterprise/api}}
 
   enterprise/content-verification
   {:team "Admin Webapp"
