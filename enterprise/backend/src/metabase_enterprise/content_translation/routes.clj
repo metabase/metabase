@@ -35,7 +35,7 @@
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size)
-      (throw (ex-info (tru "Dictionary is larger than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
+      (throw (ex-info (tru "The dictionary should be less than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
                       {:status-code http-status-content-too-large})))
     (when-not (instance? java.io.File file)
       (throw (ex-info (tru "No file provided") {:status-code 400})))
