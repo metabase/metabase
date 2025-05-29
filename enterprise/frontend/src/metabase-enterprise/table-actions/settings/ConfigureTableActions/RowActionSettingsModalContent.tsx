@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ActionSettingsWrapper } from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import { sortActionParams } from "metabase/actions/utils";
 import EmptyState from "metabase/components/EmptyState";
 import EditableText from "metabase/core/components/EditableText/EditableText";
@@ -17,6 +16,8 @@ import type {
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
+
+import { TableActionPicker } from "../TableActionPicker/TableActionPicker";
 
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
 import S from "./RowActionSettingsModalContent.module.css";
@@ -137,11 +138,17 @@ export function RowActionSettingsModalContent({
       {!isEditMode && (
         <Box className={S.ParametersModalModalLeftSection}>
           <Title order={3} className={CS.pb2}>{t`Action Library`}</Title>
-          <ConnectedActionPicker
-            currentAction={selectedAction}
-            onClick={handlePickAction}
-            actions={actions}
+
+          <TableActionPicker
+            value={selectedAction}
+            onChange={handlePickAction}
+            onClose={onClose}
           />
+          {/*<ConnectedActionPicker*/}
+          {/*  currentAction={selectedAction}*/}
+          {/*  onClick={handlePickAction}*/}
+          {/*  actions={actions}*/}
+          {/*/>*/}
         </Box>
       )}
       <Box className={S.ParametersModalRightSection}>
