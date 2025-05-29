@@ -412,6 +412,111 @@
        [:inputs    [:sequential :map]]]]
   {:outputs (execute!* action_id scope inputs)})
 
+(api.macros/defendpoint :post "/tmp-modal"
+  "Temporary endpoint for describing an actions parameters
+  such that they can be presented correctly in a modal ahead of execution."
+  [{}
+   {}
+   {:keys [action_id scope #_input]}]
+  (let [scope   (actions/hydrate-scope scope)
+        unified (fetch-unified-action scope action_id)
+
+        ;; todo mapping support
+        describe-saved-action
+        (fn [& {:keys [action-id _row-action-dashcard-id _mapping]}]
+          (let [action (-> (actions/select-action :id action-id
+                                                  :archived false
+                                                  {:where [:not [:= nil :model_id]]})
+
+                           api/read-check
+                           api/check-404)
+                param-id->viz-field (-> action :visualization_settings (:fields {}))]
+            {:title (:name action)
+             :parameters
+             (->> (for [param (:parameters action)
+                        ;; query type actions store most stuff in viz settings rather than the
+                        ;; parameter
+                        :let [viz-field (param-id->viz-field (:id param))]
+                        :when (not (:hidden viz-field))]
+                    (u/remove-nils
+                      ;; todo dropdown options
+                     {:id (:id param)
+                      :display_name (or (:display-name param) (:name param))
+                      :type (case (:type param)
+                              :string/=    :type/Text
+                              :number/=    :type/Number
+                              :date/single :type/Date
+                              (if (= "type" (namespace (:type param)))
+                                (:type param)
+                                (throw
+                                 (ex-info "Unsupported query action parameter type"
+                                          {:status-code 500
+                                           :param-type (:type param)
+                                           :scope scope
+                                           :unified unified}))))
+                      :optional (and (not (:required param)) (not (:required viz-field)))}))
+                  vec)}))
+
+        ;; todo mapping support
+        describe-table-action
+        (fn [& {:keys [action-kw table-id _mapping]}]
+          (let [table (api/read-check (t2/select-one :model/Table :id table-id :active true))]
+            {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
+             :parameters
+             (->> (for [field (->> (t2/select :model/Field :table_id table-id)
+                                   (sort-by :position))
+                        :let [pk (= :type/PK (:semantic_type field))]
+                        :when (case action-kw
+                                ;; create does not take pk cols if auto increment, todo generated cols?
+                                :table.row/create (not (:database_is_auto_increment field))
+                                ;; delete only requires pk cols
+                                :table.row/delete pk
+                                ;; update takes both the pk and field (if not a row action)
+                                :table.row/update true)
+                        :let [required (or pk (:database_required field))]]
+                    (u/remove-nils
+                     {:id (:name field)
+                      :display_name (:display_name field)
+                      :type (:base_type field)
+                      :optional (not required)
+                      :nullable (:database_is_nullable field)}))
+
+                  vec)}))]
+
+    (cond
+      ;; saved action
+      (:action-id unified)
+      (describe-saved-action :action-id (:action-id unified))
+
+      ;; table action
+      (:action-kw unified)
+      (let [action-kw (keyword (:action-kw unified))
+            table-id  (:table-id unified)]
+        (describe-table-action :action-kw action-kw
+                               :table-id table-id))
+
+      (:row-action unified)
+      (let [row-action  (:row-action unified)
+            mapping     (:mapping unified)
+            dashcard-id (:dashcard-id unified)
+            saved-id    (:action-id row-action)
+            action-kw   (:action-kw row-action)]
+        (cond
+          saved-id
+          (describe-saved-action :action-id saved-id
+                                 :row-action-dashcard-id dashcard-id
+                                 :row-action-mapping mapping)
+
+          action-kw
+          (let [table-id (:table-id row-action)]
+            (describe-table-action :action-kw action-kw
+                                   :table-id table-id
+                                   :row-action-mapping mapping))
+
+          :else (ex-info "Not a supported row action" {:status-code 500, :scope scope, :unified unified})))
+      :else
+      (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
