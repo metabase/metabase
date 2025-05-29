@@ -365,27 +365,20 @@
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
 
 (deftest v-alerts-schedule-type-test
-  ;; Idk why the CI fails on h2 and mysql for this test even though it passes locally
-  ;; I've tried to debug it but I have no clue.
-  (when (= :postgres (mdb/db-type))
-    (mt/when-ee-evailable
-     (notification.tu/with-card-notification
-       [notification {:subscriptions [{:type            :notification-subscription/cron
-                                       :cron_schedule   "0 9 * * 2 ? *"
-                                       :ui_display_type :cron/builder}]}]
-       (let [update-subscription! (fn [updates]
-                                    (t2/update! :model/NotificationSubscription (:id notification) updates))
-             get-schedule-type (fn []
-                                 (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
-         (testing "schedule types"
-           (doseq [[schedule-type cron-schedule ui-display-type]
-                   [["by the minute" "0 * * * * ? *"    :cron/builder] ;; every minute
-                    ["by the minute" "0 0/10 * * * ? *" :cron/builder] ;; every 10 minutes
-                    ["hourly"        "0 8 * * * ? *"    :cron/builder] ;; every hour
-                    ["daily"         "0 0 2 * * ? *"    :cron/builder] ;; every day
-                    ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every first day of the month
-                    ["custom"        "0 * * * * ? *"    :cron/raw]]]
-             (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
-               (update-subscription! {:cron_schedule   cron-schedule
-                                      :ui_display_type ui-display-type})
-               (is (= schedule-type (get-schedule-type)))))))))))
+  (mt/when-ee-evailable
+   (testing "schedule types"
+     (doseq [[schedule-type cron-schedule ui-display-type]
+             [["by the minute" "0 * * * * ? *"    :cron/builder] ;; every minute
+              ["by the minute" "0 0/10 * * * ? *" :cron/builder] ;; every 10 minutes
+              ["hourly"        "0 8 * * * ? *"    :cron/builder] ;; every hour
+              ["daily"         "0 0 2 * * ? *"    :cron/builder] ;; every day
+              ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every first day of the month
+              ["custom"        "0 * * * * ? *"    :cron/raw]]]
+       (notification.tu/with-card-notification
+         [notification {:subscriptions [{:type            :notification-subscription/cron
+                                         :cron_schedule   cron-schedule
+                                         :ui_display_type ui-display-type}]}]
+         (let [get-schedule-type (fn []
+                                   (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
+           (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
+             (is (= schedule-type (get-schedule-type))))))))))
