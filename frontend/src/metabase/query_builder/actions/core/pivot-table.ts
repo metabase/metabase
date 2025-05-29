@@ -1,10 +1,7 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-import {
-  PREAGG_COLUMN_SPLIT_SETTING,
-  UNAGG_COLUMN_SPLIT_SETTING,
-} from "metabase/lib/data_grid";
+import { PREAGG_COLUMN_SPLIT_SETTING } from "metabase/lib/data_grid";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
@@ -97,23 +94,10 @@ function checkShouldRerunPivotTableQuestion({
     (currentShowRowTotals === false && newShowRowTotals === true) ||
     (currentShowColumnTotals === false && newShowColumnTotals === true);
 
-  //const isUnaggregatedData = !hasBreakouts;
-
-  //if (isUnaggregatedData) {
-  //  const currentPivotSettings = currentSettings[UNAGG_COLUMN_SPLIT_SETTING];
-  //  const prevPivotSettings = prevSettings?.[UNAGG_COLUMN_SPLIT_SETTING];
-  //
-  //  return (
-  //    currentPivotSettings &&
-  //    (shouldRerunForTotals ||
-  //      !_.isEqual(currentPivotSettings, prevPivotSettings))
-  //  );
-  //} else {
   const currentPivotSettings = currentSettings[PREAGG_COLUMN_SPLIT_SETTING];
   const prevPivotSettings = prevSettings?.[PREAGG_COLUMN_SPLIT_SETTING];
 
   return (
     shouldRerunForTotals || !_.isEqual(currentPivotSettings, prevPivotSettings)
   );
-  //}
 }

@@ -71,7 +71,7 @@ const AddBreakoutPopover = ({
           breakout={undefined}
           breakoutIndex={undefined}
           onAddBreakout={onAddBreakout}
-          onUpdateBreakoutColumn={() => {}}
+          onUpdateBreakoutColumn={() => { }}
           onClose={close}
         />
       </Popover.Dropdown>
@@ -276,10 +276,13 @@ export const ChartSettingFieldsPartition = ({
       const modifiedQuery = Lib.breakout(query, -1, column);
       const columnName = Lib.displayInfo(question.query(), -1, column).name;
       await dispatch(updateQuestion(question.setQuery(modifiedQuery)));
-      onChange({
+
+      const newValue = {
         ...value,
         [partition]: columnAdd(value[partition], -1, columnName),
-      });
+      }
+
+      onChange(newValue);
     },
     [query, question, value, onChange, dispatch],
   );

@@ -125,6 +125,7 @@ export const settings = {
       const columnsToPartition = data.cols.filter(
         (col) => !isPivotGroupColumn(col),
       );
+
       let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
         const [dimensions, values] = _.partition(
@@ -152,13 +153,17 @@ export const settings = {
           cols.map((col) => col.name),
         );
       } else {
-        setting = updateValueWithCurrentColumns(
-          storedValue,
-          columnsToPartition,
-        );
+        setting = storedValue;
+        //setting = updateValueWithCurrentColumns(
+        //  storedValue,
+        //  columnsToPartition,
+        //);
       }
 
-      return addMissingCardBreakouts(setting, columnsToPartition);
+      return setting;
+
+      // TODO: see if we need to add this logic back in any form
+      //return addMissingCardBreakouts(setting, columnsToPartition);
     },
   },
   "pivot.show_row_totals": {

@@ -133,8 +133,8 @@ export async function runQuestionQuery(
       datasetQueryWithParameters,
       cancelDeferred
         ? {
-          cancelled: cancelDeferred.promise,
-        }
+            cancelled: cancelDeferred.promise,
+          }
         : {},
     );
   };
