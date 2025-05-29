@@ -34,6 +34,11 @@ export const getLastAgentMessagesByType = createSelector(
   },
 );
 
+export const getActiveToolCalls = createSelector(
+  getMetabot,
+  (metabot) => metabot.activeToolCalls,
+);
+
 export const getIsProcessing = createSelector(
   getMetabot,
   (metabot) => metabot.isProcessing,
@@ -44,9 +49,9 @@ export const getLastSentContext = createSelector(
   (metabot) => metabot.lastSentContext,
 );
 
-export const getLastHistoryValue = createSelector(
+export const getHistory = createSelector(
   getMetabot,
-  (metabot) => metabot.lastHistoryValue,
+  (metabot) => metabot.history,
 );
 
 export const getMetabotConversationId = createSelector(

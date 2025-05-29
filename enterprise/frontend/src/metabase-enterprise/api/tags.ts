@@ -1,7 +1,5 @@
-export const METABOT_TAG = "metabot";
-
 export const ENTERPRISE_TAG_TYPES = [
   "scim",
-  METABOT_TAG,
+  "metabot",
   "gsheets-status",
 ] as const;
