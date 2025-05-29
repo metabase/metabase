@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ELEVATED_ENGINES } from "metabase/databases/constants";
 import type { Engine } from "metabase-types/api";
-import { createMockEngine, createMockUser } from "metabase-types/api/mocks";
+import { createMockEngine } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
@@ -42,11 +42,8 @@ const mockEngines: Record<string, Engine> = {
   }),
 };
 
-const setup = ({ isAdmin = true }: { isAdmin?: boolean } = {}) => {
+const setup = () => {
   const state = createMockState({
-    currentUser: createMockUser({
-      is_superuser: isAdmin,
-    }),
     settings: createMockSettingsState({
       engines: mockEngines,
     }),
