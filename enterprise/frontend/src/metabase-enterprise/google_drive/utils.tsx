@@ -8,6 +8,13 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetServiceAccountQuery } from "metabase-enterprise/api";
 import type { GdrivePayload } from "metabase-types/api";
 
+export type ErrorPayload =
+  | unknown
+  | string
+  | { data: { message: string } | { error_message: string } | string }
+  | { message: string }
+  | { error_message: string };
+
 export function useShowGdrive() {
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
   const hasDwh = useHasTokenFeature("attached_dwh");
@@ -40,13 +47,9 @@ export const getStatus = ({
     .otherwise(() => "not-connected");
 
 export const getErrorMessage = (
-  payload:
-    | unknown
-    | string
-    | { data: { message: string } | { error_message: string } | string }
-    | { message: string }
-    | { error_message: string },
-  fallback: string = t`Something went wrong`,
+  payload: ErrorPayload,
+  // eslint-disable-next-line no-literal-metabase-strings -- admin UI
+  fallback: string = t`Please check that the folder is shared with the Metabase Service Account.`,
 ): string => {
   if (typeof payload === "string") {
     return payload;
