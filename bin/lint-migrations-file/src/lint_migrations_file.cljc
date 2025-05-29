@@ -1,6 +1,7 @@
 (ns lint-migrations-file
   "This is cljc because it is used from both Clojure (:clj) and Babashka (:bb). Not cljs!"
   (:require
+   #_:clj-kondo/ignore
    [change-set.strict]
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
