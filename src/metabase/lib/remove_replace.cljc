@@ -459,13 +459,13 @@
               join-idx (peek join-loc)
               join (get (lib.join/joins query stage-number) join-idx)
               old-join (get (lib.join/joins unmodified-query stage-number) join-idx)
-              new-alias (lib.join/default-alias)]
-          (if (and (not= new-alias (:alias join))
+              new-name (lib.join/default-display-name query stage-number (dissoc join :alias))]
+          (if (and (not= new-name ((some-fn :display-name :alias) join))
                    (conditions-changed-for-aliases? (:alias join) (:conditions join)
                                                     (:alias old-join) (:conditions old-join)))
             ;; TODO: This is pretty ugly and specific; this is an example of how hopelessly coupled and intricate
             ;; this namespace is.
-            (rename-join query stage-number (assoc join :ident (:ident old-join)) new-alias)
+            (rename-join query stage-number (assoc join :ident (:ident old-join)) (lib.join/default-alias))
             query))
         query))))
 
