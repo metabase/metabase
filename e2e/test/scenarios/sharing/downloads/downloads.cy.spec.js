@@ -172,12 +172,16 @@ describe("scenarios > question > download", () => {
     );
   });
 
-  describe("download format preference", { tags: "@flaky" }, () => {
+  describe("download format preference", () => {
     it("should remember the selected format across page reloads", () => {
       cy.intercept(
         "PUT",
         "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
       ).as("saveFormat");
+      cy.intercept(
+        "GET",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("fetchFormat");
 
       H.createQuestion(
         {
@@ -191,26 +195,18 @@ describe("scenarios > question > download", () => {
         { visitQuestion: true },
       );
 
-      cy.findByRole("button", { name: "Download results" }).click();
-      H.popover().within(() => {
-        cy.findByText(".xlsx")
-          .should("be.visible")
-          .click()
-          .then(() => {
-            cy.wait("@saveFormat");
-          });
-      });
+      cy.findByTestId("view-footer").button("Download results").click();
 
-      cy.intercept(
-        "GET",
-        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-      ).as("fetchFormat");
+      H.popover().findByText(".xlsx").click();
+      cy.wait("@saveFormat");
 
       cy.reload();
       cy.wait("@fetchFormat");
       cy.findByRole("button", { name: "Download results" }).click();
       H.popover().within(() => {
-        cy.get("[data-checked='true']").should("contain", ".xlsx");
+        cy.findByText(".xlsx")
+          .parent()
+          .should("have.attr", "data-active", "true");
       });
     });
 
@@ -219,6 +215,10 @@ describe("scenarios > question > download", () => {
         "PUT",
         "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
       ).as("saveFormat");
+      cy.intercept(
+        "GET",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("fetchFormat");
 
       H.createQuestion({
         name: "Dashboard Format Test",
@@ -238,33 +238,22 @@ describe("scenarios > question > download", () => {
 
           H.getDashboardCard(0).realHover();
           H.getDashboardCardMenu(0).click();
-          H.popover().within(() => {
-            cy.findByText("Download results").click();
-          });
-          H.popover().within(() => {
-            cy.findByText(".xlsx")
-              .should("be.visible")
-              .click()
-              .then(() => {
-                cy.wait("@saveFormat");
-              });
-          });
+          H.popover().findByText("Download results").click();
 
-          cy.intercept(
-            "GET",
-            "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-          ).as("fetchFormat");
+          H.popover().findByText(".xlsx").click();
+
+          cy.wait("@saveFormat");
 
           cy.reload();
           cy.wait("@fetchFormat");
 
           H.getDashboardCard(0).realHover();
           H.getDashboardCardMenu(0).click();
+          H.popover().findByText("Download results").click();
           H.popover().within(() => {
-            cy.findByText("Download results").click();
-          });
-          H.popover().within(() => {
-            cy.get("[data-checked='true']").should("contain", ".xlsx");
+            cy.findByText(".xlsx")
+              .parent()
+              .should("have.attr", "data-active", "true");
           });
         });
       });
