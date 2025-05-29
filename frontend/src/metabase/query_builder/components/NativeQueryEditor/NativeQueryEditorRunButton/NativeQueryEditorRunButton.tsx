@@ -34,7 +34,11 @@ const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
 
   const canRunQuery = runQuery && cancelQuery;
 
-  return canRunQuery ? (
+  if (!canRunQuery) {
+    return null;
+  }
+
+  return (
     <RunButtonWithTooltip
       className={S.RunButtonWithTooltipStyled}
       disabled={!isRunnable}
@@ -44,7 +48,7 @@ const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
       onCancel={cancelQuery}
       getTooltip={getTooltip}
     />
-  ) : null;
+  );
 };
 
 export { NativeQueryEditorRunButton };
