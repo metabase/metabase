@@ -10,7 +10,7 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
-import { Box } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
@@ -216,9 +216,13 @@ const Placeholder = ({ query, editorContext }) => {
 
   const language = getNativeQueryLanguage(query.engine());
   return (
-    <div className={cx(CS.ml2, CS.p2, CS.textMedium)}>
+    <Flex
+      align="center"
+      h="55px"
+      className={cx(CS.textNoWrap, CS.ml2, CS.px2, CS.textMedium)}
+    >
       {t`This question is written in ${language}.`}
-    </div>
+    </Flex>
   );
 };
 

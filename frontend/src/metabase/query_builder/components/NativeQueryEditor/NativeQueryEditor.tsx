@@ -357,7 +357,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 enableParameterRequiredBehavior
               />
             )}
-            <Flex ml="auto" gap="lg" mr="lg" mt="md">
+            <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px">
               {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
                 <NativeQueryEditorActionButtons
                   features={sidebarFeatures}

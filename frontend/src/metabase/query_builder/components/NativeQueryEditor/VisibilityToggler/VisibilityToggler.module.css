@@ -5,6 +5,7 @@
   text-decoration: none;
   text-transform: uppercase;
   transition: all 0.2s linear;
+  white-space: nowrap;
 
   &.isReadOnly {
     display: none;
