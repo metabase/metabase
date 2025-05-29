@@ -17,6 +17,8 @@ import {
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
+  SettingDefinition,
+  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -262,3 +264,33 @@ export const SetByEnvVar = ({ varName }: { varName: string }) => {
     </Box>
   );
 };
+
+type SetByEnvVarWrapperProps<S extends EnterpriseSettingKey> = {
+  settingKey: S;
+  settingDetails: SettingDefinition<S> | undefined;
+  children: React.ReactNode;
+};
+
+export function SetByEnvVarWrapper<SettingName extends SettingKey>({
+  settingKey,
+  settingDetails,
+  children,
+}: SetByEnvVarWrapperProps<SettingName>) {
+  if (
+    settingDetails &&
+    settingDetails.is_env_setting &&
+    settingDetails.env_name
+  ) {
+    return (
+      <Box mb="lg">
+        <SettingHeader
+          id={settingKey}
+          title={settingDetails.display_name}
+          description={settingDetails.description}
+        />
+        <SetByEnvVar varName={settingDetails.env_name} />
+      </Box>
+    );
+  }
+  return children;
+}
