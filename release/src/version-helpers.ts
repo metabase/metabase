@@ -94,12 +94,7 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
-const ALLOWED_SDK_PRERELEASE_IDENTIFIERS = ["nightly"];
-const SDK_TAG_REGEXP = new RegExp(
-  `embedding-sdk-(0\\.\\d+\\.\\d+(-(${ALLOWED_SDK_PRERELEASE_IDENTIFIERS.join(
-    "|",
-  )}))?)$`,
-);
+const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
 
 export const getSdkVersionFromReleaseTagName = (tagName: string) => {
   const match = SDK_TAG_REGEXP.exec(tagName);
@@ -220,6 +215,7 @@ export async function getLastEmbeddingSdkReleaseTag({
   return lastRelease;
 }
 
+const ALLOWED_SDK_PRERELEASE_IDENTIFIERS = ["nightly"];
 /**
  *
  * @param tag a GitHub tag object
