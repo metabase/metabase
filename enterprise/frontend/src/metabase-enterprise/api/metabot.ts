@@ -13,7 +13,6 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { aiStreamingQuery } from "./ai-streaming-base-query";
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({

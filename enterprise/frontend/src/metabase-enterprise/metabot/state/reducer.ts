@@ -2,7 +2,11 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotChatContext, MetabotHistory } from "metabase-types/api";
+import type {
+  MetabotChatContext,
+  MetabotHistory,
+  MetabotStateContent,
+} from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
 
@@ -19,21 +23,23 @@ export type MetabotChatMessage =
 export interface MetabotState {
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
-  lastHistoryValue: MetabotHistory | undefined;
   conversationId: string | undefined;
   messages: MetabotChatMessage[];
   visible: boolean;
-  state: any;
+  history: MetabotHistory;
+  state: MetabotStateContent;
+  activeToolCalls: { id: string; name: string }[];
 }
 
 export const metabotInitialState: MetabotState = {
   isProcessing: false,
   lastSentContext: undefined,
-  lastHistoryValue: undefined,
   conversationId: undefined,
   messages: [],
   visible: false,
+  history: [],
   state: {},
+  activeToolCalls: [],
 };
 
 export const metabot = createSlice({
@@ -42,6 +48,7 @@ export const metabot = createSlice({
   reducers: {
     addUserMessage: (state, action: PayloadAction<string>) => {
       state.messages.push({ actor: "user", message: action.payload });
+      state.history.push({ role: "user", content: action.payload });
     },
     addAgentMessage: (
       state,
@@ -53,9 +60,24 @@ export const metabot = createSlice({
         type: action.payload.type,
       });
     },
+    toolCallStart: (
+      state,
+      action: PayloadAction<{ toolCallId: string; toolName: string }>,
+    ) => {
+      const { toolCallId, toolName } = action.payload;
+      state.activeToolCalls.push({ id: toolCallId, name: toolName });
+    },
+    toolCallEnd: (state, action: PayloadAction<string>) => {
+      state.activeToolCalls = state.activeToolCalls.filter(
+        (tc) => tc.id !== action.payload,
+      );
+    },
     clearMessages: (state) => {
       state.messages = [];
+      state.history = [];
+      state.state = {};
       state.isProcessing = false;
+      state.activeToolCalls = [];
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -71,10 +93,16 @@ export const metabot = createSlice({
     builder
       .addCase(sendMessageRequest.pending, (state, action) => {
         state.lastSentContext = action.meta.arg.context;
-        state.lastHistoryValue = action.meta.arg.history;
+        state.isProcessing = true;
       })
       .addCase(sendMessageRequest.fulfilled, (state, action) => {
-        state.lastHistoryValue = action.payload?.data?.history;
+        state.history = action.payload?.data?.history ?? [];
+        state.activeToolCalls = [];
+        state.isProcessing = false;
+      })
+      .addCase(sendMessageRequest.rejected, (state) => {
+        state.activeToolCalls = [];
+        state.isProcessing = false;
       })
       .addCase(logout.pending, () => metabotInitialState);
   },

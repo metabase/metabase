@@ -1,43 +1,28 @@
-import { isMatching } from "ts-pattern";
+import type { UnknownAction } from "@reduxjs/toolkit";
+import { push } from "react-router-redux";
+import { isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
-import {
-  EnterpriseApi,
-  METABOT_TAG,
-  metabotAgent,
-  metabotApi,
-} from "metabase-enterprise/api";
+import { aiStreamingQuery } from "metabase-enterprise/api/ai";
+import type { JSONValue } from "metabase-enterprise/api/ai/types";
 import type {
-  MetabotAgentResponse,
+  MetabotAgentRequest,
   MetabotChatContext,
-  MetabotReaction,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { getErrorMessage } from "../constants";
-import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import { metabot } from "./reducer";
-import { getIsProcessing, getMetabotConversationId } from "./selectors";
 import {
-  StreamingMessageSchema,
-  streamingPayloadSchema,
-} from "./streaming-schemas";
+  getHistory,
+  getIsProcessing,
+  getMetabotConversationId,
+  getMetabotState,
+} from "./selectors";
 
-class Defer<T> {
-  promise: Promise<T>;
-  resolve: (value: T | PromiseLike<T>) => void = () => {};
-  reject: (reason?: any) => void = () => {};
-
-  constructor() {
-    this.promise = new Promise<T>((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-    });
-  }
-}
 const isAbortError = isMatching({ name: "AbortError" });
 
 export const {
@@ -46,6 +31,8 @@ export const {
   clearMessages,
   resetConversationId,
   setIsProcessing,
+  toolCallStart,
+  toolCallEnd,
 } = metabot.actions;
 
 export const setVisible =
@@ -67,23 +54,82 @@ export const submitInput = createAsyncThunk(
     data: {
       message: string;
       context: MetabotChatContext;
-      history: any[];
-      state: any;
       metabot_id?: string;
     },
     { dispatch, getState, signal },
   ) => {
-    const isProcessing = getIsProcessing(getState() as any);
+    const state = getState() as any;
+    const isProcessing = getIsProcessing(state);
     if (isProcessing) {
       return console.error("Metabot is actively serving a request");
     }
 
+    const history = getHistory(state);
+    const metabotState = getMetabotState(state);
+
     dispatch(addUserMessage(data.message));
-    const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
+    const sendMessageRequestPromise = dispatch(
+      sendMessageRequest({ ...data, state: metabotState, history }),
+    );
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
     });
     return sendMessageRequestPromise;
+  },
+);
+
+const issueAgentRequest = createAsyncThunk(
+  "metabase-enterprise/metabot/issueAgentRequest",
+  async ({ body }: { body: MetabotAgentRequest }, { dispatch, getState }) => {
+    try {
+      let state = { ...body.state };
+
+      const response = await aiStreamingQuery(
+        {
+          url: "/api/ee/metabot-v3/v2/agent-streaming",
+          // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
+          // is upsetting the types, casting for now
+          body: body as JSONValue,
+        },
+        {
+          onDataPart: (part) => {
+            match(part)
+              .with({ type: "state" }, () => {
+                state = { ...state, ...part.value };
+              })
+              .with({ type: "navigate_to" }, () => {
+                // TODO: create entity store / fix createAsyncThunk's types
+                dispatch(push(part.value) as UnknownAction);
+              })
+              .exhaustive();
+          },
+          onTextPart: (part) => {
+            dispatch(addAgentMessage({ type: "reply", message: String(part) }));
+          },
+          onToolCallPart: (part) => dispatch(toolCallStart(part)),
+          onToolResultPart: (part) => dispatch(toolCallEnd(part.toolCallId)),
+        },
+      );
+
+      return {
+        data: {
+          conversation_id: body.conversation_id,
+          history: [...getHistory(getState() as any), ...response.history],
+          state,
+        },
+        error: undefined,
+      } as const;
+    } catch (e) {
+      console.error(e);
+      const error = e instanceof Error ? e.message : "Unknown error";
+      return {
+        data: undefined,
+        error: {
+          status: "FETCH_ERROR",
+          error,
+        },
+      } as const;
+    }
   },
 );
 
@@ -111,14 +157,9 @@ export const sendMessageRequest = createAsyncThunk(
       sessionId = getMetabotConversationId(getState() as any) as string;
     }
 
-    const metabotRequestPromise = dispatch(
-      metabotAgent.initiate(
-        { ...data, conversation_id: sessionId },
-        { fixedCacheKey: METABOT_TAG },
-      ),
-    );
-
-    const result = await metabotRequestPromise;
+    const result = (await dispatch(
+      issueAgentRequest({ body: { ...data, conversation_id: sessionId } }),
+    )) as any;
 
     if (result.error) {
       const didUserAbort = isAbortError(result.error);
@@ -132,149 +173,19 @@ export const sendMessageRequest = createAsyncThunk(
       }
     }
 
-    const reactions = result.data?.reactions || [];
-    await dispatch(processMetabotReactions(reactions));
-    return result;
-  },
-);
-
-export const sendMessageRequestStreaming = createAsyncThunk(
-  "metabase-enterprise/metabot/sendMessageRequest",
-  async (
-    data: {
-      message: string;
-      context: MetabotChatContext;
-      history: any[];
-      state: any;
-      metabot_id?: string;
-    },
-    { dispatch, getState, signal },
-  ) => {
-    // TODO: make enterprise store
-    let sessionId = getMetabotConversationId(getState() as any);
-
-    // should not be needed, but just in case the value got unset
-    if (!sessionId) {
-      console.warn(
-        "Metabot has no session id while open, this should never happen",
-      );
-      dispatch(resetConversationId());
-      sessionId = getMetabotConversationId(getState() as any) as string;
-    }
-
-    const messages: StreamingMessageSchema[] = [];
-
-    let state: unknown = {};
-
-    dispatch(metabot.actions.setIsProcessing(true));
-
-    const deferred = new Defer<null>();
-
-    const _streamingResponse = fetch("/api/ee/metabot-v3/v2/agent-streaming", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      signal,
-      body: JSON.stringify({ ...data, conversation_id: sessionId }),
-    }).then((response) => {
-      if (!response || !response.body) {
-        throw new Error("No response");
-      }
-      console.log(response);
-      const reader = response.body.getReader();
-      // read() returns a promise that resolves when a value has been received
-      reader.read().then(async function pump({ done, value }): Promise<any> {
-        console.log(">>>>>>", value);
-        if (value) {
-          const stringValue = new TextDecoder().decode(value);
-          console.log(stringValue);
-          const parsedValue = streamingPayloadSchema.cast(
-            JSON.parse(stringValue),
-          );
-
-          const data = parsedValue.data;
-          const message = data.message as StreamingMessageSchema;
-
-          messages.push(message);
-
-          const reactions: MetabotReaction[] = [];
-
-          if (message.role === "assistant" && message.content) {
-            reactions.push({
-              type: "metabot.reaction/message",
-              message: message.content,
-            });
-          }
-
-          if (message.role === "assistant" && message.navigate_to) {
-            reactions.push({
-              type: "metabot.reaction/redirect",
-              url: message.navigate_to,
-            });
-          }
-
-          if (message.role === "assistant" && message.tool_calls?.length) {
-            for (const tc of message.tool_calls) {
-              reactions.push({
-                type: "metabot.reaction/message",
-                message: `Calling tool: ${tc.name}`,
-              });
-            }
-          }
-
-          if (data.state) {
-            state = data.state;
-          }
-
-          if (reactions.length) {
-            for (const reaction of reactions) {
-              try {
-                const reactionHandler =
-                  reactionHandlers[reaction.type] ?? notifyUnknownReaction;
-                // TS isn't smart enough to know the reaction matches the handler
-                await reactionHandler(reaction as any)({ dispatch, getState });
-              } catch (error: any) {
-                console.error("Halting processing of reactions.", error);
-                dispatch(stopProcessingAndNotify());
-                break;
-              }
-            }
-          }
-        }
-
-        console.log("IS DONE", done);
-        if (done) {
-          deferred.resolve(null);
-          return;
-        }
-        return await reader.read().then(pump);
-      });
-    });
-
-    await deferred.promise;
-
-    dispatch(metabot.actions.setIsProcessing(false));
-
-    const result: MetabotAgentResponse = {
-      history: messages,
-      reactions: [],
-      state,
-      conversation_id: sessionId,
-    };
-
     return result;
   },
 );
 
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (_args, { dispatch }) => {
-    const requests = dispatch(EnterpriseApi.util.getRunningMutationsThunk());
-    const agentRequests = requests.filter(
-      (req) => req.arg.endpointName === metabotApi.endpoints.metabotAgent.name,
-    );
-    agentRequests.forEach((req) => req.abort());
+  (_args, { dispatch: _dispatch }) => {
+    // TODO: impl
+    // const requests = dispatch(EnterpriseApi.util.getRunningMutationsThunk());
+    // const agentRequests = requests.filter(
+    //   (req) => req.arg.endpointName === metabotApi.endpoints.metabotAgent.name,
+    // );
+    // agentRequests.forEach((req) => req.abort());
   },
 );
 
@@ -282,46 +193,8 @@ export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
   (_args, { dispatch }) => {
     dispatch(cancelInflightAgentRequests());
-    // clear previous agent request state so history value is empty for future requests
-    dispatch(
-      EnterpriseApi.internalActions.removeMutationResult({
-        fixedCacheKey: METABOT_TAG,
-      }),
-    );
-
     dispatch(clearMessages());
     dispatch(resetConversationId());
-  },
-);
-
-export const processMetabotReactions = createAsyncThunk(
-  "metabase-enterprise/metabot/processMetabotReactions",
-  async (reactions: MetabotReaction[], { dispatch, getState }) => {
-    dispatch(setIsProcessing(true));
-
-    for (const reaction of reactions) {
-      try {
-        const reactionHandler =
-          reactionHandlers[reaction.type] ?? notifyUnknownReaction;
-        // TS isn't smart enough to know the reaction matches the handler
-        await reactionHandler(reaction as any)({ dispatch, getState });
-      } catch (error: any) {
-        console.error("Halting processing of reactions.", error);
-        dispatch(stopProcessingAndNotify());
-        break;
-      }
-
-      // TODO: make an EnterpriseStore
-      const isProcessing = getIsProcessing(getState() as any);
-      if (!isProcessing) {
-        console.warn(
-          "A handler has stopped further procesing of metabot reactions",
-        );
-        break;
-      }
-    }
-
-    dispatch(setIsProcessing(false));
   },
 );
 

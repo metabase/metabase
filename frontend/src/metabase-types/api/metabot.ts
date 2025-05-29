@@ -48,19 +48,9 @@ export type MetabotHistoryEntry =
   | MetabotHistoryToolEntry
   | MetabotHistoryMessageEntry;
 
-export type MetabotHistory = any;
+export type MetabotHistory = any[];
 
-export type MetabotMessageReaction = {
-  type: "metabot.reaction/message";
-  message: string;
-};
-
-export type MetabotRedirectReaction = {
-  type: "metabot.reaction/redirect";
-  url: string;
-};
-
-export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
+export type MetabotStateContent = Record<string, any>;
 
 export type MetabotCardInfo = {
   type: CardType;
@@ -87,14 +77,13 @@ export type MetabotEntityInfo =
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  history: MetabotHistory[];
+  history: MetabotHistory;
   conversation_id: string; // uuid
   state: any;
 };
 
 export type MetabotAgentResponse = {
-  reactions: MetabotReaction[];
-  history: MetabotHistory[];
+  history: MetabotHistory;
   conversation_id: string;
   state: any;
 };
@@ -103,36 +92,7 @@ export interface MetabotPromptSuggestions {
   prompts: Array<{ prompt: string }>;
 }
 
-/* Metabot v3 - Type Guards */
-
-export const isMetabotMessageReaction = (
-  reaction: MetabotReaction,
-): reaction is MetabotMessageReaction => {
-  return reaction.type === "metabot.reaction/message";
-};
-
-export const isMetabotToolMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryToolEntry => {
-  return (
-    message.role === "assistant" && message.assistant_response_type === "tools"
-  );
-};
-
-export const isMetabotHistoryMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryMessageEntry => {
-  return (
-    message.role === "assistant" &&
-    message.assistant_response_type === "message"
-  );
-};
-
-export const isMetabotMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryMessageEntry => {
-  return message.role === "assistant";
-};
+/* Metabot v3 - Configuration Types */
 
 export type MetabotId = number;
 export type MetabotName = string;

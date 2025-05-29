@@ -167,6 +167,14 @@ export const MetabotChat = () => {
                 />
               ))}
 
+              {/* metabot's progress */}
+              {metabot.activeToolCalls.map((tc) => (
+                <Text
+                  key={tc.id}
+                  c="text-light"
+                >{t`Calling tool: ${tc.name}`}</Text>
+              ))}
+
               {/* loading */}
               {metabot.isDoingScience && (
                 <Loader
