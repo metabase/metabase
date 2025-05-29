@@ -34,7 +34,7 @@
 (mu/defn- format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
   [field-name]
-  (mt/format-name (name field-name)))
+  (name (mt/format-name (name field-name))))
 
 (defn- categories-row-count []
   (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]], :limit 1}))))
@@ -45,12 +45,11 @@
       (with-actions-test-data-and-actions-permissively-enabled!
         (let [response (actions/perform-action-with-single-input-and-output :model.row/create
                                                                             (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
-          (is (=? (walk/keywordize-keys
-                   {:created-row {(format-field-name :id)   76
-                                  (format-field-name :name) "created_row"}})
+          (is (=? {:created-row {(format-field-name :id)   76
+                                 (format-field-name :name) "created_row"}}
                   response)
               "Create should return the entire row")
-          (let [created-id (get-in response [:created-row (keyword (format-field-name :id))])]
+          (let [created-id (get-in response [:created-row (format-field-name :id)])]
             (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
                 "The record at created-id should now have its name set to \"created_row\"")))))))
 
@@ -270,9 +269,8 @@
               name-col (format-field-name :name)]
           (is (= 75
                  (categories-row-count)))
-          (is (= (walk/keywordize-keys
-                  [{:table-id table-id, :op :created, :row {id-col 76, name-col "NEW_A"}}
-                   {:table-id table-id, :op :created, :row {id-col 77, name-col "NEW_B"}}])
+          (is (= [{:table-id table-id, :op :created, :row {id-col 76, name-col "NEW_A"}}
+                  {:table-id table-id, :op :created, :row {id-col 77, name-col "NEW_B"}}]
                  (:outputs
                   (actions/perform-action! :table.row/create
                                            test-scope
@@ -423,8 +421,8 @@
                   [2 "American"]
                   [3 "Artisan"]]
                  (first-three-categories)))
-          (is (= [{:table-id table-id, :op :updated, :row {:id 1 :name "Seed Bowl"}}
-                  {:table-id table-id, :op :updated, :row {:id 2 :name "Millet Treat"}}]
+          (is (= [{:table-id table-id, :op :updated, :row {(format-field-name :id) 1 (format-field-name :name) "Seed Bowl"}}
+                  {:table-id table-id, :op :updated, :row {(format-field-name :id) 2 (format-field-name :name) "Millet Treat"}}]
                  (let [id   (format-field-name :id)
                        name (format-field-name :name)]
                    (:outputs
@@ -643,9 +641,8 @@
                         (assoc (mt/mbql-query ants)
                                :create-row {(format-field-name :id) "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
                                             (format-field-name :name) "created_row"}))]
-          (is (=? (walk/keywordize-keys
-                   {:created-row {(format-field-name :id)   #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
-                                  (format-field-name :name) "created_row"}})
+          (is (=? {:created-row {(format-field-name :id)   #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
+                                 (format-field-name :name) "created_row"}}
                   response)
               "Create should return the entire row")
           (is (= "created_row"

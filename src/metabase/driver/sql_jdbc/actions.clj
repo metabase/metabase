@@ -23,7 +23,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection SQLException)))
 
@@ -118,6 +119,8 @@
                                 #_{:clj-kondo/ignore [:deprecated-var]}
                                 (map (juxt :name qp.store/->legacy-metadata))
                                 (qp.store/with-metadata-provider database-id
+                                  ;; TODO the fields method here only returns visible fields, it might not cast
+                                  ;; everything
                                   (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id)))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
@@ -276,22 +279,26 @@
    [:context :map]
    [:outputs [:sequential output-schema]]])
 
-(mu/defn- correct-columns-name :- [:sequential ::lib.schema.actions/row]
+(mu/defn- correct-columns-name :- [:maybe [:sequential ::lib.schema.actions/row]]
   "Ensure each rows have column name match with fields name.
   Some drivers like h2 have weird issue with casing."
   [table-id rows :- [:sequential ::lib.schema.actions/row]]
-  (let [field-names (actions/cached-value
-                     [::correct-columns-name table-id]
-                     (fn []
-                       (let [database (actions/cached-database-via-table-id table-id)]
-                         (mapv :name
-                               (qp.store/with-metadata-provider (:id database)
-                                 (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))))
-        keymap (merge (u/for-map [f field-names]
-                        [(u/lower-case-en f) f])
-                      (u/for-map [f field-names]
-                        [(u/upper-case-en f) f]))]
-    (map #(update-keys % keymap) rows)))
+  (when (seq rows)
+    (let [field-names (actions/cached-value
+                       [::correct-columns-name table-id]
+                       (fn []
+                         (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)
+                         ;; can't use lib here because fields from lib only return active fields and visible fields
+                         ;; :/
+                         #_(let [database (actions/cached-database-via-table-id table-id)]
+                             #_(qp.store/with-metadata-provider (:id database)
+                                 (mapv :name
+                                       (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))))
+          keymap (merge (u/for-map [f field-names]
+                          [(u/lower-case-en f) f])
+                        (u/for-map [f field-names]
+                          [(u/upper-case-en f) f]))]
+      (map #(update-keys % keymap) rows))))
 
 (defn- query-rows
   [driver conn table-id query]
@@ -398,7 +405,7 @@
   :hierarchy #'driver/hierarchy)
 
 #_(mr/def ::row
-    [:map-of :keyword :any])
+    [:map-of :string :any])
 
 #_(mr/def ::modified-row
     [:map
@@ -418,9 +425,10 @@
                                    ;; :and with a single clause will be optimized in HoneySQL
                                    :where (into [:and]
                                                 (for [[col val] result]
-                                                  [:= (keyword col) val]))))]
+                                                  [:= (keyword col) val]))))
+        select-sql-args (sql.qp/format-honeysql driver select-hsql)]
     (log/tracef ":model.row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
-    (first (query-rows driver conn 1 select-hsql))))
+    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
 
 (defn- row-create!* [action database {:keys [create-row] :as query}]
   (let [db-id       (u/the-id database)
@@ -447,7 +455,7 @@
          :before   nil
          :after    row}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::row]])
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::lib.schema.actions/row]])
   [action context inputs :- [:sequential ::mbql.s/Query]]
   (let [database (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -765,7 +773,7 @@
 
 (defn- perform-table-row-delete!
   "Perform table row deletion with optional cascade support"
-  [_action context inputs {:keys [cascade?] :or {cascade? true}}]
+  [_action context inputs {:keys [cascade?] :or {cascade? false}}]
   (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database       (actions/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
