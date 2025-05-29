@@ -92,6 +92,7 @@
    ;;
    "idleConnectionTestPeriod"
    60
+   ;;
    ;; The fully qualified class-name of an implememtation of the ConnectionCustomizer interface, which users can
    ;; implement to set up Connections when they are acquired from the database, or on check-out, and potentially to
    ;; clean things up on check-in and Connection destruction. If standard Connection properties (holdability, readOnly,
@@ -102,6 +103,7 @@
    ;;
    "connectionCustomizerClassName"
    (.getName MetabaseConnectionCustomizer)
+   ;;
    ;; Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the pool before
    ;; being culled. Intended for applications that wish to aggressively minimize the number of open Connections,
    ;; shrinking the pool back towards minPoolSize if, following a spike, the load level diminishes and Connections
