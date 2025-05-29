@@ -2,7 +2,7 @@
  ["src" "resources"]
 
  :mvn/repos
- {"shibboleth" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
+ {"shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}
 
 
  :deps

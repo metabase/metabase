@@ -5,7 +5,7 @@
  :mvn/repos
  {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}
   "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}
-  "shibboleth" {:url "https://build.shibboleth.net/maven/releases/"}}
+  "shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}
 
  :deps
  {metabase/athena             {:local/root "athena"}
