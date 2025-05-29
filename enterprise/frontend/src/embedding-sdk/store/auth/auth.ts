@@ -197,7 +197,7 @@ async function connectToInstanceAuthSso(
 
   let ssoUrl = `${url}/auth/sso`;
   if (authMethod) {
-    ssoUrl += `?${authMethod}=true`;
+    ssoUrl += `?preferred_method=${authMethod}`;
   }
 
   try {
