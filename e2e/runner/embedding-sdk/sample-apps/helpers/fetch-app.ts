@@ -1,6 +1,6 @@
 import fs from "fs";
 
-import { shell } from "../../cypress-runner-utils";
+import { shell } from "../../../cypress-runner-utils";
 import { E2E_TMP_FOLDER_PATH } from "../constants/e2e-tmp-folder-path";
 
 export function fetchApp({

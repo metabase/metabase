@@ -3,11 +3,9 @@ import {
   createNativeQuestion,
   tableInteractiveBody,
 } from "e2e/support/helpers";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountInteractiveQuestion,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
+import { mountInteractiveQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import type { DatasetColumn } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
