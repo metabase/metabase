@@ -99,7 +99,7 @@
         (is (not (#'mdb.connection-pool-setup/recent-activity?* latest-activity (t/millis 10)))
             "recent-window-duration has elapsed but still recent")))))
 
-(deftest ^:parallel reset-read-only-test
+(deftest reset-read-only-test
   (testing "For Postgres app DBs, we should be executing `DISCARD ALL` when checking in a connection to reset state including read-only"
     (when (= (app-db/db-type) :postgres)
       (let [connection* (promise)]
