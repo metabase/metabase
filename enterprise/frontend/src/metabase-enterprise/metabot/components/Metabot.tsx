@@ -48,6 +48,9 @@ export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
 export const Metabot = (props: MetabotProps) => {
   const currentUser = useSelector(getUser);
 
+  // NOTE: do not render Metabot if the user is not authenticated.
+  // doing so will cause a redirect for unauthenticated requests
+  // which will break interactive embedding.
   if (!currentUser) {
     return null;
   }
