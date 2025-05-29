@@ -50,7 +50,7 @@ export const Metabot = (props: MetabotProps) => {
 
   // NOTE: do not render Metabot if the user is not authenticated.
   // doing so will cause a redirect for unauthenticated requests
-  // which will break interactive embedding.
+  // which will break interactive embedding. See (metabase#58687).
   if (!currentUser) {
     return null;
   }
