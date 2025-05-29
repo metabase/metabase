@@ -14,7 +14,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     expect(() => {
       new MetabaseEmbed({
         ...defaultSettings,
-        questionId: 1,
+        dashboardId: 1,
         target: "#not-existent-target",
       });
     }).toThrow('cannot find embed container "#not-existent-target"');
@@ -47,6 +47,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when both question id and dashboard id are provided", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({
         ...defaultSettings,
         questionId: 10,
@@ -70,6 +71,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when question id is provided in the exploration template", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({
         ...defaultSettings,
         template: "exploration",
@@ -82,6 +84,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when dashboard id is provided in the exploration template", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({
         ...defaultSettings,
         template: "exploration",
@@ -94,7 +97,23 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   it("throws when neither question id, dashboard id, or template are provided", () => {
     expect(() => {
+      // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({ ...defaultSettings });
     }).toThrow("either dashboardId, questionId, or template must be provided");
   });
+
+  it.each([["view-content"], ["curate-content"]] as const)(
+    "throws when initialCollection is not provided for the %s template",
+    (template: "view-content" | "curate-content") => {
+      expect(() => {
+        // @ts-expect-error -- we are testing for incorrect configuration
+        new MetabaseEmbed({
+          ...defaultSettings,
+          template,
+        });
+      }).toThrow(
+        `initialCollection must be provided for the ${template} template`,
+      );
+    },
+  );
 });

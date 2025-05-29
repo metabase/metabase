@@ -136,6 +136,16 @@ class MetabaseEmbed {
       );
     }
 
+    if (
+      (settings.template === "view-content" ||
+        settings.template === "curate-content") &&
+      !settings.initialCollection
+    ) {
+      raiseError(
+        `initialCollection must be provided for the ${settings.template} template`,
+      );
+    }
+
     if (settings.dashboardId && settings.questionId) {
       raiseError(
         "can't use both dashboardId and questionId at the same time. to change the question to a dashboard, set the questionId to null (and vice-versa)",

@@ -172,3 +172,53 @@
     (is (not (#'ee-audit/should-load-audit? false 3 5))))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
+
+(deftest adjust-audit-db-to-source-test
+  (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"
+    (mt/with-temp [:model/Database {audit-db-id :id} {:engine "h2"}
+                   ;; Create tables with both uppercase and lowercase names
+                   :model/Table {upper-table-id :id} {:db_id audit-db-id
+                                                      :schema "public"
+                                                      :name "USERS"}
+                   :model/Table {lower-table-id :id} {:db_id audit-db-id
+                                                      :schema "public"
+                                                      :name "users"}
+                   ;; Create another table that doesn't have a lowercase version
+                   :model/Table {single-table-id :id} {:db_id audit-db-id
+                                                       :schema "public"
+                                                       :name "ORDERS"}
+                   ;; Create fields with both uppercase and lowercase names
+                   :model/Field {upper-field-id :id} {:table_id upper-table-id
+                                                      :name "EMAIL"}
+                   :model/Field {lower-field-id :id} {:table_id lower-table-id
+                                                      :name "email"}
+                   ;; Create another field that doesn't have a lowercase version
+                   :model/Field {single-field-id :id} {:table_id single-table-id
+                                                       :name "PRODUCT"}]
+
+      ;; Call the function we're testing
+      (#'ee-audit/adjust-audit-db-to-source! {:id audit-db-id})
+
+      (testing "Database engine should be set to postgres"
+        (is (= :postgres
+               (t2/select-one-fn :engine :model/Database :id audit-db-id))))
+
+      (testing "Tables with existing lowercase versions should not be modified"
+        (is (= "USERS"
+               (t2/select-one-fn :name :model/Table :id upper-table-id)))
+        (is (= "users"
+               (t2/select-one-fn :name :model/Table :id lower-table-id))))
+
+      (testing "Tables without lowercase versions should be converted to lowercase"
+        (is (= "orders"
+               (t2/select-one-fn :name :model/Table :id single-table-id))))
+
+      (testing "Fields with existing lowercase versions should not be modified"
+        (is (= "EMAIL"
+               (t2/select-one-fn :name :model/Field :id upper-field-id)))
+        (is (= "email"
+               (t2/select-one-fn :name :model/Field :id lower-field-id))))
+
+      (testing "Fields without lowercase versions should be converted to lowercase"
+        (is (= "product"
+               (t2/select-one-fn :name :model/Field :id single-field-id)))))))

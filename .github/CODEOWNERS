@@ -13,6 +13,7 @@ src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 deps.edn @metabase/backend-developers
 
 docs @metabase/tech-writers
+docs/developers-guide # exclude from tech-writer ownership
 
 #
 # Backend modules <=> teams that own them

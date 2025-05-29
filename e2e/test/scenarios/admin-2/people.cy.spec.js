@@ -338,6 +338,8 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should allow group creation and deletion", () => {
+      const longGroupName =
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       cy.intercept("POST", "/api/permissions/group").as("createGroup");
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
 
@@ -349,10 +351,39 @@ describe("scenarios > admin > people", () => {
         cy.findByPlaceholderText(/something like/i).type("My New Group");
         cy.button("Add").click();
         cy.wait(["@createGroup", "@getGroups"]);
-
-        cy.findByText("My New Group").closest("tr").icon("ellipsis").click();
       });
 
+      cy.log("should show API errors from group endpoints (metabase#52886)");
+
+      cy.findByTestId("admin-panel").within(() => {
+        cy.button("Create a group").click();
+        cy.findByPlaceholderText(/something like/i).type(longGroupName);
+        cy.button("Add").click();
+      });
+
+      cy.findByTestId("alert-modal").should("exist");
+      H.modal().findByText("Ok").click();
+
+      cy.findByTestId("admin-panel").within(() => {
+        cy.findByText("My New Group").closest("tr").icon("ellipsis").click();
+      });
+      H.popover().findByText("Edit Name").click();
+      cy.findByTestId("admin-panel").within(() => {
+        cy.findByDisplayValue("My New Group").clear().type(longGroupName);
+        cy.button("Done").click();
+      });
+
+      cy.findByTestId("alert-modal").should("exist");
+      H.modal().findByText("Ok").click();
+      cy.findByTestId("admin-panel")
+        .findByRole("button", { name: "Cancel" })
+        .click();
+
+      cy.findByTestId("admin-panel")
+        .findByText("My New Group")
+        .closest("tr")
+        .icon("ellipsis")
+        .click();
       H.popover().findByText("Remove Group").click();
       H.modal().button("Remove group").click();
 

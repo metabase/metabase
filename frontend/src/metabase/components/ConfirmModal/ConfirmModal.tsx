@@ -12,7 +12,7 @@ import {
 } from "metabase/ui";
 
 interface ConfirmModal extends ModalProps {
-  title: string | ReactNode;
+  title?: string | ReactNode;
   content?: string;
   message?: string | ReactNode;
   onConfirm?: () => void | Promise<void>;
