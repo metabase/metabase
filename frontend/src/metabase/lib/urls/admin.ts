@@ -1,11 +1,13 @@
 import type {
+  BaseUser,
   DatabaseId,
   FieldId,
   SchemaId,
   TableId,
   Tenant,
-  UserId,
 } from "metabase-types/api";
+
+export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
 
 export function newUser() {
   return `/admin/people/new`;
@@ -14,36 +16,34 @@ export function newTenantUser() {
   return "/admin/tenants/people/new";
 }
 
-export function editUser(userId: UserId) {
-  return `/admin/people/${userId}/edit`;
+export function editUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/edit`
+    : `/admin/tenants/people/${user.id}/edit`;
 }
 
-export function editTenantUser(userId: UserId) {
-  return `/admin/tenants/people/${userId}/edit`;
+export function resetPassword(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reset`
+    : `/admin/tenants/people/${user.id}/reset`;
 }
 
-export function resetPassword(userId: UserId) {
-  return `/admin/people/${userId}/reset`;
+export function newUserSuccess(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/success`
+    : `/admin/tenants/people/${user.id}/success`;
 }
 
-export function newUserSuccess(userId: UserId) {
-  return `/admin/people/${userId}/success`;
+export function deactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/deactivate`
+    : `/admin/tenants/people/${user.id}/deactivate`;
 }
 
-export function deactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/deactivate`;
-}
-
-export function deactivateTenantlUser(userId: UserId) {
-  return `/admin/tenants/people/${userId}/deactivate`;
-}
-
-export function reactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/reactivate`;
-}
-
-export function reactivateTenantsUser(userId: UserId) {
-  return `/admin/tenants/people/${userId}/reactivate`;
+export function reactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reactivate`
+    : `/admin/tenants/people/${user.id}/reactivate`;
 }
 
 // TODO: move to EE urls

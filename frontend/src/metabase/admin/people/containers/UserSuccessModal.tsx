@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useEffect } from "react";
+import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
@@ -17,11 +18,13 @@ import type { User } from "metabase-types/api";
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-interface UserSuccessModalProps {
+interface UserSuccessModalProps extends WithRouterProps {
   params: { userId: string };
 }
 
-export function UserSuccessModal({ params }: UserSuccessModalProps) {
+export function UserSuccessModal({ params, location }: UserSuccessModalProps) {
+  const isExternalUser = location.pathname.includes("/tenants");
+
   const userId = parseInt(params.userId);
   const { data: user, isLoading, error } = useGetUserQuery(userId);
 
@@ -35,7 +38,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
   const dispatch = useDispatch();
 
   const handleClose = () => {
-    dispatch(push("/admin/people"));
+    dispatch(
+      isExternalUser ? push("/admin/tenants/people") : push("/admin/people"),
+    );
   };
 
   useEffect(() => {

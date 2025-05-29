@@ -36,7 +36,7 @@ export const NewUserModal = ({
         : { password: generatePassword() }),
     }).unwrap();
 
-    dispatch(push(Urls.newUserSuccess(user.id)));
+    dispatch(push(Urls.newUserSuccess(user)));
   };
 
   return (

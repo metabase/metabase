@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { IndexRedirect, IndexRoute } from "react-router";
 import { t } from "ttag";
 
@@ -5,10 +6,15 @@ import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp"
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
+import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
+import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
@@ -53,6 +59,13 @@ if (true || hasPremiumFeature("tenants")) {
             <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
             {/* @ts-expect-error - params prop can't be infered */}
             <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
+            {/* @ts-expect-error - params prop can't be infered */}
+            <ModalRoute path="success" modal={UserSuccessModal} noWrap />
+            {/* @ts-expect-error - params prop can't be infered */}
+            <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
+            {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
+              <Fragment key={index}>{getRoutes()}</Fragment>
+            ))}
           </Route>
         </Route>
         <Route path=":tenantId" component={TenantsListingApp}>
