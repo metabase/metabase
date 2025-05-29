@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import { t } from "ttag";
 
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
