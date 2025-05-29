@@ -307,7 +307,7 @@
     [:action-id ms/PositiveInt]]
    [:map {:closed true}
     [:action-kw :keyword]
-    [:table-id {:optional true} ms/PositiveInt]]])
+    [:mapping {:optional true} :map]]])
 
 (mr/def ::unified-action
   [:or
@@ -330,7 +330,7 @@
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
                         (cond
                           (isa? op :table.row/common)
-                          {:action-kw op, :table-id param}
+                          {:action-kw op, :mapping {:table-id param, :row ::root}}
                           :else
                           (throw (ex-info "Execution not supported for given encoded action" {:status    400
                                                                                               :action-id raw-id
@@ -363,6 +363,23 @@
     :else
     (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
+(defn- apply-mapping [mapping inputs]
+  (if-not (seq mapping)
+    inputs
+    (for [input inputs]
+      (walk/postwalk
+       (fn [x]
+         (cond
+           ;; TODO handle the fact this stuff can be json-ified better
+           (contains? #{::root "::root"} x)
+           input
+           ;; specific key
+           (and (vector? x) (contains? #{::key "::key"} (first x)))
+           (get input (keyword (second x)))
+           :else
+           x))
+       mapping))))
+
 (defn- execute!* [action-id scope inputs]
   (let [scope   (actions/hydrate-scope scope)
         unified (fetch-unified-action scope action-id)]
@@ -373,11 +390,7 @@
         [(execute-saved-action! action (first inputs))])
       (:action-kw unified)
       (let [action-kw (keyword (:action-kw unified))]
-        (:outputs
-         ;; Weird magic currying we've been doing implicitly.
-         (if (and (isa? action-kw :table.row/common) (:table-id unified))
-           (actions/perform-action! action-kw scope (for [i inputs] {:table-id (:table-id unified), :row i}))
-           (actions/perform-action! action-kw scope inputs))))
+        (:outputs (actions/perform-action! action-kw scope (apply-mapping (:mapping unified) inputs))))
       (:dashboard-action unified)
       (do
         (api/check-400 (= 1 (count inputs)) "Saved actions currently only support a single input")
@@ -387,27 +400,18 @@
       (:row-action unified)
       ;; use flat namespace for now, probably want to separate form inputs from pks
       (let [row-action  (:row-action unified)
-            mapping     (:mapping unified)
             ;; will need to generalize this once we can use actions on fullscreen tables / editables / questions.
             dashcard-id (:dashcard-id unified)
             saved-id    (:action-id row-action)
             action-kw   (:action-kw row-action)
             ;; TODO probably take the row separately from inputs
             pks         inputs
-            inputs      (for [input inputs]
-                          (if (seq mapping)
-                            (walk/postwalk-replace {"::root" input} mapping)
-                            input))]
+            inputs      (apply-mapping (:mapping unified) (apply-mapping (:mapping row-action) inputs))]
         (cond
           saved-id
-          (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pks inputs mapping)
+          (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pks inputs ::row-mapping)
           action-kw
-          (let [table-id (:table-id row-action)]
-            ;; Weird magic currying we've been doing implicitly.
-            (if (and table-id (isa? action-kw :table.row/common))
-              (let [inputs (for [input inputs] {:table-id table-id, :row input})]
-                (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pks inputs mapping))
-              (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pks inputs mapping)))))
+          (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pks inputs ::row-mapping)))
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
 
