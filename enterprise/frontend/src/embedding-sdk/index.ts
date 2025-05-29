@@ -55,6 +55,7 @@ export type {
 } from "./types";
 
 export type {
+  UserBackendJwtResponse,
   MetabaseFetchRequestTokenFn,
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
