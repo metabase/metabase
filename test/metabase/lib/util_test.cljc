@@ -392,7 +392,7 @@
   (is (= 2 (lib/stage-count (lib.util/drop-later-stages two-stage-query -1))))
   (is (= two-stage-query (lib.util/drop-later-stages two-stage-query -1))))
 
-(deftest ^:parallel find-clause-by-uuid-test
+(deftest ^:parallel find-stage-index-and-clause-by-uuid-test
   (let [query {:database 1
                :lib/type :mbql/query
                :stages   [{:lib/type     :mbql.stage/mbql
@@ -403,16 +403,16 @@
                                        {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
                                        [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
                                        "wow"]]}]}]
-    (is (= [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]
-           (lib.util/find-clause-by-uuid query "00000000-0000-0000-0000-000000000001")))
-    (is (= [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]
-           (lib.util/find-clause-by-uuid query 0 "00000000-0000-0000-0000-000000000001")))
-    (is (= [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
-           (lib.util/find-clause-by-uuid query "1cb2a996-6ba1-45fb-8101-63dc3105c311")))
-    (is (= [:=
-            {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
-            [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
-            "wow"]
-           (lib.util/find-clause-by-uuid query "a1898aa6-4928-4e97-837d-e440ce21085e")))
-    (is (nil? (lib.util/find-clause-by-uuid query "00000000-0000-0000-0000-000000000002")))
-    (is (nil? (lib.util/find-clause-by-uuid query 0 "a1898aa6-4928-4e97-837d-e440ce21085e")))))
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000001")))
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (lib.util/find-stage-index-and-clause-by-uuid query 0 "00000000-0000-0000-0000-000000000001")))
+    (is (= [1 [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "1cb2a996-6ba1-45fb-8101-63dc3105c311")))
+    (is (= [1 [:=
+               {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+               [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+               "wow"]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "a1898aa6-4928-4e97-837d-e440ce21085e")))
+    (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000002")))
+    (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query 0 "a1898aa6-4928-4e97-837d-e440ce21085e")))))

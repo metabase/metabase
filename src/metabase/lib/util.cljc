@@ -583,13 +583,16 @@
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
-(defn find-clause-by-uuid
-  "Find a clause in `query` with the given `lib-uuid`."
+(defn find-stage-index-and-clause-by-uuid
+  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
   ([query lib-uuid]
-   (find-clause-by-uuid query -1 lib-uuid))
+   (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
   ([query stage-number lib-uuid]
-   (lib.util.match/match-one (drop-later-stages query stage-number)
-     (_ :guard #(= lib-uuid (lib.options/uuid %))))))
+   (first (keep-indexed (fn [idx stage]
+                          (lib.util.match/match-one stage
+                            (clause :guard #(= lib-uuid (lib.options/uuid %)))
+                            [idx clause]))
+                        (:stages (drop-later-stages query stage-number))))))
 
 (defn fresh-uuids
   "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
