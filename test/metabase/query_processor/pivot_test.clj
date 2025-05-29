@@ -82,6 +82,21 @@
               []]
              (#'qp.pivot/breakout-combinations 3 [] [] true true))))))
 
+(deftest ^:parallel breakout-combinations-test-row-totals-disabled
+  (testing "Should return the correct combos when row totals are disabled but column totals are enabled"
+    (is (= [[0 1] [0]]
+           (#'qp.pivot/breakout-combinations 2 [1] [0] false true)))))
+
+(deftest ^:parallel breakout-combinations-test-col-totals-disabled
+  (testing "Should return the correct combos when column totals are disabled but row totals are enabled"
+    (is (= [[0 1] [1]]
+           (#'qp.pivot/breakout-combinations 2 [1] [0] true false)))))
+
+(deftest ^:parallel breakout-combinations-test-row-col-totals-disabled
+  (testing "Should return only the main query when both row and column totals are disabled"
+    (is (= [[0 1]]
+           (#'qp.pivot/breakout-combinations 2 [1] [0] false false)))))
+
 (deftest ^:parallel breakout-combinations-test-4
   (testing "The breakouts are sorted ascending."
     (is (= [[0 1 2] [1 2] [2] [0 1] [1] []]

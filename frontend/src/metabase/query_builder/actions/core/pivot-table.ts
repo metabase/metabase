@@ -49,7 +49,7 @@ export function computeQuestionPivotTable(options: Options) {
       hasBreakouts,
       currentQuestion,
       question,
-      rawSeries: rawSeries || undefined,
+      rawSeries: rawSeries ?? undefined,
     });
   }
 

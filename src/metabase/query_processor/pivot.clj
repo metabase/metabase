@@ -53,10 +53,10 @@
 
 (mr/def ::pivot-opts [:maybe
                       [:map
-                       [:pivot-rows        {:optional true} [:maybe ::pivot-rows]]
-                       [:pivot-cols        {:optional true} [:maybe ::pivot-cols]]
-                       [:pivot-measures    {:optional true} [:maybe ::pivot-measures]]
-                       [:show-row-totals   {:optional true} [:maybe :boolean]]
+                       [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
+                       [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
+                       [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
+                       [:show-row-totals    {:optional true} [:maybe :boolean]]
                        [:show-column-totals {:optional true} [:maybe :boolean]]]])
 
 (mu/defn- group-bitmask :- ::bitmask
