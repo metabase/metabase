@@ -28,6 +28,7 @@ import {
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
+  FALLBACK_ID_FOR_EMPTY_COLUMN_NAME,
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
   ROW_HEIGHT,
@@ -509,6 +510,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         align = columnSettings["text_align"];
         id = col.name;
         sortDirection = getColumnSortDirection(columnIndex);
+      }
+
+      if (id === "") {
+        id = `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
       }
 
       const translatedColumnName = tc(columnName);
