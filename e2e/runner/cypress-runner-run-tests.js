@@ -10,7 +10,7 @@ const {
   SAMPLE_APP_SETUP_CONFIGS,
 } = require("./embedding-sdk/sample-apps/constants/sample-app-setup-configs");
 
-const getHost = (port = null) => `http://localhost:${port ?? BACKEND_PORT}`;
+const getHost = (port = BACKEND_PORT) => `http://localhost:${port}`;
 
 const getEmbeddingSdkAppE2eConfig = async ({
   baseUrl,
