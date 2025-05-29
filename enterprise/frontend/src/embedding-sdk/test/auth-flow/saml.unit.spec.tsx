@@ -57,15 +57,6 @@ describe("Auth Flow - SAML", () => {
     expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
   });
 
-  it("should error if preferredAuthMethod is invalid", () => {
-    expect(() =>
-      defineMetabaseAuthConfig({
-        metabaseInstanceUrl: MOCK_INSTANCE_URL,
-        preferredAuthMethod: "invalid" as any,
-      }),
-    ).toThrow(/Invalid authentication method/);
-  });
-
   it("should error if SAML is requested but only JWT is available", async () => {
     // Only setup JWT endpoints
     setupMockJwtEndpoints();

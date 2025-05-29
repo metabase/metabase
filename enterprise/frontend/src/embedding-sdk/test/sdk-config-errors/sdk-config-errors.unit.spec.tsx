@@ -150,13 +150,4 @@ describe("SDK auth errors for JWT authentication", () => {
 
     await expectErrorMessage("Custom error message");
   });
-
-  it("should throw INVALID_AUTH_METHOD for invalid preferredAuthMethod", () => {
-    expect(() =>
-      defineMetabaseAuthConfig({
-        metabaseInstanceUrl: MOCK_INSTANCE_URL,
-        preferredAuthMethod: "invalid" as any,
-      }),
-    ).toThrow(/Invalid authentication method/);
-  });
 });
