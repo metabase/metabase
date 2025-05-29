@@ -40,9 +40,11 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
+import { TABLE_ACTIONS_SETTING } from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -246,6 +248,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       });
     });
   }, [cols, settings, getCellClickedObject]);
+
+  const {
+    tableActions,
+    selectedTableActionState,
+    handleTableActionRun,
+    handleExecuteActionModalClose,
+  } = PLUGIN_TABLE_ACTIONS.useTableActionsExecute({
+    actionsVizSettings: settings[TABLE_ACTIONS_SETTING],
+    datasetData: data,
+  });
 
   const handleBodyCellClick = useCallback(
     (
@@ -673,6 +685,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return isDashcardViewTable ? width : undefined;
   }, [isDashcardViewTable, width]);
 
+  const rowActionsColumn = useMemo(() => {
+    return tableActions?.length && handleTableActionRun
+      ? { actions: tableActions, onActionRun: handleTableActionRun }
+      : undefined;
+  }, [handleTableActionRun, tableActions]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -685,6 +703,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    rowActionsColumn,
   });
   const { virtualGrid } = tableProps;
 
@@ -748,6 +767,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isColumnReorderingDisabled =
     (isDashboard || mode == null || isRawTable) && !isSettings;
 
+  const TableActionExecuteModal = PLUGIN_TABLE_ACTIONS.TableActionExecuteModal;
+
   return (
     <div
       ref={ref}
@@ -769,6 +790,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
+      />
+      <TableActionExecuteModal
+        selectedTableActionState={selectedTableActionState}
+        onClose={handleExecuteActionModalClose}
       />
     </div>
   );

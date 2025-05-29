@@ -1,3 +1,4 @@
+import type { FieldValidator } from "formik";
 import { useField } from "formik";
 import type { FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
@@ -8,7 +9,7 @@ import { Select } from "metabase/ui";
 export interface FormSelectProps extends Omit<SelectProps, "value" | "error"> {
   name: string;
   nullable?: boolean;
-
+  validate?: FieldValidator;
   shouldCastValueToNumber?: boolean;
 }
 
@@ -21,12 +22,15 @@ export const FormSelect = forwardRef(function FormSelect(
     shouldCastValueToNumber,
     onChange,
     onBlur,
+    validate,
     ...props
   }: FormSelectProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [{ value }, { error, touched }, { setValue, setTouched }] =
-    useField(name);
+  const [{ value }, { error, touched }, { setValue, setTouched }] = useField({
+    name,
+    validate,
+  });
 
   const handleChange = useCallback(
     (newValue: string | null) => {

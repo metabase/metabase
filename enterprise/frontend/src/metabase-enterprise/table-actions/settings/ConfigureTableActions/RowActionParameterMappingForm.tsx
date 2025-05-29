@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useFormikContext } from "formik";
 import { t } from "ttag";
 
 import {
@@ -13,23 +13,48 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Box, Group, Radio, Stack, Text } from "metabase/ui";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
-  Field,
   RowActionFieldSettings,
+  RowActionFieldSourceType,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 
 import S from "./RowActionSettingsModalContent.module.css";
 import { TableColumnsSelect } from "./TableColumnsSelect";
-import { getDefaultSourceTypeOptions, getFieldFlagsCaption } from "./utils";
+import { getFieldFlagsCaption } from "./utils";
 
 interface ActionParameterMappingProps {
   action: WritebackAction;
   parameters: WritebackParameter[];
   values: { parameters: RowActionFieldSettings[] };
-  tableColumns: Field[];
+  tableColumns: BasicTableViewColumn[];
 }
+
+const SOURCE_TYPE_OPTIONS: {
+  label: string;
+  value: RowActionFieldSourceType;
+}[] = [
+  {
+    get label() {
+      return t`Ask the user`;
+    },
+    value: "ask-user" as const,
+  },
+  {
+    get label() {
+      return t`Get data from a row`;
+    },
+    value: "row-data" as const,
+  },
+  {
+    get label() {
+      return t`Use constant value`;
+    },
+    value: "constant" as const,
+  },
+];
 
 export const RowActionParameterMappingForm = ({
   action,
@@ -37,10 +62,10 @@ export const RowActionParameterMappingForm = ({
   values,
   tableColumns,
 }: ActionParameterMappingProps) => {
-  const typeFieldOptions = useMemo(() => getDefaultSourceTypeOptions(), []);
+  const { setFieldValue } = useFormikContext();
 
   return (
-    <Form role="form" data-testid="row-actions-parameters-mapping-form">
+    <Form role="form" data-testid="table-action-parameters-mapping-form">
       <Stack gap="lg" mt="md">
         {parameters.map((actionParameter: WritebackParameter, index) => {
           const isRequired = isParameterRequired(action, actionParameter);
@@ -58,11 +83,15 @@ export const RowActionParameterMappingForm = ({
               </Text>
               <FormSelect
                 name={`parameters.${index}.sourceType`}
-                data={typeFieldOptions}
+                data={SOURCE_TYPE_OPTIONS}
+                onChange={(newValue) => {
+                  if (newValue === "ask-user") {
+                    setFieldValue(`parameters.${index}.visibility`, "");
+                  }
+                }}
               />
               {values.parameters[index]?.sourceType === "row-data" && (
                 <Box mt="1rem">
-                  {/* TODO: use tuple notaion for field id */}
                   <TableColumnsSelect
                     name={`parameters.${index}.sourceValueTarget`}
                     columns={tableColumns}
@@ -85,7 +114,7 @@ export const RowActionParameterMappingForm = ({
                     <Group>
                       <Radio
                         name={`parameters.${index}.visibility`}
-                        label={t`Visible`}
+                        label={t`Editable`}
                         value=""
                       />
                       <Radio

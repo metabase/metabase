@@ -17,6 +17,7 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
+  Field,
   FieldWithMetadata,
   RowValue,
   RowValues,
@@ -50,6 +51,7 @@ type EditTableDataGridProps = {
   onActionRun?: (action: WritebackAction, row: Row<RowValues>) => void;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  onColumnSort?: (field: Field) => void;
 };
 
 export const EditTableDataGrid = ({
@@ -64,6 +66,7 @@ export const EditTableDataGrid = ({
   onActionRun,
   rowSelection,
   onRowSelectionChange,
+  onColumnSort,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -186,7 +189,7 @@ export const EditTableDataGrid = ({
         : undefined,
   });
 
-  const handleCellClick = useCallback(
+  const handleBodyCellClick = useCallback(
     (
       e: React.MouseEvent<HTMLDivElement>,
       {
@@ -217,6 +220,19 @@ export const EditTableDataGrid = ({
     [onCellClickToEdit, editingCellId, fieldMetadataMap, columnsConfig],
   );
 
+  const handleHeaderCellClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, columnId?: string) => {
+      if (columnId) {
+        const field = fieldMetadataMap?.[columnId];
+
+        if (field) {
+          onColumnSort?.(field);
+        }
+      }
+    },
+    [fieldMetadataMap, onColumnSort],
+  );
+
   return (
     <DataGrid
       {...tableProps}
@@ -234,7 +250,8 @@ export const EditTableDataGrid = ({
         },
       }}
       theme={{ cell: { backgroundColor: "" } }}
-      onBodyCellClick={handleCellClick}
+      onBodyCellClick={handleBodyCellClick}
+      onHeaderCellClick={handleHeaderCellClick}
     />
   );
 };

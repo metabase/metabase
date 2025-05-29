@@ -23,13 +23,14 @@
                                                                                    :path    "metabase/channel/email/data_editing_row_delete.hbs"}}}
    :channel/slack {[:notification/system-event :event/row.created] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "*A new record was _created_* in <{{table.url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.\n"
+                                                                                   :body (str "*A new record was _created_* in <{{context.scope.origin_url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.\n"
                                                                                               "{{#each record}}"
                                                                                               "• *{{{@key}}}*: {{{@value}}}\n"
-                                                                                              "{{/each}}")}}
+                                                                                              "{{/each}}"
+                                                                                              "<{{context.scope.origin_url}}|View table in Metabase>")}}
                    [:notification/system-event :event/row.updated] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "*A record was _updated_* in <{{table.url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}\n"
+                                                                                   :body (str "*A record was _updated_* in <{{context.scope.origin_url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}\n"
                                                                                               "*Changed Fields*\n"
                                                                                               "{{#each changes}}"
                                                                                               "• *{{{@key}}}*: ~{{{@value.before}}}~ → {{{@value.after}}}\n"
@@ -37,14 +38,16 @@
                                                                                               "*Current Record Details*\n"
                                                                                               "{{#each record}}"
                                                                                               "• *{{{@key}}}*: {{{@value}}}\n"
-                                                                                              "{{/each}}")}}
+                                                                                              "{{/each}}"
+                                                                                              "<{{context.scope.origin_url}}|View table in Metabase>")}}
                    [:notification/system-event :event/row.deleted] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "*A record was _deleted_* in <{{table.url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.\n"
+                                                                                   :body (str "*A record was _deleted_* in <{{context.scope.origin_url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.\n"
                                                                                               "{{#each record}}"
                                                                                               "• ~*{{{@key}}}*~: {{{@value}}}\n"
                                                                                               "{{/each}}\n"
-                                                                                              "This record is no longer available")}}
+                                                                                              "This record is no longer available\n"
+                                                                                              "<{{context.scope.origin_url}}|View table in Metabase>")}}
                    [:notification/card nil] {:channel_type :channel/slack
                                              :details      {:type :slack/handlebars-text
                                                             :body "<{{card-url card.id}}|{{card.name}}>"}}}

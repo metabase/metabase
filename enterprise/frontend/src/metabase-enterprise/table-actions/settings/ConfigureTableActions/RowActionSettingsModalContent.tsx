@@ -9,39 +9,44 @@ import EditableText from "metabase/core/components/EditableText/EditableText";
 import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Title } from "metabase/ui";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
-  EditableTableRowActionDisplaySettings,
-  Field,
   RowActionFieldSettings,
+  TableAction,
+  TableActionDisplaySettings,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
 import S from "./RowActionSettingsModalContent.module.css";
-import { isValidMapping } from "./utils";
+import { cleanEmptyVisibility, isValidMapping } from "./utils";
 
 interface Props {
-  action: WritebackAction | null | undefined;
-  rowActionSettings: EditableTableRowActionDisplaySettings | undefined;
-  tableColumns: Field[];
+  action: WritebackAction | TableAction | null | undefined;
+  rowActionSettings: TableActionDisplaySettings | undefined;
+  tableColumns: BasicTableViewColumn[];
   onClose: () => void;
   onSubmit: (actionParams: {
-    action: WritebackAction;
+    id?: string;
+    action: WritebackAction | TableAction;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
+  actions?: (WritebackAction | TableAction)[];
 }
 
 export function RowActionSettingsModalContent({
   action: editedAction,
   rowActionSettings,
   tableColumns,
+  actions,
   onClose,
   onSubmit,
 }: Props) {
-  const [selectedAction, setSelectedAction] = useState<WritebackAction | null>(
-    editedAction || null,
-  );
+  const [selectedAction, setSelectedAction] = useState<
+    WritebackAction | TableAction | null
+  >(editedAction || null);
   const isEditMode = !!editedAction;
 
   const [actionName, setActionName] = useState<string | undefined>(
@@ -90,9 +95,16 @@ export function RowActionSettingsModalContent({
     };
   }, [isEditMode, rowActionSettings?.parameterMappings, writeableParameters]);
 
-  const getIsFormInvalid = (values: { parameters: RowActionFieldSettings[] }) =>
-    selectedAction != null &&
-    values.parameters.some((mapping) => !isValidMapping(mapping));
+  const getIsFormInvalid = (values: {
+    parameters: RowActionFieldSettings[];
+  }) => {
+    return (
+      selectedAction != null &&
+      values.parameters.some(
+        (mapping) => !isValidMapping(mapping, tableColumns),
+      )
+    );
+  };
 
   const handlePickAction = (action: WritebackAction) => {
     setSelectedAction(action);
@@ -102,30 +114,33 @@ export function RowActionSettingsModalContent({
     (values: { parameters: RowActionFieldSettings[] }) => {
       if (selectedAction) {
         onSubmit({
+          id: rowActionSettings?.id,
           action: selectedAction,
           name: actionName,
-          parameterMappings: values.parameters || [],
+          parameterMappings: cleanEmptyVisibility(values.parameters || []),
         });
       }
 
       onClose();
     },
-    [selectedAction, onClose, onSubmit, actionName],
+    [selectedAction, onClose, onSubmit, rowActionSettings?.id, actionName],
   );
 
   return (
     <ActionSettingsWrapper
       style={{
+        padding: 0,
         height: "78vh",
         minWidth: isEditMode ? "auto" : undefined,
       }}
     >
       {!isEditMode && (
         <Box className={S.ParametersModalModalLeftSection}>
-          <h4 className={CS.pb2}>{t`Action Library`}</h4>
+          <Title order={3} className={CS.pb2}>{t`Action Library`}</Title>
           <ConnectedActionPicker
             currentAction={selectedAction}
             onClick={handlePickAction}
+            actions={actions}
           />
         </Box>
       )}
@@ -158,8 +173,11 @@ export function RowActionSettingsModalContent({
                   )}
                   <Box className={S.ParametersListContainer}>
                     <RowActionParameterMappingForm
-                      action={selectedAction}
-                      parameters={writeableParameters}
+                      // TODO: Fix later when new table actions API is ready
+                      action={selectedAction as unknown as WritebackAction}
+                      parameters={
+                        writeableParameters as unknown as WritebackParameter[]
+                      }
                       values={values}
                       tableColumns={tableColumns}
                     />
