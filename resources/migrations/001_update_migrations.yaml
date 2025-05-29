@@ -10257,6 +10257,41 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v52.2025-05-28T00:00:01
+      author: edpaget
+      comment: set perms/download-results to no when a table has perms/view-data blocked
+      preConditions: # change is safe to run regardless
+      changes:
+         - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE data_permissions as update_dp SET perm_value = 'no'
+              WHERE update_dp.perm_type = 'perms/download-results'
+                  AND update_dp.perm_value <> 'no'
+                  AND EXISTS (
+                  SELECT 1 FROM data_permissions as dp
+                  WHERE dp.group_id = update_dp.group_id
+                      AND dp.db_id = update_dp.db_id
+                      AND dp.table_id = update_dp.table_id
+                      AND dp.perm_type = 'perms/view-data'
+                      AND dp.perm_value = 'blocked'
+                  )
+         - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE data_permissions as update_dp
+              INNER JOIN data_permissions as dp
+                  ON dp.group_id = update_dp.group_id
+                  AND dp.db_id = update_dp.db_id
+                  AND dp.table_id = update_dp.table_id
+                  AND dp.perm_type = 'perms/view-data'
+                  AND dp.perm_value = 'blocked'
+              SET update_dp.perm_value = 'no'
+              WHERE update_dp.perm_type = 'perms/download-results'
+                  AND update_dp.perm_value <> 'no'
+      rollback: # not needed
+
+  - changeSet:
       id: v53.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column

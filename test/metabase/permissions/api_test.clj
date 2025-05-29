@@ -315,6 +315,55 @@
         (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
                                                                                (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
 
+(deftest update-perms-graph-blocked-view-data-test
+  (testing "PUT /api/permissions/graph"
+    (testing "setting view-data to blocked automatically sets download-results to no, even if requested otherwise"
+      (mt/with-temp [:model/PermissionsGroup group       {}
+                     :model/Database         {db-id :id}  {}
+                     :model/Table            {table-id :id} {:db_id db-id, :schema "PUBLIC"}]
+        (mt/with-no-data-perms-for-all-users!
+          (t2/insert! :model/PermissionsGroupMembership {:user_id (mt/user->id :rasta) :group_id (u/the-id group)})
+          ;; First set both permissions to unrestricted/full
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups (u/the-id group) db-id :view-data]
+                         {"PUBLIC" {table-id :unrestricted}})
+               (assoc-in [:groups (u/the-id group) db-id :download :schemas]
+                         {"PUBLIC" {table-id :full}})))
+
+          ;; Verify initial state
+          (is (= :unrestricted
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/view-data
+                                                       db-id
+                                                       table-id)))
+          (is (= :one-million-rows
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/download-results
+                                                       db-id
+                                                       table-id)))
+          ;; Now try to set view-data to blocked while keeping download-results as full
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups (u/the-id group) db-id :view-data]
+                         {"PUBLIC" {table-id :blocked}})
+               (assoc-in [:groups (u/the-id group) db-id :download :schemas]
+                         {"PUBLIC" {table-id :full}})))
+
+          ;; Verify that download-results was automatically set to no
+          (is (= :blocked
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/view-data
+                                                       db-id
+                                                       table-id)))
+          (is (= :no
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/download-results
+                                                       db-id
+                                                       table-id))))))))
+
 (deftest get-group-membership-test
   (testing "GET /api/permissions/membership"
     (testing "requires superuser"
