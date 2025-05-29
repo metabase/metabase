@@ -211,7 +211,10 @@
   (let [request-parameters' (case action-kw
                               :table.row/update (u/remove-nils request-parameters)
                               request-parameters)]
-    (actions/perform-action-with-single-input-and-output action-kw {:table-id table-id :arg request-parameters'})))
+    (actions/perform-action-with-single-input-and-output
+     action-kw
+     {:table-id table-id :arg request-parameters'}
+     :policy :data-editing)))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters

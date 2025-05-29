@@ -7,7 +7,8 @@ import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   deserializeTableFilter,
-  serializeTableFilter,
+  deserializeTableSorting,
+  serializeMbqlParam,
 } from "metabase-enterprise/data_editing/tables/edit/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -16,7 +17,7 @@ import type { StructuredDatasetQuery } from "metabase-types/api";
 type StandaloneTableQueryProps = {
   tableId: number;
   databaseId: number;
-  location: Location<{ filter?: string }>;
+  location: Location<{ filter?: string; sorting?: string }>;
 };
 
 export const useStandaloneTableQuery = ({
@@ -29,6 +30,12 @@ export const useStandaloneTableQuery = ({
       ? deserializeTableFilter(location.query.filter)
       : null;
   }, [location.query.filter]);
+
+  const sortingQueryParam = useMemo(() => {
+    return location.query?.sorting
+      ? deserializeTableSorting(location.query.sorting)
+      : null;
+  }, [location.query.sorting]);
 
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
@@ -43,17 +50,29 @@ export const useStandaloneTableQuery = ({
     if (table) {
       let question = Question.create({ databaseId, tableId, metadata });
 
-      if (filterQueryParam) {
+      if (filterQueryParam || sortingQueryParam) {
         const legacyQuery = Lib.toLegacyQuery(
           question.query(),
         ) as StructuredDatasetQuery;
-        legacyQuery.query.filter = filterQueryParam;
+        if (filterQueryParam) {
+          legacyQuery.query.filter = filterQueryParam;
+        }
+        if (sortingQueryParam) {
+          legacyQuery.query["order-by"] = sortingQueryParam;
+        }
         question = question.setDatasetQuery(legacyQuery);
       }
 
       return question;
     }
-  }, [databaseId, filterQueryParam, metadata, tableId, table]);
+  }, [
+    table,
+    databaseId,
+    tableId,
+    metadata,
+    filterQueryParam,
+    sortingQueryParam,
+  ]);
 
   const handleQuestionChange = useCallback(
     (newQuestion: Question) => {
@@ -61,10 +80,17 @@ export const useStandaloneTableQuery = ({
         newQuestion.query(),
       ) as StructuredDatasetQuery;
       const newFilterMbql = legacyQuery.query.filter;
+      const newSortingMbql = legacyQuery.query["order-by"];
 
-      if (newFilterMbql) {
+      if (newFilterMbql || newSortingMbql) {
         const searchParams = new URLSearchParams();
-        searchParams.append("filter", serializeTableFilter(newFilterMbql));
+        if (newFilterMbql) {
+          searchParams.append("filter", serializeMbqlParam(newFilterMbql));
+        }
+        if (newSortingMbql) {
+          searchParams.append("sorting", serializeMbqlParam(newSortingMbql));
+        }
+
         // don't set filter param if it is empty
         dispatch(
           push(`${window.location.pathname}?${searchParams.toString()}`),

@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import {
   type InjectedRouter,
   type Route,
@@ -15,6 +16,7 @@ type UnsavedLeaveConfirmationModalProps = {
   isUpdating: boolean;
   isDeleting: boolean;
   isInserting: boolean;
+  isLocationAllowed?: (location: Location | undefined) => boolean;
 };
 
 export const UnsavedLeaveConfirmationModal = withRouter(
@@ -23,6 +25,7 @@ export const UnsavedLeaveConfirmationModal = withRouter(
     isUpdating,
     isDeleting,
     isInserting,
+    isLocationAllowed,
   }: UnsavedLeaveConfirmationModalProps) => {
     const isLoading = isUpdating || isDeleting || isInserting;
     const routes = router.routes as Route[];
@@ -33,6 +36,7 @@ export const UnsavedLeaveConfirmationModal = withRouter(
       isEnabled: isLoading,
       router: router as InjectedRouter,
       route: currentRoute,
+      isLocationAllowed,
     });
 
     return (
