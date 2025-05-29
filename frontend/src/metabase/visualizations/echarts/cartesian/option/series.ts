@@ -394,7 +394,8 @@ function getDataLabelSeriesOption(
   seriesOption: LineSeriesOption | BarSeriesOption,
   settings: ComputedVisualizationSettings,
   formatter: (params: CallbackDataParams) => string,
-  position: "top" | "insideBottom",
+  chartMeasurements: ChartMeasurements,
+  dataset: ChartDataset,
   renderingContext: RenderingContext,
   showInBlur = true,
 ) {
@@ -416,7 +417,7 @@ function getDataLabelSeriesOption(
     label: {
       ...seriesOption.label,
       show: true,
-      position,
+      position: undefined,
       formatter,
       fontFamily: renderingContext.fontFamily,
       fontWeight: CHART_STYLE.seriesLabels.weight,
@@ -425,9 +426,15 @@ function getDataLabelSeriesOption(
       textBorderColor: renderingContext.getColor("bg-white"),
       textBorderWidth: 3,
     },
-    labelLayout: {
-      hideOverlap: settings["graph.label_value_frequency"] === "fit",
-    },
+    // labelLayout: {
+    //   hideOverlap: settings["graph.label_value_frequency"] === "fit",
+    // },
+    labelLayout: getBarLabelLayout(
+      dataset,
+      settings,
+      dataKey,
+      chartMeasurements,
+    ),
     z: Z_INDEXES.dataLabels,
     blur: {
       label: {
@@ -558,7 +565,8 @@ const buildEChartsBarSeries = (
               return isZero ? 0 : value;
             },
           ),
-          sign === "+" ? "top" : "insideBottom",
+          chartMeasurements,
+          dataset,
           renderingContext,
           false,
         ),
@@ -568,10 +576,10 @@ const buildEChartsBarSeries = (
   );
 
   if (seriesOption?.label != null) {
-    seriesOption.label.show = false;
+    // seriesOption.label.show = false;
   }
   if (seriesOption?.emphasis != null) {
-    seriesOption.emphasis.label = { show: true };
+    // seriesOption.emphasis.label = { show: true };
   }
 
   return [seriesOption, ...labelOptions];
@@ -795,6 +803,7 @@ export const getStackTotalsSeries = (
   chartWidth: number,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
   renderingContext: RenderingContext,
+  chartMeasurements: ChartMeasurements,
 ) => {
   const seriesByStackName = _.groupBy(
     seriesOptions.filter((s) => s.stack != null),
@@ -833,7 +842,8 @@ export const getStackTotalsSeries = (
             chartWidth,
             settings,
           ),
-        "top",
+        chartMeasurements,
+        chartModel.transformedDataset,
         renderingContext,
       ),
       getDataLabelSeriesOption(
@@ -851,7 +861,8 @@ export const getStackTotalsSeries = (
             chartWidth,
             settings,
           ),
-        "insideBottom",
+        chartMeasurements,
+        chartModel.transformedDataset,
         renderingContext,
       ),
     ];
@@ -953,6 +964,7 @@ export const buildEChartsSeries = (
         chartWidth,
         series,
         renderingContext,
+        chartMeasurements,
       ),
     );
   }
