@@ -94,8 +94,15 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+const ALLOWED_SDK_PRERELEASE_IDENTIFIERS = ["nightly"];
+const SDK_TAG_REGEXP = new RegExp(
+  `embedding-sdk-(0\\.\\d+\\.\\d+(-(${ALLOWED_SDK_PRERELEASE_IDENTIFIERS.join(
+    "|",
+  )}))?)$`,
+);
+
 export const getSdkVersionFromReleaseTagName = (tagName: string) => {
-  const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(tagName);
+  const match = SDK_TAG_REGEXP.exec(tagName);
 
   if (!match) {
     throw new Error(`Invalid sdk release tag: ${tagName}`);
@@ -207,10 +214,21 @@ export async function getLastEmbeddingSdkReleaseTag({
   });
 
   const lastRelease = getLastReleaseFromTags({
-    tags,
+    tags: filterAllowedPrereleaseIdentifiers(tags),
   });
 
   return lastRelease;
+}
+
+export function filterAllowedPrereleaseIdentifiers(tags: Tag[]) {
+  return tags.filter((tag) => {
+    const areJustNumbers = tag.ref.match(/\d+\.\d+\.\d+$/);
+    if (areJustNumbers) {
+      return true;
+    }
+
+    return SDK_TAG_REGEXP.exec(tag.ref);
+  });
 }
 
 export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
@@ -225,7 +243,7 @@ export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
 
 export const versionRequirements: Record<
   number,
-  { java: number; node: number, platforms: string }
+  { java: number; node: number; platforms: string }
 > = {
   43: { java: 8, node: 14, platforms: "linux/amd64" },
   44: { java: 11, node: 14, platforms: "linux/amd64" },
@@ -350,10 +368,10 @@ export function getLastReleaseFromTags({
   ignorePreReleases?: boolean;
 }) {
   return tags
-    .map(tag => tag.ref.replace("refs/tags/", ""))
-    .filter(tag => !tag.includes(".x"))
-    .filter(ignorePreReleases ? tag => !isPreReleaseVersion(tag) : () => true)
-    .filter(ignorePatches ? v => !isPatchVersion(v) : () => true)
+    .map((tag) => tag.ref.replace("refs/tags/", ""))
+    .filter((tag) => !tag.includes(".x"))
+    .filter(ignorePreReleases ? (tag) => !isPreReleaseVersion(tag) : () => true)
+    .filter(ignorePatches ? (v) => !isPatchVersion(v) : () => true)
     .sort(versionSort)
     .reverse()[0];
 }
