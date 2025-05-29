@@ -95,14 +95,40 @@
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
   (t2/update! :model/Database audit-db-id {:engine "postgres"})
-  (t2/update! :model/Table {:db_id audit-db-id} {:schema "public" :name [:lower :name]})
-  (t2/update! :model/Field
-              {:table_id
-               [:in
-                {:select [:id]
-                 :from [(t2/table-name :model/Table)]
-                 :where [:= :db_id audit-db-id]}]}
-              {:name [:lower :name]})
+  ;; do a separate select and update of table ids that are not downcased
+  ;; we don't want to try to downcase audit db tables that may already have a downcased version
+  ;; some older migrations have both upper and lowercased table names
+  ;; just grab the ids separately since there aren't many and this kind of check in an update
+  ;; has different syntax on different appdbs
+  (let [table-ids-to-update (t2/query {:select [:table.id]
+                                       :from [[(t2/table-name :model/Table) :table]]
+                                       :where [:and [:= :table.db_id audit-db-id]
+                                               [:not [:exists {:select [1]
+                                                               :from [[(t2/table-name :model/Table) :self_table]]
+                                                               :where [:and
+                                                                       [:= :self_table.db_id :table.db_id]
+                                                                       [:= :self_table.schema :table.schema]
+                                                                       [:= :self_table.name [:lower :table.name]]]}]]]})]
+    (when (seq table-ids-to-update)
+      (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
+                  {:schema "public" :name [:lower :name]})))
+
+  (let [field-ids-to-update (t2/query {:select [:field.id]
+                                       :from [[(t2/table-name :model/Field) :field]]
+                                       :inner-join [[(t2/table-name :model/Table) :table]
+                                                    [:= :table.id :field.table_id]]
+                                       :where [:and [:= :table.db_id audit-db-id]
+                                               [:not [:exists {:select [1]
+                                                               :from [[(t2/table-name :model/Field) :self_field]]
+                                                               :inner-join [[(t2/table-name :model/Table) :self_table]
+                                                                            [:= :self_table.id :self_field.table_id]]
+                                                               :where [:and
+                                                                       [:= :self_table.db_id :table.db_id]
+                                                                       [:= :self_table.schema :table.schema]
+                                                                       [:= :self_field.name [:lower :field.name]]]}]]]})]
+    (when (seq field-ids-to-update)
+      (t2/update! :model/Field :id [:in (map :id field-ids-to-update)]
+                  {:name [:lower :name]})))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- adjust-audit-db-to-host!
