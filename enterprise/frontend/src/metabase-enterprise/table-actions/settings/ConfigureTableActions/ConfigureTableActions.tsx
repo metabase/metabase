@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListActionsQuery } from "metabase/api";
 import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   RowActionFieldSettings,
   TableAction,
@@ -51,7 +51,7 @@ export const ConfigureTableActions = ({
     return { tableActions, tableActionsMap };
   }, [inputTableActions]);
 
-  const { data: actions } = useListActionsQuery({}); // TODO: we should have an api to load only needed actions, or have it hydrated along with dashboard
+  const { data: actions } = useGetActionsQuery();
 
   const addedTableActions = useMemo(
     () => actions?.filter(({ id }) => tableActionsMap.get(id)) || [],
@@ -163,6 +163,7 @@ export const ConfigureTableActions = ({
       >
         <RowActionSettingsModalContent
           action={editingAction}
+          actions={actions}
           rowActionSettings={editingActionSetting}
           tableColumns={columns}
           onSubmit={editingAction ? handleEditAction : handleAddAction}

@@ -4,7 +4,7 @@ import { ActionIcon, Group, Icon, Text, Tooltip } from "metabase/ui";
 import type { TableAction, WritebackAction } from "metabase-types/api";
 
 type RowActionItemProps = {
-  action: WritebackAction;
+  action: WritebackAction | TableAction;
   userDefinedName?: string;
   onRemove: (id: number) => void;
   onEdit: (action: WritebackAction | TableAction) => void;
