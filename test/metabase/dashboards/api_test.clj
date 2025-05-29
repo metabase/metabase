@@ -3824,6 +3824,8 @@
                      (mt/user-http-request :crowberto :post 400 execute-path
                                            {:parameters {"id" "BAD"}})))))))))))
 
+;; Mirrored in test for unified API in metabase-enterprise.data-editing.api-test.
+;; When we deprecate that API, we should move all the sibling tests there as well.
 (deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
