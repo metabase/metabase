@@ -782,6 +782,60 @@ describe("issue 23449", () => {
   });
 });
 
+describe("issue 52465 - model with linked columns can still be aggregated", () => {
+  const questionDetails = {
+    name: "52465",
+    type: "model",
+    native: {
+      query: `
+SELECT
+  "ID" AS "id orders",
+  "SOURCE" AS "source orders"
+FROM
+  "PEOPLE"
+`,
+      "template-tags": {},
+    },
+  };
+
+  it("Create model, set metadata, distinct", () => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
+        "schema",
+      );
+      cy.visit(`/model/${id}/metadata`);
+      cy.wait("@schema");
+
+      selectModelColumn("source orders");
+      mapModelColumnToDatabase({ table: "People", field: "Source" });
+
+      cy.intercept("PUT", "/api/card/*").as("updateModel");
+      cy.button("Save changes").click();
+      cy.wait("@updateModel");
+
+      const nestedQuestionDetails = {
+        query: {
+          "source-table": `card__${id}`,
+        },
+      };
+
+      H.createQuestion(nestedQuestionDetails, {
+        wrapId: true,
+        idAlias: "nestedQuestionId",
+      });
+
+      H.visitQuestion("@nestedQuestionId");
+      cy.findByText("Source").click();
+      cy.findByText("Distinct values").click();
+
+      H.assertQueryBuilderRowCount(1);
+    });
+  });
+});
+
 describe("issue 25537", () => {
   const questionDetails = {
     name: "Orders model",
