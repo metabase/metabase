@@ -720,11 +720,13 @@
           table-id     (t2/insert-returning-pk! :metabase_table {:name       "orders"
                                                                  :active     true
                                                                  :db_id      db-id
+                                                                 :schema     "test-schema"
                                                                  :created_at #t "2020"
                                                                  :updated_at #t "2020"})
           _other-table (t2/insert-returning-pk! :metabase_table {:name       "other"
                                                                  :active     true
                                                                  :db_id      db-id
+                                                                 :schema     "test-schema"
                                                                  :created_at #t "2020"
                                                                  :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]
