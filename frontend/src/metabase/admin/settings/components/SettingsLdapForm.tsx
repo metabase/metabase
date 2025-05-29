@@ -38,7 +38,7 @@ const testParentheses: TestConfig<string | null | undefined> = {
 };
 
 const LDAP_SCHEMA = Yup.object({
-  "ldap-port": Yup.number().nullable(),
+  "ldap-port": Yup.number().integer().nullable(),
   "ldap-user-filter": Yup.string().nullable().test(testParentheses),
   "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });

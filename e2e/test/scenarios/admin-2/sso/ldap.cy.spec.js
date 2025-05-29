@@ -104,7 +104,10 @@ describe(
     it("shouldn't be possible to save a non-integer port (#13313)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
-      cy.findByLabelText("LDAP Port").parent().parent().as("portSection");
+      cy.findByLabelText(/LDAP Port/)
+        .parent()
+        .parent()
+        .as("portSection");
 
       enterLdapSettings();
       enterLdapPort("asd");
@@ -112,8 +115,8 @@ describe(
 
       enterLdapPort("21.3");
       cy.get("@portSection")
-        .findByText("That's not a valid port number")
-        .should("exist");
+        .findByText("ldap-port must be an integer")
+        .should("be.visible");
 
       enterLdapPort("389 ");
       cy.get("@portSection")
@@ -236,12 +239,12 @@ const getLdapCard = () => {
 };
 
 const enterLdapPort = (value) => {
-  H.typeAndBlurUsingLabel("LDAP Port", value);
+  H.typeAndBlurUsingLabel(/LDAP Port/, value);
 };
 
 const enterLdapSettings = () => {
   H.typeAndBlurUsingLabel(/LDAP Host/, "localhost");
-  H.typeAndBlurUsingLabel("LDAP Port", "389");
+  H.typeAndBlurUsingLabel(/LDAP Port/, "389");
   H.typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
   H.typeAndBlurUsingLabel("Password", "adminpass");
   H.typeAndBlurUsingLabel(/User search base/, "ou=users,dc=example,dc=org");
