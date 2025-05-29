@@ -145,8 +145,8 @@
 
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
-  schema. Returns a set of results."
-  [driver database ^String schema-or-nil ^String db-name-or-nil]
+  schema, and filtered by `filter-tables`. Returns a set of results."
+  [driver database {:keys [^String schema-or-nil ^String db-name-or-nil filter-tables]}]
   ;; seems like some JDBC drivers like Snowflake are dumb and still narrow the search results by the current session
   ;; schema if you pass in `nil` for `schema-or-nil`, which means not to narrow results at all... For Snowflake, I fixed
   ;; this by passing in `"%"` instead -- consider making this the default behavior. See this Slack thread
@@ -157,6 +157,7 @@
    (fn [^Connection conn]
      (let [metadata (.getMetaData conn)]
        (into #{}
+             (filter filter-tables)
              (jdbc-get-tables driver metadata db-name-or-nil schema-or-nil "%"
                               ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
                                "EXTERNAL TABLE" "DYNAMIC_TABLE"]))))))
@@ -214,9 +215,9 @@
         have-select-privilege-fn? (have-select-privilege-fn driver database)]
     (eduction (mapcat (fn [schema]
                         (eduction
-                         (comp (filter have-select-privilege-fn?)
-                               (map #(dissoc % :type)))
-                         (db-tables driver database schema db-name-or-nil))))
+                         (map #(dissoc % :type))
+                         (db-tables driver database {:schema-or-nil schema :db-name-or-nil db-name-or-nil
+                                                     :filter-tables have-select-privilege-fn?}))))
               syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
@@ -227,16 +228,15 @@
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver database & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
-  (let [have-select-privilege-fn? (have-select-privilege-fn driver database)]
+  (let [have-select-privilege-fn? (have-select-privilege-fn driver database)
+        filter-tables (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
+                        (fn [{table-schema :schema :as table}]
+                          (and (not (contains? excluded table-schema))
+                               (include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters table-schema)
+                               (have-select-privilege-fn? table))))]
     (eduction
-     (comp
-      (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
-                (fn [{table-schema :schema :as table}]
-                  (and (not (contains? excluded table-schema))
-                       (include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters table-schema)
-                       (have-select-privilege-fn? table)))))
-      (map #(dissoc % :type)))
-     (db-tables driver database nil db-name-or-nil))))
+     (map #(dissoc % :type))
+     (db-tables driver database {:db-name-or-nil db-name-or-nil :filter-tables filter-tables}))))
 
 (defn db-or-id-or-spec->database
   "Get database instance from `db-or-id-or-spec`."

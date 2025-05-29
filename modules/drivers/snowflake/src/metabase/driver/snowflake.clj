@@ -590,7 +590,13 @@
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-metadata-provider (u/the-id database)
       (let [schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
-            [inclusion-patterns exclusion-patterns] schema-patterns]
+            [inclusion-patterns exclusion-patterns] schema-patterns
+            filter-tables (fn [{schema :schema table-name :name}]
+                            (and (not (contains? excluded-schemas schema))
+                                 (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
+                                                                                              exclusion-patterns
+                                                                                              schema)
+                                 (sql-jdbc.sync/have-select-privilege? driver database schema table-name)))]
         ;; you know what, if we really wanted to make this efficient we would do
         ;;
         ;;    SHOW SCHEMAS IN DATABASE <db>
@@ -602,19 +608,13 @@
         ;; for each of the schemas we wanted to sync. Right now we're fetching EVERY table, including ones from schemas
         ;; we aren't interested in.
         {:tables (into #{}
-                       (comp (filter (fn [{schema :schema table-name :name}]
-                                       (and (not (contains? excluded-schemas schema))
-                                            (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
-                                                                                                         exclusion-patterns
-                                                                                                         schema)
-                                            (sql-jdbc.sync/have-select-privilege? driver database schema table-name))))
-                             (map #(dissoc % :type)))
+                       (map #(dissoc % :type))
                        ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current
                        ;; session schema pass in `nil` for `schema-or-nil` to `getTables()`... `%` seems to fix it.
                        ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
                        ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                        ;; for more info.
-                       (sql-jdbc.describe-database/db-tables driver database "%" db-name))}))))
+                       (sql-jdbc.describe-database/db-tables driver database {:schema-or-nil "%" :db-name-or-nil db-name :filter-tables filter-tables}))}))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
