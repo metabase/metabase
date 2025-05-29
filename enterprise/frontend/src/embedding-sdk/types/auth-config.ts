@@ -15,6 +15,7 @@ type BaseMetabaseAuthConfig = {
   /**
    * Which authentication method to use.
    * This should be provided when the instance has more than one configured authentication method.
+   * If this is missing, the backend chooses which method to use which might not be the one you want.
    */
   authMethod?: MetabaseAuthMethod;
 };
