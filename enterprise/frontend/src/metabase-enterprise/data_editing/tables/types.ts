@@ -59,6 +59,11 @@ export type UpdatedRowHandlerParams = {
   rowIndex: number;
 };
 
+export type UpdatedRowBulkHandlerParams = {
+  updatedData: RowCellsWithPkValue;
+  rowIndices: number[];
+};
+
 export type TableUndoRedoRequest = {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;

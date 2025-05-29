@@ -32,6 +32,7 @@ import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
 import { useEditingTableRowSelection } from "./use-table-row-selection";
+import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -114,6 +115,7 @@ export const EditTableDataContainer = ({
     handleCellValueUpdate,
     handleRowCreate,
     handleRowUpdate,
+    handleRowUpdateBulk,
     handleRowDelete,
     handleRowDeleteBulk,
   } = useTableCRUD({
@@ -142,6 +144,11 @@ export const EditTableDataContainer = ({
     handleRowDeleteBulk,
     selectedRowIndices,
     setRowSelection,
+  });
+
+  const { getColumnSortDirection, handleChangeColumnSort } = useTableSorting({
+    question: fakeTableQuestion,
+    handleQuestionChange,
   });
 
   const [
@@ -261,7 +268,11 @@ export const EditTableDataContainer = ({
         datasetColumns={datasetData.cols}
         fieldMetadataMap={tableFieldMetadataMap}
         onClose={closeBulkEditing}
+        onEdit={handleRowUpdateBulk}
+        onDelete={handleRowDeleteBulk}
+        isDeleting={isDeleting}
         selectedRowIndices={selectedRowIndices}
+        setRowSelection={setRowSelection}
         hasDeleteAction
       />
       <DeleteBulkRowConfirmationModal

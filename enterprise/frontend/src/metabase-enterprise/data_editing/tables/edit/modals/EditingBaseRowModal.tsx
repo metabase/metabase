@@ -30,7 +30,7 @@ import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
-import { useEditingModalOrderedDatasetColumns } from "./use-editing-modal-ordered-dataset-columns";
+import { useEditingModalOrderedVisibleDatasetColumns } from "./use-editing-modal-ordered-dataset-columns";
 import type { TableEditingModalState } from "./use-table-modal";
 import { TableEditingModalAction } from "./use-table-modal";
 
@@ -143,10 +143,8 @@ export function EditingBaseRowModal({
   }, [closeDeletionModal, onRowDelete, modalState.rowIndex, onClose]);
 
   // Columns might be reordered to match the order in `columnsConfig`
-  const orderedDatasetColumns = useEditingModalOrderedDatasetColumns(
-    datasetColumns,
-    columnsConfig,
-  );
+  const orderedVisibleDatasetColumns =
+    useEditingModalOrderedVisibleDatasetColumns(datasetColumns, columnsConfig);
 
   // We can't use `currentRowData` in case
   // when colums are reordered due to `columnsConfig`
@@ -201,7 +199,7 @@ export function EditingBaseRowModal({
             py="lg"
             className={cx(S.modalBody, { [S.modalBodyEditing]: isEditingMode })}
           >
-            {orderedDatasetColumns.map((column) => {
+            {orderedVisibleDatasetColumns.map((column) => {
               const field = fieldMetadataMap?.[column.name];
 
               return (

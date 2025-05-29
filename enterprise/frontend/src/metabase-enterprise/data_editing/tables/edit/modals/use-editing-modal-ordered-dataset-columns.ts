@@ -4,7 +4,7 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
-export function useEditingModalOrderedDatasetColumns(
+export function useEditingModalOrderedVisibleDatasetColumns(
   datasetColumns: DatasetColumn[],
   columnsConfig?: EditableTableColumnConfig,
 ) {
@@ -15,6 +15,9 @@ export function useEditingModalOrderedDatasetColumns(
 
     return columnsConfig.columnOrder
       .map((name) => datasetColumns.find((it) => it.name === name))
-      .filter((it): it is DatasetColumn => it !== undefined);
+      .filter(
+        (it): it is DatasetColumn =>
+          it !== undefined && !columnsConfig.isColumnHidden(it.name),
+      );
   }, [columnsConfig, datasetColumns]);
 }

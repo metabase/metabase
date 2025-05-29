@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { RowSelectionState } from "@tanstack/react-table";
 import cx from "classnames";
-import { Fragment } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 import { noop } from "underscore";
 
@@ -10,48 +11,99 @@ import { canEditField } from "metabase-enterprise/data_editing/helpers";
 import type {
   DatasetColumn,
   FieldWithMetadata,
+  RowValue,
   Table,
 } from "metabase-types/api";
 
+import type { UpdatedRowBulkHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
-import type { EditingBodyPrimitiveProps } from "../inputs/types";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
 import { DeleteBulkRowConfirmationModal } from "./DeleteBulkRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
-import { useEditingModalOrderedDatasetColumns } from "./use-editing-modal-ordered-dataset-columns";
+import { useEditingModalOrderedVisibleDatasetColumns } from "./use-editing-modal-ordered-dataset-columns";
 
 interface EditBulkRowsModalProps {
   opened: boolean;
   datasetColumns: DatasetColumn[];
   datasetTable?: Table;
   onClose: () => void;
+  onEdit: (data: UpdatedRowBulkHandlerParams) => Promise<boolean>;
+  onDelete: (rowIndices: number[]) => Promise<boolean>;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   hasDeleteAction: boolean;
-  isLoading?: boolean;
+  isDeleting?: boolean;
   columnsConfig?: EditableTableColumnConfig;
   selectedRowIndices: number[];
+  setRowSelection: (state: RowSelectionState) => void;
 }
 
 export function EditBulkRowsModal({
   opened,
   datasetColumns,
   onClose,
+  onEdit,
+  onDelete,
+  isDeleting,
   fieldMetadataMap,
   hasDeleteAction,
   columnsConfig,
   selectedRowIndices,
+  setRowSelection,
 }: EditBulkRowsModalProps) {
+  // We need editing state to track null values for columns that were cleared
+  const [editingState, setEditingState] = useState<Record<string, RowValue>>(
+    {},
+  );
+
+  // Clear editing state on modal close
+  useEffect(() => {
+    setEditingState({});
+  }, [opened]);
+
   const [
     isDeleteRequested,
     { open: requestDeletion, close: closeDeletionModal },
   ] = useDisclosure();
 
   // Columns might be reordered to match the order in `columnsConfig`
-  const orderedDatasetColumns = useEditingModalOrderedDatasetColumns(
-    datasetColumns,
-    columnsConfig,
+  const orderedVisibleDatasetColumns =
+    useEditingModalOrderedVisibleDatasetColumns(datasetColumns, columnsConfig);
+
+  const handleValueEdit = useCallback(
+    async (key: string, value: RowValue, forceUpdate = false) => {
+      // Skip update if the value is empty and the value was not changed before
+      const valueWasModifiedBefore = key in editingState;
+      if (!forceUpdate && !value && !valueWasModifiedBefore) {
+        return;
+      }
+
+      const result = await onEdit({
+        updatedData: { [key]: value },
+        rowIndices: selectedRowIndices,
+      });
+
+      if (result) {
+        setEditingState((prev) => ({ ...prev, [key]: value }));
+      }
+    },
+    [onEdit, selectedRowIndices, setEditingState, editingState],
   );
+
+  const handleDeleteConfirmation = useCallback(async () => {
+    const result = await onDelete(selectedRowIndices);
+    if (result) {
+      setRowSelection({});
+      onClose();
+      closeDeletionModal();
+    }
+  }, [
+    onDelete,
+    selectedRowIndices,
+    closeDeletionModal,
+    onClose,
+    setRowSelection,
+  ]);
 
   if (isDeleteRequested) {
     return (
@@ -59,8 +111,8 @@ export function EditBulkRowsModal({
         opened={true}
         onClose={closeDeletionModal}
         rowCount={selectedRowIndices.length}
-        isLoading={false}
-        onConfirm={() => {}}
+        isLoading={isDeleting}
+        onConfirm={handleDeleteConfirmation}
       />
     );
   }
@@ -96,25 +148,8 @@ export function EditBulkRowsModal({
           py="lg"
           className={cx(S.modalBody, S.modalBodyEditing)}
         >
-          {orderedDatasetColumns.map((column) => {
+          {orderedVisibleDatasetColumns.map((column) => {
             const field = fieldMetadataMap?.[column.name];
-            const disabled =
-              columnsConfig?.isColumnReadonly(column.name) ||
-              !canEditField(field);
-
-            const inputProps: EditingBodyPrimitiveProps["inputProps"] = {
-              placeholder: t`(Unchanged)`,
-              disabled,
-              rightSectionPointerEvents: "all",
-              rightSection: !disabled && (
-                <Icon
-                  name="close"
-                  color="var(--mb-color-text-light)"
-                  onClick={() => {}}
-                  onMouseDown={(event) => event.stopPropagation()}
-                />
-              ),
-            };
 
             return (
               <Fragment key={column.id}>
@@ -135,15 +170,13 @@ export function EditBulkRowsModal({
                   )}
                 </Text>
 
-                <EditingBodyCellConditional
-                  autoFocus={false}
+                <BulkEditingInput
                   datasetColumn={column}
                   field={field}
-                  initialValue={null}
-                  onCancel={noop}
-                  onSubmit={noop}
-                  onChangeValue={noop}
-                  inputProps={inputProps}
+                  onSubmitValue={handleValueEdit}
+                  isValueCleared={editingState[column.name] === null}
+                  isValueModified={column.name in editingState}
+                  columnsConfig={columnsConfig}
                 />
               </Fragment>
             );
@@ -151,5 +184,67 @@ export function EditBulkRowsModal({
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
+  );
+}
+
+type BulkEditingInputProps = {
+  datasetColumn: DatasetColumn;
+  field?: FieldWithMetadata;
+  onSubmitValue: (key: string, value: RowValue, forceUpdate?: boolean) => void;
+  columnsConfig?: EditableTableColumnConfig;
+  isValueCleared?: boolean;
+  isValueModified?: boolean;
+};
+
+function BulkEditingInput({
+  datasetColumn,
+  field,
+  onSubmitValue,
+  columnsConfig,
+  isValueCleared,
+  isValueModified,
+}: BulkEditingInputProps) {
+  const disabled =
+    columnsConfig?.isColumnReadonly(datasetColumn.name) || !canEditField(field);
+
+  const handleValueClear = useCallback(() => {
+    onSubmitValue(datasetColumn.name, null, true);
+  }, [onSubmitValue, datasetColumn.name]);
+
+  const handleValueSubmit = useCallback(
+    (value: RowValue) => {
+      onSubmitValue(datasetColumn.name, value);
+    },
+    [onSubmitValue, datasetColumn.name],
+  );
+
+  const placeholder = isValueCleared
+    ? "NULL"
+    : !isValueModified
+      ? t`(Unchanged)`
+      : undefined;
+
+  return (
+    <EditingBodyCellConditional
+      autoFocus={false}
+      datasetColumn={datasetColumn}
+      field={field}
+      initialValue={null}
+      onCancel={noop}
+      onSubmit={handleValueSubmit}
+      inputProps={{
+        placeholder,
+        disabled,
+        rightSectionPointerEvents: "all",
+        rightSection: !disabled && !isValueCleared && (
+          <Icon
+            name="close"
+            color="var(--mb-color-text-light)"
+            onClick={handleValueClear}
+            onMouseDown={(event) => event.stopPropagation()}
+          />
+        ),
+      }}
+    />
   );
 }

@@ -5,7 +5,7 @@ import { Button, Group, Modal } from "metabase/ui";
 type DeleteBulkRowConfirmationModalProps = {
   opened: boolean;
   rowCount: number;
-  isLoading: boolean;
+  isLoading?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 };

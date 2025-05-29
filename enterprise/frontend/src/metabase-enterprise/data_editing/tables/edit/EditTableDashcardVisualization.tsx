@@ -22,6 +22,7 @@ import {
 } from "metabase/ui";
 import { ShortMessage } from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView.styled";
 import { useBuiltInActions } from "metabase-enterprise/data_editing/actions/use-built-in-actions";
+import { canEditField } from "metabase-enterprise/data_editing/helpers";
 import { TableActionExecuteModalContent } from "metabase-enterprise/table-actions/execution/TableActionExecuteModalContent";
 import { useTableActionsExecute } from "metabase-enterprise/table-actions/execution/use-table-actions-execute";
 import type Question from "metabase-lib/v1/Question";
@@ -144,6 +145,7 @@ export const EditTableDashcardVisualization = memo(
       handleCellValueUpdate,
       handleRowCreate,
       handleRowUpdate,
+      handleRowUpdateBulk,
       handleRowDelete,
       handleRowDeleteBulk,
     } = useTableCRUD({
@@ -164,10 +166,19 @@ export const EditTableDashcardVisualization = memo(
       visualizationSettings,
     );
 
-    const { hasCreateAction /*, hasDeleteActio */ } = useBuiltInActions(
+    const { hasCreateAction, hasDeleteAction } = useBuiltInActions(
       visualizationSettings?.["editableTable.enabledActions"],
     );
-    const hasDeleteAction = true;
+
+    const hasEditableAndVisibleColumns = useMemo(() => {
+      return data.cols.some(
+        (column) =>
+          !columnsConfig?.isColumnReadonly(column.name) &&
+          !columnsConfig?.isColumnHidden(column.name) &&
+          canEditField(tableFieldMetadataMap[column.name]),
+      );
+    }, [data.cols, tableFieldMetadataMap, columnsConfig]);
+    const hasBulkEditing = hasEditableAndVisibleColumns;
 
     const {
       tableActions,
@@ -221,20 +232,22 @@ export const EditTableDashcardVisualization = memo(
 
           {!isEditing && (
             <Group gap="sm" align="center">
-              <ActionIcon
-                size="md"
-                onClick={requestBulkEditing}
-                disabled={shouldDisableActions || !selectedRowIndices.length}
-              >
-                <Icon
-                  name="pencil"
-                  tooltip={
-                    selectedRowIndices.length
-                      ? t`Edit selected records`
-                      : t`Select records to edit`
-                  }
-                />
-              </ActionIcon>
+              {hasBulkEditing && (
+                <ActionIcon
+                  size="md"
+                  onClick={requestBulkEditing}
+                  disabled={shouldDisableActions || !selectedRowIndices.length}
+                >
+                  <Icon
+                    name="pencil"
+                    tooltip={
+                      selectedRowIndices.length
+                        ? t`Edit selected records`
+                        : t`Select records to edit`
+                    }
+                  />
+                </ActionIcon>
+              )}
               {hasDeleteAction && (
                 <ActionIcon
                   size="md"
@@ -251,9 +264,11 @@ export const EditTableDashcardVisualization = memo(
                   />
                 </ActionIcon>
               )}
-              <Box h={rem(16)}>
-                <Divider orientation="vertical" h="100%" />
-              </Box>
+              {(hasBulkEditing || hasDeleteAction) && (
+                <Box h={rem(16)}>
+                  <Divider orientation="vertical" h="100%" />
+                </Box>
+              )}
               <ActionIcon
                 size="md"
                 onClick={undo}
@@ -362,7 +377,11 @@ export const EditTableDashcardVisualization = memo(
           hasDeleteAction={hasDeleteAction}
           columnsConfig={columnsConfig}
           onClose={closeBulkEditing}
+          onEdit={handleRowUpdateBulk}
+          onDelete={handleRowDeleteBulk}
+          isDeleting={isDeleting}
           selectedRowIndices={selectedRowIndices}
+          setRowSelection={setRowSelection}
         />
         <Modal
           isOpen={isActionExecuteModalOpen}
