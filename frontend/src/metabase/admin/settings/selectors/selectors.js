@@ -29,7 +29,7 @@ import { LocalizationSettingsPage } from "../components/SettingsPages/Localizati
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
+import { CustomGeoJSONWidget } from "../components/widgets/CustomGeoJSONWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
