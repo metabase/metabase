@@ -6,7 +6,7 @@ import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
+import type { CardType, TableId } from "metabase-types/api";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 
@@ -55,11 +55,10 @@ export function EmbeddingDataPicker({
 
   // a table or a virtual table (card)
   const sourceTable = useSourceTable(query);
-  const isSourceModel = sourceTable?.type === "model";
   const {
     collectionId: sourceModelCollectionId,
     isFetching: isSourceModelFetching,
-  } = useSourceModelCollectionId(query);
+  } = useSourceEntityCollectionId(query);
 
   if (isDataSourceCountLoading) {
     return null;
@@ -103,7 +102,7 @@ export function EmbeddingDataPicker({
           : `${sourceTable?.id}:${isSourceModelFetching}`
       }
       isInitiallyOpen={isSourceModelFetching ? false : !table}
-      isQuerySourceModel={isSourceModel}
+      querySourceType={sourceTable?.type}
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
@@ -130,15 +129,17 @@ function useSourceTable(query: Lib.Query) {
   return metadata.table(Lib.sourceTableOrCardId(query));
 }
 
-function useSourceModelCollectionId(query: Lib.Query) {
+function useSourceEntityCollectionId(query: Lib.Query) {
   const sourceTable = useSourceTable(query);
-  const isSourceModel = sourceTable?.type === "model";
-  const modelId = isSourceModel
+  const isCard =
+    sourceTable?.type &&
+    (["model", "question"] as CardType[]).includes(sourceTable.type);
+  const cardId = isCard
     ? getQuestionIdFromVirtualTableId(sourceTable?.id)
     : undefined;
-  const { data: modelCard, isFetching } = useGetCardQuery(
-    modelId ? { id: modelId } : skipToken,
+  const { data: card, isFetching } = useGetCardQuery(
+    cardId ? { id: cardId } : skipToken,
   );
 
-  return { collectionId: modelCard?.collection_id, isFetching };
+  return { collectionId: card?.collection_id, isFetching };
 }

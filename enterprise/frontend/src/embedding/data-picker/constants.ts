@@ -4,7 +4,9 @@ import type { DataPickerDataType, DataTypeInfoItem } from "./types";
 
 export const CONTAINER_WIDTH = 300;
 
-export const DATA_BUCKET: Record<string, DataPickerDataType> = {
+type DataBucket = "MODELS" | "RAW_DATA" | "SAVED_QUESTIONS";
+
+export const DATA_BUCKET: Record<DataBucket, DataPickerDataType> = {
   MODELS: "models",
   RAW_DATA: "raw-data",
   SAVED_QUESTIONS: "questions",

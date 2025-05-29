@@ -347,13 +347,20 @@ export class UnconnectedDataSelector extends Component {
     ) {
       await this.switchToStep(TABLE_STEP);
     } else if (this.isJoinStep()) {
-      const isQuerySourceModel = this.props.isQuerySourceModel;
-
-      if (isQuerySourceModel) {
+      const querySourceType = this.props.querySourceType;
+      if (querySourceType === "model") {
         await this.switchToStep(
           DATABASE_STEP,
           {
-            selectedDataBucketId: "models",
+            selectedDataBucketId: DATA_BUCKET.MODELS,
+          },
+          false,
+        );
+      } else if (querySourceType === "question") {
+        await this.switchToStep(
+          DATABASE_STEP,
+          {
+            selectedDataBucketId: DATA_BUCKET.SAVED_QUESTIONS,
           },
           false,
         );
@@ -780,7 +787,10 @@ export class UnconnectedDataSelector extends Component {
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
     const isPickerOpen =
-      isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
+      isSavedEntityPickerShown ||
+      [DATA_BUCKET.MODELS, DATA_BUCKET.SAVED_QUESTIONS].includes(
+        selectedDataBucketId,
+      );
 
     if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
