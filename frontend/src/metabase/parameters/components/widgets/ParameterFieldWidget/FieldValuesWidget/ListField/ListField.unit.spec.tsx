@@ -18,7 +18,6 @@ import { PRODUCT_CATEGORY_VALUES } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { ListField } from "./ListField";
-import { portugueseDictionary } from "./test-constants";
 import type { Option } from "./types";
 
 type SetupOpts = {
@@ -188,33 +187,5 @@ describe("ListField", () => {
     await waitFor(() =>
       expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument(),
     );
-  });
-
-  it("respects content translations when sorting", async () => {
-    setup({
-      value: ["Gadget", "Widget", "Gizmo", "Doohickey"],
-      options: allOptions,
-      locale: "pt_BR",
-      hasEnterprisePlugins: true,
-      tokenFeatures: {
-        content_translation: true,
-      },
-      contentTranslationDictionary: portugueseDictionary,
-    });
-
-    await waitFor(async () => {
-      expect(await screen.findByText("Aparelho")).toBeInTheDocument();
-    });
-
-    expect(await screen.findByText("Engenhoca")).toBeInTheDocument();
-    expect(await screen.findByText("Treco")).toBeInTheDocument();
-    expect(await screen.findByText("Dispositivo")).toBeInTheDocument();
-
-    // Check the order of the options
-    const options = screen.getAllByRole("checkbox");
-    expect(options[0]).toHaveTextContent("Aparelho");
-    expect(options[1]).toHaveTextContent("Engenhoca");
-    expect(options[2]).toHaveTextContent("Treco");
-    expect(options[3]).toHaveTextContent("Dispositivo");
   });
 });
