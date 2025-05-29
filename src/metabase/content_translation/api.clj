@@ -1,7 +1,7 @@
 (ns metabase.content-translation.api
   (:require
-   [metabase-enterprise.content-translation.models :as ct]
-   [metabase.api.macros :as api.macros]))
+   [metabase.api.macros :as api.macros]
+   [metabase.content-translation.models :as ct]))
 
 (api.macros/defendpoint :get "/dictionary"
   "Provides translations of user-generated content. This is a public route so that logged-out viewers of static-embedded questions and dashboards can retrieve translations"

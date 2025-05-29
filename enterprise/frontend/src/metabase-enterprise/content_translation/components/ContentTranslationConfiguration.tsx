@@ -1,5 +1,13 @@
-import { type ChangeEvent, type ReactNode, useCallback, useRef } from "react";
-import { t } from "ttag";
+import {
+  type ChangeEvent,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
+import { c, t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { UploadInput } from "metabase/components/upload";
@@ -11,8 +19,21 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
+
+/** Maximum file size for uploaded content-translation dictionaries, expressed
+ * in mebibytes. */
+const maxContentDictionarySizeInMiB = 1.5;
+
+/** The maximum file size is 1.5 mebibytes (which equals 1.57 metabytes).
+ * For simplicity, though, let's express this as 1.5 megabytes, which is
+ * approximately right. */
+const approxMaxContentDictionarySizeInMB = 1.5;
+
+/** This should equal the max-content-translation-dictionary-size variable in the backend */
+const maxContentDictionarySizeInBytes =
+  maxContentDictionarySizeInMiB * 1024 * 1024;
 
 export const ContentTranslationConfiguration = () => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
@@ -20,6 +41,8 @@ export const ContentTranslationConfiguration = () => {
     "configuring-metabase/localization",
     { anchor: "supported-languages" },
   ).url;
+
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
 
   return (
     <Stack gap="sm" maw="38rem">
@@ -44,19 +67,49 @@ export const ContentTranslationConfiguration = () => {
         initialValues={{}}
         onSubmit={() => {}}
       >
-        <UploadForm />
+        <UploadForm setErrorMessages={setErrorMessages} />
       </FormProvider>
+      {!!errorMessages.length && (
+        <Stack gap="xs">
+          <Text role="alert" c="error">
+            {errorMessages.length === 1
+              ? t`We couldn't upload the file due to this error:`
+              : t`We couldn't upload the file due to these errors:`}
+          </Text>
+          <List withPadding>
+            {errorMessages.map((errorMessage) => (
+              <List.Item key={errorMessage} role="alert" c="danger">
+                {errorMessage}
+              </List.Item>
+            ))}
+          </List>
+        </Stack>
+      )}
     </Stack>
   );
 };
 
-const UploadForm = () => {
+const UploadForm = ({
+  setErrorMessages,
+}: {
+  setErrorMessages: Dispatch<SetStateAction<string[]>>;
+}) => {
   const [uploadContentTranslationDictionary] =
     useUploadContentTranslationDictionaryMutation();
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.length) {
       const file = event.target.files[0];
+
+      if (file.size > maxContentDictionarySizeInBytes) {
+        setErrorMessages([
+          c("{0} is a number")
+            .t`Upload a dictionary smaller than ${approxMaxContentDictionarySizeInMB} MB`,
+        ]);
+        setStatus("rejected");
+        return;
+      }
+
       await uploadFile(file);
       resetInput();
     }
@@ -77,17 +130,19 @@ const UploadForm = () => {
         console.error("No file selected");
         return;
       }
+      setErrorMessages([]);
       setStatus("pending");
       await uploadContentTranslationDictionary({ file })
         .unwrap()
         .then(() => {
           setStatus("fulfilled");
         })
-        .catch(() => {
+        .catch((e) => {
+          setErrorMessages(e.data.errors ?? [t`Unknown error encountered`]);
           setStatus("rejected");
         });
     },
-    [uploadContentTranslationDictionary, setStatus],
+    [uploadContentTranslationDictionary, setErrorMessages, setStatus],
   );
 
   const triggerUpload = () => {

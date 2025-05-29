@@ -265,6 +265,10 @@
            task
            util}}
 
+  content-translation
+  {:api  #{metabase.content-translation.api}
+   :uses #{api}}
+
   content-verification
   {:api  #{metabase.content-verification.core
            metabase.content-verification.init}
@@ -1439,6 +1443,13 @@
            query-processor
            task
            util}}
+
+  enterprise/content-translation
+  {:api  #{metabase-enterprise.content-translation.routes}
+   :uses #{api
+           content-translation
+           util
+           enterprise/api}}
 
   enterprise/content-verification
   {:api  #{metabase-enterprise.content-verification.api.routes}
