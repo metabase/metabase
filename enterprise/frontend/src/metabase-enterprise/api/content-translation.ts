@@ -2,7 +2,6 @@ import { invalidateTags, listTag } from "metabase/api/tags";
 import type { DictionaryResponse } from "metabase-types/api/content-translation";
 
 import { EnterpriseApi } from "./api";
-import { PLUGIN_API } from "metabase/plugins";
 
 type ListContentTranslationsRequest = {
   locale?: string;
@@ -21,7 +20,9 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
       >({
         query: (params) => ({
           method: "GET",
-          url: PLUGIN_API.getContentTranslationDictionaryUrl(),
+          // This route is not prefixed with /api/ee/, because it is
+          // not authenticated
+          url: "/api/content-translation/dictionary",
           params,
         }),
         providesTags: () => [listTag("content-translation")],
