@@ -84,10 +84,5 @@ export function is403Error(error: unknown): boolean {
 export function getFieldRemappedValues(
   fieldValues: FieldValue[] | undefined,
 ): Map<number, string> {
-  return new Map(
-    getRemappings({
-      remappings: [], // TODO: field.remappings?
-      values: fieldValues,
-    }),
-  );
+  return new Map(getRemappings({ values: fieldValues }));
 }
