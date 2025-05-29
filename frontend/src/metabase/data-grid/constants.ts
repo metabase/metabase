@@ -7,3 +7,4 @@ export const TRUNCATE_LONG_CELL_WIDTH = 780;
 export const PINNED_COLUMN_Z_INDEX = 1;
 export const DEFAULT_FONT_SIZE = "12.5px";
 export const FOOTER_HEIGHT = 30;
+export const FALLBACK_ID_FOR_EMPTY_COLUMN_NAME = "\0_EMPTY_COLUMN_ID";
