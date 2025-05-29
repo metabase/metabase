@@ -7,7 +7,7 @@ import type {
   HeaderCellBaseProps,
   HeaderCellVariant,
 } from "metabase/data-grid/types";
-import { Icon } from "metabase/ui";
+import { Box, Icon, rem } from "metabase/ui";
 
 import S from "./HeaderCell.module.css";
 
@@ -34,7 +34,7 @@ export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
     ref,
   ) {
     return (
-      <div
+      <Box
         ref={ref}
         data-grid-header-cell-content
         data-header-click-target
@@ -42,6 +42,8 @@ export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
           [S.alignRight]: align === "right",
         })}
         data-testid="cell-data"
+        mih={rem(18)}
+        miw={rem(22)}
       >
         <Ellipsified tooltip={name}>{name}</Ellipsified>
         {sort != null ? (
@@ -52,7 +54,7 @@ export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
             size={10}
           />
         ) : null}
-      </div>
+      </Box>
     );
   },
 );
