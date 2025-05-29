@@ -8,7 +8,13 @@ const SPECIAL_GROUP_NAMES = new Map([
   ["All Users", t`All Users`],
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   ["Administrators", t`Administrators`],
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  ["All External Users", t`External Users`],
 ]);
+
+export function isExternalUsersGroup(group: Pick<Group, "name">) {
+  return group.name === "All External Users";
+}
 
 export function isDefaultGroup(group: Pick<Group, "name">) {
   return group.name === "All Internal Users";
@@ -23,7 +29,7 @@ export function canEditPermissions(group: Pick<Group, "name">) {
 }
 
 export function canEditMembership(group: Pick<Group, "name">) {
-  return !isDefaultGroup(group);
+  return !isDefaultGroup(group) && !isExternalUsersGroup(group);
 }
 
 export function getGroupColor(group: Pick<Group, "name">) {
