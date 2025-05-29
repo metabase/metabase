@@ -68,7 +68,7 @@ export const setupMockSamlEndpoints = ({
   isPreferredAuthMethod = false,
 }: SamlMockConfig = {}) => {
   const ssoInitMock = fetchMock.get(
-    `${instanceUrl}/auth/sso${isPreferredAuthMethod ? "?saml=true" : ""}`,
+    `${instanceUrl}/auth/sso${isPreferredAuthMethod ? "?preferred_method=saml" : ""}`,
     {
       url: providerUri,
       method: "saml",
@@ -167,7 +167,7 @@ export const setupMockJwtEndpoints = ({
   isPreferredAuthMethod = false,
 }: JwtMockConfig = {}) => {
   const ssoInitMock = fetchMock.get(
-    `${instanceUrl}/auth/sso${isPreferredAuthMethod ? "?jwt=true" : ""}`,
+    `${instanceUrl}/auth/sso${isPreferredAuthMethod ? "?preferred_method=jwt" : ""}`,
     {
       url: providerUri,
       method: "jwt",
