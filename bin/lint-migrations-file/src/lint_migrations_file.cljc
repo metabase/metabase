@@ -63,15 +63,17 @@
                                {:out-of-order-ids out-of-order-ids})))))
 
 (defn- require-change-set-ids-in-correct-file [change-log file]
-  (when (not (str/starts-with? (.getName file) "001"))
-    (let [file-version (Integer/parseInt (re-find #"\d+" (.getName file)))
-          ids (change-set-ids change-log)
-          wrong-file-ids (->> ids
-                              (filter (fn [id]
-                                        (not= file-version (Integer/parseInt (re-find #"\d+" id))))))]
-      (when (seq wrong-file-ids)
-        (throw (validation-error "Change set IDs are in the wrong file"
-                                 {:wrong-file-ids wrong-file-ids}))))))
+  (let [file-version (Integer/parseInt (re-find #"\d+" (.getName file)))
+        ids (change-set-ids change-log)
+        wrong-file-ids (->> ids
+                            (filter (fn [id]
+                                      (let [id-version (Integer/parseInt (re-find #"\d+" id))]
+                                        (if (= file-version 1)
+                                          (> id-version 55)
+                                          (not= file-version id-version))))))]
+    (when (seq wrong-file-ids)
+      (throw (validation-error "Change set IDs are in the wrong file"
+                               {:wrong-file-ids wrong-file-ids})))))
 
 (defn- check-change-use-types?
   "Return `true` if change use any type in `types`."
@@ -151,6 +153,9 @@
     (first keys)))
 
 (defn- validate-database-change-log [change-log file]
+  (when (string? change-log)
+    (throw (validation-error "Expected `:databaseChangeLog` to be a map, not a string.")))
+
   (require-distinct-change-set-ids change-log)
   (require-change-set-ids-in-correct-file change-log file)
   (require-change-set-ids-in-order change-log)
