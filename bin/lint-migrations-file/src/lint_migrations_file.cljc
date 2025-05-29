@@ -177,7 +177,8 @@
   :ok)
 
 (defn- migration-files []
-  (let [dir (io/file #?(:bb "resources/migrations" :clj "../../resources/migrations"))]
+  (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
+        dir (io/file dir-str)]
     (->> (file-seq dir)
          (filter #(and (.isFile %) (str/ends-with? (.getName %) "_update_migrations.yaml"))))))
 
