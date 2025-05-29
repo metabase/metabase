@@ -71,12 +71,13 @@ function setup({
   return renderWithProviders(
     <DataSourceSelector
       isInitiallyOpen
-      isQuerySourceModel={false}
+      querySourceType={undefined}
       canChangeDatabase={!isJoinStep}
       selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
       selectedTableId={selectedTable ? selectedTable.id : undefined}
       canSelectModel={true}
       canSelectTable={true}
+      canSelectQuestion={true}
       triggerElement={<div>Click me to open or close data picker</div>}
       setSourceTableFn={jest.fn()}
     />,
