@@ -10,4 +10,5 @@ export * from "./db-routing";
 export * from "./query-validation";
 export * from "./scim";
 export * from "./tags";
+export * from "./tenants";
 export * from "./upload-management";
