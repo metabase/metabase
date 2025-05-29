@@ -97,11 +97,7 @@ export const PeopleListRow = ({
           <td>
             <Tooltip label={t`Reactivate this account`}>
               <ForwardRefLink
-                to={
-                  isExternal
-                    ? Urls.reactivateTenantsUser(user.id)
-                    : Urls.reactivateUser(user.id)
-                }
+                to={Urls.reactivateUser(user)}
                 className={S.refreshLink}
               >
                 <Icon name="refresh" size={20} />
@@ -142,11 +138,7 @@ export const PeopleListRow = ({
                 <Menu.Dropdown>
                   <Menu.Item
                     component={ForwardRefLink}
-                    to={
-                      isExternal
-                        ? Urls.editTenantUser(user.id)
-                        : Urls.editUser(user.id)
-                    }
+                    to={Urls.editUser(user)}
                   >
                     {t`Edit user`}
                   </Menu.Item>
@@ -154,7 +146,7 @@ export const PeopleListRow = ({
                   {isPasswordLoginEnabled && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={Urls.resetPassword(user.id)}
+                      to={Urls.resetPassword(user)}
                     >
                       {t`Reset password`}
                     </Menu.Item>
@@ -167,11 +159,7 @@ export const PeopleListRow = ({
                   {!isCurrentUser && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={
-                        isExternal
-                          ? Urls.deactivateTenantlUser(user.id)
-                          : Urls.deactivateUser(user.id)
-                      }
+                      to={Urls.deactivateUser(user)}
                       c="danger"
                     >
                       {t`Deactivate user`}
