@@ -100,8 +100,8 @@
 
   For backward compatibility with refs that don't include `:source-field-name` in cases when they should (cards), omit
   `:fk-field-name` when it matches the raw field name. There should be no difference in the compiled query. The
-  problematic case is when in the query refs with and without `:source-field-name` are mixed, but there should be the
-  same implicit join for all of them."
+  problematic case is when refs with and without `:source-field-name` are mixed, but there should be the same implicit
+  join for all of them."
   [{:keys [source-field source-field-name source-field-join-alias]}]
   (let [fk-field (lib.metadata.protocols/field (qp.store/metadata-provider) source-field)]
     (m/assoc-some {:fk-field-id source-field}
