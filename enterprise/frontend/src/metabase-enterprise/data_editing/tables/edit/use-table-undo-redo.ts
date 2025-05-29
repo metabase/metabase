@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -8,7 +9,6 @@ import {
   useTableUndoMutation,
 } from "metabase-enterprise/api/table-data-edit";
 import type { ConcreteTableId, RowValue } from "metabase-types/api";
-import { getErrorMessage } from "metabase/api/utils";
 
 import type { TableEditingScope } from "../types";
 
