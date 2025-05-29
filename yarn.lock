@@ -20687,15 +20687,15 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
-typedoc-plugin-dt-links@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/typedoc-plugin-dt-links/-/typedoc-plugin-dt-links-2.0.0.tgz#142c706a1ebbd5f034ab91c7fe2c398efc2eb63d"
-  integrity sha512-D5dTe8SG1nzsU5Pctj4z089jYgcElNqGRcY7Qi0AozlBTu+bqmgmvdWsZK5VrYwZNYI4mnuLgQ/XRBV/GJYdXg==
+typedoc-plugin-dt-links@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/typedoc-plugin-dt-links/-/typedoc-plugin-dt-links-2.0.3.tgz#0da1c60745bdc0f7adfb315c3afbc69b73037210"
+  integrity sha512-vfOOkGBxuy3RI4ELdx7aKzM2+LT282Yf1OC1VlDtOFwTZj7HuCT2ayB5Tt5i+Nin00pLRBtOPT2HbP14W3CvaQ==
 
-typedoc-plugin-markdown@^4.6.2:
-  version "4.6.2"
-  resolved "https://registry.yarnpkg.com/typedoc-plugin-markdown/-/typedoc-plugin-markdown-4.6.2.tgz#e3c0681c2d3f24beceb8fb73470216b843bb50ec"
-  integrity sha512-JVCIoK7FDN3t3PSLkwDyrBFyjtDznqDCJotP9evxhLyb6bEZTqhAGB0tPy1RmgHuY2WoAONMrsWs8LfLsD+A6A==
+typedoc-plugin-markdown@^4.6.3:
+  version "4.6.3"
+  resolved "https://registry.yarnpkg.com/typedoc-plugin-markdown/-/typedoc-plugin-markdown-4.6.3.tgz#eb3cfda8ef7f66b6fc6be1fc7f0f037880355287"
+  integrity sha512-86oODyM2zajXwLs4Wok2mwVEfCwCnp756QyhLGX2IfsdRYr1DXLCgJgnLndaMUjJD7FBhnLk2okbNE9PdLxYRw==
 
 typedoc-plugin-mdn-links@^5.0.1:
   version "5.0.1"
@@ -20712,10 +20712,10 @@ typedoc-plugin-redirect@^1.2.0:
   resolved "https://registry.yarnpkg.com/typedoc-plugin-redirect/-/typedoc-plugin-redirect-1.2.0.tgz#b6dfb25bf16579269ed7cfb79775c1598bdc24ef"
   integrity sha512-BfS8FVWCaAHbbz0/Yx6TeKhKrfo+XIYTw2L17HklvR70GQ3iDbbWu0MDDVwecfbPW9oxlHPitFxTVBZVA9Iojg==
 
-typedoc@0.28.2:
-  version "0.28.2"
-  resolved "https://registry.yarnpkg.com/typedoc/-/typedoc-0.28.2.tgz#342c42f2e4c0306c47a0a5e92592af9aa60e1a85"
-  integrity sha512-9Giuv+eppFKnJ0oi+vxqLM817b/IrIsEMYgy3jj6zdvppAfDqV3d6DXL2vXUg2TnlL62V48th25Zf/tcQKAJdg==
+typedoc@0.28.5:
+  version "0.28.5"
+  resolved "https://registry.yarnpkg.com/typedoc/-/typedoc-0.28.5.tgz#c6e1303fde05b746b3d2079621aff9c81561eccf"
+  integrity sha512-5PzUddaA9FbaarUzIsEc4wNXCiO4Ot3bJNeMF2qKpYlTmM9TTaSHQ7162w756ERCkXER/+o2purRG6YOAv6EMA==
   dependencies:
     "@gerrit0/mini-shiki" "^3.2.2"
     lunr "^2.3.9"
