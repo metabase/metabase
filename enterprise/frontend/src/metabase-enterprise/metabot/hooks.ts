@@ -23,6 +23,8 @@ export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const { getChatContext } = useMetabotContext();
 
+  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery();
+
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
@@ -34,8 +36,6 @@ export const useMetabotAgent = () => {
   const [, sendMessageReq] = useMetabotAgentMutation({
     fixedCacheKey: METABOT_TAG,
   });
-
-  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery();
 
   return {
     visible: useSelector(getMetabotVisible as any) as ReturnType<
