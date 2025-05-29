@@ -1,6 +1,6 @@
 import type { Tag } from "./types";
 import {
-  filterOutNonSupportedPrereleaseIdentifiers,
+  filterOutNonSupportedPrereleaseIdentifier,
   findNextPatchVersion,
   getBuildRequirements,
   getDotXs,
@@ -779,7 +779,7 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("filterOutNonSupportedPrereleaseIdentifiers", () => {
+  describe("filterOutNonSupportedPrereleaseIdentifier", () => {
     function createTags(versions: string[]): Tag[] {
       return versions.map(
         (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
@@ -795,7 +795,7 @@ describe("version-helpers", () => {
         "0.55.0-beta",
         "0.55.0-alpha",
         "0.55.5-metabot",
-      ]).filter(filterOutNonSupportedPrereleaseIdentifiers);
+      ]).filter(filterOutNonSupportedPrereleaseIdentifier);
 
       expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
     });

@@ -214,7 +214,7 @@ export async function getLastEmbeddingSdkReleaseTag({
   });
 
   const lastRelease = getLastReleaseFromTags({
-    tags: tags.filter(filterOutNonSupportedPrereleaseIdentifiers),
+    tags: tags.filter(filterOutNonSupportedPrereleaseIdentifier),
   });
 
   return lastRelease;
@@ -222,9 +222,9 @@ export async function getLastEmbeddingSdkReleaseTag({
 
 /**
  *
- * @param tag a GitHub tag objects
+ * @param tag a GitHub tag object
  */
-export function filterOutNonSupportedPrereleaseIdentifiers(tag: Tag) {
+export function filterOutNonSupportedPrereleaseIdentifier(tag: Tag) {
   const prereleaseIdentifier = /\d+\.\d+\.\d+-(?<prerelease>\w+)$/.exec(tag.ref)
     ?.groups?.prerelease;
 
