@@ -26,7 +26,6 @@ import {
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
 import { Group, Radio, Stack } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
-
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
   message: "Check your parentheses",
