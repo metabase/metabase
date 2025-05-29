@@ -29,6 +29,12 @@ export function selectedAggregationOperators(
   return ML.selected_aggregation_operators(operators, clause);
 }
 
+export function filterPivotAggregationOperators(
+  operators: AggregationOperator[],
+): AggregationOperator[] {
+  return ML.filter_pivot_aggregation_operators(operators);
+}
+
 export function aggregate(
   query: Query,
   stageIndex: number,

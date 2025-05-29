@@ -86,12 +86,12 @@ const ChartSettingFieldsPicker = ({
                             onRemove={
                               fields.filter((field) => field != null).length >
                                 1 ||
-                              (fields.length > 1 && field == null)
+                                (fields.length > 1 && field == null)
                                 ? () =>
-                                    onChange([
-                                      ...fields.slice(0, fieldIndex),
-                                      ...fields.slice(fieldIndex + 1),
-                                    ])
+                                  onChange([
+                                    ...fields.slice(0, fieldIndex),
+                                    ...fields.slice(fieldIndex + 1),
+                                  ])
                                 : null
                             }
                             showDragHandle={fields.length > 1}

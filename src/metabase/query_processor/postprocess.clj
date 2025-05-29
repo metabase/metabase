@@ -20,6 +20,17 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+;; TODO: find a better place to put this. can't be in qp.pivot due to circular deps
+(defn merge-base-pivot-query-metadata
+  "Post-processing middleware. Replaces columns in metadata of pivot query with the columns of the base (un-pivoted) query."
+  [{:keys [non-pivoted-cols]} rff]
+  (fn merge-base-pivot-query-metadata-rff* [metadata]
+    (if non-pivoted-cols
+      (rff (assoc metadata
+                  :cols non-pivoted-cols
+                  :pivot_cols (:cols metadata)))
+      (rff metadata))))
+
 (def ^:private middleware
   "Post-processing middleware that transforms results. Has the form
 
@@ -35,6 +46,7 @@
    #'qp.add-rows-truncated/add-rows-truncated
    #'qp.add-timezone-info/add-timezone-info
    #'qp.middleware.enterprise/merge-sandboxing-metadata
+   #'merge-base-pivot-query-metadata
    #'qp.add-dimension-projections/remap-results
    #'pivot-export/add-data-for-pivot-export
    #'large-int/convert-large-int-to-string

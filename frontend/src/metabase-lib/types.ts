@@ -126,6 +126,8 @@ export type Bucket = unknown & { _opaque: typeof BucketSymbol };
 export type BucketDisplayInfo = {
   shortName: TemporalUnit;
   displayName: string;
+  numBins?: number;
+  strategy?: string;
   default?: boolean;
   selected?: boolean;
   isTemporalExtraction?: boolean;
