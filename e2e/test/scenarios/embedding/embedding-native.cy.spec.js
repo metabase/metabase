@@ -181,7 +181,9 @@ describe("scenarios > embedding > native questions", () => {
         .click();
 
       // Open variable editor
-      cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
+      cy.findByTestId("native-query-editor-action-buttons")
+        .icon("variable")
+        .click();
 
       // Now check that all disabled parameters can't be required and the rest can
       assertRequiredEnabledForName({ name: "id", enabled: true });

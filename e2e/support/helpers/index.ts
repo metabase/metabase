@@ -46,3 +46,4 @@ export * from "./e2e-upload-helpers";
 export * from "./e2e-users-helpers";
 export * from "./e2e-visual-tests-helpers";
 export * from "./e2e-viz-settings-helpers";
+export * from "./embedding-sdk-helpers/constants";

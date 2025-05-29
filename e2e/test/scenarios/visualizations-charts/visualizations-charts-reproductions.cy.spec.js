@@ -606,9 +606,21 @@ describe("issue 21665", () => {
     display: "scalar",
   };
 
+  function editQ2NativeQuery(query, questionId) {
+    cy.request("PUT", `/api/card/${questionId}`, {
+      dataset_query: {
+        type: "native",
+        native: { query },
+        database: 1,
+      },
+    });
+  }
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.createNativeQuestionAndDashboard({
       questionDetails: Q1,
@@ -630,15 +642,31 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    cy.findByTestId("add-series-button").click({ force: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(Q2.name).click();
-
-    cy.findByTestId("add-series-modal").button("Done").click();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(Q2.name);
+      cy.button("Save").click();
+    });
 
     H.saveDashboard();
     cy.wait("@getDashboard");
+  });
+
+  it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
+    cy.get("@questionId").then((questionId) => {
+      editQ2NativeQuery("select order by --", questionId);
+    });
+
+    H.visitDashboard("@dashboardId");
+
+    cy.get("@dashboardLoaded").should("have.callCount", 3);
+    cy.findByTestId("dashcard")
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
   });
 });
 

@@ -13,22 +13,22 @@ import {
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  METABASE_INSTANCE_URL,
   createQuestion,
   popover,
   tableAllFieldsHiddenImage,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import {
-  METABASE_INSTANCE_URL,
-  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
   mountSdkContentAndAssertNoKnownErrors,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
+} from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { Box, Button, Modal } from "metabase/ui";
 const { H } = cy;
 

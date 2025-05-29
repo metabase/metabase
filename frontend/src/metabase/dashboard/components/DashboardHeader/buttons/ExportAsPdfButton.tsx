@@ -64,6 +64,7 @@ export const ExportAsPdfButton = ({
             hasVisibleParameters && !hasDashboardTabs,
         })}
         aria-label={t`Download as PDF`}
+        data-testid="export-as-pdf-button"
       >
         <Icon name="download" />
       </ActionIcon>

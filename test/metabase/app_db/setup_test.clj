@@ -135,3 +135,35 @@
         (is (thrown-with-msg?
              Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
+
+;; `delete!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(deftest ^:parallel build-query-dont-add-delete-from-when-query-contains-delete-test
+  (testing "Workaround for https://github.com/camsaul/toucan2/issues/202"
+    (is (= {:delete    [:field]
+            :from      [[:metabase_field :field]]
+            :left-join [[:metabase_table :table] [:= :field.table_id :table.id]]
+            :where     [:= :table.db_id [:inline 0]]}
+           (t2/build
+             (t2/delete! :model/Field
+                         {:delete    [:field]
+                          :from      [[:metabase_field :field]]
+                          :left-join [[:metabase_table :table]
+                                      [:= :field.table_id :table.id]]
+                          :where     [:= :table.db_id [:inline 0]]}))))))
+
+;; `delete!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(deftest ^:parallel build-before-delete-query-test
+  (testing "before-delete's select query should remove `:delete`/`:delete-from` (workaround for https://github.com/camsaul/toucan2/issues/203)"
+    (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
+           (t2/build
+             (t2/select :model/Field
+                        {:delete-from [:metabase_field :field]
+                         :where       [:= :field.id 0]}))))
+    (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
+           (t2/build
+             (t2/select :model/Field
+                        {:delete [:field]
+                         :from   [[:metabase_field :field]]
+                         :where  [:= :field.id 0]}))))))

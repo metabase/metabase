@@ -138,10 +138,15 @@
              (string? value))
       (u/ignore-exceptions
         (params.dates/date-string->filter value field-id))
-      (cond-> [op field-clause]
-        ;; we don't want to skip our value, even if its nil
-        true (into (if value (u/one-or-many value) [nil]))
-        (seq options) (conj options)))))
+      ;; we don't want to skip our value, even if its nil
+      (let [values (if (nil? value) [nil] (u/one-or-many value))]
+        (if (and (#{:starts-with :ends-with :contains :does-not-contain} op)
+                 (next values))
+          ;; special form: options come after the tag
+          (into [op options field-clause] values)
+          ;; standard form: options at the end
+          (cond-> (into [op field-clause] values)
+            (seq options) (conj options)))))))
 
 (defn- name-for-logging [model id]
   (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (t2/select-one-fn :name model :id id)))))

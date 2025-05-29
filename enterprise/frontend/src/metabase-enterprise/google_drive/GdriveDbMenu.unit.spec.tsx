@@ -104,7 +104,11 @@ describe("Google Drive > DB Menu", () => {
     setup({ status: "error" });
 
     await openMenu();
-    expect(await screen.findByText("Error syncing")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Please check that the folder is shared with the Metabase Service Account.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows a menu when loading", async () => {
@@ -133,7 +137,7 @@ describe("Google Drive > DB Menu", () => {
     expect(disconnectButton).toBeEnabled();
   });
 
-  it("disables disconnect button when loading", async () => {
+  it("enables disconnect button when loading", async () => {
     setup({
       status: "syncing",
     });
@@ -142,7 +146,7 @@ describe("Google Drive > DB Menu", () => {
     const disconnectButton = await screen.findByRole("menuitem", {
       name: /close icon disconnect/i,
     });
-    expect(disconnectButton).toBeDisabled();
+    expect(disconnectButton).toBeEnabled();
   });
 
   it("should show last sync time", async () => {

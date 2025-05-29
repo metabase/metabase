@@ -119,10 +119,11 @@
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
   [_route-params
-   {:keys [context]} :- [:map
-                         [:context (ms/QueryVectorOf [:enum :selections :views])]]]
+   {:keys [context include_metadata]} :- [:map
+                                          [:context (ms/QueryVectorOf [:enum :selections :views])]
+                                          [:include_metadata {:default false} [:maybe :boolean]]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
-  (recent-views/get-recents *current-user-id* context))
+  (recent-views/get-recents *current-user-id* context {:include-metadata? include_metadata}))
 
 (api.macros/defendpoint :post "/recents"
   "Adds a model to the list of recently selected items."

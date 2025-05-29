@@ -74,7 +74,7 @@ export const DwhUploadMenu = () => {
 
   return (
     <Box data-testid="dwh-upload" mt="md" px="md">
-      <Menu position="right">
+      <Menu position="right-start">
         <Menu.Target>
           <Button
             fullWidth

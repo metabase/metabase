@@ -110,9 +110,11 @@
           (liquibase/release-lock-if-needed! liquibase)
           (throw e))))))
 
-;;; this is duplicated from [[metabase.driver.sql-jdbc.connection/can-connect-with-spec?]] but it lets us decouple the
-;;; `app-db` and `driver` modules.
-(defn- can-connect-with-spec?
+;;; this is somewhat duplicated from [[metabase.driver.sql-jdbc.connection/can-connect-with-spec?]] but it lets us
+;;; decouple the `app-db` and `driver` modules.
+(defn can-connect-to-data-source?
+  "Test connection to a `data-source`. Returns truthy on success; throws an exception or returns falsey if unable to
+  connect."
   [^javax.sql.DataSource data-source]
   (let [[first-row] (jdbc/query {:datasource data-source} ["SELECT 1"])
         [result]    (vals first-row)]
@@ -125,7 +127,7 @@
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert (can-connect-with-spec? data-source) error-msg)
+    (try (assert (can-connect-to-data-source? data-source) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
@@ -233,11 +235,18 @@
    {:pre [(#{:h2 :ansi :mysql} dialect)]}
    ((:quote (sql/get-dialect dialect)) s)))
 
+(defn- clause-order-fn-for-application-db [clauses]
+  (case (mdb.connection/db-type)
+    (:postgres :h2) clauses
+    :mysql          (let [{f :clause-order-fn} (sql/get-dialect :mysql)]
+                      (f clauses))))
+
 ;;; register with Honey SQL 2
 (sql/register-dialect!
  ::application-db
  (assoc (sql/get-dialect :ansi)
-        :quote quote-for-application-db))
+        :quote           quote-for-application-db
+        :clause-order-fn clause-order-fn-for-application-db))
 
 (reset! t2.honeysql/global-options
         {:quoted       true
@@ -256,3 +265,26 @@
   (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
                                          :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
     (next-method query-type model parsed-args resolved-query)))
+
+(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/delete.*
+                                                #_model      :default
+                                                #_query      clojure.lang.IPersistentMap]
+  "If a built DELETE query explicitly specifies `:delete`/`:from` then remove the automatically-added `:delete-from`
+  key. Work around https://github.com/camsaul/toucan2/issues/202 until it is fixed upstream."
+  [_query-type _model _parsed-args query]
+  (cond-> query
+    (:delete query) (dissoc query :delete-from)))
+
+(methodical/defmethod t2.pipeline/build :before [#_query-type :toucan.query-type/select.instances
+                                                 #_model      :toucan2.tools.before-delete/before-delete
+                                                 #_query      clojure.lang.IPersistentMap]
+  "If we're doing a SELECT query to implement before-delete behavior make sure we remove :delete-from/:delete keys from
+  the query if needed. Work around https://github.com/camsaul/toucan2/issues/203 until it is fixed upstream."
+  [_query-type _model _parsed-args query]
+  (cond-> query
+    true
+    (dissoc :delete)
+
+    (contains? query :delete-from)
+    (-> (dissoc :delete-from)
+        (assoc :from [(:delete-from query)]))))

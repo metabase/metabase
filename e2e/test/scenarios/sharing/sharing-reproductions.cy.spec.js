@@ -320,39 +320,38 @@ describe("issue 21559", { tags: "@external" }, () => {
     });
   });
 
-  // TODO: implement this using the visualizer
-  it.skip("should respect dashboard card visualization (metabase#21559)", () => {
-    cy.findByTestId("add-series-button").click({ force: true });
+  it("should respect dashboard card visualization (metabase#21559)", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    cy.findByTestId("add-series-modal").within(() => {
-      cy.findByText(q2Details.name).click();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
 
-      // wait for elements to appear inside modal
-      H.chartPathWithFillColor("#A989C5").should("have.length", 1);
-      H.chartPathWithFillColor("#88BF4D").should("have.length", 1);
-
-      cy.button("Done").click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(q2Details.name);
+      cy.findByText("80.52").should("exist");
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
+      cy.button("Save").click();
     });
 
-    cy.findByTestId("add-series-modal").should("not.exist");
-
-    // Make sure visualization changed to bars
+    // Make sure visualization changed to funnel
     H.getDashboardCard(0).within(() => {
-      H.chartPathWithFillColor("#A989C5").should("have.length", 1);
-      H.chartPathWithFillColor("#88BF4D").should("have.length", 1);
+      cy.findByText("80.52").should("exist");
+      cy.get("polygon[fill='#509EE3']").should("exist");
     });
 
     H.saveDashboard();
+
     // Wait for "Edited a few seconds ago" to disappear because the whole
     // dashboard re-renders after that!
     cy.findByTestId("revision-history-button").should("not.be.visible");
-
     H.openAndAddEmailsToSubscriptions([
       `${admin.first_name} ${admin.last_name}`,
     ]);
-
     H.sendEmailAndAssert((email) => {
-      expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
+      expect(email.html).to.include("img"); // Funnel is sent as img (inline attachment)
       expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
     });
   });

@@ -12,6 +12,8 @@ const availableTestSuites = [
   "metabase-nodejs-react-sdk-embedding-sample-e2e",
   "metabase-nextjs-sdk-embedding-sample-e2e",
   "shoppy-e2e",
+  "vite-5-host-app-e2e",
+  "nextjs-host-app-e2e",
 ];
 
 if (

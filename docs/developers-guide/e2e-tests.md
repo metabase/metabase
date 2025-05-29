@@ -231,6 +231,32 @@ On our CI, test failures do not block the merging of a pull request (PR). Howeve
 
 If a PR breaks compatibility between the Embedding SDK and the Sample Apps, the PR can still be merged. However, for each Sample App affected, a separate PR should be created to restore compatibility with the new `@metabase/embedding-sdk-react` version when it is released. These compatibility PRs should be merged only once the Embedding SDK version containing breaking changes is officially released.
 
+### Embedding SDK integration tests with Host Apps
+
+When we want to check integration of the Embedding SDK with consumer's apps that use different frameworks/bundlers, or when we want to test some tricky integration cases like conflicting types, we use Host App tests.
+
+Tests a bit similar to Sample App tests, but:
+- Host Apps are placed in the `metabase` repo `e2e/embedding-sdk-host-apps/<HOST_APP_NAME>`.
+- Host Apps tests are under `e2e/test-host-app/<HOST_APP_NAME>/*`.
+- Host app contains the client application only that is run in a Docker container during e2e testing.
+- Tests use the regular Cypress backend and Cypress infrastructure, so we can mock anything and use Cypress helpers.
+
+#### Local runs
+
+To run these tests locally, run:
+```
+ENTERPRISE_TOKEN=<token> TEST_SUITE=<host_app_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+```
+
+For example for the `vite-5-host-app` Host App, run:
+```
+ENTERPRISE_TOKEN=<token> TEST_SUITE=vite-5-host-app-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+```
+
+#### CI runs
+
+Same as for Sample App tests - failures don't block a PR from being merged.
+
 ## DB Snapshots
 
 At the beginning of each test suite we wipe the backend's db and settings cache. This ensures that the test suite starts in a predictable state.

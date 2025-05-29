@@ -8,7 +8,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.core.initialization-status :as init-status]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
@@ -49,7 +48,7 @@
    (if (init-status/complete?)
      (try
        (if (or (mdb/recent-activity?)
-               (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb/data-source)}))
+               (mdb/can-connect-to-data-source? (mdb/data-source)))
          {:status 200, :body {:status "ok"}}
          {:status 503 :body {:status "Unable to get app-db connection"}})
        (catch Exception e

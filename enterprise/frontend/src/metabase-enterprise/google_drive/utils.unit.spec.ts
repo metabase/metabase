@@ -99,7 +99,9 @@ describe("google_drive > getStatus", () => {
 
     it("should return a default fallback message if payload is null", () => {
       const result = getErrorMessage(null);
-      expect(result).toEqual("Something went wrong");
+      expect(result).toEqual(
+        "Please check that the folder is shared with the Metabase Service Account.",
+      );
     });
   });
 });
