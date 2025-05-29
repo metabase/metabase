@@ -53,6 +53,7 @@ export const RemappingPicker = ({
 }: Props) => {
   const [hasChanged, setHasChanged] = useState(false);
   const [isCustomMappingOpen, setIsCustomMappingOpen] = useState(false);
+  const [isFkTargetTouched, setIsFkTargetTouched] = useState(false);
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
@@ -121,6 +122,8 @@ export const RemappingPicker = ({
         setHasChanged(true);
         setIsChoosingInitialFkTarget(true);
       }
+
+      setIsFkTargetTouched(false);
     } else if (value === "custom") {
       await createFieldDimension({
         id,
@@ -150,7 +153,7 @@ export const RemappingPicker = ({
     <Stack gap={0}>
       <DisplayValuesPicker
         options={options}
-        value={value}
+        value={isFkMapping ? "foreign" : value}
         onChange={handleDisplayValueChange}
         {...props}
       />
@@ -187,12 +190,15 @@ export const RemappingPicker = ({
                     },
                   ]}
                   dropdownOpened={false}
-                  error={!fkRemappingField} // TODO: improve with "touched"
+                  error={isFkTargetTouched && !fkRemappingField}
                   onClick={(event) => event.preventDefault()}
                   value="choose-a-field"
                   w="100%"
                 />
               }
+              onClose={() => {
+                setIsFkTargetTouched(true);
+              }}
             />
           )}
 
