@@ -7,7 +7,6 @@ import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import Alert from "metabase/components/Alert";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import UserAvatar from "metabase/components/UserAvatar";
@@ -390,6 +389,10 @@ export const GroupsListing = (props: GroupsListingProps) => {
     hideAddGroupRow();
   };
 
+  const onDismissAlert = () => {
+    setAlertMessage(null);
+  };
+
   const onAddGroupCreateButtonClicked = async () => {
     const { create } = props;
     try {
@@ -503,7 +506,17 @@ export const GroupsListing = (props: GroupsListingProps) => {
         onEditGroupDoneClicked={onEditGroupDoneClicked}
         onDeleteGroupClicked={(group) => onDeleteGroupClicked(groups, group)}
       />
-      <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
+      <ConfirmModal
+        onClose={onDismissAlert}
+        onConfirm={onDismissAlert}
+        opened={!!alertMessage}
+        message={alertMessage}
+        closeButtonText={null}
+        withCloseButton={false}
+        confirmButtonText={t`Ok`}
+        confirmButtonProps={{ color: "brand" }}
+        data-testid="alert-modal"
+      />
     </AdminPaneLayout>
   );
 };
