@@ -41,7 +41,7 @@ import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
-import { DataModel } from "metabase/metadata/pages/DataModel";
+import { DataModel, DataModelEditor } from "metabase/metadata/pages/DataModel";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
@@ -93,22 +93,26 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-        <Route title={t`Table Metadata`} component={DataModelApp}>
+        <Route title={t`Table Metadata`} component={DataModel}>
           <IndexRedirect to="database" />
-          <Route path="database" component={DataModel} />
-          <Route path="database/:databaseId" component={DataModel} />
+          <Route path="database" component={DataModelEditor} />
+          <Route path="database/:databaseId" component={DataModelEditor} />
           <Route
             path="database/:databaseId/schema/:schemaId"
-            component={DataModel}
+            component={DataModelEditor}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId"
-            component={DataModel}
+            component={DataModelEditor}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-            component={DataModel}
+            component={DataModelEditor}
           />
+          <Route path="segments" component={SegmentListApp} />
+          <Route path="segment/create" component={SegmentApp} />
+          <Route path="segment/:id" component={SegmentApp} />
+          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
           <Redirect
             from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
             to="database/:databaseId/schema/:schemaId/table/:tableId"
@@ -117,10 +121,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
             to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
           />
-          <Route path="segments" component={SegmentListApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
         </Route>
       </Route>
       {/* PEOPLE */}

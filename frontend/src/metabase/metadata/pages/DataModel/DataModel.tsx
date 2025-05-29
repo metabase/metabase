@@ -1,13 +1,15 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import Link from "metabase/core/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Box, Flex, Icon, Stack } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
@@ -20,14 +22,62 @@ import {
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
-interface Props {
+export const DataModel = ({
+  params,
+  location,
+  children,
+}: {
   params: RouteParams;
+  location: Location;
+  children: ReactNode;
+}) => {
+  const { databaseId, tableId, schemaId } = parseRouteParams(params);
+  return (
+    <Flex h="100%" bg="bg-light">
+      <Stack
+        className={S.sidebar}
+        flex="0 0 25%"
+        miw="320px"
+        gap={0}
+        h="100%"
+        bg="bg-white"
+      >
+        <RouterTablePicker
+          databaseId={databaseId}
+          schemaId={schemaId}
+          tableId={tableId}
+        />
+        <Box mx="xl" py="sm" className={S.footer}>
+          <SegmentsLink location={location} />
+        </Box>
+      </Stack>
+
+      {children}
+    </Flex>
+  );
+};
+
+function SegmentsLink({ location }: { location: Location }) {
+  const isActive =
+    location?.pathname?.startsWith("/admin/datamodel/segments") ||
+    location?.pathname?.startsWith("/admin/datamodel/segment/");
+
+  return (
+    <Flex
+      component={Link}
+      to="/admin/datamodel/segments"
+      className={cx(S.segmentsLink, { [S.active]: isActive })}
+      gap="sm"
+      p="sm"
+    >
+      <Icon name="pie" className={S.segmentsIcon} />
+      {t`Segments`}
+    </Flex>
+  );
 }
 
-const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
-
-export const DataModel = ({ params }: Props) => {
-  const { databaseId, tableId, schemaId, fieldId } = parseRouteParams(params);
+export function DataModelEditor({ params }: { params: RouteParams }) {
+  const { databaseId, tableId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -45,24 +95,8 @@ export const DataModel = ({ params }: Props) => {
   );
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = usePreviewType();
-
   return (
-    <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`} bg="bg-light">
-      <Stack
-        className={S.sidebar}
-        flex="0 0 25%"
-        miw="320px"
-        gap={0}
-        h="100%"
-        bg="bg-white"
-      >
-        <RouterTablePicker
-          databaseId={databaseId}
-          schemaId={schemaId}
-          tableId={tableId}
-        />
-      </Stack>
-
+    <>
       {tableId && (
         <Box className={S.sidebar} flex="0 0 25%" h="100%" miw="400px">
           <Box p="xl" pb="lg">
@@ -146,6 +180,6 @@ export const DataModel = ({ params }: Props) => {
           )}
         </>
       )}
-    </Flex>
+    </>
   );
-};
+}
