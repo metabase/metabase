@@ -9,9 +9,6 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Flex } from "metabase/ui";
-// TODO: Fix this
-//eslint-disable-next-line no-restricted-imports
-import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { ActiveStatusFilter } from "../components/ActiveStatusFilter";
 import { PeopleList } from "../components/PeopleList";
@@ -33,15 +30,9 @@ export function PeopleListingApp({
 
   const {
     data: groups = [],
-    isLoading: isLoadingGroups,
-    error: groupsError,
+    isLoading,
+    error,
   } = useListPermissionsGroupsQuery(undefined, { skip: external });
-
-  const {
-    data: tenants,
-    isLoading: isLoadingTenants,
-    error: tenantsError,
-  } = useListTenantsQuery({ status: "active" }, { skip: !external });
 
   const {
     query,
@@ -54,10 +45,7 @@ export function PeopleListingApp({
   } = usePeopleQuery(PAGE_SIZE, external ? "external" : "internal");
 
   return (
-    <LoadingAndErrorWrapper
-      error={groupsError || tenantsError}
-      loading={isLoadingGroups || isLoadingTenants || !currentUser}
-    >
+    <LoadingAndErrorWrapper error={error} loading={isLoading || !currentUser}>
       <AdminPaneLayout
         title={t`People`}
         titleActions={
@@ -91,7 +79,6 @@ export function PeopleListingApp({
           <PeopleList
             external={external}
             groups={groups}
-            tenants={tenants?.data || []}
             isAdmin={isAdmin}
             currentUser={currentUser}
             query={query}

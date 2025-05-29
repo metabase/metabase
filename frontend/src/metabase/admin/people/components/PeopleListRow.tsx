@@ -7,7 +7,7 @@ import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
-import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
+import { PLUGIN_ADMIN_USER_MENU_ITEMS, PLUGIN_TENANTS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -23,7 +23,6 @@ import type {
   GroupInfo,
   Member,
   Membership,
-  Tenant,
   User,
 } from "metabase-types/api";
 
@@ -38,7 +37,6 @@ interface PeopleListRowProps {
   user: User;
   showDeactivated: boolean;
   groups: GroupInfo[];
-  tenants: Tenant[];
   userMemberships: Membership[];
   isCurrentUser: boolean;
   isAdmin: boolean;
@@ -52,7 +50,6 @@ export const PeopleListRow = ({
   user,
   showDeactivated,
   groups,
-  tenants,
   userMemberships,
   isCurrentUser,
   isAdmin,
@@ -74,10 +71,6 @@ export const PeopleListRow = ({
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
-
-  const tenantName = isExternal
-    ? tenants.find((tenant) => tenant.id === user.tenant_id)?.name
-    : null;
 
   return (
     <tr key={user.id}>
@@ -120,7 +113,7 @@ export const PeopleListRow = ({
         <Fragment>
           <td>
             {isExternal ? (
-              tenantName
+              <PLUGIN_TENANTS.TenantDisplayName id={user.tenant_id} />
             ) : (
               <MembershipSelect
                 groups={groups}
