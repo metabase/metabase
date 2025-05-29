@@ -71,7 +71,7 @@ const AddBreakoutPopover = ({
           breakout={undefined}
           breakoutIndex={undefined}
           onAddBreakout={onAddBreakout}
-          onUpdateBreakoutColumn={() => { }}
+          onUpdateBreakoutColumn={() => {}}
           onClose={close}
         />
       </Popover.Dropdown>
@@ -280,7 +280,7 @@ export const ChartSettingFieldsPartition = ({
       const newValue = {
         ...value,
         [partition]: columnAdd(value[partition], -1, columnName),
-      }
+      };
 
       onChange(newValue);
     },
@@ -305,15 +305,28 @@ export const ChartSettingFieldsPartition = ({
     [dispatch, onChange, question, value],
   );
 
-  const onRemoveBreakout = (
-    partition: keyof PivotTableColumnSplitSetting,
-    index: number,
-  ) => {
-    onChange({
-      ...value,
-      [partition]: columnRemove(value[partition], index),
-    });
-  };
+  const onRemoveBreakout = useCallback(
+    async (partition: keyof PivotTableColumnSplitSetting, index: number) => {
+      const query = question.query();
+
+      const removedBreakoutName = value[partition][index];
+
+      const breakouts = Lib.breakouts(query, -1);
+      const removed = breakouts.filter((breakout) => {
+        const display = Lib.displayInfo(query, -1, breakout);
+        return display.name === removedBreakoutName;
+      });
+
+      const removedQuery = Lib.removeClause(query, -1, removed[0]);
+      await dispatch(updateQuestion(question.setQuery(removedQuery)));
+
+      onChange({
+        ...value,
+        [partition]: columnRemove(value[partition], index),
+      });
+    },
+    [dispatch, onChange, question, value],
+  );
 
   const onRemoveAggregation = useCallback(
     async (partition: keyof PivotTableColumnSplitSetting, index: number) => {
