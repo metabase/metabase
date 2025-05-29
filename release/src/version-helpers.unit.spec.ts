@@ -1,6 +1,6 @@
 import type { Tag } from "./types";
 import {
-  filterAllowedPrereleaseIdentifiers,
+  filterOutNonSupportedPrereleaseIdentifiers,
   findNextPatchVersion,
   getBuildRequirements,
   getDotXs,
@@ -780,14 +780,12 @@ describe("version-helpers", () => {
   });
 
   describe("filterAllowedPrereleaseIdentifiers", () => {
-    function createTags(tags: string[]): Tag[] {
-      return tags.map(
-        (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
-      );
+    function createTags(tags: string[]): string[] {
+      return tags.map((tag) => `refs/tags/embedding-sdk-${tag}`);
     }
 
-    it("should ignore prerelease labels that are not `nightly`", () => {
-      const filteredTags = filterAllowedPrereleaseIdentifiers(
+    it("should ignore prerelease labels that are not `nightly` when passing refs", () => {
+      const filteredTags = filterOutNonSupportedPrereleaseIdentifiers(
         createTags([
           "0.55.0",
           "0.55.0-nightly",
@@ -800,6 +798,20 @@ describe("version-helpers", () => {
       );
 
       expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
+    });
+
+    it("should ignore prerelease labels that are not `nightly` when passing versions", () => {
+      const filteredTags = filterOutNonSupportedPrereleaseIdentifiers([
+        "0.55.0",
+        "0.55.0-nightly",
+        "0.55.0-rc1",
+        "0.55.0-rc2",
+        "0.55.0-beta",
+        "0.55.0-alpha",
+        "0.55.5-metabot",
+      ]);
+
+      expect(filteredTags).toEqual(["0.55.0", "0.55.0-nightly"]);
     });
   });
 });
