@@ -228,8 +228,6 @@ export function filterOutNonSupportedPrereleaseIdentifier(tag: Tag) {
   const prereleaseIdentifier = /\d+\.\d+\.\d+-(?<prerelease>\w+)$/.exec(tag.ref)
     ?.groups?.prerelease;
 
-  console.log("prereleaseIdentifier", prereleaseIdentifier, tag.ref);
-
   return (
     !prereleaseIdentifier ||
     ALLOWED_SDK_PRERELEASE_IDENTIFIERS.includes(prereleaseIdentifier)
