@@ -38,9 +38,9 @@
                       {:type qp.error-type/invalid-query}
                       e)))))
 
-(mu/defn- auto-parse-filter-values-this-stage :- ::lib.schema/stage
-  [_query _stage-path stage :- ::lib.schema/stage]
-  (lib.util.match/replace stage
+(defn- auto-parse-filter-values-this-stage
+  [_query _path-type _path stage-or-join]
+  (lib.util.match/replace stage-or-join
     [:value
      (info :guard (fn [{:keys [effective-type], :as _value-options}]
                     (and effective-type
@@ -51,4 +51,4 @@
 (mu/defn auto-parse-filter-values :- ::lib.schema/query
   "Automatically parse String filter clause values to the appropriate type."
   [query :- ::lib.schema/query]
-  (lib.walk/walk-stages query auto-parse-filter-values-this-stage))
+  (lib.walk/walk query auto-parse-filter-values-this-stage))
