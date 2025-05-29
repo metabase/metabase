@@ -73,7 +73,8 @@ const SdkIframeEmbedView = ({
         entityTypes={settings.entityTypes}
       />
     ))
-    .with({ template: "curation" }, (_settings) => null)
+    .with({ template: "curate-content" }, (_settings) => null)
+    .with({ template: "view-content" }, (_settings) => null)
     .with(
       {
         dashboardId: P.nonNullable,
