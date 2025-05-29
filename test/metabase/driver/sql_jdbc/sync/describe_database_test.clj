@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql ResultSet)))
+   (java.sql ResultSet Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -193,11 +193,11 @@
 
 (deftest have-select-privilege?-test
   (testing "checking select privilege works with and without auto commit (#36040)"
-    (let [default-have-slect-privilege?
+    (let [default-have-select-privilege?
           #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
       (mt/test-drivers (into #{}
-                             (filter default-have-slect-privilege?)
+                             (filter default-have-select-privilege?)
                              (descendants driver/hierarchy :sql-jdbc))
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
@@ -240,3 +240,24 @@
                  (set (keys field-name->field))))
           (is (= (get-in field-name->field ["humanraceid" :id])
                  (get-in field-name->field ["race\\id" :fk_target_field_id]))))))))
+
+(deftest resilient-to-conn-close?-test
+  (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
+    (let [have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
+          default-have-select-privilege? #(identical? have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
+      (mt/test-drivers (into #{}
+                             (comp (filter default-have-select-privilege?)
+                                   (filter #(not (driver/database-supports? % :table-privileges nil))))
+                             (descendants driver/hierarchy :sql-jdbc))
+        (let [closed-first (volatile! nil)
+              all-tables (sql-jdbc.describe-database/describe-database driver/*driver* (mt/id))]
+          (with-redefs [sql-jdbc.sync.interface/have-select-privilege?
+                        (fn [driver ^Connection conn schema tbl-name]
+                          (when-not @closed-first
+                            (vreset! closed-first tbl-name)
+                            (.close conn))
+                          (have-select-privilege? driver conn schema tbl-name))]
+            (let [table-names #(->> % :tables (map :name) set)
+                  all-tables-sans-first (table-names (sql-jdbc.describe-database/describe-database driver/*driver* (mt/id)))]
+              (is (or (= (-> all-tables table-names (disj @closed-first)) all-tables-sans-first)
+                      (= (-> all-tables table-names) all-tables-sans-first))))))))))
