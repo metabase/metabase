@@ -13,7 +13,15 @@ import {
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Alert, Flex, Select, type SelectProps, Stack } from "metabase/ui";
+import {
+  Alert,
+  Button,
+  Flex,
+  Group,
+  Select,
+  type SelectProps,
+  Stack,
+} from "metabase/ui";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
 import {
@@ -121,6 +129,7 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
       setHasChanged(true);
+      setIsCustomMappingOpen(true);
     } else {
       throw new Error(t`Unrecognized mapping type`);
     }
@@ -143,11 +152,6 @@ export const RemappingPicker = ({
         options={options}
         value={value}
         onChange={handleDisplayValueChange}
-        onOptionSubmit={(value) => {
-          if (value === "custom") {
-            setIsCustomMappingOpen(true);
-          }
-        }}
         {...props}
       />
 
@@ -206,8 +210,6 @@ export const RemappingPicker = ({
 
           {!isFieldsAccessRestricted && (
             <>
-              {hasChanged && <NamingTip mt="md" />}
-
               <CustomMappingModal
                 isOpen={isCustomMappingOpen}
                 value={getFieldRemappedValues(fieldValues?.values)}
@@ -217,6 +219,19 @@ export const RemappingPicker = ({
                 }}
                 onClose={() => setIsCustomMappingOpen(false)}
               />
+
+              <Group mt="sm">
+                <Button
+                  p={0}
+                  size="compact-xs"
+                  variant="subtle"
+                  onClick={() => setIsCustomMappingOpen(true)}
+                >
+                  {t`Edit mapping`}
+                </Button>
+              </Group>
+
+              {hasChanged && <NamingTip mt="md" />}
             </>
           )}
         </>
