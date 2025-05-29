@@ -365,7 +365,6 @@
     metabase.util.date-2                      u.date
     metabase.util.date-2.common               u.date.common
     metabase.util.date-2.parse                u.date.parse
-    metabase.util.embed                       embed
     metabase.util.encryption                  encryption
     metabase.util.encryption-test             encryption-test
     metabase.util.files                       u.files

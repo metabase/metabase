@@ -428,6 +428,7 @@
   {:api  #{metabase.embedding.api
            metabase.embedding.init
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -1225,8 +1226,7 @@
   {:api :any
    :uses #{classloader
            config
-           settings
-           system}}
+           settings}}
 
   version
   {:api  #{metabase.version.core
