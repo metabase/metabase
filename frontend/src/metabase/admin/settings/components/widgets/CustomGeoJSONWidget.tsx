@@ -2,7 +2,6 @@ import cx from "classnames";
 import { type ChangeEvent, memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { isErrorWithMessage } from "metabase/admin/performance/utils";
 import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
@@ -24,9 +23,11 @@ import type {
 
 import { SettingHeader } from "../SettingHeader";
 
-const CustomGeoJSONWidget = () => {
-  const [map, setMap] = useState<CustomGeoJSONMap | null>(null);
-  const [originalMap, setOriginalMap] = useState<CustomGeoJSONMap | null>(null);
+export const CustomGeoJSONWidget = () => {
+  const [map, setMap] = useState<CustomGeoJSONMap | undefined>();
+  const [originalMap, setOriginalMap] = useState<
+    CustomGeoJSONMap | undefined
+  >();
   const [currentId, setCurrentId] = useState<string | undefined>();
   const [
     triggerLoadGeoJSON,
@@ -50,14 +51,15 @@ const CustomGeoJSONWidget = () => {
         key: "custom-geojson",
         value: newValue,
       });
-      setMap(null);
-      setOriginalMap(null);
+      setMap(undefined);
+      setOriginalMap(undefined);
     }
   }, [currentId, map, mapsExcludingBuiltIns, updateSetting]);
 
   const handleCancel = useCallback(async (): Promise<void> => {
-    setMap(null);
-    setOriginalMap(null);
+    setMap(undefined);
+    setOriginalMap(undefined);
+    setCurrentId(undefined);
   }, []);
 
   const handleDelete = useCallback(
@@ -79,7 +81,7 @@ const CustomGeoJSONWidget = () => {
       region_key: "",
       region_name: "",
     });
-    setOriginalMap(null);
+    setOriginalMap(undefined);
     setCurrentId(uuid());
   }, []);
 
@@ -136,11 +138,7 @@ const CustomGeoJSONWidget = () => {
               onMapChange={handleMapChange}
               geoJson={geoJson}
               geoJsonLoading={geoJsonLoading}
-              geoJsonError={
-                geoJsonError
-                  ? isErrorWithMessage(geoJsonError) || "Error"
-                  : undefined
-              }
+              geoJsonError={geoJsonError}
               onLoadGeoJson={() => triggerLoadGeoJSON({ url: map.url })}
               onCancel={handleCancel}
               onSave={handleSave}
@@ -151,9 +149,6 @@ const CustomGeoJSONWidget = () => {
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export
-export default CustomGeoJSONWidget;
 
 interface ListMapsProps {
   maps: CustomGeoJSONSetting;
@@ -308,7 +303,7 @@ const SettingContainer = ({
 interface EditMapProps {
   map: CustomGeoJSONMap;
   onMapChange: (map: CustomGeoJSONMap) => void;
-  originalMap: CustomGeoJSONMap | null;
+  originalMap: CustomGeoJSONMap | undefined;
   geoJson: GeoJSONData | undefined;
   geoJsonLoading: boolean;
   geoJsonError: any;

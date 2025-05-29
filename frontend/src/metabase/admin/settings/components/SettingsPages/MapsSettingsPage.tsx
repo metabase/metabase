@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
-import CustomGeoJSONWidget from "../widgets/CustomGeoJSONWidget";
+import { CustomGeoJSONWidget } from "../widgets/CustomGeoJSONWidget";
 
 export function MapsSettingsPage() {
   return (

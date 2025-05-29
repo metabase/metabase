@@ -18,7 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import CustomGeoJSONWidget from "./CustomGeoJSONWidget";
+import { CustomGeoJSONWidget } from "./CustomGeoJSONWidget";
 
 const setup = async ({ isEnvVar }: { isEnvVar?: boolean }) => {
   const customGeoJSON = {
