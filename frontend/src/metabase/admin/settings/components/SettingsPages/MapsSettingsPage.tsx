@@ -7,7 +7,7 @@ import { CustomGeoJSONWidget } from "../widgets/CustomGeoJSONWidget";
 
 export function MapsSettingsPage() {
   return (
-    <Stack gap="xl" p="2rem 2rem 2rem 1rem">
+    <Stack gap="xl" p="1rem 2rem 2rem 1rem">
       <AdminSettingInput
         name="map-tile-server-url"
         title={t`Map tile server URL`}

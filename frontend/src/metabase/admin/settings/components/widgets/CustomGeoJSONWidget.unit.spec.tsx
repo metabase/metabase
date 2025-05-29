@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   setupGeoJSONEndpoint,
   setupPropertiesEndpoints,
-  setupSettingEndpoint,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
@@ -56,11 +55,6 @@ const setup = async ({ isEnvVar }: { isEnvVar?: boolean }) => {
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([geoJSONDefinition]);
-  setupSettingEndpoint({
-    settingKey: "custom-geojson",
-    settingValue: customGeoJSON,
-  });
-
   setupGeoJSONEndpoint({
     featureCollection: createMockGeoJSONFeatureCollection(),
     url: "https://test.com/download/GeoJSON_one.json",
@@ -104,6 +98,8 @@ describe("CustomGeoJSONWIdget", () => {
     expect(
       screen.getByRole("button", { name: "Add a map" }),
     ).toBeInTheDocument();
+
+    expect(screen.getByText("Custom Maps")).toBeInTheDocument();
   });
 
   it("should remove a saved map", async () => {
