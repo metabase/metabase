@@ -4,12 +4,13 @@ import { t } from "ttag";
 
 import { Box, Button, Group, Modal, Text, TextInput } from "metabase/ui";
 
-type Mappings = Map<number, string>; // TODO: move to types.ts?
+import type { Mapping } from "./types";
+import { areMappingsEqual, fillMissingMappings } from "./utils";
 
 interface Props {
   isOpen: boolean;
-  value: Mappings; // TODO: does it need to be a Map?
-  onChange: (value: Mappings) => void;
+  value: Mapping;
+  onChange: (value: Mapping) => void;
   onClose: () => void;
 }
 
@@ -19,37 +20,36 @@ export const CustomMappingModal = ({
   onChange,
   onClose,
 }: Props) => {
-  const [remapping, setRemapping] = useState(new Map());
-  const remappingRef = useLatest(remapping);
+  const [mapping, setMapping] = useState(new Map());
+  const mappingRef = useLatest(mapping);
   const onChangeRef = useLatest(onChange);
   const hasEmptyCustomValues = useMemo(() => {
-    return Array.from(remapping.values()).some((value) => {
+    return Array.from(mapping.values()).some((value) => {
       return value.trim().length === 0;
     });
-  }, [remapping]);
+  }, [mapping]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(remapping);
+    onChange(mapping);
   };
 
   useEffect(() => {
-    const remapping = remappingRef.current;
-    const newRemapping = fillMissingMappings(value);
+    const newMapping = fillMissingMappings(value);
     const hasUnsetMappings = [...value.values()].some((mappedOrUndefined) => {
       return mappedOrUndefined === undefined;
     });
 
-    if (!areMappingsEqual(remapping, newRemapping)) {
-      setRemapping(newRemapping);
+    if (!areMappingsEqual(mappingRef.current, newMapping)) {
+      setMapping(newMapping);
     }
 
     if (hasUnsetMappings) {
       // Save the initial values to make sure that we aren't left in a potentially broken state where
       // the dimension type is "internal" but we don't have any values in metabase_fieldvalues
-      onChangeRef.current(newRemapping);
+      onChangeRef.current(newMapping);
     }
-  }, [onChangeRef, remappingRef, value]); // run this effect only when "value" changes
+  }, [onChangeRef, mappingRef, value]); // run this effect only when "value" changes
 
   return (
     <Modal opened={isOpen} title={t`Custom mapping`} onClose={onClose}>
@@ -72,7 +72,7 @@ export const CustomMappingModal = ({
           </thead>
 
           <tbody>
-            {[...remapping].map(([original, mapped], index) => (
+            {[...mapping].map(([original, mapped], index) => (
               <tr key={index}>
                 <td>{original}</td>
                 <td>
@@ -80,9 +80,9 @@ export const CustomMappingModal = ({
                     placeholder={t`Enter value`}
                     value={mapped}
                     onChange={(event) => {
-                      setRemapping((remapping) => {
+                      setMapping((mapping) => {
                         return new Map([
-                          ...remapping,
+                          ...mapping,
                           [original, event.target.value],
                         ]);
                       });
@@ -107,28 +107,3 @@ export const CustomMappingModal = ({
     </Modal>
   );
 };
-
-function areMappingsEqual(a: Mappings, b: Mappings): boolean {
-  return a.size === b.size && [...a].every(([k, v]) => b.get(k) === v);
-}
-
-function fillMissingMappings(mappings: Mappings): Mappings {
-  const remappings = new Map(
-    [...mappings].map(([original, mappedOrUndefined]) => {
-      // Use currently the original value as the "default custom mapping" as the current backend implementation
-      // requires that all original values must have corresponding mappings
-
-      // Additionally, the defensive `.toString` ensures that the mapped value definitely will be string
-      const mappedString =
-        mappedOrUndefined !== undefined
-          ? mappedOrUndefined.toString()
-          : original === null
-            ? "null"
-            : original.toString();
-
-      return [original, mappedString];
-    }),
-  );
-
-  return remappings;
-}
