@@ -609,7 +609,7 @@
           visible-cols  (lib/visible-columns query)
           implicit-cols (filter #(= :source/implicitly-joinable (:lib/source %)) visible-cols)]
       (doseq [col implicit-cols]
-        (is (= (col (lib.equality/find-matching-column (lib.ref/ref col) implicit-cols))))))))
+        (is (= col (lib.equality/find-matching-column (lib.ref/ref col) implicit-cols)))))))
 
 (deftest ^:parallel field-refs-to-custom-expressions-test
   (testing "custom columns that wrap a Field must not have `:id` (#44940)"
