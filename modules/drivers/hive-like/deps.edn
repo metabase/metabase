@@ -1,5 +1,14 @@
 {:paths
  ["src" "resources"]
 
+ :mvn/repos
+ {"shibboleth" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
+
+
  :deps
- {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.0.1"}}}
+ {org.apache.hive/hive-jdbc {:mvn/version "4.0.1"}
+  org.apache.thrift/libthrift {:mvn/version "0.21.0"}
+  org.apache.hive/hive-service-rpc {:mvn/version "4.0.1"}
+  org.apache.hive/hive-common {:mvn/version "4.0.1"}
+  org.apache.hive/hive-service {:mvn/version "4.0.1"}
+  net.shibboleth.tool/xmlsectool {:mvn/version "4.0.0"}}}
