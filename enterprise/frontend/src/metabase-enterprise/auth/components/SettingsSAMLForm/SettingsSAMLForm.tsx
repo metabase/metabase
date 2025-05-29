@@ -72,14 +72,12 @@ export function SettingsSAMLForm() {
   );
 
   const siteUrl = useSetting("site-url");
-
   return (
     <Box maw="40rem">
       <FormProvider
         initialValues={getFormValues(settingValues ?? {})}
         onSubmit={handleSubmit}
         validationSchema={SAML_FORM_SCHEMA}
-        validateEmptyValues
         enableReinitialize
       >
         {({ dirty }) => (
@@ -267,7 +265,9 @@ export function SettingsSAMLForm() {
   );
 }
 
-const getFormValues = (allSettings: Partial<EnterpriseSettings>) => {
+const getFormValues = (
+  allSettings: Partial<EnterpriseSettings>,
+): SAMLFormSettings => {
   const samlSettings = _.pick(allSettings, [
     "saml-user-provisioning-enabled?",
     "saml-attribute-email",
@@ -284,7 +284,12 @@ const getFormValues = (allSettings: Partial<EnterpriseSettings>) => {
     "saml-group-sync",
   ]);
 
-  return samlSettings;
+  if (samlSettings["saml-user-provisioning-enabled?"] == null) {
+    // cast empty to false
+    samlSettings["saml-user-provisioning-enabled?"] = false;
+  }
+  // cast undefined to null
+  return _.mapObject(samlSettings, (val) => val ?? null) as SAMLFormSettings;
 };
 
 function SamlUserProvisioning() {
