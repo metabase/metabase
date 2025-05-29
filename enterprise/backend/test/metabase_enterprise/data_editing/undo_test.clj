@@ -46,23 +46,35 @@
     (update-vals table-id->diffs #(mapv (fn [diff] (update (vec diff) 0 keyword)) %))
     response))
 
+(def op->action-type
+  {:created :create
+   :updated :update
+   :deleted :delete})
+
+(defn- to-legacy-shape [resp]
+  (if (string? resp)
+    resp
+    (u/for-map [[table-id diffs] (group-by :table-id (:outputs resp))]
+      [table-id (for [{:keys [op row]} diffs]
+                  [(op->action-type (keyword op)) row])])))
+
 (defn- undo-via-api! [user-id scope]
   (fast-reload-response
    #_(mt/user-http-request user-id :post "/ee/data-editing/undo" {:scope scope})
-   (u/for-map [[table-id diffs]
-               (group-by :table-id
-                         (:outputs
-                          #p
-                           (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
-                                                 {:action_id "data-editing/undo"
-                                                  :scope     scope
-                                                  :input     {}})))]
-     [table-id (for [{:keys [action-type row]} diffs]
-                 [(keyword action-type) row])])))
+   (to-legacy-shape
+    (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
+                          {:action_id "data-editing/undo"
+                           :scope     scope
+                           :input     {}}))))
 
 (defn- redo-via-api! [user-id scope]
   (fast-reload-response
-   (mt/user-http-request user-id :post "/ee/data-editing/redo" {:scope scope})))
+   #_(mt/user-http-request user-id :post "/ee/data-editing/redo" {:scope scope})
+   (to-legacy-shape
+    (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
+                          {:action_id "data-editing/redo"
+                           :scope     scope
+                           :input     {}}))))
 
 (defn- write-sequence! [table-id pk states]
   (loop [prior  nil
