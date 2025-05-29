@@ -238,6 +238,17 @@ describe("scenarios > question > native", () => {
         );
 
         H.runNativeQuery();
+        cy.findByTestId("query-visualization-root").should(
+          "contain",
+          "April 30, 2022, 6:56 PM",
+        );
+
+        H.rightSidebar()
+          .findByLabelText("Always require a value")
+          .parent()
+          .click();
+
+        H.runNativeQuery();
 
         cy.findByTestId("query-visualization-root").should(
           "contain",
@@ -245,10 +256,6 @@ describe("scenarios > question > native", () => {
         );
 
         H.rightSidebar().within(() => {
-          cy.findByLabelText("Always require a value")
-            .should("be.disabled")
-            .should("be.checked");
-
           cy.findByText("Enter a default value…").click();
         });
 
