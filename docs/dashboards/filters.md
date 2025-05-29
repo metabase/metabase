@@ -258,7 +258,13 @@ By default, each time you change the value in a filter on a dashboard, the dashb
 
 If a dashboard is particularly large or slow, or you have multiple filters that you want to adjust before the dashboard refreshes its results, you may want to tell Metabase when to apply those filters and refresh the dashboard.
 
-To turn off the automatic application of filters, click on the info **i** icon, and toggle the **Auto-apply filters** option. With auto-apply turned off, each time you change a value in a filter, you'll need to click the **Apply** button to refresh the dashboard with the new filter value.
+To turn off the automatic application of filters.
+
+1. Click on the three-dot menu **...**.
+2. Select **Edit settings**.
+3. In the **General** section, toggle off **Auto-apply filters**.
+
+With auto-apply turned off, each time you change a value in a filter, you'll need to click the **Apply** button to refresh the dashboard with the new filter value.
 
 ![Click Apply to apply the filters and refresh the dashboard](./images/apply-button.png)
 
