@@ -39,7 +39,6 @@ function concatChunks(chunks: Uint8Array[]): Uint8Array {
   return concatenatedChunks;
 }
 
-// TODO: comment this function
 function parseDataStreamPart(line: string) {
   const firstSeparatorIndex = line.indexOf(":");
   if (firstSeparatorIndex === -1) {
@@ -173,11 +172,14 @@ export type AIStreamingConfig = {
   onStreamStateUpdate?: (
     state: ReturnType<typeof accumulateStreamParts>,
   ) => void;
+  // maximum time to wait between recieved chunks before abandoning the request
+  maxChunkTimeout?: number | undefined;
+  onError: (error: Error) => void;
 };
 
 export async function processChatResponse(
   stream: ReadableStream<Uint8Array>,
-  config: AIStreamingConfig = {},
+  config: AIStreamingConfig,
 ) {
   const parsedStreamParts: ParsedStreamPart[] = [];
   const reader = stream.getReader();
@@ -186,7 +188,22 @@ export async function processChatResponse(
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    let timeoutId: NodeJS.Timeout | undefined;
+    if (config.maxChunkTimeout) {
+      timeoutId = setTimeout(() => {
+        config.onError(
+          new Error(
+            `Stream timeout - no data received last ${config.maxChunkTimeout}ms`,
+          ),
+        );
+      }, config.maxChunkTimeout);
+    }
+
     const { value: chunk } = await reader.read();
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     if (chunk) {
       chunks.push(chunk);
@@ -225,8 +242,8 @@ export async function processChatResponse(
         config.onToolResultPart?.(streamPart.value);
       }
       if (streamPart.name === "error") {
-        throw new Error(
-          streamPart.value ? `${streamPart.value}` : "Unknown error",
+        config.onError(
+          new Error(streamPart.value ? `${streamPart.value}` : "Unknown error"),
         );
       }
     }
@@ -234,6 +251,8 @@ export async function processChatResponse(
     const accumulated = accumulateStreamParts(parsedStreamParts);
     config.onStreamStateUpdate?.(accumulated);
   }
+
+  reader.releaseLock();
 
   return accumulateStreamParts(parsedStreamParts);
 }

@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { aiStreamingQuery } from "metabase-enterprise/api/ai";
+import { getInflightRequestsForUrl } from "metabase-enterprise/api/ai/requests";
 import type { JSONValue } from "metabase-enterprise/api/ai/types";
 import type {
   MetabotAgentRequest,
@@ -78,8 +79,8 @@ export const submitInput = createAsyncThunk(
   },
 );
 
-const issueAgentRequest = createAsyncThunk(
-  "metabase-enterprise/metabot/issueAgentRequest",
+const streamAgentRequest = createAsyncThunk(
+  "metabase-enterprise/metabot/streamAgentRequest",
   async ({ body }: { body: MetabotAgentRequest }, { dispatch, getState }) => {
     try {
       let state = { ...body.state };
@@ -158,7 +159,7 @@ export const sendMessageRequest = createAsyncThunk(
     }
 
     const result = (await dispatch(
-      issueAgentRequest({ body: { ...data, conversation_id: sessionId } }),
+      streamAgentRequest({ body: { ...data, conversation_id: sessionId } }),
     )) as any;
 
     if (result.error) {
@@ -179,20 +180,19 @@ export const sendMessageRequest = createAsyncThunk(
 
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (_args, { dispatch: _dispatch }) => {
-    // TODO: impl
-    // const requests = dispatch(EnterpriseApi.util.getRunningMutationsThunk());
-    // const agentRequests = requests.filter(
-    //   (req) => req.arg.endpointName === metabotApi.endpoints.metabotAgent.name,
-    // );
-    // agentRequests.forEach((req) => req.abort());
+  (reason: string, { dispatch: _dispatch }) => {
+    getInflightRequestsForUrl("/api/ee/metabot-v3/v2/agent-streaming").forEach(
+      (req) => req.abortController.abort(reason),
+    );
   },
 );
 
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
   (_args, { dispatch }) => {
-    dispatch(cancelInflightAgentRequests());
+    dispatch(
+      cancelInflightAgentRequests("User manaully cancelled the request"),
+    );
     dispatch(clearMessages());
     dispatch(resetConversationId());
   },
