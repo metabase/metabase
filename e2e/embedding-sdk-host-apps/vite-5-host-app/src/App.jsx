@@ -11,7 +11,7 @@ import { Redirect, Route, Switch, useSearchParams } from "wouter";
 
 // Configuration
 const config = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: import.meta.env.VITE_METABASE_INSTANCE_URL,
+  metabaseInstanceUrl: `http://localhost:${import.meta.env.VITE_MB_PORT}`,
 });
 
 const defaultQuestionId = 24;

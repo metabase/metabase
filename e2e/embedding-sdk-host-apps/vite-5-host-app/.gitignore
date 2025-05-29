@@ -1,7 +1,3 @@
-# local dist
-local-dist/*
-!local-dist/.gitkeep
-
 # dependencies
 node_modules
 

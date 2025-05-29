@@ -37,7 +37,7 @@ describe("Embedding SDK: vite-5-host-app compatibility", () => {
 
   it("should load a metabase locale", () => {
     cy.visit({
-      url: "http://localhost:4400/interactive-question?locale=es&questionId=1",
+      url: `${CLIENT_HOST}/interactive-question?locale=es&questionId=1`,
     });
 
     cy.findByTestId("interactive-question-result-toolbar", {
@@ -52,7 +52,7 @@ describe("Embedding SDK: vite-5-host-app compatibility", () => {
     cy.clock(time, ["Date"]);
 
     cy.visit({
-      url: "http://localhost:4400/interactive-question?locale=es&questionId=1",
+      url: `${CLIENT_HOST}/interactive-question?locale=es&questionId=1`,
     });
 
     cy.findByTestId("interactive-question-result-toolbar", {
@@ -76,7 +76,7 @@ describe("Embedding SDK: vite-5-host-app compatibility", () => {
     cy.clock(time, ["Date"]);
 
     cy.visit({
-      url: "http://localhost:4400/interactive-question?locale=es&questionId=1",
+      url: `${CLIENT_HOST}/interactive-question?locale=es&questionId=1`,
     });
 
     cy.findByTestId("interactive-question-result-toolbar", {

@@ -1,16 +1,16 @@
 import { FAILURE_EXIT_CODE } from "../../constants/exit-code";
 import { printBold } from "../../cypress-runner-utils";
-import {
-  copyExampleEnvFile,
-  copyLocalEmbeddingSdkPackage,
-  copyLocalMetabaseJar,
-} from "../shared/helpers/prepare-app";
 import { setupAppCleanup } from "../shared/helpers/setup-app-cleanup";
-import { startContainers } from "../shared/helpers/start-containers";
 
 import { SAMPLE_APP_SETUP_CONFIGS } from "./constants/sample-app-setup-configs";
 import { copyShoppyMetabaseAppDBDump } from "./helpers/copy-shoppy-metabase-app-db-dump";
 import { fetchApp } from "./helpers/fetch-app";
+import {
+  copyExampleEnvFile,
+  copyLocalEmbeddingSdkPackage,
+  copyLocalMetabaseJar,
+} from "./helpers/prepare-app";
+import { startContainers } from "./helpers/start-containers";
 import type { EmbeddingSdkVersion, SampleAppTestSuiteName } from "./types";
 
 const userOptions = {
@@ -48,7 +48,12 @@ export async function startSampleAppContainers(
       branch,
     });
 
-    setupAppCleanup({ rootPath, env, dockerDownCommand, removeAppDir: true });
+    setupAppCleanup({
+      rootPath,
+      env,
+      appDownCommand: dockerDownCommand,
+      cleanupAppDir: true,
+    });
 
     copyExampleEnvFile({ rootPath, dockerEnvExamplePath, dockerEnvPath });
 

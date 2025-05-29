@@ -1,14 +1,10 @@
 import { FAILURE_EXIT_CODE } from "../../constants/exit-code";
 import { printBold } from "../../cypress-runner-utils";
-import {
-  copyLocalEmbeddingSdkPackage,
-  copyLocalMetabaseJar,
-} from "../shared/helpers/prepare-app";
 import { setupAppCleanup } from "../shared/helpers/setup-app-cleanup";
-import { startContainers } from "../shared/helpers/start-containers";
 
 import { HOST_APP_FOLDER_PATH } from "./constants/host-app-folder-path";
 import { HOST_APP_SETUP_CONFIGS } from "./constants/host-app-setup-configs";
+import { startApp } from "./helpers/start-app";
 import type { HostAppTestSuiteName } from "./types";
 
 export async function startHostAppContainers(testSuite: HostAppTestSuiteName) {
@@ -16,26 +12,17 @@ export async function startHostAppContainers(testSuite: HostAppTestSuiteName) {
 
   const {
     appName,
-    "docker-up-command": dockerUpCommand,
-    "docker-down-command": dockerDownCommand,
+    "app-run-command": appRunCommand,
+    "app-down-command": appDownCommand,
     env,
   } = setupConfig;
 
   try {
     const rootPath = `${HOST_APP_FOLDER_PATH}/${appName}`;
 
-    setupAppCleanup({ rootPath, env, dockerDownCommand, removeAppDir: false });
+    setupAppCleanup({ rootPath, env, appDownCommand, cleanupAppDir: false });
 
-    copyLocalMetabaseJar(rootPath);
-
-    copyLocalEmbeddingSdkPackage(rootPath);
-
-    await startContainers({
-      cwd: rootPath,
-      env,
-      dockerUpCommand,
-      dockerDownCommand,
-    });
+    await startApp({ appRunCommand, appDownCommand, cwd: rootPath, env });
 
     printBold(`All done! The ${appName} Host app is now running.`);
   } catch (err) {
