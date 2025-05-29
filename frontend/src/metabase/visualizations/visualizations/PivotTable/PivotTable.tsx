@@ -136,9 +136,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const getColumnTitle = useCallback(
       function (columnIndex: number) {
-        const column = data.pivot_cols?.filter(
-          (col) => !isPivotGroupColumn(col),
-        )[columnIndex];
+        const column = data.cols?.filter((col) => !isPivotGroupColumn(col))[
+          columnIndex
+        ];
         return column
           ? getTitleForColumn(column, settings)
           : NULL_DISPLAY_VALUE;

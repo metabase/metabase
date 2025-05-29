@@ -12,43 +12,26 @@ export function isPivotGroupColumn(col) {
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const PREAGG_COLUMN_SPLIT_SETTING = "pivot_table.column_split";
-export const UNAGG_COLUMN_SPLIT_SETTING =
-  "pivot_table.unaggregated_column_split";
 export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  if (
-    !settings[PREAGG_COLUMN_SPLIT_SETTING] &&
-    !settings[UNAGG_COLUMN_SPLIT_SETTING]
-  ) {
+  if (!settings[PREAGG_COLUMN_SPLIT_SETTING]) {
     return null;
   }
 
-  const columnSplit = data.pivot_cols
-    ? _.mapObject(settings[UNAGG_COLUMN_SPLIT_SETTING], (partition) =>
-        partition.map((col) => {
-          if (typeof col === "string") {
-            return col;
-          } else {
-            return col.name;
-          }
-        }),
-      )
-    : migratePivotColumnSplitSetting(
-        settings[PREAGG_COLUMN_SPLIT_SETTING] ?? {
-          rows: [],
-          columns: [],
-          values: [],
-        },
-        data.cols,
-      );
-
-  const columns = Pivot.columns_without_pivot_group(
-    data.pivot_cols || data.cols,
+  const columnSplit = migratePivotColumnSplitSetting(
+    settings[PREAGG_COLUMN_SPLIT_SETTING] ?? {
+      rows: [],
+      columns: [],
+      values: [],
+    },
+    data.cols,
   );
+
+  const columns = Pivot.columns_without_pivot_group(data.cols);
 
   // TODO: standardize on cols vs columns
   const {
