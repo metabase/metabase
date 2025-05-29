@@ -312,7 +312,9 @@
 
         editable-tables
         (when (seq editable-databases)
-          (t2/select :model/Table :db_id [:in (map :id editable-databases)]))
+          (t2/select :model/Table
+                     :db_id [:in (map :id editable-databases)]
+                     :active true))
 
         fields
         (when (seq editable-tables)
