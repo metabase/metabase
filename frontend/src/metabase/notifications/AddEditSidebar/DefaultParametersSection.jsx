@@ -2,6 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { Badge } from "metabase/components/Badge";
 import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
@@ -34,7 +35,7 @@ function formatDefaultParamValues(parameters) {
       }
 
       if (formattedValue) {
-        return `${name} -> ${formattedValue}`;
+        return { name, value: formattedValue };
       }
       return null;
     })
@@ -58,10 +59,15 @@ function DefaultParametersSection({ className, parameters }) {
       <div
         className={cx(CS.pt1, CS.textSmall, CS.textNormal, CS.textMedium)}
       >{t`If a dashboard filter has a default value, it'll be applied when your subscription is sent.`}</div>
-      {formattedParameterValues.map((formattedValue, index) => {
+      {formattedParameterValues.map((param, index) => {
         return (
-          <div className={cx(CS.pt1, CS.textMedium)} key={index}>
-            {formattedValue}
+          <div
+            className={cx(CS.pt1, CS.flex, CS.alignCenter, CS.flexWrap)}
+            key={index}
+          >
+            <Badge inactiveColor="text-dark" isSingleLine={true}>
+              {param.name}: {param.value}
+            </Badge>
           </div>
         );
       })}

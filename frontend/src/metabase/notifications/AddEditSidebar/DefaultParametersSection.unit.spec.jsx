@@ -46,7 +46,7 @@ describe("DefaultParametersSection", () => {
       }),
     ];
     setup(parameters);
-    expect(screen.getByText("State is CA")).toBeInTheDocument();
+    expect(screen.getByText("State: CA")).toBeInTheDocument();
   });
 
   it("should render a parameter with multiple default text values", () => {
@@ -59,7 +59,7 @@ describe("DefaultParametersSection", () => {
     ];
     setup(parameters);
     expect(
-      screen.getByText(t`Source is ${"Organic"} and ${"Direct"}`),
+      screen.getByText(t`Source: ${"Organic"} and ${"Direct"}`),
     ).toBeInTheDocument();
   });
 
@@ -73,7 +73,7 @@ describe("DefaultParametersSection", () => {
     ];
     setup(parameters);
     expect(
-      screen.getByText("Created At is January 15, 2024"),
+      screen.getByText("Created At: January 15, 2024"),
     ).toBeInTheDocument();
   });
 
@@ -87,7 +87,7 @@ describe("DefaultParametersSection", () => {
     ];
     setup(parameters);
     expect(
-      screen.getByText("Date Range is Previous 30 Days"),
+      screen.getByText("Date Range: Previous 30 Days"),
     ).toBeInTheDocument();
   });
 
@@ -106,10 +106,8 @@ describe("DefaultParametersSection", () => {
       createMockParameter({ name: "Category", type: "category" }), // No default
     ];
     setup(parameters);
-    expect(screen.getByText("State is NY")).toBeInTheDocument();
-    expect(
-      screen.getByText("Timeframe is Previous 30 Days"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Category is/)).not.toBeInTheDocument();
+    expect(screen.getByText("State: NY")).toBeInTheDocument();
+    expect(screen.getByText("Timeframe: Previous 30 Days")).toBeInTheDocument();
+    expect(screen.queryByText(/Category:/)).not.toBeInTheDocument();
   });
 });
