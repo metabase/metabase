@@ -406,12 +406,14 @@
             action-kw   (:action-kw row-action)
             ;; TODO probably take the row separately from inputs
             pks         inputs
-            inputs      (apply-mapping (:mapping unified) (apply-mapping (:mapping row-action) inputs))]
+            inputs      (->> inputs
+                             (apply-mapping (:mapping row-action))
+                             (apply-mapping (:mapping unified)))]
         (cond
           saved-id
-          (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pks inputs ::row-mapping)
+          (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pks inputs ::mapping-placeholder)
           action-kw
-          (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pks inputs ::row-mapping)))
+          (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pks inputs ::mapping-placeholder)))
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
 
