@@ -276,30 +276,28 @@
    [:context :map]
    [:outputs [:sequential output-schema]]])
 
-(defn- correct-columns-name
+(mu/defn- correct-columns-name :- [:sequential ::lib.schema.actions/row]
   "Ensure each rows have column name match with fields name.
   Some drivers like h2 have weird issue with casing."
-  [table-id rows]
-  (let [fields (actions/cached-value
-                [::correct-columns-name table-id]
-                (fn []
-                  (let [database (actions/cached-database-via-table-id table-id)]
-                    (mapv :name
-                          (qp.store/with-metadata-provider (:id database)
-                            (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))))
-        keymap (merge (u/for-map [f fields]
-                        [(keyword (u/lower-case-en f)) (keyword f)])
-                      (u/for-map [f fields]
-                        [(keyword (u/upper-case-en f)) (keyword f)])
-                      (let [kws (map keyword fields)]
-                        (zipmap kws kws)))]
+  [table-id rows :- [:sequential ::lib.schema.actions/row]]
+  (let [field-names (actions/cached-value
+                     [::correct-columns-name table-id]
+                     (fn []
+                       (let [database (actions/cached-database-via-table-id table-id)]
+                         (mapv :name
+                               (qp.store/with-metadata-provider (:id database)
+                                 (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))))
+        keymap (merge (u/for-map [f field-names]
+                        [(u/lower-case-en f) f])
+                      (u/for-map [f field-names]
+                        [(u/upper-case-en f) f]))]
     (map #(update-keys % keymap) rows)))
 
 (defn- query-rows
   [driver conn table-id query]
   (as-> query res
     (sql.qp/format-honeysql driver res)
-    (jdbc/query {:connection conn} res {:transaction? false :keywordize? true})
+    (jdbc/query {:connection conn} res {:transaction? false :keywordize? false})
     (correct-columns-name table-id res)))
 
 (defn- row-delete!* [action database query]
@@ -349,7 +347,7 @@
         source-table (get-in query [:query :source-table])
         {:keys [from where]} (mbql-query->raw-hsql driver query)
         update-hsql  (-> {:update (first from)
-                          :set    (cast-values driver (update-keys update-row u/qualified-name) (u/the-id database) source-table)
+                          :set    (cast-values driver update-row (u/the-id database) source-table)
                           :where  where}
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
@@ -399,19 +397,19 @@
     (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
-(mr/def ::row
-  [:map-of :keyword :any])
+#_(mr/def ::row
+    [:map-of :keyword :any])
 
-(mr/def ::modified-row
-  [:map
-   [:pk     ::row]
-   [:before [:maybe ::row]]
-   [:after  [:maybe ::row]]])
+#_(mr/def ::modified-row
+    [:map
+     [:pk     ::row]
+     [:before [:maybe ::row]]
+     [:after  [:maybe ::row]]])
 
 ;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
 ;;; the newly created row. This function will `SELECT` the newly created row
 ;;; assuming that `result` is a map from column names to the generated values.
-(mu/defmethod select-created-row :default :- [:maybe [:map-of :keyword :any]]
+(mu/defmethod select-created-row :default :- [:maybe ::lib.schema.actions/row]
   [driver create-hsql conn result]
   (let [select-hsql     (-> create-hsql
                             (dissoc :insert-into :values)
@@ -440,7 +438,7 @@
                      (jdbc/execute! {:connection conn} sql-args {:return-keys  true
                                                                  :identifiers  identity
                                                                  :transaction? false
-                                                                 :keywordize?  true}))
+                                                                 :keywordize?  false}))
             _      (log/tracef ":model.row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (first (correct-columns-name table-id [(select-created-row driver create-hsql conn result)]))]
         (log/tracef ":model.row/create returned row %s" (pr-str row))
@@ -546,7 +544,7 @@
 
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
 
-(mu/defn- table-id->pk-field-name->id :- [:map-of :keyword ::lib.schema.id/field]
+(mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
@@ -555,7 +553,7 @@
    #(into {}
           (comp (filter (fn [{:keys [semantic-type], :as _field}]
                           (isa? semantic-type :type/PK)))
-                (map (juxt (comp keyword :name) :id)))
+                (map (juxt :name :id)))
           (qp.store/with-metadata-provider database-id
             (lib.metadata.protocols/fields
              (qp.store/metadata-provider)
@@ -601,14 +599,14 @@
              field-id->field     (into {} (map (juxt :id identity)) all-fields)
              table-id->pk-fields (group-by :table-id pk-fields)]
          (reduce
-          (fn [metadata {:keys [table-id name fk-target-field-id]}]
+          (fn [metadata {:keys [table-id fk-target-field-id] field-name :name}]
             (if-let [target-field (field-id->field fk-target-field-id)]
               (let [parent-table-id (:table-id target-field)
                     child-pk-fields (table-id->pk-fields table-id)]
                 (update metadata parent-table-id (fnil conj [])
                         {:table table-id
-                         :fk    {(keyword name) (keyword (:name target-field))}
-                         :pk    (mapv (comp keyword :name) child-pk-fields)}))
+                         :fk    {field-name (:name target-field)}
+                         :pk    (mapv :name child-pk-fields)}))
               metadata))
           {}
           fk-fields))))))
@@ -623,7 +621,7 @@
 
     (= 1 (count pk-name->id))
     (let [[pk-name pk-field-id] (first pk-name->id)
-          pk-values             (map #(get % (keyword pk-name)) pk-rows)]
+          pk-values             (map #(get % pk-name) pk-rows)]
       (into [:in [:field pk-field-id nil]] pk-values))
 
     :else
@@ -637,14 +635,14 @@
   (if (= 1 (count fk))
     ;; Single FK column - use IN clause
     (let [[fk-col pk-col] (first fk)
-          parent-values (map pk-col parent-rows)]
-      [:in fk-col parent-values])
+          parent-values (map #(get % pk-col) parent-rows)]
+      [:in (keyword fk-col) parent-values])
     ;; Composite FK - use OR of AND clauses
     (into [:or]
           (for [parent parent-rows]
             (into [:and]
                   (for [[fk-col pk-col] fk]
-                    [:= fk-col (get parent pk-col)]))))))
+                    [:= (keyword fk-col) (get parent pk-col)]))))))
 
 (defn- delete-rows-by-pk!
   "Delete rows from a table by their primary key values"
@@ -678,10 +676,10 @@
                             (qp.store/with-metadata-provider database-id
                               (:name (lib.metadata.protocols/table (qp.store/metadata-provider) table)))))
             where-clause (build-fk-filter-clause fk parent-rows)
-            query {:select pk
-                   :from   [(keyword table-name)]
-                   :where  where-clause
-                   :limit  1000}] ; Safety limit
+            query        {:select (map keyword pk)
+                          :from   [(keyword table-name)]
+                          :where  where-clause
+                          :limit  1000}] ; Safety limit
         (with-jdbc-transaction [conn database-id]
           [table
            (query-rows driver conn table query)])))))
@@ -696,7 +694,9 @@
                       (lookup-children-in-db relationship parent-rows database-id))
         delete-fn   (fn [items-by-table]
                       (doseq [[table-id rows] (reverse items-by-table)]
-                        (delete-rows-by-pk! database-id table-id rows)))
+                        (log/debugf "Cascade deleting %d rows of table %d" (count rows) table-id)
+                        (let [rows-deleted (delete-rows-by-pk! database-id table-id rows)]
+                          (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
         table-pks   (keys (table-id->pk-field-name->id database-id table-id))
         row-pk      (select-keys row table-pks)]
     (fks/delete-recursively table-id [row-pk] metadata children-fn delete-fn :max-queries 50)))
@@ -763,18 +763,13 @@
          :before   row-before
          :after    nil}))))
 
-(defn keywordize-row-inputs
-  [inputs]
-  (mapv #(update % :row (fn [x] (update-keys x keyword))) inputs))
-
 (defn- perform-table-row-delete!
   "Perform table row deletion with optional cascade support"
   [_action context inputs {:keys [cascade?] :or {cascade? true}}]
-  (let [inputs            (keywordize-row-inputs inputs)
-        table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database       (actions/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
-                              [table-id (map keyword (keys field-name->id))]))
+                              [table-id (keys field-name->id)]))
         row-fn             (if cascade? row-delete!*-cascade row-delete!*)
         [errors results]
         (batch-execution-by-table-id!
@@ -799,12 +794,13 @@
                        :results     results})))
     {:context (record-mutations context results)
      :outputs (for [{:keys [table-id before]} results]
+               ;; TODO fix this hack
                 {:table-id table-id
                  :op       :deleted
                  :row      (select-keys
                             (let [row before]
-                              ;; Hideous workaround for QP and direct JDBC disagreeing on upper versus lower case.
-                              (merge (update-keys row (comp keyword u/upper-case-en name))
+                             ;; Hideous workaround for QP and direct JDBC disagreeing on upper versus lower case.
+                              (merge (update-keys row (comp u/upper-case-en name))
                                      (u/lower-case-map-keys row)
                                      row))
                             (table-id->pk-keys table-id))})}))
@@ -821,8 +817,8 @@
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
-  [row      :- ::lib.schema.actions/row-keywordized
-   pk-names :- [:set :keyword]]
+  [row      :- ::lib.schema.actions/row
+   pk-names :- [:set :string]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
     (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
@@ -832,8 +828,8 @@
 
 (mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
-  [row      :- ::lib.schema.actions/row-keywordized
-   pk-names :- [:set :keyword]]
+  [row      :- ::lib.schema.actions/row
+   pk-names :- [:set :string]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)
       (throw (ex-info (tru "Invalid update row map: no non-PK columns. Got {0}, all of which are PKs."
@@ -845,8 +841,7 @@
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/update]
   [_action context inputs :- [:sequential ::table-row-input]]
-  (let [inputs (keywordize-row-inputs inputs)
-        [errors results]
+  (let [[errors results]
         (batch-execution-by-table-id!
          {:inputs     inputs
           :row-action :model.row/update

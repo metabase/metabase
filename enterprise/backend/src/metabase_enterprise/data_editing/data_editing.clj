@@ -24,7 +24,7 @@
 (defn get-row-pks
   "Given a row, strip it down to just its primary keys."
   [pk-fields row]
-  (->> (mapv (comp keyword :name) pk-fields)
+  (->> (mapv :name pk-fields)
        (select-keys row)
        ;; Hack for now, pending discussion of the ideal fix
        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
