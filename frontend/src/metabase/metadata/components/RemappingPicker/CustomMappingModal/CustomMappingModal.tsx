@@ -6,7 +6,11 @@ import { Box, Button, Group, Modal, Text, TextInput } from "metabase/ui";
 
 import S from "./CustomMappingModal.module.css";
 import type { Mapping } from "./types";
-import { areMappingsEqual, fillMissingMappings } from "./utils";
+import {
+  areMappingsEqual,
+  fillMissingMappings,
+  getHasEmptyValues,
+} from "./utils";
 
 interface Props {
   isOpen: boolean;
@@ -24,11 +28,7 @@ export const CustomMappingModal = ({
   const [mapping, setMapping] = useState(new Map());
   const mappingRef = useLatest(mapping);
   const onChangeRef = useLatest(onChange);
-  const hasEmptyCustomValues = useMemo(() => {
-    return Array.from(mapping.values()).some((value) => {
-      return value.trim().length === 0;
-    });
-  }, [mapping]);
+  const hasEmptyValues = useMemo(() => getHasEmptyValues(mapping), [mapping]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -50,7 +50,7 @@ export const CustomMappingModal = ({
       // the dimension type is "internal" but we don't have any values in metabase_fieldvalues
       onChangeRef.current(newMapping);
     }
-  }, [onChangeRef, mappingRef, value]); // run this effect only when "value" changes
+  }, [onChangeRef, mappingRef, value]); // run this effect only when "value" prop changes
 
   return (
     <Modal.Root opened={isOpen} onClose={onClose}>
@@ -129,8 +129,9 @@ export const CustomMappingModal = ({
               pos="sticky"
             >
               <Button onClick={onClose}>{t`Cancel`}</Button>
+
               <Button
-                disabled={hasEmptyCustomValues}
+                disabled={hasEmptyValues}
                 miw={128}
                 type="submit"
                 variant="primary"

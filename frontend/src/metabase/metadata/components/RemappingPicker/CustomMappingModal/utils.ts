@@ -24,3 +24,9 @@ export function fillMissingMappings(mappings: Mapping): Mapping {
 
   return remappings;
 }
+
+export function getHasEmptyValues(mapping: Mapping): boolean {
+  return Array.from(mapping.values()).some((value) => {
+    return value.trim().length === 0;
+  });
+}
