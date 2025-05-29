@@ -778,12 +778,11 @@
                             (let [database       (actions/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
-        row-fn             (if cascade? row-delete!*-cascade row-delete!*)
         [errors results]
         (batch-execution-by-table-id!
          {:inputs        inputs
           :row-action    :model.row/delete
-          :row-fn        row-fn
+          :row-fn        (if cascade? row-delete!*-cascade row-delete!*)
           :validate-fn   (fn [database table-id rows]
                            (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
                              (check-consistent-row-keys rows)

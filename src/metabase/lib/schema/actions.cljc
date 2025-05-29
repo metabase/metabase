@@ -8,8 +8,3 @@
   [:map-of
    [:string {:decode/normalize lib.schema.common/normalize-string-key}]
    :any])
-
-(mr/def ::row-keywordized
-  [:map-of
-   :keyword
-   :any])
