@@ -7,6 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private http-status-unprocessable 422)
+
 (defn- translation-key
   "The identity of a translation. It's locale and source string so we can identify if the same translation is present
   multiple times."
@@ -79,7 +81,7 @@
   (let [{:keys [translations errors]} (process-rows rows)]
     (when (seq errors)
       (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
-                      {:status-code 422
+                      {:status-code http-status-unprocessable
                        :errors errors})))
     ;; remove bad msgstrs after error generator for line number reporting reasons
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
