@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { PLUGIN_API } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -346,17 +346,11 @@ export const GeoJSONApi = {
 export function setPublicQuestionEndpoints(uuid) {
   const encodedUuid = encodeURIComponent(uuid);
   setCardEndpoints(`/api/public/card/${encodedUuid}`);
-  setContentTranslationEndpoints(
-    `/api/content-translation/dictionary/${encodedUuid}`,
-  );
 }
 
 export function setPublicDashboardEndpoints(uuid) {
   const encodedUuid = encodeURIComponent(uuid);
   setDashboardEndpoints(`/api/public/dashboard/${encodedUuid}`);
-  setContentTranslationEndpoints(
-    `/api/content-translation/dictionary/${encodedUuid}`,
-  );
 }
 
 export function setEmbedQuestionEndpoints(token) {
@@ -412,7 +406,7 @@ function setDashboardEndpoints(prefix) {
 }
 
 function setContentTranslationEndpoints(prefix) {
-  PLUGIN_API.getContentTranslationDictionaryUrl = prefix;
+  PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = prefix;
 }
 
 export const ActionsApi = {

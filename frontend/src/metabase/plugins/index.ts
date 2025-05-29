@@ -766,6 +766,7 @@ export const PLUGIN_CONTENT_TRANSLATION = {
     _tc: ContentTranslationFunction,
   ) => obj,
   translateSeries: (obj: Series, _tc: ContentTranslationFunction) => obj,
+  contentTranslationDictionaryUrl: null as string | null,
 };
 
 export const PLUGIN_DB_ROUTING = {
@@ -794,5 +795,4 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
-  getContentTranslationDictionaryUrl: null as string | null,
 };
