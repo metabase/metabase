@@ -464,11 +464,11 @@
     (when-not (fresh-install? conn (.getDatabase ^Liquibase liquibase))
       ;; Skip mutating the table if the filenames are already correct. It assumes we have never moved the boundary
       ;; between the two files, i.e. that update-migrations still start from v45.
-      (when #p (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
-                    (jdbc/query conn-spec)
-                    (into #{} (map :filename))
-                    (filter #(or (= % legacy-migrations-file)
-                                 (str/ends-with? % "update_migrations.yaml"))))
+      (when (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
+                 (jdbc/query conn-spec)
+                 (into #{} (map :filename))
+                 (filter #(or (= % legacy-migrations-file)
+                              (str/ends-with? % "update_migrations.yaml"))))
         (log/info "Updating liquibase table to reflect consolidated changeset filenames")
         (with-scope-locked liquibase
           (jdbc/execute!
