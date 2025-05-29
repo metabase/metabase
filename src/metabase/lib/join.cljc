@@ -510,11 +510,16 @@
     (generator base-name)))
 
 (defn default-alias
-  "Generate a default `:alias` for a join clause. home-cols should be visible columns for the stage"
+  "Generate a default `:alias` for a join clause."
+  []
+  (u/generate-nano-id))
+
+(defn default-display-name
+  "Generate a default `:display-name` for a join clause. home-cols should be visible columns for the stage"
   ([query stage-number a-join]
    (let [stage (lib.util/query-stage query stage-number)
          home-cols (lib.metadata.calculation/visible-columns query stage-number stage)]
-     (default-alias query stage-number a-join stage home-cols)))
+     (default-display-name query stage-number a-join stage home-cols)))
   ([query _stage-number a-join stage home-cols]
    (let [home-cols   home-cols
          cond-fields (lib.util.match/match (:conditions a-join) :field)
@@ -540,7 +545,8 @@
                                                             %)
                                                          joins))))
           home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
-          join-alias  (default-alias query stage-number a-join stage home-cols)
+          join-alias  (default-alias)
+          join-name   (default-display-name query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
       (cond-> a-join
@@ -549,7 +555,8 @@
                                 (fn [conditions]
                                   (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
                                         conditions)))
-        true (with-join-alias join-alias)))))
+        true (with-join-alias join-alias)
+        true (assoc :display-name join-name)))))
 
 (declare join-conditions
          joined-thing

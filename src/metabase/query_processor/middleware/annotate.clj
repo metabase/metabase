@@ -129,13 +129,13 @@
 (defn- display-name-for-joined-field
   "Return an appropriate display name for a joined field. For *explicitly* joined Fields, the qualifier is the join
   alias; for implicitly joined fields, it is the display name of the foreign key used to create the join."
-  [field-display-name {:keys [fk-field-id], join-alias :alias}]
+  [field-display-name {:keys [fk-field-id], join-alias :alias, join-display-name :display-name}]
   (let [qualifier (if fk-field-id
                     ;; strip off trailing ` id` from FK display name
                     (str/replace (:display-name (lib.metadata/field (qp.store/metadata-provider) fk-field-id))
                                  #"(?i)\sid$"
                                  "")
-                    join-alias)]
+                    (or join-display-name join-alias))]
     (format "%s → %s" qualifier field-display-name)))
 
 (defn- datetime-arithmetics?
