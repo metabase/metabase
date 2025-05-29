@@ -62,6 +62,17 @@
       (throw (validation-error "Change set IDs are not in order"
                                {:out-of-order-ids out-of-order-ids})))))
 
+(defn- require-change-set-ids-in-correct-file [change-log file]
+  (when (not (str/starts-with? (.getName file) "001"))
+    (let [file-version (Integer/parseInt (re-find #"\d+" (.getName file)))
+          ids (change-set-ids change-log)
+          wrong-file-ids (->> ids
+                              (filter (fn [id]
+                                        (not= file-version (Integer/parseInt (re-find #"\d+" id))))))]
+      (when (seq wrong-file-ids)
+        (throw (validation-error "Change set IDs are in the wrong file"
+                                 {:wrong-file-ids wrong-file-ids}))))))
+
 (defn- check-change-use-types?
   "Return `true` if change use any type in `types`."
   [types change]
@@ -123,7 +134,7 @@
 
 (defn require-no-datetime-type
   "Ensures that no \"datetime\" or \"timestamp without time zone\".
-  From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columsn are tz-aware."
+  From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columns are tz-aware."
   [change-log]
   (require-no-types-in-change-log!
    #{"datetime" "timestamp" "timestamp without time zone"}
@@ -139,8 +150,9 @@
       (throw (validation-error "Expected exactly one key." {:keys keys})))
     (first keys)))
 
-(defn- validate-database-change-log [change-log]
+(defn- validate-database-change-log [change-log file]
   (require-distinct-change-set-ids change-log)
+  (require-change-set-ids-in-correct-file change-log file)
   (require-change-set-ids-in-order change-log)
   (require-no-bare-blob-or-text-types change-log)
   (require-no-bare-boolean-types change-log)
@@ -152,41 +164,43 @@
                                {:keys (keys all)})))
     (doseq [{:keys [changeSet]} changeSet
             :when (not (s/valid? ::changeSet changeSet))]
-      (throw (validation-error "Invalid change set." (s/explain-data ::changeSet changeSet))))))
+      (throw (validation-error (str "Invalid changeSet " (:id changeSet) ": " (s/explain-str ::changeSet changeSet)) (s/explain-data ::changeSet changeSet))))))
 
-(defn- validate-migrations [migrations]
+(defn- validate-migrations [migrations file]
   (require-database-change-log! migrations)
-  (validate-database-change-log (:databaseChangeLog migrations))
+  (validate-database-change-log (:databaseChangeLog migrations) file)
   :ok)
 
-(def ^:private filename
-  "../../resources/migrations/001_update_migrations.yaml")
+(defn- migration-files []
+  (let [dir (io/file #?(:bb "resources/migrations" :clj "../../resources/migrations"))]
+    (->> (file-seq dir)
+         (filter #(and (.isFile %) (str/ends-with? (.getName %) "_update_migrations.yaml"))))))
 
-#_:clj-kondo/ignore
-(def ^:private bb-filename
-  "resources/migrations/001_update_migrations.yaml")
-
-(defn- migrations []
-  (let [file #_:clj-kondo/ignore (io/file #?(:bb bb-filename :clj filename))]
-    (assert (.exists file) (format "%s does not exist" filename))
-    (letfn [(fix-vals [x]
-                      ;; convert any lazy seqs to regular vectors and maps
-              (cond (map? x)        (update-vals x fix-vals)
-                    (sequential? x) (mapv fix-vals x)
-                    :else           x))]
-      (fix-vals (yaml/parse-string
-                 #_:clj-kondo/ignore
-                 (slurp file))))))
+(defn- migrations [file]
+  (assert (.exists file) (format "%s does not exist" file))
+  (letfn [(fix-vals [x]
+            ;; convert any lazy seqs to regular vectors and maps
+            (cond (map? x) (update-vals x fix-vals)
+                  (sequential? x) (mapv fix-vals x)
+                  :else x))]
+    (fix-vals (yaml/parse-string
+               #_:clj-kondo/ignore
+               (slurp file)))))
 
 (defn- validate-all []
-  (validate-migrations (migrations)))
+  (doseq [file (migration-files)]
+    (println "Validating" (.getName file) "...")
+    (try
+      (validate-migrations (migrations file) file)
+      (catch ExceptionInfo e
+        (throw (ex-info (.getMessage e) (assoc (ex-data e) :file (.getName file)) e))))))
 
 (defn -main
   "Entry point for Clojure CLI task `lint-migrations-file`. Run it with
 
     ./bin/lint-migrations-file.sh"
   []
-  (println "Check Liquibase migrations file...")
+  (println "Check Liquibase migrations files...")
   (try
     (validate-all)
     (println "Ok.")
@@ -197,7 +211,7 @@
         (do
           (println)
           #_:clj-kondo/ignore
-          (printf "Error:\t%s\n" (.getMessage e))
+          (printf "Error in %s:\t%s\n" (:file (ex-data e)) (.getMessage e))
           #_:clj-kondo/ignore
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
           (println))
