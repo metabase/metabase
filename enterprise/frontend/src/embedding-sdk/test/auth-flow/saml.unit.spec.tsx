@@ -13,7 +13,6 @@ import {
 import {
   MOCK_INSTANCE_URL,
   MOCK_SESSION_TOKEN_ID,
-  setupMockJwtEndpoints,
   setupMockSamlEndpoints,
   setupSamlPopup,
 } from "../mocks/sso";
@@ -36,41 +35,30 @@ describe("Auth Flow - SAML", () => {
   it("should initialize the auth flow only once, not on rerenders", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      authMethod: "saml",
     });
+
     const { rerender, popup } = setup({ authConfig });
+
     await waitForLoaderToBeRemoved();
-    expect(
-      fetchMock.calls(`${MOCK_INSTANCE_URL}/auth/sso?saml=true`),
-    ).toHaveLength(1);
+    expect(fetchMock.calls(`${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(1);
     expect(popup.close).toHaveBeenCalled();
+
     rerender(
       <MetabaseProvider authConfig={authConfig}>
         <StaticQuestion questionId={1} />
       </MetabaseProvider>,
     );
+
     await waitForLoaderToBeRemoved();
-    expect(
-      fetchMock.calls(`${MOCK_INSTANCE_URL}/auth/sso?saml=true`),
-    ).toHaveLength(1);
+
+    expect(fetchMock.calls(`${MOCK_INSTANCE_URL}/auth/sso`)).toHaveLength(1);
+
     expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
-    expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
-  });
 
-  it("should error if SAML is requested but only JWT is available", async () => {
-    // Only setup JWT endpoints
-    setupMockJwtEndpoints();
-    const authConfig = defineMetabaseAuthConfig({
-      metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      authMethod: "saml",
-    });
-
-    // Should fallback to error from backend
-    setup({ authConfig });
-    await waitForLoaderToBeRemoved();
     expect(
-      screen.queryByTestId("query-visualization-root"),
-    ).not.toBeInTheDocument();
+      // this is just something we know it's on the screen when everything is ok
+      screen.getByTestId("query-visualization-root"),
+    ).toBeInTheDocument();
   });
 
   it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {
