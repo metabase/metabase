@@ -983,7 +983,7 @@
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
-  (collection-detail (api/read-check (collection/trash-collection))))
+  (collection-detail (collection/trash-collection)))
 
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:
