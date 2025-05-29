@@ -571,7 +571,6 @@
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
   value build an appropriate MBQL filter clause."
   [field-name->id row]
-  ;; TODO we should fix it upstream, maybe we should keyword everywhere
   (when (empty? row)
     (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
                     {:field-name->id field-name->id, :row row, :status-code 400})))
@@ -619,7 +618,7 @@
           {}
           fk-fields))))))
 
-(defn- build-pk-filter-clause
+(defn- build-pk-filter-clause-mbql
   "Build an efficient filter clause for matching rows by primary key.
   Uses IN clause for single PK, OR of AND clauses for composite PK."
   [pk-name->id pk-rows]
@@ -636,22 +635,6 @@
     (into [:or]
           (map #(row->mbql-filter-clause pk-name->id %) pk-rows))))
 
-(defn- build-fk-filter-clause
-  "Build an efficient filter clause for matching rows by foreign key.
-  Uses IN clause for single FK, OR of AND clauses for composite FK."
-  [fk parent-rows]
-  (if (= 1 (count fk))
-    ;; Single FK column - use IN clause
-    (let [[fk-col pk-col] (first fk)
-          parent-values (map #(get % pk-col) parent-rows)]
-      [:in (keyword fk-col) parent-values])
-    ;; Composite FK - use OR of AND clauses
-    (into [:or]
-          (for [parent parent-rows]
-            (into [:and]
-                  (for [[fk-col pk-col] fk]
-                    [:= (keyword fk-col) (get parent pk-col)]))))))
-
 (defn- delete-rows-by-pk!
   "Delete rows from a table by their primary key values"
   [database-id table-id pk-rows]
@@ -659,7 +642,7 @@
     (let [database       (actions/cached-database database-id)
           driver         (:engine database)
           pk-name->id    (table-id->pk-field-name->id database-id table-id)
-          filter-clause  (build-pk-filter-clause pk-name->id pk-rows)
+          filter-clause  (build-pk-filter-clause-mbql pk-name->id pk-rows)
           {:keys [from where]} (mbql-query->raw-hsql driver {:database database-id
                                                              :type     :query
                                                              :query    {:source-table table-id
@@ -672,6 +655,20 @@
         (with-auto-parse-sql-exception driver database :table.row/delete
           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))))))
 
+(defn- build-fk-filter-clause-hsql
+  "Build an efficient filter clause for matching rows by foreign key.
+  Uses IN clause for single FK, OR of AND clauses for composite FK."
+  [fk parent-rows]
+  (if (= 1 (count fk))
+    (let [[fk-col pk-col] (first fk)
+          parent-values (map #(get % pk-col) parent-rows)]
+      [:in (keyword fk-col) parent-values])
+    (into [:or]
+          (for [parent parent-rows]
+            (into [:and]
+                  (for [[fk-col pk-col] fk]
+                    [:= (keyword fk-col) (get parent pk-col)]))))))
+
 (defn- lookup-children-in-db
   "Find child rows that reference the given parent rows via FK relationships"
   [relationship parent-rows database-id]
@@ -683,7 +680,7 @@
                           (fn []
                             (qp.store/with-metadata-provider database-id
                               (:name (lib.metadata.protocols/table (qp.store/metadata-provider) table)))))
-            where-clause (build-fk-filter-clause fk parent-rows)
+            where-clause (build-fk-filter-clause-hsql fk parent-rows)
             query        {:select (map keyword pk)
                           :from   [(keyword table-name)]
                           :where  where-clause
@@ -801,16 +798,9 @@
                        :results     results})))
     {:context (record-mutations context results)
      :outputs (for [{:keys [table-id before]} results]
-               ;; TODO fix this hack
                 {:table-id table-id
                  :op       :deleted
-                 :row      (select-keys
-                            (let [row before]
-                             ;; Hideous workaround for QP and direct JDBC disagreeing on upper versus lower case.
-                              (merge (update-keys row (comp u/upper-case-en name))
-                                     (u/lower-case-map-keys row)
-                                     row))
-                            (table-id->pk-keys table-id))})}))
+                 :row      (select-keys before (table-id->pk-keys table-id))})}))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
