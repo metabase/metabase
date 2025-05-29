@@ -34,7 +34,7 @@ export function GenerateSqlQueryButton({
         p={0}
         h="fit-content"
         bd="none"
-        leftSection={<Icon name="metabot" size={18} />}
+        leftSection={<Icon name="metabot" />}
         loading={isFetching}
         disabled={request == null}
         aria-label={t`Generate SQL based on the prompt`}

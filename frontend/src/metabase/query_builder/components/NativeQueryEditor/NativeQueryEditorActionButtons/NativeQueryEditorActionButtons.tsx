@@ -79,19 +79,20 @@ export const NativeQueryEditorActionButtons = (
       component="aside"
       data-testid="native-query-editor-action-buttons"
       gap="lg"
+      align="center"
     >
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
-      {features.dataReference ? (
+      {features.dataReference && (
         <DataReferenceButton {...props} size={ICON_SIZE} />
-      ) : null}
-      {features.snippets && showSnippetSidebarButton ? (
+      )}
+      {features.snippets && showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} />
-      ) : null}
-      {features.variables ? (
+      )}
+      {features.variables && (
         <NativeVariablesButton {...props} size={ICON_SIZE} />
-      ) : null}
+      )}
       {canFormatQuery && (
         <Tooltip label={t`Auto-format`}>
           <Button
