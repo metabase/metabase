@@ -60,7 +60,7 @@ You can change this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`
 
 ### Cell character limit in Excel exports
 
-When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/office/excel-specifications-and-limit-1672b34d-7043-467e-8e27-269d656771c3). If you have an extremely large number of characters in a single cell, Metabase will truncate the content to fit within that limit.
+When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/office/excel-specifications-and-limit-1672b34d-7043-467e-8e27-269d656771c3). If you have a bonkers number of characters in a single cell, Metabase will truncate the content to fit within that limit.
 
 ## Exporting data via a public link
 
