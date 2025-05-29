@@ -12,7 +12,7 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource)
-   (metabase.app_db.connection_pool_setup DbActivityTracker)))
+   (metabase.app_db.connection_pool_setup MetabaseConnectionCustomizer)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,19 +47,19 @@
   (dotimes [_ 5]
     (t2/count :model/Database)))
 
-(deftest DbActivityTracker-test
+(deftest MetabaseConnectionCustomize-testr
   (testing "connection customizer is registered"
-    (let [customizer (C3P0Registry/getConnectionCustomizer (.getName DbActivityTracker))]
+    (let [customizer (C3P0Registry/getConnectionCustomizer (.getName MetabaseConnectionCustomizer))]
       (is (some? customizer) "ConnectionCustomizer is not registered with c3p0")
       (is (instance? ConnectionCustomizer customizer)
           "checkin tracker must satisfy the c3p0 ConnectionCustomizer interface")
-      (is (instance? DbActivityTracker customizer)
-          "ConnectionCustomizer is not an instance of our DbActivityTracker")))
+      (is (instance? MetabaseConnectionCustomizer customizer)
+          "ConnectionCustomizer is not an instance of our MetabaseConnectionCustomizer")))
   (testing "db activity resets counter"
     (try
       (let [updated? (promise)]
         (add-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                   ::DbActivityTracker-test
+                   ::MetabaseConnectionCustomize-testr
                    (fn [_key _ref _old-state _new-state]
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
@@ -71,12 +71,13 @@
           (is (instance? java.time.temporal.Temporal recent-checkin)
               "recent-checkin should be a temporal type (OffsetDateTime)")))
       (finally (remove-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                             ::DbActivityTracker-test)))))
+                             ::MetabaseConnectionCustomize-testr)))))
 (deftest recent-activity-test
   ;; these tests are difficult to make non-flaky. Other threads can hit the db of course, and the lifecycle of the
-  ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will
-  ;; take the value of the checkin timestamp and pass it to `recent-activity?*` to act on the value at the time it
-  ;; cares about rather than trying to suppress writes to the `latest-checkin`. If you change this, run the test about 500 times to make sure there aren't flakes.
+  ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will take
+  ;; the value of the checkin timestamp and pass it to `recent-activity?*` to act on the value at the time it cares
+  ;; about rather than trying to suppress writes to the `latest-checkin`. If you change this, run the test about 500
+  ;; times to make sure there aren't flakes.
   (testing "If latest-checkin is null"
     (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
     (is (not (#'mdb.connection-pool-setup/recent-activity?* nil (t/millis 10))))
