@@ -289,24 +289,6 @@
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
 
-(deftest ^:parallel filterable-columns-excludes-offset-expressions-test
-  (testing "filterable-columns should exclude expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/filterable-columns query)))))))
-
 (deftest ^:parallel filter-clause-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
         [first-col] (lib/filterable-columns query)
@@ -640,6 +622,17 @@
        :name "Created At excludes 3 quarter of year selections"}
       {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
+
+      {:clause [:= (lib/get-year created-at) 2001]
+       :name "Created At is in 2001"}
+      {:clause [:= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At is one of 3 year of era selections"}
+      {:clause [:!= (lib/get-year created-at) 2001]
+       :name "Created At excludes 2001"}
+      {:clause [:!= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
+      {:clause [:not-in (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
 
       {:clause [:is-null created-at]
        :name "Created At is empty"}

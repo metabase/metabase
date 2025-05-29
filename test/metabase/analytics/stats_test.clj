@@ -543,6 +543,7 @@
     :development-mode
     :embedding
     :embedding-sdk
+    :embedding-iframe-sdk
     :enhancements
     :llm-autodescription
     :query-reference-validation

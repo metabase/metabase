@@ -33,9 +33,12 @@
     (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (system/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
-;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
+;; /embed routes.
+;; /embed/sdk/v1 -> new iframe embedding based on embedding sdk components
+;; /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
+  (GET "/sdk/v1" [] index/embed-sdk)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
