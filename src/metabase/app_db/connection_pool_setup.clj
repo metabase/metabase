@@ -45,8 +45,7 @@
   ;; rationale behind why we're doing it -- Cam
   (when (postgres-connection? connection)
     (with-open [stmt (.createStatement connection)]
-      (.execute stmt "DISCARD ALL;"))
-    connection))
+      (.execute stmt "DISCARD ALL;"))))
 
 (defn- on-check-out [_connection]
   (reset! latest-activity (t/offset-date-time)))
