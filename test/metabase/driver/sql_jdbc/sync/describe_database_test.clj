@@ -59,27 +59,16 @@
 
 (deftest fast-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (sql-jdbc.execute/do-with-connection-with-options
-          (or driver/*driver* :h2)
-          (mt/db)
-          nil
-          (fn [^java.sql.Connection conn]
-            ;; We have to mock this to make it work with all DBs
-            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
-                   (map :name)
-                   sort)))))))
+         (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
+           (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) (mt/db) nil nil))
+                (map :name)
+                sort)))))
 
 (deftest post-filtered-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (sql-jdbc.execute/do-with-connection-with-options
-          :h2
-          (mt/db)
-          nil
-          (fn [^java.sql.Connection conn]
-            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
-                 (map :name)
-                 sort))))))
+         (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 (mt/db) nil nil))
+              (map :name)
+              sort))))
 
 (deftest describe-database-test
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
