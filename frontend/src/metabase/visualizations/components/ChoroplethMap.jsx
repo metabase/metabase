@@ -17,7 +17,7 @@ import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Flex } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -140,17 +140,17 @@ const MapNotFound = () => {
   return (
     <Flex direction="column" m="auto" maw="24rem">
       <div className={cx(CS.textCentered, CS.mb4)}>
-        <p>
+        <Text>
           {t`Looks like this custom map is no longer available. Try using a different map to visualize this.`}
-        </p>
+        </Text>
         {isAdmin && (
-          <p>
+          <Text>
             {jt`To add a new map, visit ${(
               <Link to="/admin/settings/maps" className={CS.link}>
                 {t`Admin settings > Maps`}
               </Link>
             )}.`}
-          </p>
+          </Text>
         )}
       </div>
     </Flex>
