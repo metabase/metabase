@@ -16,6 +16,7 @@ import {
   MOCK_SESSION_TOKEN_ID,
   MOCK_VALID_JWT_RESPONSE,
   setupMockJwtEndpoints,
+  setupMockSamlEndpoints,
 } from "../mocks/sso";
 
 import { setup as baseSetup } from "./setup";
@@ -36,33 +37,47 @@ describe("Auth Flow - JWT", () => {
   it("should initialize the auth flow only once, not on rerenders", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      preferredAuthMethod: "jwt",
     });
-
     const { rerender } = setup({ authConfig });
-
     await waitForLoaderToBeRemoved();
     expect(
       fetchMock.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
     ).toHaveLength(1);
-
     rerender(
       <MetabaseProvider authConfig={authConfig}>
         <StaticQuestion questionId={1} />
       </MetabaseProvider>,
     );
-
     await waitForLoaderToBeRemoved();
-
     expect(
       fetchMock.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
     ).toHaveLength(1);
-
     expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
+    expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
+  });
 
+  it("should error if preferredAuthMethod is invalid", () => {
+    expect(() =>
+      defineMetabaseAuthConfig({
+        metabaseInstanceUrl: MOCK_INSTANCE_URL,
+        preferredAuthMethod: "invalid" as any,
+      }),
+    ).toThrow(/Invalid authentication method/);
+  });
+
+  it("should error if JWT is requested but only SAML is available", async () => {
+    // Only setup SAML endpoints
+    setupMockSamlEndpoints();
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      preferredAuthMethod: "jwt",
+    });
+    setup({ authConfig });
+    await waitForLoaderToBeRemoved();
     expect(
-      // this is just something we know it's on the screen when everything is ok
-      screen.getByTestId("query-visualization-root"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("query-visualization-root"),
+    ).not.toBeInTheDocument();
   });
 
   it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {

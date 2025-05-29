@@ -9,6 +9,7 @@ import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { MetabasePreferredAuthMethod } from "embedding-sdk/types";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -101,8 +102,8 @@ export const refreshTokenAsync = createAsyncThunk(
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const customGetRefreshToken =
       getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
-
-    const session = await getRefreshToken(url, customGetRefreshToken);
+    // No access to preferredAuthMethod here, so default to 'jwt'
+    const session = await getRefreshToken(url, customGetRefreshToken, "jwt");
 
     if (!session || typeof session !== "object") {
       throw MetabaseError.INVALID_SESSION_OBJECT({
@@ -139,8 +140,12 @@ const getRefreshToken = async (
   customFetchRequestToken:
     | MetabaseAuthConfig["fetchRequestToken"]
     | null = null,
+  preferredAuthMethod?: MetabasePreferredAuthMethod,
 ) => {
-  const urlResponseJson = await connectToInstanceAuthSso(url);
+  const urlResponseJson = await connectToInstanceAuthSso(
+    url,
+    preferredAuthMethod,
+  );
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
     return await openSamlLoginPopup(responseUrl);
@@ -165,9 +170,27 @@ const sessionSchema = Yup.object({
   // as we don't use them, so we don't throw an error if they are missing
 });
 
-async function connectToInstanceAuthSso(url: string) {
+async function connectToInstanceAuthSso(
+  url: string,
+  preferredAuthMethod?: MetabasePreferredAuthMethod,
+) {
+  if (
+    preferredAuthMethod &&
+    preferredAuthMethod !== "jwt" &&
+    preferredAuthMethod !== "saml"
+  ) {
+    throw MetabaseError.INVALID_PREFERRED_AUTH_METHOD({
+      method: preferredAuthMethod,
+    });
+  }
+
+  let ssoUrl = `${url}/auth/sso`;
+  if (preferredAuthMethod) {
+    ssoUrl += `?${preferredAuthMethod}=true`;
+  }
+
   try {
-    const urlResponse = await fetch(`${url}/auth/sso`, getSdkRequestHeaders());
+    const urlResponse = await fetch(ssoUrl, getSdkRequestHeaders());
     if (!urlResponse.ok) {
       throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
         instanceUrl: url,

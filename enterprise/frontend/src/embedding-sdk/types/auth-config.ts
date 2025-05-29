@@ -11,7 +11,18 @@ type BaseMetabaseAuthConfig = {
    * The refresh token should be in the format of {@link UserBackendJwtResponse}
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
+
+  /**
+   * Preferred authentication method.
+   * This should be provided when the instance has more than one configured authentication method.
+   */
+  preferredAuthMethod?: MetabasePreferredAuthMethod;
 };
+
+/**
+ * @category MetabaseProvider
+ **/
+export type MetabasePreferredAuthMethod = "saml" | "jwt";
 
 /**
  * @category MetabaseProvider
