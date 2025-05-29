@@ -38,29 +38,15 @@
                       {:type qp.error-type/invalid-query}
                       e)))))
 
-(mu/defn- auto-parse-values-in-filter-clause :- ::lib.schema.expression/boolean
-  [filter-clause :- ::lib.schema.expression/boolean]
-  (lib.util.match/replace filter-clause
+(mu/defn- auto-parse-filter-values-this-stage :- ::lib.schema/stage
+  [_query _stage-path stage :- ::lib.schema/stage]
+  (lib.util.match/replace stage
     [:value
      (info :guard (fn [{:keys [effective-type], :as _value-options}]
                     (and effective-type
                          (not (isa? effective-type :type/Text)))))
      (v :guard string?)]
     [:value info (parse-value-for-base-type v (:effective-type info))]))
-
-(mu/defn- auto-parse-filter-values-this-stage :- ::lib.schema/stage
-  [query      :- ::lib.schema/query
-   stage-path :- ::lib.walk/stage-path
-   stage      :- ::lib.schema/stage]
-  (reduce
-   (fn [stage filter-clause]
-     (let [filter-clause' (auto-parse-values-in-filter-clause filter-clause)]
-       (if (= filter-clause filter-clause')
-         stage
-         (-> (lib.walk/apply-f-for-stage-at-path lib/replace-clause query stage-path filter-clause filter-clause')
-             (get-in stage-path)))))
-   stage
-   (lib.walk/apply-f-for-stage-at-path lib/filters query stage-path)))
 
 (mu/defn auto-parse-filter-values :- ::lib.schema/query
   "Automatically parse String filter clause values to the appropriate type."
