@@ -1,4 +1,3 @@
-const { H } = cy;
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -21,6 +20,8 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
+
+const { H } = cy;
 
 describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
