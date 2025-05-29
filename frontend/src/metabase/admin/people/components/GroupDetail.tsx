@@ -14,6 +14,7 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
+  isExternalUsersGroup,
 } from "metabase/lib/groups";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
@@ -152,6 +153,19 @@ export const GroupDetail = ({
 };
 
 const GroupDescription = ({ group }: { group: Group }) => {
+  if (isExternalUsersGroup(group)) {
+    return (
+      <Box maw="38rem" px="1rem">
+        <p>
+          {t`All external users belong to the ${getGroupNameLocalized(
+            group,
+          )} group and can't be removed from it. Setting permissions for this group is a great way to
+        make sure you know what new Metabase users will be able to see.`}
+        </p>
+      </Box>
+    );
+  }
+
   if (isDefaultGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">

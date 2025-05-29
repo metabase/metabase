@@ -7,7 +7,11 @@ import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import {
+  isAdminGroup,
+  isDefaultGroup,
+  isExternalUsersGroup,
+} from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
@@ -20,7 +24,9 @@ const isApiKeyGroupMember = (member: Member) =>
   member.email.endsWith("@api-key.invalid");
 
 const canEditMembership = (group: Group) =>
-  !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;
+  !isDefaultGroup(group) &&
+  !isExternalUsersGroup(group) &&
+  PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
 interface GroupMembersTableProps {
   group: Group;
@@ -116,7 +122,9 @@ const UserMemberRow = ({
   const currentUser = useSelector(getCurrentUser);
   const isCurrentUser = member.user_id === currentUser.id;
   const canRemove =
-    !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser);
+    !isDefaultGroup(group) &&
+    !isExternalUsersGroup(group) &&
+    !(isAdminGroup(group) && isCurrentUser);
 
   const handleTypeUpdate = (isManager: boolean) => {
     onMembershipUpdate({ ...member, is_group_manager: isManager });
