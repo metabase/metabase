@@ -214,21 +214,26 @@ export async function getLastEmbeddingSdkReleaseTag({
   });
 
   const lastRelease = getLastReleaseFromTags({
-    tags: filterAllowedPrereleaseIdentifiers(tags),
+    tags: tags.filter(filterOutNonSupportedPrereleaseIdentifier),
   });
 
   return lastRelease;
 }
 
-export function filterAllowedPrereleaseIdentifiers(tags: Tag[]) {
-  return tags.filter((tag) => {
-    const areJustNumbers = tag.ref.match(/\d+\.\d+\.\d+$/);
-    if (areJustNumbers) {
-      return true;
-    }
+/**
+ *
+ * @param tag a GitHub tag object
+ */
+export function filterOutNonSupportedPrereleaseIdentifier(tag: Tag) {
+  const prereleaseIdentifier = /\d+\.\d+\.\d+-(?<prerelease>\w+)$/.exec(tag.ref)
+    ?.groups?.prerelease;
 
-    return SDK_TAG_REGEXP.exec(tag.ref);
-  });
+  console.log("prereleaseIdentifier", prereleaseIdentifier, tag.ref);
+
+  return (
+    !prereleaseIdentifier ||
+    ALLOWED_SDK_PRERELEASE_IDENTIFIERS.includes(prereleaseIdentifier)
+  );
 }
 
 export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {

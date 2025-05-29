@@ -1,6 +1,6 @@
 import type { Tag } from "./types";
 import {
-  filterAllowedPrereleaseIdentifiers,
+  filterOutNonSupportedPrereleaseIdentifier,
   findNextPatchVersion,
   getBuildRequirements,
   getDotXs,
@@ -779,25 +779,23 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("filterAllowedPrereleaseIdentifiers", () => {
-    function createTags(tags: string[]): Tag[] {
-      return tags.map(
+  describe("filterOutNonSupportedPrereleaseIdentifier", () => {
+    function createTags(versions: string[]): Tag[] {
+      return versions.map(
         (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
       );
     }
 
-    it("should ignore prerelease labels that are not `nightly`", () => {
-      const filteredTags = filterAllowedPrereleaseIdentifiers(
-        createTags([
-          "0.55.0",
-          "0.55.0-nightly",
-          "0.55.0-rc1",
-          "0.55.0-rc2",
-          "0.55.0-beta",
-          "0.55.0-alpha",
-          "0.55.5-metabot",
-        ]),
-      );
+    it("should ignore prerelease labels that are not `nightly` when passing refs", () => {
+      const filteredTags = createTags([
+        "0.55.0",
+        "0.55.0-nightly",
+        "0.55.0-rc1",
+        "0.55.0-rc2",
+        "0.55.0-beta",
+        "0.55.0-alpha",
+        "0.55.5-metabot",
+      ]).filter(filterOutNonSupportedPrereleaseIdentifier);
 
       expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
     });
