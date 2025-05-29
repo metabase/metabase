@@ -86,7 +86,7 @@ export const ContentTranslationConfiguration = () => {
               ),
             }}
           >
-            {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations.`}
+            {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations. Don't translate sensitive data, since the dictionary will be accessible to all users as well as viewers of public links.`}
           </Markdown>
         }
       />

@@ -59,6 +59,9 @@ export const PublicOrEmbeddedQuestion = ({
   const canWhitelabel = useSelector(getCanWhitelabel);
 
   useMount(async () => {
+    console.log("@mba23r6o", "uuid", uuid);
+    console.log("@mba23ti0", "token", token);
+
     if (uuid) {
       setPublicQuestionEndpoints(uuid);
     } else if (token) {
