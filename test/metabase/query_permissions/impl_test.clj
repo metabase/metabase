@@ -1,4 +1,4 @@
-(ns metabase.permissions.models.query.permissions-test
+(ns metabase.query-permissions.impl-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
@@ -7,8 +7,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.permissions.path :as permissions.path]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -251,7 +251,7 @@
 
 (deftest ^:parallel native-query-referenced-card-permissions-test
   (testing (str "Check permissions for native query card reference parameters"
-                " (the `:metabase.permissions.models.query.permissions/referenced-card-ids` key(s))")
+                " (the `:query-permissions/referenced-card-ids` key(s))")
     (mt/with-temp [:model/Collection {collection-1-id :id} {}
                    :model/Collection {collection-2-id :id} {}
                    :model/Card       {card-1-id :id}       {:collection_id collection-1-id}
@@ -262,19 +262,19 @@
                 :paths                #{(format "/collection/%d/read/" collection-1-id)
                                         (format "/collection/%d/read/" collection-2-id)}}
                (query-perms/required-perms-for-query
-                {:database                         (mt/id)
-                 :type                             :native
-                 :native                           "SELECT * FROM (SELECT * FROM whatever);"
-                 ::query-perms/referenced-card-ids #{card-1-id card-2-id}}))))
+                {:database                              (mt/id)
+                 :type                                  :native
+                 :native                                "SELECT * FROM (SELECT * FROM whatever);"
+                 :query-permissions/referenced-card-ids #{card-1-id card-2-id}}))))
       (testing "MBQL query with native source queries"
         (let [native-query {:database (mt/id)
                             :type     :query
-                            :query    {:source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
-                                                      ::query-perms/referenced-card-ids #{card-1-id}}
+                            :query    {:source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
+                                                      :query-permissions/referenced-card-ids #{card-1-id}}
                                        :joins        [{:alias        "J"
                                                        :ident        (u/generate-nano-id)
-                                                       :source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
-                                                                      ::query-perms/referenced-card-ids #{card-2-id}}
+                                                       :source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
+                                                                      :query-permissions/referenced-card-ids #{card-2-id}}
                                                        :condition    [:= true false]}]}}]
           (is (= {:perms/create-queries :query-builder-and-native
                   :perms/view-data      :unrestricted

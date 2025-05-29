@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -436,7 +435,7 @@
                                                                            :info {:card-id (u/the-id card)}))))))))))
 
 (deftest e2e-ignore-user-supplied-perms-test
-  (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"
+  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/perms` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
@@ -448,8 +447,8 @@
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
         (letfn [(process-query []
                   (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                           ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
-                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}})))]
+                                           :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                                             :perms/create-queries {(mt/id :venues) :query-builder}}})))]
           (testing "Make sure the middleware is actually preventing something by disabling it"
             (with-redefs [qp.perms/remove-permissions-key identity]
               (is (=? {:status :completed}
@@ -460,14 +459,14 @@
                (process-query))))))))
 
 (deftest e2e-ignore-user-supplied-gtapped-tables-test
-  (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/gtapped-table` in the query"
+  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/gtapped-table` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
       (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT !"
-                                                                               ::query-perms/gtapped-table (mt/id :venues)}}
-                       ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
-                                                    :perms/create-queries :query-builder-and-native}}}]
+                                                                               :query-permissions/gtapped-table (mt/id :venues)}}
+                       :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                         :perms/create-queries :query-builder-and-native}}}]
         (mt/with-test-user :rasta
           (testing "Sanity check: should not be able to run this query the normal way"
             (is (thrown-with-msg?
@@ -476,7 +475,7 @@
                  (qp/process-query bad-query))))
           (letfn [(process-query []
                     (qp/process-query bad-query))]
-            (testing "Testing that we will still throw due to the ::query-perms/perms stripping"
+            (testing "Testing that we will still throw due to the :query-permissions/perms stripping"
               (with-redefs [qp.perms/remove-gtapped-table-keys identity]
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo

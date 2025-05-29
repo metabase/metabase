@@ -1,4 +1,4 @@
-(ns metabase.permissions.models.query.permissions
+(ns metabase.query-permissions.impl
   "Functions used to calculate the permissions needed to run a query based on old-style DATA ACCESS PERMISSIONS. The
   only thing that is subject to these sorts of checks are *ad-hoc* queries, i.e. queries that have not yet been saved
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong.
@@ -89,12 +89,12 @@
          (lib.util.match/match query
            ;; If we find a table id from a gtapped table add it to the list of table ids here if we fail to get perms
            ;; for this table we'll check again for this key and try the supplied gtap perms
-           (m :guard (every-pred map? ::gtapped-table))
+           (m :guard (every-pred map? :query-permissions/gtapped-table))
            (merge-with merge-source-ids
-                       {:table-ids #{(::gtapped-table m)}}
+                       {:table-ids #{(:query-permissions/gtapped-table m)}}
                        ;; Remove any :native sibling queries since they will be ones supplied by the gtap and we don't
                        ;; want to mark the whole query as native? if they exist
-                       (query->source-ids (dissoc m ::gtapped-table :native)))
+                       (query->source-ids (dissoc m :query-permissions/gtapped-table :native)))
 
            ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
            ;; permissions on the card and not necessarily require full native query access to the DB
@@ -152,13 +152,13 @@
        (preprocess query)))))
 
 (defn- referenced-card-ids
-  "Return the union of all the `::referenced-card-ids` sets anywhere in the query."
+  "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
   [query]
   (let [all-ids (atom #{})]
     (walk/postwalk
      (fn [form]
        (when (map? form)
-         (when-let [ids (not-empty (::referenced-card-ids form))]
+         (when-let [ids (not-empty (:query-permissions/referenced-card-ids form))]
            (swap! all-ids set/union ids)))
        form)
      query)
@@ -264,7 +264,7 @@
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
-  [{{gtap-perms :gtaps} ::perms, db-id :database :as _query} perm-type required-perms]
+  [{{gtap-perms :gtaps} :query-permissions/perms, db-id :database :as _query} perm-type required-perms]
   (boolean
    (if-let [db-or-table-perms (perm-type required-perms)]
      ;; In practice, `view-data` will be defined at the table-level, and `create-queries` will either be table-level
@@ -303,9 +303,9 @@
   user has perms for the query, and throws an exception otherwise (exceptions can be disabled by setting
   `throw-exceptions?` to `false`).
 
-  If the [:gtap ::perms] path is present in the query, these perms are implicitly granted to the current user."
-  [{{gtap-perms :gtaps} ::perms, :as query} required-perms & {:keys [throw-exceptions?]
-                                                              :or   {throw-exceptions? true}}]
+  If the [:gtap :query-permissions/perms] path is present in the query, these perms are implicitly granted to the current user."
+  [{{gtap-perms :gtaps} :query-permissions/perms, :as query} required-perms & {:keys [throw-exceptions?]
+                                                                               :or   {throw-exceptions? true}}]
   (try
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
@@ -326,7 +326,7 @@
 
 (mu/defn can-run-query?
   "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
-  [{database-id :database :as query}]
+  [{database-id :database :as query} :- :map]
   (try
     (let [required-perms (required-perms-for-query query)]
       (check-data-perms query required-perms)
@@ -339,9 +339,30 @@
     (catch clojure.lang.ExceptionInfo _e
       false)))
 
-(defn can-query-table?
+(mu/defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
-  [database-id table-id]
+  [database-id :- ::lib.schema.id/database
+   table-id    :- ::lib.schema.id/table]
   (can-run-query? {:database database-id
                    :type     :query
                    :query    {:source-table table-id}}))
+
+(mu/defn check-run-permissions-for-query
+  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
+  queries they wouldn't be allowed to run!"
+  [query :- :map]
+  {:pre [(map? query)]}
+  (when-not (can-run-query? query)
+    (let [required-perms (try
+                           (required-perms-for-query query :throw-exceptions? true)
+                           (catch Throwable e
+                             e))]
+      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                      {:status-code    403
+                       :query          query
+                       :required-perms (if (instance? Throwable required-perms)
+                                         :error
+                                         required-perms)
+                       :actual-perms   @api/*current-user-permissions-set*}
+                      (when (instance? Throwable required-perms)
+                        required-perms))))))
