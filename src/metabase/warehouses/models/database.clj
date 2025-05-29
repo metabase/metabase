@@ -306,8 +306,10 @@
                                                 :where     [:= :table.db_id [:inline database-id]]}]}
 
                              :mysql
-                             {:left-join [[(t2/table-name :model/Table) :table]
-                                          [:= (mdb/qualify :model/Field :table_id) :table.id]]
+                             {:delete    [:field]
+                              :from      [[(t2/table-name :model/Field) :field]]
+                              :left-join [[(t2/table-name :model/Table) :table]
+                                          [:= :field.table_id :table.id]]
                               :where     [:= :table.db_id [:inline database-id]]})))
 
 (t2/define-before-delete :model/Database

@@ -263,3 +263,26 @@
   (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
                                          :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
     (next-method query-type model parsed-args resolved-query)))
+
+(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/delete.*
+                                                #_model      :default
+                                                #_query      clojure.lang.IPersistentMap]
+  "If a built DELETE query explicitly specifies `:delete`/`:from` then remove the automatically-added `:delete-from`
+  key. Work around https://github.com/camsaul/toucan2/issues/202 until it is fixed upstream."
+  [_query-type _model _parsed-args query]
+  (cond-> query
+    (:delete query) (dissoc query :delete-from)))
+
+(methodical/defmethod t2.pipeline/build :before [#_query-type :toucan.query-type/select.instances
+                                                 #_model      :toucan2.tools.before-delete/before-delete
+                                                 #_query      clojure.lang.IPersistentMap]
+  "If we're doing a SELECT query to implement before-delete behavior make sure we remove :delete-from/:delete keys from
+  the query if needed. Work around https://github.com/camsaul/toucan2/issues/203 until it is fixed upstream."
+  [_query-type _model _parsed-args query]
+  (cond-> query
+    true
+    (dissoc :delete)
+
+    (contains? query :delete-from)
+    (-> (dissoc :delete-from)
+        (assoc :from [(:delete-from query)]))))
