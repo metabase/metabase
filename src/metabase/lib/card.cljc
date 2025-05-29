@@ -170,7 +170,7 @@
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
-          (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
+          (let [desired-alias ((some-fn :lib/source-column-alias :name) col)]
             (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
