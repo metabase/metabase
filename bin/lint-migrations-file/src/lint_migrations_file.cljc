@@ -63,11 +63,11 @@
                                {:out-of-order-ids out-of-order-ids})))))
 
 (defn- require-change-set-ids-in-correct-file [change-log file]
-  (let [file-version (Integer/parseInt (re-find #"\d+" (.getName file)))
+  (let [file-version (parse-long (re-find #"\d+" (.getName file)))
         ids (change-set-ids change-log)
         wrong-file-ids (->> ids
                             (filter (fn [id]
-                                      (let [id-version (Integer/parseInt (re-find #"\d+" id))]
+                                      (let [id-version (parse-long (re-find #"\d+" id))]
                                         (if (= file-version 1)
                                           (> id-version 55)
                                           (not= file-version id-version))))))]
@@ -177,6 +177,7 @@
   :ok)
 
 (defn- migration-files []
+  #_:clj-kondo/ignore
   (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
         dir (io/file dir-str)]
     (->> (file-seq dir)
