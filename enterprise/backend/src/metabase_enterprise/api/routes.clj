@@ -13,7 +13,7 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
-   [metabase-enterprise.content-translation.api.routes]
+   [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
@@ -75,7 +75,7 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/content-translation"        (premium-handler metabase-enterprise.content-translation.api.routes/routes :content-translation)
+   "/content-translation"        (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
