@@ -2,7 +2,6 @@ import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
-import { getUser } from "metabase/selectors/user";
 import {
   METABOT_TAG,
   useGetSuggestedMetabotPromptsQuery,
@@ -24,8 +23,6 @@ export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const { getChatContext } = useMetabotContext();
 
-  const currentUser = useSelector(getUser);
-
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
@@ -38,10 +35,7 @@ export const useMetabotAgent = () => {
     fixedCacheKey: METABOT_TAG,
   });
 
-  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(undefined, {
-    // NOTE: running the request with no user breaks embedding (metaboase#????)
-    skip: !currentUser,
-  });
+  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery();
 
   return {
     visible: useSelector(getMetabotVisible as any) as ReturnType<

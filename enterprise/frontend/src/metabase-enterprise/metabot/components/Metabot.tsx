@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 
 import { useMetabotAgent } from "../hooks";
 
@@ -13,23 +13,17 @@ export interface MetabotProps {
   hide?: boolean;
 }
 
-export const Metabot = ({ hide }: MetabotProps) => {
-  const currentUser = useSelector(getCurrentUser);
-
+export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
 
   useEffect(() => {
-    if (!currentUser) {
-      return () => {};
-    }
-
     return tinykeys(window, {
       "$mod+b": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
         setVisible(!visible);
       },
     });
-  }, [visible, setVisible, currentUser]);
+  }, [visible, setVisible]);
 
   useEffect(
     function closeViaPropChange() {
@@ -49,4 +43,14 @@ export const Metabot = ({ hide }: MetabotProps) => {
       <MetabotChat />
     </ErrorBoundary>
   );
+};
+
+export const Metabot = (props: MetabotProps) => {
+  const currentUser = useSelector(getUser);
+
+  if (!currentUser) {
+    return null;
+  }
+
+  return <MetabotAuthenticated {...props} />;
 };
