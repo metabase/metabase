@@ -106,11 +106,6 @@ class TagEditorParamInner extends Component<
       // Field values might already have been loaded so force the load of other field information too
       fetchField(fieldId, true);
     }
-
-    // temporal unit tag is required by default, it can't be changed by user
-    if (tag.type === "temporal-unit") {
-      this.setRequired(true);
-    }
   }
 
   getTemplateTagConfigAfterTypeChange = (
@@ -404,9 +399,7 @@ class TagEditorParamInner extends Component<
 
         {parameter && (
           <DefaultRequiredValueControl
-            tag={isTemporalUnit ? { ...tag, required: true } : tag}
-            disabled={isTemporalUnit}
-            showTooltip={!isTemporalUnit}
+            tag={tag}
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
             onChangeDefaultValue={(value) => {
