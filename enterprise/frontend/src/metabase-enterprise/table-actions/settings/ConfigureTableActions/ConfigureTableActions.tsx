@@ -7,6 +7,7 @@ import { Button, Modal, Stack } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
   RowActionFieldSettings,
+  TableAction,
   TableActionDisplaySettings,
   TableActionId,
   WritebackAction,
@@ -67,7 +68,7 @@ export const ConfigureTableActions = ({
       name,
       parameterMappings,
     }: {
-      action: WritebackAction;
+      action: WritebackAction | TableAction;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
@@ -97,7 +98,7 @@ export const ConfigureTableActions = ({
       parameterMappings,
     }: {
       id?: string;
-      action: WritebackAction;
+      action: WritebackAction | TableAction;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {

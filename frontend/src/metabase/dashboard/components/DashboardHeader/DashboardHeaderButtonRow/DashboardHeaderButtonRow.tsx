@@ -10,6 +10,7 @@ import type {
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getDashboardComplete,
+  getHasDataEditingEnabled,
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
@@ -40,6 +41,7 @@ export const DashboardHeaderButtonRow = ({
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
+  const hasDataEditingEnabled = useSelector(getHasDataEditingEnabled);
 
   const isEditing = useSelector(getIsEditing);
 
@@ -66,6 +68,7 @@ export const DashboardHeaderButtonRow = ({
             isEditing,
             canEdit,
             hasModelActionsEnabled,
+            hasDataEditingEnabled,
             isAnalyticsDashboard,
             dashboard,
             canManageSubscriptions,
