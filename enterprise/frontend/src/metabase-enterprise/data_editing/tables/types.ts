@@ -1,8 +1,10 @@
 import type {
   ConcreteTableId,
   DatasetColumn,
+  ParametersForActionExecution,
   RowValue,
   TableId,
+  WritebackActionId,
 } from "metabase-types/api";
 
 export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
@@ -73,4 +75,13 @@ export type TableOperation = [string, Record<string, RowValue>];
 
 export type TableUndoRedoResponse = {
   outputs?: ExecuteOutput<"created" | "updated" | "deleted">[];
+};
+
+export type TableExecuteActionRequest = {
+  actionId: WritebackActionId;
+  parameters: ParametersForActionExecution;
+};
+
+export type TableExecuteActionResponse = {
+  "rows-affected": number;
 };

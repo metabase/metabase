@@ -1,16 +1,22 @@
 import { merge } from "icepick";
 import { useCallback, useMemo } from "react";
 
-import { executeAction } from "metabase/actions/actions";
 import ActionParametersInputForm from "metabase/actions/containers/ActionParametersInputForm";
+import {
+  getActionErrorMessage,
+  getActionExecutionMessage,
+} from "metabase/actions/utils";
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import { addUndo } from "metabase/redux/undo";
 import type { TableActionsExecuteFormVizOverride } from "metabase/visualizations/types/table-actions";
+import { useExecuteActionMutation } from "metabase-enterprise/api";
 import type {
   ParametersForActionExecution,
+  WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -49,21 +55,33 @@ export const TableActionExecuteModalContent = ({
     }
   }, [action, actionOverrides]);
 
+  const [executeAction] = useExecuteActionMutation();
+
   const handleSubmit = useCallback(
-    (parameters: ParametersForActionExecution) => {
+    async (parameters: ParametersForActionExecution) => {
       const fullParameters = {
         ...initialValues,
         ...parameters,
       };
 
-      return dispatch(
-        executeAction({
-          action: checkNotNull(action),
-          parameters: fullParameters,
-        }),
-      );
+      const result = await executeAction({
+        actionId: actionId as number,
+        parameters: fullParameters,
+      });
+      if (!result.error) {
+        const message = getActionExecutionMessage(
+          actionWithOverrides as WritebackAction,
+          result.data,
+        );
+        dispatch(addUndo({ message, toastColor: "success" }));
+        return { success: true, message };
+      }
+
+      const message = getActionErrorMessage(result.error);
+      dispatch(addUndo({ message, toastColor: "error" }));
+      return { success: false, error: result.error, message };
     },
-    [initialValues, dispatch, action],
+    [executeAction, initialValues, actionId, actionWithOverrides, dispatch],
   );
 
   const handleSubmitSuccess = useCallback(() => {
