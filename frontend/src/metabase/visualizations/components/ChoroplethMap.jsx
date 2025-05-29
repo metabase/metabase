@@ -13,9 +13,10 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
@@ -134,6 +135,28 @@ export function getMapUrl(details, props) {
   return new URL(mapUrl, ensureTrailingSlash(baseUrl)).href;
 }
 
+const MapNotFound = () => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  return (
+    <Flex direction="column" m="auto" maw="24rem">
+      <div className={cx(CS.textCentered, CS.mb4)}>
+        <p>
+          {t`Looks like this custom map is no longer available. Try using a different map to visualize this.`}
+        </p>
+        {isAdmin && (
+          <p>
+            {jt`To add a new map, visit ${(
+              <Link to="/admin/settings/maps" className={CS.link}>
+                {t`Admin settings > Maps`}
+              </Link>
+            )}.`}
+          </p>
+        )}
+      </div>
+    </Flex>
+  );
+};
+
 class ChoroplethMapInner extends Component {
   static propTypes = {};
 
@@ -197,22 +220,7 @@ class ChoroplethMapInner extends Component {
   render() {
     const details = this._getDetails(this.props);
     if (!details) {
-      return (
-        <Flex direction="column" m="auto" maw="24rem">
-          <div className={cx(CS.textCentered, CS.mb4)}>
-            <p>
-              {t`Map not found. Please update the map used in this visualization's settings.`}
-            </p>
-            <p>
-              {jt`To add a new map, visit ${(
-                <Link to="/admin/settings/maps" className={CS.link}>
-                  {t`Admin settings > Maps`}
-                </Link>
-              )}.`}
-            </p>
-          </div>
-        </Flex>
-      );
+      return <MapNotFound />;
     }
 
     const {
