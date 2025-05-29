@@ -1012,23 +1012,23 @@
                          (->> (table-rows @test-table)
                               (sort-by first)))))
 
-                #_(testing "update"
-                    (testing "prefill does not crash"
-                      (is (= {} (prefill-values update-card {})))
-                      (is (= {} (prefill-values update-card {:id 1}))))
-                    (execute! update-card
-                              {:id 1
-                               :int 43})
-                    (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
-                            [2 "seeya, world!" nil nil                   nil]]
-                           (->> (table-rows @test-table)
-                                (sort-by first)))))
+                (testing "update"
+                  (testing "prefill does not crash"
+                    (is (= {} (prefill-values update-card {})))
+                    (is (= {} (prefill-values update-card {:id 1}))))
+                  (execute! update-card
+                            {:id 1
+                             :int 43})
+                  (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                          [2 "seeya, world!" nil nil                   nil]]
+                         (->> (table-rows @test-table)
+                              (sort-by first)))))
 
-                #_(testing "delete"
-                    (testing "prefill does not crash"
-                      (is (= {} (prefill-values delete-card {})))
-                      (is (= {} (prefill-values delete-card {:id 2}))))
-                    (execute! delete-card {:id 2})
-                    (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
-                           (->> (table-rows @test-table)
-                                (sort-by first)))))))))))))
+                (testing "delete"
+                  (testing "prefill does not crash"
+                    (is (= {} (prefill-values delete-card {})))
+                    (is (= {} (prefill-values delete-card {:id 2}))))
+                  (execute! delete-card {:id 2})
+                  (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
+                         (->> (table-rows @test-table)
+                              (sort-by first)))))))))))))

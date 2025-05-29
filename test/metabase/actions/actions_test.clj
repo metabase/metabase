@@ -556,8 +556,8 @@
                                            :row      row}))))
                                     (catch Exception e e))]
                   (if correct-password?
-                    (is (= [{:table-id table-id, :op :updated, :row {:id 1, :name "Seed Bowl"}}
-                            {:table-id table-id, :op :updated, :row {:id 2, :name "Millet Treat"}}]
+                    (is (= [{:table-id table-id, :op :updated, :row {(format-field-name :id) 1, (format-field-name :name) "Seed Bowl"}}
+                            {:table-id table-id, :op :updated, :row {(format-field-name :id) 2, (format-field-name :name) "Millet Treat"}}]
                            response))
                     (do
                       (is (instance? Exception response) "Did not get an error with wrong password")
