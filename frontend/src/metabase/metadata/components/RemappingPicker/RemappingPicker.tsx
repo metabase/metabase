@@ -82,9 +82,9 @@ export const RemappingPicker = ({
 
   const isFkMapping = value === "foreign" || isChoosingInitialFkTarget;
   const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
-  const hasFkMappingValue = isFkMapping && fkRemappingFieldId !== null;
+  const hasFkMappingValue = isFkMapping && fkRemappingFieldId != null;
   const { data: fkRemappingFieldData } = useGetFieldQuery(
-    isFkMapping && fkRemappingFieldId != null
+    hasFkMappingValue
       ? {
           id: fkRemappingFieldId,
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
