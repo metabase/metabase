@@ -553,18 +553,18 @@ export interface EnterpriseSettings extends Settings {
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;
-  "saml-attribute-email": string | null;
-  "saml-attribute-firstname": string | null;
-  "saml-attribute-lastname": string | null;
   "saml-identity-provider-uri": string | null;
   "saml-identity-provider-issuer": string | null;
   "saml-identity-provider-certificate": string | null;
   "saml-application-name": string | null;
+  "saml-keystore-path": string | null;
   "saml-keystore-password": string | null;
   "saml-keystore-alias": string | null;
-  "saml-keystore-path": string | null;
+  "saml-attribute-email": string | null;
+  "saml-attribute-firstname": string | null;
+  "saml-attribute-lastname": string | null;
   "saml-attribute-group": string | null;
-  "saml-group-sync": string | null;
+  "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
   /**
    * @deprecated
