@@ -698,7 +698,7 @@
                       (doseq [[table-id rows] (reverse items-by-table)]
                         (delete-rows-by-pk! database-id table-id rows)))
         table-pks   (keys (table-id->pk-field-name->id database-id table-id))
-        row-pk      #p (select-keys #p row #p table-pks)]
+        row-pk      (select-keys row table-pks)]
     (fks/delete-recursively table-id [row-pk] metadata children-fn delete-fn :max-queries 50)))
 
 ;;;; `:table.row/delete`
