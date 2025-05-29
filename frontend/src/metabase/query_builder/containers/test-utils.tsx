@@ -15,7 +15,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
   setupGetUserKeyValueEndpoint,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
@@ -245,7 +245,7 @@ export const setup = async ({
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
-  setupFieldValuesEndpoints(
+  setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
   setupRecentViewsEndpoints([]);

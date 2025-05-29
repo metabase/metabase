@@ -1,4 +1,4 @@
-import { setupFieldValuesEndpoints } from "__support__/server-mocks";
+import { setupFieldValuesEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -19,7 +19,7 @@ const state = createMockState({
 });
 
 function setup({ field }) {
-  setupFieldValuesEndpoints(PRODUCT_CATEGORY_VALUES);
+  setupFieldValuesEndpoint(PRODUCT_CATEGORY_VALUES);
 
   renderWithProviders(<CategoryFingerprint fieldId={field.id} />, {
     storeInitialState: state,

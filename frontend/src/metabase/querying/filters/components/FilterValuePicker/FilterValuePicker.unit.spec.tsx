@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupFieldSearchValuesEndpoint,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
+  setupRemappedFieldValueEndpoint,
 } from "__support__/server-mocks";
 import {
   createMockClipboardData,
@@ -18,7 +19,11 @@ import {
   columnFinder,
   createQuery,
 } from "metabase-lib/test-helpers";
-import type { FieldId, GetFieldValuesResponse } from "metabase-types/api";
+import type {
+  FieldId,
+  FieldValue,
+  GetFieldValuesResponse,
+} from "metabase-types/api";
 import {
   createMockFieldDimension,
   createMockFieldValues,
@@ -26,7 +31,6 @@ import {
 import {
   ORDERS,
   PEOPLE,
-  PEOPLE_STATE_VALUES,
   PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
   createOrdersProductIdField,
@@ -44,11 +48,11 @@ interface SetupOpts<T> {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: T[];
-  compact?: boolean;
   fieldId?: FieldId;
   searchFieldId?: FieldId;
   fieldValues?: GetFieldValuesResponse;
   searchValues?: Record<string, GetFieldValuesResponse>;
+  remappedValues?: Record<string, FieldValue>;
 }
 
 async function setupStringPicker({
@@ -56,18 +60,16 @@ async function setupStringPicker({
   stageIndex,
   column,
   values,
-  compact,
   fieldId,
   searchFieldId = fieldId,
   fieldValues,
   searchValues = {},
+  remappedValues = {},
 }: SetupOpts<string>) {
   const onChange = jest.fn();
-  const onFocus = jest.fn();
-  const onBlur = jest.fn();
 
   if (fieldValues) {
-    setupFieldValuesEndpoints(fieldValues);
+    setupFieldValuesEndpoint(fieldValues);
   }
   if (fieldId != null && searchFieldId != null) {
     Object.entries(searchValues).forEach(([value, response]) => {
@@ -78,6 +80,14 @@ async function setupStringPicker({
         response.values,
       );
     });
+    Object.entries(remappedValues).forEach(([value, fieldValue]) => {
+      setupRemappedFieldValueEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        fieldValue,
+      );
+    });
   }
 
   const { rerender } = renderWithProviders(
@@ -86,16 +96,13 @@ async function setupStringPicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      compact={compact}
       onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />,
   );
 
   await waitForLoaderToBeRemoved();
 
-  return { rerender, onChange, onFocus, onBlur };
+  return { rerender, onChange };
 }
 
 async function setupNumberPicker({
@@ -103,15 +110,12 @@ async function setupNumberPicker({
   stageIndex,
   column,
   values,
-  compact,
   fieldValues,
 }: SetupOpts<number>) {
   const onChange = jest.fn();
-  const onFocus = jest.fn();
-  const onBlur = jest.fn();
 
   if (fieldValues) {
-    setupFieldValuesEndpoints(fieldValues);
+    setupFieldValuesEndpoint(fieldValues);
   }
 
   const { rerender } = renderWithProviders(
@@ -120,16 +124,13 @@ async function setupNumberPicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      compact={compact}
       onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />,
   );
 
   await waitForLoaderToBeRemoved();
 
-  return { rerender, onChange, onFocus, onBlur };
+  return { rerender, onChange };
 }
 
 describe("StringFilterValuePicker", () => {
@@ -170,28 +171,6 @@ describe("StringFilterValuePicker", () => {
 
       await userEvent.click(screen.getByText("Gadget"));
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
-    });
-
-    it("should allow to search the list of values in compact mode", async () => {
-      const { onChange } = await setupStringPicker({
-        query,
-        stageIndex,
-        column: findColumn("PEOPLE", "STATE"),
-        values: [],
-        compact: true,
-        fieldId: PEOPLE.STATE,
-        fieldValues: PEOPLE_STATE_VALUES,
-      });
-
-      await userEvent.type(
-        screen.getByPlaceholderText("Search the list"),
-        "CA",
-      );
-      expect(screen.getByText("CA")).toBeInTheDocument();
-      expect(screen.queryByText("GA")).not.toBeInTheDocument();
-
-      await userEvent.click(screen.getByText("CA"));
-      expect(onChange).toHaveBeenCalledWith(["CA"]);
     });
 
     it("should allow to update selected values", async () => {
@@ -452,7 +431,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle empty field values", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -472,9 +451,7 @@ describe("StringFilterValuePicker", () => {
 
       await userEvent.type(input, "Test");
       await userEvent.tab();
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith(["Test"]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should ignore null field values", async () => {
@@ -642,6 +619,9 @@ describe("StringFilterValuePicker", () => {
             values: [["a", "a@metabase.test"]],
           }),
         },
+        remappedValues: {
+          b: ["b", "b@metabase.test"],
+        },
       });
 
       await userEvent.type(
@@ -686,6 +666,9 @@ describe("StringFilterValuePicker", () => {
             values: [["a", "a@metabase.test"]],
           }),
         },
+        remappedValues: {
+          b: ["b", "b@metabase.test"],
+        },
       });
 
       await userEvent.type(
@@ -715,9 +698,7 @@ describe("StringFilterValuePicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       await userEvent.click(await screen.findByText("a@metabase.test"));
-      // await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
-      // );
     });
 
     it("should allow free-form input without waiting for search results", async () => {
@@ -808,7 +789,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "PASSWORD");
 
     it("should allow to add a value", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -821,13 +802,11 @@ describe("StringFilterValuePicker", () => {
       );
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith(["abc"]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should allow to add multiple values", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -840,13 +819,11 @@ describe("StringFilterValuePicker", () => {
       );
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith(["abc", "bce"]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should not allow to add empty values", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -858,13 +835,11 @@ describe("StringFilterValuePicker", () => {
       await userEvent.clear(input);
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should not allow to add whitespace", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -875,9 +850,7 @@ describe("StringFilterValuePicker", () => {
       await userEvent.type(input, " ");
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should allow to remove a value when there are multiple values", async () => {
@@ -913,24 +886,22 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to add multiple values that extend each other (metabase#21915)", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
-        values: ["a"],
+        values: ["a", "ab"],
       });
 
       await userEvent.type(
         screen.getByRole("combobox", { name: "Filter value" }),
-        "ab,abc",
+        "abc",
       );
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       await waitFor(() =>
         expect(onChange).toHaveBeenLastCalledWith(["a", "ab", "abc"]),
       );
-      expect(onBlur).toHaveBeenCalled();
     });
   });
 });
@@ -1069,7 +1040,7 @@ describe("NumberFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "PASSWORD");
 
     it("should allow to add a value", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange } = await setupNumberPicker({
         query,
         stageIndex,
         column,
@@ -1080,13 +1051,11 @@ describe("NumberFilterValuePicker", () => {
       await userEvent.type(input, "123");
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([123]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should not allow to add empty values", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange } = await setupNumberPicker({
         query,
         stageIndex,
         column,
@@ -1098,13 +1067,11 @@ describe("NumberFilterValuePicker", () => {
       await userEvent.clear(input);
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should not allow to add invalid values", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange } = await setupNumberPicker({
         query,
         stageIndex,
         column,
@@ -1115,13 +1082,11 @@ describe("NumberFilterValuePicker", () => {
       await userEvent.type(input, "abc");
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
     it("should not allow to add whitespace", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange } = await setupNumberPicker({
         query,
         stageIndex,
         column,
@@ -1132,9 +1097,7 @@ describe("NumberFilterValuePicker", () => {
       await userEvent.type(input, " ");
       await userEvent.tab();
 
-      expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
-      expect(onBlur).toHaveBeenCalled();
     });
   });
 });
