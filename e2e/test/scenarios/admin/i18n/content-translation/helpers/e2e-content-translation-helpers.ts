@@ -46,3 +46,17 @@ export const interceptContentTranslationRoutes = () => {
     "uploadDictionary",
   );
 };
+
+export const generateLargeCSV = ({
+  sizeInMebibytes,
+}: {
+  sizeInMebibytes: number;
+}) => {
+  const oneMebibyte = 2 ** 20;
+  const charsPerRow = 100;
+  const totalRows = Math.floor((sizeInMebibytes * oneMebibyte) / charsPerRow);
+  const header = "locale,string,translation\n";
+  const row = "de,data2,data3\n";
+  const largeCSV = header + row.repeat(totalRows);
+  return largeCSV;
+};
