@@ -230,9 +230,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should(
-          "be.visible",
-        );
+        cy.icon("download").should("be.visible");
 
         cy.location("pathname").then((pathname) => {
           const uuid = pathname.split("/").at(-1);
