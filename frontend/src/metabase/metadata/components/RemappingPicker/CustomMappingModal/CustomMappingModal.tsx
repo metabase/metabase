@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -35,7 +35,7 @@ export const CustomMappingModal = ({
     onChange(mapping);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const newMapping = fillMissingMappings(value);
     const hasUnsetMappings = [...value.values()].some((mappedOrUndefined) => {
       return mappedOrUndefined === undefined;
