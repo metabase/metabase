@@ -149,7 +149,9 @@
                                 :strategy     :left-join
                                 :fields       :none}]
                 :fields       [[:field %products.category {:source-field %product-id
-                                                           :source-field-join-alias "Orders"}]]})))))
+                                                           :source-field-join-alias "Orders"}]]}))))))
+
+(deftest ^:parallel source-field-join-alias-multiple-joins-test
   (testing "make sure that implicit joins are properly deduplicated when done via `:source-table` and different `:joins`"
     (is (=? (lib.tu.macros/mbql-query orders
               {:source-table $$orders
@@ -211,7 +213,9 @@
                                [:field %products.category {:source-field %product-id
                                                            :source-field-join-alias "Orders"}]
                                [:field %products.category {:source-field %product-id
-                                                           :source-field-join-alias "Orders_2"}]]})))))
+                                                           :source-field-join-alias "Orders_2"}]]}))))))
+
+(deftest ^:parallel source-field-name-test
   (testing "make sure that implicit joins work with an explicit `:source-field-name`"
     (is (=? (lib.tu.macros/mbql-query orders
               {:source-query {:source-table $$orders
@@ -251,7 +255,9 @@
                                                :fields       :none}]
                                :breakout    [$product-id &Orders.orders.product-id]}
                 :fields       [[:field %products.category {:source-field %product-id :source-field-name "PRODUCT_ID"}]
-                               [:field %products.category {:source-field %product-id :source-field-name "Orders__Product_ID"}]]})))))
+                               [:field %products.category {:source-field %product-id :source-field-name "Orders__Product_ID"}]]}))))))
+
+(deftest ^:parallel source-field-name-join-alias-test
   (testing "make sure that implicit joins work with an explicit `:source-field-name` and `source-field-join-alias`"
     (is (=? (lib.tu.macros/mbql-query orders
               {:source-query {:source-table $$orders
@@ -268,6 +274,20 @@
                                :condition    [:= $product-id  &Card.orders.product-id]
                                :strategy     :left-join}
                               {:source-table $$products
+                               :alias        "PRODUCTS__via__PRODUCT_ID"
+                               :condition    [:= $product-id
+                                              &PRODUCTS__via__PRODUCT_ID.products.id]
+                               :strategy     :left-join
+                               :fields       :none
+                               :fk-field-id  %product-id}
+                              {:source-table $$products
+                               :alias        "PRODUCTS__via__Orders__PRODUCT_ID"
+                               :condition    [:= [:field "Orders__PRODUCT_ID" {:base-type :type/Integer}]
+                                              &PRODUCTS__via__Orders__PRODUCT_ID.products.id]
+                               :strategy     :left-join
+                               :fields       :none
+                               :fk-field-id  %product-id}
+                              {:source-table $$products
                                :alias        "PRODUCTS__via__PRODUCT_ID__via__Card"
                                :condition    [:= &Card.orders.product-id
                                               &PRODUCTS__via__PRODUCT_ID__via__Card.products.id]
@@ -282,7 +302,13 @@
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %product-id}]
-               :fields       [[:field %products.category {:join-alias "PRODUCTS__via__PRODUCT_ID__via__Card"
+               :fields       [[:field %products.category {:join-alias        "PRODUCTS__via__PRODUCT_ID"
+                                                          :source-field      %product-id
+                                                          :source-field-name "PRODUCT_ID"}]
+                              [:field %products.category {:join-alias        "PRODUCTS__via__Orders__PRODUCT_ID"
+                                                          :source-field      %product-id
+                                                          :source-field-name "Orders__PRODUCT_ID"}]
+                              [:field %products.category {:join-alias "PRODUCTS__via__PRODUCT_ID__via__Card"
                                                           :source-field      %product-id
                                                           :source-field-name "PRODUCT_ID"}]
                               [:field %products.category {:join-alias "PRODUCTS__via__Orders__PRODUCT_ID__via__Card"
@@ -304,6 +330,10 @@
                                 :condition    [:= $product-id  &Card.orders.product-id]
                                 :strategy     :left-join}]
                 :fields       [[:field %products.category {:source-field %product-id
+                                                           :source-field-name "PRODUCT_ID"}]
+                               [:field %products.category {:source-field %product-id
+                                                           :source-field-name "Orders__PRODUCT_ID"}]
+                               [:field %products.category {:source-field %product-id
                                                            :source-field-name "PRODUCT_ID"
                                                            :source-field-join-alias "Card"}]
                                [:field %products.category {:source-field %product-id
