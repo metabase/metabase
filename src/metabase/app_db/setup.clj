@@ -110,9 +110,11 @@
           (liquibase/release-lock-if-needed! liquibase)
           (throw e))))))
 
-;;; this is duplicated from [[metabase.driver.sql-jdbc.connection/can-connect-with-spec?]] but it lets us decouple the
-;;; `app-db` and `driver` modules.
-(defn- can-connect-with-spec?
+;;; this is somewhat duplicated from [[metabase.driver.sql-jdbc.connection/can-connect-with-spec?]] but it lets us
+;;; decouple the `app-db` and `driver` modules.
+(defn can-connect-to-data-source?
+  "Test connection to a `data-source`. Returns truthy on success; throws an exception or returns falsey if unable to
+  connect."
   [^javax.sql.DataSource data-source]
   (let [[first-row] (jdbc/query {:datasource data-source} ["SELECT 1"])
         [result]    (vals first-row)]
@@ -125,7 +127,7 @@
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert (can-connect-with-spec? data-source) error-msg)
+    (try (assert (can-connect-to-data-source? data-source) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
