@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "899ff2ef2e87355086009194bd693e3af1e7cd33"
+  },
+  "upstream": {
+    "branch": "emb-435-ability-to-select-preferred-authentication-method-in-the-sdk"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 58641,
+        "gqlID": "PR_kwDOAczgH86YHr8x"
+      }
+    }
   }
 }
