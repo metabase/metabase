@@ -48,7 +48,7 @@
   (dotimes [_ 5]
     (t2/count :model/Database)))
 
-(deftest MetabaseConnectionCustomize-test
+(deftest MetabaseConnectionCustomizer-test
   (testing "connection customizer is registered"
     (let [customizer (C3P0Registry/getConnectionCustomizer (.getName MetabaseConnectionCustomizer))]
       (is (some? customizer) "ConnectionCustomizer is not registered with c3p0")
@@ -60,7 +60,7 @@
     (try
       (let [updated? (promise)]
         (add-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                   ::MetabaseConnectionCustomize-test
+                   ::MetabaseConnectionCustomizer-test
                    (fn [_key _ref _old-state _new-state]
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
@@ -72,7 +72,7 @@
           (is (instance? java.time.temporal.Temporal recent-checkin)
               "recent-checkin should be a temporal type (OffsetDateTime)")))
       (finally (remove-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                             ::MetabaseConnectionCustomize-test)))))
+                             ::MetabaseConnectionCustomizer-test)))))
 (deftest recent-activity-test
   ;; these tests are difficult to make non-flaky. Other threads can hit the db of course, and the lifecycle of the
   ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will take
