@@ -52,7 +52,7 @@
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
    :parameter_mappings     mi/transform-parameters-list
-   :parameters             mi/transform-card-parameters-list
+   :parameters             mi/transform-action-parameters-list
    :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction
@@ -389,7 +389,7 @@
      :parameters
      (->> (for [field field-params
                 :let [field-name (:name field)]]
-            {:id                field-name
+            {:id                (keyword field-name)
              :display-name      (:display_name field)
              :type              (:base_type field)
              :target            [:variable [:template-tag field-name]]

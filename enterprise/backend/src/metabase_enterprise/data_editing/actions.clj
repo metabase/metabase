@@ -22,7 +22,7 @@
 
 (defmethod actions/normalize-action-arg-map :data-grid.row/common
   [_action input]
-  (update-keys input u/qualified-name))
+  (update-keys input keyword))
 
 (defn- scope->table-id [context]
   (u/prog1 (-> context :scope :table-id)

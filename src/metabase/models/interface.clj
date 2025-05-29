@@ -267,6 +267,15 @@
   {:in  (comp json-in normalize-card-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
 
+(defn- keywordize-parameter-ids
+  [parameters]
+  (map #(update % :id keyword) parameters))
+
+(def transform-action-parameters-list
+  "Transform for parameters list for action."
+  {:in  (comp json-in normalize-card-parameters-list)
+   :out (comp (catch-normalization-exceptions (comp #(update % :parameters keywordize-parameter-ids) normalize-card-parameters-list)) json-out-with-keywordization)})
+
 (def transform-field-ref
   "Transform field refs"
   {:in  json-in

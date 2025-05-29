@@ -87,6 +87,8 @@
 (defn- check-no-extra-parameters
   "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
   [request-parameters destination-param-ids]
+  (def request-parameters request-parameters)
+  (def destination-param-ids destination-param-ids)
   (let [extra-parameters (set/difference (set (keys request-parameters))
                                          (set destination-param-ids))]
     (api/check (empty? extra-parameters)
@@ -116,10 +118,13 @@
          table-id :id :as table} (implicit-action-table model_id)
         table-fields             (:fields table)
         pk-fields                (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
-        slug->field-name         (->> table-fields
-                                      (map (juxt (comp u/slugify :name) :name))
-                                      (into {})
-                                      (m/filter-keys (set (map :id parameters))))
+        _ (def table-fields table-fields)
+        _ (def parameters parameters)
+        slug->field-name         (update-keys (->> table-fields
+                                                   (map (juxt (comp u/slugify :name) (juxt keyword :name)))
+                                                   (into {})
+                                                   (m/filter-keys (set (map :id parameters))))
+                                              keyword)
         _                        (api/check (action/unique-field-slugs? table-fields)
                                             400
                                             (tru "Cannot execute implicit action on a table with ambiguous column names."))
@@ -186,7 +191,7 @@
         hidden-param-ids       (->> (vals field-settings)
                                     (filter :hidden)
                                     (map :id))
-        destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
+        destination-param-ids  (set (map keyword (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))))
         _ (check-no-extra-parameters request-parameters destination-param-ids)
         ;; add default values for missing parameters (including hidden ones)
         all-param-ids          (set (map :id (:parameters action)))

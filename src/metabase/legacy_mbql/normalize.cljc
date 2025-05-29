@@ -447,9 +447,7 @@
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
-   :viz-settings    maybe-normalize-token
-   :create-row      normalize-actions-row
-   :update-row      normalize-actions-row})
+   :viz-settings    maybe-normalize-token})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.

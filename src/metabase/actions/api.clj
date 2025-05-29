@@ -228,10 +228,10 @@
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
-  (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
+  (let [{:keys [type] :as action} (api/check-404 #p (action/select-action :id id :archived false))]
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail
                              :type      type
                              :action_id id})
-    (actions.execution/execute-action! action (update-keys parameters name))))
+    (actions.execution/execute-action! action parameters)))

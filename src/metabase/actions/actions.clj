@@ -303,7 +303,7 @@
   "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
   [action arg-map & {:keys [scope] :as opts}]
   (try (let [scope             (or scope {:unknown :legacy-action})
-             {:keys [outputs]} (perform-action! action scope [arg-map] (dissoc opts :scope))]
+             {:keys [outputs]} (perform-action! #p action #p scope #p [arg-map] (dissoc opts :scope))]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
          (first outputs))
        (catch ExceptionInfo e
@@ -356,7 +356,7 @@
   (mbql.normalize/normalize-or-throw query))
 
 (s/def :actions.args.crud.row.create/create-row
-  (s/map-of string? any?))
+  (s/map-of keyword? any?))
 
 (s/def :actions.args.crud/row.create
   (s/merge
@@ -388,7 +388,7 @@
    (s/keys :req-un [:actions.args.crud.row.update.query/filter])))
 
 (s/def :actions.args.crud.row.update/update-row
-  (s/map-of string? any?))
+  (s/map-of keyword? any?))
 
 (s/def :actions.args.crud/row.update
   (s/merge
@@ -438,7 +438,7 @@
   :actions.args/id)
 
 (s/def :actions.args.crud.table/row
-  (s/map-of string? any?))
+  (s/map-of keyword? any?))
 
 (s/def :actions.args.crud.table/common
   (s/merge
@@ -470,4 +470,4 @@
   [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
   {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
    :table-id table-id
-   :row      (update-keys (or row row-arg) u/qualified-name)})
+   :row      (or row row-arg)})

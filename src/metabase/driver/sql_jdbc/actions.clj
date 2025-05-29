@@ -13,7 +13,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -524,7 +523,7 @@
 
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
 
-(mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
+(mu/defn- table-id->pk-field-name->id :- [:map-of :keyword ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
@@ -533,7 +532,7 @@
    #(into {}
           (comp (filter (fn [{:keys [semantic-type], :as _field}]
                           (isa? semantic-type :type/PK)))
-                (map (juxt :name :id)))
+                (map (juxt (comp keyword :name) :id)))
           (qp.store/with-metadata-provider database-id
             (lib.metadata.protocols/fields
              (qp.store/metadata-provider)
@@ -547,7 +546,7 @@
     (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
                     {:field-name->id field-name->id, :row row, :status-code 400})))
   (into [:and] (for [[field-name value] row
-                     :let               [field-id (get field-name->id (u/qualified-name field-name))
+                     :let               [field-id (get field-name->id field-name)
                                          ;; if the field isn't in `field-name->id` then it's an error in our code. Not
                                          ;; i18n'ed because this is not something that should be User facing unless our
                                          ;; backend code is broken.
@@ -647,7 +646,7 @@
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
   [row      :- ::lib.schema.actions/row
-   pk-names :- [:set :string]]
+   pk-names :- [:set :keyword]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
     (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
@@ -658,7 +657,7 @@
 (mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
   [row      :- ::lib.schema.actions/row
-   pk-names :- [:set :string]]
+   pk-names :- [:set :keyword]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)
       (throw (ex-info (tru "Invalid update row map: no non-PK columns. Got {0}, all of which are PKs."
