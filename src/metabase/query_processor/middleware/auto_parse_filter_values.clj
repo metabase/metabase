@@ -6,10 +6,8 @@
   historic reasons. When time permits it should be moved into this middleware since it's really a separate
   transformation from wrapping the value literals themselves."
   (:require
-   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
