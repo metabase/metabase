@@ -155,7 +155,6 @@ export const EditingBodyCellCategorySelect = ({
           type="button"
           pointer
           onClick={() => combobox.openDropdown()}
-          {...inputProps}
           classNames={{
             wrapper: classNames?.wrapper,
             input: classNames?.selectTextInputElement,
@@ -171,6 +170,7 @@ export const EditingBodyCellCategorySelect = ({
               />
             )
           }
+          {...inputProps}
         >
           {inputLabel}
         </Input>

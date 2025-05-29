@@ -44,7 +44,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       .should("be.visible")
       .within(() => {
         cy.findByText("People").should("be.visible");
-        cy.findByText("Edit").should("be.visible");
+        cy.findByTestId("head-crumbs-container")
+          .findByText("Edit")
+          .should("be.visible");
 
         cy.findByTestId("table-root").should("be.visible");
       });
