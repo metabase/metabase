@@ -1,5 +1,6 @@
 ---
 title: Dashboard filters
+summary: Make your dashboards do more with filters and parameters. Instead of creating a bunch of similar dashboards, just add widgets to change variables.
 redirect_from:
   - /docs/latest/users-guide/08-dashboard-filters
 ---
@@ -27,17 +28,22 @@ Metabase will display the filter only if the filter is connected to a card on th
 
 ## Filter and parameter types
 
-The type of filter or parameter widget you choose will determine how the widget works, as well as which fields you’ll be able to filter your cards by.
+The type of filter or parameter widget you choose determines how the widget works, including which fields you'll be able to filter your cards by.
 
 ### Filter widgets
+
+**Filters** determine what data to show. For example, a date filter might show only data from the last 30 days, or a category filter might show only specific product categories.
 
 - [Date picker](#date-picker-filters)
 - [Location](#location-filters)
 - [ID](#id-filter)
 - [Number](#number-filter)
 - [Text or category](#text-or-category-filter)
+- [Boolean](#boolean-filter)
 
 ### Parameter widgets
+
+ **Parameters** determine how to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
 
 - [Time grouping](#time-grouping-parameter)
 
@@ -107,6 +113,10 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 - **Does not contain**. Filter out values that contain the entered text.
 - **Starts with**. Match values that begin with the entered text.
 - **Ends with**. Match values that end with the entered text.
+
+## Boolean filter
+
+A boolean filter allows people to filter data based on true/false values.
 
 ## Connecting a filter or parameter widget to dashboard cards
 
@@ -254,7 +264,7 @@ To turn off the automatic application of filters, click on the info **i** icon, 
 
 ## Using filter widgets
 
-Once you’ve added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
+Once you've added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
 
 Your active filter will only apply to your view of the dashboard. If someone else is viewing the same dashboard link at the same time, they won't see your filter.
 
