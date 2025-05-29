@@ -39,7 +39,6 @@ const QuestionDisplayToggle = ({
       }}
       onClick={(e) => {
         e.preventDefault();
-        (e.currentTarget as HTMLElement).focus();
         onToggleRawTable(!isShowingRawTable);
       }}
       onKeyDown={(e) => {
@@ -52,10 +51,10 @@ const QuestionDisplayToggle = ({
       value={isShowingRawTable ? "data" : "visualization"}
       data={[
         {
+          disabled: true,
           value: "data",
           label: (
             <Icon
-              tabIndex={-1}
               size={16}
               name="table2"
               className={cx(QuestionDisplayToggleS.InnerLabel, {
@@ -66,6 +65,7 @@ const QuestionDisplayToggle = ({
           ),
         },
         {
+          disabled: true,
           value: "visualization",
           label: (
             <Icon
