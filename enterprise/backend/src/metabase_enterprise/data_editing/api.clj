@@ -2,7 +2,6 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
@@ -151,55 +150,6 @@
     (t2/insert! :table_webhook_token {:token token, :table_id table-id, :creator_id user-id})
     {:table_id table-id
      :token token}))
-
-(def op->action-type
-  {:created :create
-   :updated :update
-   :deleted :delete})
-
-(defn- perform-and-group-undo! [action-kw scope]
-  (->> (actions/perform-action! action-kw scope [{}])
-       :outputs
-       (u/group-by :table-id (juxt (comp op->action-type :op) :row))))
-
-(api.macros/defendpoint :post "/undo"
-  "Undo the last change you made.
-  For now only supports tables, but in the future will support editables for sure.
-  Maybe actions, workflows, etc.
-  Could even generalize to things like edits to dashboard definitions themselves."
-  [_
-   _
-   {:keys [table-id scope no-op]}] :- [:map
-                                       ;; deprecated, this will be replaced by scope
-                                       [:table-id ms/PositiveInt]
-                                       [:scope ::types/scope.raw]
-                                       [:no-op {:optional true} ms/BooleanValue]]
-  (check-permissions)
-  (let [user-id api/*current-user-id*
-        scope  (or scope {:table-id table-id})]
-    (if no-op
-      {:batch_num (undo/next-batch-num :undo user-id scope)}
-      ;; IDEA use generic action calling API instead of having this endpoint
-      {:result (perform-and-group-undo! :data-editing/undo scope)})))
-
-(api.macros/defendpoint :post "/redo"
-  "Redo the last change you made.
-  For now only supports tables, but in the future will support editables for sure.
-  Maybe actions, workflows, etc.
-  Could even generalize to things like edits to dashboard definitions themselves."
-  [_
-   _
-   {:keys [table-id scope no-op]}] :- [:map
-                                         ;; deprecated, this will be replaced by scope
-                                       [:table-id ms/PositiveInt]
-                                       [:scope ::types/scope.raw]
-                                       [:no-op {:optional true} ms/BooleanValue]]
-  (check-permissions)
-  (let [scope (or scope {:table-id table-id})]
-    (if no-op
-      {:batch_num (undo/next-batch-num :redo api/*current-user-id* scope)}
-      ;; IDEA use generic action calling API instead of having this endpoint
-      {:result (perform-and-group-undo! :data-editing/redo scope)})))
 
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."
