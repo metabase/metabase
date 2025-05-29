@@ -27,7 +27,7 @@
                             "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]}))))))))
 
 (deftest ^:parallel joined-uuid-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uuid-type ::uuids-in-create-table-statements)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :uuid-type ::uuids-in-create-table-statements)
     (testing "Query with joins"
       (mt/dataset uuid-dogs
         (is (= [[#uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859" "Tim"]]

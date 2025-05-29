@@ -474,8 +474,14 @@ const visualizerSlice = createSlice({
         pieDropHandler(state, settings, event);
       }
     },
-    removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
-      const source = action.payload;
+    removeDataSource: (
+      state,
+      action: PayloadAction<{
+        source: VisualizerDataSource;
+        forget?: boolean;
+      }>,
+    ) => {
+      const { source } = action.payload;
       if (source.type === "card") {
         const cardId = source.sourceId;
         state.cards = state.cards.filter((card) => card.id !== cardId);
@@ -659,6 +665,9 @@ export const reducer = undoable(visualizerSlice.reducer, {
       addDataSource.fulfilled.type,
     ]),
     (action, nextState, { present }) => {
+      if (action.payload.forget === true) {
+        return false;
+      }
       if (action.type !== _handleDrop.type) {
         return true;
       }
