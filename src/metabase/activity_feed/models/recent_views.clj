@@ -510,9 +510,8 @@
                                      (dissoc :card_type)
                                      (update :model model->return-model))]
           ;; Remove result_metadata if include-metadata? is false
-          (if (and processed-item (not (:include-metadata? options)))
-            (dissoc processed-item :result_metadata)
-            processed-item))))))
+          (cond-> processed-item
+            (not (:include-metadata? options)) (dissoc :result_metadata)))))))
 
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card
