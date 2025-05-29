@@ -943,10 +943,10 @@
                 (testing "sends unsubscribe confirmation email"
                   (is (=? {:bcc     #{"lucky@metabase.com"}
                            :subject "You unsubscribed from an alert"
-                           :body    [{"You’re no longer receiving alerts about" true
+                           :body    [{"You're no longer receiving alerts about" true
                                       a-href                                    true}]}
                           (mt/summarize-multipart-single-email email
-                                                               #"You’re no longer receiving alerts about"
+                                                               #"You're no longer receiving alerts about"
                                                                (re-pattern a-href)))))))))))))
 
 (deftest unsubscribe-notification-audit-test
@@ -999,7 +999,7 @@
                     card-url-tag (make-card-url-tag notification)]
                 (check-email :email email
                              :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
-                             :expected-subject "You’ve been unsubscribed from an alert"
+                             :expected-subject "You've been unsubscribed from an alert"
                              :card-url-tag card-url-tag))))
 
           (testing "when notification is unarchived (inactive -> active)"
@@ -1029,7 +1029,7 @@
                 (testing "sends unsubscribe email to removed recipients"
                   (check-email :email removed-email
                                :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
-                               :expected-subject "You’ve been unsubscribed from an alert"
+                               :expected-subject "You've been unsubscribed from an alert"
                                :card-url-tag card-url-tag))
 
                 (testing "sends subscription email to new recipients"
@@ -1044,6 +1044,144 @@
               (let [emails (update-notification! noti-id notification
                                                  (assoc-in notification [:payload :send_condition] "goal_above"))]
                 (is (empty? emails))))))))))
+
+(deftest table-notification-email-test
+  (testing "table notification email functionality"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (doseq [event-name [:event/row.created :event/row.updated :event/row.deleted]]
+          (testing (format "event type: %s" event-name)
+            (let [table-id (mt/id :orders)
+                  base-table-notification {:notification {:creator_id (mt/user->id :crowberto)}
+                                           :notification-system-event {:event_name event-name
+                                                                       :table_id   table-id}
+                                           :handlers [{:channel_type "channel/email"
+                                                       :recipients   [{:type    :notification-recipient/user
+                                                                       :user_id  (mt/user->id :rasta)}
+                                                                      {:type    :notification-recipient/raw-value
+                                                                       :details {:value "test@metabase.com"}}]}]}
+                  make-table-url-tag (fn [table-id]
+                                       (format "<a href=\".*/tables/%d\">Orders</a>." table-id))
+                  update-notification! (fn [noti-id notification updates]
+                                         (notification.tu/with-mock-inbox-email!
+                                           (with-send-messages-sync!
+                                             (mt/user-http-request :crowberto :put 200
+                                                                   (format "notification/%d" noti-id)
+                                                                   (merge notification updates)))))
+                  check-table-email (fn [& {:keys [email expected-bcc expected-subject table-url-tag]}]
+                                      (is (=? {:bcc     expected-bcc
+                                               :subject expected-subject
+                                               :body    [{table-url-tag true}]}
+                                              (mt/summarize-multipart-single-email email (re-pattern table-url-tag)))))]
+
+              (testing "creating table notification sends 'you were added' email"
+                (let [[added-email] (notification.tu/with-mock-inbox-email!
+                                      (with-send-messages-sync!
+                                        (mt/user-http-request :crowberto :post 200 "notification"
+                                                              {:payload_type :notification/system-event
+                                                               :payload      {:event_name event-name
+                                                                              :table_id   table-id}
+                                                               :handlers     [{:channel_type "channel/email"
+                                                                               :recipients   [{:type    :notification-recipient/user
+                                                                                               :user_id (mt/user->id :rasta)}
+                                                                                              {:type    :notification-recipient/raw-value
+                                                                                               :details {:value "test@metabase.com"}}]}]})))]
+                  (check-table-email :email added-email
+                                     :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
+                                     :expected-subject "Crowberto Corv added you to a table notification"
+                                     :table-url-tag (make-table-url-tag table-id))))
+
+              (testing "when table notification is archived (active -> inactive)"
+                (notification.tu/with-system-event-notification!
+                  [{noti-id :id :as notification} base-table-notification]
+                  (let [[email] (update-notification! noti-id notification {:active false})
+                        table-url-tag (make-table-url-tag table-id)]
+                    (check-table-email :email email
+                                       :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
+                                       :expected-subject "You've been unsubscribed from a table notification"
+                                       :table-url-tag table-url-tag))))
+
+              (testing "when table notification is unarchived (inactive -> active)"
+                (notification.tu/with-system-event-notification!
+                  [{noti-id :id :as notification} (assoc-in base-table-notification [:notification :active] false)]
+                  (let [[email] (update-notification! noti-id notification {:active true})
+                        table-url-tag (make-table-url-tag table-id)]
+                    (check-table-email :email email
+                                       :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
+                                       :expected-subject "Crowberto Corv added you to a table notification"
+                                       :table-url-tag table-url-tag))))
+
+              (testing "when table notification recipients are modified"
+                (notification.tu/with-system-event-notification!
+                  [{noti-id :id :as notification} base-table-notification]
+                  (let [handler-id (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :id)
+                        updated-recipients [{:notification_handler_id handler-id
+                                             :type                    :notification-recipient/user
+                                             :user_id                 (mt/user->id :lucky)}
+                                            {:notification_handler_id handler-id
+                                             :type                    :notification-recipient/raw-value
+                                             :details                 {:value "new@metabase.com"}}]
+                        [removed-email added-email] (update-notification! noti-id notification
+                                                                          (assoc-in notification [:handlers 0 :recipients] updated-recipients))
+                        table-url-tag (make-table-url-tag table-id)]
+
+                    (testing "sends unsubscribe email to removed recipients"
+                      (check-table-email :email removed-email
+                                         :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
+                                         :expected-subject "You've been unsubscribed from a table notification"
+                                         :table-url-tag table-url-tag))
+
+                    (testing "sends subscription email to new recipients"
+                      (check-table-email :email added-email
+                                         :expected-bcc #{"lucky@metabase.com" "new@metabase.com"}
+                                         :expected-subject "Crowberto Corv added you to a table notification"
+                                         :table-url-tag table-url-tag)))))
+
+              (testing "no emails sent when table notification recipients haven't changed"
+                (notification.tu/with-system-event-notification!
+                  [{noti-id :id :as notification} base-table-notification]
+                  (let [emails (update-notification! noti-id notification
+                                                     (assoc-in notification [:payload :action] "model.row/update"))]
+                    (is (empty? emails)))))
+
+              (testing "table notification unsubscribe sends confirmation email"
+                (notification.tu/with-system-event-notification!
+                  [{noti-id :id} base-table-notification]
+                  (let [[email] (notification.tu/with-mock-inbox-email!
+                                  (with-send-messages-sync!
+                                    (mt/user-http-request :rasta :post 204 (format "notification/%d/unsubscribe" noti-id))))
+                        table-url-tag (make-table-url-tag table-id)]
+                    (is (=? {:bcc     #{"rasta@metabase.com"}
+                             :subject "You unsubscribed from a table notification"
+                             :body    [{table-url-tag true}]}
+                            (mt/summarize-multipart-single-email email (re-pattern table-url-tag))))))))))))))
+
+(deftest table-notification-dispatcher-test
+  (testing "notification-type function correctly identifies notification types"
+    (let [card-notification {:payload_type :notification/card}
+          table-notification-created {:payload_type :notification/system-event
+                                      :payload {:event_name :event/row.created}}
+          table-notification-updated {:payload_type :notification/system-event
+                                      :payload {:event_name :event/row.updated}}
+          table-notification-deleted {:payload_type :notification/system-event
+                                      :payload {:event_name :event/row.deleted}}
+          other-system-event {:payload_type :notification/system-event
+                              :payload {:event_name :event/user-invited}}
+          unknown-notification {:payload_type :notification/unknown}]
+
+      (testing "card notifications are identified correctly"
+        (is (= :card (#'messages/notification-type card-notification))))
+
+      (testing "table notifications are identified correctly"
+        (is (= :table (#'messages/notification-type table-notification-created)))
+        (is (= :table (#'messages/notification-type table-notification-updated)))
+        (is (= :table (#'messages/notification-type table-notification-deleted))))
+
+      (testing "other system events are not identified as table notifications"
+        (is (= :unknown (#'messages/notification-type other-system-event))))
+
+      (testing "unknown notification types return :unknown"
+        (is (= :unknown (#'messages/notification-type unknown-notification)))))))
 
 (deftest create-system-notification-api-test
   (mt/with-model-cleanup [:model/Notification]
