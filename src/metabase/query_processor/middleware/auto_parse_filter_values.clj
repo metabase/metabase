@@ -38,6 +38,7 @@
                       {:type qp.error-type/invalid-query}
                       e)))))
 
+;;; I guess we probably want this to work on join conditions as well as normal stage filters.
 (defn- auto-parse-filter-values-this-stage-or-join
   [_query _path-type _path stage-or-join]
   (lib.util.match/replace stage-or-join
