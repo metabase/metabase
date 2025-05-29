@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { Box, Button, Group, Modal, Text, TextInput } from "metabase/ui";
 
+import S from "./CustomMappingModal.module.css";
 import type { Mapping } from "./types";
 import { areMappingsEqual, fillMissingMappings } from "./utils";
 
@@ -52,58 +53,92 @@ export const CustomMappingModal = ({
   }, [onChangeRef, mappingRef, value]); // run this effect only when "value" changes
 
   return (
-    <Modal opened={isOpen} title={t`Custom mapping`} onClose={onClose}>
-      <Box>
-        <Text component="span" fw="bold">{t`Tip: `}</Text>
-        <Text component="span">{t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}</Text>
-      </Box>
+    <Modal.Root opened={isOpen} onClose={onClose}>
+      <Modal.Overlay />
 
-      <form onSubmit={handleSubmit}>
-        <Box component="table" mt="md" w="100%">
-          <thead>
-            <tr>
-              <td>
-                <Text fw="bold">{t`Original value`}</Text>
-              </td>
-              <Box component="td" w="30%">
-                <Text fw="bold">{t`Mapped value`}</Text>
-              </Box>
-            </tr>
-          </thead>
+      <Modal.Content mah="75vh">
+        <Modal.Header pb="md" pt="lg" px="xl">
+          <Modal.Title>{t`Custom mapping`}</Modal.Title>
+          <Modal.CloseButton />
+        </Modal.Header>
 
-          <tbody>
-            {[...mapping].map(([original, mapped], index) => (
-              <tr key={index}>
-                <td>{original}</td>
-                <td>
-                  <TextInput
-                    placeholder={t`Enter value`}
-                    value={mapped}
-                    onChange={(event) => {
-                      setMapping((mapping) => {
-                        return new Map([
-                          ...mapping,
-                          [original, event.target.value],
-                        ]);
-                      });
-                    }}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Box>
+        <Modal.Body p={0}>
+          <Box px="xl">
+            <Text component="span" fw="bold">{t`Tip: `}</Text>
+            <Text component="span">{t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}</Text>
+          </Box>
 
-        <Group gap="md" justify="flex-end" mt="md">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            disabled={hasEmptyCustomValues}
-            miw={128}
-            type="submit"
-            variant="primary"
-          >{t`Save`}</Button>
-        </Group>
-      </form>
-    </Modal>
+          <form onSubmit={handleSubmit}>
+            <Box className={S.table} component="table" mt="md" w="100%">
+              <thead>
+                <tr>
+                  <Box className={S.headerCell} component="td" p="md" pl="xl">
+                    <Text fw="bold">{t`Original value`}</Text>
+                  </Box>
+
+                  <Box
+                    className={S.headerCell}
+                    component="td"
+                    p="md"
+                    pr="xl"
+                    w="30%"
+                  >
+                    <Text fw="bold">{t`Mapped value`}</Text>
+                  </Box>
+                </tr>
+              </thead>
+
+              <tbody>
+                {[...mapping].map(([original, mapped], index) => (
+                  <Box
+                    bg={index % 2 === 1 ? "accent-gray-light" : undefined}
+                    component="tr"
+                    key={index}
+                  >
+                    <Box component="td" p="sm" pl="xl">
+                      {original}
+                    </Box>
+
+                    <Box component="td" p="sm" pr="xl">
+                      <TextInput
+                        placeholder={t`Enter value`}
+                        value={mapped}
+                        onChange={(event) => {
+                          setMapping((mapping) => {
+                            return new Map([
+                              ...mapping,
+                              [original, event.target.value],
+                            ]);
+                          });
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                ))}
+              </tbody>
+            </Box>
+
+            <Group
+              bg="white"
+              bottom={0}
+              className={S.footer}
+              gap="md"
+              justify="flex-end"
+              px="xl"
+              py="lg"
+              pos="sticky"
+            >
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <Button
+                disabled={hasEmptyCustomValues}
+                miw={128}
+                type="submit"
+                variant="primary"
+              >{t`Save`}</Button>
+            </Group>
+          </form>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 };
