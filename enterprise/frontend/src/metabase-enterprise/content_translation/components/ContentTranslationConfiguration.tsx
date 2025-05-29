@@ -9,6 +9,7 @@ import {
 } from "react";
 import { c, t } from "ttag";
 
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useDocsUrl } from "metabase/common/hooks";
 import { UploadInput } from "metabase/components/upload";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -20,6 +21,8 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
+import { openSaveDialog } from "metabase/lib/dom";
+import { Button } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 /** Maximum file size for uploaded content-translation dictionaries, expressed
@@ -41,34 +44,76 @@ export const ContentTranslationConfiguration = () => {
     "configuring-metabase/localization",
     { anchor: "supported-languages" },
   ).url;
+  const [downloadErrorMessage, setDownloadErrorMessage] = useState<
+    string | null
+  >();
+
+  const triggerDownload = async () => {
+    const response = await fetch("/api/ee/content-translation/csv", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      setDownloadErrorMessage(t`Couldn't download this file`);
+    }
+
+    const blob = await response.blob();
+    const filename = "metabase-content-translation-dictionary.csv";
+    openSaveDialog(filename, blob);
+  };
 
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
 
   return (
-    <Stack gap="sm" maw="38rem">
-      <Text>
-        <Markdown
-          components={{
-            strong: ({ children }: { children: ReactNode }) => (
-              <ExternalLink href={availableLocalesDocsUrl}>
-                {children}
-              </ExternalLink>
-            ),
-          }}
+    <Stack
+      gap="sm"
+      maw="38rem"
+      aria-labelledby="content-translation-header"
+      data-testid="content-translation-configuration"
+    >
+      <SettingHeader
+        id="content-translation-header"
+        title={t`Content translation`}
+        description={
+          <Markdown
+            components={{
+              strong: ({ children }: { children: ReactNode }) => (
+                <ExternalLink href={availableLocalesDocsUrl}>
+                  {children}
+                </ExternalLink>
+              ),
+            }}
+          >
+            {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations.`}
+          </Markdown>
+        }
+      />
+      <Group>
+        <Button
+          onClick={triggerDownload}
+          leftSection={<Icon name="download" />}
+          maw="20rem"
         >
-          {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations.`}
-        </Markdown>
-      </Text>
-
-      <FormProvider
-        // We're only using Formik to make the appearance of the submit button
-        // depend on the form's status. We're not using Formik's other features
-        // here.
-        initialValues={{}}
-        onSubmit={() => {}}
-      >
-        <UploadForm setErrorMessages={setErrorMessages} />
-      </FormProvider>
+          {t`Download translation dictionary`}
+        </Button>
+        <FormProvider
+          // We're only using Formik to make the appearance of the submit button
+          // depend on the form's status. We're not using Formik's other features
+          // here.
+          initialValues={{}}
+          onSubmit={() => {}}
+        >
+          <UploadForm setErrorMessages={setErrorMessages} />
+        </FormProvider>
+      </Group>
+      {downloadErrorMessage && (
+        <Text role="alert" c="danger">
+          {downloadErrorMessage}
+        </Text>
+      )}
       {!!errorMessages.length && (
         <Stack gap="xs">
           <Text role="alert" c="error">
@@ -165,29 +210,28 @@ const UploadForm = ({
           label={
             <Group gap="sm">
               <Icon name="upload" opacity=".8" />
-              <Text c="white">{t`Upload translation dictionary`}</Text>
+              <Text c="inherit">{t`Upload translation dictionary`}</Text>
             </Group>
           }
           successLabel={
             <Group gap="sm" role="alert">
               <Icon name="check" opacity=".8" />
-              <Text c="white">{t`Dictionary uploaded`}</Text>
+              <Text c="inherit">{t`Dictionary uploaded`}</Text>
             </Group>
           }
           failedLabel={
             <Group gap="sm" role="alert">
               <Icon name="warning" opacity=".8" />
-              <Text c="white">{t`Could not upload dictionary`}</Text>
+              <Text c="inherit">{t`Could not upload dictionary`}</Text>
             </Group>
           }
           activeLabel={
             <Group gap="md" role="alert">
               <Loader size="xs" opacity=".8" />
-              <Text>{t`Uploading dictionary…`}</Text>
+              <Text c="inherit">{t`Uploading dictionary…`}</Text>
             </Group>
           }
           maw="20rem"
-          variant="filled"
           onClick={(e) => {
             triggerUpload();
             e.preventDefault();
