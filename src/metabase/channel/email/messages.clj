@@ -233,7 +233,7 @@
                        {:emailType    "notification"
                         :logoHeader   true
                         :heading      (trs "We hope you''ve been enjoying Metabase.")
-                        :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it’s going?")
+                        :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it's going?")
                         :link         "https://metabase.com/feedback/active"})
         email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
                :recipients   [email]
@@ -286,15 +286,6 @@
                   :email           email
                   :notification-id notification-id}))))
 
-(defn pulse->alert-condition-kwd
-  "Given an `alert` return a keyword representing what kind of goal needs to be met."
-  [{:keys [alert_above_goal alert_condition] :as _alert}]
-  (if (= "goal" alert_condition)
-    (if (true? alert_above_goal)
-      :meets
-      :below)
-    :rows))
-
 (defn- send-email-sync!
   ([recipients subject template-path template-context]
    (send-email-sync! recipients subject template-path template-context false))
@@ -319,11 +310,16 @@
   (str "metabase/channel/email/" template-name ".hbs"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
-(def ^:private removed-template            (template-path "notification_card_you_were_removed"))
-(def ^:private added-template              (template-path "notification_card_you_were_added"))
-(def ^:private changed-stopped-template    (template-path "card_notification_changed_stopped"))
-(def ^:private archived-template           (template-path "card_notification_archived"))
+(def ^:private card-you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
+(def ^:private card-removed-template            (template-path "notification_card_you_were_removed"))
+(def ^:private card-added-template              (template-path "notification_card_you_were_added"))
+(def ^:private card-changed-stopped-template    (template-path "card_notification_changed_stopped"))
+(def ^:private card-archived-template           (template-path "card_notification_archived"))
+
+;; Paths to the templates for table notification emails
+(def ^:private table-you-unsubscribed-template (template-path "table_notification_unsubscribed"))
+(def ^:private table-removed-template          (template-path "table_notification_you_were_removed"))
+(def ^:private table-added-template            (template-path "table_notification_you_were_added"))
 
 (defn- username
   [user]
@@ -332,28 +328,57 @@
            (remove nil?)
            (str/join " "))))
 
-(defn send-you-unsubscribed-notification-card-email!
-  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"
+;; Generic notification email functions that dispatch based on notification type
+(defn- notification-type
+  "Determine the notification type from a notification payload"
+  [notification]
+  (cond
+    (= :notification/card (:payload_type notification))
+    :card
+
+    (and (= :notification/system-event (:payload_type notification))
+         (contains? #{:event/row.created :event/row.updated :event/row.deleted}
+                    (get-in notification [:payload :event_name])))
+    :table
+
+    :else
+    :unknown))
+
+(defn send-you-unsubscribed-notification-email!
+  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`.
+   Dispatches to the appropriate email function based on notification type."
   [notification unsubscribed-emails]
-  (send-email! unsubscribed-emails "You unsubscribed from an alert" you-unsubscribed-template notification true))
+  (case (notification-type notification)
+    :card  (send-email! unsubscribed-emails "You unsubscribed from an alert" card-you-unsubscribed-template notification true)
+    :table (send-email! unsubscribed-emails "You unsubscribed from a table notification" table-you-unsubscribed-template notification true)
+    :unknown nil))
 
-(defn send-you-were-removed-notification-card-email!
-  "Send an email to `removed-users` letting them know `admin` has removed them from `notification`"
+(defn send-you-were-removed-notification-email!
+  "Send an email to `removed-users` letting them know `admin` has removed them from `notification`.
+   Dispatches to the appropriate email function based on notification type."
   [notification removed-emails actor]
-  (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name (username actor)) true))
+  (case (notification-type notification)
+    :card  (send-email! removed-emails "You've been unsubscribed from an alert" card-removed-template (assoc notification :actor_name (username actor)) true)
+    :table (send-email! removed-emails "You've been unsubscribed from a table notification" table-removed-template (assoc notification :actor_name (username actor)) true)
+    :unknown nil))
 
-(defn send-you-were-added-card-notification-email!
-  "Send an email to `added-users` letting them know `admin-adder` has added them to `notification`"
+(defn send-you-were-added-notification-email!
+  "Send an email to `added-users` letting them know `admin-adder` has added them to `notification`.
+   Dispatches to the appropriate email function based on notification type."
   [notification added-user-emails adder]
-  (let [subject (format "%s added you to an alert" (username adder))]
-    (send-email! added-user-emails subject added-template notification true)))
+  (case (notification-type notification)
+    :card  (let [subject (format "%s added you to an alert" (username adder))]
+             (send-email! added-user-emails subject card-added-template notification true))
+    :table (let [subject (format "%s added you to a table notification" (username adder))]
+             (send-email! added-user-emails subject table-added-template notification true))
+    :unknown nil))
 
 (def ^:private not-working-subject "One of your alerts has stopped working")
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
   [card recipient-emails archiver]
-  (send-email! recipient-emails not-working-subject archived-template
+  (send-email! recipient-emails not-working-subject card-archived-template
                {:card card
                 :actor archiver}
                true))
@@ -361,7 +386,7 @@
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
   [card recipient-emails archiver]
-  (send-email! recipient-emails not-working-subject changed-stopped-template
+  (send-email! recipient-emails not-working-subject card-changed-stopped-template
                {:card card
                 :actor archiver}
                true))

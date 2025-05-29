@@ -170,6 +170,11 @@
    :update :update
    :delete :create})
 
+(def category->op
+  {:create :created
+   :update :updated
+   :delete :deleted})
+
 (defn- batch->rows
   "Given the undo snapshots for some batch update, return the corresponding row updates."
   [undo? batch]
@@ -223,8 +228,8 @@
           (for [[table-id sub-batch] (u/group-by :table_id batch)
                 :let [rows (batch->rows undo? sub-batch)]
                 [delta row] (map vector sub-batch rows)
-                :let [action-type ((if undo? invert identity) (categorize delta))]]
-            {:table-id table-id, :action-type action-type, :row row})))))
+                :let [category ((if undo? invert identity) (categorize delta))]]
+            {:op (category->op category), :table-id table-id, :row row})))))
 
 (defn undo!
   "Rollback the given user's last change to the given table."

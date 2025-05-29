@@ -43,14 +43,13 @@ describe("scenarios > embedding > dashboard parameters", () => {
     cy.findByTestId("edit-table-data-root")
       .should("be.visible")
       .within(() => {
-        cy.findByText("Editing People").should("be.visible");
+        cy.findByText("People").should("be.visible");
+        cy.findByText("Edit").should("be.visible");
 
         cy.findByTestId("table-root").should("be.visible");
       });
 
-    cy.findByTestId("edit-table-data-root")
-      .findByLabelText("Back to People")
-      .click();
+    cy.findByTestId("head-crumbs-container").findByText("People").click();
 
     cy.findByTestId("table-data-view-root").should("be.visible");
   });
