@@ -1508,3 +1508,23 @@ describe("issue 55637", () => {
     cy.findByTestId("column-info").should("not.exist");
   });
 });
+
+describe("issue 57685", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        display: "table",
+        native: {
+          query: 'SELECT id as "" FROM PRODUCTS',
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should handle empty column names without error (metabase#57685)", () => {
+    cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+  });
+});
