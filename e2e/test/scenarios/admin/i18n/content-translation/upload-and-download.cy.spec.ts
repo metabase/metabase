@@ -1,3 +1,9 @@
+import path from "path";
+
+import { parse } from "csv-parse/browser/esm/sync";
+
+import { type DictionaryArray, isDictionaryArray } from "metabase-types/api";
+
 import {
   germanFieldNames,
   invalidLocaleXX,
@@ -23,10 +29,7 @@ describe("scenarios > admin > localization > content translation", () => {
 
     it("admin settings configuration form is not present", () => {
       cy.visit("/admin/settings/localization");
-      cy.findByTestId("content-localization-setting").should("not.exist");
-      cy.findByTestId("admin-layout-content")
-        .findByText(/translation dictionary/i)
-        .should("not.exist");
+      cy.findByTestId("content-translation-configuration").should("not.exist");
     });
   });
 
@@ -42,6 +45,25 @@ describe("scenarios > admin > localization > content translation", () => {
       H.restore();
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
+    });
+
+    describe("The translation download button", () => {
+      it("downloads the uploaded translations", () => {
+        uploadTranslationDictionary(germanFieldNames);
+        cy.visit("/admin/settings/localization");
+        cy.findByTestId("content-translation-configuration")
+          .button(/Download translation dictionary/i)
+          .click();
+        const downloadsFolder = Cypress.config("downloadsFolder");
+        cy.readFile(
+          path.join(
+            downloadsFolder,
+            "metabase-content-translation-dictionary.csv",
+          ),
+        ).then((fileContents) => {
+          expect(fileContents).to.include("de,Rating,Bewertung");
+        });
+      });
     });
 
     describe("The translation upload form", () => {
@@ -175,3 +197,23 @@ describe("scenarios > admin > localization > content translation", () => {
     });
   });
 });
+
+export const parseCSVFromString = (str: string): DictionaryArray => {
+  try {
+    const strings: unknown = parse(str, {
+      delimiter: [",", "\t", "\n"],
+      skip_empty_lines: true,
+      relax_column_count: true,
+      relax_quotes: true,
+      trim: true,
+      quote: '"',
+      escape: "\\",
+    }).flat();
+    if (isDictionaryArray(strings)) {
+      return strings;
+    }
+    throw new Error("Invalid dictionary");
+  } catch (err) {
+    return [];
+  }
+};
