@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
 import { Modal } from "metabase/ui/components";
 
 interface Props {
@@ -16,9 +15,7 @@ export const CustomMappingModal = ({
   onChange,
   onClose,
 }: Props) => (
-  <Modal opened={isOpen} onClose={onClose}>
-    <ModalContent title={t`Custom mapping`} onClose={onClose}>
-      1
-    </ModalContent>
+  <Modal opened={isOpen} title={t`Custom mapping`} onClose={onClose}>
+    1
   </Modal>
 );

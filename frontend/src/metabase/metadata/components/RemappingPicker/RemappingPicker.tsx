@@ -44,6 +44,7 @@ export const RemappingPicker = ({
   ...props
 }: Props) => {
   const [hasChanged, setHasChanged] = useState(false);
+  const [isCustomMappingOpen, setIsCustomMappingOpen] = useState(false);
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
@@ -142,6 +143,11 @@ export const RemappingPicker = ({
         options={options}
         value={value}
         onChange={handleDisplayValueChange}
+        onOptionSubmit={(value) => {
+          if (value === "custom") {
+            setIsCustomMappingOpen(true);
+          }
+        }}
         {...props}
       />
 
@@ -201,15 +207,15 @@ export const RemappingPicker = ({
           {!isFieldsAccessRestricted && (
             <>
               {hasChanged && <NamingTip mt="md" />}
+
               <CustomMappingModal
-                isOpen // TODO
+                isOpen={isCustomMappingOpen}
                 value={getFieldRemappedValues(fieldValues?.values)}
                 onChange={(remappings) => {
                   updateFieldValues({ id, values: Array.from(remappings) });
+                  setIsCustomMappingOpen(false);
                 }}
-                onClose={() => {
-                  /**TODO */
-                }}
+                onClose={() => setIsCustomMappingOpen(false)}
               />
             </>
           )}
