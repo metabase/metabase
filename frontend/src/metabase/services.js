@@ -334,24 +334,35 @@ export const GeoJSONApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
+  const encodedUuid = encodeURIComponent(uuid);
+  setCardEndpoints(`/api/public/card/${encodedUuid}`);
+  setContentTranslationEndpoints(
+    `/api/content-translation/dictionary/${encodedUuid}`,
+  );
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  setDashboardEndpoints(`/api/public/dashboard/${encodeURIComponent(uuid)}`);
+  const encodedUuid = encodeURIComponent(uuid);
+  setDashboardEndpoints(`/api/public/dashboard/${encodedUuid}`);
+  setContentTranslationEndpoints(
+    `/api/content-translation/dictionary/${encodedUuid}`,
+  );
 }
 
 export function setEmbedQuestionEndpoints(token) {
-  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setCardEndpoints(`${embedBase}/card/${encodedToken}`);
+  setContentTranslationEndpoints(
+    `${embedBase}/content-translation/dictionary/${encodedToken}`,
+  );
 }
 
 export function setEmbedDashboardEndpoints(token) {
-  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
-}
-
-export function setEmbedDictionaryEndpoints(token) {
-  PLUGIN_API.getContentTranslationDictionaryUrl = () =>
-    `${encodeURIComponent(token)}/api/embed/dictionary}`;
+  const encodedToken = encodeURIComponent(token);
+  setDashboardEndpoints(`${embedBase}/dashboard/${encodedToken}`);
+  setContentTranslationEndpoints(
+    `${embedBase}/content-translation/dictionary/${encodedToken}`,
+  );
 }
 
 function GET_with(url, omitKeys) {
@@ -388,6 +399,10 @@ function setDashboardEndpoints(prefix) {
     `${prefix}/params/:paramId/search/:query`,
     ["dashId"],
   );
+}
+
+function setContentTranslationEndpoints(prefix) {
+  PLUGIN_API.getContentTranslationDictionaryUrl = prefix;
 }
 
 export const ActionsApi = {
