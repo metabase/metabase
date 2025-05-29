@@ -15,11 +15,6 @@
   [t]
   (select-keys t [:locale :msgid]))
 
-;; Maximum file size: 1.5MB
-;; This should equal the maxFileSizeInMiB variable in
-;; enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration.tsx
-(def ^:private max-file-size (* 1.5 1024 1024))
-
 (defn- adjust-index
   "Adjust index: increment once for the header row that was chopped off and again to go to 1-based indexing for human
   consumption."

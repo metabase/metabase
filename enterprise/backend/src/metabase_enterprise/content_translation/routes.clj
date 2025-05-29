@@ -19,16 +19,6 @@
 ;; This should equal the maxContentDictionarySizeInMiB variable in the frontend
 (def ^:private max-content-translation-dictionary-size (* 1.5 1024 1024))
 
-(defn- check-file-size
-  "Throws an error message if the file is too large. Note that frontend will also refuse to upload a file that's too large."
-  [^File file]
-  (let [file-size (.length file)]
-    (when (> file-size max-content-translation-dictionary-size)
-      (throw (ex-info (tru "Upload a dictionary smaller than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
-                      {:status-code http-status-content-too-large
-                       :file-size file-size
-                       :max-size max-content-translation-dictionary-size})))))
-
 (api.macros/defendpoint :post
   "/upload-dictionary"
   "Upload a CSV of content translations"
@@ -44,13 +34,15 @@
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (let [file (get-in multipart-params ["file" :tempfile])]
+    (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size)
+      (throw (ex-info (tru "Dictionary is larger than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
+                      {:status-code http-status-content-too-large})))
     (when-not (instance? java.io.File file)
       (throw (ex-info (tru "No file provided") {:status-code 400})))
-    (check-file-size file)
     (with-open [rdr (io/reader file)]
       (let [[_header & rows] (csv/read-csv rdr)]
-        (dictionary/import-translations! rows))))
-  {:success true})
+        (dictionary/import-translations! rows)))
+    {:success true}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
