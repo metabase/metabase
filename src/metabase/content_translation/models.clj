@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-translation.models
+(ns metabase.content-translation.models
   "A model representing dictionary entries for translations."
   (:require
    [methodical.core :as methodical]
