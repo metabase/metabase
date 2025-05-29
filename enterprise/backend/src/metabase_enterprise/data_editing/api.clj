@@ -10,13 +10,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -154,17 +152,15 @@
     {:table_id table-id
      :token token}))
 
-(defn- translate-undo-error [e]
-  (case (:error (ex-data e))
-    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
-    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
-    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
-    e))
+(def op->action-type
+  {:created :create
+   :updated :update
+   :deleted :delete})
 
 (defn- perform-and-group-undo! [action-kw scope]
   (->> (actions/perform-action! action-kw scope [{}])
        :outputs
-       (u/group-by :table-id (juxt :action-type :row))))
+       (u/group-by :table-id (juxt (comp op->action-type :op) :row))))
 
 (api.macros/defendpoint :post "/undo"
   "Undo the last change you made.
@@ -184,10 +180,7 @@
     (if no-op
       {:batch_num (undo/next-batch-num :undo user-id scope)}
       ;; IDEA use generic action calling API instead of having this endpoint
-      (try
-        {:result (perform-and-group-undo! :data-editing/undo scope)}
-        (catch ExceptionInfo e
-          (throw (translate-undo-error e)))))))
+      {:result (perform-and-group-undo! :data-editing/undo scope)})))
 
 (api.macros/defendpoint :post "/redo"
   "Redo the last change you made.
@@ -206,10 +199,7 @@
     (if no-op
       {:batch_num (undo/next-batch-num :redo api/*current-user-id* scope)}
       ;; IDEA use generic action calling API instead of having this endpoint
-      (try
-        {:result (perform-and-group-undo! :data-editing/redo scope)}
-        (catch ExceptionInfo e
-          (throw (translate-undo-error e)))))))
+      {:result (perform-and-group-undo! :data-editing/redo scope)})))
 
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."
