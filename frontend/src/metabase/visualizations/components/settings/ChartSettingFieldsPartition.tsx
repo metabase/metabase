@@ -274,10 +274,8 @@ export const ChartSettingFieldsPartition = ({
       column: Lib.ColumnMetadata,
     ) => {
       const modifiedQuery = Lib.breakout(query, -1, column);
-      await dispatch(updateQuestion(question.setQuery(modifiedQuery)));
-
       const columnName = Lib.displayInfo(question.query(), -1, column).name;
-
+      await dispatch(updateQuestion(question.setQuery(modifiedQuery)));
       onChange({
         ...value,
         [partition]: columnAdd(value[partition], -1, columnName),

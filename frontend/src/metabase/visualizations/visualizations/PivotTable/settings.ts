@@ -10,7 +10,6 @@ import {
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
   PREAGG_COLUMN_SPLIT_SETTING,
-  UNAGG_COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
@@ -30,7 +29,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions, preAggPartitions } from "./partitions";
+import { partitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isFormattablePivotColumn,
@@ -83,30 +82,28 @@ export const settings = {
     },
     widget: "fieldsPartition",
     persistDefault: true,
-    getHidden: ([{ data }]: [{ data: DatasetData }]) => {
-      return !data;
-      //|| !isPreaggregatedPivot(data.cols);
-    },
     getProps: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
-    ) => ({
-      value: migratePivotColumnSplitSetting(
-        settings[PREAGG_COLUMN_SPLIT_SETTING] ?? {
-          rows: [],
-          columns: [],
-          values: [],
+    ) => {
+      return {
+        value: migratePivotColumnSplitSetting(
+          settings[PREAGG_COLUMN_SPLIT_SETTING] ?? {
+            rows: [],
+            columns: [],
+            values: [],
+          },
+          data?.cols ?? [],
+        ),
+        partitions: partitions,
+        columns: data == null ? [] : data.cols,
+        settings,
+        getColumnTitle: (column: DatasetColumn) => {
+          return getTitleForColumn(column, settings);
         },
-        data?.cols ?? [],
-      ),
-      partitions: preAggPartitions,
-      columns: data == null ? [] : data.cols,
-      settings,
-      getColumnTitle: (column: DatasetColumn) => {
-        return getTitleForColumn(column, settings);
-      },
-      canEditColumns: true,
-    }),
+        canEditColumns: true,
+      };
+    },
     getValue: (
       [{ data }]: [{ data: DatasetData; card: Card }],
       settings: Partial<VisualizationSettings> = {},
@@ -164,43 +161,6 @@ export const settings = {
       return addMissingCardBreakouts(setting, columnsToPartition);
     },
   },
-  //[UNAGG_COLUMN_SPLIT_SETTING]: {
-  //  get section() {
-  //    return t`Columns`;
-  //  },
-  //  widget: "fieldsPartition",
-  //  persistDefault: true,
-  //  getHidden: ([{ data }]: [{ data: DatasetData }]) => {
-  //    return !data || isPreaggregatedPivot(data.cols);
-  //  },
-  //  getProps: (
-  //    [{ data }]: [{ data: DatasetData }],
-  //    settings: VisualizationSettings,
-  //  ) => ({
-  //    value: settings[UNAGG_COLUMN_SPLIT_SETTING] ?? {
-  //      rows: [],
-  //      columns: [],
-  //      values: [],
-  //    },
-  //    partitions: partitions,
-  //    columns: data == null ? [] : data.cols,
-  //    aggregatedColumns: data == null ? [] : data.pivot_cols,
-  //    settings,
-  //    getColumnTitle: (column: DatasetColumn) => {
-  //      return getTitleForColumn(column, settings);
-  //    },
-  //    // If there are any columns that might be part of a pre-aggregated pivot table,
-  //    // disable adding/removing columns.
-  //    canEditColumns: true,
-  //  }),
-  //  getValue: (
-  //    _: [{ data: DatasetData; card: Card }],
-  //    settings: Partial<VisualizationSettings> = {},
-  //  ) => {
-  //    const storedValue = settings[UNAGG_COLUMN_SPLIT_SETTING];
-  //    return storedValue;
-  //  },
-  //},
   "pivot.show_row_totals": {
     get section() {
       return t`Columns`;

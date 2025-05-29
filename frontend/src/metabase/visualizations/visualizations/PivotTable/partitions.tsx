@@ -15,30 +15,6 @@ export interface Partition {
 export const partitions: Partition[] = [
   {
     name: "values",
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "rows",
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "columns",
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
-    ),
-  },
-];
-
-export const preAggPartitions: Partition[] = [
-  {
-    name: "values",
     columnFilter: (col) => !isDimension(col),
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045

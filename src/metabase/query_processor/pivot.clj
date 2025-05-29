@@ -720,41 +720,40 @@
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
-       (cond
-         (is-preaggregated-query? query)
-         (let [rff               (or rff qp.reducible/default-rff)
-               query             (lib/query (qp.store/metadata-provider) query)
-               pivot-opts        (or
-                                  (pivot-options query (get query :viz-settings))
-                                  (pivot-options query (get-in query [:info :visualization-settings]))
-                                  (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
-               query             (-> query
-                                     (assoc-in [:middleware :pivot-options] pivot-opts))
-               all-queries       (generate-queries query pivot-opts)
-               column-mapping-fn (make-column-mapping-fn query)]
-           (process-multiple-queries all-queries rff column-mapping-fn))
+       (def query query)
+       (let [rff               (or rff qp.reducible/default-rff)
+             query             (lib/query (qp.store/metadata-provider) query)
+             pivot-opts        (or
+                                (pivot-options query (get query :viz-settings))
+                                (pivot-options query (get-in query [:info :visualization-settings]))
+                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
+             query             (-> query
+                                   (assoc-in [:middleware :pivot-options] pivot-opts))
+             all-queries       (generate-queries query pivot-opts)
+             column-mapping-fn (make-column-mapping-fn query)]
+         (process-multiple-queries all-queries rff column-mapping-fn)
 
-         (is-unaggregated-query? query)
-         (qp/process-query (dissoc query :info)
-                           (or rff qp.reducible/default-rff))
+         #_(is-unaggregated-query? query)
+         #_(qp/process-query (dissoc query :info)
+                             (or rff qp.reducible/default-rff))
 
-         :else
-         (let [rff (or rff qp.reducible/default-rff)
-               unagg-column-split (or (:pivot_unagg_column_split query)
-                                      (-> query :viz-settings :pivot_table.unaggregated_column_split))
-               new-pivot-rows     (or (map :name (:rows unagg-column-split))
-                                      (:pivot_rows query))
-               new-pivot-cols     (or (map :name (:columns unagg-column-split))
-                                      (:pivot_cols query))
-               base-query         (dissoc query :info :pivot_unagg_column_split)
-               query2             (nest-mbql-query base-query unagg-column-split)
-               query3             (-> query2
-                                      (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
-                                                                              :pivot-cols new-pivot-cols
-                                                                              :pivot-measures ["count"]})
-                                      (assoc :non-pivoted-cols (original-cols base-query)))
-               query4             (qp.store/with-metadata-provider (:database query)
-                                    (lib/query (qp.store/metadata-provider) query3))
-               all-queries        (generate-queries query4 {})
-               column-mapping-fn  (make-column-mapping-fn query4)]
-           (process-multiple-queries all-queries rff column-mapping-fn)))))))
+         #_:else
+         #_(let [rff (or rff qp.reducible/default-rff)
+                 unagg-column-split (or (:pivot_unagg_column_split query)
+                                        (-> query :viz-settings :pivot_table.unaggregated_column_split))
+                 new-pivot-rows     (or (map :name (:rows unagg-column-split))
+                                        (:pivot_rows query))
+                 new-pivot-cols     (or (map :name (:columns unagg-column-split))
+                                        (:pivot_cols query))
+                 base-query         (dissoc query :info :pivot_unagg_column_split)
+                 query2             (nest-mbql-query base-query unagg-column-split)
+                 query3             (-> query2
+                                        (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
+                                                                                :pivot-cols new-pivot-cols
+                                                                                :pivot-measures ["count"]})
+                                        (assoc :non-pivoted-cols (original-cols base-query)))
+                 query4             (qp.store/with-metadata-provider (:database query)
+                                      (lib/query (qp.store/metadata-provider) query3))
+                 all-queries        (generate-queries query4 {})
+                 column-mapping-fn  (make-column-mapping-fn query4)]
+             (process-multiple-queries all-queries rff column-mapping-fn)))))))

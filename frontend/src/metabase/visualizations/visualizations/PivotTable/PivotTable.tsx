@@ -178,7 +178,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     ]);
 
     const pivoted = useMemo(() => {
-      if (data?.pivot_cols == null) {
+      if (data?.cols == null) {
         return null;
       }
 
