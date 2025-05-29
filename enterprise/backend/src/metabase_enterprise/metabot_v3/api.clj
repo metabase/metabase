@@ -69,6 +69,7 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
-  (handlers/route-map-handler
-   {"/" (api.macros/ns-handler *ns* +auth)
-    "/metabot" metabase-enterprise.metabot-v3.api.metabot/routes}))
+  (handlers/routes
+   (api.macros/ns-handler *ns* +auth)
+   (handlers/route-map-handler
+    {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes})))
