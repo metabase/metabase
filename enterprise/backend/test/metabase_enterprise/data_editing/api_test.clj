@@ -1032,3 +1032,126 @@
                   (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
                          (->> (table-rows @test-table)
                               (sort-by first)))))))))))))
+
+(deftest tmp-modal-test
+  (let [list-req
+        #(mt/user-http-request-full-response
+          (:user % :crowberto)
+          :get
+          "ee/data-editing/tmp-action")
+        req
+        #(mt/user-http-request-full-response
+          (:user % :crowberto)
+          :post
+          "ee/data-editing/tmp-modal"
+          (select-keys % [:action_id
+                          :scope
+                          :input]))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                  :text      [:text]
+                                                                  :int       [:int]
+                                                                  :timestamp [:timestamp]
+                                                                  :date      [:date]}
+                                                                 {:primary-key [:id]})]
+          (testing "saved actions"
+            (mt/with-non-admin-groups-no-root-collection-perms
+              (mt/with-temp [:model/Table         table    {}
+                             :model/Card          model    {:type         :model
+                                                            :table_id     (:id table)}
+                             :model/Action        action   {:type         :query
+                                                            :name "Do cool thing"
+                                                            :model_id     (:id model)
+                                                            :parameters   [{:id "a"
+                                                                            :name "A"
+                                                                            :type "number/="}
+                                                                           {:id "b"
+                                                                            :name "B"
+                                                                            :type "date/single"}
+                                                                           {:id "c"
+                                                                            :name "C"
+                                                                            :type "string/="}
+                                                                           {:id "d"
+                                                                            :name "D"
+                                                                            :type "string/="}]}]
+                (let [{:keys [status, body]} (req {:scope {:model-id (:id model)
+                                                           :table-id (:id table)}
+                                                   :action_id (:id action)})]
+                  (is (= 200 status))
+                  (is (= "Do cool thing" (:title body)))
+                  (is (= [{:id "a"
+                           :display_name "A"
+                           :type "type/Number"}
+                          {:id "b"
+                           :display_name "B"
+                           :type "type/Date"}
+                          {:id "c"
+                           :display_name "C"
+                           :type "type/Text"}
+                          {:id "d"
+                           :display_name "D"
+                           :type "type/Text"}]
+                         (->> (:parameters body)
+                              (map #(select-keys % [:id :display_name :type])))))))))
+
+          (testing "table actions"
+            (let [{list-body :body} (list-req {})
+                  {create-id "table.row/create"
+                   update-id "table.row/update"
+                   delete-id "table.row/delete"}
+                  (->> (:actions list-body)
+                       (filter #(= @test-table (:table_id %)))
+                       (u/index-by :kind :id))]
+              (testing "create"
+                (let [scope {:table-id @test-table}
+                      {:keys [status body]} (req {:scope scope
+                                                  :action_id create-id})]
+                  (is (= 200 status))
+                  (is (= [{:id "text"
+                           :display_name "Text"
+                           :type "type/Text"}
+                          {:id "int"
+                           :display_name "Int"
+                           :type "type/Integer"}
+                          {:id "timestamp"
+                           :display_name "Timestamp"
+                           :type "type/DateTime"}
+                          {:id "date"
+                           :display_name "Date"
+                           :type "type/Date"}]
+                         (->> (:parameters body)
+                              (map #(select-keys % [:id :display_name :type])))))))
+              (testing "update"
+                (let [scope {:table-id @test-table}
+                      {:keys [status body]} (req {:scope scope
+                                                  :action_id update-id})]
+                  (is (= 200 status))
+                  (is (= [{:id "id"
+                           :display_name "ID"
+                           :type "type/BigInteger"}
+                          {:id "text"
+                           :display_name "Text"
+                           :type "type/Text"}
+                          {:id "int"
+                           :display_name "Int"
+                           :type "type/Integer"}
+                          {:id "timestamp"
+                           :display_name "Timestamp"
+                           :type "type/DateTime"}
+                          {:id "date"
+                           :display_name "Date"
+                           :type "type/Date"}]
+                         (->> (:parameters body)
+                              (map #(select-keys % [:id :display_name :type])))))))
+              (testing "delete"
+                (let [scope {:table-id @test-table}
+                      {:keys [status body]} (req {:scope scope
+                                                  :action_id delete-id})]
+                  (is (= 200 status))
+                  (is (= [{:id "id"
+                           :display_name "ID"
+                           :type "type/BigInteger"}]
+                         (->> (:parameters body)
+                              (map #(select-keys % [:id :display_name :type]))))))))))))))
