@@ -21,7 +21,7 @@ type BaseMetabaseAuthConfig = {
 };
 
 /**
- * @category MetabaseProvider
+ * @inline
  **/
 export type MetabaseAuthMethod = "saml" | "jwt";
 
