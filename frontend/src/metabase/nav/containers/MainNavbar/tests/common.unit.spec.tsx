@@ -19,6 +19,10 @@ import {
 } from "./setup";
 
 describe("nav > containers > MainNavbar", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe("homepage link", () => {
     it("should render", async () => {
       await setup();
@@ -68,6 +72,22 @@ describe("nav > containers > MainNavbar", () => {
       expect(onboardingLink).toHaveAttribute("href", "/getting-started");
     });
 
+    it("should not render if the instance is inside embedding iframe", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        isEmbeddingIframe: true,
+      });
+      const section = screen.queryByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      const onboardingLink = screen.queryByRole("link", {
+        name: /How to use Metabase/i,
+      });
+
+      expect(section).not.toBeInTheDocument();
+      expect(onboardingLink).not.toBeInTheDocument();
+    });
+
     it.each(["admin", "non-admin"])("should render for %s", async (user) => {
       await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
       const section = screen.getByRole("tab", {
@@ -104,10 +124,10 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("DWH Upload CSV", () => {
-    it("should not render 'upload CSV' button", () => {
+  describe("DWH Upload", () => {
+    it("should not render DWH Upload section", () => {
       setup({ user: createMockUser({ is_superuser: true }) });
-      expect(screen.queryByTestId("dwh-upload-csv")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("dwh-upload")).not.toBeInTheDocument();
     });
   });
 

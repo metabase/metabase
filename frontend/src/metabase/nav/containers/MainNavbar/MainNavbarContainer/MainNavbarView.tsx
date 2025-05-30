@@ -12,7 +12,10 @@ import {
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
-import { getIsNewInstance } from "metabase/home/selectors";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -130,11 +133,16 @@ export function MainNavbarView({
       ];
     }, [collections]);
 
-  const isNewInstance = useSelector(getIsNewInstance);
-
   // Instances with DWH enabled already have uploads enabled by default.
   // It is not possible to turn the uploads off, nor to delete the attached database.
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+
+  const isNewInstance = useSelector(getIsNewInstance);
+  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
+  // We need to only temporarily include the`hasAttachedDWHFeature` in this condition because of the PR sequencing!
+  // As soon as we move the CSV and GSheets uploads to the new "Add data" modal, this condition will move elsewhere.
+  const shouldDisplayGettingStarted =
+    isNewInstance && canAccessOnboarding && !hasAttachedDWHFeature;
 
   const uploadDbId = useSelector(
     (state) => getSetting(state, "uploads-settings")?.db_id,
@@ -173,7 +181,7 @@ export function MainNavbarView({
             {showUploadMenu && <DwhUploadMenu />}
           </SidebarSection>
 
-          {isNewInstance && (
+          {shouldDisplayGettingStarted && (
             <SidebarSection>
               <ErrorBoundary>
                 <GettingStartedSection
