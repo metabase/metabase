@@ -46,7 +46,7 @@ export const initAuth = createAsyncThunk(
         const session = await dispatch(
           getOrRefreshSession({
             metabaseInstanceUrl,
-            authMethod: authMethod,
+            authMethod,
           }),
         ).unwrap();
         if (session?.id) {
