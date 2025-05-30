@@ -145,9 +145,7 @@
                                (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    (or (and (not (:join-alias opts))
-                             (#{:source/fields :source/card} (:lib/source %)))
-                        (matching-join? a-ref %)))
+                    (matching-join? a-ref %))
               columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
