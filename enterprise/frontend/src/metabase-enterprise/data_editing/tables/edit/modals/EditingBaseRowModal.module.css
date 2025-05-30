@@ -10,7 +10,7 @@
 .modalBody {
   background-color: var(--mb-base-color-orion-5);
   display: grid;
-  grid-template-columns: rem(32) auto auto;
+  grid-template-columns: 45% auto;
   row-gap: rem(24);
   max-height: calc(
     100vh - (var(--modal-y-offset) * 2) - rem(80) - rem(72)
