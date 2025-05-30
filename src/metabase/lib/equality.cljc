@@ -121,7 +121,7 @@
      (catch #?(:clj Throwable :cljs :default) _
        nil))))
 
-(mu/defn- column-join-alias :- [:maybe :string]
+(mu/defn- column-join-or-source-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
@@ -141,7 +141,7 @@
     (clojure.core/= join-alias (if (and (not join-alias)
                                         (#{:source/fields :source/card} (:lib/source column)))
                                  (:metabase.lib.join/join-alias column)
-                                 ((some-fn :metabase.lib.join/join-alias :source-alias) column)))))
+                                 (column-join-or-source-alias column)))))
 
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
@@ -228,7 +228,7 @@
    columns :- [:sequential ::lib.schema.metadata/column]]
   ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
   ;; ignore the source alias on columns with :source/card or :source/fields
-  (if-let [no-alias (not-empty (remove #(and (column-join-alias %)
+  (if-let [no-alias (not-empty (remove #(and (column-join-or-source-alias %)
                                              (not (#{:source/card} (:lib/source %))))
                                        columns))]
     ;; At least 1 matching column with no :source-alias.
@@ -247,7 +247,7 @@
   (let [{:keys [join-alias]} (lib.options/options a-ref)]
     (if join-alias
       ;; a-ref has a :join-alias, match on that. Return nil if nothing matches.
-      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
+      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-or-source-alias %) join-alias) columns))]
         (if-not (next matches)
           (first matches)
           (#?(:cljs js/console.warn :clj log/warn)
