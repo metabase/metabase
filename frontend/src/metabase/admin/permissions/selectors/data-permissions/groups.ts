@@ -15,7 +15,7 @@ export const getOrderedGroups = createSelector(
   },
 );
 
-export const getAdminGroup = createSelector(
+export const getDefaultGroup = createSelector(
   Groups.selectors.getList,
   (groups: Group[]) => groups.find(isDefaultGroup),
 );

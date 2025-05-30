@@ -6,10 +6,14 @@ import _ from "underscore";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  getAdminGroup,
+  getDefaultGroup,
   getOrderedGroups,
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
-import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isExternalUsersGroup,
+} from "metabase/lib/groups";
 import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
@@ -90,14 +94,23 @@ export const getApplicationPermissionEditor = createSelector(
   (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.applicationPermissions,
   getOrderedGroups,
-  getAdminGroup,
+  getDefaultGroup,
   (permissions, groups: Group[][], defaultGroup?: Group) => {
     if (!permissions || groups == null || !defaultGroup) {
       return null;
     }
 
-    const entities = groups.flat().map((group) => {
+    const allGroups = groups.flat();
+
+    const externalUsersGroup = _.find(allGroups, isExternalUsersGroup);
+
+    if (!externalUsersGroup) {
+      return null;
+    }
+
+    const entities = allGroups.map((group) => {
       const isAdmin = isAdminGroup(group);
+      const isExternal = isExternalUsersGroup(group);
 
       return {
         id: group.id,
@@ -107,21 +120,21 @@ export const getApplicationPermissionEditor = createSelector(
             permissions,
             isAdmin,
             group.id,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             "setting",
           ),
           getPermission(
             permissions,
             isAdmin,
             group.id,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             "monitoring",
           ),
           getPermission(
             permissions,
             isAdmin,
             group.id,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             "subscription",
           ),
         ],
