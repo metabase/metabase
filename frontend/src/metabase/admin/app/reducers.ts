@@ -49,9 +49,9 @@ export const getAdminPaths: () => AdminPath[] = () => {
     },
     ...PLUGIN_METABOT.adminNavItem,
     {
-    name: t`Troubleshooting`,
-    path: "/admin/troubleshooting",
-    key: "troubleshooting",
+      name: t`Troubleshooting`,
+      path: "/admin/troubleshooting",
+      key: "troubleshooting",
     },
   ];
 
