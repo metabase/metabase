@@ -2,7 +2,6 @@ import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
-  samlTokenStorage,
   validateSessionToken,
 } from "embedding/auth-common";
 import type {
@@ -22,6 +21,8 @@ import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
+
+import { samlTokenStorage } from "./saml-token-storage";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
