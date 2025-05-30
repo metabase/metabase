@@ -207,9 +207,17 @@
 (defn- fuzzify [clause]
   (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
 
+(defn- field-id-or-name
+  [field-clause]
+  (second field-clause))
+
+(defn- field-join-alias
+  [field-clause]
+  (get-in field-clause [2 :join-alias]))
+
 (defn- field-signature
   [field-clause]
-  [(second field-clause) (get-in field-clause [2 :join-alias])])
+  [(field-id-or-name field-clause) (field-join-alias field-clause)])
 
 (defn- field-name-match [field-name all-exports source-metadata field-exports]
   ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
@@ -263,10 +271,12 @@
             (or (m/find-first (fn [[_field an-id-or-name _opts]]
                                 (= an-id-or-name id-or-name))
                               field-exports)
-                ;; look for a field referenced by the ID in source-metadata
-                (when-let [column (m/find-first #(= (:id %) id-or-name) source-metadata)]
-                  (let [signature (field-signature (:field_ref column))]
-                    (m/find-first #(= (field-signature %) signature) field-exports))))))
+                ;; look for a field referenced by the ID and join-alias in source-metadata
+                (when-let [column (m/find-first #(and (= (:id %) id-or-name)
+                                                      (= (field-join-alias field-clause) (field-join-alias (:field_ref %)))) source-metadata)]
+                  (m/find-first #(and (or (= (field-id-or-name %) (:id column))
+                                          (= (field-id-or-name %) (:name column)))
+                                      (field-join-alias %) (field-join-alias (:field_ref %))) field-exports)))))
         ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-names (let [[_ id-or-name] field-clause]
                                  (when (string? id-or-name)
