@@ -5,12 +5,15 @@
 
 (defn- select-sso-backend
   [req]
-  (let [preferred-method (get-in req [:params :preferred_method])]
-    (cond
-      (= preferred-method "jwt") :jwt
-      (= preferred-method "saml") :saml
-      (contains? (:params req) :jwt) :jwt ; for getting session tokens via ?jwt=<jwt>
-      :else :saml)))
+  (cond
+    preferred-method (case preferred-method
+                       "jwt"  :jwt
+                       "saml" :saml
+                       (throw (ex-info "Invalid auth method"
+                                       {:preferred-method preferred-method
+                                        :available        [:jwt :saml]})))
+    (contains? (:params req) :jwt) :jwt
+    :else :saml))
 
 (defn- sso-backend
   "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more
