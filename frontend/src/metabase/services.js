@@ -223,10 +223,6 @@ export const SlackApi = {
   updateSettings: PUT("/api/slack/settings"),
 };
 
-export const LdapApi = {
-  updateSettings: PUT("/api/ldap/settings"),
-};
-
 export const SamlApi = {
   updateSettings: PUT("/api/saml/settings"),
 };

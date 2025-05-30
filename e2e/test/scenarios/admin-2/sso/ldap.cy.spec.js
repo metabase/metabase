@@ -4,7 +4,6 @@ import {
   checkGroupConsistencyAfterDeletingMappings,
   crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
 describe(
   "scenarios > admin > settings > SSO > LDAP",
@@ -102,21 +101,22 @@ describe(
       cy.findByDisplayValue("localhost").should("exist");
     });
 
-    it("shouldn't be possible to save a non-numeric port (#13313)", () => {
+    it("shouldn't be possible to save a non-integer port (#13313)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
-      cy.findByLabelText("LDAP Port").parent().parent().as("portSection");
+      cy.findByLabelText(/LDAP Port/)
+        .parent()
+        .parent()
+        .as("portSection");
 
       enterLdapSettings();
       enterLdapPort("asd");
-      cy.get("@portSection")
-        .findByText("That's not a valid port number")
-        .should("exist");
+      cy.get("@portSection").findByDisplayValue("asd").should("not.exist");
 
       enterLdapPort("21.3");
       cy.get("@portSection")
-        .findByText("That's not a valid port number")
-        .should("exist");
+        .findByText("ldap-port must be an integer")
+        .should("be.visible");
 
       enterLdapPort("389 ");
       cy.get("@portSection")
@@ -181,13 +181,11 @@ describe(
       H.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
-      const { label, input } = getUserProvisioningInput();
-      input.should("be.checked");
-      label.click();
-      cy.button("Save changes").click();
-      cy.wait("@updateLdapSettings");
+      cy.findByTestId("ldap-user-provisioning-enabled?-setting")
+        .findByText("Enabled")
+        .click();
 
-      getSuccessUi().should("exist");
+      H.undoToast().findByText("Changes saved").should("be.visible");
     });
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
@@ -241,12 +239,12 @@ const getLdapCard = () => {
 };
 
 const enterLdapPort = (value) => {
-  H.typeAndBlurUsingLabel("LDAP Port", value);
+  H.typeAndBlurUsingLabel(/LDAP Port/, value);
 };
 
 const enterLdapSettings = () => {
   H.typeAndBlurUsingLabel(/LDAP Host/, "localhost");
-  H.typeAndBlurUsingLabel("LDAP Port", "389");
+  H.typeAndBlurUsingLabel(/LDAP Port/, "389");
   H.typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
   H.typeAndBlurUsingLabel("Password", "adminpass");
   H.typeAndBlurUsingLabel(/User search base/, "ou=users,dc=example,dc=org");
