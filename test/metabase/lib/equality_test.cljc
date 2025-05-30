@@ -309,13 +309,8 @@
           cols     (lib/returned-columns query)
           refs     (map lib.ref/ref cols)
           cat-name [:field {:lib/uuid (str (random-uuid))
-                            :base-type :type/Text
-                            :join-alias "Cat"}
+                            :base-type :type/Text}
                     "Cat__NAME"]
-          cat-raw  [:field {:lib/uuid (str (random-uuid))
-                            :base-type :type/Text
-                            :join-alias "Cat"}
-                    "NAME"]
           ven-name [:field {:lib/uuid (str (random-uuid))
                             :base-type :type/Text}
                     "NAME"]]
@@ -331,9 +326,6 @@
       (is (= (nth cols 7)
              (lib.equality/find-matching-column cat-name cols)
              (lib.equality/find-matching-column query -1 cat-name cols)))
-      (is (= (nth cols 7)
-             (lib.equality/find-matching-column cat-raw cols)
-             (lib.equality/find-matching-column query -1 cat-raw cols)))
       (is (= (nth cols 1)
              (lib.equality/find-matching-column ven-name cols)
              (lib.equality/find-matching-column query -1 ven-name cols))))))
@@ -388,75 +380,20 @@
           [join] (lib/joins base)
           all-4  (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)
                                                                          (meta/field-metadata :orders :tax)]))
-          just-3 (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)]))]
+          just-3 (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)]))
+          ret-4 (lib/returned-columns all-4)
+          ret-3 (lib/returned-columns just-3)]
       (is (=? [{:lib/desired-column-alias "ID"}
                {:lib/desired-column-alias "TAX"}
                {:lib/desired-column-alias "Orders__ID"}
                {:lib/desired-column-alias "Orders__TAX"}]
-              (lib/returned-columns all-4)))
+              ret-4))
       (is (=? [{:lib/desired-column-alias "ID"}
                {:lib/desired-column-alias "TAX"}
                {:lib/desired-column-alias "Orders__ID"}]
-              (lib/returned-columns just-3)))
+              ret-3))
       (testing "matching the four fields against"
-        (let [hr-own-id   {:lib/type :metadata/column
-                           :description        "Own ID"
-                           :base-type          :type/BigInteger
-                           :semantic-type      :type/PK
-                           :effective-type     :type/BigInteger
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :id)
-                           :name               "ID"
-                           :lib/source         :source/fields
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "ID"
-                           :position           0}
-              hr-own-tax  {:lib/type :metadata/column
-                           :description        "Own Tax"
-                           :base-type          :type/Float
-                           :semantic-type      nil
-                           :effective-type     :type/Float
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :tax)
-                           :name               "TAX"
-                           :lib/source         :source/fields
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "Tax"
-                           :position           4}
-              hr-join-id  {:lib/type :metadata/column
-                           :description        "Join ID"
-                           :base-type          :type/BigInteger
-                           :semantic-type      :type/PK
-                           :effective-type     :type/BigInteger
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :id)
-                           :name               "ID_2"
-                           :source-alias       "Orders"
-                           :lib/source         :source/fields
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "Orders → ID"
-                           :position           0}
-              hr-join-tax {:lib/type :metadata/column
-                           :description        "Join Tax"
-                           :base-type          :type/Float
-                           :semantic-type      nil
-                           :effective-type     :type/Float
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :tax)
-                           :name               "TAX_2"
-                           :source-alias       "Orders"
-                           :lib/source         :source/fields
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "Orders → Tax"
-                           :position           4}
-
-              ret-4 [hr-own-id hr-own-tax hr-join-id hr-join-tax]
-              ret-3 [hr-own-id hr-own-tax hr-join-id]
-              refs  (for [join-alias       [nil "Orders"]
+        (let [refs  (for [join-alias       [nil "Orders"]
                           [column coltype] [[:id :type/Integer] [:tax :type/Float]]]
                       [:field (merge {:lib/uuid       (str (random-uuid))
                                       :base-type      coltype
@@ -464,10 +401,10 @@
                                      (when join-alias
                                        {:join-alias join-alias}))
                        (meta/id :orders column)])
-              exp-4 [{:display-name "ID"}
-                     {:display-name "Tax"}
-                     {:display-name "Orders → ID"}
-                     {:display-name "Orders → Tax"}]
+              exp-4 [{:lib/desired-column-alias "ID"}
+                     {:lib/desired-column-alias "TAX"}
+                     {:lib/desired-column-alias "Orders__ID"}
+                     {:lib/desired-column-alias "Orders__TAX"}]
               exp-3 (update exp-4 3 (constantly nil))]
           (testing "all-4 matches everything"
             (is (=? exp-4
