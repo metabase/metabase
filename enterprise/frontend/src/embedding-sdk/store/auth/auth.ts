@@ -107,7 +107,7 @@ export const refreshTokenAsync = createAsyncThunk(
   async (
     {
       metabaseInstanceUrl,
-      authMethod: authMethod,
+      authMethod,
     }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "authMethod">,
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
