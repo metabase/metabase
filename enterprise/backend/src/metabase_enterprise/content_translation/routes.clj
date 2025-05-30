@@ -55,7 +55,7 @@
                             translations))]
     {:status 200
      :headers {"Content-Type" "text/csv; charset=utf-8"
-               "Content-Disposition" "attachment; filename=\"metabase-content-translation-dictionary.csv\""}
+               "Content-Disposition" "attachment; filename=\"metabase-content-translations.csv\""}
      :body (with-out-str
              (csv/write-csv *out* csv-data))}))
 
