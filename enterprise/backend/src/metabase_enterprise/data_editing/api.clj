@@ -189,12 +189,23 @@
         include?    #(not (contains? field-names (:slug %)))]
     (update action :parameters #(some->> % (filterv include?)))))
 
+(defn- input->parameters
+  "We support either named or id based parameters for invoking legacy actions. This converts keys to ids, if necessary."
+  [parameters input]
+  (let [slug-or-id->id (merge (u/index-by :slug :id parameters)
+                              (u/index-by :id :id parameters))]
+    (if (not-every? #(contains? slug-or-id->id (name %)) (keys input))
+      (throw (ex-info
+              "Unexpected parameter(s) provided"
+              {:status-code 400
+               :input       input
+               :parameters  parameters}))
+      (update-keys input (comp slug-or-id->id name)))))
+
 (defn- execute-saved-action!
   "Implementation handling a sub-sub-case."
   [action input]
-  (let [param-id (u/index-by (some-fn :slug :id) :id (:parameters action))
-        provided (update-keys input #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
-    (actions/execute-action! action provided)))
+  (actions/execute-action! action (input->parameters (:parameters action) input)))
 
 (defn- execute-dashcard-row-action-on-saved-action!
   "Implementation handling a sub-sub-case."
@@ -218,8 +229,7 @@
                                  (when (contains? field-names (or slug id))
                                    [id (row (keyword (or slug id)))])))
                          (into {}))
-        param-id    (u/index-by (some-fn :slug :id) :id (:parameters action))
-        provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
+        provided    (input->parameters (:parameters action) params)]
     [(actions/execute-action! action (merge row-params provided))]))
 
 (defn- execute-dashcard-row-action-on-primitive-action!
