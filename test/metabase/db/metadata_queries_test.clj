@@ -3,12 +3,12 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data :as data]
    [toucan2.core :as t2]))
 
 ;;; whether to run `field-count` and `field-distinct-count` tests.
@@ -37,7 +37,7 @@
            (metadata-queries/field-count (t2/select-one :model/Field :id (mt/id :checkins :venue_id)))))))
 
 (deftest ^:parallel table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+  (mt/test-drivers (data/normal-driver-select {:+parent :sql-jdbc})
     (let [expected [["20th Century Cafe"]
                     ["25°"]
                     ["33 Taps"]
