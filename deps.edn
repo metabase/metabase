@@ -207,7 +207,7 @@
  :paths
  ["src" "resources"]
 
- ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
+ ;; These are needed for certain drivers if you are developing against them locally. If those drivers'
  ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
  ;; ignored.
  ;;
@@ -218,11 +218,10 @@
  ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
  ;; `:drivers` alias instead.
  :mvn/repos
- {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}
-  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}
-  "shibboleth" {:url "https://build.shibboleth.net/maven/releases"}
-  ;; for metabase/saml20-clj
-  "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}  ;; athena
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}         ;; redshift
+  "shibboleth" {:url "https://build.shibboleth.net/maven/releases"}                      ;; hive-like
+  "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}} ;; metabase/saml20-clj
 
  :aliases
  {;;; Local Dev & test profiles
