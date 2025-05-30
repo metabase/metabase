@@ -101,7 +101,7 @@ describe("time-series chrome filter widget", () => {
       });
 
       cy.findByTestId("filter-pill")
-        .should("have.text", "Created At is in the previous 30 or this day")
+        .should("have.text", "Created At is in the previous 30 days or today")
         .click();
 
       cy.log(
@@ -166,10 +166,10 @@ describe("time-series chrome filter widget", () => {
 
       cy.findByTestId("filter-pill").should(
         "have.text",
-        "Created At is in the next 30 or this year",
+        "Created At is in the next 30 years or this year",
       );
       cy.findByTestId("timeseries-filter-button")
-        .should("have.text", "Next 30 or this year")
+        .should("have.text", "Next 30 years or this year")
         .click();
     });
 

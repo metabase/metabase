@@ -93,165 +93,129 @@
        :millisecond     (temporal-interval-tru n
                                                (i18n/tru  "This millisecond")
                                                (if include-current?
-                                                 (i18n/tru "Previous or this millisecond")
+                                                 (i18n/tru "Previous millisecond or this millisecond")
                                                  (i18n/tru "Previous millisecond"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this millisecond" (abs n))
-                                                 (i18n/trun "Previous {0} millisecond"
-                                                            "Previous {0} milliseconds"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} milliseconds or this millisecond" (abs n))
+                                                 (i18n/tru "Previous {0} milliseconds" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next millisecond")
+                                                 (i18n/tru "Next millisecond or this millisecond")
                                                  (i18n/tru "Next millisecond"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this millisecond" (abs n))
-                                                 (i18n/trun "Next {0} millisecond"
-                                                            "Next {0} milliseconds"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} milliseconds or this millisecond" (abs n))
+                                                 (i18n/tru "Next {0} milliseconds" (abs n))))
        :second          (temporal-interval-tru n
                                                (i18n/tru  "This second")
                                                (if include-current?
-                                                 (i18n/tru "Previous or this second")
+                                                 (i18n/tru "Previous second or this second")
                                                  (i18n/tru "Previous second"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this second" (abs n))
-                                                 (i18n/trun "Previous {0} second"
-                                                            "Previous {0} seconds"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} seconds or this second" (abs n))
+                                                 (i18n/tru "Previous {0} seconds" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next second")
+                                                 (i18n/tru "Next second or this second")
                                                  (i18n/tru "Next second"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this second" (abs n))
-                                                 (i18n/trun "Next {0} second"
-                                                            "Next {0} seconds"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} seconds or this second" (abs n))
+                                                 (i18n/tru "Next {0} seconds" (abs n))))
        :minute          (temporal-interval-tru n
                                                (i18n/tru  "This minute")
                                                (if include-current?
-                                                 (i18n/tru "Previous or this minute")
+                                                 (i18n/tru "Previous minute or this minute")
                                                  (i18n/tru "Previous minute"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this minute" (abs n))
-                                                 (i18n/trun "Previous {0} minute"
-                                                            "Previous {0} minutes"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} minutes or this minute" (abs n))
+                                                 (i18n/tru "Previous {0} minutes" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next minute")
+                                                 (i18n/tru "Next minute or this minute")
                                                  (i18n/tru "Next minute"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this minute" (abs n))
-                                                 (i18n/trun "Next {0} minute"
-                                                            "Next {0} minutes"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} minutes or this minute" (abs n))
+                                                 (i18n/tru "Next {0} minutes" (abs n))))
        :hour            (temporal-interval-tru n
                                                (i18n/tru  "This hour")
                                                (if include-current?
-                                                 (i18n/tru "Previous or this hour")
+                                                 (i18n/tru "Previous hour or this hour")
                                                  (i18n/tru "Previous hour"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this hour" (abs n))
-                                                 (i18n/trun "Previous {0} hour"
-                                                            "Previous {0} hours"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} hours or this hour" (abs n))
+                                                 (i18n/tru "Previous {0} hours" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next hour")
+                                                 (i18n/tru "Next hour or this hour")
                                                  (i18n/tru "Next hour"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this hour" (abs n))
-                                                 (i18n/trun "Next {0} hour"
-                                                            "Next {0} hours"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} hours or this hour" (abs n))
+                                                 (i18n/tru "Next {0} hours" (abs n))))
        :day             (temporal-interval-tru n
                                                (i18n/tru  "Today")
                                                (if include-current?
-                                                 (i18n/tru  "Yesterday or today")
-                                                 (i18n/tru  "Yesterday"))
+                                                 (i18n/tru "Today or yesterday")
+                                                 (i18n/tru "Yesterday"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this day" (abs n))
-                                                 (i18n/trun "Previous {0} day"
-                                                            "Previous {0} days"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} days or today" (abs n))
+                                                 (i18n/tru "Previous {0} days" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru  "Today or tomorrow")
-                                                 (i18n/tru  "Tomorrow"))
+                                                 (i18n/tru "Today or tomorrow")
+                                                 (i18n/tru "Tomorrow"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this day" (abs n))
-                                                 (i18n/trun "Next {0} day"
-                                                            "Next {0} days"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} days or today" (abs n))
+                                                 (i18n/tru "Next {0} days" (abs n))))
        :week            (temporal-interval-tru n
                                                (i18n/tru  "This week")
                                                (if include-current?
-                                                 (i18n/tru  "Previous or this week")
-                                                 (i18n/tru  "Previous week"))
+                                                 (i18n/tru "Previous week or this week")
+                                                 (i18n/tru "Previous week"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this week" (abs n))
-                                                 (i18n/trun "Previous {0} week"
-                                                            "Previous {0} weeks"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} weeks or this week" (abs n))
+                                                 (i18n/tru "Previous {0} weeks" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next week")
+                                                 (i18n/tru "Next week or this week")
                                                  (i18n/tru "Next week"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this week" (abs n))
-                                                 (i18n/trun "Next {0} week"
-                                                            "Next {0} weeks"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} weeks or this week" (abs n))
+                                                 (i18n/tru "Next {0} weeks" (abs n))))
        :month           (temporal-interval-tru n
                                                (i18n/tru  "This month")
                                                (if include-current?
-                                                 (i18n/tru  "Previous or this month")
-                                                 (i18n/tru  "Previous month"))
+                                                 (i18n/tru "Previous month or this month")
+                                                 (i18n/tru "Previous month"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this month" (abs n))
-                                                 (i18n/trun "Previous {0} month"
-                                                            "Previous {0} months"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} months or this month" (abs n))
+                                                 (i18n/tru "Previous {0} months" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next month")
+                                                 (i18n/tru "Next month or this month")
                                                  (i18n/tru "Next month"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this month" (abs n))
-                                                 (i18n/trun "Next {0} month"
-                                                            "Next {0} months"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} months or this month" (abs n))
+                                                 (i18n/tru "Next {0} months" (abs n))))
        :quarter         (temporal-interval-tru n
                                                (i18n/tru  "This quarter")
                                                (if include-current?
-                                                 (i18n/tru  "Previous or this quarter")
-                                                 (i18n/tru  "Previous quarter"))
+                                                 (i18n/tru "Previous quarter or this quarter")
+                                                 (i18n/tru "Previous quarter"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this quarter" (abs n))
-                                                 (i18n/trun "Previous {0} quarter"
-                                                            "Previous {0} quarters"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} quarters or this quarter" (abs n))
+                                                 (i18n/tru "Previous {0} quarters" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next quarter")
+                                                 (i18n/tru "Next quarter or this quarter")
                                                  (i18n/tru "Next quarter"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this quarter" (abs n))
-                                                 (i18n/trun "Next {0} quarter"
-                                                            "Next {0} quarters"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} quarters or this quarter" (abs n))
+                                                 (i18n/tru "Next {0} quarters" (abs n))))
        :year            (temporal-interval-tru n
                                                (i18n/tru  "This year")
                                                (if include-current?
-                                                 (i18n/tru  "Previous or this year")
-                                                 (i18n/tru  "Previous year"))
+                                                 (i18n/tru "Previous year or this year")
+                                                 (i18n/tru "Previous year"))
                                                (if include-current?
-                                                 (i18n/tru "Previous {0} or this year" (abs n))
-                                                 (i18n/trun "Previous {0} year"
-                                                            "Previous {0} years"
-                                                            (abs n)))
+                                                 (i18n/tru "Previous {0} years or this year" (abs n))
+                                                 (i18n/tru "Previous {0} years" (abs n)))
                                                (if include-current?
-                                                 (i18n/tru "This or next year")
+                                                 (i18n/tru "Next year or this year")
                                                  (i18n/tru "Next year"))
                                                (if include-current?
-                                                 (i18n/tru "Next {0} or this year" (abs n))
-                                                 (i18n/trun "Next {0} year"
-                                                            "Next {0} years"
-                                                            (abs n))))
+                                                 (i18n/tru "Next {0} years or this year" (abs n))
+                                                 (i18n/tru "Next {0} years" (abs n))))
        ;; else
        (i18n/tru "Unknown unit")))))
 
