@@ -34,6 +34,7 @@
     (let [parameters (for [parameter (:parameters action)]
                        (assoc parameter
                               :value (get request-parameters (:id parameter))
+                              ;; Fetch an important property that's not really a visualization setting...
                               :required (if-let [f (get-in action [:visualization_settings :fields (:id parameter)])]
                                           (:required f)
                                           ;; if we can't find the settings, treat it as required
