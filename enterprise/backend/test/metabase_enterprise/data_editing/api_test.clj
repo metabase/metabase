@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-editing.api-test
+(ns ^:mb/driver-tests metabase-enterprise.data-editing.api-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
