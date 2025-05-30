@@ -10,7 +10,6 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
-import { Flex } from "metabase/ui";
 
 const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
@@ -178,15 +177,9 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <Flex
-    h="55px"
-    px="md"
-    align="center"
-    fw="bold"
-    data-testid="selected-database"
-  >
+  <div className={cx(CS.p2, CS.textBold)} data-testid="selected-database">
     {database.name}
-  </Flex>
+  </div>
 );
 
 SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
@@ -222,13 +215,9 @@ const Placeholder = ({ query, editorContext }) => {
 
   const language = getNativeQueryLanguage(query.engine());
   return (
-    <Flex
-      align="center"
-      h="55px"
-      className={cx(CS.textNoWrap, CS.ml2, CS.px2, CS.textMedium)}
-    >
+    <div className={cx(CS.ml2, CS.p2, CS.textMedium)}>
       {t`This question is written in ${language}.`}
-    </Flex>
+    </div>
   );
 };
 

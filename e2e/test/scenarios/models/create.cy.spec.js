@@ -72,7 +72,7 @@ describe("scenarios > models > create", () => {
       .findByText("Use a native query")
       .click();
     H.NativeEditor.focus().type("select 42");
-    cy.findByTestId("native-query-editor-container")
+    cy.findByTestId("native-query-editor-sidebar")
       .findByLabelText("Get Answer")
       .click();
     cy.wait("@previewModel");

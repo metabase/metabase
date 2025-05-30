@@ -1,5 +1,8 @@
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
+import { isMac } from "metabase/lib/browser";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
 import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
@@ -8,11 +11,13 @@ import { NativeVariablesButton } from "metabase/query_builder/components/view/Na
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
-import S from "./NativeQueryEditorActionButtons.module.css";
+import RunButtonWithTooltip from "../../RunButtonWithTooltip";
+
+import NativeQueryEditorSidebarS from "./NativeQueryEditorSidebar.module.css";
 
 const ICON_SIZE = 18;
 
@@ -23,7 +28,7 @@ export type Features = {
   promptInput?: boolean;
 };
 
-interface NativeQueryEditorActionButtonsProps {
+interface NativeQueryEditorSidebarProps {
   question: Question;
   nativeEditorSelectedText?: string;
   features: Features;
@@ -47,12 +52,17 @@ interface NativeQueryEditorActionButtonsProps {
   onGenerateQuery: (queryText: string) => void;
 }
 
-export const NativeQueryEditorActionButtons = (
-  props: NativeQueryEditorActionButtonsProps,
+export const NativeQueryEditorSidebar = (
+  props: NativeQueryEditorSidebarProps,
 ) => {
   const {
     question,
+    cancelQuery,
+    isResultDirty,
+    isRunnable,
+    isRunning,
     nativeEditorSelectedText,
+    runQuery,
     snippetCollections,
     snippets,
     features,
@@ -68,50 +78,70 @@ export const NativeQueryEditorActionButtons = (
     !snippetCollections[0].can_write
   );
 
+  const getTooltip = () => {
+    const command = nativeEditorSelectedText
+      ? t`Run selected text`
+      : t`Run query`;
+    const shortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
+    return command + " " + shortcut;
+  };
+
   const query = question.query();
+  const canRunQuery = runQuery && cancelQuery;
   const engine = question.database?.()?.engine;
   const canFormatQuery = engine != null && canFormatForEngine(engine);
   const canGenerateQuery =
     engine != null && getEngineNativeType(engine) === "sql";
 
   return (
-    <Flex
+    <Box
       component="aside"
-      data-testid="native-query-editor-action-buttons"
-      gap="lg"
-      align="center"
+      className={NativeQueryEditorSidebarS.Container}
+      data-testid="native-query-editor-sidebar"
     >
-      {PreviewQueryButton.shouldRender({ question }) && (
-        <PreviewQueryButton {...props} />
-      )}
-      {features.dataReference && (
-        <DataReferenceButton {...props} size={ICON_SIZE} />
-      )}
-      {features.snippets && showSnippetSidebarButton && (
-        <SnippetSidebarButton {...props} size={ICON_SIZE} />
-      )}
-      {features.variables && (
-        <NativeVariablesButton {...props} size={ICON_SIZE} />
-      )}
       {canFormatQuery && (
         <Tooltip label={t`Auto-format`}>
           <Button
-            variant="subtle"
-            className={S.button}
+            className={NativeQueryEditorSidebarS.SidebarButton}
             aria-label={t`Auto-format`}
-            p={0}
-            leftSection={<Icon name="format_code" size={ICON_SIZE} />}
             onClick={onFormatQuery}
+            icon="format_code"
+            iconSize={20}
+            onlyIcon
           />
         </Tooltip>
       )}
+      {features.dataReference ? (
+        <DataReferenceButton {...props} size={ICON_SIZE} className={CS.mt3} />
+      ) : null}
+      {features.variables ? (
+        <NativeVariablesButton {...props} size={ICON_SIZE} className={CS.mt3} />
+      ) : null}
+      {features.snippets && showSnippetSidebarButton ? (
+        <SnippetSidebarButton {...props} size={ICON_SIZE} className={CS.mt3} />
+      ) : null}
+      {PreviewQueryButton.shouldRender({ question }) && (
+        <PreviewQueryButton {...props} />
+      )}
       {canGenerateQuery && (
         <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
+          className={CS.mt3}
           query={query}
           selectedQueryText={nativeEditorSelectedText}
           onGenerateQuery={onGenerateQuery}
         />
       )}
-    </Flex>
+      {!!canRunQuery && (
+        <RunButtonWithTooltip
+          className={NativeQueryEditorSidebarS.RunButtonWithTooltipStyled}
+          disabled={!isRunnable}
+          isRunning={isRunning}
+          isDirty={isResultDirty}
+          onRun={runQuery}
+          onCancel={cancelQuery}
+          getTooltip={getTooltip}
+        />
+      )}
+    </Box>
   );
 };

@@ -1,4 +1,5 @@
 .PreviewButton {
+  margin-top: 1.5rem;
   color: var(--mb-color-text-dark);
 
   &:hover {

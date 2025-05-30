@@ -103,7 +103,7 @@ export function enterParameterizedQuery(query, options = {}) {
 
 export function getRunQueryButton() {
   return cy
-    .findByTestId("native-query-editor-container")
+    .findByTestId("native-query-editor-sidebar")
     .findByTestId("run-button");
 }
 

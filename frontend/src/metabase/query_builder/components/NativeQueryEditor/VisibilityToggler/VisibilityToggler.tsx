@@ -22,22 +22,20 @@ export const VisibilityToggler = ({
   const icon = isOpen ? "contract" : "expand";
 
   return (
-    <Flex
-      component="a"
-      align="center"
-      className={cx(VisibilityTogglerS.ToggleContent, className, {
-        [VisibilityTogglerS.isReadOnly]: readOnly,
-      })}
-      onClick={toggleEditor}
-      data-testid="visibility-toggler"
-      aria-hidden={readOnly}
-    >
-      {text && (
+    <Flex className={VisibilityTogglerS.ToggleRoot}>
+      <a
+        className={cx(VisibilityTogglerS.ToggleContent, className, {
+          [VisibilityTogglerS.isReadOnly]: readOnly,
+        })}
+        onClick={toggleEditor}
+        data-testid="visibility-toggler"
+        aria-hidden={readOnly}
+      >
         <Text component="span" mr="sm" miw={70}>
           {text}
         </Text>
-      )}
-      <Icon name={icon} size={18} />
+        <Icon name={icon} />
+      </a>
     </Flex>
   );
 };

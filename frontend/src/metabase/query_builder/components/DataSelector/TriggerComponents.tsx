@@ -89,7 +89,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
     </span>
   ) : (
     <span
-      className={cx(CS.textMedium, CS.noDecoration, CS.textNoWrap)}
+      className={cx(CS.textMedium, CS.noDecoration)}
     >{t`Select a database`}</span>
   );
 }

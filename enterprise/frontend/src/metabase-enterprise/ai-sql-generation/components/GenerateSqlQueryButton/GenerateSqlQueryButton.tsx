@@ -31,9 +31,6 @@ export function GenerateSqlQueryButton({
       <Button
         className={className}
         variant="subtle"
-        p={0}
-        h="fit-content"
-        bd="none"
         leftSection={<Icon name="metabot" />}
         loading={isFetching}
         disabled={request == null}
