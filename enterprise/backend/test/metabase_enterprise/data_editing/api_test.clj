@@ -184,7 +184,20 @@
       (let [body {:action_id "data-grid.row/delete"
                   :scope     {:table-id (mt/id :products)}
                   :inputs    [{(mt/format-name :id) 1}
-                              {(mt/format-name :id) 2}]}]
+                              {(mt/format-name :id) 2}]}
+            children-count (fn []
+                             (let [result (mt/rows (qp/process-query {:database (mt/id)
+                                                                      :type     :query
+                                                                      :query    {:source-table (mt/id :orders)
+                                                                                 :aggregation  [[:count]]
+                                                                                 :breakout     [(mt/$ids $orders.product_id)]
+                                                                                 :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
+                               (zipmap (map first result) (map second result))))]
+
+        (testing "sanity check that we have children rows"
+          (is (= {1 93
+                  2 98}
+                 (children-count))))
         (testing "delete without delete-children param will return errors with children count"
           (is (=? {:errors [{:index     0
                              :type      "metabase.actions.error/violate-foreign-key-constraint"
@@ -203,7 +216,8 @@
           (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
                              {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
                   (mt/user-http-request :crowberto :post 200 execute-v2-url
-                                        (assoc body :params {:delete-children true})))))))))
+                                        (assoc body :params {:delete-children true}))))
+          (is (empty? (children-count))))))))
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}
