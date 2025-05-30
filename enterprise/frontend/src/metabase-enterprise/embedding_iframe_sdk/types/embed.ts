@@ -21,8 +21,13 @@ export type SdkIframeEmbedMessage =
     }
   | {
       type: "metabase.embed.submitSessionToken";
-      data: { sessionToken: MetabaseEmbeddingSessionToken };
+      data: {
+        authMethod: SdkIframeAuthMethod;
+        sessionToken: MetabaseEmbeddingSessionToken;
+      };
     };
+
+type SdkIframeAuthMethod = "saml" | "jwt";
 
 // --- Embed Option Interfaces ---
 

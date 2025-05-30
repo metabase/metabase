@@ -1,3 +1,4 @@
+import { samlTokenStorage } from "embedding-sdk/store/auth";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import { isWithinIframe } from "metabase/lib/dom";
 
@@ -25,9 +26,17 @@ export function requestSessionTokenFromEmbedJs(): Promise<MetabaseEmbeddingSessi
       const action = event.data;
 
       if (action.type === "metabase.embed.submitSessionToken") {
+        const { authMethod, sessionToken } = action.data;
+
+        // Persist the session token to the iframe's local storage,
+        // so we don't show the popup again.
+        if (authMethod === "saml") {
+          samlTokenStorage.set(sessionToken);
+        }
+
         window.removeEventListener("message", handler);
         clearTimeout(timeout);
-        resolve(action.data.sessionToken);
+        resolve(sessionToken);
       }
     };
 

@@ -4,7 +4,7 @@ import {
   openSamlLoginPopup,
   validateSessionToken,
 } from "embedding/auth-common";
-import { MetabaseError } from "embedding-sdk/errors/base";
+import { MISSING_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
 
 import type {
   SdkIframeEmbedMessage,
@@ -204,14 +204,20 @@ class MetabaseEmbed {
       return;
     }
 
-    const sessionToken = await this._getMetabaseSessionToken();
+    const { method, sessionToken } = await this._getMetabaseSessionToken();
     validateSessionToken(sessionToken);
 
     if (sessionToken) {
-      this._sendMessage("metabase.embed.submitSessionToken", { sessionToken });
+      this._sendMessage("metabase.embed.submitSessionToken", {
+        authMethod: method,
+        sessionToken,
+      });
     }
   }
 
+  /**
+   * @returns {{ method: "saml" | "jwt", sessionToken: {jwt: string} }}
+   */
   private async _getMetabaseSessionToken() {
     const { instanceUrl } = this._settings;
 
@@ -223,20 +229,22 @@ class MetabaseEmbed {
     const { method, url: responseUrl, hash } = urlResponseJson || {};
 
     if (method === "saml") {
-      return await openSamlLoginPopup(responseUrl);
+      const sessionToken = await openSamlLoginPopup(responseUrl);
+
+      return { method, sessionToken };
     }
 
     if (method === "jwt") {
-      return jwtDefaultRefreshTokenFunction(
+      const sessionToken = await jwtDefaultRefreshTokenFunction(
         responseUrl,
         instanceUrl,
         this._getAuthRequestHeader(hash),
       );
+
+      return { method, sessionToken };
     }
 
-    raiseError(
-      `unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson, null, 2)}`,
-    );
+    throw MISSING_AUTH_METHOD({ method, response: urlResponseJson });
   }
 
   private _getAuthRequestHeader(hash?: string) {
