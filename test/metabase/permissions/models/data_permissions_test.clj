@@ -127,7 +127,32 @@
           (is (= :no (create-queries-perm-value nil)))
           (is (nil?  (create-queries-perm-value table-id-1)))
           (is (nil?  (create-queries-perm-value table-id-2)))
-          (is (nil?  (create-queries-perm-value table-id-3))))))))
+          (is (nil?  (create-queries-perm-value table-id-3))))
+
+        (testing "Setting view-data to :blocked for tables also sets create-queries and download-results to :no"
+          (let [download-results-perm-value (fn [table-id] (t2/select-one-fn :perm_value :model/DataPermissions
+                                                                             :db_id     database-id
+                                                                             :group_id  group-id
+                                                                             :table_id  table-id
+                                                                             :perm_type :perms/download-results))]
+            ;; First set up some initial permissions
+            (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :unrestricted
+                                                                          table-id-2 :unrestricted})
+            (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :query-builder
+                                                                               table-id-2 :query-builder})
+            (data-perms/set-table-permissions! group-id :perms/download-results {table-id-1 :one-million-rows
+                                                                                 table-id-2 :one-million-rows})
+
+            ;; Now set view-data to :blocked for table-id-1 only
+            (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked})
+
+            ;; Verify that create-queries and download-results are set to :no for table-id-1
+            (is (= :no (create-queries-perm-value table-id-1)))
+            (is (= :no (download-results-perm-value table-id-1)))
+
+            ;; Verify that table-id-2 permissions are unchanged
+            (is (= :query-builder (create-queries-perm-value table-id-2)))
+            (is (= :one-million-rows (download-results-perm-value table-id-2)))))))))
 
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -695,11 +720,13 @@
           table-id     (t2/insert-returning-pk! :metabase_table {:name       "orders"
                                                                  :active     true
                                                                  :db_id      db-id
+                                                                 :schema     "test-schema"
                                                                  :created_at #t "2020"
                                                                  :updated_at #t "2020"})
           _other-table (t2/insert-returning-pk! :metabase_table {:name       "other"
                                                                  :active     true
                                                                  :db_id      db-id
+                                                                 :schema     "test-schema"
                                                                  :created_at #t "2020"
                                                                  :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]

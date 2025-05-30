@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
 import {
   InteractiveDashboard,
   InteractiveQuestion,
+  StaticDashboard,
+  StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
 import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
@@ -59,25 +62,79 @@ const SdkIframeEmbedView = ({
   settings,
 }: {
   settings: SdkIframeEmbedSettings;
-}) => {
-  const { dashboardId, questionId, template } = settings;
-
-  return match({ dashboardId, questionId, template })
-    .with({ template: "exploration" }, () => (
+}): ReactNode => {
+  return match(settings)
+    .with({ template: "exploration" }, (settings) => (
       <InteractiveQuestion
         questionId="new"
         height="100%"
-        isSaveEnabled={false}
+        isSaveEnabled={settings.isSaveEnabled ?? false}
+        targetCollection={settings.targetCollection}
+        entityTypes={settings.entityTypes}
       />
     ))
-    .with({ dashboardId: P.nonNullable }, ({ dashboardId }) => (
-      <InteractiveDashboard
-        dashboardId={dashboardId}
-        drillThroughQuestionHeight="100%"
-      />
-    ))
-    .with({ questionId: P.nonNullable }, ({ questionId }) => (
-      <InteractiveQuestion questionId={questionId} height="100%" />
-    ))
+    .with({ template: "curate-content" }, (_settings) => null)
+    .with({ template: "view-content" }, (_settings) => null)
+    .with(
+      {
+        dashboardId: P.nonNullable,
+        isDrillThroughEnabled: false,
+      },
+      (settings) => (
+        <StaticDashboard
+          dashboardId={settings.dashboardId}
+          withTitle={settings.withTitle}
+          withDownloads={settings.withDownloads}
+          initialParameters={settings.initialParameters}
+          hiddenParameters={settings.hiddenParameters}
+        />
+      ),
+    )
+    .with(
+      {
+        questionId: P.nonNullable,
+        isDrillThroughEnabled: false,
+      },
+      (settings) => (
+        <StaticQuestion
+          questionId={settings.questionId}
+          height="100%"
+          initialSqlParameters={settings.initialSqlParameters}
+        />
+      ),
+    )
+    .with(
+      {
+        dashboardId: P.nonNullable,
+        isDrillThroughEnabled: P.optional(true),
+      },
+      (settings) => (
+        <InteractiveDashboard
+          dashboardId={settings.dashboardId}
+          withTitle={settings.withTitle}
+          withDownloads={settings.withDownloads}
+          initialParameters={settings.initialParameters}
+          hiddenParameters={settings.hiddenParameters}
+          drillThroughQuestionHeight="100%"
+          drillThroughQuestionProps={{ isSaveEnabled: false }}
+        />
+      ),
+    )
+    .with(
+      {
+        questionId: P.nonNullable,
+        isDrillThroughEnabled: P.optional(true),
+      },
+      (settings) => (
+        <InteractiveQuestion
+          questionId={settings.questionId}
+          withDownloads={settings.withDownloads}
+          height="100%"
+          initialSqlParameters={settings.initialSqlParameters}
+          title={settings.withTitle}
+          isSaveEnabled={false}
+        />
+      ),
+    )
     .otherwise(() => null);
 };

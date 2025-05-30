@@ -76,7 +76,7 @@
 (defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
   (merge
    {:host     (mt/db-test-env-var :clickhouse :host)
-    :port     (mt/db-test-env-var :clickhouse :port)}
+    :port     (Integer/parseInt (mt/db-test-env-var :clickhouse :port))}
    (when-let [user (mt/db-test-env-var :clickhouse :user)]
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
