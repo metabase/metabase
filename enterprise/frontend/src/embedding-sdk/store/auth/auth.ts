@@ -21,10 +21,7 @@ import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_if
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
-import {
-  getFetchRefreshTokenFn,
-  getIsNewIframeEmbeddingAuth,
-} from "../selectors";
+import { getFetchRefreshTokenFn, getIsSdkIframeEmbedAuth } from "../selectors";
 
 import { samlTokenStorage } from "./saml-token-storage";
 
@@ -107,7 +104,7 @@ export const refreshTokenAsync = createAsyncThunk(
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const state = getState() as SdkStoreState;
 
-    if (getIsNewIframeEmbeddingAuth(state)) {
+    if (getIsSdkIframeEmbedAuth(state)) {
       return requestSessionTokenFromEmbedJs();
     }
 
