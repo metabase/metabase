@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import { Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 export function TableVisibilityToggle({
@@ -63,8 +63,8 @@ export function TableVisibilityToggle({
 
   return (
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
-      <Icon
-        name={isHidden ? "eye_crossed_out" : "eye"}
+      <ActionIcon
+        variant="transparent"
         className={className}
         onClick={(evt) => {
           evt.stopPropagation();
@@ -75,7 +75,9 @@ export function TableVisibilityToggle({
             hide();
           }
         }}
-      />
+      >
+        <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
+      </ActionIcon>
     </Tooltip>
   );
 }
