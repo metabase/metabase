@@ -168,11 +168,23 @@
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
     (card-metadata-columns metadata-providerable card)))
 
+(defn- desired-column-alias
+  "When there's a `:source-alias`, it becomes part of the `:lib/desired-column-alias`."
+  [{:keys [source-alias] :as column}]
+  (u/prog1 (or ((some-fn :lib/desired-column-alias :desired-column-alias) column)
+               (cond->> ((some-fn :lib/source-column-alias :name) column)
+                 source-alias (str source-alias "__")))
+    (tap> [`desired-column-alias column '=> <>])))
+
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
-          (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
-            (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
+          (let [desired-alias (desired-column-alias col)]
+            (assoc col
+                   ; The desired column alias from the card becomes the source-column-alias here.
+                   :lib/source-column-alias  desired-alias
+                   ; It's also the desired-column-alias here, since there's no renaming by default.
+                   :lib/desired-column-alias (unique-name-fn desired-alias))))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
