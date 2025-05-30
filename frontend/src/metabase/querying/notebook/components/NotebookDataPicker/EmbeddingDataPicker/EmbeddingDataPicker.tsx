@@ -7,6 +7,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, TableId } from "metabase-types/api";
+import {
+  DEFAULT_EMBEDDING_ENTITY_TYPES,
+  type EmbeddingEntityType,
+} from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 
@@ -69,6 +73,17 @@ export function EmbeddingDataPicker({
     dataSourceCountData != null &&
     dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
+    const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
+      "model",
+      "table",
+    ];
+    const filteredEntityTypes = entityTypes.filter((entityType) =>
+      ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
+    );
+    const simpleDataPickerEntityTypes =
+      filteredEntityTypes.length > 0
+        ? filteredEntityTypes
+        : DEFAULT_EMBEDDING_ENTITY_TYPES;
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
@@ -88,7 +103,7 @@ export function EmbeddingDataPicker({
           />
         }
         setSourceTableFn={onChange}
-        entityTypes={entityTypes}
+        entityTypes={simpleDataPickerEntityTypes}
       />
     );
   }
