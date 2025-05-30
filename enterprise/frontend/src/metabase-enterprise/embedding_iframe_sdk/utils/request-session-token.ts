@@ -1,3 +1,4 @@
+import { AUTH_TIMEOUT } from "embedding-sdk/errors";
 import { samlTokenStorage } from "embedding-sdk/store/auth";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -15,7 +16,7 @@ export function requestSessionTokenFromEmbedJs(): Promise<MetabaseEmbeddingSessi
   return new Promise<MetabaseEmbeddingSessionToken>((resolve, reject) => {
     const timeout = setTimeout(() => {
       window.removeEventListener("message", handler);
-      reject(new Error("Timed out waiting for session token"));
+      reject(AUTH_TIMEOUT());
     }, WAIT_FOR_SESSION_TOKEN_TIMEOUT);
 
     const handler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
