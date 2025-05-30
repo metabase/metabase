@@ -99,7 +99,7 @@ function checkShouldRerunPivotTableQuestion({
 
   const shouldRerunForTotals =
     isValidPivotTable &&
-    // Only re-run if toggling from false to true and we dont already have totals data
+    // Only re-run if toggling from false to true and we don't already have totals data
     ((currentShowRowTotals === false && newShowRowTotals === true) ||
       (currentShowColumnTotals === false && newShowColumnTotals === true));
 
