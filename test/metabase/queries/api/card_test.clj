@@ -2071,11 +2071,11 @@
                                                            :visualization_settings {:table.pivot_column "DISCOUNT",
                                                                                     :table.cell_column  "TAX",
                                                                                     :column_settings    {(format
-                                                                                                          "[\"name\",\"count\"]"
+                                                                                                          "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
                                                                                                           (mt/id :orders :quantity))
                                                                                                          {:column_title "Count"}
                                                                                                          (format
-                                                                                                          "[\"name\",\"ID\"]"
+                                                                                                          "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
                                                                                                           (mt/id :orders :id))
                                                                                                          {:column_title "IDENTIFIER"}}}}]
           (letfn [(col-names [card-id]
