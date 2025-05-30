@@ -1,6 +1,5 @@
-import type { SampleAppTestSuiteName } from "../sample-apps-shared/types";
-
-import { startSampleAppContainers } from "./startSampleAppContainers";
+import { startSampleAppContainers } from "./start-sample-app-containers";
+import type { SampleAppTestSuiteName } from "./types";
 
 const testSuite = process.argv?.[2]?.trim() as SampleAppTestSuiteName;
 

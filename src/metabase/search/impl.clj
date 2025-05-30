@@ -407,14 +407,14 @@
 (defn- add-metadata [search-results]
   (let [card-ids (into #{}
                        (comp
-                        (filter #(= (:model %) "card"))
+                        (filter #(contains? #{"card" "metric" "dataset"} (:model %)))
                         (map :id))
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
                         (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
     (map (fn [{:keys [model id] :as item}]
-           (if (= model "card")
+           (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))
              item))
          search-results)))
