@@ -22,6 +22,7 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { CascadeDeleteConfirmationModal } from "./modals/CascadeDeleteConfirmationModal";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
@@ -118,6 +119,8 @@ export const EditTableDataContainer = ({
     handleRowUpdateBulk,
     handleRowDelete,
     handleRowDeleteBulk,
+    handleRowDeleteBulkWithErrorHandling,
+    handleRowDeleteWithErrorHandling,
   } = useTableCRUD({
     tableId,
     scope: editingScope,
@@ -137,11 +140,16 @@ export const EditTableDataContainer = ({
 
   const {
     isDeleteBulkRequested,
+    isCascadeDeleteRequested,
+    foreignKeyError,
     requestDeleteBulk,
     cancelDeleteBulk,
     onDeleteBulkConfirmation,
+    onCascadeDeleteConfirmation,
+    onCancelCascadeDelete,
   } = useTableBulkDeleteConfirmation({
     handleRowDeleteBulk,
+    handleRowDeleteBulkWithErrorHandling,
     selectedRowIndices,
     setRowSelection,
   });
@@ -253,6 +261,7 @@ export const EditTableDataContainer = ({
         onEdit={handleRowUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleRowDelete}
+        onRowDeleteWithErrorHandling={handleRowDeleteWithErrorHandling}
         datasetColumns={datasetData.cols}
         currentRowData={
           modalState.rowIndex !== undefined
@@ -282,6 +291,16 @@ export const EditTableDataContainer = ({
         onConfirm={onDeleteBulkConfirmation}
         onClose={cancelDeleteBulk}
       />
+      {foreignKeyError && (
+        <CascadeDeleteConfirmationModal
+          opened={isCascadeDeleteRequested}
+          rowCount={selectedRowIndices.length}
+          foreignKeyError={foreignKeyError}
+          isLoading={isDeleting}
+          onConfirm={onCascadeDeleteConfirmation}
+          onClose={onCancelCascadeDelete}
+        />
+      )}
       <UnsavedLeaveConfirmationModal
         isUpdating={isUpdating}
         isDeleting={isDeleting}
