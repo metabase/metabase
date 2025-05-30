@@ -43,7 +43,7 @@ export type MetabotHistoryEntry =
 
 export type MetabotHistory = any[];
 
-export type MetabotStateContent = Record<string, any>;
+export type MetabotStateContext = Record<string, any>;
 
 export type MetabotCardInfo = {
   type: CardType;
