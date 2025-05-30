@@ -5,13 +5,13 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk";
-import type { UserBackendJwtResponse } from "embedding-sdk/types/refresh-token";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
   | { type: "metabase.embed.iframeReady" }
-  | { type: "metabase.embed.requestRefreshToken" };
+  | { type: "metabase.embed.requestSessionToken" };
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
@@ -20,8 +20,8 @@ export type SdkIframeEmbedMessage =
       data: SdkIframeEmbedSettings;
     }
   | {
-      type: "metabase.embed.submitRequestToken";
-      data: { refreshToken: UserBackendJwtResponse };
+      type: "metabase.embed.submitSessionToken";
+      data: { sessionToken: MetabaseEmbeddingSessionToken };
     };
 
 // --- Embed Option Interfaces ---
