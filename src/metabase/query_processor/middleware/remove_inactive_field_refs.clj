@@ -48,8 +48,7 @@
   [source-metadata-column]
   (-> source-metadata-column
       (update-keys u/->kebab-case-en)
-      (assoc :lib/type :metadata/column
-             :lib/source :source/fields)))
+      (assoc :lib/type :metadata/column)))
 
 (defn- column-metadata
   [query stage-path]
