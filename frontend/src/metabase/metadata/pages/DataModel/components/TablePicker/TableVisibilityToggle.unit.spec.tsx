@@ -26,6 +26,18 @@ describe("TableVisibilityToggle", () => {
       visibility_type: null,
     });
 
+    it("should have a tooltip that says 'Hide table' when a visible table is hovered", async () => {
+      setup({
+        table: VISIBLE_TABLE,
+      });
+
+      const toggle = screen.getByLabelText("eye icon");
+      expect(toggle).toBeInTheDocument();
+
+      await userEvent.hover(toggle);
+      expect(await screen.findByText("Hide table")).toBeInTheDocument();
+    });
+
     it("should hide the table when a visible table is clicked", async () => {
       setup({
         table: VISIBLE_TABLE,
@@ -89,6 +101,18 @@ describe("TableVisibilityToggle", () => {
   describe("hidden table", () => {
     const HIDDEN_TABLE = createMockTable({
       visibility_type: "hidden",
+    });
+
+    it("should have a tooltip that says 'Unhide table' when a visible table is hovered", async () => {
+      setup({
+        table: HIDDEN_TABLE,
+      });
+
+      const toggle = screen.getByLabelText("eye_crossed_out icon");
+      expect(toggle).toBeInTheDocument();
+
+      await userEvent.hover(toggle);
+      expect(await screen.findByText("Unhide table")).toBeInTheDocument();
     });
 
     it("should unhide the table when a visible table is clicked", async () => {
