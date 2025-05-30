@@ -242,10 +242,7 @@ class MetabaseEmbed {
   private _getAuthRequestHeader(hash?: string) {
     return {
       // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client": "embedding-iframe-sdk",
-
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client-Version": MetabaseEmbed.VERSION,
+      "X-Metabase-Client": "embedding-sdk-react",
 
       // eslint-disable-next-line no-literal-metabase-strings -- header name
       ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
