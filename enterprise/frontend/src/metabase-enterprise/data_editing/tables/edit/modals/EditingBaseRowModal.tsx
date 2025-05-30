@@ -204,22 +204,24 @@ export function EditingBaseRowModal({
 
               return (
                 <Fragment key={column.id}>
-                  <Icon
-                    className={S.modalBodyColumn}
-                    name={
-                      column.semantic_type
-                        ? FIELD_SEMANTIC_TYPES_MAP[column.semantic_type].icon
-                        : "string"
-                    }
-                  />
-                  <Text className={S.modalBodyColumn}>
-                    {column.display_name}
-                    {field?.database_required && (
-                      <Text component="span" c="error">
-                        *
-                      </Text>
-                    )}
-                  </Text>
+                  <Group h="2.5rem" align="center">
+                    <Icon
+                      className={S.modalBodyColumn}
+                      name={
+                        column.semantic_type
+                          ? FIELD_SEMANTIC_TYPES_MAP[column.semantic_type].icon
+                          : "string"
+                      }
+                    />
+                    <Text className={S.modalBodyColumn}>
+                      {column.display_name}
+                      {field?.database_required && (
+                        <Text component="span" c="error">
+                          *
+                        </Text>
+                      )}
+                    </Text>
+                  </Group>
                   <ModalEditingInput
                     isEditingMode={isEditingMode}
                     initialValue={currentRowDataMap[column.name] ?? null}
@@ -299,6 +301,7 @@ function ModalEditingInput({
       onSubmit={handleValueSubmit}
       onChangeValue={handleValueChange}
       inputProps={{ disabled }}
+      withTextarea
     />
   );
 }

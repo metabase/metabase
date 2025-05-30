@@ -6,12 +6,13 @@ import { EditingBodyCellBasicInput } from "./EditingBodyCellBasicInput";
 import { EditingBodyCellCategorySelect } from "./EditingBodyCellCategorySelect";
 import { EditingBodyCellDatetime } from "./EditingBodyCellDatetime";
 import { EditingBodyCellFKSelect } from "./EditingBodyCellFKSelect";
+import { EditingBodyCellTextarea } from "./EditingBodyCellTextarea";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 export const EditingBodyCellConditional = (
   props: EditingBodyPrimitiveProps,
 ) => {
-  const { datasetColumn: column, field, inputProps } = props;
+  const { datasetColumn: column, field, inputProps, withTextarea } = props;
 
   const disabled = !canEditField(field);
   const placeholder = field?.database_default
@@ -49,6 +50,15 @@ export const EditingBodyCellConditional = (
   ) {
     return (
       <EditingBodyCellDatetime
+        {...props}
+        inputProps={{ placeholder, disabled, ...inputProps }}
+      />
+    );
+  }
+
+  if (withTextarea && column.semantic_type === "type/Description") {
+    return (
+      <EditingBodyCellTextarea
         {...props}
         inputProps={{ placeholder, disabled, ...inputProps }}
       />
