@@ -36,8 +36,8 @@
 
 (defn- perform-table-row-action!
   "Perform an action directly, skipping permissions checks etc, and generate outputs based on the table modifications."
-  [action-kw context inputs xform-outputs]
-  (update (actions/perform-nested-action! action-kw context inputs)
+  [action-kw context inputs xform-outputs opts]
+  (update (actions/perform-nested-action! action-kw context inputs opts)
           :outputs
           xform-outputs))
 
@@ -47,26 +47,27 @@
         [op pretty-row] (map vector (map :op diffs) pretty-rows)]
     {:op op, :table-id table-id, :row pretty-row}))
 
-(defn- perform! [action-kw context inputs]
+(defn- perform! [action-kw context inputs opts]
   ;; We could enhance this in future to work more richly with multi-table editable models.
   (let [table-id     (scope->table-id context)
         next-inputs  (map-inputs table-id inputs)]
     (perform-table-row-action! action-kw context next-inputs
                                (if (= :table.row/delete action-kw)
                                  identity
-                                 post-process))))
+                                 post-process)
+                               opts)))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/create]
-  [_action context inputs :- [:sequential ::lib.schema.actions/row]]
-  (perform! :table.row/create context inputs))
+  [_action context inputs :- [:sequential ::lib.schema.actions/row] opts]
+  (perform! :table.row/create context inputs opts))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/update]
-  [_action context inputs :- [:sequential ::lib.schema.actions/row]]
-  (perform! :table.row/update context inputs))
+  [_action context inputs :- [:sequential ::lib.schema.actions/row] opts]
+  (perform! :table.row/update context inputs opts))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/delete]
-  [_action context inputs :- [:sequential ::lib.schema.actions/row]]
-  (perform! :table.row/delete context inputs))
+  [_action context inputs :- [:sequential ::lib.schema.actions/row] opts]
+  (perform! :table.row/delete context inputs opts))
 
 ;; undo
 
