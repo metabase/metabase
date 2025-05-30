@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-editing.foreign-keys
+(ns metabase.actions.foreign-keys
   (:require
    [clojure.set :as set]
    [metabase.util :as u])

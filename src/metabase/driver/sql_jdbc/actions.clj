@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
-   [metabase-enterprise.data-editing.foreign-keys :as fks]
    [metabase.actions.core :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -307,32 +306,43 @@
     (jdbc/query {:connection conn} res {:transaction? false :keywordize? false})
     (correct-columns-name table-id res)))
 
+(declare count-row-descendants)
+
 (defn- row-delete!* [action database query]
-  (let [db-id                (u/the-id database)
-        driver               (:engine database)
-        {:keys [from where]} (mbql-query->raw-hsql driver query)
-        delete-hsql          (-> {:delete-from (first from)
-                                  :where       where}
-                                 (prepare-query driver action))
-        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
-    ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
-    (with-jdbc-transaction [conn db-id]
-      (let [table-id     (-> query :query :source-table)
-            row-before   (->> (prepare-query {:select [:*] :from from :where where} driver action)
-                              (query-rows driver conn table-id)
-                              first)
-            ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-            rows-deleted (with-auto-parse-sql-exception driver database action
-                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
-        (when-not (= rows-deleted 1)
-          (throw (ex-info (if (zero? rows-deleted)
-                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                          {:status-code 400})))
-        {:table-id (-> query :query :source-table)
-         :db-id    (u/the-id database)
-         :before   row-before
-         :after    nil}))))
+  (let [db-id      (u/the-id database)
+        table-id   (-> query :query :source-table)
+        row-before (atom nil)]
+    (try
+      (let [driver               (:engine database)
+            {:keys [from where]} (mbql-query->raw-hsql driver query)
+            delete-hsql          (-> {:delete-from (first from)
+                                      :where       where}
+                                     (prepare-query driver action))
+            sql-args             (sql.qp/format-honeysql driver delete-hsql)]
+        ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
+        (with-jdbc-transaction [conn db-id]
+          (->> (prepare-query {:select [:*] :from from :where where} driver action)
+               (query-rows driver conn table-id)
+               first
+               (reset! row-before))
+          (let [; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+                rows-deleted (with-auto-parse-sql-exception driver database action
+                               (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+            (when-not (= rows-deleted 1)
+              (throw (ex-info (if (zero? rows-deleted)
+                                (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                                (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
+                              {:status-code 400})))
+            {:table-id (-> query :query :source-table)
+             :db-id    (u/the-id database)
+             :before   @row-before
+             :after    nil})))
+      (catch Throwable e
+        (if (and (= actions/violate-foreign-key-constraint
+                    (:type (ex-data e)))
+                 (some? @row-before))
+          (throw (ex-info (ex-message e) (assoc (ex-data e) :children (count-row-descendants db-id table-id @row-before))))
+          (throw e))))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
   [action context inputs]
@@ -495,7 +505,7 @@
             [errors (conj results result)])
           (catch Throwable e
             (log/error e)
-            [(conj errors {:index row-index, :error (ex-message e)})
+            [(conj errors (merge {:index row-index, :error (ex-message e)} (ex-data e)))
              results]))))
      rows)))
 
@@ -508,7 +518,7 @@
         database  (first databases)
         driver    (:engine database)
         x-inputs  (for [[table-id rows] (u/group-by :table-id :row inputs)]
-                    {:table-id table-id, :rows rows})]
+                    {:table-id table-id :rows rows})]
     (when validate-fn
       (doseq [{:keys [table-id rows]} x-inputs]
         (validate-fn database table-id rows)))
@@ -705,7 +715,16 @@
                           (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
         table-pks   (keys (table-id->pk-field-name->id database-id table-id))
         row-pk      (select-keys row table-pks)]
-    (fks/delete-recursively table-id [row-pk] metadata children-fn delete-fn :max-queries 50)))
+    (actions/delete-recursively table-id [row-pk] metadata children-fn delete-fn :max-queries 50)))
+
+(defn- count-row-descendants
+  [database-id table-id row]
+  (let [metadata    (build-fk-metadata database-id)
+        children-fn (fn [relationship parent-rows]
+                      (lookup-children-in-db relationship parent-rows database-id))
+        table-pks   (keys (table-id->pk-field-name->id database-id table-id))
+        row-pk      (select-keys row table-pks)]
+    (actions/count-descendants table-id [row-pk] metadata children-fn :max-queries 50)))
 
 ;;;; `:table.row/delete`
 
@@ -800,8 +819,8 @@
                                         (concat acc-results batch-results)])
                                      [acc-errors acc-results]))
                                  [[] []]
-                                 [[inputs-with-delete-child row-delete!*-with-children]
-                                  [inputs-wihtout-delete-child row-delete!*]])]
+                                 [[inputs-wihtout-delete-child row-delete!*]
+                                  [inputs-with-delete-child row-delete!*-with-children]])]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) deleting rows.")
                       {:status-code 400
@@ -814,8 +833,12 @@
                  :row      (select-keys before (table-id->pk-keys table-id))})}))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
-  [_action context inputs :- [:sequential ::table-row-input]]
-  (perform-table-row-delete! _action context inputs))
+  [action context inputs :- [:sequential ::table-row-input]]
+  (def context context)
+  (def inputs inputs)
+  (def action action)
+  (ngoc/with-tc
+    (perform-table-row-delete! action context inputs)))
 
 ;;;; `bulk/update`
 
