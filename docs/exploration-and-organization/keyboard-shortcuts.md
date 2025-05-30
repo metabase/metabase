@@ -23,7 +23,7 @@ Shortcuts change depending on which page you're viewing in your Metabase.
 | Browse models            | g m         |
 | Browse metrics           | g k         |
 | Report an issue          | Ctrl/Cmd+f1 |
-| Toggle Shortcuts Modal   | ?           |
+| Toggle shortcuts menu    | ?           |
 | Open trash               | g t         |
 | Open personal collection | g p         |
 | Toggle sidebar           | [           |
@@ -33,19 +33,19 @@ Shortcuts change depending on which page you're viewing in your Metabase.
 
 ## Dashboard
 
-| Action                       | Shortcut           |
-| ---------------------------- | ------------------ |
-| Bookmark dashboard           | o                  |
-| Add filter                   | f                  |
-| Open Add Question Side Sheet | a                  |
-| Add query builder question   | q                  |
-| Add native question          | n                  |
-| Cancel edit dashboard        | e                  |
-| Send dashboard to trash      | Ctrl/Cmd+backspace |
-| Toggle dashboard info        | ]                  |
-| Edit Dashboard               | e                  |
-| Save dashboard               | s                  |
-| Change dashboard tab         | 1, 2, 3, ...       |
+| Action                     | Shortcut           |
+| -------------------------- | ------------------ |
+| Bookmark dashboard         | o                  |
+| Add filter                 | f                  |
+| Toggle question sidebar    | a                  |
+| Add query builder question | q                  |
+| Add native question        | n                  |
+| Cancel edit dashboard      | e                  |
+| Send dashboard to trash    | Ctrl/Cmd+backspace |
+| Toggle dashboard info      | ]                  |
+| Edit Dashboard             | e                  |
+| Save dashboard             | s                  |
+| Change dashboard tab       | 1, 2, 3, ...       |
 
 ## Collection
 
