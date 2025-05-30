@@ -18,6 +18,12 @@
   #?(:cljs (js->clj (js/JSON.parse x))
      :clj (json/decode x)))
 
+#?(:cljs
+   (defn- json-parse
+     "Parses a JSON string in Clojure or ClojureScript into  "
+     [x]
+     (js->clj (js/JSON.parse x))))
+
 (defn- json-roundtrip
   "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
   Does nothing in CLJS."
@@ -100,15 +106,16 @@
       (transient {})
       pivot-data-without-primary))))
 
-(defn- collapse-level
-  "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
-  of the root, etc."
-  [tree level]
-  (m/map-vals
-   (if (= level 1)
-     #(assoc % :isCollapsed true)
-     #(update % :children (fn [subtree] (collapse-level subtree (dec level)))))
-   tree))
+#?(:cljs
+   (defn- collapse-level
+     "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
+     of the root, etc."
+     [tree level]
+     (m/map-vals
+      (if (= level 1)
+        #(assoc % :isCollapsed true)
+        #(update % :children (fn [subtree] (collapse-level subtree (dec level)))))
+      tree)))
 
 #?(:cljs
    (defn- add-is-collapsed
