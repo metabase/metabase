@@ -2,13 +2,19 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ActionSettingsWrapper } from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
+import {
+  ModelActionPicker,
+  TableActionPicker,
+} from "metabase/actions/containers/ActionPicker/ActionPicker";
 import { sortActionParams } from "metabase/actions/utils";
+import { skipToken, useGetCardQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import EditableText from "metabase/core/components/EditableText/EditableText";
 import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   RowActionFieldSettings,
   TableAction,
@@ -17,15 +23,17 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-import { TableActionPicker } from "../TableActionPicker/TableActionPicker";
+import {
+  type TableActionTargetEntity,
+  TableOrModelDataPicker,
+} from "../TableActionPicker/TableOrModelDataPicker";
 
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
 import S from "./RowActionSettingsModalContent.module.css";
 import { cleanEmptyVisibility, isValidMapping } from "./utils";
 
 interface Props {
-  action: WritebackAction | TableAction | null | undefined;
-  rowActionSettings: TableActionDisplaySettings | undefined;
+  action: TableActionDisplaySettings | null | undefined;
   tableColumns: BasicTableViewColumn[];
   onClose: () => void;
   onSubmit: (actionParams: {
@@ -38,20 +46,46 @@ interface Props {
 }
 
 export function RowActionSettingsModalContent({
-  action: editedAction,
-  rowActionSettings,
+  action: editedActionSettings,
   tableColumns,
-  actions,
   onClose,
   onSubmit,
 }: Props) {
   const [selectedAction, setSelectedAction] = useState<
-    WritebackAction | TableAction | null
-  >(editedAction || null);
-  const isEditMode = !!editedAction;
+    WritebackAction | TableAction | undefined
+  >(undefined);
+
+  const [formStep, setFormStep] = useState<"entity" | "action">(
+    editedActionSettings ? "action" : "entity",
+  );
+
+  const [actionTarget, setActionTarget] =
+    useState<TableActionTargetEntity | null>(null);
+
+  const { data: allActions } = useGetActionsQuery(
+    actionTarget ? skipToken : undefined,
+  );
+  const { data: model } = useGetCardQuery(
+    actionTarget?.model !== "dataset" ? skipToken : { id: actionTarget.id },
+  );
+
+  const actions = useMemo(
+    () =>
+      allActions?.filter((action) => {
+        if (actionTarget?.model === "dataset") {
+          return (action as WritebackAction).model_id === actionTarget.id;
+        }
+        if (actionTarget?.model === "table") {
+          return (action as TableAction).table_id === actionTarget.id;
+        }
+      }) || [],
+    [actionTarget, allActions],
+  );
+
+  const isEditMode = !!editedActionSettings;
 
   const [actionName, setActionName] = useState<string | undefined>(
-    rowActionSettings?.name || selectedAction?.name,
+    selectedAction?.name,
   );
 
   const hasParameters = !!selectedAction?.parameters?.length;
@@ -80,7 +114,7 @@ export function RowActionSettingsModalContent({
     return {
       parameters: writeableParameters.map(({ id }) => {
         if (isEditMode) {
-          const mapping = rowActionSettings?.parameterMappings?.find(
+          const mapping = editedActionSettings.parameterMappings?.find(
             ({ parameterId }) => id === parameterId,
           );
           if (mapping) {
@@ -94,7 +128,11 @@ export function RowActionSettingsModalContent({
         } as RowActionFieldSettings;
       }),
     };
-  }, [isEditMode, rowActionSettings?.parameterMappings, writeableParameters]);
+  }, [
+    isEditMode,
+    editedActionSettings?.parameterMappings,
+    writeableParameters,
+  ]);
 
   const getIsFormInvalid = (values: {
     parameters: RowActionFieldSettings[];
@@ -107,15 +145,21 @@ export function RowActionSettingsModalContent({
     );
   };
 
-  const handlePickAction = (action: WritebackAction) => {
-    setSelectedAction(action);
+  const handleEntitySelect = (entity: TableActionTargetEntity) => {
+    setActionTarget(entity);
+    setFormStep("action");
+  };
+
+  const handleActionFormBack = () => {
+    setFormStep("entity");
+    setSelectedAction(undefined);
   };
 
   const handleSubmit = useCallback(
     (values: { parameters: RowActionFieldSettings[] }) => {
       if (selectedAction) {
         onSubmit({
-          id: rowActionSettings?.id,
+          id: editedActionSettings?.id,
           action: selectedAction,
           name: actionName,
           parameterMappings: cleanEmptyVisibility(values.parameters || []),
@@ -124,8 +168,18 @@ export function RowActionSettingsModalContent({
 
       onClose();
     },
-    [selectedAction, onClose, onSubmit, rowActionSettings?.id, actionName],
+    [selectedAction, onClose, onSubmit, editedActionSettings?.id, actionName],
   );
+
+  if (formStep === "entity") {
+    return (
+      <TableOrModelDataPicker
+        value={actionTarget}
+        onChange={handleEntitySelect}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <ActionSettingsWrapper
@@ -137,18 +191,26 @@ export function RowActionSettingsModalContent({
     >
       {!isEditMode && (
         <Box className={S.ParametersModalModalLeftSection}>
+          <Button onClick={handleActionFormBack}>{t`Back`}</Button>
           <Title order={3} className={CS.pb2}>{t`Action Library`}</Title>
-
-          <TableActionPicker
-            value={selectedAction}
-            onChange={handlePickAction}
-            onClose={onClose}
-          />
-          {/*<ConnectedActionPicker*/}
-          {/*  currentAction={selectedAction}*/}
-          {/*  onClick={handlePickAction}*/}
-          {/*  actions={actions}*/}
-          {/*/>*/}
+          {actionTarget.model === "table" && (
+            <TableActionPicker
+              key={actionTarget.id}
+              title={actionTarget.name}
+              actions={actions as TableAction[]}
+              onClick={setSelectedAction}
+              currentAction={selectedAction as TableAction | undefined}
+            />
+          )}
+          {actionTarget.model === "dataset" && model && (
+            <ModelActionPicker
+              key={actionTarget.id}
+              model={model}
+              actions={actions as WritebackAction[]}
+              onClick={setSelectedAction}
+              currentAction={selectedAction as WritebackAction | undefined}
+            />
+          )}
         </Box>
       )}
       <Box className={S.ParametersModalRightSection}>
