@@ -11,7 +11,8 @@
    [clojure.java.io :as io]
    [metabase.util.i18n :refer [trs]])
   (:import
-   (org.graalvm.polyglot Context HostAccess Source Value)))
+   (org.graalvm.polyglot Context HostAccess Source Value)
+   (org.graalvm.polyglot.proxy ProxyArray ProxyObject)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,6 +53,71 @@
                       {:source source})))
     (.eval context (.build (Source/newBuilder "js" resource)))))
 
+(defn- deserialize-number
+  [^Value result]
+  (cond
+    (.fitsInShort result)
+    (.asShort result)
+
+    (.fitsInLong result)
+    (.asLong result)
+
+    (.fitsInInt result)
+    (.asInt result)
+
+    (.fitsInDouble result)
+    (.asDouble result)
+
+    (.fitsInFloat result)
+    (.asFloat result)))
+
+(defn- deserialize
+  [^Value result]
+  (cond
+    (.isNumber result)
+    (deserialize-number result)
+
+    (.isString result)
+    (.asString result)
+
+    (.hasArrayElements result)
+    (let [n (.getArraySize result)]
+      (into [] (map (fn [idx]
+                      (deserialize (.getArrayElement result idx)))
+                    (range 0 n))))
+
+    (.isNull result)
+    nil
+
+    (.isBoolean result)
+    (.asBoolean result)
+
+    :else
+    result))
+
+(defn- serialize-arg [arg]
+  (cond
+    (keyword? arg)
+    (name arg)
+
+    (symbol? arg)
+    (name arg)
+
+    (map? arg)
+    (ProxyObject/fromMap (into {} (map (fn [[k v]]
+                                         [(serialize-arg k) (serialize-arg v)])
+                                       arg)))
+
+    (coll? arg)
+    (ProxyArray/fromArray (into-array Object (map serialize-arg arg)))
+
+    :else
+    arg))
+
+(defn- execute*
+  [fn-ref args]
+  (deserialize (.execute fn-ref (into-array Object (map serialize-arg args)))))
+
 (defn execute-fn-name
   "Executes `js-fn-name` in js context with args"
   ^Value [^Context context js-fn-name & args]
@@ -60,14 +126,15 @@
   ;; There is a couple of idea we can try:
   ;; - put a thread pool around context initialization
   ;; - init a new context for each thread
+  ;; maybe we can remove the lock now as we have pooled static-viz-context
+  ;; https://github.com/metabase/metabase/pull/56648
   (locking context
-    (let [fn-ref (.eval context "js" js-fn-name)
-          args   (into-array Object args)]
+    (let [fn-ref (.eval context "js" js-fn-name)]
       (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
-      (.execute fn-ref args))))
+      (execute* fn-ref args))))
 
 (defn execute-fn
   "fn-ref should be an executable org.graalvm.polyglot.Value return from a js engine. Invoke this function with args."
   ^Value [^Value fn-ref & args]
   (assert (.canExecute fn-ref) "cannot execute function reference")
-  (.execute fn-ref (object-array args)))
+  (execute* fn-ref args))
