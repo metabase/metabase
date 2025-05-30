@@ -193,28 +193,28 @@ export const TableList = ({ onSelect }: TableListProps) => {
                 className={S.filteredResult}
                 onSelect={onSelect}
                 renderTitle={(name) => (
-                  <Group wrap="nowrap" className={S.tableLocationGroup}>
-                    <ItemTitle lh="normal">
-                      <Ellipsified>
-                        <Text fw="bold" c="inherit">
-                          {name}
-                        </Text>
+                  <Group
+                    wrap="nowrap"
+                    className={S.tableLocationGroup}
+                    w="100%"
+                  >
+                    <ItemTitle lh="normal" maw="70%">
+                      <Ellipsified style={{ fontWeight: "bold" }}>
+                        {name}
                       </Ellipsified>
                     </ItemTitle>
                     <Flex
                       direction="row"
                       ml="auto"
                       style={{
-                        flexShrink: 0,
+                        overflow: "hidden",
                       }}
                       align="center"
                       gap="sm"
                     >
                       <FixedSizeIcon c="inherit" name="database" />
                       <Ellipsified>
-                        <Text c="inherit">
-                          {t`in ${item.db?.name}${item.schema ? ` (${humanize(item.schema)})` : ""}`}
-                        </Text>
+                        {t`in ${item.db?.name}${item.schema ? ` (${humanize(item.schema)})` : ""}`}
                       </Ellipsified>
                     </Flex>
                   </Group>
