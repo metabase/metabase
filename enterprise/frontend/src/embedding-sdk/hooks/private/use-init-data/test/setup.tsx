@@ -22,7 +22,7 @@ import type { LoginStatusError, MetabaseAuthConfig } from "embedding-sdk/types";
 
 import { useInitData } from "../use-init-data";
 
-jest.mock("embedding/auth-common/saml-token-storage", () => {
+jest.mock("embedding-sdk/store/auth/saml-token-storage", () => {
   let token: any = null;
   return {
     samlTokenStorage: {
