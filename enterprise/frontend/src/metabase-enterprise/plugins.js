@@ -36,5 +36,4 @@ import "./upload_management";
 import "./resource_downloads";
 import "./user_provisioning";
 import "./clean_up";
-import "./troubleshooting";
 import "./metabot";
