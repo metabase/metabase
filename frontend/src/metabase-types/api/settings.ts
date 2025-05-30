@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
 export interface FormattingSettings {
@@ -418,8 +419,21 @@ interface PublicSettings {
   "is-hosted?": boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-host": string | null;
   "ldap-port": number;
-  "ldap-group-membership-filter": string;
+  "ldap-security": "none" | "ssl" | "starttls" | null;
+  "ldap-bind-dn": string | null;
+  "ldap-password": string | null;
+  "ldap-user-base": string | null;
+  "ldap-user-filter": string | null;
+  "ldap-attribute-email": string | null;
+  "ldap-attribute-firstname": string | null;
+  "ldap-attribute-lastname": string | null;
+  "ldap-group-sync": boolean;
+  "ldap-group-base": string | null;
+  "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
+  "ldap-group-membership-filter"?: string;
+  "ldap-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;

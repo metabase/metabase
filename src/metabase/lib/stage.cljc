@@ -238,7 +238,8 @@
     (into []
           (if metric-based?
             identity
-            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)))
+            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id
+                          :fk-field-name :fk-join-alias)))
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number options)

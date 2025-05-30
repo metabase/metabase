@@ -37,7 +37,7 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
-    instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"],
+    authConfig: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "authMethod">,
     { dispatch, getState },
   ) => {
     // necessary to ensure that we don't use a popup every time the user
@@ -52,7 +52,7 @@ export const getOrRefreshSession = createAsyncThunk(
       return token;
     }
 
-    return dispatch(refreshTokenAsync(instanceUrl)).unwrap();
+    return dispatch(refreshTokenAsync(authConfig)).unwrap();
   },
 );
 
