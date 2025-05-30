@@ -65,7 +65,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-send-to-trash": {
     get name() {
-      return t`Send tashboard to trash`;
+      return t`Send dashboard to trash`;
     },
     shortcut: ["$mod+backspace"],
     shortcutGroup: "dashboard" as const,
