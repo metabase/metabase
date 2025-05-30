@@ -82,7 +82,7 @@
           (map-indexed vector rows)))
 
 (defn import-translations!
-  "Import translations from CSV and insert or update rows in the content_translation table."
+  "Insert or update rows in the content_translation table."
   [rows]
   (let [{:keys [translations errors]} (process-rows rows)]
     (when (seq errors)
