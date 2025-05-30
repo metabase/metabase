@@ -56,11 +56,7 @@ export const EditingBodyCellConditional = (
     );
   }
 
-  if (
-    withTextarea &&
-    (column.effective_type === "type/Description" ||
-      column.effective_type === "type/Text")
-  ) {
+  if (withTextarea && column.semantic_type === "type/Description") {
     return (
       <EditingBodyCellTextarea
         {...props}
@@ -68,6 +64,7 @@ export const EditingBodyCellConditional = (
       />
     );
   }
+
   return (
     <EditingBodyCellBasicInput
       {...props}

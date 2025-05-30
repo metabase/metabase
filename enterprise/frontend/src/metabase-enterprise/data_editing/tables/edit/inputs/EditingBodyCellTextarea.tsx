@@ -3,7 +3,7 @@ import { Textarea } from "metabase/ui";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 const MAX_ROWS = 8;
-const MIN_ROWS = 2;
+const MIN_ROWS = 1;
 
 export const EditingBodyCellTextarea = ({
   autoFocus,
@@ -35,6 +35,8 @@ export const EditingBodyCellTextarea = ({
         input: classNames?.textInputElement,
       }}
       {...inputProps}
+      // Match the line height for single line text (should look like a regular input)
+      styles={{ input: { lineHeight: "165%" } }}
       maxRows={MAX_ROWS}
       minRows={MIN_ROWS}
       autosize
