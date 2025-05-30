@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -646,26 +647,28 @@
                                              :keys [fk-target-field-id]
                                              :as   source}]
                                          (-> (id->target-fields fk-target-field-id)
-                                             (assoc ::source-field-id   source-field-id
-                                                    ::source-join-alias (:metabase.lib.join/join-alias source)
+                                             (assoc ::fk-field-id   source-field-id
+                                                    ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                    ::fk-join-alias (:metabase.lib.join/join-alias source)
                                                     ::fk-ident          fk-ident))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
                                    query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-join-alias]}]
+          (mapcat (fn [{:keys [table-id], ::keys [fk-ident fk-field-id fk-field-name fk-join-alias]}]
                     (let [table-metadata (id->table table-id)
                           options        {:unique-name-fn               unique-name-fn
                                           :include-implicitly-joinable? false}]
                       (for [field (visible-columns-method query stage-number table-metadata options)
                             :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
-                                   field (assoc field
-                                                :ident                    ident
-                                                :fk-field-id              source-field-id
-                                                :fk-join-alias            source-join-alias
-                                                :lib/source               :source/implicitly-joinable
-                                                :lib/source-column-alias  (:name field))]]
+                                   field (m/assoc-some field
+                                                       :ident                    ident
+                                                       :fk-field-id              fk-field-id
+                                                       :fk-field-name            fk-field-name
+                                                       :fk-join-alias            fk-join-alias
+                                                       :lib/source               :source/implicitly-joinable
+                                                       :lib/source-column-alias  (:name field))]]
                         (assoc field :lib/desired-column-alias (unique-name-fn
                                                                 (lib.join.util/desired-alias query field)))))))
           target-fields)))

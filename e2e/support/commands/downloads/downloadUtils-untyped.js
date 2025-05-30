@@ -75,18 +75,20 @@ const verifyDownload = (fileName, options) => {
       result = cy
         .task("findFiles", { path: downloadsFolder, fileName })
         .then((files) => {
-          if (files !== null) {
-            if (files.length > 1) {
-              cy.log(
-                `**WARNING!** More than one file found for the **'${fileName}'** pattern: [${files}] - the first one **[${files[0]}]** will be used`,
-              );
-            }
+          if (!files || files.length === 0) {
+            return false;
+          }
 
-            return cy.task(
-              "isFileExist",
-              path.join(downloadsFolder, files[0] ?? ""),
+          if (files.length > 1) {
+            cy.log(
+              `**WARNING!** More than one file found for the **'${fileName}'** pattern: [${files}] - the first one **[${files[0]}]** will be used`,
             );
           }
+
+          return cy.task(
+            "isFileExist",
+            path.join(downloadsFolder, files[0] ?? ""),
+          );
         });
     } else {
       result = cy.task("isFileExist", downloadFileName);

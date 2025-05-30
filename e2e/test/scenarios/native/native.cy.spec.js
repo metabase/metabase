@@ -453,7 +453,9 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("viz-type-button").click();
 
     cy.log("open data reference sidebar");
-    cy.findByTestId("native-query-editor-sidebar").icon("reference").click();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("reference")
+      .click();
 
     cy.log("set small viewport");
     setViewport(800, 800);
