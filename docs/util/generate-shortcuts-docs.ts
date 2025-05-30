@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import prettier from 'prettier';
 
-// Import all shortcut modules
 import { shortcuts } from '../../frontend/src/metabase/palette/shortcuts';
 
 interface Shortcut {
@@ -12,54 +11,87 @@ interface Shortcut {
   shortcutGroup: string;
 }
 
+interface DocsConfig {
+  groups: string[];
+  introPath: string;
+  outputPath: string;
+}
+
+function formatShortcutKey(key: string): string {
+  return key.replace('$mod', 'Ctrl/Cmd');
+}
+
+function formatShortcutDisplay(shortcut: Shortcut): string {
+  const keys = shortcut.shortcutDisplay || shortcut.shortcut;
+  return keys.map(formatShortcutKey).join(', ');
+}
+
 function generateMarkdownTable(shortcuts: Record<string, Shortcut>, group: string): string {
   const groupShortcuts = Object.entries(shortcuts)
     .filter(([_, shortcut]) => shortcut.shortcutGroup === group)
     .map(([_, shortcut]) => ({
       name: shortcut.name,
-      shortcut: (shortcut.shortcutDisplay || shortcut.shortcut)
-        .map(key => key.replace('$mod', 'Ctrl/Cmd'))
-        .join(', ')
+      shortcut: formatShortcutDisplay(shortcut)
     }));
 
   if (groupShortcuts.length === 0) return '';
 
-  let markdown = `## ${group.charAt(0).toUpperCase() + group.slice(1)}\n\n`;
-  markdown += '| Action | Shortcut |\n';
-  markdown += '| ------ | -------- |\n';
+  const groupTitle = group.charAt(0).toUpperCase() + group.slice(1);
+  
+  const tableRows = groupShortcuts
+    .map(({ name, shortcut }) => `| ${name} | ${shortcut} |`)
+    .join('\n');
 
-  groupShortcuts.forEach(({ name, shortcut }) => {
-    markdown += `| ${name} | ${shortcut} |\n`;
-  });
-
-  return markdown + '\n';
+  return `## ${groupTitle}\n\n| Action | Shortcut |\n| ------ | -------- |\n${tableRows}\n\n`;
 }
 
-async function generateShortcutsDocs() {
-  const groups = ['global', 'dashboard', 'collection', 'question', 'admin'];
-  
-  // Get the frontmatter and intro
-  const introPath = path.join(__dirname, 'resources/introduction.md');
-  const introContent = fs.readFileSync(introPath, 'utf8');
-  
-  let markdown = introContent + '\n\n';
+function readIntroduction(introPath: string): string {
+  try {
+    return fs.readFileSync(introPath, 'utf8');
+  } catch (error) {
+    throw new Error(`Failed to read introduction file: ${error.message}`);
+  }
+}
 
-  groups.forEach(group => {
-    markdown += generateMarkdownTable(shortcuts, group);
-  });
+async function writeDocumentation(content: string, outputPath: string): Promise<void> {
+  try {
+    const formattedContent = await prettier.format(content, {
+      parser: 'markdown',
+      proseWrap: 'always',
+    });
+    
+    fs.writeFileSync(outputPath, formattedContent);
+  } catch (error) {
+    throw new Error(`Failed to write documentation: ${error.message}`);
+  }
+}
 
-  // Write to docs file
-  const docsPath = path.join(__dirname, '../exploration-and-organization/keyboard-shortcuts.md');
-  
-  // Format the markdown with Prettier
-  const formattedMarkdown = await prettier.format(markdown, {
-    parser: 'markdown',
-    proseWrap: 'always',
-  });
-  
-  fs.writeFileSync(docsPath, formattedMarkdown);
-  console.log('Shortcuts documentation generated.');
-  console.log(`File at ${docsPath}`);
+async function generateShortcutsDocs(): Promise<void> {
+  const config: DocsConfig = {
+    groups: ['global', 'dashboard', 'collection', 'question', 'admin'],
+    introPath: path.join(__dirname, 'resources/introduction.md'),
+    outputPath: path.join(__dirname, '../exploration-and-organization/keyboard-shortcuts.md')
+  };
+
+  try {
+    // Get the frontmatter and intro
+    const introContent = readIntroduction(config.introPath);
+    
+    // Generate markdown content
+    const markdownContent = config.groups.reduce(
+      (content, group) => content + generateMarkdownTable(shortcuts, group),
+      introContent + '\n\n'
+    );
+
+    // Write to docs file
+    await writeDocumentation(markdownContent, config.outputPath);
+    
+    console.log('Shortcuts documentation generated successfully.');
+    console.log(`File written to: ${config.outputPath}`);
+  } catch (error) {
+    console.error('Failed to generate shortcuts documentation:', error.message);
+    process.exit(1);
+  }
 }
 
 generateShortcutsDocs(); 
