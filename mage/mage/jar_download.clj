@@ -161,26 +161,17 @@
         unzip-path (str/replace (str jar-path) #"\.jar$" "")
         jar-unzipped-path (str unzip-path "/target/uberjar/metabase.jar")]
     (try
-      (doseq [[k v] {:dir dir
-                     :jar-path jar-path
-                     :dl-url dl-url
-                     :zip-path zip-path
-                     :unzip-path unzip-path
-                     :jar-unzipped-path jar-unzipped-path}]
-        (println (str (c/yellow k) " -> " (c/green v))))
-      (println "downloading artifact from " (c/green dl-url) "to" (c/green zip-path))
+      (println "downloading artifact from " (c/green dl-url) "to" (c/green zip-path) "...")
       (p/shell {:dir dir} (str "curl"
                                " -H \"Accept:application/vnd.github+json\""
                                " -H \"Authorization:Bearer " (get-gh-token-from-env) "\""
                                " -Lo " zip-path " " dl-url))
-      (println "Extracting zip into" (c/green unzip-path))
-      (fs/unzip zip-path unzip-path {:replace-existing true})
-      (println "Moving jar at " (c/green jar-unzipped-path) "to" (c/green jar-path))
-      ;; todo: move
-      (fs/copy (io/file jar-unzipped-path) (io/file jar-path) {:replace-existing true})
+      (u/with-throbber (str "Extracting zip into" (c/green unzip-path))
+        #(fs/unzip zip-path unzip-path {:replace-existing true}))
+      (println "Moving jar from " (c/green jar-unzipped-path) "to" (c/green jar-path))
+      (fs/move (io/file jar-unzipped-path) (io/file jar-path) {:replace-existing true})
       (println "✅ Downloaded and extracted branch jar to" (c/green jar-path))
       (finally
-        (fs/delete jar-unzipped-path)
         (fs/delete zip-path)))))
 
 (defn- download-jar! [version dir delete?]
@@ -242,7 +233,7 @@
                                                                          (str u/project-root-directory "/jars"))))
                                        (str u/project-root-directory "/jars"))
                                    u/without-slash)
-        ;; latest-version could be a version string like 1.50.35 or a map with :branch key:
+        ;; latest-version could be a version string like 1.50.35 or a map with :branch key
         {:keys [latest-version jar-path]} (download-jar! version dir delete?)]
     (when run?
       ;; Check that the embedding token is set:
