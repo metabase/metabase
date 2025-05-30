@@ -170,7 +170,7 @@ export const getCartesianChartOption = (
       ),
       chartModel,
       chartMeasurements,
-      seriesOption,
+      dataSeriesOptions,
     ),
   };
 };
