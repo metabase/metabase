@@ -554,7 +554,8 @@
       (metadatas-for-card [_this metadata-type card-id]
         (metadatas-for-card metadata metadata-type card-id))
       (setting [_this setting-key]
-        (setting unparsed-metadata setting-key))
+        (or (get-in (database metadata database-id) [:settings setting-key])
+            (setting unparsed-metadata setting-key)))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.

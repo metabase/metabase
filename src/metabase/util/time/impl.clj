@@ -3,6 +3,8 @@
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.time.impl-common :as common])
   (:import
    (java.time.format DateTimeFormatter)
@@ -28,11 +30,11 @@
 (defn valid?
   "Given a datetime, check that it's valid."
   [value]
-  (or (datetime?      value)
-      (t/local-date?  value)
-      (t/local-date-time?  value)
-      (t/offset-time? value)
-      (t/local-time?  value)))
+  (or (datetime?          value)
+      (t/local-date?      value)
+      (t/local-date-time? value)
+      (t/offset-time?     value)
+      (t/local-time?      value)))
 
 (defn normalize
   "Does nothing. Just a placeholder in CLJS; the JVM implementation does some real work."
@@ -55,16 +57,6 @@
   (and (same-year? d1 d2)
        (= (t/month d1) (t/month d2))))
 
-;;; ---------------------------------------------- information -------------------------------------------------------
-(defn first-day-of-week
-  "The first day of the week varies by locale, but Metabase has a setting that overrides it.
-  In JVM, we can just read the setting directly."
-  []
-  ((requiring-resolve 'metabase.settings.core/get) :start-of-week))
-
-(def default-options
-  "The default map of options."
-  {:locale (Locale/getDefault)})
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- minus-ms [value]
@@ -103,11 +95,12 @@
                   (t/truncate-to :days))]
     [start (minus-ms (t/plus start (t/days n)))]))
 
-(defmethod common/to-range :week [value {:keys [n] :or {n 1}}]
-  (let [first-day (first-day-of-week)
-        start (-> value
+(mu/defmethod common/to-range :week
+  [value
+   {:keys [n start-of-week] :or {n 1}} :- ::common/format-options]
+  (let [start (-> value
                   (t/truncate-to :days)
-                  (t/adjust :previous-or-same-day-of-week first-day))]
+                  (t/adjust :previous-or-same-day-of-week (or start-of-week :sunday)))]
     [start (minus-ms (t/plus start (t/weeks n)))]))
 
 (defmethod common/to-range :month [value {:keys [n] :or {n 1}}]
@@ -181,11 +174,13 @@
       (t/truncate-to :days)
       (t/plus (t/days (dec value)))))
 
-(defmethod common/number->timestamp :day-of-week [value _]
+(mu/defmethod common/number->timestamp :day-of-week
+  [value
+   {:keys [start-of-week], :as _options} :- ::common/format-options]
   ;; Metabase uses 1 to mean the start of the week, based on the Metabase setting for the first day of the week.
   ;; Moment uses 0 as the first day of the week in its configured locale.
   ;; For Java, get the first day of the week from the setting, and offset by `(dec value)` for the current day.
-  (number->timestamp value (first-day-of-week)))
+  (number->timestamp value start-of-week))
 
 (defmethod common/number->timestamp :day-of-week-iso [value _]
   (number->timestamp value :monday))
@@ -198,11 +193,12 @@
   ;; We force the initial date to be in a leap year (2016).
   (t/plus magic-base-date (t/days (dec value))))
 
-(defmethod common/number->timestamp :week-of-year [value _]
+(mu/defmethod common/number->timestamp :week-of-year
+  [value {:keys [start-of-week], :as _options} :- ::common/format-options]
   (-> (now)
       (t/truncate-to :days)
       (t/adjust :first-day-of-year)
-      (t/adjust :previous-or-same-day-of-week (first-day-of-week))
+      (t/adjust :previous-or-same-day-of-week start-of-week)
       (t/plus (t/weeks (dec value)))))
 
 (defmethod common/number->timestamp :month-of-year [value _]
@@ -344,58 +340,61 @@
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [t unit ^Locale locale]
+  [t unit locale]
   (when-let [^DateTimeFormatter formatter (some-> unit
                                                   unit-formats
                                                   t/formatter
                                                   (cond-> #_formatter locale (.withLocale (i18n/locale locale))))]
     (.format formatter t)))
 
-(defn format-unit
+(mu/defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time"
-  ([input unit] (format-unit input unit nil))
-  ([input unit locale]
-   (cond
-     (string? input)
-     (let [time? (common/matches-time? input)
-           date? (common/matches-date? input)
-           date-time? (common/matches-date-time? input)
-           t (cond
-               time? (t/local-time input)
-               date? (t/local-date input)
-               date-time? (coerce-local-date-time input))]
-       (if t
-         (or
-          (format-extraction-unit t unit locale)
+  [input
+   unit                          :- [:maybe :keyword]
+   {:keys [locale], :as options} :- [:map
+                                     [:start-of-week [:maybe :keyword]]
+                                     [:locale {:optional true} :any]]]
+  (cond
+    (string? input)
+    (let [time? (common/matches-time? input)
+          date? (common/matches-date? input)
+          date-time? (common/matches-date-time? input)
+          t (cond
+              time? (t/local-time input)
+              date? (t/local-date input)
+              date-time? (coerce-local-date-time input))]
+      (if t
+        (or
+         (format-extraction-unit t unit locale)
+         (cond
+           time? (t/format "h:mm a" t)
+           date? (t/format "MMM d, yyyy" t)
+           :else (t/format "MMM d, yyyy, h:mm a" t)))
+        input))
+
+    (number? input)
+    (if (= unit :hour-of-day)
+      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+      (or
+       (format-extraction-unit (common/number->timestamp input (assoc options :unit unit)) unit locale)
+       (str input)))
+
+    (instance? java.time.temporal.TemporalAccessor input)
+    (let [input ^java.time.temporal.TemporalAccessor input]
+      (or (format-extraction-unit input unit locale)
           (cond
-            time? (t/format "h:mm a" t)
-            date? (t/format "MMM d, yyyy" t)
-            :else (t/format "MMM d, yyyy, h:mm a" t)))
-         input))
+            ;; no hour, must be date
+            (not (.isSupported input (t/field :hour-of-day)))
+            (t/format "MMM d, yyyy" input)
 
-     (number? input)
-     (if (= unit :hour-of-day)
-       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-       (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
-        (str input)))
+            ;; no day, must be time
+            (not (.isSupported input (t/field :day-of-month)))
+            (t/format "h:mm a" input)
 
-     (instance? java.time.temporal.TemporalAccessor input)
-     (let [input ^java.time.temporal.TemporalAccessor input]
-       (or (format-extraction-unit input unit locale)
-           (cond
-             ;; no hour, must be date
-             (not (.isSupported input (t/field :hour-of-day)))
-             (t/format "MMM d, yyyy" input)
-
-             ;; no day, must be time
-             (not (.isSupported input (t/field :day-of-month)))
-             (t/format "h:mm a" input)
-
-             :else ;; otherwise both date and time
-             (t/format "MMM d, yyyy, h:mm a" input))
-           (str input))))))
+            :else ;; otherwise both date and time
+            (t/format "MMM d, yyyy, h:mm a" input))
+          (str input)))))
 
 (defn parse-unit
   "Parse a unit of time/date, e.g., 'Wed' or 'August' or '14'."
@@ -409,19 +408,23 @@
             locale (.withLocale (i18n/locale locale)))
            (.parse str))))
 
-(defn format-diff
+(mu/defn format-diff
   "Formats a time difference between two temporal values.
    Drops redundant information."
-  [temporal-value-1 temporal-value-2]
-  (let [default-format #(str (format-unit temporal-value-1 nil)
+  [temporal-value-1
+   temporal-value-2
+   options :- [:map
+               [:start-of-week [:maybe :keyword]]
+               [:locale {:optional true} :any]]]
+  (let [default-format #(str (format-unit temporal-value-1 nil options)
                              " – "
-                             (format-unit temporal-value-2 nil))]
+                             (format-unit temporal-value-2 nil options))]
     (cond
       (some (complement string?) [temporal-value-1 temporal-value-2])
       (default-format)
 
       (= temporal-value-1 temporal-value-2)
-      (format-unit temporal-value-1 nil)
+      (format-unit temporal-value-1 nil options)
 
       (and (common/matches-time? temporal-value-1)
            (common/matches-time? temporal-value-2))
@@ -468,28 +471,30 @@
       :else
       (default-format))))
 
-(defn format-relative-date-range
+(mu/defn format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
   ([n unit offset-n offset-unit opts]
    (format-relative-date-range (now) n unit offset-n offset-unit opts))
-  ([t n unit offset-n offset-unit {:keys [include-current]}]
+
+  ([t n unit offset-n offset-unit {:keys [include-current], :as options} :- ::common/format-options]
    (let [offset-now (cond-> t
                       (neg? n) (apply-offset n unit)
                       (and (pos? n) (not include-current)) (apply-offset 1 unit)
                       (and offset-n offset-unit) (apply-offset offset-n offset-unit))
          pos-n (cond-> (abs n)
                  include-current inc)
-         date-ranges (map (if (#{:hour :minute} unit)
-                            #(t/format "yyyy-MM-dd'T'HH:mm" (t/local-date-time %))
-                            #(str (t/local-date %)))
-                          (common/to-range offset-now
-                                           {:unit unit
-                                            :n pos-n
-                                            :offset-n offset-n
-                                            :offset-unit offset-unit}))]
-     (apply format-diff date-ranges))))
+         [t1 t2] (map (if (#{:hour :minute} unit)
+                        #(t/format "yyyy-MM-dd'T'HH:mm" (t/local-date-time %))
+                        #(str (t/local-date %)))
+                      (common/to-range offset-now
+                                       (merge options
+                                              {:unit unit
+                                               :n pos-n
+                                               :offset-n offset-n
+                                               :offset-unit offset-unit})))]
+     (format-diff t1 t2 options))))
 
 (defn truncate
   "Clojure implementation of [[metabase.util.time/truncate]]; basically the same as [[u.date/truncate]] but also

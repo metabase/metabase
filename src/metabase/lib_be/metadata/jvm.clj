@@ -363,10 +363,10 @@
     :metadata/metric
     (t2/select :metadata/metric :source_card_id card-id, :type :metric, :archived false)))
 
-(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
+(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-delay database-id]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (database database-id))
+    @database-delay)
   (metadatas [_this metadata-type ids]
     (metadatas database-id metadata-type ids))
   (tables [_this]
@@ -376,11 +376,12 @@
   (metadatas-for-card [_this metadata-type card-id]
     (metadatas-for-card metadata-type card-id))
   (setting [_this setting-name]
-    (setting/get setting-name))
+    (setting/with-database-local-values (:settings @database-delay)
+      (setting/get setting-name)))
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+    (list `->UncachedApplicationDatabaseMetadataProvider (list 'delay (list `database database-id)) database-id))
 
   Object
   (equals [_this another]
@@ -394,7 +395,7 @@
   Call [[application-database-metadata-provider]] instead, which wraps this inner function with optional, dynamically
   scoped caching, to allow reuse of `MetadataProvider`s across the life of an API request."
   [database-id]
-  (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
+  (-> (->UncachedApplicationDatabaseMetadataProvider (delay (database database-id)) database-id)
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
 

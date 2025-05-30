@@ -5,7 +5,9 @@
    ["moment" :as moment]
    [metabase.util.time.impl-common :as common]))
 
-(defn- now [] (moment))
+(def ^:private ^:dynamic ^{:arglists '([])} *now-fn* moment)
+
+(defn- now [] (*now-fn*))
 
 ;;; ----------------------------------------------- predicates -------------------------------------------------------
 (defn datetime?
@@ -43,17 +45,6 @@
   [^moment/Moment d1 ^moment/Moment d2]
   (.isSame d1 d2 "year"))
 
-;;; ---------------------------------------------- information -------------------------------------------------------
-(defn first-day-of-week
-  "The first day of the week varies by locale, but Metabase has a setting that overrides it.
-  In CLJS, Moment is already configured with that setting."
-  []
-  (nth [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]
-       (.firstDayOfWeek (moment/localeData))))
-
-(def default-options
-  "The default map of options - empty in CLJS."
-  {})
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- apply-offset
@@ -282,49 +273,48 @@
    If unit is nil, formats the full date/time.
    Time input formatting is only defined with time units."
   ;; This third argument is needed for the JVM side; it can be ignored here.
-  ([input unit] (format-unit input unit nil))
-  ([input unit locale]
-   (cond
-     (string? input)
-     (let [time? (common/matches-time? input)
-           date? (common/matches-date? input)
-           date-time? (common/matches-date-time? input)
-           t (cond
-               ;; Anchor to an arbitrary date since time inputs are only defined for
-               ;; :hour-of-day and :minute-of-hour.
-               time? (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
-               (or date? date-time?) (coerce-local-date-time input))]
-       (if (and t (.isValid t))
-         (or
-          (format-extraction-unit t unit locale)
-          ;; no locale for default formats
-          (cond
-            time? (.format t "h:mm A")
-            date? (.format t "MMM D, YYYY")
-            date-time? (.format t "MMM D, YYYY, h:mm A")))
-         input))
-
-     (number? input)
-     (if (= unit :hour-of-day)
-       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-       (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
-        (str input)))
-
-     (moment/isMoment input)
-     (or (format-extraction-unit input unit locale)
+  [input unit {:keys [locale], :as options}]
+  (cond
+    (string? input)
+    (let [time? (common/matches-time? input)
+          date? (common/matches-date? input)
+          date-time? (common/matches-date-time? input)
+          t (cond
+              ;; Anchor to an arbitrary date since time inputs are only defined for
+              ;; :hour-of-day and :minute-of-hour.
+              time? (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
+              (or date? date-time?) (coerce-local-date-time input))]
+      (if (and t (.isValid t))
+        (or
+         (format-extraction-unit t unit locale)
          ;; no locale for default formats
          (cond
-           ;; no hour, minute, or seconds, must be date
-           (not (has-explicit-time? input))
-           (.format input "MMM D, YYYY")
+           time? (.format t "h:mm A")
+           date? (.format t "MMM D, YYYY")
+           date-time? (.format t "MMM D, YYYY, h:mm A")))
+        input))
 
-           ;; no year, month, or day, must be a time
-           (not (has-explicit-date? input))
-           (.format input "h:mm A")
+    (number? input)
+    (if (= unit :hour-of-day)
+      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+      (or
+       (format-extraction-unit (common/number->timestamp input (merge options {:unit unit})) unit locale)
+       (str input)))
 
-           :else ;; otherwise both date and time
-           (.format input "MMM D, YYYY, h:mm A"))))))
+    (moment/isMoment input)
+    (or (format-extraction-unit input unit locale)
+        ;; no locale for default formats
+        (cond
+          ;; no hour, minute, or seconds, must be date
+          (not (has-explicit-time? input))
+          (.format input "MMM D, YYYY")
+
+          ;; no year, month, or day, must be a time
+          (not (has-explicit-date? input))
+          (.format input "h:mm A")
+
+          :else ;; otherwise both date and time
+          (.format input "MMM D, YYYY, h:mm A")))))
 
 (defn parse-unit
   "Parse a unit of time/date, e.g., 'Wed' or 'August' or '14'."
@@ -342,16 +332,16 @@
 (defn format-diff
   "Formats a time difference between two temporal values.
    Drops redundant information."
-  [temporal-value-1 temporal-value-2]
-  (let [default-format #(str (format-unit temporal-value-1 nil)
+  [temporal-value-1 temporal-value-2 options]
+  (let [default-format #(str (format-unit temporal-value-1 nil options)
                              " – "
-                             (format-unit temporal-value-2 nil))]
+                             (format-unit temporal-value-2 nil options))]
     (cond
       (some (complement string?) [temporal-value-1 temporal-value-2])
       (default-format)
 
       (= temporal-value-1 temporal-value-2)
-      (format-unit temporal-value-1 nil)
+      (format-unit temporal-value-1 nil options)
 
       (and (common/matches-time? temporal-value-1)
            (common/matches-time? temporal-value-2))

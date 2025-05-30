@@ -3,8 +3,10 @@
   (:refer-clojure :exclude [replace])
   (:require
    #?@(:clj
-       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]])
+       ([metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
+        [metabase.models.dispatch :as models.dispatch])
+       :cljs
+       (["moment" :as moment]))
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -418,6 +420,18 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
+(defn start-of-week
+  "Get the current value of the [[metabase.lib-be.settings/start-of-week]] Setting (Clj) or get this value from
+  moment (JS).
+
+  TODO -- we should rework everything that uses this to get the value directly from a metadata provider instead;
+  however this will require reworking quite a lot of things."
+  []
+  #?(:clj  ((requiring-resolve 'metabase.lib-be.core/start-of-week))
+     ;; this allegedly gets set with the value of the `start-of-week` setting (keyword is allegedly)
+     :cljs (nth [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]
+                (.firstDayOfWeek (moment/localeData)))))
+
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
   [column unit n]
@@ -425,7 +439,7 @@
                        :cljs nil)]
     [:case
      (vec (for [raw-value (range 1 (inc n))]
-            [[:= column raw-value] (u.time/format-unit raw-value unit user-locale)]))
+            [[:= column raw-value] (u.time/format-unit raw-value unit {:locale user-locale, :start-of-week (start-of-week)})]))
      {:default ""}]))
 
 (defn- desugar-temporal-names

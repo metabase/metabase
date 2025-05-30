@@ -29,8 +29,8 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require
-   #?(:clj [metabase.util.performance :as perf]
-      :cljs [clojure.walk :as walk])
+   #?@(:clj ([metabase.util.performance :as perf])
+       :cljs ([clojure.walk :as walk]))
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -992,6 +992,8 @@
          offset-unit]
         &match))))
 
+
+
 (mu/defn ^:private replace-exclude-date-filters :- mbql.s/Filter
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause :- mbql.s/Filter]
@@ -1004,7 +1006,9 @@
     [:!=
      (field :guard (every-pred mbql.preds/Field? (temporal-unit-is? #{:day-of-week :month-of-year :quarter-of-year})))
      & (args :guard #(every? u.time/timestamp-coercible? %))]
-    (let [args (mapv u.time/coerce-to-timestamp args)]
+    (let [start-of-week (mbql.u/start-of-week)
+          args          (mapv #(u.time/coerce-to-timestamp % {:start-of-week start-of-week})
+                              args)]
       (if (every? u.time/valid? args)
         (let [unit         (temporal-unit field)
               field        (remove-temporal-unit field)

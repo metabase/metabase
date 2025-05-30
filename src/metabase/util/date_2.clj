@@ -217,7 +217,7 @@
     ;; operation. Maybe we should rename this unit to clear up the potential confusion (?)
     :year})
 
-(defn- start-of-week []
+(defn- ^:deprecated start-of-week []
   ((requiring-resolve 'metabase.settings.core/get) :start-of-week))
 
 (let [m (u.date.common/static-instances DayOfWeek)]
