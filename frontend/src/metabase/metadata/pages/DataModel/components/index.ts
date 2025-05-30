@@ -1,4 +1,5 @@
 export * from "./FieldSection";
 export * from "./PreviewSection";
-export * from "./TableSection";
+export * from "./SegmentsLink";
 export * from "./TablePicker";
+export * from "./TableSection";

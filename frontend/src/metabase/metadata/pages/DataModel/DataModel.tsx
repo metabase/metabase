@@ -6,16 +6,16 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Flex, Icon, Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
   FieldSection,
   PreviewSection,
   RouterTablePicker,
+  SegmentsLink,
   TableSection,
   usePreviewType,
 } from "./components";
@@ -47,8 +47,15 @@ export const DataModel = ({
           schemaId={schemaId}
           tableId={tableId}
         />
+
         <Box mx="xl" py="sm" className={S.footer}>
-          <SegmentsLink location={location} />
+          <SegmentsLink
+            active={
+              location.pathname.startsWith("/admin/datamodel/segments") ||
+              location.pathname.startsWith("/admin/datamodel/segment/")
+            }
+            to="/admin/datamodel/segments"
+          />
         </Box>
       </Stack>
 
@@ -56,25 +63,6 @@ export const DataModel = ({
     </Flex>
   );
 };
-
-function SegmentsLink({ location }: { location: Location }) {
-  const isActive =
-    location?.pathname?.startsWith("/admin/datamodel/segments") ||
-    location?.pathname?.startsWith("/admin/datamodel/segment/");
-
-  return (
-    <Flex
-      component={Link}
-      to="/admin/datamodel/segments"
-      className={cx(S.segmentsLink, { [S.active]: isActive })}
-      gap="sm"
-      p="sm"
-    >
-      <Icon name="pie" className={S.segmentsIcon} />
-      {t`Segments`}
-    </Flex>
-  );
-}
 
 export function DataModelEditor({ params }: { params: RouteParams }) {
   const { databaseId, tableId, fieldId } = parseRouteParams(params);
@@ -95,6 +83,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
   );
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = usePreviewType();
+
   return (
     <>
       {tableId && (
