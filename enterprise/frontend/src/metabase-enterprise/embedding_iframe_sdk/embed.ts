@@ -173,7 +173,6 @@ class MetabaseEmbed {
       return;
     }
 
-    // the iframe is ready - we can send the settings to the iframe
     if (event.data.type === "metabase.embed.iframeReady") {
       if (this._isEmbedReady) {
         return;
@@ -183,7 +182,6 @@ class MetabaseEmbed {
       this._setEmbedSettings(this._settings);
     }
 
-    // the iframe is requesting a refresh token - we need to re-authenticate
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
