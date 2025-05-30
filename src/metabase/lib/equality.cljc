@@ -144,7 +144,7 @@
                                  (column-join-or-source-alias column)))))
 
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind _opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
@@ -154,7 +154,7 @@
               columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
    columns                           :- [:sequential ::lib.schema.metadata/column]
    generous?                         :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
