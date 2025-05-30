@@ -79,12 +79,15 @@
   [query                                :- ::lib.schema/query
    stage-number                         :- :int
    {:keys [unique-name-fn] :as options} :- lib.metadata.calculation/ReturnedColumnsOptions]
-  (let [cols (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
-               (assoc breakout
-                      :lib/source               :source/breakouts
-                      :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
-                      :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) breakout)
-                      :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout))))]
+  (let [cols (for [breakout (u/prog1 (lib.breakout/breakouts-metadata query stage-number)
+                              (tap> [`breakouts-metadata query stage-number '=> <>]))]
+               (u/prog1 (assoc breakout
+                               :lib/source               :source/breakouts
+                               :source-alias             (lib.join.util/current-join-alias breakout)
+                               :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
+                               :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) breakout)
+                               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout)))
+                 (tap> [`breakouts-column breakout '=> <>])))]
     (not-empty (concat cols
                        (lib.metadata.calculation/remapped-columns query stage-number cols options)))))
 
