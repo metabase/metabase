@@ -413,6 +413,264 @@ describe("scenarios > question > native", () => {
         cy.log("verify default value is empty");
         H.rightSidebar().should("contain", "Enter a default value…");
       });
+
+      describe("validation", () => {
+        it("should show validation error when query is invalid", () => {
+          const question = {
+            name: "Saved question with invalid query",
+            native: {
+              query: `
+                SELECT
+                  count(*),
+                  {{mb.time_grouping("unit", "created_at")}} as unit,
+                  {{unit}}
+                FROM
+                  ORDERS
+                GROUP BY
+                  unit
+              `,
+              "template-tags": {
+                unit: {
+                  type: "temporal-unit",
+                  name: "unit",
+                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                  "display-name": "Unit",
+                  required: true,
+                },
+              },
+            },
+          };
+
+          H.createNativeQuestion(question).then(({ body: { id } }) => {
+            H.visitQuestion(id);
+          });
+
+          cy.findByTestId("visibility-toggler").click();
+
+          cy.findByTestId("query-validation-error")
+            .should(
+              "contain",
+              "Parameter unit is used as both a time grouping and a variable. This is not allowed.",
+            )
+            .should("be.visible");
+        });
+
+        it("should not show validation error when query is valid", () => {
+          const question = {
+            name: "Saved question with invalid query",
+            native: {
+              query: `
+                SELECT
+                  count(*),
+                  {{mb.time_grouping("unit", "created_at")}} as unit
+                FROM
+                  ORDERS
+                GROUP BY
+                  unit
+              `,
+              "template-tags": {
+                unit: {
+                  type: "temporal-unit",
+                  name: "unit",
+                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                  "display-name": "Unit",
+                  required: true,
+                },
+              },
+            },
+          };
+
+          H.createNativeQuestion(question).then(({ body: { id } }) => {
+            H.visitQuestion(id);
+          });
+          cy.findByTestId("visibility-toggler").click();
+
+          cy.findByTestId("query-validation-error").should("not.exist");
+        });
+
+        it("should show validation error after invalid query", () => {
+          H.startNewNativeQuestion();
+
+          const query = `
+                SELECT
+                  count(*),
+                  {{mb.time_grouping("unit", "created_at")}} as unit,
+                  {{uni}}
+              `
+            .trim()
+            .split("\n")
+            .map((line) => line.trim())
+            .join(" ")
+            .trim();
+
+          cy.log("type a valid time grouping syntax");
+          H.NativeEditor.type(query);
+
+          cy.findByTestId("query-validation-error").should("not.exist");
+
+          cy.log("type an invalid time grouping syntax");
+          H.NativeEditor.type("{backspace}{backspace}t}}");
+
+          cy.findByTestId("query-validation-error")
+            .should("contain", "This is not allowed")
+            .should("be.visible");
+
+          cy.log("correct query to verify error is gone");
+          H.NativeEditor.type("{backspace}{backspace}1}}");
+
+          cy.findByTestId("query-validation-error").should("not.exist");
+        });
+
+        it("should show syntax errors", () => {
+          const questionWithUnknownFunction = {
+            name: "Saved question with invalid query",
+            native: {
+              query: `
+                SELECT
+                  count(*),
+                  {{mb.time_grouping_broken("unit", "created_at")}} as unit
+                FROM
+                  ORDERS
+                GROUP BY
+                  unit
+              `,
+              "template-tags": {
+                unit: {
+                  type: "temporal-unit",
+                  name: "unit",
+                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                  "display-name": "Unit",
+                  required: true,
+                },
+              },
+            },
+          };
+
+          const questionWithBrokenSyntax = {
+            name: "Saved question with invalid query",
+            native: {
+              query: `
+                SELECT
+                  count(*),
+                  {{m.time_grouping("unit", "created_at")}} as unit
+                FROM
+                  ORDERS
+                GROUP BY
+                  unit
+              `,
+              "template-tags": {
+                unit: {
+                  type: "temporal-unit",
+                  name: "unit",
+                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                  "display-name": "Unit",
+                  required: true,
+                },
+              },
+            },
+          };
+
+          const questionWithWrongParam = {
+            name: "Saved question with invalid query",
+            native: {
+              query: `
+                SELECT
+                  count(*),
+                  {{mb.time_grouping("unit")}} as unit
+                FROM
+                  ORDERS
+                GROUP BY
+                  unit
+              `,
+              "template-tags": {
+                unit: {
+                  type: "temporal-unit",
+                  name: "unit",
+                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                  "display-name": "Unit",
+                  required: true,
+                },
+              },
+            },
+          };
+
+          const questionWithEmptyParam = {
+            name: "Saved question with invalid query",
+            native: {
+              query: `
+                SELECT
+                  count(*),
+                  {{mb.time_grouping("unit", "")}} as unit
+                FROM
+                  ORDERS
+                GROUP BY
+                  unit
+              `,
+              "template-tags": {
+                unit: {
+                  type: "temporal-unit",
+                  name: "unit",
+                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                  "display-name": "Unit",
+                  required: true,
+                },
+              },
+            },
+          };
+
+          H.createNativeQuestion(questionWithUnknownFunction).then(
+            ({ body: { id } }) => {
+              H.visitQuestion(id);
+            },
+          );
+
+          cy.findByTestId("visibility-toggler").click();
+
+          cy.findByTestId("query-validation-error").should(
+            "contain",
+            "Unknown function: mb.time_grouping_broken",
+          );
+
+          H.createNativeQuestion(questionWithBrokenSyntax).then(
+            ({ body: { id } }) => {
+              H.visitQuestion(id);
+            },
+          );
+
+          cy.findByTestId("visibility-toggler").click();
+
+          cy.findByTestId("query-validation-error").should(
+            "contain",
+            'Syntax error in: m.time_grouping("unit", "created_at")',
+          );
+
+          H.createNativeQuestion(questionWithWrongParam).then(
+            ({ body: { id } }) => {
+              H.visitQuestion(id);
+            },
+          );
+
+          cy.findByTestId("visibility-toggler").click();
+
+          cy.findByTestId("query-validation-error").should(
+            "contain",
+            "mb.time_grouping got too few parameters",
+          );
+
+          H.createNativeQuestion(questionWithEmptyParam).then(
+            ({ body: { id } }) => {
+              H.visitQuestion(id);
+            },
+          );
+
+          cy.findByTestId("visibility-toggler").click();
+
+          cy.findByTestId("query-validation-error").should(
+            "contain",
+            "mb.time_grouping got ...",
+          );
+        });
+      });
     });
   });
 
