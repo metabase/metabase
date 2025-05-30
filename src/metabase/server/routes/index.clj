@@ -75,26 +75,29 @@
         (log/error e message)
         (throw (Exception. message e))))))
 
+(defn- template-parameters [embeddable? {:keys [uri params nonce]}]
+  (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
+         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
+        should-load-locale-params? (not embeddable?)]
+    {:bootstrapJS          (load-inline-js "index_bootstrap")
+     :bootstrapJSON        (escape-script (json/encode public-settings))
+     :assetOnErrorJS       (load-inline-js "asset_loading_error")
+     :userLocalizationJSON (escape-script (load-localization (when should-load-locale-params? (:locale params))))
+     :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
+     :nonceJSON            (escape-script (json/encode nonce))
+     :language             (hiccup.util/escape-html (or (i18n/user-locale-string) (public-settings/site-locale)))
+     :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
+     :applicationName      (hiccup.util/escape-html (public-settings/application-name))
+     :uri                  (hiccup.util/escape-html uri)
+     :baseHref             (hiccup.util/escape-html (base-href))
+     :embedCode            (when embeddable? (embed/head uri))
+     :enableGoogleAuth     (boolean google-auth-client-id)
+     :enableAnonTracking   (boolean anon-tracking-enabled)}))
+
 (defn- load-entrypoint-template [entrypoint-name embeddable? opts]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
-         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
-         should-load-locale-params? (not embeddable?)]
-     {:bootstrapJS          (load-inline-js "index_bootstrap")
-      :bootstrapJSON        (escape-script (json/encode public-settings))
-      :assetOnErrorJS       (load-inline-js "asset_loading_error")
-      :userLocalizationJSON (escape-script (load-localization (when should-load-locale-params? (:locale params))))
-      :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
-      :nonceJSON            (escape-script (json/encode nonce))
-      :language             (hiccup.util/escape-html (or (i18n/user-locale-string) (public-settings/site-locale)))
-      :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
-      :applicationName      (hiccup.util/escape-html (public-settings/application-name))
-      :uri                  (hiccup.util/escape-html uri)
-      :baseHref             (hiccup.util/escape-html (base-href))
-      :embedCode            (when embeddable? (embed/head uri))
-      :enableGoogleAuth     (boolean google-auth-client-id)
-      :enableAnonTracking   (boolean anon-tracking-enabled)})))
+   (template-parameters embeddable? opts)))
 
 (defn- load-init-template []
   (load-template
