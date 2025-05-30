@@ -1,45 +1,47 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useListTablesQuery } from "metabase/api";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import SelectList from "metabase/components/SelectList/SelectList";
+import SelectList from "metabase/components/SelectList";
+import { ItemTitle } from "metabase/components/SelectList/SelectListItem.styled";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { color } from "metabase/lib/colors";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Box, Stack, Text, TextInput } from "metabase/ui";
-import type { Database, DatabaseId, TableId } from "metabase-types/api";
+import { humanize } from "metabase/lib/formatting";
+import {
+  Box,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import type {
+  Database,
+  DatabaseId,
+  SchemaName,
+  TableId,
+} from "metabase-types/api";
 
-const ROOT_BREADCRUMB_ID = "root";
+import S from "./TableList.module.css";
 
 type TableListProps = {
-  onSelect: (cardId: TableId) => void;
+  onSelect: (tableId: TableId) => void;
 };
 
 export const TableList = ({ onSelect }: TableListProps) => {
   const { data: tables, isLoading } = useListTablesQuery();
+
   const tablesWithEnabledEditing = useMemo(() => {
     return (
-      tables
-        ?.filter(({ db }) => {
-          const hasDbSetting = db?.settings?.["database-enable-table-editing"];
-          const isServiceTable = db?.is_audit;
-
-          return hasDbSetting && !isServiceTable;
-        })
-        .sort((a, b) => {
-          // sort by db name, then table name
-          const aDbName = a.db?.name || "";
-          const bDbName = b.db?.name || "";
-
-          const dbOrder = aDbName.localeCompare(bDbName);
-          if (dbOrder !== 0) {
-            return dbOrder;
-          }
-
-          return a.display_name.localeCompare(b.display_name);
-        }) || []
+      tables?.filter(({ db }) => {
+        const hasDbSetting = db?.settings?.["database-enable-table-editing"];
+        const isServiceTable = db?.is_audit;
+        return hasDbSetting && !isServiceTable;
+      }) || []
     );
   }, [tables]);
 
@@ -48,54 +50,113 @@ export const TableList = ({ onSelect }: TableListProps) => {
     searchText,
     SEARCH_DEBOUNCE_DURATION,
   );
+  const [selectedDatabaseId, setSelectedDatabaseId] =
+    useState<DatabaseId | null>(null);
+  const [selectedSchemaName, setSelectedSchemaName] =
+    useState<SchemaName | null>(null);
 
+  // Build databases list
   const [databases, databasesById] = useMemo(() => {
     const dbs = _.uniq(
       tablesWithEnabledEditing.map((t) => t.db as Database).filter(Boolean),
       false,
       (db: Database) => db.id,
     );
-    const dbsById = {
-      ...dbs.reduce(
-        (acc, db) => {
-          if (!db) {
-            return acc;
-          }
-          acc[db.id] = db;
-          return acc;
-        },
-        {} as Record<number, Database>,
-      ),
-      [ROOT_BREADCRUMB_ID]: {
-        id: ROOT_BREADCRUMB_ID,
-        name: t`Databases`,
-        children: dbs,
+    const dbsById = dbs.reduce(
+      (acc, db) => {
+        acc[db.id] = db;
+        return acc;
       },
-    } as Record<number, Database> & {
-      [ROOT_BREADCRUMB_ID]: { id: "root"; name: string; children: Database[] };
-    };
+      {} as Record<number, Database>,
+    );
     return [dbs, dbsById];
   }, [tablesWithEnabledEditing]);
-  const [selectedDb, setSelectedDb] = useState<number | null>(null);
-  const database =
-    selectedDb && typeof selectedDb === "number"
-      ? databasesById[selectedDb]
-      : null;
 
-  const crumbs = getDatabaseBreadcrumbs(database, databasesById, setSelectedDb);
+  // Auto-select database if only one exists
+  useEffect(() => {
+    if (databases?.length === 1 && !selectedDatabaseId) {
+      setSelectedDatabaseId(databases[0].id);
+    }
+  }, [databases, selectedDatabaseId]);
 
+  // Build schemas list for selected database
+  const schemas = useMemo(() => {
+    if (!selectedDatabaseId) {
+      return [];
+    }
+    const tablesInDb = tablesWithEnabledEditing.filter(
+      (t) => t.db_id === selectedDatabaseId,
+    );
+    const uniqueSchemas = _.uniq(tablesInDb.map((t) => t.schema)).filter(
+      Boolean,
+    );
+    return uniqueSchemas;
+  }, [selectedDatabaseId, tablesWithEnabledEditing]);
+
+  // Auto-select schema if only one exists
+  useEffect(() => {
+    if (schemas?.length === 1 && !selectedSchemaName) {
+      setSelectedSchemaName(schemas[0]);
+    }
+  }, [schemas, selectedSchemaName]);
+
+  // Breadcrumbs
+  const crumbs = useMemo(() => {
+    const db = selectedDatabaseId ? databasesById[selectedDatabaseId] : null;
+    const schema = schemas?.find((s) => s === selectedSchemaName);
+    const arr: any[] = [
+      [
+        t`Databases`,
+        () => {
+          setSelectedDatabaseId(null);
+          setSelectedSchemaName(null);
+          setSearchText("");
+        },
+      ],
+    ];
+    if (db) {
+      arr.push([
+        db.name,
+        () => {
+          setSelectedSchemaName(null);
+          setSearchText("");
+        },
+      ]);
+    }
+    if (schema) {
+      arr.push([schema]);
+    }
+    return arr;
+  }, [selectedDatabaseId, selectedSchemaName, databasesById, schemas]);
+
+  // Filtered tables for search or selection
   const filteredTables = useMemo(() => {
-    return tablesWithEnabledEditing?.filter((table) => {
-      return debouncedSearchText
-        ? table.display_name
-            .toLowerCase()
-            .includes(debouncedSearchText.toLowerCase())
-        : table.db_id === selectedDb;
-    });
-  }, [tablesWithEnabledEditing, debouncedSearchText, selectedDb]);
+    if (debouncedSearchText) {
+      return tablesWithEnabledEditing.filter((table) =>
+        table.display_name
+          .toLowerCase()
+          .includes(debouncedSearchText.toLowerCase()),
+      );
+    }
+    if (selectedDatabaseId && selectedSchemaName) {
+      return tablesWithEnabledEditing.filter((table) => {
+        if (table.db_id !== selectedDatabaseId) {
+          return false;
+        }
+        const tableSchemaIdentifier = table.schema;
+        return tableSchemaIdentifier === selectedSchemaName;
+      });
+    }
+    return [];
+  }, [
+    debouncedSearchText,
+    tablesWithEnabledEditing,
+    selectedDatabaseId,
+    selectedSchemaName,
+  ]);
 
   if (isLoading) {
-    return null;
+    return <Text mt="md">{t`Loading...`}</Text>;
   }
 
   return (
@@ -103,25 +164,24 @@ export const TableList = ({ onSelect }: TableListProps) => {
       <TextInput
         onChange={(e) => {
           setSearchText(e.target.value);
-          if (selectedDb) {
-            setSelectedDb(null);
+          if (e.target.value) {
+            setSelectedDatabaseId(null);
+            setSelectedSchemaName(null);
           }
         }}
         placeholder={t`Search…`}
+        value={searchText}
         autoFocus
       />
-      {debouncedSearchText && !filteredTables?.length && (
-        <Text>{t`Nothing found`}</Text>
-      )}
       {!debouncedSearchText && (
         <Box px="sm">
           <Breadcrumbs crumbs={crumbs} />
         </Box>
       )}
-
-      <SelectList>
-        {selectedDb || debouncedSearchText
-          ? filteredTables?.map((item) => (
+      {debouncedSearchText ? (
+        filteredTables.length ? (
+          <SelectList>
+            {filteredTables?.map((item) => (
               <SelectList.Item
                 key={item.id}
                 id={item.id}
@@ -130,39 +190,102 @@ export const TableList = ({ onSelect }: TableListProps) => {
                   name: "table",
                   size: 16,
                 }}
+                className={S.filteredResult}
                 onSelect={onSelect}
-              />
-            ))
-          : databases?.map((db) => (
-              <SelectList.Item
-                key={db.id}
-                id={db.id}
-                name={db.name}
-                icon={{
-                  name: "database",
-                  size: 16,
-                  color: color("database"),
-                }}
-                rightIcon="chevronright"
-                onSelect={() => setSelectedDb(db.id)}
+                renderTitle={(name) => (
+                  <Group wrap="nowrap" className={S.tableLocationGroup}>
+                    <ItemTitle lh="normal">
+                      <Ellipsified>
+                        <Text fw="bold" c="inherit">
+                          {name}
+                        </Text>
+                      </Ellipsified>
+                    </ItemTitle>
+                    <Flex
+                      direction="row"
+                      ml="auto"
+                      style={{
+                        flexShrink: 0,
+                      }}
+                      align="center"
+                      gap="sm"
+                    >
+                      <FixedSizeIcon c="inherit" name="database" />
+                      <Ellipsified>
+                        <Text c="inherit">
+                          {t`in ${item.db?.name}${item.schema ? ` (${humanize(item.schema)})` : ""}`}
+                        </Text>
+                      </Ellipsified>
+                    </Flex>
+                  </Group>
+                )}
               />
             ))}
-      </SelectList>
+          </SelectList>
+        ) : (
+          <Text>{t`Nothing found`}</Text>
+        )
+      ) : !selectedDatabaseId ? (
+        <SelectList>
+          {databases?.map((item) => (
+            <SelectList.Item
+              key={item.id}
+              id={item.id}
+              name={item.name}
+              icon={{
+                name: "database",
+                size: 16,
+              }}
+              rightIcon={{
+                name: "chevronright",
+                size: 16,
+              }}
+              onSelect={() => {
+                setSelectedDatabaseId(item.id);
+                setSelectedSchemaName(null);
+              }}
+            />
+          ))}
+        </SelectList>
+      ) : schemas.length > 1 && !selectedSchemaName ? (
+        <SelectList>
+          {schemas?.map((item) => (
+            <SelectList.Item
+              key={item}
+              id={item}
+              name={humanize(item)}
+              icon={{
+                name: "folder",
+                size: 16,
+              }}
+              rightIcon={{
+                name: "chevronright",
+                size: 16,
+              }}
+              onSelect={() => {
+                setSelectedSchemaName(item);
+              }}
+            />
+          ))}
+        </SelectList>
+      ) : (
+        <SelectList>
+          {filteredTables?.map((item) => (
+            <SelectList.Item
+              key={item.id}
+              id={item.id}
+              name={item.display_name}
+              icon={{
+                name: "table",
+                size: 16,
+              }}
+              onSelect={() => {
+                onSelect(item.id);
+              }}
+            />
+          ))}
+        </SelectList>
+      )}
     </Stack>
   );
 };
-
-function getDatabaseBreadcrumbs(
-  db: Database | null,
-  dbsById: Record<DatabaseId, Database> & {
-    [ROOT_BREADCRUMB_ID]: { id: "root"; name: string };
-  },
-  callback: (id: DatabaseId | null) => void,
-) {
-  const rootCollection = dbsById[ROOT_BREADCRUMB_ID];
-  if (db) {
-    return [[rootCollection.name, () => callback(null)], [db.name]];
-  } else {
-    return [...(rootCollection ? [[rootCollection.name]] : [])];
-  }
-}
