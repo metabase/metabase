@@ -37,8 +37,7 @@
                     (update :type keyword)
                     (assoc :parameters parameters))]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (binding [qp.perms/*card-database-id* (t2/select-one-fn :database_id [:model/Card :database_id] model_id)
-                qp.perms/*card-id*          model_id]
+      (binding [qp.perms/*card-id* model_id]
         (qp.writeback/execute-write-query! query)))
     (catch Throwable e
       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)

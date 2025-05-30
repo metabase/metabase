@@ -23,13 +23,6 @@
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
 
-(def ^:dynamic *card-database-id*
-  "There are cases where *card-id* references a card based on a different database to the query being executed.
-  An example of this is where we are executing a SQL action which manipulates database A, but the action itself lives
-  within a model which is defined on model B. The reason we might do this is, for example, to define a row action for
-  this model which uses data from B to insert data into A."
-  nil)
-
 (defn perms-exception
   "Returns an ExceptionInfo instance containing data relevant for a permissions error."
   ([required-perms]
@@ -123,7 +116,6 @@
       (check-audit-db-permissions outer-query))
     (check-query-does-not-access-inactive-tables outer-query)
     (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
-          database-id     (or *card-database-id* database-id)
           required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
           source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
       ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
@@ -176,7 +168,7 @@
                                                 [:type [:enum :query :native]]]]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
-    (query-perms/check-card-read-perms (or *card-database-id* database-id) *card-id*))
+    (query-perms/check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
              outer-query
              (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
