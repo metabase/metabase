@@ -202,22 +202,17 @@ function visitDashboardById(dashboard_id, config) {
     if (canViewDashboard && validQuestions) {
       // If dashboard has valid questions (GUI or native),
       // we need to alias each request and wait for their reponses
-      const aliases = validQuestions.map(
-        ({ id, card_id, card: { display } }) => {
-          const baseUrl =
-            display === "pivot"
-              ? `/api/dashboard/pivot/${dashboard_id}`
-              : `/api/dashboard/${dashboard_id}`;
-
-          const interceptUrl = `${baseUrl}/dashcard/${id}/card/${card_id}/query`;
-
-          const alias = "dashcardQuery" + id;
-
-          cy.intercept("POST", interceptUrl).as(alias);
-
-          return `@${alias}`;
-        },
-      );
+      const aliases = validQuestions.flatMap((dashcard) => {
+        const { series = [], card: mainCard } = dashcard;
+        return [mainCard, ...series].map((card) =>
+          interceptCardQueryRequest(
+            dashboard_id,
+            dashcard.id,
+            card.id,
+            card.display,
+          ),
+        );
+      });
 
       cy.visit({
         url: `/dashboard/${dashboard_id}`,
@@ -235,6 +230,18 @@ function visitDashboardById(dashboard_id, config) {
       cy.wait(`@${dashboardAlias}`);
     }
   });
+}
+
+function interceptCardQueryRequest(dashboardId, dashcardId, cardId, display) {
+  const baseUrl =
+    display === "pivot"
+      ? `/api/dashboard/pivot/${dashboardId}`
+      : `/api/dashboard/${dashboardId}`;
+
+  const interceptUrl = `${baseUrl}/dashcard/${dashcardId}/card/${cardId}/query`;
+  const alias = `dashcardQuery${dashcardId}_${cardId}`;
+  cy.intercept("POST", interceptUrl).as(alias);
+  return `@${alias}`;
 }
 
 function hasAccess(statusCode) {
