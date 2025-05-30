@@ -76,7 +76,7 @@
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
   (into []
-        (map #(assoc-in % [2 :join-alias] alias))
+        (map #(mbql.u/update-field-options % assoc :join-alias alias))
         (qp.add-implicit-clauses/source-metadata->fields source-metadata)))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
