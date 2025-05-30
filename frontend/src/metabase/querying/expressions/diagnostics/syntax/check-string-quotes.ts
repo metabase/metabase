@@ -21,7 +21,7 @@ export function checkStringQuotes({ tokens }: { tokens: Token[] }) {
         error(token, t`Missing closing string quote`);
       }
     } else {
-      error({ pos: token.pos, len: 1 }, t`Unsupported string quote`);
+      error({ pos: token.start, len: 1 }, t`Unsupported string quote`);
     }
   }
 }

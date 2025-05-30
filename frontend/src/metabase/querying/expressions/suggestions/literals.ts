@@ -15,8 +15,8 @@ export function suggestLiterals() {
     }
 
     return {
-      from: token.pos,
-      to: token.pos + token.length,
+      from: token.start,
+      to: token.end,
       options: [
         {
           label: "True",

@@ -24,13 +24,13 @@ import { Token } from "./token";
 
 function asToken(token: {
   type: NodeType;
-  pos: number;
+  start: number;
   text: string;
   value?: string;
 }) {
   return new Token({
     ...token,
-    length: token.text.length,
+    end: token.start + token.text.length,
   });
 }
 
@@ -41,17 +41,17 @@ describe("lexify", () => {
 
       expect(tokens).toEqual(
         [
-          { type: CALL, pos: 0, text: "case" },
-          { type: GROUP, pos: 4, text: "(" },
-          { type: FIELD, pos: 5, text: "[Total]", value: "Total" },
-          { type: COMPARISON, pos: 13, text: ">" },
-          { type: NUMBER, pos: 15, text: "200" },
-          { type: COMMA, pos: 18, text: "," },
-          { type: FIELD, pos: 20, text: "[T]", value: "T" },
-          { type: COMMA, pos: 23, text: "," },
-          { type: STRING, pos: 25, text: '"Nothing"', value: "Nothing" },
-          { type: GROUP_CLOSE, pos: 34, text: ")" },
-          { type: END_OF_INPUT, pos: 35, text: "\n" },
+          { type: CALL, start: 0, text: "case" },
+          { type: GROUP, start: 4, text: "(" },
+          { type: FIELD, start: 5, text: "[Total]", value: "Total" },
+          { type: COMPARISON, start: 13, text: ">" },
+          { type: NUMBER, start: 15, text: "200" },
+          { type: COMMA, start: 18, text: "," },
+          { type: FIELD, start: 20, text: "[T]", value: "T" },
+          { type: COMMA, start: 23, text: "," },
+          { type: STRING, start: 25, text: '"Nothing"', value: "Nothing" },
+          { type: GROUP_CLOSE, start: 34, text: ")" },
+          { type: END_OF_INPUT, start: 35, text: "\n" },
         ].map(asToken),
       );
     });
@@ -62,10 +62,10 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: FIELD, pos: 0, text: "[Total]", value: "Total" },
-            { type: COMPARISON, pos: 8, text: "<" },
-            { type: NUMBER, pos: 10, text: "0" },
-            { type: END_OF_INPUT, pos: 11, text: "\n" },
+            { type: FIELD, start: 0, text: "[Total]", value: "Total" },
+            { type: COMPARISON, start: 8, text: "<" },
+            { type: NUMBER, start: 10, text: "0" },
+            { type: END_OF_INPUT, start: 11, text: "\n" },
           ].map(asToken),
         );
       }
@@ -75,10 +75,10 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: FIELD, pos: 0, text: "[Rate]", value: "Rate" },
-            { type: COMPARISON, pos: 7, text: ">=" },
-            { type: NUMBER, pos: 10, text: "0" },
-            { type: END_OF_INPUT, pos: 11, text: "\n" },
+            { type: FIELD, start: 0, text: "[Rate]", value: "Rate" },
+            { type: COMPARISON, start: 7, text: ">=" },
+            { type: NUMBER, start: 10, text: "0" },
+            { type: END_OF_INPUT, start: 11, text: "\n" },
           ].map(asToken),
         );
       }
@@ -88,9 +88,9 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: LOGICAL_NOT, pos: 0, text: "NOT" },
-            { type: FIELD, pos: 4, text: "[Deal]", value: "Deal" },
-            { type: END_OF_INPUT, pos: 10, text: "\n" },
+            { type: LOGICAL_NOT, start: 0, text: "NOT" },
+            { type: FIELD, start: 4, text: "[Deal]", value: "Deal" },
+            { type: END_OF_INPUT, start: 10, text: "\n" },
           ].map(asToken),
         );
       }
@@ -100,14 +100,14 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: SUB, pos: 0, text: "-" },
-            { type: CALL, pos: 2, text: "Min" },
-            { type: GROUP, pos: 5, text: "(" },
-            { type: NUMBER, pos: 6, text: "5" },
-            { type: COMMA, pos: 7, text: "," },
-            { type: NUMBER, pos: 9, text: "10" },
-            { type: GROUP_CLOSE, pos: 11, text: ")" },
-            { type: END_OF_INPUT, pos: 12, text: "\n" },
+            { type: SUB, start: 0, text: "-" },
+            { type: CALL, start: 2, text: "Min" },
+            { type: GROUP, start: 5, text: "(" },
+            { type: NUMBER, start: 6, text: "5" },
+            { type: COMMA, start: 7, text: "," },
+            { type: NUMBER, start: 9, text: "10" },
+            { type: GROUP_CLOSE, start: 11, text: ")" },
+            { type: END_OF_INPUT, start: 12, text: "\n" },
           ].map(asToken),
         );
       }
@@ -117,10 +117,10 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: FIELD, pos: 0, text: "[X]", value: "X" },
-            { type: ADD, pos: 3, text: "+" },
-            { type: FIELD, pos: 4, text: "[Y]", value: "Y" },
-            { type: END_OF_INPUT, pos: 7, text: "\n" },
+            { type: FIELD, start: 0, text: "[X]", value: "X" },
+            { type: ADD, start: 3, text: "+" },
+            { type: FIELD, start: 4, text: "[Y]", value: "Y" },
+            { type: END_OF_INPUT, start: 7, text: "\n" },
           ].map(asToken),
         );
       }
@@ -130,10 +130,10 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: FIELD, pos: 0, text: "[P]", value: "P" },
-            { type: MULDIV_OP, pos: 3, text: "/" },
-            { type: FIELD, pos: 4, text: "[Q]", value: "Q" },
-            { type: END_OF_INPUT, pos: 7, text: "\n" },
+            { type: FIELD, start: 0, text: "[P]", value: "P" },
+            { type: MULDIV_OP, start: 3, text: "/" },
+            { type: FIELD, start: 4, text: "[Q]", value: "Q" },
+            { type: END_OF_INPUT, start: 7, text: "\n" },
           ].map(asToken),
         );
       }
@@ -143,10 +143,10 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: CALL, pos: 0, text: "TODAY" },
-            { type: GROUP, pos: 5, text: "(" },
-            { type: GROUP_CLOSE, pos: 6, text: ")" },
-            { type: END_OF_INPUT, pos: 7, text: "\n" },
+            { type: CALL, start: 0, text: "TODAY" },
+            { type: GROUP, start: 5, text: "(" },
+            { type: GROUP_CLOSE, start: 6, text: ")" },
+            { type: END_OF_INPUT, start: 7, text: "\n" },
           ].map(asToken),
         );
       }
@@ -156,11 +156,11 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: CALL, pos: 0, text: "AVG" },
-            { type: GROUP, pos: 3, text: "(" },
-            { type: FIELD, pos: 4, text: "[Tax]", value: "Tax" },
-            { type: GROUP_CLOSE, pos: 9, text: ")" },
-            { type: END_OF_INPUT, pos: 10, text: "\n" },
+            { type: CALL, start: 0, text: "AVG" },
+            { type: GROUP, start: 3, text: "(" },
+            { type: FIELD, start: 4, text: "[Tax]", value: "Tax" },
+            { type: GROUP_CLOSE, start: 9, text: ")" },
+            { type: END_OF_INPUT, start: 10, text: "\n" },
           ].map(asToken),
         );
       }
@@ -170,13 +170,13 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens).toEqual(
           [
-            { type: CALL, pos: 0, text: "COUNTIF" },
-            { type: GROUP, pos: 7, text: "(" },
-            { type: FIELD, pos: 8, text: "[Discount]", value: "Discount" },
-            { type: COMPARISON, pos: 19, text: "<" },
-            { type: NUMBER, pos: 21, end: 22, text: "5" },
-            { type: GROUP_CLOSE, pos: 22, text: ")" },
-            { type: END_OF_INPUT, pos: 23, text: "\n" },
+            { type: CALL, start: 0, text: "COUNTIF" },
+            { type: GROUP, start: 7, text: "(" },
+            { type: FIELD, start: 8, text: "[Discount]", value: "Discount" },
+            { type: COMPARISON, start: 19, text: "<" },
+            { type: NUMBER, start: 21, end: 22, text: "5" },
+            { type: GROUP_CLOSE, start: 22, text: ")" },
+            { type: END_OF_INPUT, start: 23, text: "\n" },
           ].map(asToken),
         );
       }
@@ -240,11 +240,11 @@ describe("lexify", () => {
           [
             {
               type: NUMBER,
-              pos: 0,
+              start: 0,
               end: expression.length,
               text: expression,
             },
-            { type: END_OF_INPUT, pos: expression.length, text: "\n" },
+            { type: END_OF_INPUT, start: expression.length, text: "\n" },
           ].map(asToken),
         );
       }
@@ -286,9 +286,9 @@ describe("lexify", () => {
         const tokens = lexify(`a${ws}b`);
         expect(tokens).toEqual(
           [
-            { type: IDENTIFIER, pos: 0, text: "a", value: "a" },
-            { type: IDENTIFIER, pos: 2, text: "b", value: "b" },
-            { type: END_OF_INPUT, pos: 3, text: "\n" },
+            { type: IDENTIFIER, start: 0, text: "a", value: "a" },
+            { type: IDENTIFIER, start: 2, text: "b", value: "b" },
+            { type: END_OF_INPUT, start: 3, text: "\n" },
           ].map(asToken),
         );
       }
@@ -336,11 +336,11 @@ describe("lexify", () => {
           [
             {
               type: STRING,
-              pos: 0,
+              start: 0,
               text: expression,
               value,
             },
-            { type: END_OF_INPUT, pos: expression.length, text: "\n" },
+            { type: END_OF_INPUT, start: expression.length, text: "\n" },
           ].map(asToken),
         );
       }
@@ -358,11 +358,11 @@ describe("lexify", () => {
           [
             {
               type: STRING,
-              pos: 0,
+              start: 0,
               text: expression,
               value,
             },
-            { type: END_OF_INPUT, pos: expression.length, text: "\n" },
+            { type: END_OF_INPUT, start: expression.length, text: "\n" },
           ].map(asToken),
         );
       }
@@ -374,27 +374,27 @@ describe("lexify", () => {
         [
           {
             type: CALL,
-            pos: 0,
+            start: 0,
             text: "CONCAT",
           },
           {
             type: GROUP,
-            pos: 6,
+            start: 6,
             text: "(",
           },
           {
             type: IDENTIFIER,
-            pos: 7,
+            start: 7,
             text: "universe",
             value: "universe",
           },
           {
             type: STRING,
-            pos: 15,
+            start: 15,
             text: "') = [answer]",
             value: ") = [answer]",
           },
-          { type: END_OF_INPUT, pos: 28, text: "\n" },
+          { type: END_OF_INPUT, start: 28, text: "\n" },
         ].map(asToken),
       );
     });
@@ -423,11 +423,11 @@ describe("lexify", () => {
           [
             {
               type: IDENTIFIER,
-              pos: 0,
+              start: 0,
               text: expression,
               value: expect.any(String),
             },
-            { type: END_OF_INPUT, pos: expression.length, text: "\n" },
+            { type: END_OF_INPUT, start: expression.length, text: "\n" },
           ].map(asToken),
         );
       }
@@ -456,11 +456,11 @@ describe("lexify", () => {
           [
             {
               type: FIELD,
-              pos: 0,
+              start: 0,
               text: expression,
               value: expression.slice(1, -1),
             },
-            { type: END_OF_INPUT, pos: expression.length, text: "\n" },
+            { type: END_OF_INPUT, start: expression.length, text: "\n" },
           ].map(asToken),
         );
       }
@@ -472,11 +472,11 @@ describe("lexify", () => {
         [
           {
             type: FIELD,
-            pos: 0,
+            start: 0,
             text: "[foo",
             value: "foo",
           },
-          { type: END_OF_INPUT, pos: 4, text: "\n" },
+          { type: END_OF_INPUT, start: 4, text: "\n" },
         ].map(asToken),
       );
     });
@@ -487,16 +487,16 @@ describe("lexify", () => {
         [
           {
             type: FIELD,
-            pos: 0,
+            start: 0,
             text: "[T",
             value: "T",
           },
           {
             type: BAD_TOKEN,
-            pos: 2,
+            start: 2,
             text: "[",
           },
-          { type: END_OF_INPUT, pos: 3, text: "\n" },
+          { type: END_OF_INPUT, start: 3, text: "\n" },
         ].map(asToken),
       );
     });
@@ -513,11 +513,11 @@ describe("lexify", () => {
           [
             {
               type: FIELD,
-              pos: 0,
+              start: 0,
               text: expression,
               value,
             },
-            { type: END_OF_INPUT, pos: expression.length, text: "\n" },
+            { type: END_OF_INPUT, start: expression.length, text: "\n" },
           ].map(asToken),
         );
       }
@@ -529,11 +529,11 @@ describe("lexify", () => {
         [
           {
             type: FIELD,
-            pos: 0,
+            start: 0,
             text: "foo]",
             value: "foo",
           },
-          { type: END_OF_INPUT, pos: 4, text: "\n" },
+          { type: END_OF_INPUT, start: 4, text: "\n" },
         ].map(asToken),
       );
     });
@@ -543,17 +543,17 @@ describe("lexify", () => {
 
       expect(tokens).toEqual(
         [
-          { type: CALL, pos: 0, text: "case" },
-          { type: GROUP, pos: 4, text: "(" },
-          { type: FIELD, pos: 5, text: "[Total]", value: "Total" },
-          { type: COMPARISON, pos: 13, text: ">" },
-          { type: NUMBER, pos: 15, text: "200" },
-          { type: COMMA, pos: 18, text: "," },
-          { type: FIELD, pos: 20, text: "[To", value: "To" },
-          { type: COMMA, pos: 23, text: "," },
-          { type: STRING, pos: 25, text: '"Nothing"', value: "Nothing" },
-          { type: GROUP_CLOSE, pos: 34, text: ")" },
-          { type: END_OF_INPUT, pos: 35, text: "\n" },
+          { type: CALL, start: 0, text: "case" },
+          { type: GROUP, start: 4, text: "(" },
+          { type: FIELD, start: 5, text: "[Total]", value: "Total" },
+          { type: COMPARISON, start: 13, text: ">" },
+          { type: NUMBER, start: 15, text: "200" },
+          { type: COMMA, start: 18, text: "," },
+          { type: FIELD, start: 20, text: "[To", value: "To" },
+          { type: COMMA, start: 23, text: "," },
+          { type: STRING, start: 25, text: '"Nothing"', value: "Nothing" },
+          { type: GROUP_CLOSE, start: 34, text: ")" },
+          { type: END_OF_INPUT, start: 35, text: "\n" },
         ].map(asToken),
       );
     });
@@ -564,11 +564,11 @@ describe("lexify", () => {
         [
           {
             type: FIELD,
-            pos: 0,
+            start: 0,
             text: "[]",
             value: "",
           },
-          { type: END_OF_INPUT, pos: 2, text: "\n" },
+          { type: END_OF_INPUT, start: 2, text: "\n" },
         ].map(asToken),
       );
     });
@@ -579,17 +579,17 @@ describe("lexify", () => {
         [
           {
             type: FIELD,
-            pos: 0,
+            start: 0,
             text: "[Foo]",
             value: "Foo",
           },
           {
             type: FIELD,
-            pos: 6,
+            start: 6,
             text: "[Bar]",
             value: "Bar",
           },
-          { type: END_OF_INPUT, pos: 11, text: "\n" },
+          { type: END_OF_INPUT, start: 11, text: "\n" },
         ].map(asToken),
       );
     });
@@ -600,17 +600,17 @@ describe("lexify", () => {
         [
           {
             type: FIELD,
-            pos: 0,
+            start: 0,
             text: "[Pr ",
             value: "Pr ",
           },
           {
             type: FIELD,
-            pos: 4,
+            start: 4,
             text: "[Price]",
             value: "Price",
           },
-          { type: END_OF_INPUT, pos: 11, text: "\n" },
+          { type: END_OF_INPUT, start: 11, text: "\n" },
         ].map(asToken),
       );
     });
@@ -621,17 +621,17 @@ describe("lexify", () => {
         [
           {
             type: FIELD,
-            pos: 0,
+            start: 0,
             text: "[Pr",
             value: "Pr",
           },
           {
             type: FIELD,
-            pos: 3,
+            start: 3,
             text: "[Price]",
             value: "Price",
           },
-          { type: END_OF_INPUT, pos: 10, text: "\n" },
+          { type: END_OF_INPUT, start: 10, text: "\n" },
         ].map(asToken),
       );
     });
@@ -656,7 +656,7 @@ describe("lexify", () => {
         const tokens = lexify(expression);
         expect(tokens[index]).toEqual({
           type: op,
-          pos: expect.any(Number),
+          start: expect.any(Number),
           end: expect.any(Number),
           text: expect.any(String),
           length: expect.any(Number),
@@ -675,10 +675,10 @@ describe("lexify", () => {
           [
             {
               type: BOOLEAN,
-              pos: 0,
+              start: 0,
               text: expression,
             },
-            { type: END_OF_INPUT, pos: expression.length, text: "\n" },
+            { type: END_OF_INPUT, start: expression.length, text: "\n" },
           ].map(asToken),
         );
       }

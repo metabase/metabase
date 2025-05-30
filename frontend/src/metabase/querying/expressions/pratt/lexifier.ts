@@ -29,8 +29,8 @@ export function lexify(source: string) {
   ) {
     lexs.push(
       new Token({
-        pos: node.from,
-        length: node.to - node.from,
+        start: node.from,
+        end: node.to,
         text: source.slice(node.from, node.to),
         ...token,
       }),
@@ -104,10 +104,10 @@ export function lexify(source: string) {
     new Token({
       type: END_OF_INPUT,
       text: "\n",
-      length: 1,
-      pos: source.length,
+      start: source.length,
+      end: source.length + 1,
     }),
   );
 
-  return lexs.sort((a, b) => a.pos - b.pos);
+  return lexs.sort((a, b) => a.start - b.start);
 }

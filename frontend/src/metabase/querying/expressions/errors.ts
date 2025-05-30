@@ -26,7 +26,7 @@ export class CompileError extends ExpressionError {
   }
 
   get pos(): number | null {
-    return this.node?.token?.pos ?? null;
+    return this.node?.token?.start ?? null;
   }
 
   get len(): number | null {

@@ -5,33 +5,30 @@ export class Token {
   text: string;
   value?: string;
 
-  pos: number;
-  length: number;
+  start: number;
+  end: number;
 
   constructor({
     type,
-    pos,
-    length,
+    start,
+    end,
     text,
     value,
   }: {
     type: NodeType;
     text: string;
     value?: string;
-    length: number;
-    pos: number;
+    start: number;
+    end: number;
   }) {
     this.type = type;
-    this.pos = pos;
-    this.length = length;
+    this.start = start;
+    this.end = end;
 
     this.text = text;
     this.value = value;
   }
-  get start(): number {
-    return this.pos;
-  }
-  get end(): number {
-    return this.pos + this.length;
+  get length(): number {
+    return this.end - this.start;
   }
 }
