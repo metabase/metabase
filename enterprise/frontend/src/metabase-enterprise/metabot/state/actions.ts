@@ -5,9 +5,11 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { aiStreamingQuery } from "metabase-enterprise/api/ai";
-import { getInflightRequestsForUrl } from "metabase-enterprise/api/ai/requests";
-import type { JSONValue } from "metabase-enterprise/api/ai/types";
+import {
+  type JSONValue,
+  aiStreamingQuery,
+  getInflightRequestsForUrl,
+} from "metabase-enterprise/api/ai-streaming";
 import type {
   MetabotAgentRequest,
   MetabotChatContext,
