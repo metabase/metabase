@@ -15,7 +15,6 @@ import {
 import { getDatabase } from "../utils";
 
 import {
-  content,
   expressionClauseCompletion,
   fuzzyMatcher,
   isFieldReference,
@@ -54,7 +53,7 @@ export function suggestFunctions({ expressionMode, query, metadata }: Options) {
 
     // do not expand template if the next token is a (
     const next = tokenAtPos(source, token.end + 1);
-    const options = matcher(content(source, token)).map((option) => ({
+    const options = matcher(token.text).map((option) => ({
       ...option,
       apply: next?.type === GROUP ? undefined : option.apply,
     }));

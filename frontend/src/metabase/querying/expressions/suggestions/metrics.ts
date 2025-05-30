@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import { formatIdentifier } from "../identifier";
 import { tokenAtPos } from "../position";
 
-import { content, fuzzyMatcher } from "./util";
+import { fuzzyMatcher } from "./util";
 
 export type Options = {
   expressionMode: Lib.ExpressionMode;
@@ -38,8 +38,7 @@ export function suggestMetrics({ expressionMode, query, stageIndex }: Options) {
       return null;
     }
 
-    const text = content(source, token);
-    const word = text.replace(/^\[/, "").replace(/\]$/, "");
+    const word = token.text.replace(/^\[/, "").replace(/\]$/, "");
     if (word === "") {
       return {
         from: token.start,
@@ -52,7 +51,7 @@ export function suggestMetrics({ expressionMode, query, stageIndex }: Options) {
     return {
       from: token.start,
       to: token.end,
-      options: matcher(text),
+      options: matcher(token.text),
     };
   };
 }

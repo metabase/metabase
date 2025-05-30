@@ -70,10 +70,6 @@ export const fuzzyMatcher = _.memoize(function ({
   };
 }, JSON.stringify);
 
-export function content(source: string, token: Token): string {
-  return source.slice(token.pos, token.pos + token.length);
-}
-
 export function isIdentifier(token: Token | null) {
   return token != null && (token.type === IDENTIFIER || token.type === CALL);
 }

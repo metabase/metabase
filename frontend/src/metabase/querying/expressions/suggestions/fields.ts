@@ -9,7 +9,7 @@ import { formatIdentifier } from "../identifier";
 import { tokenAtPos } from "../position";
 
 import type { CompletionResult } from "./types";
-import { content, fuzzyMatcher } from "./util";
+import { fuzzyMatcher } from "./util";
 
 export type Options = {
   query: Lib.Query;
@@ -56,7 +56,7 @@ export function suggestFields({
       return null;
     }
 
-    const word = content(source, token).replace(/^\[/, "").replace(/\]$/, "");
+    const word = token.text.replace(/^\[/, "").replace(/\]$/, "");
     if (word === "") {
       return {
         from: token.start,
