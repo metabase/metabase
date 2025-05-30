@@ -21,8 +21,6 @@
  "buddy"                       {"buddy-core" {:resource "apache2_0.txt"}
                                 "buddy-sign" {:resource "apache2_0.txt"}}
  "dev.failsafe"                {"failsafe" {:resource "LICENSE"}}
- "ch.qos.logback"              {"logback-core" {:resource "EPL.txt"}
-                                "logback-classic" {:resource "EPL.txt"}}
  "colorize"                    {"colorize" {:resource "EPL.txt"}}
  "com.github.jnr"              {"jffi$native" {:resource "apache2_0.txt"}}
  "com.google.api-client"       {"google-api-client" {:resource "apache2_0.txt"}}
@@ -56,7 +54,6 @@
                                 "shib-velocity" {:resource "apache2_0.txt"}}
  "net.jcip"                    {"jcip-annotations" {:resource "CC_2_5.txt"}}
  "net.redhogs.cronparser"      {"cron-parser-core" {:resource "MIT.txt"}}
- "net.shibboleth.tool"         {"xmlsectool" {:resource "apache2_0.txt"}}
  "net.shibboleth.utilities"    {"java-support" {:resource "apache2_0.txt"}}
  "net.thisptr"                 {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                   {"antlr-runtime"  {:resource "BSD.txt"}
