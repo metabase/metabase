@@ -1,6 +1,9 @@
 {:paths
  ["src" "resources"]
 
+ :mvn/repos
+ {"shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}
+
  :deps
  {org.apache.commons/commons-configuration2 {:mvn/version "2.12.0"}
   org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}
