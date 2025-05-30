@@ -399,11 +399,12 @@
               "tenant_id"
               (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
   (t2/with-transaction [_conn]
-    (let [new-user-id (u/the-id (user/create-and-invite-user!
-                                 (u/select-keys-when body
-                                                     :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
-                                 @api/*current-user*
-                                 false))]
+    (let [new-user-data (u/select-keys-when body
+                                            :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
+          create-user-fn (if (:tenant_id body)
+                           #(user/insert-new-user! new-user-data)
+                           #(user/create-and-invite-user! new-user-data @api/*current-user* false))
+          new-user-id (u/the-id (create-user-fn))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
