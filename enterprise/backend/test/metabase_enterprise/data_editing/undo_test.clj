@@ -5,7 +5,6 @@
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest diff-keys-test

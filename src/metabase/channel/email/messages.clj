@@ -233,7 +233,7 @@
                        {:emailType    "notification"
                         :logoHeader   true
                         :heading      (trs "We hope you''ve been enjoying Metabase.")
-                        :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it's going?")
+                        :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it''s going?")
                         :link         "https://metabase.com/feedback/active"})
         email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
                :recipients   [email]

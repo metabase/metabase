@@ -303,6 +303,8 @@
   [:or
    ::unified-action.base
    [:map {:closed true}
+    [:dashboard-action ms/PositiveInt]]
+   [:map {:closed true}
     [:row-action ::unified-action.base]
     ;; TODO type our mappings
     [:mapping :map]
@@ -311,7 +313,7 @@
 
 (mu/defn- fetch-unified-action :- ::unified-action
   "Resolve various types of action id into a semantic map which is easier to dispatch on."
-  [scope :- ::types/scope.raw
+  [scope :- ::types/scope.hydrated
    raw-id :- [:or :string ms/NegativeInt ms/PositiveInt]]
   (cond
     (pos-int? raw-id) {:action-id raw-id}
@@ -338,8 +340,16 @@
                          (assert (:enabled viz-action) "Cannot call disabled actions")
                          (case action-type
                            "row-action" {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
-                       ;; Not a fancy encoded string, it must refer directly to a primitive.
-                       {:action-kw (keyword raw-id)})
+                       (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
+                         ;; Dashboard buttons can only be invoked from dashboards
+                         ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
+                         ;; will be a 404 thrown when we try to execute the action.
+                         ;; This 404 here is not the best error to return, but we can polish this later.
+                         (let [dashboard-id (api/check-404 (:dashboard-id scope))]
+                           (api/read-check :model/Dashboard dashboard-id)
+                           {:dashboard-action (parse-long dashcard-id)})
+                         ;; Not a fancy encoded string, it must refer directly to a primitive.
+                         {:action-kw (keyword raw-id)}))
     :else
     (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
@@ -358,6 +368,12 @@
          (if (and (isa? action-kw :table.row/common) (:table-id unified))
            (actions/perform-action! action-kw scope (for [i inputs] {:table-id (:table-id unified), :row i}))
            (actions/perform-action! action-kw scope inputs))))
+      (:dashboard-action unified)
+      (do
+        (api/check-400 (= 1 (count inputs)) "Saved actions currently only support a single input")
+        [(actions/execute-dashcard! (:dashboard-id scope)
+                                    (:dashboard-action unified)
+                                    (walk/stringify-keys (first inputs)))])
       (:row-action unified)
       ;; use flat namespace for now, probably want to separate form inputs from pks
       (let [row-action  (:row-action unified)
