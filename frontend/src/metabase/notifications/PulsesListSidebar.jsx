@@ -176,22 +176,25 @@ function buildFilterText(pulse, parameters) {
   // Format the first parameter value using the same logic as DefaultParametersSection
   let formattedValue;
   if (firstParameter.type && firstParameter.type.startsWith("date/")) {
-    const values = [].concat(firstParameter.value);
+    const values = Array.isArray(firstParameter.value)
+      ? firstParameter.value
+      : [firstParameter.value];
     const formattedValues = values
       .map((val) => formatDateValue(firstParameter, val))
       .filter(Boolean);
-
     if (formattedValues.length > 0) {
       formattedValue = conjunct(formattedValues, t`and`);
     } else {
       formattedValue = firstParameter.value;
     }
   } else {
-    const numValues = [].concat(firstParameter.value).length;
+    const values = Array.isArray(firstParameter.value)
+      ? firstParameter.value
+      : [firstParameter.value];
     formattedValue =
-      numValues > 1
-        ? t`${numValues} selections`
-        : conjunct([].concat(firstParameter.value), t`and`);
+      values.length > 1
+        ? t`${values.length} selections`
+        : conjunct(values, t`and`);
   }
 
   const firstFilterText = `${firstParameter.name}: ${formattedValue}`;

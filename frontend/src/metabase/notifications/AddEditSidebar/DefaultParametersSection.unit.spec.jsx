@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { t } from "ttag";
 
-import { renderWithProviders } from "__support__/ui";
+import { getIcon, renderWithProviders } from "__support__/ui";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -35,6 +35,7 @@ describe("DefaultParametersSection", () => {
     ).toBeInTheDocument();
     // Check for info icon tooltip text
     expect(screen.getByRole("img", { name: /info icon/i })).toBeInTheDocument();
+    expect(getIcon("info")).toBeInTheDocument();
   });
 
   it("should render a simple text parameter with a default value", () => {
