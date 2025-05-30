@@ -17,7 +17,9 @@ function generateMarkdownTable(shortcuts: Record<string, Shortcut>, group: strin
     .filter(([_, shortcut]) => shortcut.shortcutGroup === group)
     .map(([_, shortcut]) => ({
       name: shortcut.name,
-      shortcut: (shortcut.shortcutDisplay || shortcut.shortcut).join(', ')
+      shortcut: (shortcut.shortcutDisplay || shortcut.shortcut)
+        .map(key => key.replace('$mod', 'Ctrl/Cmd'))
+        .join(', ')
     }));
 
   if (groupShortcuts.length === 0) return '';
