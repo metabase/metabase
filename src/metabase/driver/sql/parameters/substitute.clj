@@ -46,7 +46,7 @@
         (params/ReferencedQuerySnippet? v)
         (substitute-native-query-snippet [sql args missing] v)
 
-        (and (= params/no-value v) (not (contains? #p *optional-params* #p k)))
+        (and (= params/no-value v) (not (contains? *optional-params* k)))
         [sql args (conj missing k)]
 
         :else
