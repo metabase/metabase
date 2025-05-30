@@ -30,7 +30,7 @@ import SchemaPicker from "../DataSelectorSchemaPicker";
 import TablePicker from "../DataSelectorTablePicker";
 import { TableTrigger, Trigger } from "../TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
-import SavedEntityPicker from "../saved-entity-picker/SavedEntityPicker";
+import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "../utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)

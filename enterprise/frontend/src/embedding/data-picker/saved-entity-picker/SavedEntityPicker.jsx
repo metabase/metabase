@@ -45,15 +45,38 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
   ...PERSONAL_COLLECTIONS,
 };
 
-function SavedEntityPicker({
-  type,
-  onBack,
-  onSelect,
-  collections,
-  currentUser,
-  databaseId,
-  tableId,
+/**
+ * @typedef {import("metabase/embedding-sdk/types/components/data-picker").DataSourceSelectorProps} DataSourceSelectorProps
+ *
+ * @typedef {object} SavedEntityPickerOwnProps
+ * @property {DataSourceSelectorProps['selectedCollectionId']} collectionId
+ * @property {Extract<import("metabase-types/api").CardType, 'model' | 'question'>} type
+ * @property {string} tableId
+ * @property {DataSourceSelectorProps['selectedDatabaseId']} databaseId
+ * @property {(cardId: string) => void} onSelect
+ * @property {() => void} onBack
+ *
+ * @typedef {object} SavedEntityPickerComposedProps
+ * @property {import("metabase-types/api").User} currentUser
+ * @property {import("metabase-types/api").Collection[]} collections
+ * @property {import("metabase-types/api").Collection} rootCollection
+ */
+
+/**
+ *
+ * @param {SavedEntityPickerOwnProps & SavedEntityPickerComposedProps} props
+ * @returns {JSX.Element}
+ */
+function InnerSavedEntityPicker({
   collectionId,
+  type,
+  tableId,
+  databaseId,
+  onSelect,
+  onBack,
+
+  currentUser,
+  collections,
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
@@ -138,11 +161,12 @@ function SavedEntityPicker({
   );
 }
 
-SavedEntityPicker.propTypes = propTypes;
+InnerSavedEntityPicker.propTypes = propTypes;
 
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
-export default _.compose(
+/** @type {React.FC<SavedEntityPickerOwnProps>} */
+export const SavedEntityPicker = _.compose(
   Collections.load({
     id: () => "root",
     entityAlias: "rootCollection",
@@ -152,4 +176,4 @@ export default _.compose(
     query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),
-)(SavedEntityPicker);
+)(InnerSavedEntityPicker);
