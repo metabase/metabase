@@ -236,15 +236,12 @@
         (let [signature (field-signature (:field_ref column))]
           (or ;; First try to match with the join alias.
            (m/find-first #(= (field-signature %) signature) field-exports)
-              ;; Then just the names, but if the match is ambiguous, warn and return nil.
-           (let [matches (filter (fn [[_tag id-or-name _opts :as a-ref]]
-                                   ;; As of now, `resolve-joins` prefers id-based refs in all cases, including cards.
-                                   ;; We need to support matching with name-based refs.
-                                   (if (integer? id-or-name)
-                                     (let [field (field-instance a-ref)]
-                                       (and (= field-name (:name field)) (:active field)))
-                                     (= field-name id-or-name)))
-                                 field-exports)]
+              ;; Then just the names, but if the match is ambiguous, return nil.
+           (let [matches (filter #(= (second %) field-name) field-exports)]
+             (when (= (count matches) 1)
+               (first matches)))
+           ;; Then just IDs, but if the match is ambiguous, return nil.
+           (let [matches (filter #(= (second %) (:id column)) field-exports)]
              (when (= (count matches) 1)
                (first matches))))))))
 
