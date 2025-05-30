@@ -26,7 +26,7 @@ import { samlTokenStorage } from "./saml-token-storage";
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
-    { metabaseInstanceUrl, authMethod: authMethod, apiKey }: MetabaseAuthConfig,
+    { metabaseInstanceUrl, authMethod, apiKey }: MetabaseAuthConfig,
     { dispatch },
   ) => {
     // remove any stale tokens that might be there from a previous session=
