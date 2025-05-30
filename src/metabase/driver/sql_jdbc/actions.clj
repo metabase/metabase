@@ -341,7 +341,8 @@
         (if (and (= actions/violate-foreign-key-constraint
                     (:type (ex-data e)))
                  (some? @row-before))
-          (throw (ex-info (ex-message e) (assoc (ex-data e) :children (count-row-descendants db-id table-id @row-before))))
+          (throw (ex-info (ex-message e)
+                          (assoc (ex-data e) :children (:counts (count-row-descendants db-id table-id @row-before)))))
           (throw e))))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
@@ -834,11 +835,15 @@
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [action context inputs :- [:sequential ::table-row-input]]
+<<<<<<< HEAD
   (def context context)
   (def inputs inputs)
   (def action action)
   (ngoc/with-tc
     (perform-table-row-delete! action context inputs)))
+=======
+  (perform-table-row-delete! action context inputs))
+>>>>>>> c2965187ac (return children count)
 
 ;;;; `bulk/update`
 
