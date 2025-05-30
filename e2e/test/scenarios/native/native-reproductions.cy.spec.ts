@@ -545,7 +545,7 @@ describe("issue 56570", () => {
 
   it("should not push the toolbar off-screen (metabase#56570)", () => {
     cy.findByTestId("visibility-toggler").click();
-    cy.findByTestId("native-query-editor-sidebar").should("be.visible");
+    cy.findByTestId("native-query-editor-action-buttons").should("be.visible");
   });
 });
 
@@ -575,7 +575,9 @@ describe("issue 57441", () => {
 
     H.createSnippet({ name: "snippet 1", content: "select 1" });
 
-    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
     H.rightSidebar().icon("add").click();
     H.popover().findByText("New snippet").click();
     H.modal().findByText("Create your new snippet").should("be.visible");
