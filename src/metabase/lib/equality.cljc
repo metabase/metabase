@@ -123,7 +123,7 @@
 
 (mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
-  ((some-fn :metabase.lib.join/join-alias :source-alias) column))
+  (:metabase.lib.join/join-alias column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name
@@ -141,19 +141,14 @@
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
-  ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-  ; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-  (letfn [(matching-or-ignore-join? [col] (or (and (not (:join-alias opts))
-                                                   (#{:source/fields :source/card} (:lib/source col)))
-                                              (matching-join? a-ref col)))]
-    (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
-                                 (matching-or-ignore-join? %))
-                           columns))
-        (filter #(and (clojure.core/= (:name %) ref-name)
-                      (or (and (not (:join-alias opts))
-                               (#{:source/fields :source/card} (:lib/source %)))
-                          (matching-or-ignore-join? %)))
-                columns))))
+  (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
+                               (matching-join? a-ref %))
+                         columns))
+      (filter #(and (clojure.core/= (:name %) ref-name)
+                    (or (and (not (:join-alias opts))
+                             (#{:source/fields :source/card} (:lib/source %)))
+                        (matching-join? a-ref %)))
+              columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
