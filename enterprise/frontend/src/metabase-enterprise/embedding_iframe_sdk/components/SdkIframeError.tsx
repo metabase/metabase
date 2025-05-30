@@ -1,4 +1,5 @@
 import noResultsSource from "assets/img/no_results.svg";
+import type { MetabaseError } from "embedding-sdk/errors";
 import { Center, Image, Stack, Text, ThemeProvider } from "metabase/ui";
 
 export const SdkIframeError = ({ message }: { message: string }) => (
@@ -24,3 +25,10 @@ export const SdkIframeInvalidLicenseError = () => (
 export const SdkIframeApiKeyInProductionError = () => (
   <SdkIframeError message="Using an API key in production is not allowed." />
 );
+
+// Only shown when we have received an authentication error.
+export const SdkIframeAuthenticationError = ({
+  error,
+}: {
+  error: MetabaseError<string, unknown>;
+}) => <SdkIframeError message={error.message} />;
