@@ -572,7 +572,7 @@ export class UnconnectedDataSelector extends Component {
       await this.loadStepData(stepName);
     }
     if (skipSteps) {
-      await this.skipSteps();
+      this.skipSteps();
     }
   };
 
@@ -876,6 +876,7 @@ const DataSelector = _.compose(
   }),
   connect(
     (state, ownProps) => ({
+      // `metadata` is the response of `Search.loadList`. Not to be confused with Query Builder's metadata.
       availableModels: ownProps.metadata?.available_models ?? [],
       metadata: getMetadata(state),
       hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
