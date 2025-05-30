@@ -146,3 +146,5 @@ llm-payloads
 .aider*
 /config.yml
 CLAUDE.local.md
+
+.eslintcache
