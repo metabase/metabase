@@ -1,4 +1,4 @@
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type { DatabaseId, SchemaId, Table, TableId } from "metabase-types/api";
 
 export type NodeKey = string;
 
@@ -40,6 +40,7 @@ export type TableNode = {
   key: string;
   value: { databaseId: DatabaseId; schemaId: SchemaId; tableId: TableId };
   children: [];
+  table?: Table;
 };
 
 export type DatabaseItem = Omit<DatabaseNode, "children">;
@@ -68,6 +69,7 @@ type LoadingItem = {
   value?: TreePath;
   label?: string;
   parent?: NodeKey;
+  table?: undefined;
 };
 
 export type ExpandedState = {

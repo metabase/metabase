@@ -59,3 +59,14 @@
   border-bottom-left-radius: 4px;
   width: 10px;
 }
+
+.visibilityToggle {
+  flex-shrink: 0;
+  opacity: 0;
+
+  .item:hover &,
+  .item.selected &,
+  .item.active & {
+    opacity: 0.75;
+  }
+}
