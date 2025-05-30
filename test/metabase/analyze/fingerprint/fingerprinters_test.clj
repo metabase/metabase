@@ -71,7 +71,15 @@
                                  1234                                              ; int
                                  1594067133360                                     ; long
                                  "2007-12-03T10:15:30.00Z"                         ; string
-                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 java.time.ZoneOffset/UTC)]))))))))))
+                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 java.time.ZoneOffset/UTC)]))))
+            (testing "we respect effective_type"
+              (is (= {:global {:distinct-count 2
+                               :nil%           0.0}
+                      :type   {:type/DateTime {:earliest "1970-01-01T00:00:01.234Z"
+                                               :latest   "2007-12-03T10:15:30Z"}}}
+                     (transduce identity
+                                (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Temporal}))
+                                ["2007-12-03T10:15:30.00Z" "1970-01-01T00:00:01.234Z"]))))))))))
 
 (deftest ^:parallel disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"
