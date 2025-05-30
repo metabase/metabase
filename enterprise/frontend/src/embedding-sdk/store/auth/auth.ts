@@ -115,7 +115,7 @@ export const refreshTokenAsync = createAsyncThunk(
       getFetchRefreshTokenFn(getState() as SdkStoreState) ?? undefined;
     const session = await getRefreshToken({
       metabaseInstanceUrl,
-      authMethod: authMethod,
+      authMethod,
       fetchRequestToken: customGetRefreshToken,
     });
 
@@ -151,7 +151,7 @@ export const refreshTokenAsync = createAsyncThunk(
 
 const getRefreshToken = async ({
   metabaseInstanceUrl,
-  authMethod: authMethod,
+  authMethod,
   fetchRequestToken: customGetRequestToken,
 }: Pick<
   MetabaseAuthConfig,
