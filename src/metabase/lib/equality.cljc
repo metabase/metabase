@@ -121,44 +121,44 @@
      (catch #?(:clj Throwable :cljs :default) _
        nil))))
 
-(mu/defn- column-join-or-source-alias :- [:maybe :string]
+(mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
 (mu/defn- matching-join? :- :boolean
-  [[_ref-kind {:keys [join-alias source-field source-field-name
-                      source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
-   column                                                :- ::lib.schema.metadata/column]
+  [[_ref-kind {:keys [join-alias source-field source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
+   column                                                                        :- ::lib.schema.metadata/column]
   (if source-field
     (and (clojure.core/= source-field (:fk-field-id column))
-         ;; `source-field-name` is not available on old refs
-         (or (nil? source-field-name) (clojure.core/= source-field-name (:fk-field-name column)))
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))
     ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
     ;; an own column.
-    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the source
-    ; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-    (clojure.core/= join-alias (if (and (not join-alias)
-                                        (#{:source/fields :source/card} (:lib/source column)))
-                                 (:metabase.lib.join/join-alias column)
-                                 (column-join-or-source-alias column)))))
+    (clojure.core/= (column-join-alias column) join-alias)))
 
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind _opts ref-name :as a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    (matching-join? a-ref %))
+                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                    ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                    (or (and (not (:join-alias opts))
+                             (#{:source/fields :source/card} (:lib/source %)))
+                        (matching-join? a-ref %)))
               columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
    columns                           :- [:sequential ::lib.schema.metadata/column]
    generous?                         :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
-                               (matching-join? a-ref %))
+                               ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                               ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                               (or (and (not (:join-alias opts))
+                                        (#{:source/fields :source/card} (:lib/source %)))
+                                   (matching-join? a-ref %)))
                          columns))
       (when generous?
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
@@ -228,7 +228,7 @@
    columns :- [:sequential ::lib.schema.metadata/column]]
   ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
   ;; ignore the source alias on columns with :source/card or :source/fields
-  (if-let [no-alias (not-empty (remove #(and (column-join-or-source-alias %)
+  (if-let [no-alias (not-empty (remove #(and (column-join-alias %)
                                              (not (#{:source/card} (:lib/source %))))
                                        columns))]
     ;; At least 1 matching column with no :source-alias.
@@ -247,7 +247,7 @@
   (let [{:keys [join-alias]} (lib.options/options a-ref)]
     (if join-alias
       ;; a-ref has a :join-alias, match on that. Return nil if nothing matches.
-      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-or-source-alias %) join-alias) columns))]
+      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
         (if-not (next matches)
           (first matches)
           (#?(:cljs js/console.warn :clj log/warn)
@@ -357,12 +357,15 @@
   Returns the matching ref, or nil if no plausible matches are found."
   [column :- ::lib.schema.metadata/column
    refs   :- [:sequential ::lib.schema.ref/ref]]
-  (let [ref-tails       (group-by ref-id-or-name refs)
-        column-ref-tail (-> column lib.ref/ref ref-id-or-name)
-        matches         (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
-                            (not-empty (get ref-tails (:id column)))
-                            (get ref-tails column-ref-tail)
-                            [])]
+  (let [ref-tails (group-by ref-id-or-name refs)
+        matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
+                      (not-empty (get ref-tails (:id column)))
+                      ;; columns from the previous stage have unique `:lib/desired-column-alias` but not `:name`.
+                      ;; we cannot fallback to `:name` when `:lib/desired-column-alias` is set
+                      (not-empty (get ref-tails (or (:lib/desired-column-alias column)
+                                                    (:name column))))
+                      (not-empty (get ref-tails (-> column lib.ref/ref ref-id-or-name)))
+                      [])]
     (case (count matches)
       0 nil
       1 (first matches)
