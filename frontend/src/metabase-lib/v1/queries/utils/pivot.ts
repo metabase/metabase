@@ -16,6 +16,8 @@ import type {
 type PivotOptions = {
   pivot_rows: number[];
   pivot_cols: number[];
+  show_row_totals?: boolean;
+  show_column_totals?: boolean;
 };
 
 export function isColumnNameColumnSplitSetting(
@@ -90,11 +92,20 @@ export function getPivotOptions(question: Question) {
   const setting: PivotTableColumnSplitSetting =
     question.setting("pivot_table.column_split") ?? {};
 
-  if (isColumnNameColumnSplitSetting(setting)) {
-    return getColumnNamePivotOptions(query, stageIndex, setting);
-  } else {
-    return getFieldRefPivotOptions(query, stageIndex, setting);
-  }
+  // Extract totals settings
+  const showRowTotals = question.setting("pivot.show_row_totals") ?? true;
+  const showColumnTotals = question.setting("pivot.show_column_totals") ?? true;
+
+  const pivotSplitOptions = isColumnNameColumnSplitSetting(setting)
+    ? getColumnNamePivotOptions(query, stageIndex, setting)
+    : getFieldRefPivotOptions(query, stageIndex, setting);
+
+  // Add totals settings to the options
+  return {
+    ...pivotSplitOptions,
+    show_row_totals: showRowTotals,
+    show_column_totals: showColumnTotals,
+  };
 }
 
 function migratePivotSetting(
