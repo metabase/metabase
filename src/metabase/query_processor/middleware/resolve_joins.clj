@@ -75,16 +75,9 @@
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
-  (let [duplicate-ids (into #{}
-                            (keep (fn [[item freq]]
-                                    (when (> freq 1)
-                                      item)))
-                            (frequencies (map :id source-metadata)))]
-    (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-      (if (and field-id (not (contains? duplicate-ids field-id)))
-        ;; field-id is a unique reference, use it
-        [:field field-id   {:join-alias alias}]
-        [:field field-name {:base-type base-type, :join-alias alias}]))))
+  (into []
+        (map #(assoc-in % [2 :join-alias] alias))
+        (qp.add-implicit-clauses/source-metadata->fields source-metadata)))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."

@@ -42,24 +42,20 @@
        [:field (u/the-id field) nil])
      fields)))
 
-(defn- multiply-bucketed-field-refs
+(defn- can-use-id-based-refs?
   [source-metadata]
-  (->> source-metadata
-       (map :field_ref)
-       (group-by #(some-> % (mbql.u/update-field-options dissoc :binning :temporal-unit :original-temporal-unit)))
-       (reduce-kv (fn [duplicates ref-key field-refs]
-                    (cond-> duplicates
-                      (and ref-key (next field-refs))
-                      (into (filter (comp (some-fn :binning :temporal-unit) #(get % 2))) field-refs)))
-                  #{})))
+  (let [metadata-provider (qp.store/metadata-provider)]
+    (every? (fn [{field-id :id, field-name :name}]
+              (and (some? field-id) (= field-name (:name (lib.metadata/field metadata-provider)))))
+            source-metadata)))
 
-(mu/defn- source-metadata->fields :- mbql.s/Fields
+(mu/defn source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
   ;; We want to allow columns to be bucketed or binned in several different ways.
   ;; Such columns would be collapsed into a single column if referenced by ID,
   ;; so we make sure that they get a reference by name, which is unique.
-  (let [multiply-bucketed-refs (multiply-bucketed-field-refs source-metadata)]
+  (let [id-based-refs? (can-use-id-based-refs? source-metadata)]
     (distinct
      (for [{field-name               :name
             base-type                :base_type
@@ -70,27 +66,26 @@
        ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
        ;; bucketed in the source query; don't need to apply bucketing again in the parent query. Mark the field as
        ;; `qp/ignore-coercion` here so that it doesn't happen again in the parent query.
-       (let [not-multiply-bracketed? (not (contains? multiply-bucketed-refs field-ref))]
-         (or (and not-multiply-bracketed?
-                  (some-> (lib.util.match/match-one field-ref :field)
-                          (mbql.u/update-field-options dissoc :binning :temporal-unit)
-                          (cond->
-                           (or coercion-strategy
-                               (and (pos-int? field-id)
-                                    (some-> (qp.store/metadata-provider)
-                                            (lib.metadata/field field-id)
-                                            :coercion-strategy)))
-                            (mbql.u/assoc-field-options :qp/ignore-coercion true))))
+       (or (and id-based-refs?
+                (some-> (lib.util.match/match-one field-ref :field)
+                        (mbql.u/update-field-options dissoc :binning :temporal-unit)
+                        (cond->
+                         (or coercion-strategy
+                             (and (pos-int? field-id)
+                                  (some-> (qp.store/metadata-provider)
+                                          (lib.metadata/field field-id)
+                                          :coercion-strategy)))
+                          (mbql.u/assoc-field-options :qp/ignore-coercion true))))
              ;; otherwise construct a field reference that can be used to refer to this Field.
              ;; Force string id field if expression contains just field. See issue #28451.
-             (if (and (not= ref-type :expression)
-                      not-multiply-bracketed?
-                      field-id)
+           (if (and (not= ref-type :expression)
+                    id-based-refs?
+                    field-id)
                ;; If we have a Field ID, return a `:field` (id) clause
-               [:field field-id (cond-> nil coercion-strategy (assoc :qp/ignore-coercion true))]
+             [:field field-id (cond-> nil coercion-strategy (assoc :qp/ignore-coercion true))]
                ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
                ;; expression. We don't need to mark as ignore-coercion here because these won't grab the field metadata
-               [:field field-name {:base-type base-type}])))))))
+             [:field field-name {:base-type base-type}]))))))
 
 (mu/defn- should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
