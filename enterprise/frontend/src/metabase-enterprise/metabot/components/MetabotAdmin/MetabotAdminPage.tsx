@@ -33,10 +33,19 @@ const metabotContext = "{0} is the name of an AI assistant";
 
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
-  const { data } = useListMetabotsQuery();
+  const { data, isLoading, error } = useListMetabotsQuery();
   const metabotName =
     data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
   const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
+
+  if (isLoading || !data) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error ? t`Error fetching Metabots` : null}
+      />
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -80,7 +89,7 @@ function MetabotNavPane() {
   }, [metabots, metabotId, dispatch]);
 
   if (isLoading || !data) {
-    return <LoadingAndErrorWrapper loading />;
+    return null;
   }
 
   return (
@@ -105,9 +114,11 @@ function MetabotConfigurationPane({
   metabotId: MetabotId | null;
   metabotName: string;
 }) {
-  const { data: entityList, isLoading } = useListMetabotsEntitiesQuery(
-    metabotId ?? skipToken,
-  );
+  const {
+    data: entityList,
+    isLoading,
+    error,
+  } = useListMetabotsEntitiesQuery(metabotId ? { id: metabotId } : skipToken);
   const [updateEntities] = useUpdateMetabotEntitiesMutation();
   const [deleteEntity] = useDeleteMetabotEntitiesMutation();
   const [isOpen, { open, close }] = useDisclosure(false);
@@ -116,25 +127,37 @@ function MetabotConfigurationPane({
   if (!metabotId) {
     return null;
   }
-  if (isLoading || !entityList) {
-    return <LoadingAndErrorWrapper loading />;
+  if (isLoading || !entityList || error) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error ? t`Error fetching Metabot configuration` : null}
+      />
+    );
   }
 
   const collection = entityList?.items?.[0];
   const handleDelete = async () => {
     if (collection) {
-      await deleteEntity({
+      const result = await deleteEntity({
         metabotId,
         entityModel: "collection",
         entityId: collection.id,
       });
+
+      if (result.error) {
+        sendToast({
+          message: t`Error removing folder`,
+          icon: "warning",
+        });
+      }
     }
   };
 
   const handleAddEntity = async (
     newEntity: Pick<MetabotEntity, "model" | "id" | "name">,
   ) => {
-    handleDelete();
+    await handleDelete();
     const result = await updateEntities({
       id: metabotId,
       entities: [_.pick(newEntity, "model", "id")],

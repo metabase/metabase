@@ -6,8 +6,15 @@ import type {
   MetabotInfo,
 } from "metabase-types/api";
 
-export function setupMetabotsEndpoint(metabots: MetabotInfo[]) {
-  fetchMock.get("path:/api/ee/metabot-v3/metabot", { items: metabots });
+export function setupMetabotsEndpoint(
+  metabots: MetabotInfo[],
+  statusCode?: number,
+) {
+  fetchMock.get(
+    "path:/api/ee/metabot-v3/metabot",
+    statusCode ? { status: statusCode } : { items: metabots },
+    { overwriteRoutes: true },
+  );
 }
 
 export function setupMetabotEntitiesEndpoint(

@@ -8,6 +8,7 @@ import type {
   MetabotId,
   MetabotInfo,
   MetabotPromptSuggestions,
+  PaginationRequest,
   PaginationResponse,
 } from "metabase-types/api";
 
@@ -27,15 +28,15 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/metabot-v3/metabot",
       }),
-      providesTags: ["metabots-list"],
     }),
     listMetabotsEntities: builder.query<
       { items: MetabotEntity[] } & PaginationResponse,
-      MetabotId
+      { id: MetabotId } & PaginationRequest
     >({
-      query: (id: number) => ({
+      query: ({ id, ...paginationProps }) => ({
         method: "GET",
         url: `/api/ee/metabot-v3/metabot/${id}/entities`,
+        body: paginationProps,
       }),
       providesTags: ["metabot-entities-list"],
       transformResponse: (

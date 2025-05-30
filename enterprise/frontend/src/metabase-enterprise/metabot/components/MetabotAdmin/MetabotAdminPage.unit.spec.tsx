@@ -84,9 +84,13 @@ const entities = {
   ],
 };
 
-const setup = async (initialPathParam: MetabotId = 1, seedData = entities) => {
+const setup = async (
+  initialPathParam: MetabotId = 1,
+  seedData = entities,
+  error = false,
+) => {
   mockPathParam(initialPathParam);
-  setupMetabotsEndpoint(metabots);
+  setupMetabotsEndpoint(metabots, error ? 500 : undefined);
   const collections = [...seedData[1], ...seedData[2], ...seedData.recents];
   setupCollectionByIdEndpoint({
     collections: collections.map((c: any) => ({ id: c.model_id, ...c })),
@@ -111,13 +115,15 @@ const setup = async (initialPathParam: MetabotId = 1, seedData = entities) => {
     },
   );
 
-  await screen.findByText("Configure Metabot");
+  if (!error) {
+    await screen.findByText(/Configure/);
+  }
 };
 
 describe("MetabotAdminPage", () => {
   it("should render the page", async () => {
     await setup();
-    expect(screen.getByText("Configure Metabot")).toBeInTheDocument();
+    expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
   });
 
   it("should render the metabots list", async () => {
@@ -195,6 +201,14 @@ describe("MetabotAdminPage", () => {
 
     expect(
       await screen.findByText(/embedding the metabot component/i),
+    ).toBeInTheDocument();
+  });
+
+  it("should show an error message when a request fails", async () => {
+    await setup(3, entities, true);
+
+    expect(
+      await screen.findByText("Error fetching Metabots"),
     ).toBeInTheDocument();
   });
 });
