@@ -425,7 +425,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             }
           }}
         >
-          <>
+          <Flex w="100%" flex="1">
             <CodeMirrorEditor
               ref={this.editor}
               query={question.query()}
@@ -438,39 +438,33 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               onRightClickSelection={this.handleRightClickSelection}
             />
 
-            {hasEditingSidebar &&
-              !readOnly &&
-              !this.state.queryValidationError && (
-                <NativeQueryEditorRunButton
-                  cancelQuery={this.props.cancelQuery}
-                  isResultDirty={this.props.isResultDirty}
-                  isRunnable={this.props.isRunnable}
-                  isRunning={this.props.isRunning}
-                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
-                  runQuery={this.props.runQuery}
-                />
-              )}
-
-            {this.state.queryValidationError &&
-              this.state.queryValidationError.length > 0 && (
-                <Flex
-                  pos="absolute"
-                  bottom="15px"
-                  w="calc(100% - 5.5rem)"
-                  p="md"
-                  data-testid="query-validation-error"
-                  className={S.queryErrorContainer}
-                  ml="lg"
-                >
-                  <Icon name="warning" c="error" mr="sm" />
-                  <Box component="ul" m={0} p={0} style={{ listStyle: "none" }}>
-                    {this.state.queryValidationError.map((err, idx) => (
-                      <li key={idx}>{err}</li>
-                    ))}
-                  </Box>
-                </Flex>
-              )}
-          </>
+            {hasEditingSidebar && !readOnly && (
+              <NativeQueryEditorRunButton
+                cancelQuery={this.props.cancelQuery}
+                isResultDirty={this.props.isResultDirty}
+                isRunnable={this.props.isRunnable}
+                isRunning={this.props.isRunning}
+                nativeEditorSelectedText={this.props.nativeEditorSelectedText}
+                runQuery={this.props.runQuery}
+              />
+            )}
+          </Flex>
+          {this.state.queryValidationError &&
+            this.state.queryValidationError.length > 0 && (
+              <Flex
+                p="sm"
+                mt="auto"
+                data-testid="query-validation-error"
+                className={S.queryErrorContainer}
+              >
+                <Icon name="warning" c="error" mr="sm" />
+                <Box component="ul" m={0} p={0} style={{ listStyle: "none" }}>
+                  {this.state.queryValidationError.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </Box>
+              </Flex>
+            )}
         </ResizableBox>
 
         <RightClickPopover
