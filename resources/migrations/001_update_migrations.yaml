@@ -11615,6 +11615,7 @@ databaseChangeLog:
       id: v55.2025-05-20T12:29:03
       author: johnswanson
       comment: add an index for `core_user.tenant_id`
+      preConditions: # not needed
       changes:
         - createIndex:
             tableName: core_user
