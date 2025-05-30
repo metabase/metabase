@@ -47,7 +47,12 @@ export const GettingStartedSection = ({
         <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
       </Group>
 
-      <Collapse in={opened} transitionDuration={0} role="tabpanel">
+      <Collapse
+        in={opened}
+        transitionDuration={0}
+        role="tabpanel"
+        aria-expanded={opened}
+      >
         <PaddedSidebarLink icon="add_data" onClick={onModalOpen}>
           {t`Add data`}
         </PaddedSidebarLink>
