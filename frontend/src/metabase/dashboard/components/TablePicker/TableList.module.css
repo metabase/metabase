@@ -1,0 +1,13 @@
+.filteredResult {
+  &:hover {
+    color: var(--mb-color-text-white);
+
+    .tableLocationGroup {
+      color: inherit;
+    }
+  }
+}
+
+.tableLocationGroup {
+  color: var(--mb-color-text-light);
+}
