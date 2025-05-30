@@ -176,7 +176,7 @@ export type ColumnFormattingSetting =
 export type TableRowActionDisplaySettings = {
   id: string;
   actionId: WritebackActionId;
-  name?: string;
+  name: string;
   actionType: "data-grid/row-action";
   parameterMappings?: RowActionFieldSettings[];
 };
