@@ -25,27 +25,32 @@ interface Props {
 }
 
 export const FieldSection = ({ databaseId, field }: Props) => {
-  const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
+  const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
-  function confirm(message: string) {
-    sendToast({ message });
-  }
 
   return (
     <Stack gap="lg" h="100%">
       <NameDescriptionInput
         name={field.display_name}
         namePlaceholder={t`Give this field a name`}
-        onNameChange={async (display_name) => {
-          await updateField({ id, display_name });
-          confirm(t`Display name for ${display_name} updated`);
+        onNameChange={async (name) => {
+          await updateField({ id, display_name: name });
+
+          sendToast({
+            icon: "check",
+            message: t`Display name for ${name} updated`,
+          });
         }}
         description={field.description ?? ""}
         descriptionPlaceholder={t`Give this field a description`}
         onDescriptionChange={async (description) => {
           await updateField({ id, description });
-          confirm(t`Description for ${getFieldDisplayName(field)} updated`);
+
+          sendToast({
+            icon: "check",
+            message: t`Description for ${getFieldDisplayName(field)} updated`,
+          });
         }}
       />
 

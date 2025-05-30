@@ -45,16 +45,16 @@ export const NameDescriptionInput = ({
       />
 
       <Textarea
+        autosize
         classNames={{
           input: S.descriptionInput,
           root: S.description,
         }}
+        maxRows={4}
+        minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
         onChange={onDescriptionChange}
-        autosize
-        minRows={2}
-        maxRows={4}
       />
     </Box>
   );

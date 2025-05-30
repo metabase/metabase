@@ -28,9 +28,6 @@ export const TableSection = ({ params, table }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
-  function confirm(message: string) {
-    sendToast({ message, icon: "check" });
-  }
 
   return (
     <Stack gap="lg">
@@ -41,11 +38,19 @@ export const TableSection = ({ params, table }: Props) => {
         namePlaceholder={t`Give this table a name`}
         onDescriptionChange={async (description) => {
           await updateTable({ id: table.id, description });
-          confirm(t`Table description updated`);
+
+          sendToast({
+            icon: "check",
+            message: t`Table description updated`,
+          });
         }}
         onNameChange={async (name) => {
           await updateTable({ id: table.id, display_name: name });
-          confirm(t`Table name updated`);
+
+          sendToast({
+            icon: "check",
+            message: t`Table name updated`,
+          });
         }}
       />
 
@@ -63,7 +68,11 @@ export const TableSection = ({ params, table }: Props) => {
                 id: table.id,
                 visibility_type: visibilityType,
               });
-              confirm(t`Table visibility updated`);
+
+              sendToast({
+                icon: "check",
+                message: t`Table visibility updated`,
+              });
             }}
           />
         </Card>
@@ -75,9 +84,16 @@ export const TableSection = ({ params, table }: Props) => {
 
           <FieldOrderPicker
             value={table.field_order}
-            onChange={(fieldOrder) => {
-              updateTable({ id: table.id, field_order: fieldOrder });
-              confirm(t`Field order updated`);
+            onChange={async (fieldOrder) => {
+              await updateTable({
+                id: table.id,
+                field_order: fieldOrder,
+              });
+
+              sendToast({
+                icon: "check",
+                message: t`Field order updated`,
+              });
             }}
           />
         </Flex>
@@ -92,7 +108,11 @@ export const TableSection = ({ params, table }: Props) => {
               // in this context field id will never be a string because it's a raw table field, so it's ok to cast
               field_order: fieldOrder as FieldId[],
             });
-            confirm(t`Field order updated`);
+
+            sendToast({
+              icon: "check",
+              message: t`Field order updated`,
+            });
           }}
         />
       </Stack>
