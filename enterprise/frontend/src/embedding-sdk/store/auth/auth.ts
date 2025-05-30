@@ -20,7 +20,10 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
-import { getFetchRefreshTokenFn } from "../selectors";
+import {
+  getFetchRefreshTokenFn,
+  getIsNewIframeEmbeddingAuth,
+} from "../selectors";
 
 import { samlTokenStorage } from "./saml-token-storage";
 
@@ -101,8 +104,14 @@ export const refreshTokenAsync = createAsyncThunk(
     url: MetabaseAuthConfig["metabaseInstanceUrl"],
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
-    const customGetRefreshToken =
-      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
+    const state = getState() as SdkStoreState;
+
+    const isNewIframeEmbeddingAuth = getIsNewIframeEmbeddingAuth(state);
+    if (isNewIframeEmbeddingAuth) {
+      return null;
+    }
+
+    const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? null;
 
     const session = await getRefreshToken(url, customGetRefreshToken);
     validateSessionToken(session);

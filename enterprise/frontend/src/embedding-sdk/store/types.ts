@@ -32,6 +32,7 @@ export type SdkState = {
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
+  isNewIframeEmbeddingAuth?: boolean;
 };
 
 export interface SdkStoreState extends State {
