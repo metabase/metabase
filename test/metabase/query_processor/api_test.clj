@@ -552,7 +552,7 @@
                             :show_column_totals true})
               result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
               rows   (mt/rows result)]
-          (is (= (:row_count result) 912))
+          (is (= 912 (:row_count result)))
           (is (= "completed" (:status result)))
           ;; Only pivot groupings necessary for data and col totals
           (is (= [0 1 3]
@@ -564,13 +564,13 @@
 (deftest ^:parallel pivot-dataset-column-totals-disabled-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
-      (testing "POST /api/dataset/pivot with row totals disabled"
+      (testing "POST /api/dataset/pivot with column totals disabled"
         (let [query (merge (api.pivots/pivot-query true)
                            {:show_row_totals true
                             :show_column_totals false})
               result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
               rows   (mt/rows result)]
-          (is (= (:row_count result) 1114))
+          (is (= 1114 (:row_count result)))
           (is (= "completed" (:status result)))
           ;; Only pivot groupings necessary for data and row totals
           (is (= [0 4]
@@ -582,13 +582,13 @@
 (deftest ^:parallel pivot-dataset-both-totals-disabled-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
-      (testing "POST /api/dataset/pivot with row totals disabled"
+      (testing "POST /api/dataset/pivot with row and column totals disabled"
         (let [query (merge (api.pivots/pivot-query true)
                            {:show_row_totals false
                             :show_column_totals false})
               result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
               rows   (mt/rows result)]
-          (is (= (:row_count result) 888))
+          (is (= 888 (:row_count result)))
           (is (= "completed" (:status result)))
           ;; Only pivot groupings necessary for data
           (is (= [0]
