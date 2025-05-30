@@ -213,6 +213,7 @@
                                  (str/replace #">\s+<" "><"))]
                 (is (= (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                             "<saml2p:AuthnRequest"
+                            " xmlns:saml2p=\"urn:oasis:names:tc:SAML:2.0:protocol\""
                             " AssertionConsumerServiceURL=\"http://localhost:3000/auth/sso\""
                             " Destination=\"http://test.idp.metabase.com\""
                             " ID=\"id-419507d5-1d2a-43c4-bcde-3e5b9746bb47\""
@@ -220,8 +221,7 @@
                             " IssueInstant=\"2020-09-30T17:53:32.000Z\""
                             " ProtocolBinding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\""
                             " ProviderName=\"Metabase\""
-                            " Version=\"2.0\""
-                            " xmlns:saml2p=\"urn:oasis:names:tc:SAML:2.0:protocol\">"
+                            " Version=\"2.0\">"
                             "<saml2:Issuer xmlns:saml2=\"urn:oasis:names:tc:SAML:2.0:assertion\">Metabase</saml2:Issuer>"
                             "<saml2p:NameIDPolicy Format=\"urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified\"/>"
                             "</saml2p:AuthnRequest>")
