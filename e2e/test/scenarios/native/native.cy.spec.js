@@ -667,7 +667,7 @@ describe("scenarios > question > native", () => {
 
           cy.findByTestId("query-validation-error").should(
             "contain",
-            "mb.time_grouping got ...",
+            "mb.time_grouping got invalid parameters",
           );
         });
       });
