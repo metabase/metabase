@@ -37,10 +37,4 @@ export class Token {
   get end(): number {
     return this.pos + this.length;
   }
-  get from(): number {
-    return this.start;
-  }
-  get to(): number {
-    return this.end;
-  }
 }
