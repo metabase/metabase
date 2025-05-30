@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { useEffect } from "react";
 import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
@@ -48,6 +48,12 @@ export function UserSuccessModal({ params, location }: UserSuccessModalProps) {
       dispatch(clearTemporaryPassword(userId));
     };
   }, [userId, dispatch]);
+
+  useEffect(() => {
+    if (isExternalUser && !temporaryPassword) {
+      dispatch(replace("/admin/tenants/people"));
+    }
+  }, [isExternalUser, temporaryPassword, dispatch]);
 
   if (!user || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
