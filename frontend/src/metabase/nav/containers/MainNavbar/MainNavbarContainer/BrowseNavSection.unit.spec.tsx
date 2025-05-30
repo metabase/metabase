@@ -28,6 +28,20 @@ describe("BrowseNavSection", () => {
     expect(within(tab).getByText("Add")).toBeInTheDocument();
   });
 
+  it("should not render the 'Add data' button for full app embedding", () => {
+    setup({ isEmbeddingIframe: true });
+
+    const tab = screen.getByRole("tab");
+
+    expect(tab).toBeInTheDocument();
+    expect(
+      within(tab).getByRole("heading", { name: "Data" }),
+    ).toBeInTheDocument();
+    expect(
+      within(tab).queryByRole("button", { name: "Add data" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should be expanded by default but collapsible", async () => {
     setup();
 

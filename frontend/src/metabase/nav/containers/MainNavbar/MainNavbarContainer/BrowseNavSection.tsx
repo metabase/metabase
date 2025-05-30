@@ -64,19 +64,21 @@ export const BrowseNavSection = ({
           </SidebarHeading>
           <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
         </Group>
-        <Button
-          aria-label="Add data"
-          variant="subtle"
-          leftSection={<Icon name="add_data" />}
-          h="auto"
-          p={0}
-          onClick={() => {
-            trackAddDataModalOpened("left-nav");
-            onModalOpen();
-          }}
-        >
-          {t`Add`}
-        </Button>
+        {!isEmbeddingIframe && (
+          <Button
+            aria-label="Add data"
+            variant="subtle"
+            leftSection={<Icon name="add_data" />}
+            h="auto"
+            p={0}
+            onClick={() => {
+              trackAddDataModalOpened("left-nav");
+              onModalOpen();
+            }}
+          >
+            {t`Add`}
+          </Button>
+        )}
       </Flex>
 
       <Collapse
