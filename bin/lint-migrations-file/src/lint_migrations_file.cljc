@@ -170,7 +170,7 @@
                                {:keys (keys all)})))
     (doseq [{:keys [changeSet]} changeSet
             :when (not (s/valid? ::changeSet changeSet))]
-      (throw (validation-error (str "Invalid changeSet " (:id changeSet) ": " (s/explain-str ::changeSet changeSet)) (s/explain-data ::changeSet changeSet))))))
+      (throw (validation-error "Invalid change set." (s/explain-data ::changeSet changeSet))))))
 
 (defn- validate-migrations [migrations file]
   (require-database-change-log! migrations)
