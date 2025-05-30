@@ -5,7 +5,7 @@ import { uuid } from "metabase/lib/uuid";
 import type {
   MetabotChatContext,
   MetabotHistory,
-  MetabotStateContent,
+  MetabotStateContext,
 } from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
@@ -27,7 +27,7 @@ export interface MetabotState {
   messages: MetabotChatMessage[];
   visible: boolean;
   history: MetabotHistory;
-  state: MetabotStateContent;
+  stateContext: MetabotStateContext;
   activeToolCalls: { id: string; name: string }[];
 }
 
@@ -38,7 +38,7 @@ export const metabotInitialState: MetabotState = {
   messages: [],
   visible: false,
   history: [],
-  state: {},
+  stateContext: {},
   activeToolCalls: [],
 };
 
@@ -59,6 +59,12 @@ export const metabot = createSlice({
         message: action.payload.message,
         type: action.payload.type,
       });
+    },
+    appendHistory: (state, action: PayloadAction<MetabotHistory>) => {
+      state.history = [...state.history, ...action.payload];
+    },
+    setStateContext: (state, action: PayloadAction<MetabotStateContext>) => {
+      state.stateContext = action.payload;
     },
     toolCallStart: (
       state,

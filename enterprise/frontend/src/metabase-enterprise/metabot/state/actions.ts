@@ -59,7 +59,7 @@ export const submitInput = createAsyncThunk(
       context: MetabotChatContext;
       metabot_id?: string;
     },
-    { dispatch, getState, signal },
+    { dispatch, getState },
   ) => {
     const state = getState() as any;
     const isProcessing = getIsProcessing(state);
@@ -71,13 +71,7 @@ export const submitInput = createAsyncThunk(
     const metabotState = getMetabotState(state);
 
     dispatch(addUserMessage(data.message));
-    const sendMessageRequestPromise = dispatch(
-      sendMessageRequest({ ...data, state: metabotState, history }),
-    );
-    signal.addEventListener("abort", () => {
-      sendMessageRequestPromise.abort();
-    });
-    return sendMessageRequestPromise;
+    dispatch(sendMessageRequest({ ...data, state: metabotState, history }));
   },
 );
 
@@ -97,11 +91,10 @@ const streamAgentRequest = createAsyncThunk(
         {
           onDataPart: (part) => {
             match(part)
-              .with({ type: "state" }, () => {
+              .with({ type: "state" }, (part) => {
                 state = { ...state, ...part.value };
               })
-              .with({ type: "navigate_to" }, () => {
-                // TODO: create entity store / fix createAsyncThunk's types
+              .with({ type: "navigate_to" }, (part) => {
                 dispatch(push(part.value) as UnknownAction);
               })
               .exhaustive();
@@ -160,9 +153,9 @@ export const sendMessageRequest = createAsyncThunk(
       sessionId = getMetabotConversationId(getState() as any) as string;
     }
 
-    const result = (await dispatch(
+    const { payload: result } = (await dispatch(
       streamAgentRequest({ body: { ...data, conversation_id: sessionId } }),
-    )) as any;
+    )) as any; // TODO: fix type;
 
     if (result.error) {
       const didUserAbort = isAbortError(result.error);
