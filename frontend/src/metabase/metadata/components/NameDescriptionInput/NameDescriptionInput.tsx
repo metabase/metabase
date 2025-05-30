@@ -1,7 +1,8 @@
 import { Box } from "metabase/ui";
 
-import { Input, Textarea } from "./Input";
+import { Input } from "./Input";
 import S from "./NameDescriptionInput.module.css";
+import { Textarea } from "./Textarea";
 
 interface Props {
   description: string;
