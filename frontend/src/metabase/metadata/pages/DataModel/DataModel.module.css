@@ -1,18 +1,9 @@
-.sidebar {
+.column {
+  overflow: auto;
+}
+
+.rightBorder {
   border-right: 1px solid var(--mb-color-border);
-  overflow: auto;
-
-  &.noBorder {
-    border-right: none;
-  }
-}
-
-.tableSectionContainer {
-  overflow: auto;
-}
-
-.contentLoadingAndErrorWrapper {
-  height: 100%;
 }
 
 .footer {

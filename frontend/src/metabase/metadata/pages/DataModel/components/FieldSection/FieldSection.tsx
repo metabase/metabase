@@ -11,11 +11,12 @@ import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
+import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
@@ -30,29 +31,38 @@ export const FieldSection = ({ databaseId, field }: Props) => {
   const [sendToast] = useToast();
 
   return (
-    <Stack gap="lg" h="100%">
-      <NameDescriptionInput
-        name={field.display_name}
-        namePlaceholder={t`Give this field a name`}
-        onNameChange={async (name) => {
-          await updateField({ id, display_name: name });
+    <Stack gap={0} p="xl" pt={0}>
+      <Box
+        bg="accent-gray-light"
+        className={S.header}
+        pb="lg"
+        pos="sticky"
+        pt="xl"
+        top={0}
+      >
+        <NameDescriptionInput
+          name={field.display_name}
+          namePlaceholder={t`Give this field a name`}
+          onNameChange={async (name) => {
+            await updateField({ id, display_name: name });
 
-          sendToast({
-            icon: "check",
-            message: t`Display name for ${name} updated`,
-          });
-        }}
-        description={field.description ?? ""}
-        descriptionPlaceholder={t`Give this field a description`}
-        onDescriptionChange={async (description) => {
-          await updateField({ id, description });
+            sendToast({
+              icon: "check",
+              message: t`Display name for ${name} updated`,
+            });
+          }}
+          description={field.description ?? ""}
+          descriptionPlaceholder={t`Give this field a description`}
+          onDescriptionChange={async (description) => {
+            await updateField({ id, description });
 
-          sendToast({
-            icon: "check",
-            message: t`Description for ${getFieldDisplayName(field)} updated`,
-          });
-        }}
-      />
+            sendToast({
+              icon: "check",
+              message: t`Description for ${getFieldDisplayName(field)} updated`,
+            });
+          }}
+        />
+      </Box>
 
       <Stack gap="xl">
         <DataSection field={field} />
@@ -68,3 +78,6 @@ export const FieldSection = ({ databaseId, field }: Props) => {
     </Stack>
   );
 };
+{
+  /* <Box className={S.container} h="100%" pb="lg" px="xl"> */
+}
