@@ -5,6 +5,7 @@
    [metabase-enterprise.data-editing.api :as data-editing.api]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.actions.models :as actions]
+   [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.query-processor :as qp]
@@ -25,6 +26,8 @@
 
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
+
+(def ^:private execute-v2-url "ee/data-editing/action/v2/execute-bulk")
 
 (use-fixtures :each
   (fn [f]
@@ -174,6 +177,33 @@
                                                         {:id 2}]})))))
             (is (= [[3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
+
+(deftest simple-delete-with-children-test
+  (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
+    (data-editing.tu/with-temp-test-db!
+      (let [body {:action_id "data-grid.row/delete"
+                  :scope     {:table-id (mt/id :products)}
+                  :inputs    [{(mt/format-name :id) 1}
+                              {(mt/format-name :id) 2}]}]
+        (testing "delete without delete-children param will return errors with children count"
+          (is (=? {:errors [{:index     0
+                             :type      "metabase.actions.error/violate-foreign-key-constraint"
+                             :message  "Other tables rely on this row so it cannot be deleted."
+                             :errors   {}
+                             :children {(mt/id :orders) 93}}
+                            {:index    1
+                             :type     "metabase.actions.error/violate-foreign-key-constraint"
+                             :message  "Other tables rely on this row so it cannot be deleted."
+                             :errors   {}
+                             :children {(mt/id :orders) 98}}]}
+                  (mt/user-http-request :crowberto :post 400 execute-v2-url
+                                        body))))
+
+        (testing "sucess with delete-children options"
+          (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
+                             {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
+                  (mt/user-http-request :crowberto :post 200 execute-v2-url
+                                        (assoc body :params {:delete-children true})))))))))
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}

@@ -58,3 +58,8 @@
  [metabase.actions.scope
   hydrate-scope
   normalize-scope])
+
+(def ^:dynamic *params*
+  "Temporary dynamic vars used to pass params from api to actions execution.
+  Should be removed once we reworked the inputs for perform-action!*."
+  {})

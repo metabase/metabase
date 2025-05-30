@@ -421,12 +421,14 @@
   "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
   [{}
    {}
-   {:keys [action_id scope inputs]}
+   {:keys [action_id scope inputs params]}
    :- [:map
-       [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope     ::types/scope.raw]
-       [:inputs    [:sequential :map]]]]
-  {:outputs (execute!* action_id scope inputs)})
+       [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
+       [:scope                   ::types/scope.raw]
+       [:inputs                  [:sequential :map]]
+       [:params {:optional true} :map]]]
+  {:outputs (binding [actions/*params* params]
+              (execute!* action_id scope inputs))})
 
 (api.macros/defendpoint :post "/tmp-modal"
   "Temporary endpoint for describing an actions parameters
