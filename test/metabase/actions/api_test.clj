@@ -200,8 +200,7 @@
                                                   (mt/native-query
                                                     {:query "select * from checkins limit 1"})}]
                   (let [action (cross-db-action (:id model) test-data-id)
-                        response (mt/user-http-request :rasta :post 400 "action"
-                                                       action)]
+                        response (mt/user-http-request :rasta :post 400 "action" action)]
                     (testing "Checks both databases for actions enabled"
                       (is (partial= {:message "Actions are not enabled."
                                      :data {:database-id test-data-id}}
@@ -216,7 +215,7 @@
                                                                                  test-data-id)]
                 (is (partial= {:message "Actions are not enabled."
                                :data {:database-id test-data-id}}
-                              (mt/user-http-request :crowberto
+                              (mt/user-http-request :rasta
                                                     :post 400
                                                     (format "action/%s/execute" action-on-other-id)
                                                     ;; Twitter is the current value so effectively a no-op
