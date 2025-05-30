@@ -1,8 +1,8 @@
 import { invalidateTags, listTag } from "metabase/api/tags";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { DictionaryResponse } from "metabase-types/api/content-translation";
 
 import { EnterpriseApi } from "./api";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 type ListContentTranslationsRequest = {
   locale?: string;
