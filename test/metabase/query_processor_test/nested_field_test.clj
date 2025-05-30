@@ -18,13 +18,13 @@
                 [417 "Kyle's Low-Carb Grill"]
                 [426 "Kyle's Low-Carb Grill"]
                 [470 "Kyle's Low-Carb Grill"]]
-               (mapv
-                (fn [[id _ _ _ {venue-name :name}]] [id venue-name])
-                (mt/rows
-                 (mt/run-mbql-query tips
-                   {:filter   [:= $tips.venue.name "Kyle's Low-Carb Grill"]
-                    :order-by [[:asc $id]]
-                    :limit    10})))))))))
+               (mt/formatted-rows
+                [int str]
+                (mt/run-mbql-query tips
+                  {:fields   [$tips.id $tips.venue.name]
+                   :filter   [:= $tips.venue.name "Kyle's Low-Carb Grill"]
+                   :order-by [[:asc $id]]
+                   :limit    10}))))))))
 
 (deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -61,7 +61,8 @@
                  {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
                (mt/rows
                 (mt/run-mbql-query tips
-                  {:filter   [:and
+                  {:fields   [$tips.id $tips.text $tips.url $tips.venue]
+                   :filter   [:and
                               [:= $tips.source.service "twitter"]
                               [:= $tips.source.username "kyle"]]
                    :order-by [[:asc $tips.venue.name]]}))))))))
