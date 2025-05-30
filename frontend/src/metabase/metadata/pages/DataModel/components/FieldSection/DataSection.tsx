@@ -22,15 +22,12 @@ interface Props {
 }
 
 export const DataSection = ({ field }: Props) => {
-  const [updateField] = useUpdateFieldMutation();
+  const id = getRawTableFieldId(field);
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
   );
-  const id = getRawTableFieldId(field);
+  const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
-  function confirm(message: string) {
-    sendToast({ message, icon: "check" });
-  }
 
   useEffect(() => {
     setIsCasting(field.coercion_strategy != null);
@@ -81,7 +78,11 @@ export const DataSection = ({ field }: Props) => {
 
                   if (!event.target.checked) {
                     await updateField({ id, coercion_strategy: null });
-                    confirm(t`Casting disabled for ${field.display_name}`);
+
+                    sendToast({
+                      icon: "check",
+                      message: t`Casting disabled for ${field.display_name}`,
+                    });
                   }
                 }}
               />
@@ -96,7 +97,11 @@ export const DataSection = ({ field }: Props) => {
                     id,
                     coercion_strategy: coercionStrategy,
                   });
-                  confirm(t`Casting enabled for ${field.display_name}`);
+
+                  sendToast({
+                    icon: "check",
+                    message: t`Casting enabled for ${field.display_name}`,
+                  });
                 }}
               />
             )}

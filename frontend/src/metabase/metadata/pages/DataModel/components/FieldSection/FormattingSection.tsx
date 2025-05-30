@@ -20,18 +20,15 @@ interface Props {
 }
 
 export const FormattingSection = ({ field }: Props) => {
-  const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
+  const [updateField] = useUpdateFieldMutation();
+  const [sendToast] = useToast();
+  const inheritedSettings = useMemo(() => getGlobalSettingsForColumn(), []);
   const denyList = useMemo(() => {
     return isCurrency(field)
       ? new Set(["column_title", "number_style"])
       : new Set(["column_title"]);
   }, [field]);
-  const inheritedSettings = useMemo(() => getGlobalSettingsForColumn(), []);
-  const [sendToast] = useToast();
-  function confirm(message: string) {
-    sendToast({ message, icon: "check" });
-  }
 
   return (
     <Stack gap="md">
@@ -48,7 +45,11 @@ export const FormattingSection = ({ field }: Props) => {
         value={field.settings ?? {}}
         onChange={async (settings: FieldSettings) => {
           await updateField({ id, settings });
-          confirm(t`Field formatting for ${field.display_name} updated`);
+
+          sendToast({
+            icon: "check",
+            message: t`Field formatting for ${field.display_name} updated`,
+          });
         }}
       />
     </Stack>

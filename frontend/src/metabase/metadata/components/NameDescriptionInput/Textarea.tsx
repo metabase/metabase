@@ -1,11 +1,8 @@
-import {
-  TextInputBlurChange,
-  type TextInputBlurChangeProps,
-} from "metabase/ui";
+import { TextareaBlurChange, type TextareaBlurChangeProps } from "metabase/ui";
 
 interface Props
   extends Omit<
-    TextInputBlurChangeProps,
+    TextareaBlurChangeProps,
     "normalize" | "value" | "onBlurChange" | "onChange"
   > {
   normalize?: (
@@ -15,7 +12,7 @@ interface Props
   onChange: (value: string) => void;
 }
 
-export const Input = ({
+export const Textarea = ({
   normalize,
   required,
   value,
@@ -23,7 +20,7 @@ export const Input = ({
   ...props
 }: Props) => {
   return (
-    <TextInputBlurChange
+    <TextareaBlurChange
       normalize={normalize}
       required={required}
       value={value}

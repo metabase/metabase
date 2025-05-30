@@ -1,12 +1,14 @@
-import { Box } from "metabase/ui";
+import { Box, Flex, Icon, type IconName } from "metabase/ui";
 
-import { Input, Textarea } from "./Input";
+import { Input } from "./Input";
 import S from "./NameDescriptionInput.module.css";
+import { Textarea } from "./Textarea";
 
 interface Props {
   description: string;
   descriptionPlaceholder: string;
   name: string;
+  nameIcon: IconName;
   namePlaceholder: string;
   onDescriptionChange: (description: string) => void;
   onNameChange: (name: string) => void;
@@ -16,6 +18,7 @@ export const NameDescriptionInput = ({
   description,
   descriptionPlaceholder,
   name,
+  nameIcon,
   namePlaceholder,
   onDescriptionChange,
   onNameChange,
@@ -28,6 +31,18 @@ export const NameDescriptionInput = ({
           root: S.name,
         }}
         fw="bold"
+        leftSection={
+          <Flex
+            align="center"
+            bg="brand"
+            className={S.iconContainer}
+            h={24}
+            justify="center"
+            w={24}
+          >
+            <Icon c="white" name={nameIcon} size={12} />
+          </Flex>
+        }
         normalize={(newValue) => {
           if (typeof newValue !== "string") {
             return name;
@@ -44,16 +59,16 @@ export const NameDescriptionInput = ({
       />
 
       <Textarea
+        autosize
         classNames={{
           input: S.descriptionInput,
           root: S.description,
         }}
+        maxRows={4}
+        minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
         onChange={onDescriptionChange}
-        autosize
-        minRows={2}
-        maxRows={4}
       />
     </Box>
   );
