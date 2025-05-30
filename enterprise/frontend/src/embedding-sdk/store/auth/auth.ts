@@ -107,9 +107,8 @@ export const refreshTokenAsync = createAsyncThunk(
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const state = getState() as SdkStoreState;
 
-    const isNewIframeEmbeddingAuth = getIsNewIframeEmbeddingAuth(state);
-    if (isNewIframeEmbeddingAuth) {
-      return await requestSessionTokenFromEmbedJs();
+    if (getIsNewIframeEmbeddingAuth(state)) {
+      return requestSessionTokenFromEmbedJs();
     }
 
     const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? null;
