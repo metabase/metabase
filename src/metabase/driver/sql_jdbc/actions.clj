@@ -341,8 +341,9 @@
         (if (and (= actions/violate-foreign-key-constraint
                     (:type (ex-data e)))
                  (some? @row-before))
-          (throw (ex-info (ex-message e)
-                          (assoc (ex-data e) :children (:counts (count-row-descendants db-id table-id @row-before)))))
+          (binding [*connection* nil] ;; the current connection might be aborted already, so we need to make sure this happens on a different connection
+            (throw (ex-info (ex-message e)
+                            (assoc (ex-data e) :children (:counts (count-row-descendants db-id table-id @row-before))))))
           (throw e))))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
