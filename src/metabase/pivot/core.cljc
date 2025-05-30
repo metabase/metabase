@@ -265,7 +265,6 @@
   and columns, along with a lookup map for cell values."
   [rows cols row-indexes col-indexes val-indexes settings col-settings]
   (let [collapsed-subtotals (filter-collapsed-subtotals row-indexes settings col-settings)
-        ; rows (get-rows-from-pivot-data pivot-data row-indexes col-indexes)
         {:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
@@ -276,7 +275,9 @@
          {:row-tree (ordered-map/ordered-map)
           :col-tree (ordered-map/ordered-map)}
          rows)
-        collapsed-row-tree (add-is-collapsed row-tree collapsed-subtotals)
+        ;; Only collapse row tree on the FE (in CLJS); keep it uncollapsed for exports (in CLJ)
+        collapsed-row-tree #?(:cljs (add-is-collapsed row-tree collapsed-subtotals)
+                              :clj row-tree)
         row-sort-orders (sort-orders-from-settings col-settings row-indexes)
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
