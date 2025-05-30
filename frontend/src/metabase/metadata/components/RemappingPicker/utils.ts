@@ -7,7 +7,7 @@ import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import type { RemappingValue } from "../DisplayValuesPicker";
+import type { RemappingValue } from "./DisplayValuesPicker";
 
 export function getFkTargetTableEntityNameOrNull(
   targetTable: Table | undefined,

@@ -24,12 +24,11 @@ import {
 } from "metabase/ui";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
+import { CustomMappingModal } from "./CustomMappingModal";
 import {
   DisplayValuesPicker,
   type RemappingValue,
-} from "../DisplayValuesPicker";
-
-import { CustomMappingModal } from "./CustomMappingModal";
+} from "./DisplayValuesPicker";
 import { NamingTip } from "./NamingTip";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 import {
