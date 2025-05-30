@@ -34,8 +34,8 @@ export const DatabaseEngineList = ({
   const options = getEngineOptions(engines);
 
   const elevatedEngines = options.slice(0, 6);
-  const searchResults = options.filter(({ value }) =>
-    value.toLowerCase().includes(search.toLowerCase().trim()),
+  const searchResults = options.filter(({ name }) =>
+    name.toLowerCase().includes(search.toLowerCase().trim()),
   );
 
   const databasesList = isExpanded ? searchResults : elevatedEngines;
