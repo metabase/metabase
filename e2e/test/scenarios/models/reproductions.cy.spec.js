@@ -1351,10 +1351,12 @@ FROM
     },
   };
 
-  it("Create model, set metadata, distinct", () => {
+  beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
 
+  it("Create model, set metadata, distinct", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
