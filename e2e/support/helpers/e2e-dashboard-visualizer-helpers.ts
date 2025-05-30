@@ -10,7 +10,11 @@ export function clickVisualizeAnotherWay(name: string) {
       .findByLabelText("Visualize another way")
       .click({ force: true });
   });
-  cy.findByTestId("visualization-canvas-loader").should("not.exist");
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
 export function dataImporter() {
@@ -234,11 +238,16 @@ export function chartLegendItem(name: string) {
 }
 
 export function showDashcardVisualizerModal(index = 0) {
-  return getDashboardCard(index)
+  getDashboardCard(index)
     .realHover()
     .within(() => {
       cy.findByLabelText("Edit visualization").click({ force: true });
     });
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
 export function showDashcardVisualizerModalSettings(index = 0) {
