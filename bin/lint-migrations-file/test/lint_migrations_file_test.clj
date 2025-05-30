@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [lint-migrations-file :as lint-migrations-file]))
 
@@ -39,7 +40,7 @@
 (defn- validate [& changes]
   (#'lint-migrations-file/validate-migrations
    {:databaseChangeLog changes}
-   (last (#'lint-migrations-file/migration-files))))
+   (first (filter #(str/ends-with? "001_update_migrations.yaml" (.getName %)) (#'lint-migrations-file/migration-files)))))
 
 (defn- validate-ex-info [& changes]
   (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes} (last (#'lint-migrations-file/migration-files)))
