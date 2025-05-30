@@ -370,10 +370,10 @@
 
 (deftest ^:parallel first-stage?-test
   (testing "should return true for the first stage"
-    (is (lib.util/first-stage? single-stage-query 0))
-    (is (lib.util/first-stage? two-stage-query 0)))
+    (is (true? (lib.util/first-stage? single-stage-query 0)))
+    (is (true? (lib.util/first-stage? two-stage-query 0))))
   (testing "should return false for the second stage"
-    (is (not (lib.util/first-stage? two-stage-query 1))))
+    (is (false? (lib.util/first-stage? two-stage-query 1))))
   (testing "should throw for invalid index"
     (are [form] (thrown-with-msg?
                  #?(:clj Throwable :cljs js/Error)
@@ -386,10 +386,10 @@
 
 (deftest ^:parallel last-stage?-test
   (testing "should return true for the last stage"
-    (is (lib.util/last-stage? single-stage-query 0))
-    (is (lib.util/last-stage? two-stage-query 1)))
+    (is (true? (lib.util/last-stage? single-stage-query 0)))
+    (is (true? (lib.util/last-stage? two-stage-query 1))))
   (testing "should return false for a non-last stage"
-    (is (not (lib.util/last-stage? two-stage-query 0))))
+    (is (false? (lib.util/last-stage? two-stage-query 0))))
   (testing "should throw for invalid index"
     (are [form] (thrown-with-msg?
                  #?(:clj Throwable :cljs js/Error)
