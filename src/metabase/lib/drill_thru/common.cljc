@@ -54,12 +54,18 @@
   [query]
   (> (count (lib.metadata.calculation/primary-keys query)) 1))
 
-(defn- find-column-in-source-table-fields
+(defn- find-column-in-visible-columns-ignoring-joins
   [query stage-number column]
-  (if-let [table-id (lib.util/source-table-id query)]
-    (->> (lib.metadata/fields query table-id)
-         (lib.equality/find-matching-column query stage-number column))
-    column))
+  (->> (lib.metadata.calculation/visible-columns
+        query
+        stage-number
+        (lib.util/query-stage query stage-number)
+        {:unique-name-fn                               (lib.util/unique-name-generator)
+         :include-joined?                              false
+         :include-expressions?                         false
+         :include-implicitly-joinable?                 false
+         :include-implicitly-joinable-for-source-card? false})
+       (lib.equality/find-matching-column query stage-number column)))
 
 (defn primary-key?
   "Is `column` a primary key of `query`?
@@ -68,7 +74,7 @@
   fields, when available."
   [query stage-number column]
   (boolean (and (lib.types.isa/primary-key? column)
-                (find-column-in-source-table-fields query stage-number column))))
+                (find-column-in-visible-columns-ignoring-joins query stage-number column))))
 
 (defn foreign-key?
   "Is `column` a foreign key of `query`?
@@ -77,7 +83,7 @@
   fields, when available."
   [query stage-number column]
   (boolean (and (lib.types.isa/foreign-key? column)
-                (find-column-in-source-table-fields query stage-number column))))
+                (find-column-in-visible-columns-ignoring-joins query stage-number column))))
 
 (defn drill-value->js
   "Convert a drill value to a JS value."
