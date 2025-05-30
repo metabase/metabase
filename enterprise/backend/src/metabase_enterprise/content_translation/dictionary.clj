@@ -21,12 +21,6 @@
   [i]
   (+ i 2))
 
-(defn- collect-row-format-error
-  "Returns an error message if a row does not have the expected format."
-  [row-index row]
-  (when-not (= (count row) 3)
-    (tru "Row {0}: Invalid format. Expected exactly 3 columns (Language, String, Translation)" (+ row-index 2))))
-
 (defn- collect-locale-error
   "Returns an error message if a row does not have a valid locale."
   [_state index {:keys [locale]}]
@@ -52,7 +46,7 @@
 (defn- row-errors
   [state index translation]
   (keep (fn [f] (f state index translation))
-        [collect-duplication-error collect-locale-error collect-row-format-error]))
+        [collect-duplication-error collect-locale-error]))
 
 (defn- wrong-row-shape
   [index]
