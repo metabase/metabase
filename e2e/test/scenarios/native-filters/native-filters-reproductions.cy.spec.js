@@ -74,9 +74,7 @@ describe("issue 11480", () => {
     cy.location("search").should("eq", "?x=");
 
     // Although there's no default, we should be still able to run the query.
-    cy.findByTestId("native-query-editor-sidebar")
-      .button("Get Answer")
-      .should("not.be.disabled");
+    SQLFilter.getRunQueryButton().should("not.be.disabled");
   });
 });
 

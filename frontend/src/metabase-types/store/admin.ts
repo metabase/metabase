@@ -51,6 +51,5 @@ export interface AdminState {
 }
 
 export interface AdminAppState {
-  isNoticeEnabled: boolean;
   paths: AdminPath[];
 }

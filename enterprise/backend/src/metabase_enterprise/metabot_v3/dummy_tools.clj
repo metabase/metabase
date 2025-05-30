@@ -10,6 +10,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -50,11 +51,10 @@
 
 (defn metric-details
   "Get metric details as returned by tools."
-  ([id]
+  ([id] (metric-details id nil))
+  ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
-     (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
-  ([card metadata-provider]
-   (metric-details card metadata-provider nil))
+     (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
@@ -113,31 +113,43 @@
 
 (defn- table-details
   ([id] (table-details id nil))
-  ([id {:keys [metadata-provider]}]
+  ([id {:keys [metadata-provider field-values-fn with-fields? with-metrics?]
+        :or   {field-values-fn add-field-values
+               with-fields?    true
+               with-metrics?   true}
+        :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
-                     (metabot-v3.tools.u/get-table id :db_id :description))]
-     (let [mp (or metadata-provider
-                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
-           table-query (lib/query mp (lib.metadata/table mp id))
-           cols (->> (lib/visible-columns table-query)
-                     add-field-values
-                     (map #(add-table-reference table-query %)))
-           field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
+                     (metabot-v3.tools.u/get-table id :db_id :description :name))]
+     (let [query-needed? (or with-fields? with-metrics?)
+           mp (when query-needed?
+                (or metadata-provider
+                    (lib.metadata.jvm/application-database-metadata-provider (:db_id base))))
+           table-query (when query-needed?
+                         (lib/query mp (lib.metadata/table mp id)))
+           cols (when with-fields?
+                  (->> (lib/visible-columns table-query)
+                       field-values-fn
+                       (map #(add-table-reference table-query %))))
+           field-id-prefix (when with-fields?
+                             (metabot-v3.tools.u/table-field-id-prefix id))]
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
-            :name (lib/display-name table-query)}
+            ;; :name should be (lib/display-name table-query), but we want to avoid creating the query if possible
+            :name (some->> (:name base)
+                           (u.humanization/name->human-readable-name :simple))}
            (m/assoc-some :description (:description base)
-                         :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics table-query)))))))))
+                         :metrics (when with-metrics?
+                                    (not-empty (mapv #(convert-metric % mp options)
+                                                     (lib/available-metrics table-query))))))))))
 
 (defn- card-details
   "Get details for a card."
-  ([id]
+  ([id] (card-details id nil))
+  ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
-     (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
-  ([base metadata-provider]
-   (card-details base metadata-provider nil))
+     (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-metrics?]
                             :or   {field-values-fn add-field-values
                                    with-fields?    true
@@ -221,15 +233,17 @@
   Alternatively, `table-id` can be an integer ID of a table.
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
-  [{:keys [model-id table-id]}]
+  [{:keys [model-id table-id] :as arguments}]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (let [details (cond
-                    (int? model-id) (card-details model-id)
-                    (int? table-id) (table-details table-id)
+    (let [options (cond-> arguments
+                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+          details (cond
+                    (int? model-id)    (card-details model-id options)
+                    (int? table-id)    (table-details table-id options)
                     (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                                         (card-details (parse-long card-id))
+                                         (card-details (parse-long card-id) options)
                                          (if (re-matches #"\d+" table-id)
-                                           (table-details (parse-long table-id))
+                                           (table-details (parse-long table-id) options)
                                            "invalid table_id"))
                     :else "invalid arguments")]
       (if (map? details)
@@ -246,10 +260,12 @@
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
-  [{:keys [metric-id]}]
+  [{:keys [metric-id] :as arguments}]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (let [details (if (int? metric-id)
-                    (metric-details metric-id)
+    (let [options (cond-> arguments
+                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+          details (if (int? metric-id)
+                    (metric-details metric-id options)
                     "invalid metric_id")]
       (if (map? details)
         {:structured-output details}
@@ -257,10 +273,12 @@
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
-  [{:keys [report-id]}]
+  [{:keys [report-id] :as arguments}]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (let [details (if (int? report-id)
-                    (let [details (card-details report-id)]
+    (let [options (cond-> arguments
+                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+          details (if (int? report-id)
+                    (let [details (card-details report-id options)]
                       (some-> details
                               (select-keys [:id :type :description :name])
                               (assoc :result-columns (:fields details))))
