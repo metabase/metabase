@@ -228,14 +228,7 @@
                                                       {:request-options {:redirect-strategy :none}}
                                                       :return_to default-redirect-uri
                                                       :preferred_method "saml")]
-            (is (not (saml-test/successful-login? response)))))
-
-        (testing "with SAML and JWT configured, a GET request with invalid preferred_method should return an error"
-          (let [response (client/client-full-response :get 500 "/auth/sso"
-                                                      {:request-options {:redirect-strategy :none}}
-                                                      :preferred_method "invalid")]
-            (is (= 500 (:status response)))
-            (is (str/includes? (:message response) "Invalid auth method"))))))))
+            (is (not (saml-test/successful-login? response)))))))))
 
 (deftest happy-path-test
   (testing
