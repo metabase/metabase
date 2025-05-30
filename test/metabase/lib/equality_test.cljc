@@ -312,6 +312,10 @@
                             :base-type :type/Text
                             :join-alias "Cat"}
                     "Cat__NAME"]
+          cat-raw  [:field {:lib/uuid (str (random-uuid))
+                            :base-type :type/Text
+                            :join-alias "Cat"}
+                    "NAME"]
           ven-name [:field {:lib/uuid (str (random-uuid))
                             :base-type :type/Text}
                     "NAME"]]
@@ -327,6 +331,9 @@
       (is (= (nth cols 7)
              (lib.equality/find-matching-column cat-name cols)
              (lib.equality/find-matching-column query -1 cat-name cols)))
+      (is (= (nth cols 7)
+             (lib.equality/find-matching-column cat-raw cols)
+             (lib.equality/find-matching-column query -1 cat-raw cols)))
       (is (= (nth cols 1)
              (lib.equality/find-matching-column ven-name cols)
              (lib.equality/find-matching-column query -1 ven-name cols))))))
