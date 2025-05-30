@@ -143,16 +143,16 @@
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
   ; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-  (letfn [(matches-join? [col] (or (and (not (:join-alias opts))
-                                        (#{:source/fields :source/card} (:lib/source col)))
-                                   (matches-join? a-ref col)))]
+  (letfn [(matching-or-ignore-join? [col] (or (and (not (:join-alias opts))
+                                                   (#{:source/fields :source/card} (:lib/source col)))
+                                              (matching-join? a-ref col)))]
     (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
-                                 (matches-join? a-ref %))
+                                 (matching-or-ignore-join? %))
                            columns))
         (filter #(and (clojure.core/= (:name %) ref-name)
                       (or (and (not (:join-alias opts))
                                (#{:source/fields :source/card} (:lib/source %)))
-                          (matches-join? %)))
+                          (matching-or-ignore-join? %)))
                 columns))))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
