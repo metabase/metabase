@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   DiscardFieldValuesButton,
   NameDescriptionInput,
@@ -12,6 +13,7 @@ import {
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Box, Stack } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { BehaviorSection } from "./BehaviorSection";
@@ -42,6 +44,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
       >
         <NameDescriptionInput
           name={field.display_name}
+          nameIcon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
           namePlaceholder={t`Give this field a name`}
           onNameChange={async (name) => {
             await updateField({ id, display_name: name });
