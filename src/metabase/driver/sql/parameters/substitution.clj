@@ -23,6 +23,7 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
@@ -387,9 +388,13 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(def date-groupings
+  "Set of time groupings that should be coerced to dates"
+  #{:day :week :month :quarter :year})
+
 (defmethod time-grouping->replacement-snippet-info :sql
   [driver column {:keys [value]}]
   (honeysql->replacement-snippet-info driver
                                       (if (= value params/no-value)
                                         [:raw column]
-                                        (sql.qp/date driver (keyword value) [:raw column]))))
+                                        (h2x/->date (sql.qp/date driver (keyword value) [:raw column])))))
