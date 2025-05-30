@@ -25,7 +25,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/metabot-v3/metabots",
+        url: "/api/ee/metabot-v3/metabot",
       }),
       providesTags: ["metabots-list"],
     }),
@@ -35,7 +35,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     >({
       query: (id: number) => ({
         method: "GET",
-        url: `/api/ee/metabot-v3/metabots/${id}/entities`,
+        url: `/api/ee/metabot-v3/metabot/${id}/entities`,
       }),
       providesTags: ["metabot-entities-list"],
       transformResponse: (
@@ -60,7 +60,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ id, entities }) => ({
         method: "PUT",
-        url: `/api/ee/metabot-v3/metabots/${id}/entities`,
+        url: `/api/ee/metabot-v3/metabot/${id}/entities`,
         body: { items: entities },
       }),
       invalidatesTags: ["metabot-entities-list"],
@@ -75,7 +75,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ metabotId, entityModel, entityId }) => ({
         method: "DELETE",
-        url: `/api/ee/metabot-v3/metabots/${metabotId}/entities/${entityModel}/${entityId}`,
+        url: `/api/ee/metabot-v3/metabot/${metabotId}/entities/${entityModel}/${entityId}`,
       }),
       invalidatesTags: ["metabot-entities-list"],
     }),

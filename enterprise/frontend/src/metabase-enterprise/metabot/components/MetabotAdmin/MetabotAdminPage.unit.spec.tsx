@@ -159,7 +159,7 @@ describe("MetabotAdminPage", () => {
     });
 
     const [{ url, body }] = await findRequests("PUT");
-    expect(url).toMatch(/\/api\/ee\/metabot-v3\/metabots\/1\/entities/);
+    expect(url).toMatch(/\/api\/ee\/metabot-v3\/metabot\/1\/entities/);
     expect(body.items).toHaveLength(1); // 1 new
 
     expect(
@@ -174,7 +174,7 @@ describe("MetabotAdminPage", () => {
     await userEvent.click(deleteButton);
 
     const [{ url: deleteUrl }, ...rest] = await findRequests("DELETE");
-    expect(deleteUrl).toContain("metabots/1/entities/collection/11");
+    expect(deleteUrl).toContain("metabot/1/entities/collection/11");
     expect(rest).toHaveLength(0); // only 1 delete
   });
 
