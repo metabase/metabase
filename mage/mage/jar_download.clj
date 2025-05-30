@@ -16,65 +16,71 @@
 (defn- branch-exists? [branch-name]
   (println "Checking if branch exists:" (c/yellow branch-name))
   (let [ls-remotes (u/sh "git" "ls-remote" "--heads" "origin" branch-name)]
-    (str/includes? ls-remotes branch-name)))
+    (when (str/includes? ls-remotes branch-name)
+      (println "Found branch:" (c/green branch-name))
+      true)))
 
-;; START JUNK
 (defn- keep-first
   "like (fn [f coll] (first (keep f coll))) but does not do chunking."
   [f coll]
-  (reduce (fn [_ element] (when-let [resp (f element)] (reduced resp)))
-          nil
-          coll))
+  (reduce (fn [_ element] (when-let [resp (f element)] (reduced resp))) nil coll))
 
-(defn- get-gh-token []
+(defn- get-gh-token-from-env []
   (u/env "GH_TOKEN" #(throw (ex-info
                              (-> "Please set GH_TOKEN."
                                  (str "\n" (c/white "This API is available for authenticated users, OAuth Apps, and GitHub Apps."))
                                  (str "\n" (c/white "Access tokens require") (c/cyan "repo scope")
                                       (c/white "for private repositories and") (c/cyan "public_repo scope")  (c/white "for public repositories."))
                                  (str "\nMore info at: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token")
-                                 (str "\nYou can make one (classic) here: https://github.com/settings/tokens"))
+                                 (str "\nYou can make one (prefer classic) here: https://github.com/settings/tokens"))
                              {:babashka/exit 1}))))
 
 (defn- gh-get
   [url]
   (try (-> url
            (curl/get {:headers {"Accept" "application/vnd.github+json"
-                                "Authorization" (str "Bearer " (get-gh-token))}})
+                                "Authorization" (str "Bearer " (get-gh-token-from-env))}})
            :body
            (json/decode true))
        (catch Exception e (throw (ex-info (str "Github GET error.\n" (pr-str e)) {:url url})))))
 
-(defn- ee-artifact-uberjar-url [url]
+(defn- artifact-url->artifact-data [url]
   (->> (gh-get url)
        :artifacts
-       (keep (fn [{nname :name :keys [archive_download_url] :as _artifact}]
-               (when (and (str/starts-with? nname "metabase-ee") (str/ends-with? nname "-uberjar"))
-                 archive_download_url)))
-       first))
+       (keep-first
+        (fn [{nname :name :keys [archive_download_url] :as artifact}]
+          (println "🟨 Checking artifact:     " (c/yellow nname) "at" (c/yellow archive_download_url))
+          (when (and (str/starts-with? nname "metabase-ee") (str/ends-with? nname "-uberjar"))
+            (u/debug ["ARTIFACT" artifact])
+            (println "🟩 Found uberjar artifact:" (c/green nname) "at" (c/green archive_download_url))
+            artifact)))))
 
 (defn- no-artifact-found-error [branch]
-  (println "\nCould not find an uberjar for branch" (c/red branch))
-  (println "Our Github Actions retention period is currently 3 months.")
-  (println "If you are looking to run an older branch, that can be why it is not found.")
-  (println "Pushing an empty commit to the branch will rebuild it on Github Actions, which should take a few minutes.")
-  (println "More info: https://docs.github.com/en/actions/managing-workflow-runs/removing-workflow-artifacts#setting-the-retention-period-for-an-artifact")
-  (throw (ex-info (str "No artifact found for branch: " branch)
-                  {:babashka/exit 1 :branch branch})))
+  (throw (ex-info (-> (str "\nCould not find an uberjar for branch " (c/red branch))
+                      (str "\n- Our Github Actions retention period does not last forever, so this branch's artifacts could have been removed.")
+                      (str "\n  If you are looking to run a very old branch, that can cause this error.")
+                      (str "\n  More info: https://docs.github.com/en/actions/managing-workflow-runs/removing-workflow-artifacts#setting-the-retention-period-for-an-artifact"))
+                  {:babashka/exit 1
+                   :branch branch})))
 
-(defn- branch->latest-artifact [branch]
-  (println (c/cyan "Getting artifact urls for branch: " branch))
-  (let [artifact-urls (->> (str "https://api.github.com/repos/metabase/metabase/actions/runs?per_page=100&branch=" branch)
-                           gh-get
-                           :workflow_runs
-                           (mapv :artifacts_url))]
-    (println "Checking for artifacts for branch:" (c/yellow branch))
-    (or (keep-first ee-artifact-uberjar-url artifact-urls)
-        (no-artifact-found-error branch))))
+(def branch->latest-artifact
+  (memoize (fn [branch]
+             (println (c/cyan "Loading artifact urls for branch: ") branch)
+             (let [artifact-urls (->> (str "https://api.github.com/repos/metabase/metabase/actions/runs?per_page=100&branch=" branch)
+                                      gh-get
+                                      :workflow_runs
+                                      (mapv :artifacts_url))]
+               (println "Checking artifacts for branch:" (c/yellow branch))
+               (when (empty? artifact-urls)
+                 (throw (ex-info (str "No artifacts found for branch: " branch ". Is there a PR for this branch?")
+                                 {:branch branch
+                                  :babashka/exit 1})))
+               (or (keep-first artifact-url->artifact-data artifact-urls)
+                   (no-artifact-found-error branch))))))
 
 (defn- url [version]
   (if-let [branch (:branch version)]
-    (branch->latest-artifact branch)
+    (:archive_download_url (branch->latest-artifact branch))
     (str "https://downloads.metabase.com"
          (when (str/starts-with? version "1") "/enterprise")
          "/v"
@@ -82,16 +88,18 @@
 
 (defn- dir->file ^File [version dir]
   (if-let [branch (:branch version)]
-    (io/file (str dir "/metabase_branch_" branch ".jar"))
+    ;; use head sha as the jar name so we can skip re-downloading the same thing
+    (let [sha (:head_sha (:workflow_run (branch->latest-artifact branch)))]
+      (io/file (str dir "/metabase_branch_" branch "_" sha ".jar")))
     (io/file (str dir "/metabase_" version ".jar"))))
 
-(defn- download [version dir]
+(defn- download [version jar-path]
   (io/copy
    (:body (curl/get (url version) {:as :stream}))
-   (dir->file version dir)))
+   jar-path))
 
 (defn latest-patch-version
-  "Gets something like '53', returns major + minor version, like '53.10'"
+  "`major-version` is a string like \"53\", returns major.minor version, like \"53.10\""
   [major-version]
   (let [base-url "https://api.github.com/repos/metabase/metabase/releases"
         per-page 100
@@ -111,19 +119,69 @@
           (empty? releases) nil
           :else (recur (inc page)))))))
 
-(defn- find-latest-version [version]
+(defn- find-latest-version
+  "Returns the latest version for a given version string, or a map with {:branch branch-name}."
+  [version]
   (cond
-    (re-matches #"\d+" version) (str "1." (latest-patch-version version))
     (re-matches #"\d+\.\d+\.\d+" version) version
+    (re-matches #"\d+" version) (str "1." (latest-patch-version version))
     (branch-exists? version) {:branch version}
     :else (throw (ex-info (str "Invalid version format + branch not found:" version)
                           {:version version}))))
 
-(defn- size-mb [bytes]
+(comment
+  (find-latest-version "50")
+  ;; => "1.50.36"
+  (find-latest-version "1.50.35")
+  ;; => "1.50.35"
+  (find-latest-version "master")
+  ;; => {:branch "master"}
+  (try (find-latest-version "branch-that-does-not-exist")
+       (catch Exception e
+         [(ex-message e) (ex-data e)]))
+  ;; => ["Invalid version format + branch not found:branch-that-does-not-exist"
+  ;;     {:version "branch-that-does-not-exist"}]
+  )
+
+(defn- jar-size-mb [bytes]
   (let [size (/ bytes 1024.0 1024.0)]
+    (when (< size 400)
+      (println
+       (c/on-yellow
+        (c/bold "⚠️  Warning: ")
+        "Jar size is less than 400 MB, this is unusual and may indicate a failed download.\n"
+        "Please rerun jar-download with --delete option.\n")
+       (c/yellow "See: ./bin/mage jar-download --help")))
     (if (< size 1)
       (str (int (* size 1000)) " KB")
       (str (int size) " MB"))))
+
+(defn- download-and-extract-branch [dir jar-path dl-url]
+  (let [zip-path (str/replace (str jar-path) #"\.jar$" ".zip")
+        unzip-path (str/replace (str jar-path) #"\.jar$" "")
+        jar-unzipped-path (str unzip-path "/target/uberjar/metabase.jar")]
+    (try
+      (doseq [[k v] {:dir dir
+                     :jar-path jar-path
+                     :dl-url dl-url
+                     :zip-path zip-path
+                     :unzip-path unzip-path
+                     :jar-unzipped-path jar-unzipped-path}]
+        (println (str (c/yellow k) " -> " (c/green v))))
+      (println "downloading artifact from " (c/green dl-url) "to" (c/green zip-path))
+      (p/shell {:dir dir} (str "curl"
+                               " -H \"Accept:application/vnd.github+json\""
+                               " -H \"Authorization:Bearer " (get-gh-token-from-env) "\""
+                               " -Lo " zip-path " " dl-url))
+      (println "Extracting zip into" (c/green unzip-path))
+      (fs/unzip zip-path unzip-path {:replace-existing true})
+      (println "Moving jar at " (c/green jar-unzipped-path) "to" (c/green jar-path))
+      ;; todo: move
+      (fs/copy (io/file jar-unzipped-path) (io/file jar-path) {:replace-existing true})
+      (println "✅ Downloaded and extracted branch jar to" (c/green jar-path))
+      (finally
+        (fs/delete jar-unzipped-path)
+        (fs/delete zip-path)))))
 
 (defn- download-jar! [version dir delete?]
   (let [latest-version (find-latest-version version)
@@ -135,21 +193,17 @@
     (when-not (fs/exists? (io/file dir))
       (println (c/blue "Creating directory " dir))
       (fs/create-dirs dir))
+
     (if (fs/exists? jar-path)
-      (println "Already downloaded" (c/green dl-url)
-               ".jar to" (c/green jar-path)
-               ", size:" (c/red (size-mb (fs/size jar-path))))
+      (println (str "Already downloaded " (c/green dl-url) " to " (c/green jar-path)
+                    ", size: " (c/red (c/bold (jar-size-mb (fs/size jar-path))))))
       (try
-        (println (str "Downloading from: " dl-url
-                      "\n              to: " jar-path " ..."))
         (if (:branch latest-version)
-          (p/shell {:dir dir} (str "curl"
-                                   " -H \"Accept:application/vnd.github+json\""
-                                   " -H \"Authorization:Bearer " (u/env "GH_TOKEN") "\""
-                                   " -Lo metabase.zip"
-                                   " " dl-url))
-          (u/with-throbber "Downloading Version... "
-            (fn [] (download latest-version dir))))
+          (download-and-extract-branch dir jar-path dl-url)
+          (do (println (str "Downloading from: " dl-url
+                            "\n              to: " jar-path " ..."))
+              (u/with-throbber "Downloading Version... "
+                #(download latest-version jar-path))))
         (println "Downloaded.")
         (catch Exception e
           (throw (ex-info (str (ex-message e)
@@ -162,8 +216,6 @@
     {:latest-version latest-version
      :jar-path jar-path}))
 
-(defn- without-slash [s] (str/replace s #"/$" ""))
-
 (defn- major-version [version]
   (if (re-matches #"\d+\.\d+\.\d+" version)
     (Integer/parseInt (second (str/split version #"\.")))
@@ -174,7 +226,7 @@
   [version]
   (+ 3000
      (if-let [branch (:branch version)]
-       (Math/abs (hash branch)) ; Use hash of branch name for port
+       (rem (Math/abs (hash branch)) 1000) ; Use hash of branch name for port
        (major-version version)))) ; Use major version for port
 
 (defn jar-download
@@ -189,16 +241,21 @@
         dir                (some-> (or dir (u/env "JARS" (fn [] (println "JARS not set in env, defaulting to"
                                                                          (str u/project-root-directory "/jars"))))
                                        (str u/project-root-directory "/jars"))
-                                   without-slash)
-        ;; latest-version could be a string (indicating a version) or a map with :branch key:
+                                   u/without-slash)
+        ;; latest-version could be a version string like 1.50.35 or a map with :branch key:
         {:keys [latest-version jar-path]} (download-jar! version dir delete?)]
     (when run?
       ;; Check that the embedding token is set:
       (u/env "MB_PREMIUM_EMBEDDING_TOKEN"
              #(throw (ex-info (str "MB_PREMIUM_EMBEDDING_TOKEN is not set, please set it to run "
                                    "your jar (it is in 1password. ask on slack if you need help).")
-                              {:parsed-args    (dissoc parsed :summary) :latest-version latest-version :babashka/exit 1})))
-      (let [port        (+ 3000 (port-for-version latest-version))
+                              {:parsed-args (dissoc parsed :summary)
+                               :latest-version latest-version
+                               :jar-path jar-path
+                               :babashka/exit 1})))
+      (let [port        (try (parse-long (:port (:options parsed)))
+                             (catch Exception _
+                               (port-for-version latest-version)))
             socket-port (+ 3000 port)
             db-file     (str u/project-root-directory "/metabase_" version ".db")
             extra-env   {"MB_DB_TYPE"          "h2"
@@ -210,6 +267,7 @@
         (println "env:")
         (doseq [[k v] extra-env]
           (println (str "  " (c/yellow k) "=" (c/green v))))
-        (println "Socket repl will open on " socket-port ". See: https://lambdaisland.com/guides/clojure-repls/clojure-repls#org259d775")
-        (println (str "\n\n   Open in browser: http://localhost:" port "\n"))
+        (println (str "Socket repl will open on " (c/green socket-port) ". "
+                      "See: https://lambdaisland.com/guides/clojure-repls/clojure-repls#org259d775"))
+        (println (str "\n\n   Open in browser: " (c/magenta "http://localhost:" port) "\n"))
         (p/shell {:dir dir :extra-env extra-env} run-jar-cmd)))))

@@ -119,6 +119,7 @@
                 ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
    :requires   [[mage.jar-download :as jar-download]]
    :options    [["-r" "--run" "run the new jar after downloading it"]
+                ["-p" "--port PORT" "you can optionally provide a port to run the jar on, if not, we use a sane port."]
                 ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]]
    :usage-fn  (fn [_] "note: If you get an error about 'Invalid or corrupt jarfile', run this command again with the -d option.")
    :arg-schema [:or

@@ -141,3 +141,5 @@
         (throw e))
       (finally
         (reset! done? true)))))
+
+(defn- without-slash [s] (str/replace s #"/$" ""))
