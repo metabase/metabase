@@ -236,7 +236,7 @@
         (let [signature (field-signature (:field_ref column))]
           (or ;; First try to match with the join alias.
            (m/find-first #(= (field-signature %) signature) field-exports)
-              ;; Then just the names, but if the match is ambiguous, return nil.
+           ;; Then just the names, but if the match is ambiguous, return nil.
            (let [matches (filter #(= (second %) field-name) field-exports)]
              (when (= (count matches) 1)
                (first matches)))
