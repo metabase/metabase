@@ -5,7 +5,7 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
-import { compileExpression } from "../compiler";
+import { compileExpression } from "../compile-expression";
 import {
   expressions,
   fields,

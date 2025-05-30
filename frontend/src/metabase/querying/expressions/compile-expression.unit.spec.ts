@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import { compileExpression } from "./compiler";
+import { compileExpression } from "./compile-expression";
 import {
   expressions,
   fields,

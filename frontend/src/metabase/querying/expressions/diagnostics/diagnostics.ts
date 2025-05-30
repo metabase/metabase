@@ -1,7 +1,7 @@
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { compileExpression } from "../compiler";
+import { compileExpression } from "../compile-expression";
 import type { ExpressionError } from "../errors";
 import type { Token } from "../pratt";
 

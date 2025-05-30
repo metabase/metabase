@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import { compileExpression } from "./compiler";
+import { compileExpression } from "./compile-expression";
 import { fuzz } from "./test/fuzz";
 import { generateExpression } from "./test/generator";
 import { query, stageIndex } from "./test/shared";

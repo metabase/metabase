@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import { compileExpression } from "../compiler";
+import { compileExpression } from "../compile-expression";
 import { query } from "../test/shared";
 import { value } from "../test/utils";
 import type { ExpressionType } from "../types";
