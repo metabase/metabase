@@ -170,7 +170,7 @@
    :update :update
    :delete :create})
 
-(def category->op
+(def ^:private category->op
   {:create :created
    :update :updated
    :delete :deleted})

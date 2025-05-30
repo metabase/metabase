@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-editing.api-test
+(ns ^:mb/driver-tests metabase-enterprise.data-editing.api-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -1155,3 +1155,36 @@
                            :type "type/BigInteger"}]
                          (->> (:parameters body)
                               (map #(select-keys % [:id :display_name :type]))))))))))))))
+
+;; Taken from metabase-enterprise.data-editing.api-test.
+;; When we deprecate that API, we should move all the sibling tests here as well.
+(deftest dashcard-implicit-action-execution-insert-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
+      (testing "Executing dashcard insert"
+        (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                                  :card_id      model-id
+                                                                  :action_id    action-id}]
+            (let [execute-path "/ee/data-editing/action/v2/execute"
+                  body         {:action_id (str "dashcard:" dashcard-id)
+                                :scope     {:dashboard-id dashboard-id}
+                                :input     {"name" "Birds"}}
+                  new-row      (-> (mt/user-http-request :crowberto :post 200 execute-path body)
+                                   :outputs
+                                   first
+                                   :created-row
+                                   (update-keys (comp keyword u/lower-case-en name)))]
+              (testing "Should be able to insert"
+                (is (pos? (:id new-row)))
+                (is (partial= {:name "Birds"}
+                              new-row)))
+              (testing "Extra parameter should fail gracefully"
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    (assoc-in body [:input :extra] 1)))))
+              (testing "Missing other parameters should fail gracefully"
+                (is (partial= "Implicit parameters must be provided."
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    (assoc body :input {}))))))))))))

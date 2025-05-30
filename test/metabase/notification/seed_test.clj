@@ -31,7 +31,7 @@
                (notification.seed/seed-notification!))))
       (let [before (get-notifications-data)]
         (testing "skip all since none of the notifications were changed"
-          (is (= {:skip 3}
+          (is (= {:skip 4}
                  (notification.seed/seed-notification!))))
         (testing "it equals to the data before "
           (is (= before (get-notifications-data))))))))
