@@ -1799,7 +1799,7 @@
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
-(deftest ^:parallel multiple-limits
+(deftest multiple-limits
   (testing "Multiple `limit` query args should be handled correctly (#45345)"
     (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
                           :data count)
