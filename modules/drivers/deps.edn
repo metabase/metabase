@@ -4,8 +4,7 @@
  ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
  :mvn/repos
  {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"} ;; athena
-  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}        ;; redshift
-  "shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}                    ;; hive-like
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}       ;; redshift
 
  :deps
  {metabase/athena             {:local/root "athena"}
