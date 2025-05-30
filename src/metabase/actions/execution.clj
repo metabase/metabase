@@ -32,7 +32,13 @@
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
   (try
     (let [parameters (for [parameter (:parameters action)]
-                       (assoc parameter :value (get request-parameters (:id parameter))))
+                       (assoc parameter
+                              :value (get request-parameters (:id parameter))
+                              ;; Fetch an important property that's not really a visualization setting...
+                              :required (if-let [f (get-in action [:visualization_settings :fields (:id parameter)])]
+                                          (:required f)
+                                          ;; if we can't find the settings, treat it as required
+                                          true)))
           query (-> dataset_query
                     (update :type keyword)
                     (assoc :parameters parameters))]
