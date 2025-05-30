@@ -1,5 +1,6 @@
 ---
 title: Parameters for static embeds
+summary: Using parameters to customize embedded static questions and dashboards.
 redirect_from:
   - /docs/latest/embedding/signed-embedding-parameters
 ---
