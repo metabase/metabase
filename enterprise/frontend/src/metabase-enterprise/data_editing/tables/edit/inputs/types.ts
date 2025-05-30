@@ -12,6 +12,7 @@ export type EditingBodyCellConditionalStylesNames =
   | "dateTextInputElement";
 
 export interface EditingBodyPrimitiveProps {
+  withTextarea?: boolean;
   autoFocus?: boolean;
   datasetColumn: DatasetColumn;
   field?: FieldWithMetadata;
