@@ -1269,7 +1269,7 @@
                                                                                                     :id        mapping-id
                                                                                                     :dimension dimension}}}}})}}}]
 
-      (testing "selecting a collection includes settings and data model by default"
+      (testing "selecting a collection includes settings metabot and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
                (->> {:targets [["Collection" coll1-id]]}
                     extract/extract
@@ -1696,6 +1696,73 @@
                   :tabs [{:name "Tab 1"}
                          {:name "Tab 2"}]}]
                 (by-model "Dashboard" extraction)))))))
+
+(deftest metabot-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [:model/Card {model-id :id
+                    model-eid :entity_id} {:name "AI Model"
+                                           :type :model}
+
+       :model/Metabot {metabot-id :id
+                       metabot-eid :entity_id} {:name "Test Metabot"
+                                                :description "A test metabot"}
+
+       :model/MetabotEntity {metabot-entity-eid :entity_id} {:metabot_id metabot-id
+                                                             :model :dataset
+                                                             :model_id model-id}]
+
+      (testing "metabot extraction"
+        (let [ser (ts/extract-one "Metabot" metabot-id)]
+          (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
+                   :name "Test Metabot"
+                   :description "A test metabot"
+                   :entity_id metabot-eid
+                   :entities [{:model "dataset"
+                               :model_id model-eid
+                               :entity_id metabot-entity-eid
+                               :serdes/meta [{:model "Metabot" :id metabot-eid} {:model "MetabotEntity" :id metabot-entity-eid}]
+                               :created_at string?}]
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "metabot depends on its model entities"
+            (is (= #{[{:model "Card" :id model-eid}]}
+                   (set (serdes/dependencies ser))))))))))
+
+(deftest metabot-collection-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [:model/Collection {model-id :id
+                          model-eid :entity_id} {:name "AI Model"}
+
+       :model/Metabot {metabot-id :id
+                       metabot-eid :entity_id} {:name "Test Metabot"
+                                                :description "A test metabot"}
+
+       :model/MetabotEntity {metabot-entity-eid :entity_id} {:metabot_id metabot-id
+                                                             :model :collection
+                                                             :model_id model-id}]
+
+      (testing "metabot extraction"
+        (let [ser (ts/extract-one "Metabot" metabot-id)]
+          (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
+                   :name "Test Metabot"
+                   :description "A test metabot"
+                   :entity_id metabot-eid
+                   :entities [{:model "collection"
+                               :model_id model-eid
+                               :entity_id metabot-entity-eid
+                               :serdes/meta [{:model "Metabot" :id metabot-eid} {:model "MetabotEntity" :id metabot-entity-eid}]
+                               :created_at string?}]
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "metabot depends on its model entities"
+            (is (= #{[{:model "Collection" :id model-eid}]}
+                   (set (serdes/dependencies ser))))))))))
 
 (deftest visualizer-dashboard-card-settings-test
   (testing "visualizer settings transform entity IDs <-> card IDs"

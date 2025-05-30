@@ -24,9 +24,17 @@ export const HOST_APP_SETUP_CONFIGS = {
       VITE_MB_PORT: BASE_ENV.MB_PORT,
     },
   },
-  "nextjs-host-app-e2e": {
+  "next-14-app-router-host-app-e2e": {
     ...BASE_SETUP_CONFIG,
-    appName: "nextjs-host-app",
+    appName: "next-14-app-router-host-app",
+    env: {
+      ...BASE_ENV,
+      NEXT_PUBLIC_MB_PORT: BASE_ENV.MB_PORT,
+    },
+  },
+  "next-14-pages-router-host-app-e2e": {
+    ...BASE_SETUP_CONFIG,
+    appName: "next-14-pages-router-host-app",
     env: {
       ...BASE_ENV,
       NEXT_PUBLIC_MB_PORT: BASE_ENV.MB_PORT,
