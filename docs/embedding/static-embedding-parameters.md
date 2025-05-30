@@ -191,7 +191,7 @@ You can preview appearance settings from your question or dashboard's embedded a
 | `theme`                    | null (default), night. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
 | `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                         |
 | `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                  |
-| `downloads`\*\*            | true (default), false.                                                                                                                         |
+| `downloads`\*\*            | true (default), false, results, pdf                                                                                                            |
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
 
@@ -228,9 +228,18 @@ Making an embed transparent depends on the type of embed:
 
 {% include plans-blockquote.html feature="Disabling downloads" %}
 
-By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the option to download results by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards.
 
-If the download option is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `downloads=true`.
+You can configure these options with the `downloads` key in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+
+`downloads` accepts the following values:
+
+- `true` (default): include both the Download and Export to PDF options.
+- `false`: hide both the Download and Export to PDF options.
+- `results`: show the Download option.
+- `pdf`: show the Export to PDF option (dashboards only)
+
+You can combine the explicit options: `downloads=results,pdf` is the same as `downloads=true`.
 
 ## Maximum request size
 
