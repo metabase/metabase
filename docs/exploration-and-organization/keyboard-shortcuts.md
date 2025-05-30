@@ -9,6 +9,8 @@ A handy list of keyboard shortcuts to help you zip around Metabase.
 
 Shortcuts change depending on which page you're viewing in your Metabase.
 
+To view the shortcut menu in Metabase, Press `?`
+
 ## Global
 
 | Action                   | Shortcut    |
