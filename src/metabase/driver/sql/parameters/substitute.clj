@@ -10,6 +10,10 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
+(def ^:dynamic *optional-params*
+  "YES I TOOK A SHORTCUT"
+  #{})
+
 (defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= params/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
@@ -42,12 +46,13 @@
         (params/ReferencedQuerySnippet? v)
         (substitute-native-query-snippet [sql args missing] v)
 
-        (= params/no-value v)
+        (and (= params/no-value v) (not (contains? *optional-params* k)))
         [sql args (conj missing k)]
 
         :else
-        (let [{:keys [replacement-snippet prepared-statement-args]}
-              (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
+        (let [value (when (not= params/no-value v) v)
+              {:keys [replacement-snippet prepared-statement-args]}
+              (sql.params.substitution/->replacement-snippet-info driver/*driver* value)]
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
 (declare substitute*)

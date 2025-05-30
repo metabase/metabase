@@ -213,7 +213,10 @@ const isLoading = (series: Series | null) => {
     series.length > 0 &&
     _.every(
       series,
-      (s) => !!s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      (s) =>
+        !!s.data ||
+        _.isObject(s.card.visualization_settings.virtual_card) ||
+        s.card.display === "table-editable", // TODO [WRK]: refactor this after we add saved editable table view entity
     )
   );
 };
@@ -683,10 +686,13 @@ class Visualization extends PureComponent<
     }
 
     if (!error && !genericError && series) {
-      noResults = _.every(
-        series,
-        (s) => s && s.data && datasetContainsNoResults(s.data),
-      );
+      const isNoResultsDisabled = !!visualization?.noResults;
+      noResults = isNoResultsDisabled
+        ? false
+        : _.every(
+            series,
+            (s) => s && s.data && datasetContainsNoResults(s.data),
+          );
     }
 
     const extra = (
@@ -723,7 +729,7 @@ class Visualization extends PureComponent<
 
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
-    const isHeaderEnabled = !(visualization && visualization.noHeader);
+    const isHeaderEnabled = !visualization?.noHeader;
 
     const hasHeader =
       (showTitle &&

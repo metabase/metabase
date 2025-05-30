@@ -36,11 +36,13 @@
  {actions
   {:api  #{metabase.actions.api
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.types}
    :uses #{analytics
            api
            collections
            driver
+           events
            legacy-mbql
            lib
            model-persistence
@@ -450,8 +452,16 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{models
-           util}}
+   :uses #{api
+           audit-app
+           config
+           channel
+           driver
+           models
+           notification
+           premium-features
+           util
+           view-log}}
 
   formatter
   {:api  #{metabase.formatter.core}
@@ -628,7 +638,8 @@
            metabase.notification.init
            metabase.notification.models
            metabase.notification.payload.core}
-   :uses #{analytics
+   :uses #{actions
+           analytics
            api
            appearance
            channel
@@ -637,6 +648,7 @@
            driver
            events
            models
+           lib
            parameters
            permissions
            premium-features
@@ -648,8 +660,10 @@
            system
            task
            task-history
+           types
            users
-           util}}
+           util
+           warehouse-schema}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1433,16 +1447,48 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses :any}
+   :uses #{enterprise/advanced-config
+           enterprise/audit-app
+           enterprise/cache
+           enterprise/data-editing
+           enterprise/enhancements
+           enterprise/llm
+           enterprise/metabot-v3
+           enterprise/gsheets
+           enterprise/scim
+           enterprise/sso
+           enterprise/stale}}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}
    :uses #{premium-features}}
 
   enterprise/data-editing
-  {:api  #{metabase-enterprise.data-editing.api}
+  {:api  #{metabase-enterprise.data-editing.core
+           metabase-enterprise.data-editing.api
+           metabase-enterprise.data-editing.init}
    :uses #{api
            actions
+           driver
+           events
+           lib
+           models
+           notification
+           query-processor
+           upload
+           util
+           warehouse-schema}}
+
+  enterprise/data-editing-public
+  {:api #{}
+   :uses #{api
+           actions
+           enterprise/data-editing
+           driver
+           events
+           lib
+           query-processor
+           upload
            util}}
 
   enterprise/database-routing
