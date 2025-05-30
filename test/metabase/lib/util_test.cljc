@@ -372,17 +372,34 @@
     (is (lib.util/first-stage? single-stage-query 0))
     (is (lib.util/first-stage? two-stage-query 0)))
   (testing "should return false for the second stage"
-    (is (not (lib.util/first-stage? two-stage-query 1)))))
+    (is (not (lib.util/first-stage? two-stage-query 1))))
+  (testing "should throw for invalid index"
+    (are [form] (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"Stage .* does not exist"
+                 form)
+      (lib.util/first-stage? single-stage-query 1)
+      (lib.util/first-stage? single-stage-query -2)
+      (lib.util/first-stage? two-stage-query 2)
+      (lib.util/first-stage? two-stage-query -3))))
 
 (deftest ^:parallel last-stage?-test
   (testing "should return true for the last stage"
     (is (lib.util/last-stage? single-stage-query 0))
     (is (lib.util/last-stage? two-stage-query 1)))
   (testing "should return false for a non-last stage"
-    (is (not (lib.util/last-stage? two-stage-query 0)))))
+    (is (not (lib.util/last-stage? two-stage-query 0))))
+  (testing "should throw for invalid index"
+    (are [form] (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"Stage .* does not exist"
+                 form)
+      (lib.util/last-stage? single-stage-query 1)
+      (lib.util/last-stage? single-stage-query -2)
+      (lib.util/last-stage? two-stage-query 2)
+      (lib.util/last-stage? two-stage-query -3))))
 
 (deftest ^:parallel drop-later-stages-test
-  (is (= 1 (lib/stage-count single-stage-query)))
   (is (= 1 (lib/stage-count (lib.util/drop-later-stages single-stage-query 0))))
   (is (= 1 (lib/stage-count (lib.util/drop-later-stages single-stage-query -1))))
   (is (= single-stage-query (lib.util/drop-later-stages single-stage-query 0)))

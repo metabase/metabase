@@ -336,7 +336,8 @@
 (defn last-stage?
   "Whether a `stage-number` is referring to the last stage of a query or not."
   [query stage-number]
-  (not (next-stage-number query stage-number)))
+  ;; Call canonical-stage-index to ensure this throws when given an invalid stage-number.
+  (not (next-stage-number query (canonical-stage-index query stage-number))))
 
 (mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
