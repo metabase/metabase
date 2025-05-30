@@ -7,9 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (java.io File)))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
