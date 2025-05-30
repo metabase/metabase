@@ -71,6 +71,11 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
   SET_USAGE_PROBLEM,
 );
 
+const SET_IS_SDK_IFRAME_EMBED_AUTH = "sdk/SET_IS_SDK_IFRAME_EMBED_AUTH";
+export const setIsSdkIframeEmbedAuth = createAction<boolean>(
+  SET_IS_SDK_IFRAME_EMBED_AUTH,
+);
+
 const initialState: SdkState = {
   metabaseInstanceUrl: "",
   token: {
@@ -85,6 +90,7 @@ const initialState: SdkState = {
   loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
+  isSdkIframeEmbedAuth: false,
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -147,5 +153,9 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setUsageProblem, (state, action) => {
     state.usageProblem = action.payload;
+  });
+
+  builder.addCase(setIsSdkIframeEmbedAuth, (state, action) => {
+    state.isSdkIframeEmbedAuth = action.payload;
   });
 });
