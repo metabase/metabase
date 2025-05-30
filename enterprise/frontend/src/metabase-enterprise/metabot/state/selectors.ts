@@ -61,7 +61,7 @@ export const getMetabotConversationId = createSelector(
 
 export const getMetabotState = createSelector(
   getMetabot,
-  (metabot) => metabot.state,
+  (metabot) => metabot.stateContext,
 );
 
 export const getIsLongMetabotConversation = createSelector(

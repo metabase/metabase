@@ -81,7 +81,7 @@ export const metabot = createSlice({
     clearMessages: (state) => {
       state.messages = [];
       state.history = [];
-      state.state = {};
+      state.stateContext = {};
       state.isProcessing = false;
       state.activeToolCalls = [];
     },
@@ -102,7 +102,7 @@ export const metabot = createSlice({
         state.isProcessing = true;
       })
       .addCase(sendMessageRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.data?.history ?? [];
+        state.history = action.payload?.data?.history?.slice() ?? [];
         state.activeToolCalls = [];
         state.isProcessing = false;
       })

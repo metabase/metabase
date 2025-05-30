@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-export function getErrorMessage() {
+export function getAgentOfflineError() {
   return t`I'm currently offline, try again later.`;
 }
 

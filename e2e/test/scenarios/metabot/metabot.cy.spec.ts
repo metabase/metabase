@@ -62,7 +62,6 @@ describe("Metabot UI", () => {
       chatMessages().should("not.exist");
 
       mockMetabotResponse({
-        statusCode: 200,
         delay: 100, // small delay to detect loading state
         body: whoIsYourFavoriteResponse,
       });
@@ -80,27 +79,8 @@ describe("Metabot UI", () => {
   });
 });
 
-const whoIsYourFavoriteResponse = {
-  reactions: [
-    {
-      type: "metabot.reaction/message",
-      "repl/message_color": "green",
-      "repl/message_emoji": "🤖",
-      message: "You, but don't tell anyone.",
-    },
-  ],
-  history: [
-    {
-      role: "user",
-      content: "Who is your favorite?",
-    },
-    {
-      content: "You, but don't tell anyone.",
-      role: "assistant",
-    },
-  ],
-  state: {
-    queries: {},
-  },
-  conversation_id: "8dcf1268-11a7-803f-50ee-37d3ed27b179",
-};
+const whoIsYourFavoriteResponse = [
+  '0:"You, but don\'t tell anyone."',
+  '2:{"type":"state","value":{"queries":{}}}',
+  'd:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}',
+].join("\n");

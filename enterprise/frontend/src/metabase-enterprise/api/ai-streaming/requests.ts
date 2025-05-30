@@ -55,6 +55,10 @@ export async function aiStreamingQuery(
       body: JSON.stringify(req.body),
     });
 
+    if (response && !response.ok) {
+      throw response;
+    }
+
     if (!response || !response.body) {
       throw new Error("No Response");
     }

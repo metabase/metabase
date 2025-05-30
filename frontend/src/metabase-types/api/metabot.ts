@@ -78,8 +78,9 @@ export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
   history: MetabotHistory;
+  state: MetabotStateContext;
   conversation_id: string; // uuid
-  state: any;
+  metabot_id?: string;
 };
 
 export type MetabotAgentResponse = {

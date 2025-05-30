@@ -1,10 +1,10 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
-import { isMatching, match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
   aiStreamingQuery,
@@ -16,7 +16,7 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { getErrorMessage } from "../constants";
+import { getAgentOfflineError } from "../constants";
 
 import { metabot } from "./reducer";
 import {
@@ -25,8 +25,6 @@ import {
   getMetabotConversationId,
   getMetabotState,
 } from "./selectors";
-
-const isAbortError = isMatching({ name: "AbortError" });
 
 export const {
   addAgentMessage,
@@ -40,7 +38,7 @@ export const {
 
 export const setVisible =
   (isVisible: boolean) => (dispatch: Dispatch, getState: any) => {
-    const currentUser = getCurrentUser(getState());
+    const currentUser = getUser(getState());
     if (!currentUser) {
       console.error(
         "Metabot can not be opened while there is no signed in user",
@@ -75,11 +73,27 @@ export const submitInput = createAsyncThunk(
   },
 );
 
-const streamAgentRequest = createAsyncThunk(
-  "metabase-enterprise/metabot/streamAgentRequest",
-  async ({ body }: { body: MetabotAgentRequest }, { dispatch, getState }) => {
+export const sendMessageRequest = createAsyncThunk(
+  "metabase-enterprise/metabot/sendMessageRequest",
+  async (
+    req: Omit<MetabotAgentRequest, "conversation_id">,
+    { dispatch, getState },
+  ) => {
+    // TODO: make enterprise store
+    let sessionId = getMetabotConversationId(getState() as any);
+
+    // should not be needed, but just in case the value got unset
+    if (!sessionId) {
+      console.warn(
+        "Metabot has no session id while open, this should never happen",
+      );
+      dispatch(resetConversationId());
+      sessionId = getMetabotConversationId(getState() as any) as string;
+    }
+
     try {
-      let state = { ...body.state };
+      const body = { ...req, conversation_id: sessionId };
+      const state = { ...body.state };
 
       const response = await aiStreamingQuery(
         {
@@ -91,9 +105,9 @@ const streamAgentRequest = createAsyncThunk(
         {
           onDataPart: (part) => {
             match(part)
-              .with({ type: "state" }, (part) => {
-                state = { ...state, ...part.value };
-              })
+              .with({ type: "state" }, (part) =>
+                Object.assign(state, part.value),
+              )
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(push(part.value) as UnknownAction);
               })
@@ -115,95 +129,30 @@ const streamAgentRequest = createAsyncThunk(
         },
         error: undefined,
       } as const;
-    } catch (e) {
-      console.error(e);
-      const error = e instanceof Error ? e.message : "Unknown error";
-      return {
-        data: undefined,
-        error: {
-          status: "FETCH_ERROR",
-          error,
-        },
-      } as const;
-    }
-  },
-);
+    } catch (error) {
+      console.error("Metabot request error: ", error);
 
-export const sendMessageRequest = createAsyncThunk(
-  "metabase-enterprise/metabot/sendMessageRequest",
-  async (
-    data: {
-      message: string;
-      context: MetabotChatContext;
-      history: any[];
-      state: any;
-      metabot_id?: string;
-    },
-    { dispatch, getState },
-  ) => {
-    // TODO: make enterprise store
-    let sessionId = getMetabotConversationId(getState() as any);
+      const notification = match(error)
+        .with({ name: "AbortError" }, () => false as const)
+        .with({ status: P.number.gte(500) }, getAgentOfflineError)
+        .otherwise(() => t`I can’t do that, unfortunately.`);
 
-    // should not be needed, but just in case the value got unset
-    if (!sessionId) {
-      console.warn(
-        "Metabot has no session id while open, this should never happen",
-      );
-      dispatch(resetConversationId());
-      sessionId = getMetabotConversationId(getState() as any) as string;
-    }
-
-    const { payload: result } = (await dispatch(
-      streamAgentRequest({ body: { ...data, conversation_id: sessionId } }),
-    )) as any; // TODO: fix type;
-
-    if (result.error) {
-      const didUserAbort = isAbortError(result.error);
-      if (didUserAbort) {
-        dispatch(stopProcessing());
-      } else {
-        console.error("Metabot request returned error: ", result.error);
-        const message =
-          (result.error as any).status >= 500 ? getErrorMessage() : undefined;
-        dispatch(stopProcessingAndNotify(message));
+      if (notification !== false) {
+        dispatch(addAgentMessage({ type: "error", message: notification }));
       }
+
+      return { data: undefined, error };
     }
-
-    return result;
-  },
-);
-
-export const cancelInflightAgentRequests = createAsyncThunk(
-  "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (reason: string, { dispatch: _dispatch }) => {
-    getInflightRequestsForUrl("/api/ee/metabot-v3/v2/agent-streaming").forEach(
-      (req) => req.abortController.abort(reason),
-    );
   },
 );
 
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
   (_args, { dispatch }) => {
-    dispatch(
-      cancelInflightAgentRequests("User manaully cancelled the request"),
+    getInflightRequestsForUrl("/api/ee/metabot-v3/v2/agent-streaming").forEach(
+      (req) => req.abortController.abort("User manaully cancelled the request"),
     );
     dispatch(clearMessages());
     dispatch(resetConversationId());
   },
 );
-
-export const stopProcessing = () => (dispatch: Dispatch) => {
-  dispatch(setIsProcessing(false));
-};
-
-export const stopProcessingAndNotify =
-  (message?: string) => (dispatch: Dispatch) => {
-    dispatch(stopProcessing());
-    dispatch(
-      addAgentMessage({
-        type: "error",
-        message: message || t`I can’t do that, unfortunately.`,
-      }),
-    );
-  };

@@ -35,7 +35,11 @@ export function mockAgentEndpoint(
     if (isAgentUrl) {
       return new Promise((resolve) => {
         setTimeout(() => {
-          resolve({ body: createMockReadableStream(textChunks) } as any);
+          resolve({
+            status: 202,
+            ok: true,
+            body: createMockReadableStream(textChunks),
+          } as any);
         }, options?.delay ?? 0);
       });
     } else {
