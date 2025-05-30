@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -617,3 +618,174 @@
             (-> query
                 (lib/visible-columns)
                 (->> (map (juxt :name :lib/source))))))))
+
+(def ^:private key-not-present
+  (symbol "nil #_\"key is not present.\""))
+
+(defn- orders-and-products []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/join (lib/join-clause (meta/table-metadata :products)
+                                 [(lib/= (meta/field-metadata :orders :product-id)
+                                         (meta/field-metadata :products :id))]))))
+
+(defn- orders-and-products-aggregated []
+  (let [base   (orders-and-products)
+        cols   (lib/breakoutable-columns base)
+        vendor (m/find-first #(= (:name %) "VENDOR") cols)]
+    (-> (orders-and-products)
+        (lib/aggregate (lib/count))
+        (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+        (lib/breakout vendor)
+        (lib/breakout (meta/field-metadata :orders :product-id)))))
+
+(deftest ^:parallel column-aliases-test-1-joined-column
+  (let [query (orders-and-products)]
+    (testing "source fields have no :source-alias; SCA and DCA are just the name"
+      (is (=? {:id                       (meta/id :orders :quantity)
+               :name                     "QUANTITY"
+               :source-alias             key-not-present
+               :lib/source-column-alias  "QUANTITY"
+               :lib/desired-column-alias "QUANTITY"}
+              (nth (lib/visible-columns query) 8))))
+    (testing "joined fields have the join alias as :source-alias; SCA is the name, and DCA combines both"
+      (is (=? {:id                       (meta/id :products :category)
+               :name                     "CATEGORY"
+               :source-alias             "Products"
+               :lib/source-column-alias  "CATEGORY"
+               :lib/desired-column-alias "Products__CATEGORY"}
+              (nth (lib/visible-columns query) 12))))))
+
+(deftest ^:parallel column-aliases-test-2-summaries
+  (let [query (orders-and-products-aggregated)]
+    (is (=? [{:id                       (meta/id :products :vendor)
+              :name                     "VENDOR"
+              :source-alias             key-not-present ;; XXX: Is this accurate? It's a breakout, but DCA is good.
+              :lib/source-column-alias  "VENDOR"
+              :lib/desired-column-alias "Products__VENDOR"}
+             {:id                       (meta/id :orders :product-id)
+              :name                     "PRODUCT_ID"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "PRODUCT_ID"
+              :lib/desired-column-alias "PRODUCT_ID"}
+             {:name                     "count"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "count"
+              :lib/desired-column-alias "count"}
+             {:name                     "sum"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "sum"
+              :lib/desired-column-alias "sum"}]
+            (lib/returned-columns query)))))
+
+(deftest ^:parallel column-aliases-test-3-summaries-next-stage
+  (let [query (lib/append-stage (orders-and-products-aggregated))]
+    (is (=? [{:id                       (meta/id :products :vendor)
+              :name                     "VENDOR"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "Products__VENDOR"  ;; This is the important bit!
+              :lib/desired-column-alias "Products__VENDOR"}
+             {:id                       (meta/id :orders :product-id)
+              :name                     "PRODUCT_ID"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "PRODUCT_ID"
+              :lib/desired-column-alias "PRODUCT_ID"}
+             {:name                     "count"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "count"
+              :lib/desired-column-alias "count"}
+             {:name                     "sum"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "sum"
+              :lib/desired-column-alias "sum"}]
+            (lib/visible-columns query)))))
+
+(defn- metadata-with-aggregated-card []
+  (let [query (orders-and-products-aggregated)]
+    (lib.tu/metadata-provider-with-card-from-query 1 query)))
+
+(defn- query-joining-card []
+  (let [mp                (metadata-with-aggregated-card)
+        card-cols         (lib.card/saved-question-metadata mp 1)
+        joined-product-id (m/find-first #(= (:lib/desired-column-alias %) "PRODUCT_ID") card-cols)]
+    (-> (lib/query mp (meta/table-metadata :orders))
+        (lib/join (-> (lib/join-clause (lib.metadata/card mp 1)
+                                       [(lib/= (meta/field-metadata :orders :product-id)
+                                               joined-product-id)])
+                      (lib/with-join-alias "Card"))))))
+
+(deftest ^:parallel column-aliases-test-4-card-source
+  (let [mp    (metadata-with-aggregated-card)
+        query (-> (lib/query mp (lib.metadata/card mp 1)))]
+    (is (=? [;; Joined summaries from the card
+             {:name                     "count"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "count"
+              :lib/desired-column-alias "count"}
+             {:name                     "sum"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "sum"
+              :lib/desired-column-alias "sum"}
+             {:name                     "VENDOR"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "Products__VENDOR"
+              :lib/desired-column-alias "Products__VENDOR"}
+             {:name                     "PRODUCT_ID"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "PRODUCT_ID"
+              :lib/desired-column-alias "PRODUCT_ID"}]
+            (lib/returned-columns query)))))
+
+(deftest ^:parallel column-aliases-test-5-card-joined
+  (let [query (query-joining-card)]
+    (is (=? [;; Regular Orders columns
+             {:id (meta/id :orders :id)}
+             {:id (meta/id :orders :user-id)}
+             {:id (meta/id :orders :product-id)}
+             {:id (meta/id :orders :subtotal)}
+             {:id (meta/id :orders :tax)}
+             {:id (meta/id :orders :total)}
+             {:id (meta/id :orders :discount)}
+             {:id (meta/id :orders :created-at)}
+             {:id (meta/id :orders :quantity)}
+             ;; Joined summaries from the card
+             {:name                     "count"
+              :source-alias             "Card"
+              :lib/source-column-alias  "count"
+              :lib/desired-column-alias "Card__count"}
+             {:name                     "sum"
+              :source-alias             "Card"
+              :lib/source-column-alias  "sum"
+              :lib/desired-column-alias "Card__sum"}
+             {:name                     "VENDOR"
+              :source-alias             "Card"
+              :lib/source-column-alias  "Products__VENDOR"
+              :lib/desired-column-alias "Card__Products__VENDOR"}
+             {:name                     "PRODUCT_ID"
+              :source-alias             "Card"
+              :lib/source-column-alias  "PRODUCT_ID"
+              :lib/desired-column-alias "Card__PRODUCT_ID"}]
+            (lib/returned-columns query)))))
+
+(deftest ^:parallel column-aliases-test-6-card-joined-and-summarized
+  (let [base   (query-joining-card)
+        cols   (lib/returned-columns base)
+        vendor (m/find-first #(= (:lib/desired-column-alias %) "Card__Products__VENDOR") cols)
+        query  (-> (query-joining-card)
+                   (lib/aggregate (lib/count))
+                   ;; WARN: This is the trouble spot. The breakout looks like `[:field {:join-alias "Card"} 72506]`,
+                   ;; using an ID even though the column ultimately came from a card. This is a ref-generation issue;
+                   ;; the explicit join is making us "forget" that the column originally came from a card and should
+                   ;; be referenced by name henceforward.
+                   (lib/breakout vendor))
+        ;; HACK: If I bodge the bad breakout ref to the correct `[:field {:join-alias "Card"} "Products__VENDOR"]`
+        ;; then it works correctly in this test.
+        query  (assoc-in query [:stages 0 :breakout 0 2] "Products__VENDOR")]
+    (is (=? [{:name                     "Products__VENDOR"
+              :source-alias             "Card"
+              :lib/source-column-alias  "Products__VENDOR"
+              :lib/desired-column-alias "Card__Products__VENDOR"}
+             {:name                     "count"
+              :source-alias             key-not-present
+              :lib/source-column-alias  "count"
+              :lib/desired-column-alias "count"}]
+            (lib/returned-columns query)))))
