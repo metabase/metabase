@@ -178,7 +178,7 @@
 
 ;; custom Redshift type handling
 
-(defn- external-datbaase-type->base-type
+(defn- external-database-type->base-type
   "Additional type mappings of external columns. Return nil when no matching type is found."
   [database-type]
   (when (or (string? database-type)
@@ -236,7 +236,7 @@
       (let [assumed-type ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)]
         (if-not (contains? #{nil :type/*} assumed-type)
           assumed-type
-          (if-some [external-assumed-type (external-datbaase-type->base-type column-type)]
+          (if-some [external-assumed-type (external-database-type->base-type column-type)]
             external-assumed-type
             assumed-type)))))
 
