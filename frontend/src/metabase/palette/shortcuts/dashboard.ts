@@ -25,7 +25,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-toggle-add-question-sidepanel": {
     get name() {
-      return t`Toggle question sidebar`;
+      return t`Open question sidebar`;
     },
     shortcut: ["a"],
     shortcutGroup: "dashboard" as const,

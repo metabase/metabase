@@ -39,7 +39,7 @@ To view the shortcut menu in Metabase, Press `?`
 | -------------------------- | ------------------ |
 | Bookmark dashboard         | o                  |
 | Add filter                 | f                  |
-| Toggle question sidebar    | a                  |
+| Open question sidebar    | a                  |
 | Add query builder question | q                  |
 | Add native question        | n                  |
 | Cancel edit dashboard      | e                  |
