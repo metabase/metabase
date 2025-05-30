@@ -184,7 +184,7 @@ class MetabaseEmbed {
     }
 
     // the iframe is requesting a refresh token - we need to re-authenticate
-    if (event.data.type === "metabase.embed.requestRefreshToken") {
+    if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
   };
@@ -204,15 +204,15 @@ class MetabaseEmbed {
       return;
     }
 
-    const refreshToken = await this._getRefreshToken();
-    validateSessionToken(refreshToken);
+    const sessionToken = await this._getMetabaseSessionToken();
+    validateSessionToken(sessionToken);
 
-    if (refreshToken) {
-      this._sendMessage("metabase.embed.submitRequestToken", { refreshToken });
+    if (sessionToken) {
+      this._sendMessage("metabase.embed.submitSessionToken", { sessionToken });
     }
   }
 
-  private async _getRefreshToken() {
+  private async _getMetabaseSessionToken() {
     const { instanceUrl } = this._settings;
 
     const urlResponseJson = await connectToInstanceAuthSso(

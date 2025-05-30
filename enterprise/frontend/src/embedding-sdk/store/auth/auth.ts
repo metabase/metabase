@@ -17,6 +17,7 @@ import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
@@ -108,7 +109,7 @@ export const refreshTokenAsync = createAsyncThunk(
 
     const isNewIframeEmbeddingAuth = getIsNewIframeEmbeddingAuth(state);
     if (isNewIframeEmbeddingAuth) {
-      return null;
+      return await requestSessionTokenFromEmbedJs();
     }
 
     const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? null;
