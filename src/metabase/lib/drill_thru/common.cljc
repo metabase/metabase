@@ -70,8 +70,8 @@
 (defn primary-key?
   "Is `column` a primary key of `query`?
 
-  Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] and `column` is found in the source table's
-  fields, when available."
+  Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] and `column` is found in the stage's non-joined
+  visible-columns."
   [query stage-number column]
   (boolean (and (lib.types.isa/primary-key? column)
                 (find-column-in-visible-columns-ignoring-joins query stage-number column))))
@@ -79,8 +79,8 @@
 (defn foreign-key?
   "Is `column` a foreign key of `query`?
 
-  Returns true iff `column` satisfies [[lib.types.isa/foreign-key?]] and `column` is found in the source table's
-  fields, when available."
+  Returns true iff `column` satisfies [[lib.types.isa/foreign-key?]] and `column` is found in the stage's non-joined
+  visible-columns."
   [query stage-number column]
   (boolean (and (lib.types.isa/foreign-key? column)
                 (find-column-in-visible-columns-ignoring-joins query stage-number column))))
