@@ -18,10 +18,11 @@ import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
-import { getFetchRefreshTokenFn } from "../selectors";
+import { getFetchRefreshTokenFn, getIsSdkIframeEmbedAuth } from "../selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
@@ -100,8 +101,13 @@ export const refreshTokenAsync = createAsyncThunk(
     url: MetabaseAuthConfig["metabaseInstanceUrl"],
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
-    const customGetRefreshToken =
-      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
+    const state = getState() as SdkStoreState;
+
+    if (getIsSdkIframeEmbedAuth(state)) {
+      return requestSessionTokenFromEmbedJs();
+    }
+
+    const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? null;
 
     const session = await getRefreshToken(url, customGetRefreshToken);
     validateSessionToken(session);
@@ -122,7 +128,10 @@ const getRefreshToken = async (
   );
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
-    return await openSamlLoginPopup(responseUrl);
+    const token = await openSamlLoginPopup(responseUrl);
+    samlTokenStorage.set(token);
+
+    return token;
   }
   if (method === "jwt") {
     return jwtDefaultRefreshTokenFunction(
@@ -132,9 +141,10 @@ const getRefreshToken = async (
       customFetchRequestToken,
     );
   }
-  throw new Error(
-    `Unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson, null, 2)}`,
-  );
+  throw MetabaseError.MISSING_AUTH_METHOD({
+    method,
+    response: urlResponseJson,
+  });
 };
 
 export function getSdkRequestHeaders(hash?: string): Record<string, string> {

@@ -20,3 +20,23 @@ export function CANNOT_CONNECT_TO_INSTANCE({
     { status },
   );
 }
+
+export function MISSING_AUTH_METHOD({
+  method,
+  response,
+}: {
+  method: string;
+  response: string;
+}) {
+  return new MetabaseError(
+    "MISSING_AUTH_METHOD",
+    `Unknown or missing method: ${method}, response: ${JSON.stringify(response, null, 2)}`,
+  );
+}
+
+export function AUTH_TIMEOUT() {
+  return new MetabaseError(
+    "AUTH_TIMEOUT",
+    "Authentication has not been completed in time.",
+  );
+}

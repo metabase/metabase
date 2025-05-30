@@ -2,7 +2,6 @@
 /* eslint-disable no-undef */
 
 const fs = require("fs");
-
 const path = require("path");
 
 const ENTERPRISE_SRC_PATH =
@@ -14,6 +13,8 @@ const SCRIPT_TAG_PATH = path.resolve(
 );
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
+const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
+const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
 const OUT_FILE_NAME = "embed.js";
 const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
@@ -74,4 +75,11 @@ module.exports = {
       },
     },
   ],
+  resolve: {
+    extensions: [".js", ".ts"],
+    alias: {
+      embedding: EMBEDDING_SRC_PATH,
+      "embedding-sdk": SDK_SRC_PATH,
+    },
+  },
 };

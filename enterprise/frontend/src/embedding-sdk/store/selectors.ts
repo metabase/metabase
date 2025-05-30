@@ -29,3 +29,6 @@ export const getMetabaseInstanceUrl = (state: SdkStoreState) =>
 
 export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
   state.sdk.fetchRefreshTokenFn;
+
+export const getIsSdkIframeEmbedAuth = (state: SdkStoreState) =>
+  state.sdk?.isSdkIframeEmbedAuth;
