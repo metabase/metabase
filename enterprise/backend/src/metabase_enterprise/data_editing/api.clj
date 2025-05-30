@@ -2,7 +2,6 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
@@ -10,13 +9,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -155,63 +152,6 @@
     {:table_id table-id
      :token token}))
 
-(defn- translate-undo-error [e]
-  (case (:error (ex-data e))
-    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
-    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
-    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
-    e))
-
-(defn- perform-and-group-undo! [action-kw scope]
-  (->> (actions/perform-action! action-kw scope [{}])
-       :outputs
-       (u/group-by :table-id (juxt :action-type :row))))
-
-(api.macros/defendpoint :post "/undo"
-  "Undo the last change you made.
-  For now only supports tables, but in the future will support editables for sure.
-  Maybe actions, workflows, etc.
-  Could even generalize to things like edits to dashboard definitions themselves."
-  [_
-   _
-   {:keys [table-id scope no-op]}] :- [:map
-                                       ;; deprecated, this will be replaced by scope
-                                       [:table-id ms/PositiveInt]
-                                       [:scope ::types/scope.raw]
-                                       [:no-op {:optional true} ms/BooleanValue]]
-  (check-permissions)
-  (let [user-id api/*current-user-id*
-        scope  (or scope {:table-id table-id})]
-    (if no-op
-      {:batch_num (undo/next-batch-num :undo user-id scope)}
-      ;; IDEA use generic action calling API instead of having this endpoint
-      (try
-        {:result (perform-and-group-undo! :data-editing/undo scope)}
-        (catch ExceptionInfo e
-          (throw (translate-undo-error e)))))))
-
-(api.macros/defendpoint :post "/redo"
-  "Redo the last change you made.
-  For now only supports tables, but in the future will support editables for sure.
-  Maybe actions, workflows, etc.
-  Could even generalize to things like edits to dashboard definitions themselves."
-  [_
-   _
-   {:keys [table-id scope no-op]}] :- [:map
-                                         ;; deprecated, this will be replaced by scope
-                                       [:table-id ms/PositiveInt]
-                                       [:scope ::types/scope.raw]
-                                       [:no-op {:optional true} ms/BooleanValue]]
-  (check-permissions)
-  (let [scope (or scope {:table-id table-id})]
-    (if no-op
-      {:batch_num (undo/next-batch-num :redo api/*current-user-id* scope)}
-      ;; IDEA use generic action calling API instead of having this endpoint
-      (try
-        {:result (perform-and-group-undo! :data-editing/redo scope)}
-        (catch ExceptionInfo e
-          (throw (translate-undo-error e)))))))
-
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."
   [{:keys [token]}
@@ -323,7 +263,9 @@
 
         editable-tables
         (when (seq editable-databases)
-          (t2/select :model/Table :db_id [:in (map :id editable-databases)]))
+          (t2/select :model/Table
+                     :db_id [:in (map :id editable-databases)]
+                     :active true))
 
         fields
         (when (seq editable-tables)
@@ -362,6 +304,8 @@
   [:or
    ::unified-action.base
    [:map {:closed true}
+    [:dashboard-action ms/PositiveInt]]
+   [:map {:closed true}
     [:row-action ::unified-action.base]
     ;; TODO type our mappings
     [:mapping :map]
@@ -370,7 +314,7 @@
 
 (mu/defn- fetch-unified-action :- ::unified-action
   "Resolve various types of action id into a semantic map which is easier to dispatch on."
-  [scope :- ::types/scope.raw
+  [scope :- ::types/scope.hydrated
    raw-id :- [:or :string ms/NegativeInt ms/PositiveInt]]
   (cond
     (pos-int? raw-id) {:action-id raw-id}
@@ -397,8 +341,16 @@
                          (assert (:enabled viz-action) "Cannot call disabled actions")
                          (case action-type
                            "row-action" {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
-                       ;; Not a fancy encoded string, it must refer directly to a primitive.
-                       {:action-kw (keyword raw-id)})
+                       (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
+                         ;; Dashboard buttons can only be invoked from dashboards
+                         ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
+                         ;; will be a 404 thrown when we try to execute the action.
+                         ;; This 404 here is not the best error to return, but we can polish this later.
+                         (let [dashboard-id (api/check-404 (:dashboard-id scope))]
+                           (api/read-check :model/Dashboard dashboard-id)
+                           {:dashboard-action (parse-long dashcard-id)})
+                         ;; Not a fancy encoded string, it must refer directly to a primitive.
+                         {:action-kw (keyword raw-id)}))
     :else
     (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
@@ -417,6 +369,12 @@
          (if (and (isa? action-kw :table.row/common) (:table-id unified))
            (actions/perform-action! action-kw scope (for [i inputs] {:table-id (:table-id unified), :row i}))
            (actions/perform-action! action-kw scope inputs))))
+      (:dashboard-action unified)
+      (do
+        (api/check-400 (= 1 (count inputs)) "Saved actions currently only support a single input")
+        [(actions/execute-dashcard! (:dashboard-id scope)
+                                    (:dashboard-action unified)
+                                    (walk/stringify-keys (first inputs)))])
       (:row-action unified)
       ;; use flat namespace for now, probably want to separate form inputs from pks
       (let [row-action  (:row-action unified)
@@ -470,6 +428,111 @@
        [:scope     ::types/scope.raw]
        [:inputs    [:sequential :map]]]]
   {:outputs (execute!* action_id scope inputs)})
+
+(api.macros/defendpoint :post "/tmp-modal"
+  "Temporary endpoint for describing an actions parameters
+  such that they can be presented correctly in a modal ahead of execution."
+  [{}
+   {}
+   {:keys [action_id scope #_input]}]
+  (let [scope   (actions/hydrate-scope scope)
+        unified (fetch-unified-action scope action_id)
+
+        ;; todo mapping support
+        describe-saved-action
+        (fn [& {:keys [action-id _row-action-dashcard-id _mapping]}]
+          (let [action (-> (actions/select-action :id action-id
+                                                  :archived false
+                                                  {:where [:not [:= nil :model_id]]})
+
+                           api/read-check
+                           api/check-404)
+                param-id->viz-field (-> action :visualization_settings (:fields {}))]
+            {:title (:name action)
+             :parameters
+             (->> (for [param (:parameters action)
+                        ;; query type actions store most stuff in viz settings rather than the
+                        ;; parameter
+                        :let [viz-field (param-id->viz-field (:id param))]
+                        :when (not (:hidden viz-field))]
+                    (u/remove-nils
+                      ;; todo dropdown options
+                     {:id (:id param)
+                      :display_name (or (:display-name param) (:name param))
+                      :type (case (:type param)
+                              :string/=    :type/Text
+                              :number/=    :type/Number
+                              :date/single :type/Date
+                              (if (= "type" (namespace (:type param)))
+                                (:type param)
+                                (throw
+                                 (ex-info "Unsupported query action parameter type"
+                                          {:status-code 500
+                                           :param-type (:type param)
+                                           :scope scope
+                                           :unified unified}))))
+                      :optional (and (not (:required param)) (not (:required viz-field)))}))
+                  vec)}))
+
+        ;; todo mapping support
+        describe-table-action
+        (fn [& {:keys [action-kw table-id _mapping]}]
+          (let [table (api/read-check (t2/select-one :model/Table :id table-id :active true))]
+            {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
+             :parameters
+             (->> (for [field (->> (t2/select :model/Field :table_id table-id)
+                                   (sort-by :position))
+                        :let [pk (= :type/PK (:semantic_type field))]
+                        :when (case action-kw
+                                ;; create does not take pk cols if auto increment, todo generated cols?
+                                :table.row/create (not (:database_is_auto_increment field))
+                                ;; delete only requires pk cols
+                                :table.row/delete pk
+                                ;; update takes both the pk and field (if not a row action)
+                                :table.row/update true)
+                        :let [required (or pk (:database_required field))]]
+                    (u/remove-nils
+                     {:id (:name field)
+                      :display_name (:display_name field)
+                      :type (:base_type field)
+                      :optional (not required)
+                      :nullable (:database_is_nullable field)}))
+
+                  vec)}))]
+
+    (cond
+      ;; saved action
+      (:action-id unified)
+      (describe-saved-action :action-id (:action-id unified))
+
+      ;; table action
+      (:action-kw unified)
+      (let [action-kw (keyword (:action-kw unified))
+            table-id  (:table-id unified)]
+        (describe-table-action :action-kw action-kw
+                               :table-id table-id))
+
+      (:row-action unified)
+      (let [row-action  (:row-action unified)
+            mapping     (:mapping unified)
+            dashcard-id (:dashcard-id unified)
+            saved-id    (:action-id row-action)
+            action-kw   (:action-kw row-action)]
+        (cond
+          saved-id
+          (describe-saved-action :action-id saved-id
+                                 :row-action-dashcard-id dashcard-id
+                                 :row-action-mapping mapping)
+
+          action-kw
+          (let [table-id (:table-id row-action)]
+            (describe-table-action :action-kw action-kw
+                                   :table-id table-id
+                                   :row-action-mapping mapping))
+
+          :else (ex-info "Not a supported row action" {:status-code 500, :scope scope, :unified unified})))
+      :else
+      (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

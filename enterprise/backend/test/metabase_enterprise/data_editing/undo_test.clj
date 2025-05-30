@@ -40,18 +40,17 @@
                                     {:scope scope
                                      :no-op true})))
 
-(defn- fast-reload-response [response]
-  (if-let [table-id->diffs (:result response)]
-    (update-vals table-id->diffs #(mapv (fn [diff] (update (vec diff) 0 keyword)) %))
-    response))
-
 (defn- undo-via-api! [user-id scope]
-  (fast-reload-response
-   (mt/user-http-request user-id :post "/ee/data-editing/undo" {:scope scope})))
+  (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
+                        {:action_id "data-editing/undo"
+                         :scope     scope
+                         :input     {}}))
 
 (defn- redo-via-api! [user-id scope]
-  (fast-reload-response
-   (mt/user-http-request user-id :post "/ee/data-editing/redo" {:scope scope})))
+  (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
+                        {:action_id "data-editing/redo"
+                         :scope     scope
+                         :input     {}}))
 
 (defn- write-sequence! [table-id pk states]
   (loop [prior  nil
@@ -93,19 +92,19 @@
 
             (is (next-batch-num :undo user-id test-scope))
             (is (not (next-batch-num :redo user-id test-scope)))
-            (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
+            (is (= {:outputs [{:op "created", :table-id table-id :row {:id 1, :name "Snorkmaiden", :favourite_food "orc"}}]}
                    (undo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
-            (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
+            (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 1, :name "Snorkmaiden", :favourite_food "pork"}}]}
                    (undo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
-            (is (= {table-id [[:delete {:id 1}]]}
+            (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 1}}]}
                    (undo-via-api! user-id test-scope)))
             (is (= [] (table-rows table-id)))
 
@@ -115,19 +114,19 @@
 
             (is (not (next-batch-num :undo user-id test-scope)))
             (is (next-batch-num :redo user-id test-scope))
-            (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
+            (is (= {:outputs [{:op "created", :table-id table-id :row {:id 1, :name "Snorkmaiden", :favourite_food "pork"}}]}
                    (redo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
-            (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
+            (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 1, :name "Snorkmaiden", :favourite_food "orc"}}]}
                    (redo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
-            (is (= {table-id [[:delete {:id 1}]]}
+            (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 1}}]}
                    (redo-via-api! user-id test-scope)))
             (is (= [] (table-rows table-id)))
 
@@ -171,7 +170,7 @@
 
             (is (next-batch-num :undo user-1 test-scope))
             (is (not (next-batch-num :redo user-1 test-scope)))
-            (is (= {table-id [[:create {:id 2, :name "Moominswole", :power 9001}]]}
+            (is (= {:outputs [{:op "created", :table-id table-id, :row {:id 2, :name "Moominswole", :power 9001}}]}
                    (undo-via-api! user-1 test-scope)))
             (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
 
@@ -183,19 +182,19 @@
             (is (next-batch-num :redo user-1 test-scope))
             (is (next-batch-num :undo user-2 test-scope))
             (is (not (next-batch-num :redo user-2 test-scope)))
-            (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
+            (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 9001}}]}
                    (undo-via-api! user-2 test-scope)))
             (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-1 test-scope))
             (is (next-batch-num :redo user-1 test-scope))
-            (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 3}]]}
+            (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 3}}]}
                    (undo-via-api! user-1 test-scope)))
             (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-1 test-scope))
             (is (next-batch-num :redo user-1 test-scope))
-            (is (= {table-id [[:delete {:id 2}]]}
+            (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 2}}]}
                    (undo-via-api! user-1 test-scope)))
             (is (= [] (table-rows table-id)))
 
@@ -205,25 +204,25 @@
 
             (is (not (next-batch-num :undo user-1 test-scope)))
             (is (next-batch-num :redo user-1 test-scope))
-            (is (= {table-id [[:create {:id 2, :name "Moomintroll", :power 3}]]}
+            (is (= {:outputs [{:op "created", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 3}}]}
                    (redo-via-api! user-1 test-scope)))
             (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-1 test-scope))
             (is (next-batch-num :redo user-1 test-scope))
-            (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
+            (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 9001}}]}
                    (redo-via-api! user-1 test-scope)))
             (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-1 test-scope))
             (is (next-batch-num :redo user-1 test-scope))
-            (is (= {table-id [[:update {:id 2, :name "Moominswole", :power 9001}]]}
+            (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moominswole", :power 9001}}]}
                    (redo-via-api! user-2 test-scope)))
             (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
 
             (is (next-batch-num :undo user-1 test-scope))
             (is (next-batch-num :redo user-1 test-scope))
-            (is (= {table-id [[:delete {:id 2}]]}
+            (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 2}}]}
                    (redo-via-api! user-1 test-scope)))
             (is (= [] (table-rows table-id)))
 

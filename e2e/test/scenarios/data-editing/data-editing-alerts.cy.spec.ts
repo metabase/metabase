@@ -16,10 +16,9 @@ describe("scenarios > data editing > setting alerts", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/notification").as("getNotification");
     cy.intercept("POST", "/api/notification").as("createNotification");
-    cy.intercept("POST", "/api/ee/data-editing/table/*").as("createRecord");
-    cy.intercept("PUT", "/api/ee/data-editing/table/*").as("updateRecord");
-    cy.intercept("POST", "/api/ee/data-editing/table/**/delete").as(
-      "deleteRecord",
+
+    cy.intercept("POST", "/api/ee/data-editing/action/v2/execute-bulk").as(
+      "executeBulk",
     );
 
     cy.log("Setting up writable PostgresDB");
@@ -101,7 +100,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-data-view-header").within(() => {
@@ -113,7 +112,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.get("input").eq(1).type("black");
 
           cy.findByRole("button", { name: "Create new record" }).click();
-          cy.wait("@createRecord");
+          cy.wait("@executeBulk");
         });
 
         cy.log("Testing default email template");
@@ -151,7 +150,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-data-view-header").within(() => {
@@ -165,7 +164,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.findByRole("button", { name: "Create new record" }).click();
         });
 
-        cy.wait("@createRecord");
+        cy.wait("@executeBulk");
 
         cy.log("Testing default email template");
 
@@ -199,7 +198,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-body").within(() => {
@@ -207,7 +206,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("blue").blur();
         });
 
-        cy.wait("@updateRecord");
+        cy.wait("@executeBulk");
 
         cy.log("Testing default email template");
 
@@ -244,7 +243,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-body").within(() => {
@@ -252,7 +251,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("blue").blur();
         });
 
-        cy.wait("@updateRecord");
+        cy.wait("@executeBulk");
 
         cy.log("Testing custom email template");
 
@@ -295,7 +294,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-body").within(() => {
@@ -303,7 +302,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("{selectall}{backspace}white").blur();
         });
 
-        cy.wait("@updateRecord");
+        cy.wait("@executeBulk");
 
         cy.log("Testing custom email template");
 
@@ -345,7 +344,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-body").within(() => {
@@ -353,12 +352,12 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("{selectall}{backspace}black").blur();
         });
 
-        cy.wait("@updateRecord");
+        cy.wait("@executeBulk");
 
         // Alert on updated value was not sent, since it didn't meet the condition.
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
           expect(body.length).to.equal(1);
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
       });
     });
@@ -386,7 +385,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-body").within(() => {
@@ -398,7 +397,7 @@ describe("scenarios > data editing > setting alerts", () => {
         cy.findByTestId("table-data-view-header").within(() => {
           cy.findByText("Delete").click();
           cy.document().findByText("Delete 1 record").click();
-          cy.wait("@deleteRecord");
+          cy.wait("@executeBulk");
         });
 
         cy.log("Testing default email template");
@@ -436,7 +435,7 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-          expect(body[0].subject).to.include("You set up an alert");
+          expect(body[0].subject).to.include("You set up a table notification");
         });
 
         cy.findByTestId("table-body").within(() => {
@@ -448,7 +447,7 @@ describe("scenarios > data editing > setting alerts", () => {
         cy.findByTestId("table-data-view-header").within(() => {
           cy.findByText("Delete").click();
           cy.document().findByText("Delete 1 record").click();
-          cy.wait("@deleteRecord");
+          cy.wait("@executeBulk");
         });
 
         cy.log("Testing custom email template");

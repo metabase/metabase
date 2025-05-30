@@ -18,44 +18,56 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableInsertRowsResponse,
       TableInsertRowsRequest
     >({
-      query: ({ tableId, rows, scope }) => ({
+      query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/table/${tableId}`,
-        body: { rows, scope },
+        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        body: { inputs: rows, scope, action_id: "data-grid.row/create" },
       }),
     }),
     updateTableRows: builder.mutation<
       TableUpdateRowsResponse,
       TableUpdateRowsRequest
     >({
-      query: ({ tableId, rows, scope }) => ({
-        method: "PUT",
-        url: `/api/ee/data-editing/table/${tableId}`,
-        body: { rows, scope },
+      query: ({ rows, scope }) => ({
+        method: "POST",
+        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        body: { inputs: rows, scope, action_id: "data-grid.row/update" },
       }),
     }),
     deleteTableRows: builder.mutation<
       TableDeleteRowsResponse,
       TableDeleteRowsRequest
     >({
-      query: ({ tableId, rows, scope }) => ({
+      query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/table/${tableId}/delete`,
-        body: { rows, scope },
+        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        body: { inputs: rows, scope, action_id: "data-grid.row/delete" },
       }),
     }),
     tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, scope, noOp }) => ({
+      query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/undo`,
-        body: { "table-id": tableId, scope, "no-op": noOp },
+        url: `/api/ee/data-editing/action/v2/execute`,
+        body: {
+          input: {
+            "table-id": tableId,
+          },
+          scope,
+          action_id: "data-editing/undo",
+        },
       }),
     }),
     tableRedo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, scope, noOp }) => ({
+      query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/redo`,
-        body: { "table-id": tableId, scope, "no-op": noOp },
+        url: `/api/ee/data-editing/action/v2/execute`,
+        body: {
+          input: {
+            "table-id": tableId,
+          },
+          scope,
+          action_id: "data-editing/redo",
+        },
       }),
     }),
     getActions: builder.query<Array<WritebackAction | TableAction>, void>({

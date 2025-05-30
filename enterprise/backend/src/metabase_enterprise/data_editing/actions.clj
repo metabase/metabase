@@ -6,8 +6,11 @@
    [metabase.actions.core :as actions]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (derive :data-grid.row/create :data-grid.row/common)
 (derive :data-grid.row/update :data-grid.row/common)
@@ -81,12 +84,25 @@
 
 (mr/def ::lib.schema.actions/nothing [:map {:closed true}])
 
+(defn- translate-undo-error [e]
+  (case (:error (ex-data e))
+    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
+    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
+    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
+    e))
+
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]
   [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
-  {:context context
-   :outputs (undo/undo! context (:user-id context) (:scope context))})
+  (try
+    {:context context
+     :outputs (undo/undo! context (:user-id context) (:scope context))}
+    (catch ExceptionInfo e
+      (throw (translate-undo-error e)))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/redo]
   [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
-  {:context context
-   :outputs (undo/redo! context (:user-id context) (:scope context))})
+  (try
+    {:context context
+     :outputs (undo/redo! context (:user-id context) (:scope context))}
+    (catch ExceptionInfo e
+      (throw (translate-undo-error e)))))

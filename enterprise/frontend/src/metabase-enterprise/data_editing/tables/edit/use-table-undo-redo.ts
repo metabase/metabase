@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -40,10 +41,7 @@ export function useTableEditingUndoRedo({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message:
-              operationName === "undo"
-                ? t`Unable to perform undo operation`
-                : t`Unable to perform redo operation`,
+            message: getErrorMessage(response.error),
           }),
         );
       } else if (!response.data) {
@@ -57,15 +55,15 @@ export function useTableEditingUndoRedo({
                 : t`Nothing to redo`,
           }),
         );
-      } else if (response.data?.result?.[tableId]) {
-        const operations = response.data?.result?.[tableId].reduce(
-          (acc, [operationType, row]) => {
-            if (operationType === "create") {
-              acc.created.push(row);
-            } else if (operationType === "update") {
-              acc.updated.push(row);
-            } else if (operationType === "delete") {
-              acc.deleted.push(row);
+      } else if (response.data?.outputs) {
+        const operations = response.data?.outputs.reduce(
+          (acc, output) => {
+            if (output.op === "created") {
+              acc.created.push(output.row);
+            } else if (output.op === "updated") {
+              acc.updated.push(output.row);
+            } else if (output.op === "deleted") {
+              acc.deleted.push(output.row);
             }
 
             return acc;
@@ -88,7 +86,7 @@ export function useTableEditingUndoRedo({
         }
       }
     },
-    [dispatch, stateUpdateStrategy, tableId],
+    [dispatch, stateUpdateStrategy],
   );
   const undo = useCallback(async () => {
     const response = await undoMutation({ tableId, scope });

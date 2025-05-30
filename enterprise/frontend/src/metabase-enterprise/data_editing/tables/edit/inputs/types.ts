@@ -22,6 +22,8 @@ export interface EditingBodyPrimitiveProps {
     placeholder?: string;
     disabled?: boolean;
     error?: TextInputProps["error"];
+    rightSection?: TextInputProps["rightSection"];
+    rightSectionPointerEvents?: TextInputProps["rightSectionPointerEvents"];
   };
   classNames?: { [key in EditingBodyCellConditionalStylesNames]?: string };
   onChangeValue?: (value: RowValue) => unknown;
