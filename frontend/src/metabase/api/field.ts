@@ -95,8 +95,6 @@ export const fieldApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
-          tag("table"),
-          tag("field"),
           idTag("field", id),
           idTag("field-values", id),
           tag("parameter-values"),
@@ -109,8 +107,6 @@ export const fieldApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
-          tag("table"),
-          tag("field"),
           idTag("field", id),
           idTag("field-values", id),
           tag("parameter-values"),
