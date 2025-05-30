@@ -15,6 +15,7 @@ export const radioOverrides = {
       root: RadioStyles.root,
       radio: RadioStyles.radio,
       label: RadioStyles.label,
+      labelWrapper: RadioStyles.labelWrapper,
       description: RadioStyles.description,
       icon: RadioStyles.icon,
     },

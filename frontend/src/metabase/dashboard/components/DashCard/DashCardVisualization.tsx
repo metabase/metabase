@@ -16,11 +16,15 @@ import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
+import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type {
+  ClickActionModeGetter,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -32,6 +36,7 @@ import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualiza
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  CardId,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -230,9 +235,16 @@ export function DashCardVisualization({
     if (
       display &&
       isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+      shouldSplitVisualizerSeries(columnValuesMapping)
     ) {
-      return splitVisualizerSeries(series, columnValuesMapping);
+      const dataSourceNameMap = Object.fromEntries(
+        dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
+      );
+      return splitVisualizerSeries(
+        series,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
     }
 
     return series;
@@ -310,6 +322,50 @@ export function DashCardVisualization({
     [dashcard],
   );
 
+  const findCardById = useCallback(
+    (cardId?: CardId | null) => {
+      const lookupSeries = isVisualizerDashboardCard(dashcard)
+        ? rawSeries
+        : series;
+      return (
+        lookupSeries.find((series) => series.card.id === cardId)?.card ??
+        lookupSeries[0].card
+      );
+    },
+    [rawSeries, dashcard, series],
+  );
+
+  const onOpenQuestion = useCallback(
+    (cardId: CardId | null) => {
+      const card = findCardById(cardId);
+      onChangeCardAndRun?.({
+        previousCard: findCardById(card?.id),
+        nextCard: card,
+      });
+    },
+    [findCardById, onChangeCardAndRun],
+  );
+
+  const titleMenuItems = useMemo(
+    () =>
+      isVisualizerDashboardCard(dashcard) && rawSeries ? (
+        <>
+          <Menu.Label>{t`Questions in this card`}</Menu.Label>
+          {rawSeries.map((series, index) => (
+            <Menu.Item
+              key={index}
+              onClick={() => {
+                onOpenQuestion(series.card.id);
+              }}
+            >
+              {series.card.name}
+            </Menu.Item>
+          ))}
+        </>
+      ) : undefined,
+    [dashcard, rawSeries, onOpenQuestion],
+  );
+
   const actionButtons = useMemo(() => {
     if (!question) {
       return null;
@@ -351,6 +407,12 @@ export function DashCardVisualization({
       );
     }
 
+    // We only show the titleMenuItems if the card has no title.
+    const settings = getComputedSettingsForSeries(
+      series,
+    ) as ComputedVisualizationSettings;
+    const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+
     return (
       <DashCardMenu
         downloadsEnabled={downloadsEnabled}
@@ -361,6 +423,7 @@ export function DashCardVisualization({
         token={token}
         uuid={uuid}
         onEditVisualization={onEditVisualization}
+        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
       />
     );
   }, [
@@ -374,6 +437,7 @@ export function DashCardVisualization({
     dashboard.id,
     downloadsEnabled,
     onEditVisualization,
+    titleMenuItems,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -422,6 +486,7 @@ export function DashCardVisualization({
       onChangeLocation={onChangeLocation}
       token={token}
       uuid={uuid}
+      titleMenuItems={titleMenuItems}
     />
   );
 }

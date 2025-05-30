@@ -37,8 +37,6 @@ import { TasksApp } from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
 import { createAdminRouteGuard } from "metabase/admin/utils";
-import CS from "metabase/css/core/index.css";
-import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { DataModel, DataModelEditor } from "metabase/metadata/pages/DataModel";
@@ -56,10 +54,7 @@ import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSe
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
-  <Route
-    path="/admin"
-    component={withBackground(CS.bgWhite)(CanAccessSettings)}
-  >
+  <Route path="/admin" component={CanAccessSettings}>
     <Route title={t`Admin`} component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />
       <Route

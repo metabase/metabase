@@ -1,9 +1,11 @@
 const { H } = cy;
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
+  PRODUCTS_AVERAGE_BY_CREATED_AT,
   PRODUCTS_COUNT_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
@@ -32,6 +34,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
+      wrapId: true,
+    });
+    H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
+      idAlias: "productsAverageByCreatedAtQuestionId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
@@ -240,6 +246,39 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     cy.findByLabelText("Back to Test Dashboard").click();
   });
 
+  it("should open underlying questions in the ellipsis menu if the card has no title", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // This card HAS a title, so it should NOT have the "View question(s)" option
+    H.getDashboardCard(0).realHover();
+    H.getDashboardCardMenu(0).click();
+    H.popover().findByText("View question(s)").should("not.exist");
+
+    // This card has NO title, so it SHOULD have the "View question(s)" option
+    H.editDashboard();
+    H.showDashcardVisualizerModal(2);
+    H.modal().within(() => {
+      cy.findByTestId("visualizer-title").clear().blur();
+    });
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
+    H.getDashboardCard(2).realHover();
+    H.getDashboardCardMenu(2).click();
+    H.popover().within(() => {
+      cy.findByText("View question(s)").should("exist");
+      cy.findByText("View question(s)").realHover();
+    });
+
+    cy.findByTestId("dashcard-menu-open-underlying-question").within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CATEGORY.name).click();
+    });
+
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
+  });
+
   it("should rename a dashboard card", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
@@ -389,7 +428,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
 
     // TODO editing a dashcard when it isn't done loading
-    // causes the visualizr modal to be in error for some reason
+    // causes the visualizer modal to be in error for some reason
     // this should be fixed in the future
     cy.wait(1000);
 
@@ -400,6 +439,54 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").should("be.disabled");
       cy.get("@redoButton").should("be.disabled");
       cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
+    });
+  });
+
+  it("should replace a dataset without remembering removing the current ones (metabase#57897)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByLabelText("Back").as("undoButton");
+      cy.findByLabelText("Forward").as("redoButton");
+
+      cy.get("@undoButton").should("be.disabled");
+      cy.get("@redoButton").should("be.disabled");
+
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.assertWellItems({
+        vertical: ["Count", "Count (Products by Created At (Month))"],
+      });
+
+      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+
+      H.assertWellItems({
+        vertical: [
+          "Count",
+          "Count (Products by Created At (Month))",
+          "Average of Price",
+        ],
+      });
+
+      H.selectDataset(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
+
+      H.assertWellItems({
+        pieMetric: ["Count"],
+        pieDimensions: ["Category"],
+      });
+
+      cy.get("@undoButton").click();
+      H.assertWellItems({
+        vertical: [
+          "Count",
+          "Count (Products by Created At (Month))",
+          "Average of Price",
+        ],
+      });
     });
   });
 
@@ -471,11 +558,15 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     // Making sure the card renders
     H.getDashboardCard(0).within(() => {
-      cy.findAllByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
         "have.length",
-        2,
+        3, // dashcard title, legend and y-axis label
       );
-      cy.findByText("Created At: Month").should("exist");
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2, // legend and y-axis label
+      );
+      cy.findByText("Created At: Month").should("exist"); // x-axis
     });
   });
 
@@ -515,11 +606,100 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
   });
 
+  it("should allow editing a dashcard when added series are broken (metabase#22265, VIZ-676)", () => {
+    const baseQuestion = {
+      name: "Base question",
+      display: "scalar" as const,
+      native: {
+        query: "SELECT 1",
+      },
+    };
+
+    const invalidQuestion = {
+      name: "Invalid question",
+      display: "scalar" as const,
+      native: {
+        query: "SELECT 1",
+      },
+    };
+
+    H.createNativeQuestion(invalidQuestion, {
+      wrapId: true,
+      idAlias: "invalidQuestionId",
+    });
+
+    H.createNativeQuestionAndDashboard({ questionDetails: baseQuestion }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 10,
+            },
+          ],
+        });
+
+        cy.wrap(dashboard_id).as("dashboardId");
+        H.visitDashboard(dashboard_id);
+      },
+    );
+
+    H.editDashboard();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(invalidQuestion.name);
+      cy.button("Save").click();
+    });
+
+    H.saveDashboard();
+
+    cy.log("Update 2nd question so that it's broken");
+    cy.get("@invalidQuestionId").then((invalidQuestionId) => {
+      cy.request("PUT", `/api/card/${invalidQuestionId}`, {
+        dataset_query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: {
+            query: "SELECT --2",
+            "template-tags": {},
+          },
+        },
+      });
+    });
+
+    H.visitDashboard("@dashboardId");
+    H.editDashboard();
+
+    H.getDashboardCard(0).within(() => {
+      // dashcard title + the funnel itself
+      cy.findAllByText(baseQuestion.name).should("have.length", 2);
+      cy.findByText(invalidQuestion.name).should("exist");
+      cy.findByText("1").should("exist");
+    });
+
+    H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+    H.modal().within(() => {
+      H.dataImporter().findByText(baseQuestion.name).should("exist");
+      H.dataImporter().findByText(invalidQuestion.name).should("exist");
+    });
+  });
+
   describe("public sharing and embedding", () => {
     function ensureVisualizerCardsAreRendered() {
       // Checks a cartesian chart has an axis name
       H.getDashboardCard(0).within(() => {
-        H.echartsContainer().findByText("Count").should("be.visible");
+        H.echartsContainer()
+          .findByText(ORDERS_COUNT_BY_CREATED_AT.name)
+          .should("be.visible");
       });
 
       // Checks a funnel has a step name

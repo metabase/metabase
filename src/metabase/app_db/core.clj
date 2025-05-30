@@ -59,6 +59,7 @@
   format-sql]
 
  [mdb.setup
+  can-connect-to-data-source?
   migrate!
   quote-for-application-db]
 
