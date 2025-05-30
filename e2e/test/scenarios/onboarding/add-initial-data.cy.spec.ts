@@ -209,14 +209,15 @@ describe("Add data modal", () => {
     });
   });
 
-  it("should offer to add data to Enterprise/Pro instances", () => {
+  it("should hide Getting Started but still offer to add data for white labeled instances", () => {
     cy.signInAsAdmin();
-    // It's hard to turn on/off individual token features. That's why I covered more granular scenarios with unit tests.
-    // ALL token features here mean both the `whitelabel` and `attached_dwh`.
-    // The "Getting Started" section will not render because we have the `attached_dwh` in here.
     H.setTokenFeatures("all");
-    cy.visit("/");
+    // The condition will not kick in without changing the app name. Do not remove this API call.
+    cy.request("PUT", "/api/setting/application-name", {
+      value: "FooBar, Inc.",
+    });
 
+    cy.visit("/");
     H.navigationSidebar().within(() => {
       cy.findByText("Home").should("be.visible");
       cy.findByText(/Getting Started/i).should("not.exist");
