@@ -20,6 +20,7 @@ import {
   EmbeddingSettings,
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
+import { SettingsLdapForm } from "../components/SettingsLdapForm";
 import SettingsLicense from "../components/SettingsLicense";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
@@ -165,6 +166,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "authentication/google": {
     component: GoogleAuthForm,
     order: 63,
+    settings: [],
+  },
+  "authentication/ldap": {
+    component: SettingsLdapForm,
+    order: 64,
     settings: [],
   },
   maps: {
