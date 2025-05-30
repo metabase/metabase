@@ -1,6 +1,8 @@
 import type {
   TableDeleteRowsRequest,
   TableDeleteRowsResponse,
+  TableExecuteActionRequest,
+  TableExecuteActionResponse,
   TableInsertRowsRequest,
   TableInsertRowsResponse,
   TableUndoRedoRequest,
@@ -79,6 +81,27 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         actions: Array<WritebackAction | TableAction>;
       }) => response?.actions,
     }),
+    executeAction: builder.mutation<
+      TableExecuteActionResponse,
+      TableExecuteActionRequest
+    >({
+      query: ({ actionId, parameters }) => ({
+        method: "POST",
+        url: `/api/ee/data-editing/action/v2/execute`,
+        body: {
+          input: parameters,
+          // Here we pass a dummy table id, because the BE doesn't allow scope to be optional,
+          // but it's not actually used for this case.
+          scope: { "table-id": 1 },
+          action_id: actionId,
+        },
+      }),
+      transformResponse: (response: {
+        outputs: [{ "rows-affected": number }];
+      }) => {
+        return response?.outputs?.[0];
+      },
+    }),
   }),
 });
 
@@ -89,4 +112,5 @@ export const {
   useTableUndoMutation,
   useTableRedoMutation,
   useGetActionsQuery,
+  useExecuteActionMutation,
 } = tableDataEditApi;
