@@ -5,6 +5,7 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk";
+import type { MetabaseError } from "embedding-sdk/errors";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import type { CollectionId } from "metabase-types/api";
 
@@ -24,6 +25,12 @@ export type SdkIframeEmbedMessage =
       data: {
         authMethod: SdkIframeAuthMethod;
         sessionToken: MetabaseEmbeddingSessionToken;
+      };
+    }
+  | {
+      type: "metabase.embed.reportAuthenticationError";
+      data: {
+        error: MetabaseError<string, unknown>;
       };
     };
 

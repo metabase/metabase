@@ -39,6 +39,14 @@ export function requestSessionTokenFromEmbedJs(): Promise<MetabaseEmbeddingSessi
         clearTimeout(timeout);
         resolve(sessionToken);
       }
+
+      if (action.type === "metabase.embed.reportAuthenticationError") {
+        const { error } = action.data;
+
+        window.removeEventListener("message", handler);
+        clearTimeout(timeout);
+        reject(error);
+      }
     };
 
     window.addEventListener("message", handler);

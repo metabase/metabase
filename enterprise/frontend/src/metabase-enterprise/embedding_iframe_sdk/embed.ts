@@ -202,14 +202,25 @@ class MetabaseEmbed {
       return;
     }
 
-    const { method, sessionToken } = await this._getMetabaseSessionToken();
-    validateSessionToken(sessionToken);
+    try {
+      const { method, sessionToken } = await this._getMetabaseSessionToken();
+      validateSessionToken(sessionToken);
 
-    if (sessionToken) {
-      this._sendMessage("metabase.embed.submitSessionToken", {
-        authMethod: method,
-        sessionToken,
-      });
+      if (sessionToken) {
+        this._sendMessage("metabase.embed.submitSessionToken", {
+          authMethod: method,
+          sessionToken,
+        });
+      }
+    } catch (error) {
+      // if the error is an authentication error, show it to the iframe too
+      if (error instanceof MetabaseError) {
+        this._sendMessage("metabase.embed.reportAuthenticationError", {
+          error,
+        });
+      }
+
+      throw error;
     }
   }
 
