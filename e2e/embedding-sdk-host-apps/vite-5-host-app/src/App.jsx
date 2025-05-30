@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 import {
   InteractiveDashboard,
   InteractiveQuestion,
@@ -22,7 +20,7 @@ function App() {
 
   const { locale, questionId, dashboardId } = useMemo(
     () => ({
-      locale: searchParams.get("locale") ?? null,
+      locale: searchParams.get("locale") ?? undefined,
       questionId: parseInt(searchParams.get("questionId") || defaultQuestionId),
       dashboardId: parseInt(
         searchParams.get("dashboardId") || defaultDashboardId,
