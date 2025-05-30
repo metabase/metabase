@@ -7,7 +7,6 @@ import {
 } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
 import {
   MetabaseReduxContext,
   useDispatch,
@@ -16,6 +15,7 @@ import {
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 

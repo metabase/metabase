@@ -4,9 +4,12 @@ import type { DataPickerDataType, DataTypeInfoItem } from "./types";
 
 export const CONTAINER_WIDTH = 300;
 
-export const DATA_BUCKET: Record<string, DataPickerDataType> = {
+type DataBucket = "MODELS" | "RAW_DATA" | "SAVED_QUESTIONS";
+
+export const DATA_BUCKET: Record<DataBucket, DataPickerDataType> = {
   MODELS: "models",
   RAW_DATA: "raw-data",
+  SAVED_QUESTIONS: "questions",
 } as const;
 
 export const MODELS_INFO_ITEM: DataTypeInfoItem = {
@@ -28,5 +31,16 @@ export const RAW_DATA_INFO_ITEM: DataTypeInfoItem = {
   },
   get description() {
     return t`Unaltered tables in connected databases.`;
+  },
+};
+
+export const SAVED_QUESTIONS_INFO_ITEM: DataTypeInfoItem = {
+  id: DATA_BUCKET.SAVED_QUESTIONS,
+  icon: "folder",
+  get name() {
+    return t`Saved Questions`;
+  },
+  get description() {
+    return t`Use any question’s results to start a new question.`;
   },
 };

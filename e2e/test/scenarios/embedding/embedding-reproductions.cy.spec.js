@@ -1322,6 +1322,7 @@ describe("issue 51934 (EMB-189)", () => {
   const COLLECTION_NAME = "Model Collection";
   const MODEL_IN_ROOT_NAME = "Products Model";
   const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+  const QUESTION_IN_COLLECTION_NAME = "Orders Question";
 
   beforeEach(() => {
     H.restore("postgres-12");
@@ -1333,7 +1334,7 @@ describe("issue 51934 (EMB-189)", () => {
     });
     H.createCollection({
       name: COLLECTION_NAME,
-      alias: "modelCollectionId",
+      alias: "collectionId",
     });
     H.createModelFromTableName({
       tableName: "orders",
@@ -1341,8 +1342,24 @@ describe("issue 51934 (EMB-189)", () => {
       idAlias: "modelId",
     });
     moveToCollection({
-      collectionIdAlias: "modelCollectionId",
+      collectionIdAlias: "collectionId",
       cardIdAlias: "modelId",
+    });
+    H.createQuestion(
+      {
+        name: QUESTION_IN_COLLECTION_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "questionId",
+      },
+    );
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "questionId",
     });
   });
 
@@ -1379,14 +1396,44 @@ describe("issue 51934 (EMB-189)", () => {
     });
 
     cy.log(
-      "select a model as a data source should open the model step in the same collection as the data source",
+      "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
     );
     H.popover().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
+      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME }).click();
+    });
+
+    cy.log("the join popover is automatically opened");
+    H.popover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 227)",
+      );
+      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME })
+        .should("be.visible")
+        .click();
+    });
+
+    cy.log(
+      "select a model as a data source should open the model step in the same collection as the data source",
+    );
+    H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
+
+    H.popover().within(() => {
+      // Go back to the "Bucket" step
+      cy.findByText("Saved Questions").click();
+
+      // We're now at the "Bucket" step
       cy.findByText("Models").click();
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
       cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME }).click();
     });
 
+    cy.log("the join popover is automatically opened");
     H.popover().within(() => {
       cy.log("the collection of the data source should be selected");
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
@@ -1424,17 +1471,12 @@ describe("issue 51934 (EMB-189)", () => {
   });
 
   function startNewEmbeddingQuestion() {
-    cy.intercept("GET", "/api/search*", (req) => {
-      if (req.query.limit === "0") {
-        req.continue((res) => {
-          // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
-          res.body.total = 100;
-        });
-      }
-    });
-
     H.visitFullAppEmbeddingUrl({
       url: "/question/notebook",
+      qs: {
+        data_picker: "staged",
+        entity_types: "table,model,question",
+      },
     });
   }
 

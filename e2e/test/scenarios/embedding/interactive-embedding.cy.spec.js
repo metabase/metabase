@@ -248,20 +248,13 @@ describe("scenarios > embedding > full app", () => {
         H.popover().findByText("Orders").click();
 
         // Multi-stage data picker
-        cy.intercept("GET", "/api/search*", (req) => {
-          if (req.query.limit === "0") {
-            req.continue((res) => {
-              // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
-              res.body.total = 100;
-            });
-          }
-        });
         H.visitFullAppEmbeddingUrl({
           url: "/collection/root",
           qs: {
             top_nav: true,
             new_button: true,
             side_nav: false,
+            data_picker: "staged",
           },
         });
 
@@ -415,6 +408,22 @@ describe("scenarios > embedding > full app", () => {
       H.popover().within(() => {
         cy.findByRole("link", { name: "Reviews" }).should("not.exist");
         cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
+
+      cy.log(
+        'test `entity_types=["question"]`, question should be ignored, and use the default value ["model", "table"] (metabase#58357)',
+      );
+      H.createQuestion(ordersCardDetails);
+      startNewEmbeddingQuestion({
+        searchParameters: {
+          entity_types: "question",
+        },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+        // Questions shouldn't be shown
+        cy.findByRole("link", { name: "Card" }).should("not.exist");
       });
     });
 
@@ -816,20 +825,11 @@ describe("scenarios > embedding > full app", () => {
       isMultiStageDataPicker = false,
       searchParameters,
     } = {}) {
-      if (isMultiStageDataPicker) {
-        cy.intercept("GET", "/api/search*", (req) => {
-          if (req.query.limit === "0") {
-            req.continue((res) => {
-              // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
-              res.body.total = 100;
-            });
-          }
-        });
-      }
       H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: {
           new_button: true,
+          ...(isMultiStageDataPicker && { data_picker: "staged" }),
           ...searchParameters,
         },
       });
