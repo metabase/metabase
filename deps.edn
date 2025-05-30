@@ -112,6 +112,7 @@
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.2"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
+  net.shibboleth.tool/xmlsectool            {:mvn/version "4.0.0"}              ; XML Security Tool, used for SAML metadata signing
   net.thisptr/jackson-jq                    {:mvn/version "1.3.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.27.1"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.17.0"}             ; helper methods for working with java.lang stuff
