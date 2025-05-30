@@ -53,7 +53,5 @@ export const StaticVisualization = ({
       return <SankeyChart {...props} />;
   }
 
-  throw new Error(
-    `Unsupported display type: ${display} ${JSON.stringify(rawSeries)}`,
-  );
+  throw new Error(`Unsupported display type: ${display}`);
 };
