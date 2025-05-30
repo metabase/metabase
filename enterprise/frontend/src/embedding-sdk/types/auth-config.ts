@@ -14,8 +14,8 @@ type BaseMetabaseAuthConfig = {
 
   /**
    * Which authentication method to use.
-   * This should be provided when the instance has more than one configured authentication method.
-   * Otherwise, it defaults to SAML.
+   * If both SAML and JWT are enabled at the same time,
+   * it defaults to SAML unless the authMethod is specified.
    */
   authMethod?: MetabaseAuthMethod;
 };
