@@ -1,11 +1,11 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
+import { samlTokenStorage } from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
   MetabaseFetchRequestTokenFn,
   SdkErrorComponent,
 } from "embedding-sdk";
-import { samlTokenStorage } from "embedding-sdk/store/auth/saml-token-storage";
 import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";

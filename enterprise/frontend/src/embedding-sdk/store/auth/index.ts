@@ -1,2 +1,2 @@
 export * from "./auth";
-export * from "./saml-token-storage";
+export * from "../../../embedding/auth-common/saml-token-storage";
