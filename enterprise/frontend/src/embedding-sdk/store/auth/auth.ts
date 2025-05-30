@@ -195,9 +195,10 @@ async function connectToInstanceAuthSso(
     });
   }
 
-  let ssoUrl = `${url}/auth/sso`;
+  const ssoUrl = new URL("/auth/sso", url);
+
   if (authMethod) {
-    ssoUrl += `?preferred_method=${authMethod}`;
+    ssoUrl.searchParams.set("preferred_method", authMethod);
   }
 
   try {
