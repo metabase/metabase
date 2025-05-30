@@ -12,12 +12,6 @@
 #?(:clj
    (set! *warn-on-reflection* true))
 
-(defn- json-parse
-  "Parses a JSON string in Clojure or ClojureScript into  "
-  [x]
-  #?(:cljs (js->clj (js/JSON.parse x))
-     :clj (json/decode x)))
-
 #?(:cljs
    (defn- json-parse
      "Parses a JSON string in Clojure or ClojureScript into  "
