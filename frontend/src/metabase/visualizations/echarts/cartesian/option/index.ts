@@ -69,7 +69,7 @@ const ensureRoomForLabels = (
       const textPct = CHART_STYLE.seriesLabels.size / innerHeight;
       return {
         ...axis,
-        boundaryGap: [textPct, 0],
+        boundaryGap: [textPct / 2, 0],
       };
     }
     return axis;
