@@ -5,7 +5,7 @@
  {"shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}
 
  :deps
- {net.shibboleth.tool/xmlsectool {:mvn/version "4.0.0"}
+ {net.shibboleth.tool/xmlsectool {:mvn/version "2.0.0"}
   org.apache.commons/commons-configuration2 {:mvn/version "2.12.0"}
   org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}
   org.apache.hive/hive-common {:mvn/version "4.0.1"}
