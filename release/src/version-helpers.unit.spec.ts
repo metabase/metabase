@@ -1,5 +1,6 @@
 import type { Tag } from "./types";
 import {
+  filterOutNonSupportedPrereleaseIdentifier,
   findNextPatchVersion,
   getBuildRequirements,
   getDotXs,
@@ -18,7 +19,7 @@ import {
   isEnterpriseVersion,
   isPreReleaseVersion,
   isValidVersionString,
-  versionSort
+  versionSort,
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -42,7 +43,7 @@ describe("version-helpers", () => {
       "v0.11.0-RC7", // legacy RC format
     ];
 
-    validCases.forEach(input => {
+    validCases.forEach((input) => {
       it(`should recognize ${input} as valid`, () => {
         expect(isValidVersionString(input)).toEqual(true);
       });
@@ -71,7 +72,7 @@ describe("version-helpers", () => {
       "v0.11-RC7",
     ];
 
-    invalidCases.forEach(input => {
+    invalidCases.forEach((input) => {
       it(`should recognize ${input} as invalid`, () => {
         expect(isValidVersionString(input)).toEqual(false);
       });
@@ -85,7 +86,7 @@ describe("version-helpers", () => {
         "v0.3.4-alpha",
       ];
 
-      cases.forEach(input => {
+      cases.forEach((input) => {
         expect(isValidVersionString(input)).toEqual(true);
       });
     });
@@ -132,7 +133,7 @@ describe("version-helpers", () => {
     it("should correctly identify non-enterprise version numbers", () => {
       const cases = ["v0.12", "v0.1.0", "v0.1.2.0", "v0.50", "v0.54.2-beta"];
 
-      cases.forEach(input => {
+      cases.forEach((input) => {
         expect(isEnterpriseVersion(input)).toEqual(false);
       });
     });
@@ -145,31 +146,33 @@ describe("version-helpers", () => {
 
   describe("isPreReleaseVersion", () => {
     it("should correctly identify RC version numbers", () => {
-      ["v0.75.0-RC", "v1.75.0-RC", "v0.75.2.9.7-rc"].forEach(input => {
+      ["v0.75.0-RC", "v1.75.0-RC", "v0.75.2.9.7-rc"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(true);
       });
     });
 
     it("should correctly identify alpha version numbers", () => {
-      ["v0.75.0-alpha", "v1.75.0-alpha", "v0.75.2.9.7-alpha"].forEach(input => {
-        expect(isPreReleaseVersion(input)).toEqual(true);
-      });
+      ["v0.75.0-alpha", "v1.75.0-alpha", "v0.75.2.9.7-alpha"].forEach(
+        (input) => {
+          expect(isPreReleaseVersion(input)).toEqual(true);
+        },
+      );
     });
 
     it("should correctly identify beta version numbers", () => {
-      ["v0.75.0-beta", "v1.75.0-beta", "v0.75.2.9.7-beta"].forEach(input => {
+      ["v0.75.0-beta", "v1.75.0-beta", "v0.75.2.9.7-beta"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(true);
       });
     });
 
     it("should correctly identify non-RC version numbers", () => {
-      ["v0.75", "v1.2"].forEach(input => {
+      ["v0.75", "v1.2"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(false);
       });
     });
 
     it("should return false for invalid versions", () => {
-      ["123", "foo", "rc", "parc", "v9.9-rc2"].forEach(input => {
+      ["123", "foo", "rc", "parc", "v9.9-rc2"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(false);
       });
     });
@@ -214,7 +217,7 @@ describe("version-helpers", () => {
       "v1.75.2.3.4",
     ];
 
-    cases.forEach(input => {
+    cases.forEach((input) => {
       it(`should return release-x.75.x for ${input}`, () => {
         expect(getReleaseBranch(input)).toEqual(`release-x.75.x`);
       });
@@ -249,7 +252,7 @@ describe("version-helpers", () => {
         "release-x.75.x-test",
         "refs/heads/release-x",
       ];
-      cases.forEach(input => {
+      cases.forEach((input) => {
         expect(() => getVersionFromReleaseBranch(input)).toThrow();
       });
     });
@@ -686,7 +689,7 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("getDotXs", ()=> {
+  describe("getDotXs", () => {
     it("should return the correct major dot Xs", () => {
       expect(getDotXs("v1.75.0", 1)).toEqual("v1.75.x");
       expect(getDotXs("v1.75.2", 1)).toEqual("v1.75.x");
@@ -773,6 +776,28 @@ describe("version-helpers", () => {
         "v0.75.1.x",
         "v1.75.1.x",
       ]);
+    });
+  });
+
+  describe("filterOutNonSupportedPrereleaseIdentifier", () => {
+    function createTags(versions: string[]): Tag[] {
+      return versions.map(
+        (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
+      );
+    }
+
+    it("should ignore prerelease labels that are not `nightly` when passing refs", () => {
+      const filteredTags = createTags([
+        "0.55.0",
+        "0.55.0-nightly",
+        "0.55.0-rc1",
+        "0.55.0-rc2",
+        "0.55.0-beta",
+        "0.55.0-alpha",
+        "0.55.5-metabot",
+      ]).filter(filterOutNonSupportedPrereleaseIdentifier);
+
+      expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
     });
   });
 });
