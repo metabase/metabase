@@ -30,6 +30,6 @@ export function MISSING_AUTH_METHOD({
 }) {
   return new MetabaseError(
     "MISSING_AUTH_METHOD",
-    `unknown or missing method: ${method}, response: ${JSON.stringify(response, null, 2)}`,
+    `Unknown or missing method: ${method}, response: ${JSON.stringify(response, null, 2)}`,
   );
 }
