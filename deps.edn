@@ -218,10 +218,9 @@
  ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
  ;; `:drivers` alias instead.
  :mvn/repos
- {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}  ;; athena
-  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}         ;; redshift
-  "shibboleth" {:url "https://build.shibboleth.net/maven/releases"}                      ;; hive-like
-  "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}} ;; metabase/saml20-clj
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"} ;; athena
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}        ;; redshift
+  "shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}                    ;; hive-like and metabase/saml20-clj
 
  :aliases
  {;;; Local Dev & test profiles
