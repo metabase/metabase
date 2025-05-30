@@ -397,7 +397,9 @@ describe("scenarios > question > native", () => {
 
         cy.log("open editor");
         cy.findByTestId("visibility-toggler").click();
-        cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
+        cy.findByTestId("native-query-editor-container")
+          .icon("variable")
+          .click();
 
         H.rightSidebar().should("contain", "Variables and parameters");
 
