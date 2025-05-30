@@ -290,6 +290,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByDisplayValue("My chart").clear().type("Renamed chart").blur();
     });
     H.saveDashcardVisualizerModal();
+    H.getDashboardCard(0).findByText("Created At: Month").should("exist"); // wait for query rerun
     H.assertDashboardCardTitle(0, "Renamed chart");
 
     // Rename the third card and check
@@ -302,6 +303,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
         .blur();
     });
     H.saveDashcardVisualizerModal();
+    H.getDashboardCard(3).findByText("Created At: Month").should("exist"); // wait for query rerun
     H.assertDashboardCardTitle(3, "Another chart");
 
     // Clear the second card title
@@ -311,6 +313,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByTestId("visualizer-title").clear().blur();
     });
     H.saveDashcardVisualizerModal();
+    H.getDashboardCard(1).findByText("Product → Category").should("exist"); // wait for query rerun
     H.assertDashboardCardTitle(1, "");
 
     // Save the dashboard
