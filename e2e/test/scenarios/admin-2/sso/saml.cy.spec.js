@@ -4,12 +4,7 @@ import {
   checkGroupConsistencyAfterDeletingMappings,
   crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import {
-  getSamlCertificate,
-  getSuccessUi,
-  getUserProvisioningInput,
-  setupSaml,
-} from "./shared/helpers";
+import { getSamlCertificate, getSuccessUi, setupSaml } from "./shared/helpers";
 
 describe("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
@@ -79,7 +74,9 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    getUserProvisioningInput().label.click();
+    cy.findByTestId("saml-user-provisioning-enabled?-setting")
+      .findByText("Disabled")
+      .click();
     cy.button("Save changes").click();
     cy.wait("@updateSamlSettings");
 
