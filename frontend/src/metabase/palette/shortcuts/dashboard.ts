@@ -85,7 +85,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-edit": {
     get name() {
-      return t`Edit Dashboard`;
+      return t`Edit dashboard`;
     },
     shortcutGroup: "dashboard" as const,
     shortcut: ["e"],

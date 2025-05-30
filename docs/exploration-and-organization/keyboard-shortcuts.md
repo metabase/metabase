@@ -43,7 +43,7 @@ Shortcuts change depending on which page you're viewing in your Metabase.
 | Cancel edit dashboard      | e                  |
 | Send dashboard to trash    | Ctrl/Cmd+backspace |
 | Toggle dashboard info      | ]                  |
-| Edit Dashboard             | e                  |
+| Edit dashboard             | e                  |
 | Save dashboard             | s                  |
 | Change dashboard tab       | 1, 2, 3, ...       |
 
@@ -57,10 +57,10 @@ Shortcuts change depending on which page you're viewing in your Metabase.
 
 | Action                 | Shortcut           |
 | ---------------------- | ------------------ |
-| Toggle Notebook        | e                  |
+| Toggle editor          | e                  |
 | Open filter dropdown   | f                  |
 | Open summarize sidebar | s                  |
-| Bookmark Question      | o                  |
+| Bookmark question      | o                  |
 | Open question info     | ]                  |
 | Refetch question data  | r                  |
 | Toggle visualization   | v                  |
