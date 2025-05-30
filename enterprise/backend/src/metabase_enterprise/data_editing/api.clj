@@ -363,26 +363,42 @@
     :else
     (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
-(defn- apply-mapping [mapping inputs]
-  (if-not (seq mapping)
-    inputs
-    (for [input inputs]
-      (walk/postwalk
-       (fn [x]
-         (cond
-           ;; TODO handle the fact this stuff can be json-ified better
-           (contains? #{::root "::root"} x)
-           input
-           ;; specific key
-           (and (vector? x) (contains? #{::key "::key"} (first x)))
-           (get input (keyword (second x)))
-           :else
-           x))
-       mapping))))
+(defn- hydrate-mapping [mapping]
+  (walk/postwalk-replace
+   {"::root" ::root
+    "::key"  ::key
+    "::row"  ::row}
+   mapping))
 
-(defn- execute!* [action-id scope inputs]
-  (let [scope   (actions/hydrate-scope scope)
-        unified (fetch-unified-action scope action-id)]
+(defn- apply-mapping [mapping params inputs]
+  (let [mapping (hydrate-mapping mapping)]
+    (if-not (seq mapping)
+      (if params
+        (map #(merge % params) inputs)
+        inputs)
+      (for [input inputs
+            ;; TODO this is a bit simplistic
+            :let [input (merge input params)]]
+        (walk/postwalk
+         (fn [x]
+           (cond
+             ;; TODO handle the fact this stuff can be json-ified better
+             (= ::root x)
+             input
+             ;; specific key
+             (and (vector? x) (= ::key (first x)))
+             (get input (keyword (second x)))
+             :else
+             x))
+         mapping)))))
+
+(defn- execute!* [action-id scope params inputs]
+  (let [scope      (actions/hydrate-scope scope)
+        unified    (fetch-unified-action scope action-id)
+        pre-inputs inputs
+        inputs     (->> inputs
+                        (apply-mapping (:mapping (:row-action unified)) params)
+                        (apply-mapping (:mapping unified) params))]
     (cond
       (:action-id unified)
       (let [action (api/read-check (actions/select-action :id (:action-id unified) :archived false))]
@@ -390,7 +406,7 @@
         [(execute-saved-action! action (first inputs))])
       (:action-kw unified)
       (let [action-kw (keyword (:action-kw unified))]
-        (:outputs (actions/perform-action! action-kw scope (apply-mapping (:mapping unified) inputs))))
+        (:outputs (actions/perform-action! action-kw scope inputs)))
       (:dashboard-action unified)
       (do
         (api/check-400 (= 1 (count inputs)) "Saved actions currently only support a single input")
@@ -404,11 +420,7 @@
             dashcard-id (:dashcard-id unified)
             saved-id    (:action-id row-action)
             action-kw   (:action-kw row-action)
-            ;; TODO probably take the row separately from inputs
-            pks         inputs
-            inputs      (->> inputs
-                             (apply-mapping (:mapping row-action))
-                             (apply-mapping (:mapping unified)))]
+            pks         pre-inputs]
         (cond
           saved-id
           (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pks inputs ::mapping-placeholder)
@@ -426,12 +438,14 @@
   Since actions are free to return multiple outputs even for a single output, the response is always plural."
   [{}
    {}
-   {:keys [action_id scope input]}
+   {:keys [action_id scope params input]}
    :- [:map
+       ;; TODO docstrings for these
        [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
        [:scope     ::types/scope.raw]
+       [:params    {:optional true} :map]
        [:input     :map]]]
-  {:outputs (execute!* action_id scope [input])})
+  {:outputs (execute!* action_id scope params [input])})
 
 (api.macros/defendpoint :post "/action/v2/execute-bulk"
   "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
@@ -444,7 +458,7 @@
        [:inputs                  [:sequential :map]]
        [:params {:optional true} :map]]]
   {:outputs (binding [actions/*params* params]
-              (execute!* action_id scope inputs))})
+              (execute!* action_id params scope inputs))})
 
 (api.macros/defendpoint :post "/tmp-modal"
   "Temporary endpoint for describing an actions parameters
