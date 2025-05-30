@@ -20,9 +20,8 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Button } from "metabase/ui";
+import { Button, Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 /** Maximum file size for uploaded content-translation dictionaries, expressed
