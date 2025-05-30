@@ -138,13 +138,13 @@ export function getMapUrl(details, props) {
 const MapNotFound = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   return (
-    <Flex direction="column" m="auto" maw="24rem">
-      <div className={cx(CS.textCentered, CS.mb4)}>
-        <Text>
+    <Flex direction="column" m="auto" maw="25rem">
+      <div className={cx(CS.textCentered, CS.mb4, CS.px2)}>
+        <Text component="p">
           {t`Looks like this custom map is no longer available. Try using a different map to visualize this.`}
         </Text>
         {isAdmin && (
-          <Text>
+          <Text component="p" className={CS.mt1}>
             {jt`To add a new map, visit ${(
               <Link to="/admin/settings/maps" className={CS.link}>
                 {t`Admin settings > Maps`}
