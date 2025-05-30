@@ -50,22 +50,22 @@ export function DatasetsList({
   );
 
   const handleAddDataSource = useCallback(
-    (id: VisualizerDataSourceId) => {
+    (source: VisualizerDataSource) => {
       trackSimpleEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_added",
         triggered_from: "visualizer-modal",
-        event_data: id,
+        event_data: source.id,
       });
 
-      dispatch(addDataSource(id));
-      setDataSourceCollapsed(id, false);
+      dispatch(addDataSource(source.id));
+      setDataSourceCollapsed(source.id, false);
     },
     [dispatch, setDataSourceCollapsed],
   );
 
   const handleRemoveDataSource = useCallback(
-    (source: VisualizerDataSource) => {
+    (source: VisualizerDataSource, forget?: boolean) => {
       trackSimpleEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_removed",
@@ -73,21 +73,10 @@ export function DatasetsList({
         event_data: source.id,
       });
 
-      dispatch(removeDataSource(source));
+      dispatch(removeDataSource({ source, forget }));
       setDataSourceCollapsed(source.id, true);
     },
     [dispatch, setDataSourceCollapsed],
-  );
-
-  const handleToggleDataSource = useCallback(
-    (item: VisualizerDataSource) => {
-      if (dataSourceIds.has(item.id)) {
-        handleRemoveDataSource(item);
-      } else {
-        handleAddDataSource(item.id);
-      }
-    },
-    [dataSourceIds, handleAddDataSource, handleRemoveDataSource],
   );
 
   const handleSwapDataSources = useCallback(
@@ -100,9 +89,9 @@ export function DatasetsList({
       });
 
       dataSources.forEach((dataSource) => {
-        handleRemoveDataSource(dataSource);
+        handleRemoveDataSource(dataSource, true);
       });
-      handleAddDataSource(item.id);
+      handleAddDataSource(item);
     },
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
@@ -112,7 +101,7 @@ export function DatasetsList({
       ? {
           q: search,
           limit: 10,
-          models: ["card"],
+          models: ["card", "dataset", "metric"],
           include_dashboard_questions: true,
           include_metadata: true,
         }
@@ -192,7 +181,7 @@ export function DatasetsList({
           key={index}
           item={item}
           onSwap={handleSwapDataSources}
-          onToggle={handleToggleDataSource}
+          onToggle={handleAddDataSource}
           onRemove={handleRemoveDataSource}
           selected={dataSourceIds.has(item.id)}
         />

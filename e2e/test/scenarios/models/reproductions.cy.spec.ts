@@ -367,7 +367,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
   });
 });
 
-describe.skip("issue 41785, issue 46756", () => {
+describe("issue 41785, issue 46756", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();

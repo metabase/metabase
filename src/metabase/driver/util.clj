@@ -363,18 +363,20 @@
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
         disp-name (or (:display-name prop) "")
+        visible-if (:visible-if prop)
         placeholder (or (:placeholder prop) "E.x. public,auth*")
         type-prop-nm (str prop-name "-type")]
-    [{:name type-prop-nm
-      :display-name disp-name
-      :type "select"
-      :options [{:name (trs "All")
-                 :value "all"}
-                {:name (trs "Only these...")
-                 :value "inclusion"}
-                {:name (trs "All except...")
-                 :value "exclusion"}]
-      :default "all"}
+    [(merge {:name type-prop-nm
+             :display-name disp-name
+             :type "select"
+             :options [{:name (trs "All")
+                        :value "all"}
+                       {:name (trs "Only these...")
+                        :value "inclusion"}
+                       {:name (trs "All except...")
+                        :value "exclusion"}]
+             :default "all"}
+            {:visible-if visible-if})
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder placeholder
