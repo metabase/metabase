@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useRef } from "react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -8,13 +9,16 @@ import {
   StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
-import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
+import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
+import { getSdkStore } from "embedding-sdk/store";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
+import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
-import { useRequestRefreshTokenFromEmbedJs } from "../hooks/use-request-refresh-token";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
+import type { StoreWithSdkState } from "../types/store";
 
 import {
   SdkIframeApiKeyInProductionError,
@@ -23,7 +27,11 @@ import {
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus();
-  const { requestRefreshToken } = useRequestRefreshTokenFromEmbedJs();
+
+  const storeRef = useRef<StoreWithSdkState | undefined>(undefined);
+  if (!storeRef.current) {
+    storeRef.current = getSdkStore();
+  }
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
@@ -49,15 +57,23 @@ export const SdkIframeEmbedRoute = () => {
   const authConfig = defineMetabaseAuthConfig({
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-    fetchRequestToken: requestRefreshToken,
   });
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} locale={locale}>
-      <Box h="100vh" bg={theme?.colors?.background}>
-        <SdkIframeEmbedView settings={embedSettings} />
-      </Box>
-    </MetabaseProvider>
+    <MetabaseReduxProvider store={storeRef.current}>
+      <MetabotProvider>
+        <MetabaseProviderInternal
+          store={storeRef.current}
+          authConfig={authConfig}
+          theme={theme}
+          locale={locale}
+        >
+          <Box h="100vh" bg={theme?.colors?.background}>
+            <SdkIframeEmbedView settings={embedSettings} />
+          </Box>
+        </MetabaseProviderInternal>
+      </MetabotProvider>
+    </MetabaseReduxProvider>
   );
 };
 

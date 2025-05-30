@@ -138,7 +138,10 @@ const getRefreshToken = async ({
   });
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
-    return await openSamlLoginPopup(responseUrl);
+    const token = await openSamlLoginPopup(responseUrl);
+    samlTokenStorage.set(token);
+
+    return token;
   }
   if (method === "jwt") {
     return jwtDefaultRefreshTokenFunction(
