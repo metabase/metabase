@@ -1396,31 +1396,42 @@
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
-(defn- remove-parent-fields
-  "Removes any and all entries in `fields` that are parents of another field in `fields`. This is necessary because as
-  of MongoDB 4.4, including both will result in an error (see:
-  `https://docs.mongodb.com/manual/release-notes/4.4-compatibility/#path-collision-restrictions`).
+(defn- remove-path-collisions
+  "When `fields` contains both a field and its parent, removes one or the other based on `to-remove`.
 
-  To preserve the previous behavior, we will include only the child fields (since the parent field always appears first
-  in the projection/field order list, and that is the stated behavior according to the link above)."
-  [fields]
-  (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
-                                   (if (and (= agg-type :field)
-                                            (integer? field-id))
-                                     (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) field-id)]
-                                       (if parent-id
-                                         (update acc parent-id conj (u/the-id field))
-                                         acc))
-                                     acc))
-                                 {}
-                                 fields)]
+  This is necessary because as of MongoDB 4.4, including both will result in an error (see:
+  `https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields`).
+
+  This can be asked to keep either side, because when selecting fields, we want to keep the parents (because the
+  parents include the children), but when we are sorting, we want to keep the children (because leaf nodes sort)."
+  [fields to-remove]
+  (let [collision-map (reduce (fn [acc [agg-type field-id & _]]
+                                (if (and (= agg-type :field)
+                                         (integer? field-id))
+                                  (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) field-id)]
+                                    (cond
+                                      (not parent-id)
+                                      acc
+
+                                      (= to-remove :parent)
+                                      (update acc parent-id conj (u/the-id field))
+
+                                      (= to-remove :child)
+                                      (update acc (u/the-id field) conj parent-id)
+
+                                      :else
+                                      (throw (ex-info "Invalid to-remove passed to remove-path-collisions"
+                                                      {:to-remove to-remove}))))
+                                  acc))
+                              {}
+                              fields)]
     (remove (fn [[_ field-id & _]]
-              (and (integer? field-id) (contains? parent->child-id field-id)))
+              (and (integer? field-id) (contains? collision-map field-id)))
             fields)))
 
 (defn- handle-order-by [{:keys [order-by breakout aggregation]} pipeline-ctx]
   (let [breakout-fields (set breakout)
-        sort-fields (for [field (remove-parent-fields (map second order-by))
+        sort-fields (for [field (remove-path-collisions (map second order-by) :parent)
                           ;; We only care about expressions and bucketing not added as breakout
                           :when (and (not (contains? breakout-fields field))
                                      (let [dispatch-value
@@ -1468,10 +1479,14 @@
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)
     pipeline-ctx
-    (let [new-projections (for [field (remove-parent-fields fields)]
+    (let [new-projections (for [field (remove-path-collisions fields :child)]
                             [(field-alias field) (->rvalue field)])]
       (-> pipeline-ctx
-          (assoc :projections (map first new-projections))
+          ;; we can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
+          ;; error. It's also unnecessary, because the parent includes the child. However, we need to list all fields
+          ;; we think we want in :projections so that we know to look for them all once we get data back.
+          (assoc :projections (for [field fields]
+                                (field-alias field)))
           ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
           (update :query conj {$project (into
                                          (ordered-map/ordered-map "_id" false)
