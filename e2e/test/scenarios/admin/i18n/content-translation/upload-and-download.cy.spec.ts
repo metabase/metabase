@@ -56,10 +56,7 @@ describe("scenarios > admin > localization > content translation", () => {
           .click();
         const downloadsFolder = Cypress.config("downloadsFolder");
         cy.readFile(
-          path.join(
-            downloadsFolder,
-            "metabase-content-translation-dictionary.csv",
-          ),
+          path.join(downloadsFolder, "metabase-content-translations.csv"),
         ).then((fileContents) => {
           expect(fileContents).to.include("de,Rating,Bewertung");
         });
