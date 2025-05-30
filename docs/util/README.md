@@ -18,5 +18,5 @@ yarn generate-shortcuts
 Docs will be written to:
 
 ```
-../exploration-and-organization/keyboard-shortcuts.md
+docs/exploration-and-organization/keyboard-shortcuts.md
 ```
