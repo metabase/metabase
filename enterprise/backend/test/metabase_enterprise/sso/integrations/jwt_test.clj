@@ -192,13 +192,43 @@
             (testing "login attributes"
               (is
                (= {"extra" "keypairs", "are" "also present"}
-                  (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com")))))))
+                  (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))
 
-      (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
-        (let [response (client/client-full-response :get 302 "/auth/sso"
-                                                    {:request-options {:redirect-strategy :none}}
-                                                    :return_to default-redirect-uri)]
-          (is (not (saml-test/successful-login? response))))))))
+        (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
+          (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      :return_to default-redirect-uri)]
+            (is (not (saml-test/successful-login? response)))))
+
+        (testing "with SAML and JWT configured, a GET request with preferred_method=jwt should sign in via JWT"
+          (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      :return_to default-redirect-uri
+                                                      :preferred_method "jwt"
+                                                      :jwt
+                                                      (jwt/sign
+                                                       {:email      "rasta@metabase.com"
+                                                        :first_name "Rasta"
+                                                        :last_name  "Toucan"
+                                                        :extra      "keypairs"
+                                                        :are        "also present"}
+                                                       default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (testing "redirect URI (preferred_method=jwt)"
+              (is
+               (= default-redirect-uri
+                  (get-in response [:headers "Location"]))))
+            (testing "login attributes (preferred_method=jwt)"
+              (is
+               (= {"extra" "keypairs", "are" "also present"}
+                  (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))
+
+        (testing "with SAML and JWT configured, a GET request with preferred_method=saml should redirect to SAML IdP"
+          (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      :return_to default-redirect-uri
+                                                      :preferred_method "saml")]
+            (is (not (saml-test/successful-login? response)))))))))
 
 (deftest happy-path-test
   (testing
