@@ -4,9 +4,11 @@
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -365,9 +367,11 @@
 (mu/defn describe-temporal-pair :- :string
   "Return a string describing the temporal pair.
    Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
-  [temporal-column
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   temporal-column
    temporal-value :- [:or :int :string]]
-  (u.time/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
+  (let [start-of-week (lib.metadata/setting metadata-providerable :start-of-week)]
+    (u.time/format-unit temporal-value (:unit (temporal-bucket temporal-column)) {:start-of-week start-of-week})))
 
 (defn add-temporal-bucket-to-ref
   "Internal helper shared between a few implementations of [[with-temporal-bucket-method]].

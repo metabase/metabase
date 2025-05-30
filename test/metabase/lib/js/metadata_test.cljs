@@ -1,6 +1,6 @@
 (ns metabase.lib.js.metadata-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.js.metadata :as lib.js.metadata]
    [metabase.lib.metadata :as lib.metadata]))
 
@@ -67,7 +67,8 @@
 
 (def ^:private mock-metadata-with-generic-tables-and-fields
   #js {:databases #js {"1" #js {:id 1
-                                :name "fake DB"}}
+                                :name "fake DB"
+                                :settings {"unaggregated-query-row-limit" 1234}}}
        :tables    #js {"6" #js {:id     6
                                 :name   "basic_table"
                                 :db_id  1
@@ -92,3 +93,9 @@
            (:ident (lib.metadata/field mp 600))))
     (is (= "cq16i_0gLWMyVf_fjSATF"
            (:ident (lib.metadata/field mp 700))))))
+
+(deftest ^:parallel database-local-settings-test
+  (testing "JVM metadata provider should return database-local Settings (QUE-1302)"
+    (let [metadata-provider (lib.js.metadata/metadata-provider 1 mock-metadata-with-generic-tables-and-fields)]
+      (is (= 1234
+             (lib.metadata/setting metadata-provider :unaggregated-query-row-limit))))))

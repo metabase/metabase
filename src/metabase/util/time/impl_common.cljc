@@ -1,6 +1,23 @@
 (ns metabase.util.time.impl-common
   "Shared core of time utils used by the internal CLJ and CLJS implementations.
-  See [[metabase.util.time]] for the public interface.")
+  See [[metabase.util.time]] for the public interface."
+  (:require
+   [metabase.util.malli.registry :as mr]))
+
+(mr/def ::format-options
+  "Schema for the options map for functions like [[metabase.util.time/format-relative-date-range]]."
+  [:map
+   ;; this key should always be passed based on the value of [[metabase.lib-be.settings/start-of-week]] or gotten from
+   ;; the metadata provider. We will fall back to `:sunday` if its value is `nil`.
+   [:start-of-week [:maybe :keyword]]
+   [:locale {:optional true} :any]])
+
+(mr/def ::options
+  "Schema for the options map for [[to-range]], [[string->timestamp]], [[number->timestamp]], and friends."
+  [:merge
+   ::format-options
+   [:map
+    [:unit [:or :keyword :string]]]])
 
 (defn- by-unit [_ {:keys [unit]}] (keyword unit))
 

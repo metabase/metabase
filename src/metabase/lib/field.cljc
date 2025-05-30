@@ -372,20 +372,23 @@
   [query stage-number field-ref]
   (lib.temporal-bucket/available-temporal-buckets query stage-number (resolve-field-metadata query stage-number field-ref)))
 
-(defn- fingerprint-based-default-unit [fingerprint]
-  (u/ignore-exceptions
-    (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
-      (let [days (u.time/day-diff (u.time/coerce-to-timestamp earliest)
-                                  (u.time/coerce-to-timestamp latest))]
-        (when-not (NaN? days)
-          (condp > days
-            1 :minute
-            31 :day
-            365 :week
-            :month))))))
+(mu/defn- fingerprint-based-default-unit
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   fingerprint]
+  (let [start-of-week (lib.metadata/setting metadata-providerable :start-of-week)]
+    (u/ignore-exceptions
+      (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
+        (let [days (u.time/day-diff (u.time/coerce-to-timestamp earliest {:start-of-week start-of-week})
+                                    (u.time/coerce-to-timestamp latest {:start-of-week start-of-week}))]
+          (when-not (NaN? days)
+            (condp > days
+              1 :minute
+              31 :day
+              365 :week
+              :month)))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
-  [_query _stage-number field-metadata]
+  [query _stage-number field-metadata]
   (lib.temporal-bucket/available-temporal-buckets-for-type
    ((some-fn :effective-type :base-type) field-metadata)
    ;; `:ineherited-temporal-unit` being set means field was bucketed on former stage. For this case, make the default nil
@@ -393,7 +396,7 @@
    ;; default unit.
    (if (or (nil? (:inherited-temporal-unit field-metadata))
            (= :default (:inherited-temporal-unit field-metadata)))
-     (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
+     (or (some->> field-metadata :fingerprint (fingerprint-based-default-unit query))
          :month)
      :inherited)
    (::temporal-unit field-metadata)))

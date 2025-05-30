@@ -24,8 +24,8 @@
   translate])
 
 (def ^:dynamic *user-locale*
-  "Bind this to a string, keyword, or `Locale` to set the locale for the current User. To get the locale we should
-  *use*, use the `user-locale` function instead."
+  "Bind this to a string, keyword, or `Locale` to set the locale for the current User. (This normally comes from the
+  `user.locale` column in the app DB.) To get the locale we should *use*, use the `user-locale` function instead."
   nil)
 
 (def ^:dynamic *site-locale-override*

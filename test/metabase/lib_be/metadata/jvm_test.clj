@@ -234,3 +234,10 @@
                             (when (= "Orders" display-name)
                               metadata))
                           (lib.metadata/tables mp)))))))))
+
+(deftest ^:parallel database-local-settings-test
+  (testing "JVM metadata provider should return database-local Settings (QUE-1302)"
+    (mt/with-temp [:model/Database {database-id :id} {:settings {:unaggregated-query-row-limit 1234}}]
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider database-id)]
+        (is (= 1234
+               (lib.metadata/setting metadata-provider :unaggregated-query-row-limit)))))))

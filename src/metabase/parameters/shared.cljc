@@ -10,6 +10,7 @@
        (["moment" :as moment]))
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -96,17 +97,17 @@
 (defn- format-day [value locale]
   (-> value
       (time/parse-unit  :day-of-week-abbrev "en") ;; always read in en locale
-      (time/format-unit :day-of-week        locale)))
+      (time/format-unit :day-of-week        {:locale locale, :start-of-week (mbql.u/start-of-week)})))
 
 (defn- format-hour [value locale]
   (-> value
-      (time/parse-unit  :hour-of-day-24     "en") ;; always read in en locale
-      (time/format-unit :hour-of-day        locale)))
+      (time/parse-unit  :hour-of-day-24 "en") ;; always read in en locale
+      (time/format-unit :hour-of-day    {:locale locale, :start-of-week (mbql.u/start-of-week)})))
 
 (defn- format-month [value locale]
   (-> value
       (time/parse-unit  :month-of-year      "en") ;; always read in en locale
-      (time/format-unit :month-of-year-full locale)))
+      (time/format-unit :month-of-year-full {:locale locale, :start-of-week (mbql.u/start-of-week)})))
 
 (defn- format-exclude-unit [value unit locale]
   (case unit

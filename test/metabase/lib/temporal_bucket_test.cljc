@@ -97,6 +97,7 @@
                 :database-position 7
                 :fingerprint
                 {:global {:distinct-count 200, :nil% 0.0}}}
+        query (lib/query meta/metadata-provider (meta/table-metadata :venues))
         expected-units #{:minute :hour
                          :day :week :month :quarter :year
                          :minute-of-hour :hour-of-day
@@ -105,7 +106,7 @@
         expected-defaults [{:lib/type :option/temporal-bucketing, :unit :month, :default true}]]
     (testing "missing fingerprint"
       (let [column (dissoc column :fingerprint)
-            options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
+            options (lib.temporal-bucket/available-temporal-buckets-method query -1 column)]
         (is (= expected-units
                (into #{} (map :unit) options)))
         (is (= expected-defaults
@@ -121,7 +122,7 @@
           (let [bounds {:earliest "2016-04-26T19:29:55.147Z"
                         :latest latest}
                 column (assoc-in column [:fingerprint :type :type/DateTime] bounds)
-                options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
+                options (lib.temporal-bucket/available-temporal-buckets-method query -1 column)]
             (is (= expected-units
                    (into #{} (map :unit) options)))
             (is (= (assoc-in expected-defaults [0 :unit] unit)
@@ -131,7 +132,7 @@
                               nil -1 (assoc column :inherited-temporal-unit :day)))))
     (testing "default inherited-temporal-unit does not disable a default bucket"
       (is (some :default (lib.temporal-bucket/available-temporal-buckets-method
-                          nil -1 (assoc column :inherited-temporal-unit :default)))))))
+                          query -1 (assoc column :inherited-temporal-unit :default)))))))
 
 (deftest ^:parallel temporal-bucketing-options-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))

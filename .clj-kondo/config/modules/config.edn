@@ -497,6 +497,7 @@
           metabase.legacy-mbql.schema.helpers
           metabase.legacy-mbql.util}
    :uses #{lib
+           lib-be
            models
            types
            util}}

@@ -1066,14 +1066,18 @@
                    [[:= [:field 1 nil] 12] "Dec"]]
             {:default ""}]
            (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
-        "`month-name` should desugar to a `:case` clause with values for each month")
+        "`month-name` should desugar to a `:case` clause with values for each month"))
+
+(t/deftest ^:parallel desugar-month-quarter-day-name-test-2
   (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
                    [[:= [:field 1 nil] 2] "Q2"]
                    [[:= [:field 1 nil] 3] "Q3"]
                    [[:= [:field 1 nil] 4] "Q4"]]
             {:default ""}]
            (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
-        "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+        "`quarter-name` should desugar to a `:case` clause with values for each quarter"))
+
+(t/deftest ^:parallel desugar-month-quarter-day-name-test-3
   (t/is (= [:case [[[:= [:field 1 nil] 1] "Sunday"]
                    [[:= [:field 1 nil] 2] "Monday"]
                    [[:= [:field 1 nil] 3] "Tuesday"]
