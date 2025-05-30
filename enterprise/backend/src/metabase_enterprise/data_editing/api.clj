@@ -342,8 +342,8 @@
                            "row-action" {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
                        (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
                          ;; Dashboard buttons can only be invoked from dashboards
-                         ;; We're not checking that the scope has the correct dashboard, but if it's incorrect.
-                         ;; There will be a 404 thrown when we try to execute the action.
+                         ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
+                         ;; will be a 404 thrown when we try to execute the action.
                          ;; This 404 here is not the best error to return, but we can polish this later.
                          (let [dashboard-id (api/check-404 (:dashboard-id scope))]
                            (api/read-check :model/Dashboard dashboard-id)
