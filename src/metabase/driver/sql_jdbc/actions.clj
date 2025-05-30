@@ -346,7 +346,7 @@
           (throw e))))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
-  [action context inputs _opts]
+  [action context inputs]
   (let [database       (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
@@ -391,7 +391,7 @@
          :after    row-after}))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/update]
-  [action context inputs _opts]
+  [action context inputs]
   (let [database          (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
@@ -467,7 +467,7 @@
          :after    row}))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::lib.schema.actions/row]])
-  [action context inputs :- [:sequential ::mbql.s/Query] _opts]
+  [action context inputs :- [:sequential ::mbql.s/Query]]
   (let [database (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
@@ -539,7 +539,7 @@
    [:delete-children? {:optional true} [:maybe :boolean]]])
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create]
-  [_action context inputs :- [:sequential ::table-row-input] _opts]
+  [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
          {:row-action :model.row/create
@@ -788,27 +788,40 @@
          :before   row-before
          :after    nil}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
-  [_action context inputs :- [:sequential ::table-row-input] opts]
+(defn- perform-table-row-delete!
+  "Perform table row deletion with optional cascade support"
+  [_action context inputs]
   (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database       (actions/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
-        [errors results] (batch-execution-by-table-id!
-                          {:inputs        inputs
-                           :row-action    :model.row/delete
-                           :row-fn        (if (:delete-children? opts) row-delete!*-with-children row-delete!*)
-                           :validate-fn   (fn [database table-id rows]
-                                            (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
-                                              (check-consistent-row-keys rows)
-                                              (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
-                                              (check-unique-rows rows)))
-                           :input-fn      (fn [{db-id :id} table-id row]
-                                            {:database db-id
-                                             :type     :query
-                                             :query    {:source-table table-id
-                                                        :filter       (row->mbql-filter-clause
-                                                                       (table-id->pk-field-name->id db-id table-id) row)}})})]
+        {inputs-with-delete-child true
+         inputs-wihtout-delete-child false} (group-by (comp boolean :delete-children?) inputs)
+        execute-batch-delete (fn [inputs row-fn]
+                               (batch-execution-by-table-id!
+                                {:inputs        inputs
+                                 :row-action    :model.row/delete
+                                 :row-fn        row-fn
+                                 :validate-fn   (fn [database table-id rows]
+                                                  (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                                                    (check-consistent-row-keys rows)
+                                                    (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
+                                                    (check-unique-rows rows)))
+                                 :input-fn      (fn [{db-id :id} table-id row]
+                                                  {:database db-id
+                                                   :type     :query
+                                                   :query    {:source-table table-id
+                                                              :filter       (row->mbql-filter-clause
+                                                                             (table-id->pk-field-name->id db-id table-id) row)}})}))
+        [errors results] (reduce (fn [[acc-errors acc-results] [inputs row-fn]]
+                                   (if (seq inputs)
+                                     (let [[batch-errors batch-results] (execute-batch-delete inputs row-fn)]
+                                       [(concat acc-errors batch-errors)
+                                        (concat acc-results batch-results)])
+                                     [acc-errors acc-results]))
+                                 [[] []]
+                                 [[inputs-wihtout-delete-child row-delete!*]
+                                  [inputs-with-delete-child row-delete!*-with-children]])]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) deleting rows.")
                       {:status-code 400
@@ -819,6 +832,18 @@
                 {:table-id table-id
                  :op       :deleted
                  :row      (select-keys before (table-id->pk-keys table-id))})}))
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
+  [action context inputs :- [:sequential ::table-row-input]]
+<<<<<<< HEAD
+  (def context context)
+  (def inputs inputs)
+  (def action action)
+  (ngoc/with-tc
+    (perform-table-row-delete! action context inputs)))
+=======
+  (perform-table-row-delete! action context inputs))
+>>>>>>> c2965187ac (return children count)
 
 ;;;; `bulk/update`
 
@@ -847,7 +872,7 @@
                        :pk-names    pk-names})))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/update]
-  [_action context inputs :- [:sequential ::table-row-input] _opts]
+  [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
          {:inputs     inputs

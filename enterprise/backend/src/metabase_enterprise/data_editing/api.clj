@@ -75,16 +75,15 @@
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows scope delete-children]} :- [:map
-                                            [:rows [:sequential {:min 1} :map]]
-                                            [:delete-children {:optional true} :boolean]
-                                            ;; make this non-optional in the future
-                                            [:scope {:optional true} ::types/scope.raw]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; make this non-optional in the future
+                            [:scope {:optional true} ::types/scope.raw]]]
   (check-permissions)
   ;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
   ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
   (let [scope (or scope {:table-id table-id})]
-    (actions/perform-action! :data-grid.row/delete scope rows {:delete-children? delete-children})
+    (actions/perform-action! :data-grid.row/delete scope rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust

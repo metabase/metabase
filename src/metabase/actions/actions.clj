@@ -49,8 +49,8 @@
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
-  {:arglists '([action context inputs opts]), :added "0.44.0"}
-  (fn [action {:keys [driver]} _inputs _opts]
+  {:arglists '([action context inputs]), :added "0.44.0"}
+  (fn [action {:keys [driver]} _inputs]
     [(if driver
        (driver/dispatch-on-initialized-driver driver)
        ;; For now, all actions have this as the lowest common denominator, and use it even where the db is irrelevant.
@@ -169,13 +169,13 @@
    ctx       :- :map
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential :map]
-   & {:as opts}]
+   & {:as _opts}]
   (let [invocation-id  (nano-id/nano-id)
         context-before (-> (assoc ctx :invocation-id invocation-id)
                            (update :invocation-stack u/conjv [action-kw invocation-id]))]
     (actions.events/publish-action-invocation! action-kw context-before inputs)
     (try
-      (u/prog1 (perform-action!* action-kw context-before inputs opts)
+      (u/prog1 (perform-action!* action-kw context-before inputs)
         (let [{context-after :context, :keys [outputs]} <>]
           (doseq [k [:invocation-id :invocation-stack :user-id]]
             (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
@@ -197,11 +197,11 @@
   "Similar to [[perform-action!]] but taking an existing context.
    Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
    Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
-  [action-kw context inputs _opts]
+  [action-kw context inputs]
   ;; For now, we are handling effects whenever we "pop" an action, but in future we may want them to propagate.
   ;; The rationale for this is that it would allow us batch things more atomically (e.g., for notifications)
   {:context context #_(update context :effects into (:effects context-after))
-   :outputs (:outputs (perform-action-internal! action-kw context inputs _opts))})
+   :outputs (:outputs (perform-action-internal! action-kw context inputs))})
 
 (defn cached-database
   "Uses cache to prevent redundant look-ups with an action call chain."
@@ -225,11 +225,10 @@
   [action
    scope
    arg-map-or-maps
-   & {:keys [policy existing-context user-id] :as opts}]
+   & {:keys [policy existing-context user-id]}]
   (when (and existing-context user-id)
     (assert (= user-id (:user-id existing-context)) "Existing context has a consistent user-id"))
-  (let [opts      (dissoc opts :policy :existing-context :user-id)
-        action-kw (keyword action)
+  (let [action-kw (keyword action)
         scope     (actions.scope/hydrate-scope scope)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         policy    (or policy
@@ -248,7 +247,7 @@
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
         dbs       (or (seq (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps))))
-                      ;  for data-grid actions that use their scope, rather than arguments
+                      ;; for data-grid actions that use their scope, rather than arguments
                       ;; TODO it probably makes more sense for the actions themselves to perform the permissions checks
                       (some-> scope :database-id cached-database vector))
         _         (when (> (count dbs) 1)
@@ -279,23 +278,24 @@
           (cond
             (:query arg-map) (qp.perms/check-query-action-permissions* arg-map)
             (:table-id arg-map) (qp.perms/check-query-action-permissions*
-                                 {:type :query
+                                 {:type :query,
                                   :database (:database arg-map)
                                   :query {:source-table (:table-id arg-map)}}))))
+
       (let [result (let [context (-> existing-context
                                      ;; TODO fix tons of tests which execute without user scope
                                      (u/assoc-default :user-id (identity #_api/check-500
                                                                 (or user-id api/*current-user-id*)))
                                      (u/assoc-default :scope scope))]
                      (if-not driver
-                       (perform-action-internal! action-kw context arg-maps opts)
+                       (perform-action-internal! action-kw context arg-maps)
                        (driver/with-driver driver
                          (let [context (assoc context
                                               ;; Legacy drivers dispatch on this, for now.
                                               ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
                                               ;;      on this and just fail if the dynamically determined driver is incompatible.
                                               :driver driver)]
-                           (perform-action-internal! action-kw context arg-maps opts)))))]
+                           (perform-action-internal! action-kw context arg-maps)))))]
         {:effects (:effects (:context result))
          :outputs (:outputs result)}))))
 
@@ -446,13 +446,6 @@
    (s/keys :req-un [:actions.args.crud.table.common/table-id
                     :actions.args.crud.table/row])))
 
-(s/def :actions.args.crud.table.delete/delete-children? boolean?)
-
-(s/def :actions.args.crud.table/delete
-  (s/merge
-   :actions.args.crud.table/common
-   (s/keys :opt-un [:actions.args.crud.table.delete/delete-children?])))
-
 ;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
 ;;; [[perform-action!]] with
@@ -467,23 +460,14 @@
 
 (derive :table.row/create :table.row/common)
 (derive :table.row/update :table.row/common)
+(derive :table.row/delete :table.row/common)
 
 (defmethod action-arg-map-spec :table.row/common
   [_action]
   :actions.args.crud.table/common)
-
-(defmethod action-arg-map-spec :table.row/delete
-  [_action]
-  :actions.args.crud.table/delete)
 
 (defmethod normalize-action-arg-map :table.row/common
   [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
   {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})
-
-(defmethod normalize-action-arg-map :table.row/delete
-  [_action {:keys [delete-children] :as arg-map}]
-  (merge ((get-method normalize-action-arg-map :table.row/common)
-          :table.row/common arg-map)
-         {:delete-children? delete-children}))
