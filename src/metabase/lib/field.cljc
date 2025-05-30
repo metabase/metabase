@@ -33,7 +33,7 @@
    [metabase.util.time :as u.time]))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
-  "Whether we're in a recursive call to [[resolve-column-clause]] or not. Prevent infinite recursion (#32063)"
+  "Whether we're in a recursive call to [[resolve-column-ref]] or not. Prevent infinite recursion (#32063)"
   false)
 
 (mu/defn- resolve-column-ref :- [:maybe ::lib.schema.metadata/column]
