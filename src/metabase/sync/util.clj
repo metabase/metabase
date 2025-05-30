@@ -184,6 +184,10 @@
   behavior. You can disable this for debugging or test purposes."
   true)
 
+(defn- do-not-retry-exception? [e]
+  (or (isa? (class e) ::exception-class-not-to-retry)
+      (some-> (ex-cause e) recur)))
+
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
@@ -193,7 +197,7 @@
    (try
      (f)
      (catch Throwable e
-       (if *log-exceptions-and-continue?*
+       (if (and *log-exceptions-and-continue?* (not (do-not-retry-exception? e)))
          (do
            (log/warn e message)
            e)
@@ -559,10 +563,6 @@
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
   ;; call. Constructing the log below requires some work, no need to incur that cost debug logging isn't enabled
   (log/debug (make-log-sync-summary-str operation database sync-metadata)))
-
-(defn- do-not-retry-exception? [e]
-  (or (isa? (class e) ::exception-class-not-to-retry)
-      (some-> (ex-cause e) recur)))
 
 (defn abandon-sync?
   "Given the results of a sync step, returns truthy if a non-recoverable exception occurred"
