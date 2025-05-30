@@ -30,7 +30,7 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
     header: true,
     additional_info: true,
     action_buttons: true,
-    data_picker: "simple",
+    data_picker: "flat",
   };
 
 const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(
@@ -166,7 +166,7 @@ function normalizeEntityTypes(
 function normalizeDataPicker(
   searchOptions: Partial<InteractiveEmbeddingOptions>,
 ): Partial<InteractiveEmbeddingOptions> {
-  const ALLOWED_VALUES: EmbeddingDataPicker[] = ["staged", "simple"];
+  const ALLOWED_VALUES: EmbeddingDataPicker[] = ["staged", "flat"];
 
   const { data_picker: dataPicker, ...restSearchOptions } = searchOptions;
 
