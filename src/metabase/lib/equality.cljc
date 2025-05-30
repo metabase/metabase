@@ -141,16 +141,19 @@
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
-  (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
-                               (matching-join? a-ref %))
-                         columns))
-      (filter #(and (clojure.core/= (:name %) ref-name)
-                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                    ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                    (or (and (not (:join-alias opts))
-                             (#{:source/fields :source/card} (:lib/source %)))
-                        (matching-join? a-ref %)))
-              columns)))
+  ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+  ; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+  (letfn [(matches-join? [col] (or (and (not (:join-alias opts))
+                                        (#{:source/fields :source/card} (:lib/source col)))
+                                   (matches-join? a-ref col)))]
+    (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
+                                 (matches-join? a-ref %))
+                           columns))
+        (filter #(and (clojure.core/= (:name %) ref-name)
+                      (or (and (not (:join-alias opts))
+                               (#{:source/fields :source/card} (:lib/source %)))
+                          (matches-join? %)))
+                columns))))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
