@@ -20,4 +20,9 @@
                                   :exclusions [com.google.guava/guava]}
   com.google.guava/guava {:mvn/version "33.4.8-jre"}
   org.apache.commons/commons-configuration2 {:mvn/version "2.12.0"}
-  org.apache.zookeeper/zookeeper {:mvn/version "3.9.3"}}}
+  org.apache.zookeeper/zookeeper {:mvn/version "3.9.3"}
+  org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}}
+
+  :override-deps
+ {com.google.guava/guava {:mvn/version "33.4.8-jre"}
+  org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}}}
