@@ -46,6 +46,7 @@
     {"unit" {:name "unit"
              :type :temporal-unit}} "SELECT *, {{mb.time_grouping(\"unit\", \"foo\")}} FROM table WHERE some_field IS NOT NULL"
     {} "SELECT *, {{mb.unrecognized_name('unit', 'foo')}} FROM table WHERE some_field IS NOT NULL"
+    {} "SELECT *, {{mb.time_grouping('unit', '')}} FROM table WHERE some_field IS NOT NULL"
     {"unit" {:name "unit"
              :type :temporal-unit}} "SELECT *, {{mb.time_grouping('unit', 'foo')}}, {{mb.time_grouping('unit', 'bar')}} FROM table WHERE some_field IS NOT NULL"
     {"unit" {:name "unit"
@@ -481,6 +482,8 @@
                 ["Syntax error in: mb.time_grouping(\"unit\", created_at)"]]
                ["SELECT {{mb.time_grouping(\"unit\")}} as unit FROM ORDERS"
                 ["mb.time_grouping got too few parameters.  Got 1, expected at least 2."]]
+               ["SELECT {{mb.time_grouping(\"unit\", '')}} as unit FROM ORDERS"
+                ["mb.time_grouping got invalid parameters"]]
                ["SELECT {{mb.time_grouping('unit', 'created_at')}} as unit FROM ORDERS"
                 []]
                ["SELECT count(*) as c, {{mb.time_grouping(\"unit\", \"created_\"}} as unit FROM ORDERS group by unit"

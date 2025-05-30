@@ -39,7 +39,9 @@
 (defn- fresh-function-tag [function-name args]
   (case function-name
     "mb.time_grouping" (let [param-name (first args)]
-                         (when (and (string? param-name) (= (count args) 2))
+                         (when (and (string? param-name)
+                                    (= (count args) 2)
+                                    (every? (comp not empty?) args))
                            {:type :temporal-unit
                             :name param-name
                             :id (str (random-uuid))}))
@@ -214,7 +216,8 @@
 
 ;; map of function names to min/max expected arguments
 (def ^:private function-expected-args
-  {"mb.time_grouping" [2 2]})
+  {"mb.time_grouping" {:args-count      [2 2]
+                       :args-validators [(comp not empty?) (comp not empty?)]}})
 
 (def ^:private tag-type->display-name
   {:temporal-unit "time grouping"
@@ -260,7 +263,8 @@
           :args args}]
         (let [current (fresh-function-tag function-name args)
               args-count (count args)
-              [args-min args-max] (function-expected-args function-name)
+              {[args-min args-max] :args-count
+               :keys               [args-validators]} (function-expected-args function-name)
               prev (some-> current :name found)
               error (cond
                       (not args-min)
@@ -273,6 +277,9 @@
                       (> args-count args-max)
                       (str function-name " got too many parameters.  Got "
                            args-count ", expected at most " args-max ".")
+
+                      (not-every? identity (map #(%1 %2) args-validators args))
+                      (str function-name " got invalid parameters")
 
                       (not current)
                       (str "Invalid call to function: " function-name)
