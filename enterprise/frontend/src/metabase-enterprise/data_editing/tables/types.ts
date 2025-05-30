@@ -42,6 +42,7 @@ export type TableUpdateRowsResponse = {
 export type TableDeleteRowsRequest = {
   rows: RowCellsWithPkValue[];
   scope?: TableEditingScope;
+  deleteChildren?: boolean;
 };
 
 export type TableDeleteRowsResponse = {

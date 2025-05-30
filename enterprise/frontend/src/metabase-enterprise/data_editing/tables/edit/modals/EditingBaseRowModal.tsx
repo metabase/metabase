@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useFormik } from "formik";
-import { Fragment, useCallback, useEffect, useMemo } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -28,11 +28,22 @@ import type { UpdatedRowHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
+import { CascadeDeleteConfirmationModal } from "./CascadeDeleteConfirmationModal";
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
 import { useEditingModalOrderedVisibleDatasetColumns } from "./use-editing-modal-ordered-dataset-columns";
 import type { TableEditingModalState } from "./use-table-modal";
 import { TableEditingModalAction } from "./use-table-modal";
+
+type ForeignKeyError = {
+  index: number;
+  error: string;
+  type: "metabase.actions.error/violate-foreign-key-constraint";
+  message: string;
+  errors: Record<string, unknown>;
+  "status-code": number;
+  children: Record<string, number>;
+};
 
 interface EditingBaseRowModalProps {
   datasetColumns: DatasetColumn[];
@@ -42,6 +53,10 @@ interface EditingBaseRowModalProps {
   onEdit: (data: UpdatedRowHandlerParams) => Promise<boolean>;
   onRowCreate: (data: Record<string, RowValue>) => Promise<boolean>;
   onRowDelete: (rowIndex: number) => Promise<boolean>;
+  onRowDeleteWithErrorHandling?: (
+    rowIndex: number,
+    deleteChildren?: boolean,
+  ) => Promise<{ success: boolean; error: any }>;
   currentRowData?: RowValues;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   hasDeleteAction: boolean;
@@ -58,6 +73,7 @@ export function EditingBaseRowModal({
   onEdit,
   onRowCreate,
   onRowDelete,
+  onRowDeleteWithErrorHandling,
   currentRowData,
   fieldMetadataMap,
   hasDeleteAction,
@@ -70,6 +86,14 @@ export function EditingBaseRowModal({
     isDeleteRequested,
     { open: requestDeletion, close: closeDeletionModal },
   ] = useDisclosure();
+
+  const [
+    isCascadeDeleteRequested,
+    { open: requestCascadeDelete, close: cancelCascadeDelete },
+  ] = useDisclosure(false);
+
+  const [foreignKeyError, setForeignKeyError] =
+    useState<ForeignKeyError | null>(null);
 
   const validateForm = useCallback(
     (values: EditingFormValues) => {
@@ -134,13 +158,75 @@ export function EditingBaseRowModal({
   );
 
   const handleDeleteConfirmation = useCallback(async () => {
-    if (modalState.rowIndex !== undefined) {
-      closeDeletionModal();
-      onClose();
-
-      await onRowDelete(modalState.rowIndex);
+    if (modalState.rowIndex === undefined) {
+      return;
     }
-  }, [closeDeletionModal, onRowDelete, modalState.rowIndex, onClose]);
+
+    closeDeletionModal();
+
+    // If we have error handling available, use it to catch foreign key violations
+    if (onRowDeleteWithErrorHandling) {
+      const result = await onRowDeleteWithErrorHandling(modalState.rowIndex);
+
+      // Check if this is a foreign key constraint violation
+      if (
+        !result.success &&
+        result.error?.data?.errors?.[0]?.type ===
+          "metabase.actions.error/violate-foreign-key-constraint"
+      ) {
+        const fkError = result.error.data.errors[0] as ForeignKeyError;
+        setForeignKeyError(fkError);
+        requestCascadeDelete();
+        return;
+      }
+
+      if (result.success) {
+        onClose();
+      }
+    } else {
+      // Fallback to regular deletion
+      const success = await onRowDelete(modalState.rowIndex);
+      if (success) {
+        onClose();
+      }
+    }
+  }, [
+    closeDeletionModal,
+    onRowDelete,
+    onRowDeleteWithErrorHandling,
+    modalState.rowIndex,
+    onClose,
+    requestCascadeDelete,
+  ]);
+
+  const handleCascadeDeleteConfirmation = useCallback(async () => {
+    if (modalState.rowIndex === undefined || !onRowDeleteWithErrorHandling) {
+      cancelCascadeDelete();
+      return;
+    }
+
+    const result = await onRowDeleteWithErrorHandling(
+      modalState.rowIndex,
+      true,
+    );
+
+    if (result.success) {
+      setForeignKeyError(null);
+      onClose();
+    }
+
+    cancelCascadeDelete();
+  }, [
+    cancelCascadeDelete,
+    onRowDeleteWithErrorHandling,
+    modalState.rowIndex,
+    onClose,
+  ]);
+
+  const handleCancelCascadeDelete = useCallback(() => {
+    setForeignKeyError(null);
+    cancelCascadeDelete();
+  }, [cancelCascadeDelete]);
 
   // Columns might be reordered to match the order in `columnsConfig`
   const orderedVisibleDatasetColumns =
@@ -167,6 +253,19 @@ export function EditingBaseRowModal({
       <DeleteRowConfirmationModal
         onCancel={closeDeletionModal}
         onConfirm={handleDeleteConfirmation}
+      />
+    );
+  }
+
+  if (isCascadeDeleteRequested && foreignKeyError) {
+    return (
+      <CascadeDeleteConfirmationModal
+        opened={true}
+        rowCount={1}
+        foreignKeyError={foreignKeyError}
+        isLoading={isLoading}
+        onConfirm={handleCascadeDeleteConfirmation}
+        onClose={handleCancelCascadeDelete}
       />
     );
   }

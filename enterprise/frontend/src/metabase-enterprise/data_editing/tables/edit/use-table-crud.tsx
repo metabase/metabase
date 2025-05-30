@@ -236,7 +236,7 @@ export const useTableCRUD = ({
   );
 
   const handleRowDeleteBulk = useCallback(
-    async (rowIndices: number[]) => {
+    async (rowIndices: number[], deleteChildren?: boolean) => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -258,6 +258,7 @@ export const useTableCRUD = ({
       const response = await deleteTableRows({
         rows,
         scope,
+        deleteChildren,
       });
 
       if (response.data?.outputs) {
@@ -285,11 +286,70 @@ export const useTableCRUD = ({
     ],
   );
 
+  // Helper function for cascade delete that doesn't show generic errors for FK violations
+  const handleRowDeleteBulkSilent = useCallback(
+    async (rowIndices: number[], deleteChildren?: boolean) => {
+      if (!datasetData) {
+        console.warn(
+          "Failed to update table data - no data is loaded for a table",
+        );
+        return { success: false, error: null };
+      }
+
+      const columns = datasetData.cols;
+      const rows = rowIndices.map((rowIndex) => {
+        const rowData = datasetData.rows[rowIndex];
+
+        const pkColumnIndex = columns.findIndex(isPK);
+        const pkColumn = columns[pkColumnIndex];
+        const rowPkValue = rowData[pkColumnIndex];
+
+        return { [pkColumn.name]: rowPkValue };
+      });
+
+      try {
+        const response = await deleteTableRows({
+          rows,
+          scope,
+          deleteChildren,
+        });
+
+        if (response.data?.outputs) {
+          stateUpdateStrategy.onRowsDeleted(rows);
+          dispatch(
+            addUndo({
+              message: t`${rows.length} rows successfully deleted`,
+            }),
+          );
+          return { success: true, error: null };
+        }
+
+        if (response.error) {
+          return { success: false, error: response.error };
+        }
+
+        return { success: false, error: null };
+      } catch (error) {
+        return { success: false, error };
+      }
+    },
+    [datasetData, deleteTableRows, scope, stateUpdateStrategy, dispatch],
+  );
+
+  const handleRowDeleteBulkWithErrorHandling = handleRowDeleteBulkSilent;
+
   const handleRowDelete = useCallback(
     async (rowIndex: number) => {
       return handleRowDeleteBulk([rowIndex]);
     },
     [handleRowDeleteBulk],
+  );
+
+  const handleRowDeleteWithErrorHandling = useCallback(
+    async (rowIndex: number, deleteChildren?: boolean) => {
+      return handleRowDeleteBulkWithErrorHandling([rowIndex], deleteChildren);
+    },
+    [handleRowDeleteBulkWithErrorHandling],
   );
 
   return {
@@ -305,5 +365,7 @@ export const useTableCRUD = ({
     handleRowUpdateBulk,
     handleRowDelete,
     handleRowDeleteBulk,
+    handleRowDeleteBulkWithErrorHandling,
+    handleRowDeleteWithErrorHandling,
   };
 };
