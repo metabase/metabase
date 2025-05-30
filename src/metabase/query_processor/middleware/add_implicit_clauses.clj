@@ -46,7 +46,7 @@
   [source-metadata]
   (let [metadata-provider (qp.store/metadata-provider)]
     (every? (fn [{field-id :id, field-name :name}]
-              (and (some? field-id) (= field-name (:name (lib.metadata/field metadata-provider)))))
+              (and (some? field-id) (= field-name (:name (lib.metadata/field metadata-provider field-id)))))
             source-metadata)))
 
 (mu/defn source-metadata->fields :- mbql.s/Fields
