@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useUnmount } from "react-use";
 
-import type { UserBackendJwtResponse } from "embedding-sdk/types/refresh-token";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import type {
@@ -13,15 +13,15 @@ import type {
  * Requests a refresh token from the embed.js script
  * that lives in the parent window.
  */
-export function useRequestRefreshTokenFromEmbedJs(): {
-  requestRefreshToken: () => Promise<UserBackendJwtResponse>;
+export function useRequestSessionTokenFromEmbedJs(): {
+  requestSessionToken: () => Promise<MetabaseEmbeddingSessionToken>;
 } {
   const handlerRef = useRef<
     ((event: MessageEvent<SdkIframeEmbedMessage>) => void) | null
   >(null);
 
-  const requestRefreshToken = useCallback(() => {
-    return new Promise<UserBackendJwtResponse>((resolve) => {
+  const requestSessionToken = useCallback(() => {
+    return new Promise<MetabaseEmbeddingSessionToken>((resolve) => {
       if (handlerRef.current) {
         window.removeEventListener("message", handlerRef.current);
       }
@@ -33,16 +33,16 @@ export function useRequestRefreshTokenFromEmbedJs(): {
 
         const action = event.data;
 
-        if (action.type === "metabase.embed.submitRequestToken") {
+        if (action.type === "metabase.embed.submitSessionToken") {
           window.removeEventListener("message", handlerRef.current!);
-          resolve(action.data.refreshToken);
+          resolve(action.data.sessionToken);
         }
       };
 
       window.addEventListener("message", handlerRef.current!);
 
       const requestTokenMessage: SdkIframeEmbedTagMessage = {
-        type: "metabase.embed.requestRefreshToken",
+        type: "metabase.embed.requestSessionToken",
       };
 
       window.parent.postMessage(requestTokenMessage, "*");
@@ -53,5 +53,5 @@ export function useRequestRefreshTokenFromEmbedJs(): {
     window.removeEventListener("message", handlerRef.current!);
   });
 
-  return { requestRefreshToken };
+  return { requestSessionToken };
 }
