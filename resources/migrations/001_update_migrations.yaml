@@ -11780,25 +11780,6 @@ databaseChangeLog:
                   , now()
               );
 
-  - changeSet:
-      id: v55.2025-05-19T16:49:49
-      author: edpaget
-      comment: Add foreign key constraint on metabot_entity.metabot_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_metabot_entity_metabot_id
-                foreignKeyTableName: metabot_entity
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabot_entity
-            baseColumnNames: metabot_id
-            referencedTableName: metabot
-            referencedColumnNames: id
-            constraintName: fk_metabot_entity_metabot_id
-            onDelete: CASCADE
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
