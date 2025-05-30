@@ -162,9 +162,10 @@ const getRefreshToken = async ({
       customGetRequestToken,
     );
   }
-  throw new Error(
-    `Unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson, null, 2)}`,
-  );
+  throw MetabaseError.MISSING_AUTH_METHOD({
+    method,
+    response: urlResponseJson,
+  });
 };
 
 export function getSdkRequestHeaders(hash?: string): Record<string, string> {
