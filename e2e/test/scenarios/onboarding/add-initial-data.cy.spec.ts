@@ -187,6 +187,48 @@ describe("Add data modal", () => {
       cy.findByRole("link", { name: "Manage databases" }).should("not.exist");
     });
   });
+
+  it("should not offer to add data when in full app embedding", () => {
+    cy.signInAsNormalUser();
+    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
+
+    H.navigationSidebar().within(() => {
+      cy.findByText("Home").should("be.visible");
+      cy.log("Make sure we don't display the 'Getting Started' section");
+      cy.findByText(/Getting Started/i).should("not.exist");
+      cy.findByText("Add data").should("not.exist");
+
+      cy.log(
+        "Make sure we don't display the 'Add' button in the 'Data' section",
+      );
+      cy.findByText(/^Data$/i).should("be.visible");
+      cy.findByText("Add").should("not.exist");
+
+      cy.log("Both buttons have the same label, and neither should exist");
+      cy.findByLabelText("Add data").should("not.exist");
+    });
+  });
+
+  it("should offer to add data to Enterprise/Pro instances", () => {
+    cy.signInAsAdmin();
+    // It's hard to turn on/off individual token features. That's why I covered more granular scenarios with unit tests.
+    // ALL token features here mean both the `whitelabel` and `attached_dwh`.
+    // The "Getting Started" section will not render because we have the `attached_dwh` in here.
+    H.setTokenFeatures("all");
+    cy.visit("/");
+
+    H.navigationSidebar().within(() => {
+      cy.findByText("Home").should("be.visible");
+      cy.findByText(/Getting Started/i).should("not.exist");
+
+      cy.log("Adding data from the 'Data' section should work");
+      cy.findByRole("tab", { name: /^Data/i })
+        .findByLabelText("Add data")
+        .click();
+    });
+
+    addDataModal().should("be.visible");
+  });
 });
 
 const addDataModal = () => cy.findByRole("dialog", { name: "Add data" });
