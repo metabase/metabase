@@ -1,5 +1,10 @@
-import * as Yup from "yup";
-
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  samlTokenStorage,
+  validateSessionToken,
+} from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
@@ -17,10 +22,6 @@ import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
-
-import { jwtDefaultRefreshTokenFunction } from "./jwt";
-import { openSamlLoginPopup } from "./saml";
-import { samlTokenStorage } from "./saml-token-storage";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
@@ -103,33 +104,8 @@ export const refreshTokenAsync = createAsyncThunk(
       getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
 
     const session = await getRefreshToken(url, customGetRefreshToken);
+    validateSessionToken(session);
 
-    if (!session || typeof session !== "object") {
-      throw MetabaseError.INVALID_SESSION_OBJECT({
-        expected: "{ jwt: string }",
-        actual: JSON.stringify(session, null, 2),
-      });
-    }
-    if ("status" in session && session.status !== "ok") {
-      if ("message" in session && typeof session.message === "string") {
-        throw MetabaseError.INVALID_SESSION_OBJECT({
-          expected: "{ jwt: string }",
-          actual: session.message,
-        });
-      }
-      if (typeof session.status === "string") {
-        throw MetabaseError.INVALID_SESSION_OBJECT({
-          expected: "{ jwt: string }",
-          actual: session.status,
-        });
-      }
-    }
-    if (!sessionSchema.isValidSync(session)) {
-      throw MetabaseError.INVALID_SESSION_SCHEMA({
-        expected: "{ id: string, exp: number, iat: number, status: string }",
-        actual: JSON.stringify(session, null, 2),
-      });
-    }
     return session;
   },
 );
@@ -140,7 +116,10 @@ const getRefreshToken = async (
     | MetabaseAuthConfig["fetchRequestToken"]
     | null = null,
 ) => {
-  const urlResponseJson = await connectToInstanceAuthSso(url);
+  const urlResponseJson = await connectToInstanceAuthSso(
+    url,
+    getSdkRequestHeaders(),
+  );
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
     return await openSamlLoginPopup(responseUrl);
@@ -149,7 +128,7 @@ const getRefreshToken = async (
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       url,
-      hash,
+      getSdkRequestHeaders(hash),
       customFetchRequestToken,
     );
   }
@@ -158,44 +137,13 @@ const getRefreshToken = async (
   );
 };
 
-const sessionSchema = Yup.object({
-  id: Yup.string().required(),
-  exp: Yup.number().required(),
-  // We should also receive `iat` and `status` in the response, but we don't actually need them
-  // as we don't use them, so we don't throw an error if they are missing
-});
-
-async function connectToInstanceAuthSso(url: string) {
-  try {
-    const urlResponse = await fetch(`${url}/auth/sso`, getSdkRequestHeaders());
-    if (!urlResponse.ok) {
-      throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
-        instanceUrl: url,
-        status: urlResponse.status,
-      });
-    }
-    return await urlResponse.json();
-  } catch (e) {
-    // If the error is already a MetabaseError, just rethrow
-    if (e instanceof MetabaseError.MetabaseError) {
-      throw e;
-    }
-    throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
-      instanceUrl: url,
-      status: (e as any)?.status,
-    });
-  }
-}
-
-export function getSdkRequestHeaders(hash?: string) {
+export function getSdkRequestHeaders(hash?: string): Record<string, string> {
   return {
-    headers: {
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client": "embedding-sdk-react",
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
-    },
+    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    "X-Metabase-Client": "embedding-sdk-react",
+    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
+    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
 }
