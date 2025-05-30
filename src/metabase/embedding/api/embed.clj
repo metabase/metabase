@@ -370,4 +370,3 @@
   (if locale
     {:data (ct/get-translations locale)}
     api/generic-204-no-content))
-
