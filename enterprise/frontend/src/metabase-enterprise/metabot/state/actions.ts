@@ -1,24 +1,30 @@
-import { isMatching } from "ts-pattern";
+import type { UnknownAction } from "@reduxjs/toolkit";
+import { push } from "react-router-redux";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import {
-  EnterpriseApi,
-  METABOT_TAG,
-  metabotAgent,
-  metabotApi,
-} from "metabase-enterprise/api";
-import type { MetabotChatContext, MetabotReaction } from "metabase-types/api";
+  type JSONValue,
+  aiStreamingQuery,
+  getInflightRequestsForUrl,
+} from "metabase-enterprise/api/ai-streaming";
+import type {
+  MetabotAgentRequest,
+  MetabotChatContext,
+} from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { getErrorMessage } from "../constants";
-import { notifyUnknownReaction, reactionHandlers } from "../reactions";
+import { getAgentOfflineError } from "../constants";
 
 import { metabot } from "./reducer";
-import { getIsProcessing, getMetabotConversationId } from "./selectors";
-
-const isAbortError = isMatching({ name: "AbortError" });
+import {
+  getHistory,
+  getIsProcessing,
+  getMetabotConversationId,
+  getMetabotState,
+} from "./selectors";
 
 export const {
   addAgentMessage,
@@ -26,11 +32,13 @@ export const {
   clearMessages,
   resetConversationId,
   setIsProcessing,
+  toolCallStart,
+  toolCallEnd,
 } = metabot.actions;
 
 export const setVisible =
   (isVisible: boolean) => (dispatch: Dispatch, getState: any) => {
-    const currentUser = getCurrentUser(getState());
+    const currentUser = getUser(getState());
     if (!currentUser) {
       console.error(
         "Metabot can not be opened while there is no signed in user",
@@ -47,36 +55,28 @@ export const submitInput = createAsyncThunk(
     data: {
       message: string;
       context: MetabotChatContext;
-      history: any[];
-      state: any;
       metabot_id?: string;
     },
-    { dispatch, getState, signal },
+    { dispatch, getState },
   ) => {
-    const isProcessing = getIsProcessing(getState() as any);
+    const state = getState() as any;
+    const isProcessing = getIsProcessing(state);
     if (isProcessing) {
       return console.error("Metabot is actively serving a request");
     }
 
+    const history = getHistory(state);
+    const metabotState = getMetabotState(state);
+
     dispatch(addUserMessage(data.message));
-    const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
-    signal.addEventListener("abort", () => {
-      sendMessageRequestPromise.abort();
-    });
-    return sendMessageRequestPromise;
+    dispatch(sendMessageRequest({ ...data, state: metabotState, history }));
   },
 );
 
 export const sendMessageRequest = createAsyncThunk(
   "metabase-enterprise/metabot/sendMessageRequest",
   async (
-    data: {
-      message: string;
-      context: MetabotChatContext;
-      history: any[];
-      state: any;
-      metabot_id?: string;
-    },
+    req: Omit<MetabotAgentRequest, "conversation_id">,
     { dispatch, getState },
   ) => {
     // TODO: make enterprise store
@@ -91,102 +91,68 @@ export const sendMessageRequest = createAsyncThunk(
       sessionId = getMetabotConversationId(getState() as any) as string;
     }
 
-    const metabotRequestPromise = dispatch(
-      metabotAgent.initiate(
-        { ...data, conversation_id: sessionId },
-        { fixedCacheKey: METABOT_TAG },
-      ),
-    );
+    try {
+      const body = { ...req, conversation_id: sessionId };
+      const state = { ...body.state };
 
-    const result = await metabotRequestPromise;
+      const response = await aiStreamingQuery(
+        {
+          url: "/api/ee/metabot-v3/v2/agent-streaming",
+          // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
+          // is upsetting the types, casting for now
+          body: body as JSONValue,
+        },
+        {
+          onDataPart: (part) => {
+            match(part)
+              .with({ type: "state" }, (part) =>
+                Object.assign(state, part.value),
+              )
+              .with({ type: "navigate_to" }, (part) => {
+                dispatch(push(part.value) as UnknownAction);
+              })
+              .exhaustive();
+          },
+          onTextPart: (part) => {
+            dispatch(addAgentMessage({ type: "reply", message: String(part) }));
+          },
+          onToolCallPart: (part) => dispatch(toolCallStart(part)),
+          onToolResultPart: (part) => dispatch(toolCallEnd(part.toolCallId)),
+        },
+      );
 
-    if (result.error) {
-      const didUserAbort = isAbortError(result.error);
-      if (didUserAbort) {
-        dispatch(stopProcessing());
-      } else {
-        console.error("Metabot request returned error: ", result.error);
-        const message =
-          (result.error as any).status >= 500 ? getErrorMessage() : undefined;
-        dispatch(stopProcessingAndNotify(message));
+      return {
+        data: {
+          conversation_id: body.conversation_id,
+          history: [...getHistory(getState() as any), ...response.history],
+          state,
+        },
+        error: undefined,
+      } as const;
+    } catch (error) {
+      console.error("Metabot request error: ", error);
+
+      const notification = match(error)
+        .with({ name: "AbortError" }, () => false as const)
+        .with({ status: P.number.gte(500) }, getAgentOfflineError)
+        .otherwise(() => t`I can’t do that, unfortunately.`);
+
+      if (notification !== false) {
+        dispatch(addAgentMessage({ type: "error", message: notification }));
       }
+
+      return { data: undefined, error };
     }
-
-    const reactions = result.data?.reactions || [];
-    await dispatch(processMetabotReactions(reactions));
-    return result;
-  },
-);
-
-export const cancelInflightAgentRequests = createAsyncThunk(
-  "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (_args, { dispatch }) => {
-    const requests = dispatch(EnterpriseApi.util.getRunningMutationsThunk());
-    const agentRequests = requests.filter(
-      (req) => req.arg.endpointName === metabotApi.endpoints.metabotAgent.name,
-    );
-    agentRequests.forEach((req) => req.abort());
   },
 );
 
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
   (_args, { dispatch }) => {
-    dispatch(cancelInflightAgentRequests());
-    // clear previous agent request state so history value is empty for future requests
-    dispatch(
-      EnterpriseApi.internalActions.removeMutationResult({
-        fixedCacheKey: METABOT_TAG,
-      }),
+    getInflightRequestsForUrl("/api/ee/metabot-v3/v2/agent-streaming").forEach(
+      (req) => req.abortController.abort("User manaully cancelled the request"),
     );
-
     dispatch(clearMessages());
     dispatch(resetConversationId());
   },
 );
-
-export const processMetabotReactions = createAsyncThunk(
-  "metabase-enterprise/metabot/processMetabotReactions",
-  async (reactions: MetabotReaction[], { dispatch, getState }) => {
-    dispatch(setIsProcessing(true));
-
-    for (const reaction of reactions) {
-      try {
-        const reactionHandler =
-          reactionHandlers[reaction.type] ?? notifyUnknownReaction;
-        // TS isn't smart enough to know the reaction matches the handler
-        await reactionHandler(reaction as any)({ dispatch, getState });
-      } catch (error: any) {
-        console.error("Halting processing of reactions.", error);
-        dispatch(stopProcessingAndNotify());
-        break;
-      }
-
-      // TODO: make an EnterpriseStore
-      const isProcessing = getIsProcessing(getState() as any);
-      if (!isProcessing) {
-        console.warn(
-          "A handler has stopped further procesing of metabot reactions",
-        );
-        break;
-      }
-    }
-
-    dispatch(setIsProcessing(false));
-  },
-);
-
-export const stopProcessing = () => (dispatch: Dispatch) => {
-  dispatch(setIsProcessing(false));
-};
-
-export const stopProcessingAndNotify =
-  (message?: string) => (dispatch: Dispatch) => {
-    dispatch(stopProcessing());
-    dispatch(
-      addAgentMessage({
-        type: "error",
-        message: message || t`I can’t do that, unfortunately.`,
-      }),
-    );
-  };
