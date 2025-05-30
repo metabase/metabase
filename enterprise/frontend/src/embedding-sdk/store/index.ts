@@ -15,9 +15,9 @@ import {
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase-types/store/embedding-data-picker";
 
 import { sdk } from "./reducer";
 import type { SdkStoreState } from "./types";

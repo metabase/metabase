@@ -2,11 +2,15 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import {
-  DEFAULT_EMBEDDING_ENTITY_TYPES,
-  type EmbeddingDataPickerState,
-  type EmbeddingEntityType,
+import type {
+  EmbeddingDataPickerState,
+  EmbeddingEntityType,
 } from "metabase-types/store/embedding-data-picker";
+
+export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
+  "model",
+  "table",
+];
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
   entityTypes: DEFAULT_EMBEDDING_ENTITY_TYPES,

@@ -2,11 +2,6 @@ export interface EmbeddingDataPickerState {
   entityTypes: EmbeddingEntityType[];
 }
 
-export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
-  "model",
-  "table",
-];
-
 /**
  * `question` only works on multi-stage data picker, not the simple data picker.
  * The reason being that we want to streamline user experience for simple embedding

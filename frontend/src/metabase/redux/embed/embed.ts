@@ -6,13 +6,12 @@ import {
 import { compose, pick } from "underscore";
 
 import { parseSearchOptions } from "metabase/lib/browser";
-import type { InteractiveEmbeddingOptions } from "metabase-types/store";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
-  type EmbeddingDataPicker,
-} from "metabase-types/store/embedding-data-picker";
-
-import { setEntityTypes } from "../embedding-data-picker";
+  setEntityTypes,
+} from "metabase/redux/embedding-data-picker";
+import type { InteractiveEmbeddingOptions } from "metabase-types/store";
+import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
 export const createSlice = buildCreateSlice({
   creators: { asyncThunk: asyncThunkCreator },

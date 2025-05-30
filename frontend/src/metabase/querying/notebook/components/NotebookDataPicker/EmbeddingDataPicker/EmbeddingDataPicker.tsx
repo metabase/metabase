@@ -1,16 +1,14 @@
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getEmbedOptions } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, TableId } from "metabase-types/api";
-import {
-  DEFAULT_EMBEDDING_ENTITY_TYPES,
-  type EmbeddingEntityType,
-} from "metabase-types/store/embedding-data-picker";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 
