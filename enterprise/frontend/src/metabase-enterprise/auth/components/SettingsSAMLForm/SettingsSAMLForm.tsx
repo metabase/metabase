@@ -15,6 +15,7 @@ import {
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { CopyTextInput } from "metabase/components/CopyTextInput";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Markdown from "metabase/core/components/Markdown";
 import CS from "metabase/css/core/index.css";
@@ -31,7 +32,7 @@ import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
 import type { EnterpriseSettings } from "metabase-types/api";
 
-type SAMLFormSettings = Pick<
+export type SAMLFormSettings = Pick<
   EnterpriseSettings,
   | "saml-user-provisioning-enabled?"
   | "saml-attribute-email"
@@ -53,8 +54,10 @@ const SAML_FORM_SCHEMA = Yup.object({
 });
 
 export function SettingsSAMLForm() {
-  const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const { data: settingValues } = useGetSettingsQuery();
+  const { data: settingDetails, isLoading: isLoadingDetails } =
+    useGetAdminSettingsDetailsQuery();
+  const { data: settingValues, isLoading: isLoadingValues } =
+    useGetSettingsQuery();
   const [updateSamlSettings] = useUpdateSamlMutation();
 
   const isEnabled = Boolean(settingValues?.["saml-enabled"]);
@@ -72,6 +75,17 @@ export function SettingsSAMLForm() {
   );
 
   const siteUrl = useSetting("site-url");
+
+  if (isLoadingDetails || isLoadingValues) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (!settingDetails || !settingValues) {
+    return (
+      <LoadingAndErrorWrapper error={t`Error loading SAML configuration`} />
+    );
+  }
+
   return (
     <Box maw="40rem">
       <FormProvider
