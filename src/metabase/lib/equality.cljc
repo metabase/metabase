@@ -121,6 +121,10 @@
      (catch #?(:clj Throwable :cljs :default) _
        nil))))
 
+(mu/defn- column-join-alias :- [:maybe :string]
+  [column :- ::lib.schema.metadata/column]
+  ((some-fn :metabase.lib.join/join-alias :source-alias) column))
+
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name
                       source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
@@ -134,8 +138,8 @@
     ;; an own column.
     ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the source
     ; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-    (clojure.core/= join-alias (if (and (not (:join-alias opts))
-                                        (#{:source/fields :source/card} (:lib/source col)))
+    (clojure.core/= join-alias (if (and (not join-alias)
+                                        (#{:source/fields :source/card} (:lib/source column)))
                                  (:metabase.lib.join/join-alias column)
                                  ((some-fn :metabase.lib.join/join-alias :source-alias) column)))))
 
@@ -154,8 +158,8 @@
    columns                           :- [:sequential ::lib.schema.metadata/column]
    generous?                         :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
-                               (matching-join? a-ref %)))
-                 columns)
+                               (matching-join? a-ref %))
+                         columns))
       (when generous?
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
       []))
