@@ -1434,7 +1434,7 @@
     (remove (fn [[agg-type field-id]]
               (when (and (= agg-type :field)
                          (integer? field-id))
-                (let [{:keys [parent-id] :as field} (lib.metadata/field (qp.store/metadata-provider) field-id)]
+                (let [{:keys [parent-id]} (lib.metadata/field (qp.store/metadata-provider) field-id)]
                   (and parent-id (contains? field-ids parent-id)))))
             fields)))
 

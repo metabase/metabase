@@ -61,7 +61,7 @@
                  {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
                (mt/rows
                 (mt/run-mbql-query tips
-                  {:fields   [$tips.id $tips.text $tips.url $tips.venue]
+                  {:fields   [$tips.id $tips.source $tips.text $tips.url $tips.venue]
                    :filter   [:and
                               [:= $tips.source.service "twitter"]
                               [:= $tips.source.username "kyle"]]
