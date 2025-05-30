@@ -241,7 +241,8 @@
                                    ;; As of now, `resolve-joins` prefers id-based refs in all cases, including cards.
                                    ;; We need to support matching with name-based refs.
                                    (if (integer? id-or-name)
-                                     (= field-name (:name (field-instance a-ref)))
+                                     (let [field (field-instance a-ref)]
+                                       (and (= field-name (:name field)) (:active field)))
                                      (= field-name id-or-name)))
                                  field-exports)]
              (when (= (count matches) 1)
