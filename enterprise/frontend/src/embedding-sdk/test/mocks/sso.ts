@@ -67,13 +67,16 @@ export const setupMockSamlEndpoints = ({
   failureError = MOCK_FAILURE_ERROR,
   isPreferredAuthMethod = false,
 }: SamlMockConfig = {}) => {
-  const ssoInitMock = fetchMock.get(
-    `${instanceUrl}/auth/sso${isPreferredAuthMethod ? "?preferred_method=saml" : ""}`,
-    {
-      url: providerUri,
-      method: "saml",
-    },
-  );
+  const ssoUrl = new URL("/auth/sso", instanceUrl);
+
+  if (isPreferredAuthMethod) {
+    ssoUrl.searchParams.set("preferred_method", "saml");
+  }
+
+  const ssoInitMock = fetchMock.get(ssoUrl.toString(), {
+    url: providerUri,
+    method: "saml",
+  });
 
   const samlCallbackMock = fetchMock.post(`${instanceUrl}/auth/sso`, {
     body: {
@@ -166,13 +169,16 @@ export const setupMockJwtEndpoints = ({
   failureError = MOCK_FAILURE_ERROR,
   isPreferredAuthMethod = false,
 }: JwtMockConfig = {}) => {
-  const ssoInitMock = fetchMock.get(
-    `${instanceUrl}/auth/sso${isPreferredAuthMethod ? "?preferred_method=jwt" : ""}`,
-    {
-      url: providerUri,
-      method: "jwt",
-    },
-  );
+  const ssoUrl = new URL("/auth/sso", instanceUrl);
+
+  if (isPreferredAuthMethod) {
+    ssoUrl.searchParams.set("preferred_method", "jwt");
+  }
+
+  const ssoInitMock = fetchMock.get(ssoUrl.toString(), {
+    url: providerUri,
+    method: "jwt",
+  });
 
   const jwtProviderMock = fetchMock.get(
     (url) => url.startsWith(providerUri),
