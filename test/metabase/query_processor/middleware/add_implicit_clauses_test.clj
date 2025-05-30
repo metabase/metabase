@@ -159,7 +159,7 @@
            (mt/mbql-query checkins
              {:aggregation [[:count]]
               :breakout    [!month.$date]}))]
-      (is (=? {:fields [[:field (mt/id :checkins :date) nil]
+      (is (=? {:fields [[:field "DATE" {:base-type :type/Date}]
                         [:field "count" {:base-type :type/BigInteger}]]}
               (add-implicit-fields
                (:query (lib.tu.macros/mbql-query checkins
@@ -242,7 +242,7 @@
                              :filter          [:> *sum/Float 100]
                              :source-metadata (expected-cols q2)})]
         (is (=? (lib.tu.macros/$ids orders
-                  [$product-id->products.title
+                  [*TITLE/Text
                    *sum/Float])
                 (-> (qp.add-implicit-clauses/add-implicit-clauses query)
                     :query
