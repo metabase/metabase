@@ -12,6 +12,26 @@ type ForeignKeyError = {
   children: Record<string, number>;
 };
 
+// Utility function to aggregate multiple foreign key errors into one
+function aggregateForeignKeyErrors(errors: ForeignKeyError[]) {
+  const aggregatedChildren: Record<string, number> = {};
+
+  // Aggregate children counts from all errors
+  for (const error of errors) {
+    for (const [tableId, count] of Object.entries(error.children || {})) {
+      aggregatedChildren[tableId] = (aggregatedChildren[tableId] || 0) + count;
+    }
+  }
+
+  return {
+    type: "metabase.actions.error/violate-foreign-key-constraint" as const,
+    message:
+      errors[0]?.message ||
+      "Other tables rely on these rows so they cannot be deleted.",
+    children: aggregatedChildren,
+  };
+}
+
 type UseTableBulkDeleteConfirmationProps = {
   selectedRowIndices: number[];
   setRowSelection: (state: RowSelectionState) => void;
@@ -38,8 +58,9 @@ export function useTableBulkDeleteConfirmation({
     { open: requestCascadeDelete, close: cancelCascadeDelete },
   ] = useDisclosure(false);
 
-  const [foreignKeyError, setForeignKeyError] =
-    useState<ForeignKeyError | null>(null);
+  const [foreignKeyError, setForeignKeyError] = useState<ReturnType<
+    typeof aggregateForeignKeyErrors
+  > | null>(null);
 
   const handleDeleteBulkConfirmation = useCallback(async () => {
     let success: boolean;
@@ -51,16 +72,21 @@ export function useTableBulkDeleteConfirmation({
       success = result.success;
 
       // Check if this is a foreign key constraint violation
-      if (
-        !success &&
-        result.error?.data?.errors?.[0]?.type ===
-          "metabase.actions.error/violate-foreign-key-constraint"
-      ) {
-        const fkError = result.error.data.errors[0] as ForeignKeyError;
-        setForeignKeyError(fkError);
-        cancelDeleteBulk();
-        requestCascadeDelete();
-        return;
+      if (!success && result.error?.data?.errors?.length > 0) {
+        // Filter for foreign key constraint errors
+        const fkErrors = result.error.data.errors.filter(
+          (error: any) =>
+            error.type ===
+            "metabase.actions.error/violate-foreign-key-constraint",
+        ) as ForeignKeyError[];
+
+        if (fkErrors.length > 0) {
+          const aggregatedError = aggregateForeignKeyErrors(fkErrors);
+          setForeignKeyError(aggregatedError);
+          cancelDeleteBulk();
+          requestCascadeDelete();
+          return;
+        }
       }
     } else {
       success = await handleRowDeleteBulk(selectedRowIndices);

@@ -4,12 +4,8 @@ import { useGetTableQuery } from "metabase/api";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
 type ForeignKeyError = {
-  index: number;
-  error: string;
   type: "metabase.actions.error/violate-foreign-key-constraint";
   message: string;
-  errors: Record<string, unknown>;
-  "status-code": number;
   children: Record<string, number>; // table id to row count mapping
 };
 
