@@ -195,6 +195,7 @@
     "@types/dc": "0.0.29",
     "@types/diff": "^3.5.4",
     "@types/eslint": "7.29.0",
+    "@types/geojson": "^7946.0.16",
     "@types/glob": "^7.1.4",
     "@types/hast": "^3.0.2",
     "@types/history": "3.2.5",
