@@ -390,7 +390,7 @@
 
 (def date-groupings
   "Set of time groupings that should be coerced to dates"
-  #{:day :week :month :quarter :year})
+  #{"day" "week" "month" "quarter" "year"})
 
 (defmethod time-grouping->replacement-snippet-info :sql
   [driver column {:keys [value]}]
