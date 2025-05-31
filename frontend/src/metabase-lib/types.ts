@@ -664,3 +664,7 @@ export type FieldItem = {
 };
 
 export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
+
+export type ContentTranslationFunction = <T extends string | null | undefined>(
+  msgid: T,
+) => string | T;

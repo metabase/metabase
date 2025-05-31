@@ -17,6 +17,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.content-translation.models :as ct]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embedding.jwt]
@@ -352,3 +353,20 @@
         lat-field    (json/decode+kw lat-field)
         lon-field    (json/decode+kw lon-field)]
     (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))
+
+;;; ------------------------------------------- Content translation --------------------------------------------
+
+(api.macros/defendpoint :get "/content-translation/dictionary/:token"
+  "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   {:keys [locale]}]
+  ;; this will error if bad
+  (unsign-and-translate-ids token)
+  (if locale
+    {:data (ct/get-translations locale)}
+    api/generic-204-no-content))

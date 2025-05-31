@@ -1,9 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import type { JSX } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { RowValue } from "metabase-types/api";
+import type {
+  DictionaryResponse,
+  RowValue,
+  TokenFeatures,
+} from "metabase-types/api";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { PRODUCT_CATEGORY_VALUES } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { ListField } from "./ListField";
 import type { Option } from "./types";
@@ -15,17 +27,43 @@ type SetupOpts = {
   placeholder?: string;
   checkedColor?: string;
   isDashboardFilter?: boolean;
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
+  locale?: string;
+  contentTranslationDictionary?: DictionaryResponse["data"];
 };
 
 function setup({
   value = [],
   options = [],
-  optionRenderer = ([value]) => value,
+  optionRenderer = ([value]) => <>{value}</>,
   placeholder = "Search the list",
   checkedColor,
   isDashboardFilter,
+  hasEnterprisePlugins = false,
+  tokenFeatures = {},
+  locale = "en",
+  contentTranslationDictionary,
 }: SetupOpts) {
   const onChange = jest.fn();
+
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+    currentUser: createMockUser({ locale }),
+  });
+
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+
+    if (!contentTranslationDictionary) {
+      throw new Error("contentTranslationDictionary is required");
+    }
+    setupContentTranslationEndpoints({
+      dictionary: contentTranslationDictionary,
+    });
+  }
 
   renderWithProviders(
     <ListField
@@ -37,6 +75,7 @@ function setup({
       isDashboardFilter={isDashboardFilter}
       onChange={onChange}
     />,
+    { storeInitialState: state },
   );
 
   return { onChange };

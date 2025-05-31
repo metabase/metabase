@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { PLUGIN_API } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -344,19 +344,29 @@ export const GeoJSONApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
+  const encodedUuid = encodeURIComponent(uuid);
+  setCardEndpoints(`/api/public/card/${encodedUuid}`);
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  setDashboardEndpoints(`/api/public/dashboard/${encodeURIComponent(uuid)}`);
+  const encodedUuid = encodeURIComponent(uuid);
+  setDashboardEndpoints(`/api/public/dashboard/${encodedUuid}`);
 }
 
 export function setEmbedQuestionEndpoints(token) {
-  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setCardEndpoints(`${embedBase}/card/${encodedToken}`);
+  setContentTranslationEndpoints(
+    `${embedBase}/content-translation/dictionary/${encodedToken}`,
+  );
 }
 
 export function setEmbedDashboardEndpoints(token) {
-  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setDashboardEndpoints(`${embedBase}/dashboard/${encodedToken}`);
+  setContentTranslationEndpoints(
+    `${embedBase}/content-translation/dictionary/${encodedToken}`,
+  );
 }
 
 function GET_with(url, omitKeys) {
@@ -393,6 +403,10 @@ function setDashboardEndpoints(prefix) {
     `${prefix}/params/:paramId/search/:query`,
     ["dashId"],
   );
+}
+
+function setContentTranslationEndpoints(prefix) {
+  PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = prefix;
 }
 
 export const ActionsApi = {
