@@ -397,4 +397,5 @@
   (honeysql->replacement-snippet-info driver
                                       (if (= value params/no-value)
                                         [:raw column]
-                                        (h2x/->date (sql.qp/date driver (keyword value) [:raw column])))))
+                                        (cond-> (sql.qp/date driver (keyword value) [:raw column])
+                                          (date-groupings value) h2x/->date))))
