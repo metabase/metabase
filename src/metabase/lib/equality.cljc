@@ -136,32 +136,29 @@
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))
     ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
     ;; an own column.
-    (clojure.core/= (column-join-alias column) join-alias)))
+    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the source
+    ; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+    (clojure.core/= join-alias (if (and (not join-alias)
+                                        (#{:source/fields :source/card} (:lib/source column)))
+                                 (:metabase.lib.join/join-alias column)
+                                 (column-join-alias column)))))
 
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind _opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                    ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                    (or (and (not (:join-alias opts))
-                             (#{:source/fields :source/card} (:lib/source %)))
-                        (matching-join? a-ref %)))
+                    (matching-join? a-ref %))
               columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
    columns                           :- [:sequential ::lib.schema.metadata/column]
    generous?                         :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
-                               ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                               ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                               (or (and (not (:join-alias opts))
-                                        (#{:source/fields :source/card} (:lib/source %)))
-                                   (matching-join? a-ref %)))
+                               (matching-join? a-ref %))
                          columns))
       (when generous?
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
@@ -358,22 +355,33 @@
   Throws if there are multiple, ambiguous matches.
 
   Returns the matching ref, or nil if no plausible matches are found."
-  [column :- ::lib.schema.metadata/column
-   refs   :- [:sequential ::lib.schema.ref/ref]]
-  (let [ref-tails (group-by ref-id-or-name refs)
-        matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
-                      (not-empty (get ref-tails (:id column)))
+  ([column :- ::lib.schema.metadata/column
+    refs   :- [:sequential ::lib.schema.ref/ref]]
+   (let [ref-tails (group-by ref-id-or-name refs)
+         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
+                       (not-empty (get ref-tails (:id column)))
                       ;; columns from the previous stage have unique `:lib/desired-column-alias` but not `:name`.
                       ;; we cannot fallback to `:name` when `:lib/desired-column-alias` is set
-                      (get ref-tails (or (:lib/desired-column-alias column)
-                                         (:name column)))
-                      [])]
-    (case (count matches)
-      0 nil
-      1 (first matches)
-      (throw (ex-info "Ambiguous match: given column matches multiple refs"
-                      {:column        column
-                       :matching-refs matches})))))
+                       (get ref-tails (or (:lib/desired-column-alias column)
+                                          (:name column)))
+                       [])]
+     (case (count matches)
+       0 nil
+       1 (first matches)
+       (throw (ex-info "Ambiguous match: given column matches multiple refs"
+                       {:column        column
+                        :matching-refs matches})))))
+  ([column :- ::lib.schema.metadata/column
+    refs   :- [:sequential ::lib.schema.ref/ref]
+    columns   :- [:sequential ::lib.schema.metadata/column]]
+   (let [matching-column (find-matching-column (lib.ref/ref column) columns)
+         matching-refs   (into [] (filter #(= matching-column (find-matching-column % columns))) refs)]
+     (case (count matching-refs)
+       0 nil
+       1 (first matching-refs)
+       (throw (ex-info "Ambiguous match: given column matches multiple refs"
+                       {:column        column
+                        :matching-refs matching-refs}))))))
 
 (mu/defn find-column-indexes-for-refs :- [:sequential :int]
   "Given a list `haystack` of columns or refs, and a list `needles` of refs to searc for, this returns a list parallel

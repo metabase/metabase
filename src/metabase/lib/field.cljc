@@ -32,30 +32,16 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
-(mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
-  "Find the column with `column-name` in a sequence of `column-metadatas`."
-  [column-name      :- ::lib.schema.common/non-blank-string
-   column-metadatas :- [:sequential ::lib.schema.metadata/column]]
-  (or (some (fn [k]
-              (m/find-first #(= (get % k) column-name)
-                            column-metadatas))
-            [:lib/desired-column-alias :name])
-      (do
-        (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
-                   (pr-str column-name)
-                   (pr-str (mapv :lib/desired-column-alias column-metadatas)))
-        nil)))
-
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
-  "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
+  "Whether we're in a recursive call to [[resolve-column-ref]] or not. Prevent infinite recursion (#32063)"
   false)
 
-(mu/defn- resolve-column-name :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- resolve-column-ref :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column-name  :- ::lib.schema.common/non-blank-string]
+   column-ref   :- :mbql.clause/field]
   (when-not *recursive-column-resolution-by-name*
     (binding [*recursive-column-resolution-by-name* true]
       (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
@@ -73,9 +59,9 @@
                                                 (pos-int? previous-stage-number))
                                         (lib.metadata.calculation/visible-columns query stage-number stage))
                                       (log/warnf "Cannot resolve column %s: stage has no metadata"
-                                                 (pr-str column-name)))]
+                                                 (pr-str column-ref)))]
         (when-let [column (and (seq stage-columns)
-                               (resolve-column-name-in-metadata column-name stage-columns))]
+                               (lib.equality/find-matching-column column-ref stage-columns))]
           (cond-> column
             previous-stage-number (-> (dissoc :table-id
                                               ::binning ::temporal-unit)
@@ -86,9 +72,9 @@
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
-  [query                                                                 :- ::lib.schema/query
-   stage-number                                                          :- :int
-   [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
+  [query                                                              :- ::lib.schema/query
+   stage-number                                                       :- :int
+   [_field {:keys [join-alias], :as opts} id-or-name, :as column-ref] :- :mbql.clause/field]
   (let [metadata (merge
                   (when-let [base-type (:base-type opts)]
                     {:base-type base-type})
@@ -122,12 +108,11 @@
                       {:was-binned (boolean was-binned)}))
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
-                  (cond
-                    (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
-                    join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
-                    :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name)})))]
+                  (if (integer? id-or-name)
+                    (or (lib.equality/resolve-field-id query stage-number id-or-name)
+                        {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
+                    (or (resolve-column-ref query stage-number column-ref)
+                        {:lib/type :metadata/column, :name (str id-or-name)})))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
@@ -514,7 +499,7 @@
                                  (when-let [source-field-join-alias (when-not inherited-column?
                                                                       (:fk-join-alias metadata))]
                                    {:source-field-join-alias source-field-join-alias}))
-        id-or-name        (or (lib.field.util/inherited-column-name metadata)
+        id-or-name        (or (lib.field.util/inherited-or-card-column-name metadata)
                               ((some-fn :id :name) metadata))]
     [:field options id-or-name]))
 
@@ -622,10 +607,11 @@
     (not (:fields (lib.util/query-stage query stage-number))) (populate-fields-for-stage stage-number)))
 
 (defn- include-field [query stage-number column]
-  (let [populated  (query-with-fields query stage-number)
-        field-refs (fields populated stage-number)
-        match-ref  (lib.equality/find-matching-ref column field-refs)
-        column-ref (lib.ref/ref column)]
+  (let [populated     (query-with-fields query stage-number)
+        field-refs    (fields populated stage-number)
+        field-columns (fieldable-columns query stage-number)
+        match-ref     (lib.equality/find-matching-ref column field-refs field-columns)
+        column-ref    (lib.ref/ref column)]
     (if (and match-ref
              (or (string? (last column-ref))
                  (integer? (last match-ref))))
@@ -634,21 +620,21 @@
       (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
 
 (defn- add-field-to-join [query stage-number column]
-  (let [column-ref   (lib.ref/ref column)
-        [join field] (first (for [join  (lib.join/joins query stage-number)
-                                  :let [joinables (lib.join/joinable-columns query stage-number join)
-                                        field     (lib.equality/find-matching-column
-                                                   query stage-number column-ref joinables)]
-                                  :when field]
-                              [join field]))
-        join-fields  (lib.join/join-fields join)]
+  (let [column-ref (lib.ref/ref column)
+        [join join-columns field] (first (for [join  (lib.join/joins query stage-number)
+                                               :let [join-columns (lib.join/joinable-columns query stage-number join)
+                                                     field        (lib.equality/find-matching-column
+                                                                   query stage-number column-ref join-columns)]
+                                               :when field]
+                                           [join join-columns field]))
+        join-fields (lib.join/join-fields join)]
 
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
     (if (or (= join-fields :all)
             (and field
                  (not= join-fields :none)
-                 (lib.equality/find-matching-ref field join-fields)))
+                 (lib.equality/find-matching-ref field join-fields join-columns)))
       query
       (lib.remove-replace/replace-join query stage-number join
                                        (lib.join/with-join-fields join
@@ -697,8 +683,8 @@
         ;; Then drop any redundant :fields clauses.
         lib.remove-replace/normalize-fields-clauses)))
 
-(defn- remove-matching-ref [column refs]
-  (let [match (lib.equality/find-matching-ref column refs)]
+(defn- remove-matching-ref [column refs columns]
+  (let [match (lib.equality/find-matching-ref column refs columns)]
     (remove #(= % match) refs)))
 
 (defn- exclude-field
@@ -706,17 +692,19 @@
   It shouldn't happen that we can't find the target field, but if that does happen, this will return the original query
   unchanged. (In particular, if `:fields` did not exist before it will still be omitted.)"
   [query stage-number column]
-  (let [old-fields (-> (query-with-fields query stage-number)
+  (let [columns    (fieldable-columns query stage-number)
+        old-fields (-> (query-with-fields query stage-number)
                        (lib.util/query-stage stage-number)
                        :fields)
-        new-fields (remove-matching-ref column old-fields)]
+        new-fields (remove-matching-ref column old-fields columns)]
     (cond-> query
       ;; If we couldn't find the field, return the original query unchanged.
       (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))))
 
 (defn- remove-field-from-join [query stage-number column]
-  (let [join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
-        join-fields (lib.join/join-fields join)]
+  (let [join         (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
+        join-fields  (lib.join/join-fields join)
+        join-columns (lib.join/joinable-columns query stage-number join)]
     (if (or (nil? join-fields)
             (= join-fields :none))
       ;; Nothing to do if there's already no join fields.
@@ -724,7 +712,7 @@
       (let [resolved-join-fields (if (= join-fields :all)
                                    (map lib.ref/ref (lib.metadata.calculation/returned-columns query stage-number join))
                                    join-fields)
-            removed              (remove-matching-ref column resolved-join-fields)]
+            removed              (remove-matching-ref column resolved-join-fields join-columns)]
         (cond-> query
           ;; If we actually removed a field, replace the join. Otherwise return the query unchanged.
           (< (count removed) (count resolved-join-fields))
