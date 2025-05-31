@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -32,6 +32,11 @@ const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   },
 };
 
+const mapNameToLabel = (option: { name: string; value: any }) => ({
+  label: option.name,
+  value: option.value,
+});
+
 export function FormattingWidget() {
   const {
     value: initialValue,
@@ -43,10 +48,6 @@ export function FormattingWidget() {
     ...DEFAULT_FORMATTING_SETTINGS,
     ...initialValue,
   });
-
-  if (isLoading) {
-    return null;
-  }
 
   const {
     date_style: dateStyle,
@@ -60,9 +61,20 @@ export function FormattingWidget() {
   const { currency, currency_style: currencyStyle } =
     localValue?.["type/Currency"] || {};
 
+  const [currencyOptions, currencyStyleOptions] = useMemo(() => {
+    const currencyOptions = (
+      getCurrencyOptions() as { name: string; value: string }[]
+    ).map(mapNameToLabel);
+    const currencyStyleOptions =
+      getCurrencyStyleOptions(currency).map(mapNameToLabel);
+    return [currencyOptions, currencyStyleOptions];
+  }, [currency]);
+
+  if (isLoading) {
+    return null;
+  }
+
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
-  const currencyOptions: { name: string; value: string }[] =
-    getCurrencyOptions();
 
   const handleChange = (newValue: FormattingSettings) => {
     if (_.isEqual(newValue, localValue)) {
@@ -170,10 +182,7 @@ export function FormattingWidget() {
               label={t`Unit of currency`}
               value={currency}
               inputType="select"
-              options={currencyOptions.map(({ name, value }) => ({
-                label: name,
-                value,
-              }))}
+              options={currencyOptions}
               onChange={(newValue) =>
                 handleChange({
                   ...localValue,
@@ -189,7 +198,7 @@ export function FormattingWidget() {
               label={t`Currency label style`}
               value={currencyStyle}
               inputType="radio"
-              options={getCurrencyStyleOptions(currency)}
+              options={currencyStyleOptions}
               onChange={(newValue) =>
                 handleChange({
                   ...localValue,
