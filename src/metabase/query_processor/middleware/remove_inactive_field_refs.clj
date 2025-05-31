@@ -8,7 +8,6 @@
   columns are marked active = false."
   (:require
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
@@ -59,7 +58,7 @@
 
 (defn- resolve-refs
   [columns removed-field-refs default-alias]
-  (let [columns-with-deafult-alias (delay (into [] (map #(lib.join/with-join-alias % default-alias)) columns))]
+  (let [columns-with-deafult-alias (delay (into [] (map #(assoc % :source-alias default-alias)) columns))]
     (mapv #(or (lib.equality/find-matching-column % columns)
                (when default-alias
                  (lib.equality/find-matching-column % @columns-with-deafult-alias)))
