@@ -76,7 +76,7 @@
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
   (let [fields (qp.add-implicit-clauses/source-metadata->fields source-metadata)]
-    (for [[ref-kind id-or-name {:keys [base-type]}] fields]
+    (for [[_ref-kind id-or-name {:keys [base-type]}] fields]
       (if (integer? id-or-name)
         [:field id-or-name {:join-alias alias}]
         [:field id-or-name {:base-type base-type, :join-alias alias}]))))
