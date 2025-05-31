@@ -34,6 +34,8 @@
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
     <Logger name="net.snowflake.client.core.SessionUtil" level="FATAL"/>
 
+    <Logger name="metabase.sync" level="INFO"/>
+
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
     </Root>
