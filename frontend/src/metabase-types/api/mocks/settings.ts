@@ -232,6 +232,13 @@ export const createMockSettings = (
   "is-hosted?": false,
   "jwt-enabled": false,
   "jwt-configured": false,
+  "jwt-user-provisioning-enabled?": false,
+  "jwt-identity-provider-uri": null,
+  "jwt-shared-secret": null,
+  "jwt-attribute-email": null,
+  "jwt-attribute-firstname": null,
+  "jwt-attribute-lastname": null,
+  "jwt-group-sync": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
   "ldap-port": 389, // default value from API

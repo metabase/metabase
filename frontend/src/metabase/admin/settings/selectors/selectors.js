@@ -178,6 +178,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 65,
     settings: [],
   },
+  "authentication/jwt": {
+    component: () => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />,
+    order: 66,
+    settings: [],
+  },
   maps: {
     name: t`Maps`,
     order: 70,
