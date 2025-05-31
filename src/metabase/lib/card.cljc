@@ -32,7 +32,8 @@
   (cond-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number card-metadata)
     (= (:type card-metadata) :question) (assoc :question? true)
     (= (:type card-metadata) :model) (assoc :model? true)
-    (= (:type card-metadata) :metric) (assoc :metric? true)))
+    (= (:type card-metadata) :metric) (assoc :metric? true)
+    (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
 
 (defmethod lib.metadata.calculation/visible-columns-method :metadata/card
   [query
