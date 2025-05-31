@@ -212,6 +212,7 @@ export const PLUGIN_AUTH_PROVIDERS = {
   AuthSettingsPage: PluginPlaceholder,
   UserProvisioningSettings: NotFoundPlaceholder,
   SettingsSAMLForm: NotFoundPlaceholder,
+  SettingsJWTForm: NotFoundPlaceholder,
   providers: [] as GetAuthProviders[],
 };
 
