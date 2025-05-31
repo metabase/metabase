@@ -54,7 +54,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
     expect(body).toEqual({ value: true });
   });
 
-  it("should auto-show legalese modal when the embedding sdk was enabled without accepting the legalese terms", async () => {
+  it("should not auto-show legalese modal when disabling the sdk", async () => {
     await setup({
       showSdkEmbedTerms: true,
       isEmbeddingSdkEnabled: true,
@@ -63,7 +63,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
     const toggle = screen.getByRole("switch", { name: "Enabled" });
     await userEvent.click(toggle);
 
-    expect(screen.queryByRole("dialog")).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);

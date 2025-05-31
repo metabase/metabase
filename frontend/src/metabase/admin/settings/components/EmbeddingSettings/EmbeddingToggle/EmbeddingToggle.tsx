@@ -21,18 +21,11 @@ export function EmbeddingToggle({
 }: EmbeddingToggleProps) {
   const { value, settingDetails, updateSetting } = useAdminSetting(settingKey);
   const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
-  const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
   const [
     isLegaleseModalOpen,
     { open: openLegaleseModal, close: closeLegaleseModal },
-  ] = useDisclosure(
-    Boolean(
-      isEmbeddingSdkEnabled &&
-        showSdkEmbedTerms &&
-        settingKey === "enable-embedding-sdk",
-    ),
-  );
+  ] = useDisclosure(false);
 
   if (settingDetails?.is_env_setting) {
     return (
