@@ -22,6 +22,15 @@ Describe the steps to verify that the changes are working as expected.
 
 _Upload a demo video or before/after screenshots if sensible or remove the section_
 
+### (How) does this change affect the Cloud or Embedding scenarios?
+
+Have you verified that these changes work well in the following scenarios?
+
+- [ ] Hosted instances
+- [ ] Static embedding
+- [ ] Full app (interactive) embedding
+- [ ] Embedding SDK?
+
 ### Checklist
 
 - [ ] Tests have been added/updated to cover changes in this PR
