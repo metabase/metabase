@@ -23,7 +23,7 @@ import {
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Flex } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -136,6 +136,7 @@ interface NativeQueryEditorState {
   isSelectedTextPopoverOpen: boolean;
   mobileShowParameterList: boolean;
   isPromptInputVisible: boolean;
+  queryValidationError: string[] | null;
 }
 
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
@@ -146,11 +147,15 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     super(props);
 
     const { query, viewHeight } = props;
+    const nativeQuery = query.question().query();
     this.state = {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
       mobileShowParameterList: false,
       isPromptInputVisible: false,
+      queryValidationError: nativeQuery
+        ? Lib.validateNativeQuery(nativeQuery)
+        : null,
     };
   }
 
@@ -180,11 +185,21 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
-      setDatasetQuery(
-        query
-          .setQueryText(queryText)
-          .updateSnippetsWithIds(this.props.snippets),
-      );
+      const updatedQuery = query
+        .setQueryText(queryText)
+        .updateSnippetsWithIds(this.props.snippets);
+
+      setDatasetQuery(updatedQuery);
+
+      const errors = Lib.validateNativeQuery(updatedQuery.question().query());
+
+      if (errors && errors.length > 0) {
+        this.setState({ queryValidationError: errors });
+      } else {
+        if (this.state.queryValidationError) {
+          this.setState({ queryValidationError: null });
+        }
+      }
     }
   };
 
@@ -410,7 +425,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             }
           }}
         >
-          <>
+          <Flex w="100%" flex="1">
             <CodeMirrorEditor
               ref={this.editor}
               query={question.query()}
@@ -433,7 +448,23 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 runQuery={this.props.runQuery}
               />
             )}
-          </>
+          </Flex>
+          {this.state.queryValidationError &&
+            this.state.queryValidationError.length > 0 && (
+              <Flex
+                p="sm"
+                mt="auto"
+                data-testid="query-validation-error"
+                className={S.queryErrorContainer}
+              >
+                <Icon name="warning" c="error" mr="sm" />
+                <Box component="ul" m={0} p={0} style={{ listStyle: "none" }}>
+                  {this.state.queryValidationError.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </Box>
+              </Flex>
+            )}
         </ResizableBox>
 
         <RightClickPopover
