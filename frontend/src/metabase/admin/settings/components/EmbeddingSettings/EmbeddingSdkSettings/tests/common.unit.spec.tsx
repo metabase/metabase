@@ -4,7 +4,6 @@ import { screen, within } from "__support__/ui";
 import { findRequests } from "__support__/utils";
 
 import { setup } from "./setup";
-import { assertLegaleseModal } from "./util";
 
 describe("EmbeddingSdkSettings (OSS)", () => {
   describe("banner text when user is self-hosted or cloud", () => {
@@ -118,3 +117,11 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     });
   });
 });
+
+function assertLegaleseModal() {
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+  expect(screen.getByText("First, some legalese")).toBeInTheDocument();
+  expect(screen.getByText("Decline and go back")).toBeInTheDocument();
+  expect(screen.getByText("Agree and continue")).toBeInTheDocument();
+}
