@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import Mustache from "mustache";
 import type * as React from "react";
@@ -182,7 +182,7 @@ export function formatValueRaw(
   } else if (isEmail(column)) {
     return formatEmail(value as string, options);
   } else if (isTime(column)) {
-    return formatTime(value as Moment, column.unit, options);
+    return formatTime(value as Dayjs, column.unit, options);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(
       value as string | number,

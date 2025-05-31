@@ -7,7 +7,7 @@ import Checkbox from "metabase/core/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Settings from "metabase/lib/settings";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type { IconName } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 

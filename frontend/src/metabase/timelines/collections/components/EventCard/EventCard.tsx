@@ -5,7 +5,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Link from "metabase/core/components/Link";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Settings from "metabase/lib/settings";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
