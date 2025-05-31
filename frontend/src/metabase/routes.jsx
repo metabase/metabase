@@ -56,6 +56,10 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { CatalogPage } from "metabase/catalog/CatalogPage";
+import { DatabaseView } from "metabase/catalog/components/DatabaseView";
+import { TableView } from "metabase/catalog/components/TableView";
+import getCatalogRoutes from "metabase/catalog/routes";
 
 import {
   CanAccessOnboarding,
@@ -131,6 +135,8 @@ export const getRoutes = (store) => {
               }
             }}
           />
+
+          {getCatalogRoutes()}
 
           <Route
             path="getting-started"

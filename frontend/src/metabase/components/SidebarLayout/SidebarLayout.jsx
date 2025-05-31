@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 const SidebarLayout = ({ className, style, sidebar, children }) => (
   <div
     className={className}
-    style={{ ...style, display: "flex", flexDirection: "row" }}
+    style={{ ...style, display: "flex", flexDirection: "row", minHeight: "100vh" }}
   >
     {cloneElement(
       sidebar,

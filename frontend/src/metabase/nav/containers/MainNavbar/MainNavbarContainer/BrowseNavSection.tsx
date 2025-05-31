@@ -20,9 +20,8 @@ export const BrowseNavSection = ({
   onItemSelect: () => void;
   hasDataAccess: boolean;
 }) => {
-  const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
-  const BROWSE_METRICS_URL = "/browse/metrics";
+  const CATALOG_URL = "/catalog";
 
   const [expandBrowse = true, setExpandBrowse] = useUserSetting(
     "expand-browse-in-nav",
@@ -55,18 +54,6 @@ export const BrowseNavSection = ({
       </Group>
 
       <Collapse in={opened} transitionDuration={0} role="tabpanel">
-        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
-          <PaddedSidebarLink
-            icon="model"
-            url={BROWSE_MODELS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse models`}
-          >
-            {t`Models`}
-          </PaddedSidebarLink>
-        )}
-
         {hasDataAccess &&
           (!isEmbeddingIframe || entityTypes.includes("table")) && (
             <PaddedSidebarLink
@@ -80,17 +67,15 @@ export const BrowseNavSection = ({
             </PaddedSidebarLink>
           )}
 
-        {!isEmbeddingIframe && (
-          <PaddedSidebarLink
-            icon="metric"
-            url={BROWSE_METRICS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_METRICS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse metrics`}
-          >
-            {t`Metrics`}
-          </PaddedSidebarLink>
-        )}
+        <PaddedSidebarLink
+          icon="list"
+          url={CATALOG_URL}
+          isSelected={nonEntityItem?.url === CATALOG_URL}
+          onClick={onItemSelect}
+          aria-label={t`Browse catalog`}
+        >
+          {t`Catalog`}
+        </PaddedSidebarLink>
       </Collapse>
     </div>
   );

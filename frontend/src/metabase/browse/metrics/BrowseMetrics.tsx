@@ -33,6 +33,8 @@ import {
   BrowseMain,
   BrowseSection,
 } from "../components/BrowseContainer.styled";
+import CatalogSidebar from "metabase/catalog/components/CatalogSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
 
 import { MetricsTable } from "./MetricsTable";
 import { trackNewMetricInitiated } from "./analytics";
@@ -65,73 +67,75 @@ export function BrowseMetrics() {
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-metrics-header">
-        <BrowseSection>
-          <Flex
-            w="100%"
-            h="2.25rem"
-            direction="row"
-            justify="space-between"
-            align="center"
-          >
-            <Title order={2} c="text-dark" id={titleId}>
-              <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="metric"
-                />
-                {t`Metrics`}
+    <SidebarLayout sidebar={<CatalogSidebar />}>
+      <BrowseContainer aria-labelledby={titleId}>
+        <BrowseHeader role="heading" data-testid="browse-metrics-header">
+          <BrowseSection>
+            <Flex
+              w="100%"
+              h="2.25rem"
+              direction="row"
+              justify="space-between"
+              align="center"
+            >
+              <Title order={2} c="text-dark" id={titleId}>
+                <Group gap="sm">
+                  <Icon
+                    size={24}
+                    color="var(--mb-color-icon-primary)"
+                    name="metric"
+                  />
+                  {t`Metrics`}
+                </Group>
+              </Title>
+              <Group gap="xs">
+                {canCreateMetric && (
+                  <Tooltip label={t`Create a new metric`} position="bottom">
+                    <ActionIcon
+                      aria-label={t`Create a new metric`}
+                      size={32}
+                      variant="viewHeader"
+                      component={ForwardRefLink}
+                      to={newMetricLink}
+                      onClick={() => trackNewMetricInitiated()}
+                    >
+                      <Icon name="add" />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+                {hasVerifiedMetrics && (
+                  <MetricFilterControls
+                    metricFilters={metricFilters}
+                    setMetricFilters={setMetricFilters}
+                  />
+                )}
               </Group>
-            </Title>
-            <Group gap="xs">
-              {canCreateMetric && (
-                <Tooltip label={t`Create a new metric`} position="bottom">
-                  <ActionIcon
-                    aria-label={t`Create a new metric`}
-                    size={32}
-                    variant="viewHeader"
-                    component={ForwardRefLink}
-                    to={newMetricLink}
-                    onClick={() => trackNewMetricInitiated()}
-                  >
-                    <Icon name="add" />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-              {hasVerifiedMetrics && (
-                <MetricFilterControls
-                  metricFilters={metricFilters}
-                  setMetricFilters={setMetricFilters}
+            </Flex>
+          </BrowseSection>
+        </BrowseHeader>
+        <BrowseMain>
+          <BrowseSection>
+            <Stack mb="lg" gap="md" w="100%">
+              {isEmpty ? (
+                <MetricsEmptyState
+                  canCreateMetric={canCreateMetric}
+                  newMetricLink={newMetricLink}
                 />
+              ) : (
+                <DelayedLoadingAndErrorWrapper
+                  error={error}
+                  loading={isLoading}
+                  style={{ flex: 1 }}
+                  loader={<MetricsTable skeleton />}
+                >
+                  <MetricsTable metrics={metrics} />
+                </DelayedLoadingAndErrorWrapper>
               )}
-            </Group>
-          </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
-          <Stack mb="lg" gap="md" w="100%">
-            {isEmpty ? (
-              <MetricsEmptyState
-                canCreateMetric={canCreateMetric}
-                newMetricLink={newMetricLink}
-              />
-            ) : (
-              <DelayedLoadingAndErrorWrapper
-                error={error}
-                loading={isLoading}
-                style={{ flex: 1 }}
-                loader={<MetricsTable skeleton />}
-              >
-                <MetricsTable metrics={metrics} />
-              </DelayedLoadingAndErrorWrapper>
-            )}
-          </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+            </Stack>
+          </BrowseSection>
+        </BrowseMain>
+      </BrowseContainer>
+    </SidebarLayout>
   );
 }
 

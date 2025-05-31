@@ -38,6 +38,8 @@ import {
   BrowseMain,
   BrowseSection,
 } from "../components/BrowseContainer.styled";
+import CatalogSidebar from "metabase/catalog/components/CatalogSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
 
 import { ModelsVideo } from "./EmptyStates";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
@@ -73,99 +75,101 @@ export const BrowseModels = () => {
     !isEmbeddingIframe && hasDataAccess && hasNativeWrite;
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-models-header">
-        <BrowseSection>
-          <Flex
-            w="100%"
-            h="2.25rem"
-            direction="row"
-            justify="space-between"
-            align="center"
-          >
-            <Title order={2} c="text-dark" id={titleId}>
-              <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="model"
-                />
-                {t`Models`}
+    <SidebarLayout sidebar={<CatalogSidebar />}>
+      <BrowseContainer aria-labelledby={titleId}>
+        <BrowseHeader role="heading" data-testid="browse-models-header">
+          <BrowseSection>
+            <Flex
+              w="100%"
+              h="2.25rem"
+              direction="row"
+              justify="space-between"
+              align="center"
+            >
+              <Title order={2} c="text-dark" id={titleId}>
+                <Group gap="sm">
+                  <Icon
+                    size={24}
+                    color="var(--mb-color-icon-primary)"
+                    name="model"
+                  />
+                  {t`Models`}
+                </Group>
+              </Title>
+              <Group gap="xs">
+                {canCreateNewModel && (
+                  <Tooltip label={t`Create a new model`} position="bottom">
+                    <ActionIcon
+                      aria-label={t`Create a new model`}
+                      size={32}
+                      variant="viewHeader"
+                      component={ForwardRefLink}
+                      to="/model/new"
+                      onClick={() => trackNewModelInitiated()}
+                    >
+                      <Icon name="add" />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+                {hasVerifiedModels && (
+                  <ModelFilterControls
+                    modelFilters={modelFilters}
+                    setModelFilters={setModelFilters}
+                  />
+                )}
               </Group>
-            </Title>
-            <Group gap="xs">
-              {canCreateNewModel && (
-                <Tooltip label={t`Create a new model`} position="bottom">
-                  <ActionIcon
-                    aria-label={t`Create a new model`}
-                    size={32}
-                    variant="viewHeader"
-                    component={ForwardRefLink}
-                    to="/model/new"
-                    onClick={() => trackNewModelInitiated()}
-                  >
-                    <Icon name="add" />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-              {hasVerifiedModels && (
-                <ModelFilterControls
-                  modelFilters={modelFilters}
-                  setModelFilters={setModelFilters}
-                />
-              )}
-            </Group>
-          </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
-          <Stack mb="lg" gap="md" w="100%">
-            {isEmpty ? (
-              <Stack gap="lg" align="center" data-testid="empty-state">
-                {showMetabaseLinks && (
-                  <Box maw="45rem" w="100%">
-                    <ModelsVideo autoplay={0} />
-                  </Box>
-                )}
-                <Stack gap="xs" maw="28rem">
-                  <Title
-                    order={3}
-                    ta="center"
-                  >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+            </Flex>
+          </BrowseSection>
+        </BrowseHeader>
+        <BrowseMain>
+          <BrowseSection>
+            <Stack mb="lg" gap="md" w="100%">
+              {isEmpty ? (
+                <Stack gap="lg" align="center" data-testid="empty-state">
+                  {showMetabaseLinks && (
+                    <Box maw="45rem" w="100%">
+                      <ModelsVideo autoplay={0} />
+                    </Box>
+                  )}
+                  <Stack gap="xs" maw="28rem">
+                    <Title
+                      order={3}
+                      ta="center"
+                    >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
+                    <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+                  </Stack>
+                  {showMetabaseLinks && (
+                    <Button variant="subtle" p={0}>
+                      <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
+                    </Button>
+                  )}
                 </Stack>
-                {showMetabaseLinks && (
-                  <Button variant="subtle" p={0}>
-                    <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
-                  </Button>
-                )}
-              </Stack>
-            ) : (
-              <>
-                <ModelExplanationBanner />
-                <DelayedLoadingAndErrorWrapper
-                  error={error}
-                  loading={isLoading}
-                  style={{ flex: 1 }}
-                  loader={<RecentModels skeleton />}
-                >
-                  <RecentModels models={recentModels} />
-                </DelayedLoadingAndErrorWrapper>
-                <DelayedLoadingAndErrorWrapper
-                  error={error}
-                  loading={isLoading}
-                  style={{ flex: 1 }}
-                  loader={<ModelsTable skeleton />}
-                >
-                  <ModelsTable models={models} />
-                </DelayedLoadingAndErrorWrapper>
-              </>
-            )}
-          </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+              ) : (
+                <>
+                  <ModelExplanationBanner />
+                  <DelayedLoadingAndErrorWrapper
+                    error={error}
+                    loading={isLoading}
+                    style={{ flex: 1 }}
+                    loader={<RecentModels skeleton />}
+                  >
+                    <RecentModels models={recentModels} />
+                  </DelayedLoadingAndErrorWrapper>
+                  <DelayedLoadingAndErrorWrapper
+                    error={error}
+                    loading={isLoading}
+                    style={{ flex: 1 }}
+                    loader={<ModelsTable skeleton />}
+                  >
+                    <ModelsTable models={models} />
+                  </DelayedLoadingAndErrorWrapper>
+                </>
+              )}
+            </Stack>
+          </BrowseSection>
+        </BrowseMain>
+      </BrowseContainer>
+    </SidebarLayout>
   );
 };
 
