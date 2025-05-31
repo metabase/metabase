@@ -83,7 +83,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
 
         sendToast({ message, icon: "warning", toastColor: "danger" });
       } else {
-        sendToast({ message: t`Changes saved`, icon: "check" });
+        sendToast({ message: t`Changes saved`, icon: "check_filled" });
       }
       return response;
     },
