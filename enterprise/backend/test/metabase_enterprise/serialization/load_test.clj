@@ -9,7 +9,6 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.models.visualization-settings-test :as mb.viz-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
@@ -25,7 +24,6 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once
-  mb.viz-test/with-spec-instrumentation-fixture
   (fixtures/initialize :test-users-personal-collections))
 
 (defn- delete-directory!
