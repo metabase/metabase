@@ -68,7 +68,51 @@ jobs:
                 return;
               }
 
-              const failedJobsList = failedJobs.map(job => ({
+              // Get the failing test information from the job logs
+              const failedTests = await Promise.all(
+                failedJobs.map(async (job) => {
+                  const logs = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                    owner,
+                    repo,
+                    job_id: job.id,
+                    run_id: ${{ github.event.workflow_run.id }},
+                  });
+
+                  // Extract failing test information from logs
+                  // Look for both Cypress and Jest test failure patterns
+                  const failurePatterns = [
+                    // Cypress failure pattern
+                    /Failed: (.*?)\n/g,
+                    // Jest failure pattern
+                    /FAIL (.*?)\n/g,
+                    // Generic test failure pattern
+                    /Test failed: (.*?)\n/g
+                  ];
+
+                  const failures = [];
+                  for (const pattern of failurePatterns) {
+                    const matches = [...logs.data.matchAll(pattern)];
+                    for (const match of matches) {
+                      const failingTest = match[1];
+                      // Try to extract file location from the test name
+                      const fileMatch = failingTest.match(/(?:at|in) (.*?):(\d+):(\d+)/);
+                      if (fileMatch) {
+                        failures.push({
+                          testName: failingTest,
+                          file: fileMatch[1],
+                          line: fileMatch[2],
+                          column: fileMatch[3],
+                          failurePattern: pattern.toString()
+                        });
+                      }
+                    }
+                  }
+
+                  return failures.length > 0 ? failures : null;
+                })
+              );
+
+              const failedJobsList = failedJobs.map((job, index) => ({
                 "type": "rich_text_section",
                 "elements": [
                   {
@@ -79,41 +123,73 @@ jobs:
                 ]
               }));
 
-              await slack.chat.postMessage({
-                channel: 'engineering-ci',
-                text: 'Failing tests',
-                blocks: [
-                  {
-                    "type": "header",
-                    "text": {
-                      "type": "plain_text",
-                      "text": `:warning: CI is failing on ${BRANCH}`,
-                      "emoji": true,
-                    }
+              const blocks = [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": `:warning: CI is failing on ${BRANCH}`,
+                    "emoji": true,
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
                   },
-                ],
-                attachments: [{
-                  color: BRANCH === 'master' ? '#f85149' : "#ffce33",
-                  blocks: [
+                },
+                {
+                  "type": "rich_text",
+                  "block_id": "block1",
+                  "elements": [
                     {
+                      "type": "rich_text_list",
+                      "style": "bullet",
+                      "elements": failedJobsList,
+                    },
+                  ],
+                }
+              ];
+
+              // Add failing test information and mark as flaky button
+              failedTests.forEach((tests, jobIndex) => {
+                if (tests) {
+                  tests.forEach((test, testIndex) => {
+                    blocks.push({
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
+                        "text": `*Failing Test:*\n\`${test.testName}\`\n*File:* \`${test.file}:${test.line}:${test.column}\``
                       },
-                    },
-                    {
-                      "type": "rich_text",
-                      "block_id": "block1",
-                      "elements": [
-                        {
-                          "type": "rich_text_list",
-                          "style": "bullet",
-                          "elements": failedJobsList,
+                      "accessory": {
+                        "type": "button",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "Mark as Flaky",
+                          "emoji": true
                         },
-                      ],
-                    }
-                  ]
-                }]
+                        "value": JSON.stringify({
+                          testName: test.testName,
+                          file: test.file,
+                          line: test.line,
+                          column: test.column,
+                          jobName: failedJobs[jobIndex].name,
+                          runId: ${{ github.event.workflow_run.id }},
+                          branch: BRANCH,
+                          failurePattern: test.failurePattern,
+                          testIndex: testIndex
+                        }),
+                        "action_id": "mark_test_as_flaky"
+                      }
+                    });
+                  });
+                }
+              });
+
+              await slack.chat.postMessage({
+                channel: 'engineering-ci',
+                text: 'Failing tests',
+                blocks: blocks,
               });
             }
