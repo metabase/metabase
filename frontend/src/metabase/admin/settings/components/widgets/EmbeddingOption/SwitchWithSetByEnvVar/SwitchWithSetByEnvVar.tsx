@@ -1,7 +1,7 @@
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useMergeSetting } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/api/utils";
 import { Switch, type SwitchProps, Text } from "metabase/ui";
 
 export type SwitchWithSetByEnvVarProps = {
@@ -9,22 +9,20 @@ export type SwitchWithSetByEnvVarProps = {
     | "enable-embedding-static"
     | "enable-embedding-sdk"
     | "enable-embedding-interactive";
-  onChange: (value: boolean) => void;
 } & Omit<SwitchProps, "onChange">;
 
 export function SwitchWithSetByEnvVar({
   settingKey,
-  onChange,
   ...switchProps
 }: SwitchWithSetByEnvVarProps) {
-  const setting = useMergeSetting({ key: settingKey });
+  const { value, settingDetails, updateSetting } = useAdminSetting(settingKey);
 
-  if (setting.is_env_setting) {
+  if (settingDetails?.is_env_setting) {
     return (
-      <Text color="var(--mb-color-text-secondary)">{t`Set via environment variable`}</Text>
+      <Text c="var(--mb-color-text-secondary)">{t`Set via environment variable`}</Text>
     );
   }
-  const isEnabled = Boolean(setting.value);
+  const isEnabled = Boolean(value);
   return (
     <Switch
       label={isEnabled ? t`Enabled` : t`Disabled`}
@@ -34,10 +32,13 @@ export function SwitchWithSetByEnvVar({
       wrapperProps={{
         "data-testid": "switch-with-env-var",
       }}
-      onChange={(event: ChangeEvent<HTMLInputElement>) =>
-        onChange(event.currentTarget.checked)
-      }
       {...switchProps}
+      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+        updateSetting({
+          key: settingKey,
+          value: event.currentTarget.checked,
+        })
+      }
     />
   );
 }

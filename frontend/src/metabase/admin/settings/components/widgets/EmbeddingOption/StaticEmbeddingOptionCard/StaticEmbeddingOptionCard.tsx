@@ -10,13 +10,10 @@ import { Group, Text } from "metabase/ui";
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
 import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
-import type { EmbeddingOptionCardProps } from "../types";
 
 import { StaticEmbeddingIcon } from "./StaticEmbeddingIcon";
 
-export const StaticEmbeddingOptionCard = ({
-  onToggle,
-}: EmbeddingOptionCardProps) => {
+export const StaticEmbeddingOptionCard = () => {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
   const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "embed-settings" }),
@@ -48,10 +45,7 @@ export const StaticEmbeddingOptionCard = ({
         >
           {t`Manage`}
         </LinkButton>
-        <SwitchWithSetByEnvVar
-          settingKey="enable-embedding-static"
-          onChange={onToggle}
-        />
+        <SwitchWithSetByEnvVar settingKey="enable-embedding-static" />
       </Group>
     </EmbeddingOption>
   );
