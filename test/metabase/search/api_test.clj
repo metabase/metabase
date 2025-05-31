@@ -1707,7 +1707,7 @@
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param context :model :dataset)))))))
 
-(deftest dashboard-questions
+(deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -1755,7 +1755,7 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
-(deftest include-metadata
+(deftest ^:synchronized include-metadata
   (testing "Include card result_metadata if include-metadata is set"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -1778,7 +1778,7 @@
                     first
                     :result_metadata))))))))
 
-(deftest prometheus-response-metrics-test
+(deftest ^:synchronized prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls (atom nil)]
       (mt/with-dynamic-fn-redefs [analytics/inc! #(swap! calls conj %)]
