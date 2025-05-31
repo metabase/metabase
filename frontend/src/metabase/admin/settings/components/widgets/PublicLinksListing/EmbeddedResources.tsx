@@ -1,65 +1,58 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
-import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
-import { Stack, Text } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type {
   GetEmbeddableCard,
   GetEmbeddableDashboard,
 } from "metabase-types/api";
 
+import { SettingHeader } from "../../SettingHeader";
+
 import { PublicLinksListing } from "./PublicLinksListing";
 
+// refetch if revisiting this page and the cache is over a minute old
+const refetchSettings = { refetchOnMountOrArgChange: 60 };
+
 const DashboardEmbeddedResources = () => {
-  const query = useListEmbeddableDashboardsQuery();
+  const query = useListEmbeddableDashboardsQuery(undefined, refetchSettings);
 
   return (
-    <div>
-      <Text mb="sm">{t`Embedded Dashboards`}</Text>
-      <div
-        className={cx(CS.bordered, CS.rounded, CS.full)}
-        style={{ maxWidth: 820 }}
-      >
-        <PublicLinksListing<GetEmbeddableDashboard>
-          data-testid="-embedded-dashboards-setting"
-          getUrl={(dashboard) => Urls.dashboard(dashboard)}
-          noLinksMessage={t`No dashboards have been embedded yet.`}
-          {...query}
-        />
-      </div>
-    </div>
+    <>
+      <SettingHeader id="embedded-dashboards" title={t`Embedded Dashboards`} />
+      <PublicLinksListing<GetEmbeddableDashboard>
+        data-testid="-embedded-dashboards-setting"
+        getUrl={(dashboard) => Urls.dashboard(dashboard)}
+        noLinksMessage={t`No dashboards have been embedded yet.`}
+        {...query}
+      />
+    </>
   );
 };
 
 export const QuestionEmbeddedResources = () => {
-  const query = useListEmbeddableCardsQuery();
+  const query = useListEmbeddableCardsQuery(undefined, refetchSettings);
 
   return (
-    <div>
-      <Text mb="sm">{t`Embedded Questions`}</Text>
-      <div
-        className={cx(CS.bordered, CS.rounded, CS.full)}
-        style={{ maxWidth: 820 }}
-      >
-        <PublicLinksListing<GetEmbeddableCard>
-          data-testid="-embedded-questions-setting"
-          getUrl={(question) => Urls.question(question)}
-          noLinksMessage={t`No questions have been embedded yet.`}
-          {...query}
-        />
-      </div>
-    </div>
+    <>
+      <SettingHeader id="embedded-questions" title={t`Embedded Questions`} />
+      <PublicLinksListing<GetEmbeddableCard>
+        data-testid="-embedded-questions-setting"
+        getUrl={(question) => Urls.question(question)}
+        noLinksMessage={t`No questions have been embedded yet.`}
+        {...query}
+      />
+    </>
   );
 };
 
 export const EmbeddedResources = () => {
   return (
-    <Stack gap="md" className={CS.flexFull}>
+    <Stack gap="md" maw="50rem">
       <DashboardEmbeddedResources />
       <QuestionEmbeddedResources />
     </Stack>

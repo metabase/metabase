@@ -9,10 +9,9 @@ import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import { Box, Button, Group, Icon, Text } from "metabase/ui";
 
+import { EmbeddingToggle } from "../../EmbeddingToggle";
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
-import type { EmbeddingOptionCardProps } from "../types";
 
 import { InteractiveEmbeddingIcon } from "./InteractiveEmbeddingIcon";
 
@@ -23,9 +22,7 @@ const interactiveEmbeddingUtmTags = {
   utm_content: "embedding-admin",
 };
 
-export const InteractiveEmbeddingOptionCard = ({
-  onToggle,
-}: EmbeddingOptionCardProps) => {
+export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
@@ -94,10 +91,9 @@ export const InteractiveEmbeddingOptionCard = ({
             {t`Learn More`}
           </Button>
         )}
-        <SwitchWithSetByEnvVar
+        <EmbeddingToggle
           settingKey="enable-embedding-interactive"
           disabled={!isEE}
-          onChange={onToggle}
         />
       </Group>
     </EmbeddingOption>

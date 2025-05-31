@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { findRequests } from "__support__/utils";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
@@ -11,9 +12,8 @@ const setup = (opts: Omit<SetupOpts, "hasEnterprisePlugins"> = {}) =>
   });
 
 describe("EmbeddingSdkOptionCard (OSS)", () => {
-  it("should display the correct title and badges", () => {
-    setup();
-
+  it("should display the correct title and badges", async () => {
+    await setup();
     expect(
       screen.getByText("Embedded analytics SDK for React"),
     ).toBeInTheDocument();
@@ -22,13 +22,12 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
   });
 
   it("should show 'Try it out' button", async () => {
-    setup();
-
+    await setup();
     expect(screen.getByText("Try it out")).toBeInTheDocument();
   });
 
   it("should show legalese modal when the user hasn't agreed to terms yet", async () => {
-    setup({
+    await setup({
       showSdkEmbedTerms: true,
       isEmbeddingSdkEnabled: false,
     });
@@ -40,7 +39,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
   });
 
   it("should update enable-embedding-sdk directly when the user has agreed to the terms", async () => {
-    const { updateSetting } = setup({
+    await setup({
       showSdkEmbedTerms: false,
       isEmbeddingSdkEnabled: false,
     });
@@ -48,14 +47,15 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
     const toggle = screen.getByRole("switch", { name: "Disabled" });
     await userEvent.click(toggle);
 
-    expect(updateSetting).toHaveBeenCalledWith(
-      { key: "enable-embedding-sdk" },
-      true,
-    );
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    const [{ url, body }] = puts;
+    expect(url).toContain("api/setting/enable-embedding-sdk");
+    expect(body).toEqual({ value: true });
   });
 
-  it("should update enable-embedding-sdk directly when SDK is already enabled", async () => {
-    const { updateSetting } = setup({
+  it("should not auto-show legalese modal when disabling the sdk", async () => {
+    await setup({
       showSdkEmbedTerms: true,
       isEmbeddingSdkEnabled: true,
     });
@@ -65,9 +65,10 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    expect(updateSetting).toHaveBeenCalledWith(
-      { key: "enable-embedding-sdk" },
-      false,
-    );
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    const [{ url, body }] = puts;
+    expect(url).toContain("api/setting/enable-embedding-sdk");
+    expect(body).toEqual({ value: false });
   });
 });

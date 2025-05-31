@@ -1,33 +1,26 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { findRequests } from "__support__/utils";
 import type { SettingDefinition } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import {
-  createMockAdminState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
-import {
-  SwitchWithSetByEnvVar,
-  type SwitchWithSetByEnvVarProps,
-} from "./SwitchWithSetByEnvVar";
+import { EmbeddingToggle, type EmbeddingToggleProps } from "./EmbeddingToggle";
 
 type SetupProps = Partial<
-  Pick<SwitchWithSetByEnvVarProps, "settingKey" | "label" | "disabled">
+  Pick<EmbeddingToggleProps, "settingKey" | "label" | "disabled">
 > &
-  Omit<SettingDefinition<SwitchWithSetByEnvVarProps["settingKey"]>, "key">;
+  Omit<SettingDefinition<EmbeddingToggleProps["settingKey"]>, "key">;
 
-const setup = ({
+const setup = async ({
   settingKey = "enable-embedding-static",
   label = undefined,
   disabled = undefined,
@@ -45,51 +38,34 @@ const setup = ({
     [settingKey]: value,
   });
 
-  const state = createMockState({
-    settings: mockSettings(settingValues),
-    admin: createMockAdminState({
-      settings: {
-        settings,
-        warnings: {},
-      },
-    }),
-  });
-
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValues);
-
-  const onChange = jest.fn();
+  setupUpdateSettingEndpoint();
 
   renderWithProviders(
-    <SwitchWithSetByEnvVar
-      onChange={onChange}
+    <EmbeddingToggle
       settingKey={settingKey}
       disabled={disabled}
       {...(label ? { label } : {})}
     />,
-    {
-      storeInitialState: state,
-    },
   );
-
-  return { onChange };
+  await waitFor(async () => {
+    const gets = await findRequests("GET");
+    expect(gets).toHaveLength(2);
+  });
 };
 
-describe("SwitchWithSetByEnvVar", () => {
-  it("should render 'Set via environment variable' text when is_env_setting is true", () => {
-    setup({
-      is_env_setting: true,
-    });
+describe("EmbeddingToggle", () => {
+  it("should render 'Set via environment variable' text when is_env_setting is true", async () => {
+    await setup({ is_env_setting: true });
     expect(
       screen.getByText("Set via environment variable"),
     ).toBeInTheDocument();
   });
 
   describe("when is_env_setting is false", () => {
-    it("should render a switch in the 'on' position when value is true", () => {
-      setup({
-        value: true,
-      });
+    it("should render a switch in the 'on' position when value is true", async () => {
+      await setup({ value: true });
       const switchElement = screen.getByRole("switch");
       expect(switchElement).toBeInTheDocument();
       expect(switchElement).toBeChecked();
@@ -97,9 +73,7 @@ describe("SwitchWithSetByEnvVar", () => {
     });
 
     it("should render a switch in the 'off' position when value is false", () => {
-      setup({
-        value: false,
-      });
+      setup({ value: false });
       const switchElement = screen.getByRole("switch");
       expect(switchElement).toBeInTheDocument();
       expect(switchElement).not.toBeChecked();
@@ -108,35 +82,33 @@ describe("SwitchWithSetByEnvVar", () => {
   });
 
   describe("when clicking on the switch", () => {
-    beforeEach(() => {
-      fetchMock.put("path:/api/setting/enable-embedding-static", 204);
-    });
-
     it("should send a PUT request with value=true when setting is off", async () => {
-      const { onChange } = setup({
-        value: false,
-      });
+      await setup({ value: false });
 
       expect(screen.getByRole("switch")).not.toBeChecked();
       await userEvent.click(screen.getByRole("switch"));
 
-      expect(onChange).toHaveBeenCalledWith(true);
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      const [{ body }] = puts;
+      expect(body).toEqual({ value: true });
     });
 
     it("should send a PUT request with value=false when setting is on", async () => {
-      const { onChange } = setup({
-        value: true,
-      });
+      await setup({ value: true });
 
       expect(screen.getByRole("switch")).toBeChecked();
       await userEvent.click(screen.getByRole("switch"));
 
-      expect(onChange).toHaveBeenCalledWith(false);
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      const [{ body }] = puts;
+      expect(body).toEqual({ value: false });
     });
   });
 
-  it("should pass additional props to Switch component", () => {
-    setup({ disabled: true });
+  it("should pass additional props to Switch component", async () => {
+    await setup({ disabled: true });
     const switchElement = screen.getByRole("switch");
     expect(switchElement).toBeDisabled();
   });
