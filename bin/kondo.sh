@@ -60,4 +60,4 @@ fi
 
 set -x
 
-$command
+$command | grep -v ' info: '

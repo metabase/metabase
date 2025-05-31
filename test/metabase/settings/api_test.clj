@@ -1,6 +1,5 @@
 (ns metabase.settings.api-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver.h2 :as h2]
    [metabase.permissions.validation :as validation]
@@ -388,7 +387,12 @@
   :encryption :no)
 
 (deftest deprecation-warning-for-deprecated-setting-test
-  (log.capture/with-log-messages-for-level [warnings :warn]
+  (log.capture/with-log-messages-for-level [warnings :info]
     (test-deprecated-setting! "hello")
-    (is (re-find #"Setting test-deprecated-setting is deprecated as of Metabase 0.51.0"
-                 (str/join " " (map :message (warnings)))))))
+    (is (= [{:namespace 'metabase.models.setting,
+             :level :warn,
+             :ctx nil,
+             :e nil,
+             :message
+             "Setting test-deprecated-setting is deprecated as of Metabase 0.51.0 and may be removed in a future version."}]
+           (warnings)))))

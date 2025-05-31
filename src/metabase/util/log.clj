@@ -49,17 +49,61 @@
          (lambdaisland.glogi/log logger# level# nil s#)
          a#))))
 
+(defmacro with-context
+  "Executes body with the given context map and message prefix in ThreadContext.
+   The context map's keys and values are added to the ThreadContext individually.
+   Preserves any existing context values and restores them after execution.
+
+   The keys in context-map should be keywords.
+
+   Example usage:
+   (with-context {:notification_id 1}
+     (log/infof \"Hello\"))
+
+   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
+  [context-map & body]
+  (macros/case
+    :clj `(let [ctx-map# ~context-map
+                ctx-keys# (keys ctx-map#)
+                ;; Store original values before modifying
+                original-values# (into {}
+                                       (keep (fn [k#]
+                                               (when-let [v# (ThreadContext/get (str (symbol k#)))]
+                                                 [(str (symbol k#)) v#])))
+                                       ctx-keys#)]
+            (try
+              (doseq [k# ctx-keys#]
+                (ThreadContext/put (str (symbol k#)) (str (get ctx-map# k#))))
+              ~@body
+              (finally
+                (doseq [k# ctx-keys#]
+                  (if-let [original# (find original-values# (str (symbol k#)))]
+                    (ThreadContext/put (str (symbol k#)) (val original#))
+                    (ThreadContext/remove (str (symbol k#))))))))
+    "cljs" ~@body))
+
+(defn parse-args
+  "Parses args for [[trace]], [[debug]], [[info]], [[warn]], [[error]], [[fatal]]
+  into a map with message, context and exception keys."
+  [& args]
+  (let [first-arg (first args)
+        has-exception? (instance? Exception first-arg)
+
+        rest-args (if has-exception? (rest args) args)
+        has-context? (map? (last rest-args))
+        message-args (cond-> rest-args has-context? drop-last)]
+    {:msg (str/join \space (or message-args []))
+     :ctx (when has-context? (last rest-args))
+     :e (when has-exception? first-arg)}))
+
 (defn- tools-logp
   "Macro helper for [[logp]] in CLJ."
   [logger-ns level x more]
   `(let [logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ~logger-ns)]
      (when (clojure.tools.logging.impl/enabled? logger# ~level)
-       (let [x# ~x]
-         (if (instance? Throwable x#)
-           (clojure.tools.logging/log* logger# ~level x#  ~(if (nil? more)
-                                                             ""
-                                                             `(print-str ~@more)))
-           (clojure.tools.logging/log* logger# ~level nil (print-str x# ~@more)))))))
+       (let [args# (parse-args ~@(cons x more))]
+         (with-context (:ctx args#)
+           (clojure.tools.logging/log* logger# ~level (:e args#) (:msg args#)))))))
 
 (defn- tools-logf
   "Macro helper for [[logf]] in CLJ."
@@ -81,7 +125,8 @@
 (defmacro logp
   "Implementation for prn-style `logp`.
   You shouldn't have to use this directly; prefer the level-specific macros like [[info]]."
-  {:arglists '([level message & more] [level throwable message & more])}
+  {:arglists '([level message & more]
+               [level throwable message & more])}
   [level x & more]
   `(do
      ~(config/build-type-case
@@ -104,75 +149,130 @@
         :clj  (tools-logf *ns*       level x args))))
 
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
+
 (defmacro trace
-  "Log one or more args at the `:trace` level."
-  {:arglists '([& args] [e & args])}
+  "Log one or more args at the `:trace` level.
+
+   Takes an optional context map as the last argument."
+  {:arglists '(;; as many msgs as you want -- must include at least 1 string
+               ;; These can optionally take an exception as the first arg
+               [msg] [msg1 msg2] [msg1 msg2 msg3] [msg1 msg2 msg3 msg4] [msg1 msg2 msg3 msg4 msg5]
+               [msg ctx] [msg1 msg2 ctx] [msg1 msg2 msg3 ctx] [msg1 msg2 msg3 msg4 ctx] [msg1 msg2 msg3 msg4 msg5 ctx]
+               [e msg] [e msg1 msg2] [e msg1 msg2 msg3] [e msg1 msg2 msg3 msg4] [e msg1 msg2 msg3 msg4 msg5]
+               [e msg ctx] [e msg1 msg2 ctx] [e msg1 msg2 msg3 ctx] [e msg1 msg2 msg3 msg4 ctx] [e msg1 msg2 msg3 msg4 msg5 ctx])}
   [& args]
   `(logp :trace ~@args))
 
-(defmacro tracef
-  "Log a message at the `:trace` level by applying `format` to a format string and args."
+(defmacro debug
+  "Log one or more args at the `:debug` level.
+
+   Takes an optional context map as the last argument."
+  {:arglists '(;; as many msgs as you want -- must include at least 1 string
+               ;; These can optionally take an exception as the first arg
+               [msg] [msg1 msg2] [msg1 msg2 msg3] [msg1 msg2 msg3 msg4] [msg1 msg2 msg3 msg4 msg5]
+               [msg ctx] [msg1 msg2 ctx] [msg1 msg2 msg3 ctx] [msg1 msg2 msg3 msg4 ctx] [msg1 msg2 msg3 msg4 msg5 ctx]
+               [e msg] [e msg1 msg2] [e msg1 msg2 msg3] [e msg1 msg2 msg3 msg4] [e msg1 msg2 msg3 msg4 msg5]
+               [e msg ctx] [e msg1 msg2 ctx] [e msg1 msg2 msg3 ctx] [e msg1 msg2 msg3 msg4 ctx] [e msg1 msg2 msg3 msg4 msg5 ctx])}
+  [& args]
+  `(logp :debug ~@args))
+
+(defmacro info
+  "Log one or more args at the `:info` level.
+
+   Takes an optional context map as the last argument."
+  {:arglists '(;; as many msgs as you want -- must include at least 1 string
+               ;; These can optionally take an exception as the first arg
+               [msg] [msg1 msg2] [msg1 msg2 msg3] [msg1 msg2 msg3 msg4] [msg1 msg2 msg3 msg4 msg5]
+               [msg ctx] [msg1 msg2 ctx] [msg1 msg2 msg3 ctx] [msg1 msg2 msg3 msg4 ctx] [msg1 msg2 msg3 msg4 msg5 ctx]
+               [e msg] [e msg1 msg2] [e msg1 msg2 msg3] [e msg1 msg2 msg3 msg4] [e msg1 msg2 msg3 msg4 msg5]
+               [e msg ctx] [e msg1 msg2 ctx] [e msg1 msg2 msg3 ctx] [e msg1 msg2 msg3 msg4 ctx] [e msg1 msg2 msg3 msg4 msg5 ctx])}
+  [& args]
+  `(logp :info ~@args))
+
+(defmacro warn
+  "Log one or more args at the `:warn` level.
+
+   Takes an optional context map as the last argument."
+  {:arglists '(;; as many msgs as you want -- must include at least 1 string
+               ;; These can optionally take an exception as the first arg
+               [msg] [msg1 msg2] [msg1 msg2 msg3] [msg1 msg2 msg3 msg4] [msg1 msg2 msg3 msg4 msg5]
+               [msg ctx] [msg1 msg2 ctx] [msg1 msg2 msg3 ctx] [msg1 msg2 msg3 msg4 ctx] [msg1 msg2 msg3 msg4 msg5 ctx]
+               [e msg] [e msg1 msg2] [e msg1 msg2 msg3] [e msg1 msg2 msg3 msg4] [e msg1 msg2 msg3 msg4 msg5]
+               [e msg ctx] [e msg1 msg2 ctx] [e msg1 msg2 msg3 ctx] [e msg1 msg2 msg3 msg4 ctx] [e msg1 msg2 msg3 msg4 msg5 ctx])}
+  [& args]
+  `(logp :warn ~@args))
+
+(defmacro error
+  "Log one or more args at the `:error` level.
+
+   Takes an optional context map as the last argument."
+  {:arglists '(;; as many msgs as you want -- must include at least 1 string
+               ;; These can optionally take an exception as the first arg
+               [msg] [msg1 msg2] [msg1 msg2 msg3] [msg1 msg2 msg3 msg4] [msg1 msg2 msg3 msg4 msg5]
+               [msg ctx] [msg1 msg2 ctx] [msg1 msg2 msg3 ctx] [msg1 msg2 msg3 msg4 ctx] [msg1 msg2 msg3 msg4 msg5 ctx]
+               [e msg] [e msg1 msg2] [e msg1 msg2 msg3] [e msg1 msg2 msg3 msg4] [e msg1 msg2 msg3 msg4 msg5]
+               [e msg ctx] [e msg1 msg2 ctx] [e msg1 msg2 msg3 ctx] [e msg1 msg2 msg3 msg4 ctx] [e msg1 msg2 msg3 msg4 msg5 ctx])}
+  [& args]
+  `(logp :error ~@args))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defmacro fatal
+  "Log one or more args at the `:fatal` level.
+
+   Takes an optional context map as the last argument."
+  {:arglists '(;; as many msgs as you want -- must include at least 1 string
+               ;; These can optionally take an exception as the first arg
+               [msg] [msg1 msg2] [msg1 msg2 msg3] [msg1 msg2 msg3 msg4] [msg1 msg2 msg3 msg4 msg5]
+               [msg ctx] [msg1 msg2 ctx] [msg1 msg2 msg3 ctx] [msg1 msg2 msg3 msg4 ctx] [msg1 msg2 msg3 msg4 msg5 ctx]
+               [e msg] [e msg1 msg2] [e msg1 msg2 msg3] [e msg1 msg2 msg3 msg4] [e msg1 msg2 msg3 msg4 msg5]
+               [e msg ctx] [e msg1 msg2 ctx] [e msg1 msg2 msg3 ctx] [e msg1 msg2 msg3 msg4 ctx] [e msg1 msg2 msg3 msg4 msg5 ctx])}
+  [& args]
+  `(logp :fatal ~@args))
+
+(defmacro ^:deprecated tracef
+  "Log a message at the `:trace` level by applying `format` to a format string and args.
+
+  DEPRECATION WARNING: Instead of using formatted string logging, use trace, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :trace ~@args))
 
-(defmacro debug
-  "Log one or more args at the `:debug` level."
-  {:arglists '([& args] [e & args])}
-  [& args]
-  `(logp :debug ~@args))
+(defmacro ^:deprecated debugf
+  "Log a message at the `:debug` level by applying `format` to a format string and args.
 
-(defmacro debugf
-  "Log a message at the `:debug` level by applying `format` to a format string and args."
+  DEPRECATION WARNING: Instead of using formatted string logging, use debug, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :debug ~@args))
 
-(defmacro info
-  "Log one or more args at the `:info` level."
-  {:arglists '([& args] [e & args])}
-  [& args]
-  `(logp :info ~@args))
+(defmacro ^:deprecated infof
+  "Log a message at the `:info` level by applying `format` to a format string and args.
 
-(defmacro infof
-  "Log a message at the `:info` level by applying `format` to a format string and args."
+  DEPRECATION WARNING: Instead of using formatted string logging, use info, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :info ~@args))
 
-(defmacro warn
-  "Log one or more args at the `:warn` level."
-  {:arglists '([& args] [e & args])}
-  [& args]
-  `(logp :warn ~@args))
+(defmacro ^:deprecated warnf
+  "Log a message at the `:warn` level by applying `format` to a format string and args.
 
-(defmacro warnf
-  "Log a message at the `:warn` level by applying `format` to a format string and args."
+  DEPRECATION WARNING: Instead of using formatted string logging, use warn, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :warn ~@args))
 
-(defmacro error
-  "Log one or more args at the `:error` level."
-  {:arglists '([& args] [e & args])}
-  [& args]
-  `(logp :error ~@args))
+(defmacro ^:deprecated errorf
+  "Log a message at the `:error` level by applying `format` to a format string and args.
 
-(defmacro errorf
-  "Log a message at the `:error` level by applying `format` to a format string and args."
+  DEPRECATION WARNING: Instead of using formatted string logging, use error, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :error ~@args))
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defmacro fatal
-  "Log one or more args at the `:fatal` level."
-  {:arglists '([& args] [e & args])}
-  [& args]
-  `(logp :fatal ~@args))
+(defmacro ^:deprecated fatalf
+  "Log a message at the `:fatal` level by applying `format` to a format string and args.
 
-(defmacro fatalf
-  "Log a message at the `:fatal` level by applying `format` to a format string and args."
+  DEPRECATION WARNING: Instead of using formatted string logging, use fatal, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :fatal ~@args))
@@ -210,34 +310,3 @@
   [& body]
   `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
      ~@body))
-
-(defmacro with-context
-  "Executes body with the given context map and message prefix in ThreadContext.
-   The context map's keys and values are added to the ThreadContext individually.
-   Preserves any existing context values and restores them after execution.
-
-   Example usage:
-   (with-context {:notification_id 1}
-     (log/infof \"Hello\"))
-
-   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
-  [context-map & body]
-  (macros/case
-    :clj `(let [ctx-map# ~(update-keys context-map #(str "mb-" (u.format/qualified-name %)))
-                ctx-keys# (keys ctx-map#)
-                ;; Store original values before modifying
-                original-values# (into {}
-                                       (keep (fn [k#]
-                                               (when-let [v# (ThreadContext/get (name k#))]
-                                                 [(name k#) v#])))
-                                       ctx-keys#)]
-            (try
-              (doseq [k# ctx-keys#]
-                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
-              ~@body
-              (finally
-                (doseq [k# ctx-keys#]
-                  (if-let [original# (find original-values# (name k#))]
-                    (ThreadContext/put (name k#) (val original#))
-                    (ThreadContext/remove (name k#)))))))
-    :cljs ~@body))
