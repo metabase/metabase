@@ -26,7 +26,13 @@ export function EmbeddingToggle({
   const [
     isLegaleseModalOpen,
     { open: openLegaleseModal, close: closeLegaleseModal },
-  ] = useDisclosure(Boolean(isEmbeddingSdkEnabled && showSdkEmbedTerms));
+  ] = useDisclosure(
+    Boolean(
+      isEmbeddingSdkEnabled &&
+        showSdkEmbedTerms &&
+        settingKey === "enable-embedding-sdk",
+    ),
+  );
 
   if (settingDetails?.is_env_setting) {
     return (
