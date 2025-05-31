@@ -75,9 +75,12 @@
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
-  (into []
-        (map #(mbql.u/update-field-options % assoc :join-alias alias))
-        (qp.add-implicit-clauses/source-metadata->fields source-metadata)))
+  (let [fields (qp.add-implicit-clauses/source-metadata->fields source-metadata)]
+    (for [[ref-kind id-or-name {:keys [base-type]}] fields]
+      (if (integer? id-or-name)
+        ;; field-id is a unique reference, use it
+        [:field id-or-name {:join-alias alias}]
+        [:field id-or-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
