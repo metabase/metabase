@@ -69,7 +69,6 @@ export function EmbeddingToggle({
       <EmbeddingSdkLegaleseModal
         opened={isLegaleseModalOpen}
         onClose={closeLegaleseModal}
-        updateSetting={updateSetting}
       />
     </>
   );
