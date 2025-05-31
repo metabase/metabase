@@ -10,8 +10,10 @@ const setupEnterprise = (opts?: SetupOpts) => {
 };
 
 describe("nav > containers > MainNavbar (EE without token)", () => {
-  it("should not render 'upload CSV' button", async () => {
-    await setupEnterprise({ user: createMockUser({ is_superuser: true }) });
-    expect(screen.queryByTestId("dwh-upload-csv")).not.toBeInTheDocument();
+  describe("DWH Upload", () => {
+    it("should not render DWH Upload section", async () => {
+      await setupEnterprise({ user: createMockUser({ is_superuser: true }) });
+      expect(screen.queryByTestId("dwh-upload")).not.toBeInTheDocument();
+    });
   });
 });
