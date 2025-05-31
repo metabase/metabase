@@ -249,165 +249,213 @@
               (:values-by-key result)))
           "values-by-key should identify each value by its concatenated column and row paths"))))
 
-(deftest build-pivot-trees-with-collapsed-levels-test
-  (testing "build-pivot-trees correctly handles collapsed subtotals"
-    (let [rows [[1 "A" "Y" 0 10]
-                [1 "B" "Z" 0 20]
-                [2 "A" "Y" 0 30]
-                [2 "B" "Z" 0 40]]
-          cols [{:name "col0" :source "breakout"}
-                {:name "col1" :source "breakout"}
-                {:name "col2" :source "breakout"}
-                {:name "pivot-grouping" :source "breakout"}
-                {:name "count" :source "aggregation"}]
-          row-indexes [0 1]
-          col-indexes [2]
-          val-indexes [4]
-          col-settings [{} {} {} {} {}]]
-      ;; Set up collapsed subtotals for level 1 (the root level)
-      (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-        (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed true
-                 :value 1}
-                {:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed true
-                 :value 2}]
-               (:row-tree result))
-            "Row tree should have correct collapsed state for the root level"))
+#?(:cljs
+   (deftest build-pivot-trees-with-collapsed-levels-cljs-test
+     (testing "build-pivot-trees correctly handles collapsed subtotals"
+       (let [rows [[1 "A" "Y" 0 10]
+                   [1 "B" "Z" 0 20]
+                   [2 "A" "Y" 0 30]
+                   [2 "B" "Z" 0 40]]
+             cols [{:name "col0" :source "breakout"}
+                   {:name "col1" :source "breakout"}
+                   {:name "col2" :source "breakout"}
+                   {:name "pivot-grouping" :source "breakout"}
+                   {:name "count" :source "aggregation"}]
+             row-indexes [0 1]
+             col-indexes [2]
+             val-indexes [4]
+             col-settings [{} {} {} {} {}]]
+         ;; Set up collapsed subtotals for level 1 (the root level)
+         (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
+               result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed true
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed true
+                    :value 2}]
+                  (:row-tree result))
+               "Row tree should have correct collapsed state for the root level"))
 
-      ;; Set up collapsed subtotals for level 2 (children of the root)
-      (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-        (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed true
-                 :value 1}
-                {:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed true
-                 :value 2}]
-               (:row-tree result))
-            "Row tree should have correct collapsed state for the chlidren of the root")))))
+         ;; Set up collapsed subtotals for level 2 (children of the root)
+         (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
+               result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed true
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed true
+                    :value 2}]
+                  (:row-tree result))
+               "Row tree should have correct collapsed state for the chlidren of the root"))))))
 
-(deftest build-pivot-trees-with-collapsed-paths-test
-  (testing "build-pivot-trees correctly handles collapsed specific paths"
-    (let [rows [[1 "A" "Y" 0 10]
-                [1 "B" "Z" 0 20]
-                [2 "A" "Y" 0 30]
-                [2 "B" "Z" 0 40]]
-          cols [{:name "col0" :source "breakout"}
-                {:name "col1" :source "breakout"}
-                {:name "col2" :source "breakout"}
-                {:name "pivot-grouping" :source "breakout"}
-                {:name "count" :source "aggregation"}]
-          row-indexes [0 1]
-          col-indexes [2]
-          val-indexes [4]
-          col-settings [{} {} {} {} {}]]
-      ;; Test collapsing a specific node at the root level
-      (let [settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+#?(:clj
+   (deftest build-pivot-trees-no-collapsing-clj-test
+     (testing "build-pivot-trees correctly handles collapsed subtotals"
+       (let [rows [[1 "A" "Y" 0 10]
+                   [1 "B" "Z" 0 20]
+                   [2 "A" "Y" 0 30]
+                   [2 "B" "Z" 0 40]]
+             cols [{:name "col0" :source "breakout"}
+                   {:name "col1" :source "breakout"}
+                   {:name "col2" :source "breakout"}
+                   {:name "pivot-grouping" :source "breakout"}
+                   {:name "count" :source "aggregation"}]
+             row-indexes [0 1]
+             col-indexes [2]
+             val-indexes [4]
+             col-settings [{} {} {} {} {}]]
+         ;; Set up collapsed subtotals for level 1 (the root level)
+         (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
+               result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 2}]
+                  (:row-tree result))
+               "Row tree should have correct collapsed state for the root level"))
 
-        (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed true  ;; Only the node with value 1 should be collapsed
-                 :value 1}
-                {:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed false ;; Node with value 2 should not be collapsed
-                 :value 2}]
-               (:row-tree result))
-            "Row tree should have correct collapsed state for node with value 1 only"))
+         ;; Set up collapsed subtotals for level 2 (children of the root)
+         (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
+               result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 2}]
+                  (:row-tree result))
+               "Row tree should have correct collapsed state for the chlidren of the root"))))))
 
-      ;; Test collapsing a specific nested path
-      (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]"]}}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+#?(:cljs
+   (deftest build-pivot-trees-with-collapsed-paths-test
+     (testing "build-pivot-trees correctly handles collapsed specific paths"
+       (let [rows [[1 "A" "Y" 0 10]
+                   [1 "B" "Z" 0 20]
+                   [2 "A" "Y" 0 30]
+                   [2 "B" "Z" 0 40]]
+             cols [{:name "col0" :source "breakout"}
+                   {:name "col1" :source "breakout"}
+                   {:name "col2" :source "breakout"}
+                   {:name "pivot-grouping" :source "breakout"}
+                   {:name "count" :source "aggregation"}]
+             row-indexes [0 1]
+             col-indexes [2]
+             val-indexes [4]
+             col-settings [{} {} {} {} {}]]
+         ;; Test collapsing a specific node at the root level
+         (let [settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
+               result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
 
-        (is (= [{:children [{:children [] :isCollapsed true :value "A"}  ;; Only [1,"A"] should be collapsed
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed false
-                 :value 1}
-                {:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed false
-                 :value 2}]
-               (:row-tree result))
-            "Row tree should have correct collapsed state for nested path [1,\"A\"]"))
+           (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed true  ;; Only the node with value 1 should be collapsed
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false ;; Node with value 2 should not be collapsed
+                    :value 2}]
+                  (:row-tree result))
+               "Row tree should have correct collapsed state for node with value 1 only"))
 
-      ;; Test collapsing multiple specific paths
-      (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]", "[2,\"B\"]"]}}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+         ;; Test collapsing a specific nested path
+         (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]"]}}
+               result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
 
-        (is (= [{:children [{:children [] :isCollapsed true :value "A"}  ;; [1,"A"] should be collapsed
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed false
-                 :value 1}
-                {:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed true :value "B"}]  ;; [2,"B"] should be collapsed
-                 :isCollapsed false
-                 :value 2}]
-               (:row-tree result))
-            "Row tree should have correct collapsed state for multiple specific paths")))))
+           (is (= [{:children [{:children [] :isCollapsed true :value "A"}  ;; Only [1,"A"] should be collapsed
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 2}]
+                  (:row-tree result))
+               "Row tree should have correct collapsed state for nested path [1,\"A\"]"))
 
-(deftest build-pivot-trees-collapsed-rows-type-coherence-test
-  (testing "build-pivot-trees correctly associates values in the viz settings with values from the QP"
-    ;; Use BigInts and BigDecimals in the raw rows and ensure the collapsed_rows setting still applies
-    (let [rows [[1N "A" "Y" 0 10]
-                [1N "B" "Z" 0 20]
-                [2.5M "A" "Y" 0 30]
-                [2.5M "B" "Z" 0 40]]
-          cols [{:name "col0" :source "breakout"}
-                {:name "col1" :source "breakout"}
-                {:name "col2" :source "breakout"}
-                {:name "pivot-grouping" :source "breakout"}
-                {:name "count" :source "aggregation"}]
-          row-indexes [0 1]
-          col-indexes [2]
-          val-indexes [4]
-          col-settings [{} {} {} {} {}]
-          settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
-          result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-      (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                          {:children [] :isCollapsed false :value "B"}]
-               :isCollapsed true  ;; Only the node with value 1 should be collapsed
-               :value 1}
-              {:children [{:children [] :isCollapsed false :value "A"}
-                          {:children [] :isCollapsed false :value "B"}]
-               :isCollapsed false ;; Node with value 2 should not be collapsed
-               :value 2.5}]
-             (:row-tree result))))))
+         ;; Test collapsing multiple specific paths
+         (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]", "[2,\"B\"]"]}}
+               result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
 
-(deftest build-pivot-trees-non-existant-paths
-  (testing "build-pivot-trees does not collapse paths from the viz settings that are not present in the tree (#57054)"
-    (let [rows [[1 "A" "Y" 0 10]
-                [1 "B" "Z" 0 20]
-                [2 "A" "Y" 0 30]
-                [2 "B" "Z" 0 40]]
-          cols [{:name "col0" :source "breakout"}
-                {:name "col1" :source "breakout"}
-                {:name "col2" :source "breakout"}
-                {:name "pivot-grouping" :source "breakout"}
-                {:name "count" :source "aggregation"}]
-          row-indexes [0 1]
-          col-indexes [2]
-          val-indexes [4]
-          col-settings [{} {} {} {} {}]
-          ;; Specify paths that do not exist in the data
-          settings {:pivot_table.collapsed_rows {:value ["[3]" "[1,\"C\"]"]}}
-          result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-      (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                          {:children [] :isCollapsed false :value "B"}]
-               :isCollapsed false
-               :value 1}
-              {:children [{:children [] :isCollapsed false :value "A"}
-                          {:children [] :isCollapsed false :value "B"}]
-               :isCollapsed false
-               :value 2}]
-             (:row-tree result))
-          "Row tree should not have any collapsed nodes for paths that don't exist in the data"))))
+           (is (= [{:children [{:children [] :isCollapsed true :value "A"}  ;; [1,"A"] should be collapsed
+                               {:children [] :isCollapsed false :value "B"}]
+                    :isCollapsed false
+                    :value 1}
+                   {:children [{:children [] :isCollapsed false :value "A"}
+                               {:children [] :isCollapsed true :value "B"}]  ;; [2,"B"] should be collapsed
+                    :isCollapsed false
+                    :value 2}]
+                  (:row-tree result))
+               "Row tree should have correct collapsed state for multiple specific paths"))))))
+
+#?(:cljs
+   (deftest build-pivot-trees-collapsed-rows-type-coherence-test
+     (testing "build-pivot-trees correctly associates values in the viz settings with values from the QP"
+        ;; Use BigInts and BigDecimals in the raw rows and ensure the collapsed_rows setting still applies
+       (let [rows [[1N "A" "Y" 0 10]
+                   [1N "B" "Z" 0 20]
+                   [2.5M "A" "Y" 0 30]
+                   [2.5M "B" "Z" 0 40]]
+             cols [{:name "col0" :source "breakout"}
+                   {:name "col1" :source "breakout"}
+                   {:name "col2" :source "breakout"}
+                   {:name "pivot-grouping" :source "breakout"}
+                   {:name "count" :source "aggregation"}]
+             row-indexes [0 1]
+             col-indexes [2]
+             val-indexes [4]
+             col-settings [{} {} {} {} {}]
+             settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
+             result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+         (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed true  ;; Only the node with value 1 should be collapsed
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false ;; Node with value 2 should not be collapsed
+                  :value 2.5}]
+                (:row-tree result)))))))
+
+#?(:cljs
+   (deftest build-pivot-trees-non-existant-paths
+     (testing "build-pivot-trees does not collapse paths from the viz settings that are not present in the tree (#57054)"
+       (let [rows [[1 "A" "Y" 0 10]
+                   [1 "B" "Z" 0 20]
+                   [2 "A" "Y" 0 30]
+                   [2 "B" "Z" 0 40]]
+             cols [{:name "col0" :source "breakout"}
+                   {:name "col1" :source "breakout"}
+                   {:name "col2" :source "breakout"}
+                   {:name "pivot-grouping" :source "breakout"}
+                   {:name "count" :source "aggregation"}]
+             row-indexes [0 1]
+             col-indexes [2]
+             val-indexes [4]
+             col-settings [{} {} {} {} {}]
+              ;; Specify paths that do not exist in the data
+             settings {:pivot_table.collapsed_rows {:value ["[3]" "[1,\"C\"]"]}}
+             result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+         (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 1}
+                 {:children [{:children [] :isCollapsed false :value "A"}
+                             {:children [] :isCollapsed false :value "B"}]
+                  :isCollapsed false
+                  :value 2}]
+                (:row-tree result))
+             "Row tree should not have any collapsed nodes for paths that don't exist in the data")))))
 
 (deftest create-row-section-getter-test
   (testing "Returns a function that correctly retrieves cell values"
