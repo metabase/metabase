@@ -76,9 +76,9 @@
                (catch Exception e
                  (let [message (ex-message e)
                        data (ex-data e)]
+                   (when e       (println (c/yellow "\nException:\n") e))
                    (when message (println (c/red    (c/reverse-color "Error     :")) message))
                    (when data    (println (c/yellow (c/reverse-color "Error data:")) data))
-                   (when e       (println (c/yellow "\nException:\n") e))
                    (System/exit (:mage/exit-code data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))
