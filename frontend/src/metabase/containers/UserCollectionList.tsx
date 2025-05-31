@@ -1,4 +1,7 @@
-import { useListUsersQuery } from "metabase/api";
+import {
+  STANDARD_USER_LIST_PAGE_SIZE as PAGE_SIZE,
+  useListUsersQuery,
+} from "metabase/api";
 import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import { Grid } from "metabase/components/Grid";
@@ -19,8 +22,6 @@ import {
   ListGridItem,
   ListHeader,
 } from "./UserCollectionList.styled";
-
-const PAGE_SIZE = 27;
 
 export const UserCollectionList = () => {
   const { page, handleNextPage, handlePreviousPage } = usePagination();

@@ -46,6 +46,46 @@ describe("personal collections", () => {
       });
     });
 
+    it("should see a link to other users' personal collections only if there are other users", () => {
+      cy.intercept("GET", "/api/user", {
+        statusCode: 200,
+        body: {
+          data: [],
+          total: 1,
+          limit: 0,
+          offset: 0,
+        },
+      }).as("getUsers");
+
+      cy.visit("/");
+
+      cy.wait("@getUsers");
+
+      // Wait for page to re-render after user data is requested, to make the
+      // should("not.exist") test legit
+      cy.wait(200);
+
+      H.navigationSidebar()
+        .findByLabelText("Other users' personal collections")
+        .should("not.exist");
+
+      cy.intercept("GET", "/api/user", {
+        statusCode: 200,
+        body: {
+          data: [],
+          total: 2, // Increase the total to 2
+          limit: 0,
+          offset: 0,
+        },
+      }).as("getUsers");
+
+      cy.wait("@getUsers");
+
+      H.navigationSidebar()
+        .findByLabelText("Other users' personal collections")
+        .should("exist");
+    });
+
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       // Turn normal user into another admin
       cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
