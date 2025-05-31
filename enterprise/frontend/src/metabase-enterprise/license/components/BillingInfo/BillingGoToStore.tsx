@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { getStoreUrl } from "metabase/selectors/settings";
-import { Text } from "metabase/ui";
 
 import { StoreButtonLink } from "./BillingInfo.styled";
 
@@ -11,9 +10,12 @@ export const BillingGoToStore = () => {
 
   return (
     <>
-      <SectionHeader>{t`Billing`}</SectionHeader>
-      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-      <Text color="text-md">{t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}</Text>
+      <SettingHeader
+        id="billing"
+        title={t`Billing`}
+        // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+        description={t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}
+      />
       <StoreButtonLink href={url}>
         {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
         {t`Go to the Metabase Store`}
