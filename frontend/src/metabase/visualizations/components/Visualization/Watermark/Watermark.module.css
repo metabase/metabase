@@ -6,4 +6,6 @@
   right: 0;
   pointer-events: none;
   background-repeat: repeat;
+  background-position: 0 0;
+  background-size: 10rem;
 }

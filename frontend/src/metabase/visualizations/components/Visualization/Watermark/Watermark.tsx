@@ -1,8 +1,8 @@
 import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { getSubpathSafeUrl } from "metabase/lib/urls";
 import type { BaseDashboardCard, Card } from "metabase-types/api";
 
 import S from "./Watermark.module.css";
-import watermark from "./watermark.svg";
 
 export const Watermark = ({ card }: { card: Card | BaseDashboardCard }) => {
   if (isVirtualDashCard(card)) {
@@ -13,7 +13,9 @@ export const Watermark = ({ card }: { card: Card | BaseDashboardCard }) => {
     <div
       className={S.Root}
       data-testid="development-watermark"
-      style={{ backgroundImage: `url(${watermark})` }}
+      style={{
+        backgroundImage: `url("${getSubpathSafeUrl("/app/assets/img/watermark-background.svg")}")`,
+      }}
     />
   );
 };
