@@ -80,6 +80,7 @@
   You can use [[with-actions-test-data-tables]] if you need something other than the `categories` table, e.g. for
   testing FK constraints."
   (ActionsTestDatasetDefinition.))
+(map :table-name actions-test-data)
 
 (defn do-with-dataset-definition
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."

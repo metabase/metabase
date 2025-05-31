@@ -1,7 +1,7 @@
-(ns metabase-enterprise.data-editing.foreign-keys-test
+(ns metabase.actions.foreign-keys-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-editing.foreign-keys :as fks]))
+   [metabase.actions.foreign-keys :as fks]))
 
 (def ^:private metadata
   {:orders     [{:table :order-items, :fk {:order-id :id}, :pk [:id]}]

@@ -5,6 +5,7 @@
    [metabase.actions.error]
    [metabase.actions.events]
    [metabase.actions.execution]
+   [metabase.actions.foreign-keys]
    [metabase.actions.http-action]
    [metabase.actions.models]
    [metabase.actions.scope]
@@ -37,6 +38,9 @@
   violate-foreign-key-constraint
   violate-not-null-constraint
   violate-unique-constraint]
+ [metabase.actions.foreign-keys
+  count-descendants
+  delete-recursively]
  [metabase.actions.execution
   execute-action!
   execute-dashcard!
@@ -54,3 +58,8 @@
  [metabase.actions.scope
   hydrate-scope
   normalize-scope])
+
+(def ^:dynamic *params*
+  "Temporary dynamic vars used to pass params from api to actions execution.
+  Should be removed once we reworked the inputs for perform-action!*."
+  {})
