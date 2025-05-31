@@ -648,7 +648,7 @@ describe("issue 30680", () => {
     cy.findByTestId("editor-tabs-metadata-name").click();
 
     cy.findByTestId("sidebar-content").should("exist");
-    cy.findByTestId("native-query-editor-sidebar").should("not.exist");
+    cy.findByTestId("native-query-editor-action-buttons").should("not.exist");
   });
 });
 
