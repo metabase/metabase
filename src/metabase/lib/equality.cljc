@@ -8,6 +8,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -365,8 +366,8 @@
                       (not-empty (get ref-tails (:id column)))
                       ;; columns from the previous stage have unique `:lib/desired-column-alias` but not `:name`.
                       ;; we cannot fallback to `:name` when `:lib/desired-column-alias` is set
-                      (not-empty (get ref-tails (if (:lib/desired-column-alias column)
-                                                  (-> column lib.ref/ref ref-id-or-name)
+                      (not-empty (get ref-tails (if (lib.field.util/inherited-column? column)
+                                                  ((some-fn :lib/desired-column-alias :name) column)
                                                   (:name column))))
                       [])]
     (case (count matches)
