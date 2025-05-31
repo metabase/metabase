@@ -425,3 +425,94 @@ describe("issue 57398", () => {
     });
   });
 });
+
+describe("issue 46845", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to run a query with an implicit join via a join (metabase#46845)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+
+    cy.log("add a self-join");
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.popover().findByText("Product ID").click();
+    H.popover().findByText("User ID").click();
+
+    cy.log("add a filter for an implicit column from the source table");
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findAllByText("Product").should("have.length", 2).first().click();
+      cy.findByText("Vendor").click();
+      cy.findByText("Alfreda Konopelski II Group").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("add a filter for the column but from the joined table");
+    H.getNotebookStep("filter").icon("add").click();
+    H.popover().within(() => {
+      cy.findAllByText("Product").should("have.length", 2).last().click();
+      cy.findByText("Vendor").click();
+      cy.findByText("Aufderhar-Boehm").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("assert query results");
+    H.visualize();
+    H.assertQueryBuilderRowCount(91);
+  });
+
+  it("should be able to run a query with multiple implicit joins for a native model (metabase#46845)", () => {
+    cy.log("create a native model with 2 FKs to the same table");
+    H.createNativeQuestion(
+      {
+        name: "Model",
+        type: "model",
+        native: {
+          query:
+            "SELECT 1 AS PK, 5 AS FK1, 9 AS FK2 " +
+            "UNION ALL " +
+            "SELECT 2 AS PK, 4 AS FK1, 7 AS FK2",
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openQuestionActions("Edit metadata");
+    H.openColumnOptions("PK");
+    H.mapColumnTo({ table: "Orders", column: "ID" });
+    H.renameColumn("ID", "PK");
+
+    H.openColumnOptions("FK1");
+    H.mapColumnTo({ table: "Orders", column: "Product ID" });
+    H.renameColumn("Product ID", "First Product ID");
+
+    H.openColumnOptions("FK2");
+    H.mapColumnTo({ table: "Orders", column: "Product ID" });
+    H.renameColumn("Product ID", "Second Product ID");
+    H.saveMetadataChanges();
+
+    cy.log("verify filtering on 2 different implicit column groups");
+    H.openNotebook();
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("First Product").click();
+      cy.findByText("Category").click();
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.getNotebookStep("filter").icon("add").click();
+    H.popover().within(() => {
+      cy.findByText("Second Product").click();
+      cy.findByText("Category").click();
+      cy.findByText("Widget").click();
+      cy.button("Add filter").click();
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});

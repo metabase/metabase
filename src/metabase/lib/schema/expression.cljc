@@ -198,7 +198,16 @@
     #_opts [:map
             [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
             [:ident               [:ref {:decode/normalize common/normalize-string-key} ::common/non-blank-string]]]
-    #_args [:* :any]]])
+    #_args [:* :any]]
+   [:fn
+    {:error/message "non-aggregation expression"}
+    #(letfn [(agg-tag? [tag]
+               (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
+             (agg-expr? [expr]
+               (and (vector? expr)
+                    (or (agg-tag? (first expr))
+                        (some agg-expr? (nnext expr)))))]
+       (not (agg-expr? %)))]])
 
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions

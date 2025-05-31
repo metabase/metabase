@@ -10274,6 +10274,41 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v52.2025-05-28T00:00:01
+      author: edpaget
+      comment: set perms/download-results to no when a table has perms/view-data blocked
+      preConditions: # change is safe to run regardless
+      changes:
+         - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE data_permissions as update_dp SET perm_value = 'no'
+              WHERE update_dp.perm_type = 'perms/download-results'
+                  AND update_dp.perm_value <> 'no'
+                  AND EXISTS (
+                  SELECT 1 FROM data_permissions as dp
+                  WHERE dp.group_id = update_dp.group_id
+                      AND dp.db_id = update_dp.db_id
+                      AND dp.table_id = update_dp.table_id
+                      AND dp.perm_type = 'perms/view-data'
+                      AND dp.perm_value = 'blocked'
+                  )
+         - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE data_permissions as update_dp
+              INNER JOIN data_permissions as dp
+                  ON dp.group_id = update_dp.group_id
+                  AND dp.db_id = update_dp.db_id
+                  AND dp.table_id = update_dp.table_id
+                  AND dp.perm_type = 'perms/view-data'
+                  AND dp.perm_value = 'blocked'
+              SET update_dp.perm_value = 'no'
+              WHERE update_dp.perm_type = 'perms/download-results'
+                  AND update_dp.perm_value <> 'no'
+      rollback: # not needed
+
+  - changeSet:
       id: v53.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column
@@ -11553,6 +11588,197 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                     unique: true
+
+
+  - changeSet:
+      id: v56.2025-05-19T16:46:48
+      author: edpaget
+      comment: Add metabot table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot
+      changes:
+        - createTable:
+            tableName: metabot
+            remarks: Metabot configuration
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of the metabot
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Description of the metabot
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the metabot was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the metabot was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-05-19T16:47:48
+      author: edpaget
+      comment: Add metabot entity table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot_entity
+      changes:
+        - createTable:
+            tableName: metabot_entity
+            remarks: Entities associated with a metabot
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this entity is associated with
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  remarks: The type of model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the entity was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-05-19T16:48:48
+      author: edpaget
+      comment: Add index on metabot_entity.metabot_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_entity
+                indexName: idx_metabot_entity_metabot_id
+      changes:
+        - createIndex:
+            tableName: metabot_entity
+            indexName: idx_metabot_entity_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+
+  - changeSet:
+      id: v56.2025-05-19T16:49:49
+      author: edpaget
+      comment: Add foreign key constraint on metabot_entity.metabot_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_entity_metabot_id
+                foreignKeyTableName: metabot_entity
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_entity
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_entity_metabot_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-05-19T16:50:49
+      author: edpaget
+      comment: Create the default metabot instances
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Metabot'
+                  , 'Metabot instance for internal users.'
+                  , 'metabotmetabotmetabot'
+                  , now()
+                  , now()
+              );
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Embeddeded Metabot'
+                  , 'Metabot instance for embedded metabase users.'
+                  , 'embeddedmetabotmetabo'
+                  , now()
+                  , now()
+              );
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

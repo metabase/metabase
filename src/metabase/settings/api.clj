@@ -2,8 +2,8 @@
   "/api/setting endpoints"
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.permissions.validation :as validation]
    [metabase.settings.models.setting :as setting]
    [metabase.util :as u]))
 

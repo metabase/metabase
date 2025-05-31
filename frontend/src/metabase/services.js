@@ -35,12 +35,22 @@ export const StoreApi = {
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
-  // we need to pass pivot_rows & pivot_cols only for ad-hoc queries endpoints
+  // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
   // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols } = getPivotOptions(question);
-      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+      const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
+        getPivotOptions(question);
+      return api(
+        {
+          ...params,
+          pivot_rows,
+          pivot_cols,
+          show_row_totals,
+          show_column_totals,
+        },
+        ...rest,
+      );
     };
   }
 
@@ -213,10 +223,6 @@ export const SlackApi = {
   updateSettings: PUT("/api/slack/settings"),
 };
 
-export const LdapApi = {
-  updateSettings: PUT("/api/ldap/settings"),
-};
-
 export const SamlApi = {
   updateSettings: PUT("/api/saml/settings"),
 };
@@ -325,7 +331,7 @@ export const UtilApi = {
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link
     // and it can be deployed at subpath
-    const path = "/api/util/diagnostic_info/connection_pool_info";
+    const path = "/api/bug-reporting/connection-pool-details";
     const { href } = new URL(api.basename + path, location.origin);
 
     return href;

@@ -38,7 +38,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
         handlers.open();
       }
 
-      dispatch(removeDataSource(source));
+      dispatch(removeDataSource({ source }));
     },
     [dataSources.length, handlers, dispatch],
   );
@@ -95,23 +95,22 @@ export const DataImporter = ({ className }: { className?: string }) => {
             height: "100%",
           }}
         >
-          <Box>
-            <TextInput
-              m="xs"
-              variant="filled"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder={t`Search for something`}
-              leftSection={<Icon name="search" />}
-              autoFocus
-            />
-          </Box>
+          <TextInput
+            m="xs"
+            variant="filled"
+            value={search}
+            onChange={handleSearchChange}
+            placeholder={t`Search for something`}
+            leftSection={<Icon name="search" />}
+            autoFocus
+          />
           <Flex
             direction="column"
             pt="sm"
             px="sm"
             style={{
               overflowY: "auto",
+              flex: 1,
             }}
           >
             <DatasetsList
