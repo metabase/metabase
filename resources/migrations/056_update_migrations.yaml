@@ -1,0 +1,242 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v56.2025-05-19T16:46:48
+      author: edpaget
+      comment: Add metabot table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot
+      changes:
+        - createTable:
+            tableName: metabot
+            remarks: Metabot configuration
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of the metabot
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Description of the metabot
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the metabot was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the metabot was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-05-19T16:47:48
+      author: edpaget
+      comment: Add metabot entity table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot_entity
+      changes:
+        - createTable:
+            tableName: metabot_entity
+            remarks: Entities associated with a metabot
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this entity is associated with
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  remarks: The type of model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the entity was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-05-19T16:48:48
+      author: edpaget
+      comment: Add index on metabot_entity.metabot_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_entity
+                indexName: idx_metabot_entity_metabot_id
+      changes:
+        - createIndex:
+            tableName: metabot_entity
+            indexName: idx_metabot_entity_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+
+  - changeSet:
+      id: v56.2025-05-19T16:49:49
+      author: edpaget
+      comment: Add foreign key constraint on metabot_entity.metabot_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_entity_metabot_id
+                foreignKeyTableName: metabot_entity
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_entity
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_entity_metabot_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-05-19T16:50:49
+      author: edpaget
+      comment: Create the default metabot instances
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Metabot'
+                  , 'Metabot instance for internal users.'
+                  , 'metabotmetabotmetabot'
+                  , now()
+                  , now()
+              );
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Embeddeded Metabot'
+                  , 'Metabot instance for embedded metabase users.'
+                  , 'embeddedmetabotmetabo'
+                  , now()
+                  , now()
+              );
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+########################################################################################################################
+#
+# ADVICE:
+#
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you drop it in a migration.
+#    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
+#    - Database encryption is a major issue:
+#      - Fields like `metabase_database.details` or `setting.value` can be encrypted, so you need to decrypt them in
+#        your migration. See #42617, #44048.
+#      - Database could be partially encrypted, see https://www.notion.so/72575933ef2a446bafd16909e05a7387
+#    - Custom migrations:
+#      - Prefer SQL migrations when possible.
+#      - Never use application code: it can change and *will* break your migration.
+#      - Do not use Toucan models - refer table names directly.
+#      - If it's a big change, consider using Quartz, see #42279
+#      - More in `metabase.app_db.custom_migrations` namespace doc.
+#    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
+#    - Migration id (`vXX.<date>`) must match its earliest released version:
+#      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.
+#      - Instead, write a migration with an oldest target you plan to backport to in mind.
+#
+# 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
+#
+# 3) Run mage lint-migrations-file to run core.spec checks against any changes you make here. Liquibase is pretty
+#    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
+#    this check but it's nicer to know now instead of waiting for CI.
+#
+# 3) Migration IDs should follow the format
+#
+#    vMM.TIMESTAMP
+#
+#    Where
+#
+#    M         = major version
+#    TIMESTAMP = the current timestamp with format `yyyy-MM-dd'T'HH:mm:ss`
+#                To get this timestamp, evaluate this in your REPL: `(dev/migration-timestamp)`
+#
+#    E.g: You're adding a new migration for version 49, And it's 10:30:00AM on April 1, 2023 (UTC),
+#    your migration id should be: `v49.2023-04-01T10:30:00`.
+#
+# PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
+#
+########################################################################################################################

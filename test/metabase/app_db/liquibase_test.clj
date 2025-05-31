@@ -74,9 +74,23 @@
       ;; fake a db where we ran all the migrations, including the legacy ones
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
         (liquibase/with-liquibase [liquibase conn]
-          (let [table-name (liquibase/changelog-table-name liquibase)]
+          (let [table-name (liquibase/changelog-table-name liquibase)
+                newer-ids #{"v56.2025-05-20T12:00:00" "v56.2025-05-21T13:05:00"}]
             (.update liquibase "")
             (t2/update! table-name {:filename "migrations/000_migrations.yaml"})
+            (doseq [id newer-ids]
+              (t2/insert! table-name {:id            id
+                                      :author        "nvoxland"
+                                      :filename      "migrations/056_update_migrations.yaml"
+                                      :orderexecuted 498
+                                      :exectype      "EXECUTED"
+                                      :dateexecuted  [:now]
+                                      :md5sum        "9:70285cb34c7e9e4dd25f322a46e21c04"
+                                      :description   "dropColumn columnName=entity_id, tableName=metabase_field",
+                                      :comments      "Drop metabase_field.entity_id"
+                                      :liquibase     "4.26.0"
+                                      :deployment_id 8470564037}))
+
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
 
             (testing "makes sure the change log filename are correctly set"
@@ -84,12 +98,16 @@
                      (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
 
               (is (= (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
-                     (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml"))))
+                     (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml")))
+
+              (is (= newer-ids
+                     (t2/select-fn-set :id table-name :filename "migrations/056_update_migrations.yaml"))))
 
             (is (= (t2/select-fn-set :id table-name)
                    (set/union
                     (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
-                    (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)))))))))))
+                    (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
+                    newer-ids)))))))))
 
 (deftest wait-for-all-locks-test
   (mt/test-drivers #{:h2 :mysql :postgres}
