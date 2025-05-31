@@ -8,7 +8,6 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -356,23 +355,33 @@
   Throws if there are multiple, ambiguous matches.
 
   Returns the matching ref, or nil if no plausible matches are found."
-  [column :- ::lib.schema.metadata/column
-   refs   :- [:sequential ::lib.schema.ref/ref]]
-  (let [ref-tails (group-by ref-id-or-name refs)
-        matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
-                      (not-empty (get ref-tails (:id column)))
+  ([column :- ::lib.schema.metadata/column
+    refs   :- [:sequential ::lib.schema.ref/ref]]
+   (let [ref-tails (group-by ref-id-or-name refs)
+         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
+                       (not-empty (get ref-tails (:id column)))
                       ;; columns from the previous stage have unique `:lib/desired-column-alias` but not `:name`.
                       ;; we cannot fallback to `:name` when `:lib/desired-column-alias` is set
-                      (not-empty (get ref-tails (if (lib.field.util/inherited-column? column)
-                                                  ((some-fn :lib/desired-column-alias :name) column)
-                                                  (:name column))))
-                      [])]
-    (case (count matches)
+                       (get ref-tails (or (:lib/desired-column-alias column)
+                                          (:name column)))
+                       [])]
+     (case (count matches)
+       0 nil
+       1 (first matches)
+       (throw (ex-info "Ambiguous match: given column matches multiple refs"
+                       {:column        column
+                        :matching-refs matches})))))
+  ([column :- ::lib.schema.metadata/column
+    refs   :- [:sequential ::lib.schema.ref/ref]
+    columns   :- [:sequential ::lib.schema.metadata/column]])
+  (let [matching-column (find-matching-column (lib.ref/ref column) columns)
+        matching-refs   (into [] (filter #(= matching-column (find-matching-column % columns))) refs)]
+    (case (count matching-refs)
       0 nil
-      1 (first matches)
+      1 (first matching-refs)
       (throw (ex-info "Ambiguous match: given column matches multiple refs"
                       {:column        column
-                       :matching-refs matches})))))
+                       :matching-refs matching-refs})))))
 
 (mu/defn find-column-indexes-for-refs :- [:sequential :int]
   "Given a list `haystack` of columns or refs, and a list `needles` of refs to searc for, this returns a list parallel
