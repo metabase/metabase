@@ -416,6 +416,7 @@
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
                               :saved-question-sandboxing       false
+                              :global-join-aliases             true
                               :expressions/date                true
                               :expressions/text                true
                               :expressions/datetime            true
