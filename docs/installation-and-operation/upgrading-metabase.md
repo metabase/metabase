@@ -107,13 +107,15 @@ With X being the latest version available for each release.
 
 Check out a list of [Metabase releases](https://github.com/metabase/metabase/releases).
 
+NOTE: when upgrading between major versions (e.g. v53.x to v54.x), please always use the latest minor version available for that major version. E.g. if you want to upgrade from v50 to v51, use v51.14 since .14 it's the latest minor version of the v51 major version.
+
 ## Upgrading Metabase on other platforms
 
 - [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
 
 ## What happens during an upgrade or downgrade?
 
-During a **major version** upgrade (e.g., 53.1 5o 54.1), Metabase will:
+During a **major version** upgrade (e.g., 53.1 or 54.1), Metabase will:
 
 - Perform all the migrations needed to upgrade to the new version, such as any schema changes to the application database between the two versions.
 - Keep all the metadata it needs to work on the application database.
@@ -168,3 +170,5 @@ If you're running Metabase in a cluster:
 1. Reduce the number of nodes to a single node. You can't upgrade all nodes at the same time because the ugprade process works by acquiring a migration lock on the application database from a single client, which performs the migration. If you keep more than one node active when you do a major version upgrade, the application won't behave correctly, as schema changes to the application database could cause problems for nodes that are still running the older version of Metabase.
 2. Perform the upgrade as normal (as outlined above).
 3. Raise the number of nodes to the same number you had before.
+
+Please ensure that the container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, or you'll otherwise end up with a corrupted application database and you'll need to restore from a backup.
