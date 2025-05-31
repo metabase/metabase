@@ -1,5 +1,16 @@
 {:paths
  ["src" "resources"]
 
+ :mvn/repos
+ {"shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}
+
  :deps
- {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.0.1"}}}
+ {org.apache.commons/commons-configuration2 {:mvn/version "2.12.0"}
+  org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}
+  org.apache.hive/hive-common {:mvn/version "4.0.1"}
+  org.apache.hive/hive-jdbc {:mvn/version "4.0.1"}
+  org.apache.hive/hive-service {:mvn/version "4.0.1"
+                                :exclusions [org.pac4j/pac4j-saml-opensamlv3]}
+  org.apache.hive/hive-service-rpc {:mvn/version "4.0.1"}
+  org.apache.thrift/libthrift {:mvn/version "0.21.0"}
+  org.apache.zookeeper/zookeeper {:mvn/version "3.9.3"}}}
