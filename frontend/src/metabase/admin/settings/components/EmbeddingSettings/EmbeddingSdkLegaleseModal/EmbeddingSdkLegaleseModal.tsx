@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useAdminSetting } from "metabase/api/utils";
 import {
   Button,
   Group,
@@ -11,21 +12,19 @@ import {
   Title,
 } from "metabase/ui";
 
-import type { AdminSettingComponentProps } from "../types";
-
 export const EmbeddingSdkLegaleseModal = ({
   opened,
   onClose,
-  updateSetting,
 }: AdminSettingComponentProps & ModalProps) => {
   const [loading, setLoading] = useState(false);
+  const { updateSettings } = useAdminSetting("show-sdk-embed-terms");
 
   const onAccept = async () => {
     setLoading(true);
-    await Promise.all([
-      updateSetting({ key: "show-sdk-embed-terms" }, false),
-      updateSetting({ key: "enable-embedding-sdk" }, true),
-    ]);
+    await updateSettings({
+      "show-sdk-embed-terms": false,
+      "enable-embedding-sdk": true,
+    });
     setLoading(false);
     onClose();
   };
