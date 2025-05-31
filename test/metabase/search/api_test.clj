@@ -1328,7 +1328,7 @@
                      :available_models
                      set))))))))
 
-(deftest search-native-query-test
+(deftest ^:synchronized search-native-query-test
   (let [search-term "search-native-query"]
     (mt/with-temp
       [:model/Card {mbql-card :id}             {:name search-term}
@@ -1613,7 +1613,7 @@
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
 
-(deftest force-reindex-test
+(deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
