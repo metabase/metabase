@@ -5,7 +5,7 @@ import { ELLIPSIS } from "../constants";
 export const dashboardShortcuts = {
   "dashboard-bookmark": {
     get name() {
-      return t`Bookmark Dashboard`;
+      return t`Bookmark dashboard`;
     },
     shortcut: ["o"],
     shortcutGroup: "dashboard" as const,
@@ -15,7 +15,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-add-filter": {
     get name() {
-      return t`Add Filter`;
+      return t`Add filter`;
     },
     shortcut: ["f"],
     shortcutGroup: "dashboard" as const,
@@ -25,7 +25,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-toggle-add-question-sidepanel": {
     get name() {
-      return t`Open Add Question Side Sheet`;
+      return t`Open question sidebar`;
     },
     shortcut: ["a"],
     shortcutGroup: "dashboard" as const,
@@ -35,7 +35,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-add-notebook-question": {
     get name() {
-      return t`Add Notebook Question`;
+      return t`Add query builder question`;
     },
     shortcut: ["q"],
     shortcutGroup: "dashboard" as const,
@@ -45,7 +45,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-add-native-question": {
     get name() {
-      return t`Add Native Question`;
+      return t`Add native question`;
     },
     shortcut: ["n"],
     shortcutGroup: "dashboard" as const,
@@ -55,7 +55,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-cancel-edit": {
     get name() {
-      return t`Cancel Edit Dashboard`;
+      return t`Cancel edit dashboard`;
     },
     shortcut: ["e"],
     shortcutGroup: "dashboard" as const,
@@ -65,7 +65,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-send-to-trash": {
     get name() {
-      return t`Send tashboard to trash`;
+      return t`Send dashboard to trash`;
     },
     shortcut: ["$mod+backspace"],
     shortcutGroup: "dashboard" as const,
@@ -75,7 +75,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-toggle-info-sidebar": {
     get name() {
-      return t`Toggle Dashboard Info`;
+      return t`Toggle dashboard info`;
     },
     shortcut: ["]"],
     shortcutGroup: "dashboard" as const,
@@ -85,7 +85,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-edit": {
     get name() {
-      return t`Edit Dashboard`;
+      return t`Edit dashboard`;
     },
     shortcutGroup: "dashboard" as const,
     shortcut: ["e"],
@@ -95,7 +95,7 @@ export const dashboardShortcuts = {
   },
   "dashboard-save": {
     get name() {
-      return t`Save Dashboard`;
+      return t`Save dashboard`;
     },
     shortcut: ["s"],
     shortcutGroup: "dashboard" as const,
