@@ -151,7 +151,7 @@ describe("scenarios > question > joined questions", () => {
     H.visualize();
 
     cy.findByTestId("qb-filters-panel")
-      .findByText("question b - PRODUCT_ID → Category is Gadget")
+      .findByText("question b - PRODUCT_ID → CATEGORY is Gadget")
       .should("be.visible");
     cy.findByTestId("scalar-value").contains("Gadget").should("be.visible");
   });

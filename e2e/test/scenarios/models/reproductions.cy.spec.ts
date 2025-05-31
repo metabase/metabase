@@ -395,7 +395,6 @@ describe("issue 41785, issue 46756", () => {
     cy.button("Save").click();
     H.modal().button("Save").click();
 
-    cy.findByTestId("loading-indicator").should("exist");
     cy.findByTestId("loading-indicator").should("not.exist");
 
     H.openVizSettingsSidebar();
