@@ -75,6 +75,8 @@ export class Api extends EventEmitter {
 
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
+        // this will transform arrays to objects with numeric keys
+        // we shouldn't be using top level-arrays in the API
         const data = { ...rawData };
         for (const tag of url.match(/:\w+/g) || []) {
           const paramName = tag.slice(1);
