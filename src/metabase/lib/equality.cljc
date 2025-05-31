@@ -373,15 +373,15 @@
                         :matching-refs matches})))))
   ([column :- ::lib.schema.metadata/column
     refs   :- [:sequential ::lib.schema.ref/ref]
-    columns   :- [:sequential ::lib.schema.metadata/column]])
-  (let [matching-column (find-matching-column (lib.ref/ref column) columns)
-        matching-refs   (into [] (filter #(= matching-column (find-matching-column % columns))) refs)]
-    (case (count matching-refs)
-      0 nil
-      1 (first matching-refs)
-      (throw (ex-info "Ambiguous match: given column matches multiple refs"
-                      {:column        column
-                       :matching-refs matching-refs})))))
+    columns   :- [:sequential ::lib.schema.metadata/column]]
+   (let [matching-column (find-matching-column (lib.ref/ref column) columns)
+         matching-refs   (into [] (filter #(= matching-column (find-matching-column % columns))) refs)]
+     (case (count matching-refs)
+       0 nil
+       1 (first matching-refs)
+       (throw (ex-info "Ambiguous match: given column matches multiple refs"
+                       {:column        column
+                        :matching-refs matching-refs}))))))
 
 (mu/defn find-column-indexes-for-refs :- [:sequential :int]
   "Given a list `haystack` of columns or refs, and a list `needles` of refs to searc for, this returns a list parallel
