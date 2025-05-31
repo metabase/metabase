@@ -78,7 +78,6 @@
   (let [fields (qp.add-implicit-clauses/source-metadata->fields source-metadata)]
     (for [[ref-kind id-or-name {:keys [base-type]}] fields]
       (if (integer? id-or-name)
-        ;; field-id is a unique reference, use it
         [:field id-or-name {:join-alias alias}]
         [:field id-or-name {:base-type base-type, :join-alias alias}]))))
 
