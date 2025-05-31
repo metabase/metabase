@@ -178,18 +178,11 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
       - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
-
-      - name: Prepare Embedding SDK artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/build-embedding-sdk
         with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: resources/embedding-sdk
+          m2-cache-key: uberjar
+          artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   e2e-sample-apps-tests:
     needs: [get-build-requirements, get-sample-apps-data, build]

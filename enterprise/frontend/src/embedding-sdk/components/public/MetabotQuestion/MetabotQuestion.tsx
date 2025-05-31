@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FC, useState } from "react";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -74,4 +74,5 @@ function Disclaimer() {
   );
 }
 
-export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);
+export const MetabotQuestion: FC =
+  withPublicComponentWrapper(MetabotQuestionInner);

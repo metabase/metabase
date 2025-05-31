@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { FC, PropsWithChildren, ReactNode } from "react";
 
 import {
   BackButton,
@@ -129,7 +129,7 @@ export const _InteractiveQuestion = ({
  */
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
-) as typeof _InteractiveQuestion & {
+) as FC<PropsWithChildren<InteractiveQuestionProps>> & {
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;

@@ -1,3 +1,5 @@
+import type { FC } from "react";
+
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
@@ -68,6 +70,5 @@ const CreateDashboardModalInner = ({
  * @function
  * @category CreateDashboardModal
  */
-export const CreateDashboardModal = withPublicComponentWrapper(
-  CreateDashboardModalInner,
-);
+export const CreateDashboardModal: FC<CreateDashboardModalProps> =
+  withPublicComponentWrapper(CreateDashboardModalInner);
