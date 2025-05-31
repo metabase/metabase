@@ -1750,6 +1750,7 @@
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
   [driver {:keys [condition], join-alias :alias, :as join} :- mbql.s/Join]
+  {:pre [(string? join-alias)]}
   [[(join-source driver join)
     (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
       [table-alias])]
