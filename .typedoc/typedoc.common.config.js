@@ -102,6 +102,7 @@ const config = {
     // This data attribute is used for full hierarchy page, but we don't use it, it is disabled, so we can safely remove the attribute
     ' data-refl="[^"]*"': "",
   },
+  logLevel: "Warn",
 };
 
 module.exports = config;
