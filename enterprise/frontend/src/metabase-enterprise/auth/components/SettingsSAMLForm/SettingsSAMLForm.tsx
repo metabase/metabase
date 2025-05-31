@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useCallback } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -87,7 +86,7 @@ export function SettingsSAMLForm() {
   }
 
   return (
-    <Box maw="40rem">
+    <Box maw="40rem" mx="md">
       <FormProvider
         initialValues={getFormValues(settingValues ?? {})}
         onSubmit={handleSubmit}
@@ -95,7 +94,7 @@ export function SettingsSAMLForm() {
         enableReinitialize
       >
         {({ dirty }) => (
-          <Form className={CS.mx2}>
+          <Form>
             <Breadcrumbs
               className={CS.mb3}
               crumbs={[
@@ -103,11 +102,8 @@ export function SettingsSAMLForm() {
                 [t`SAML`],
               ]}
             />
-            <Title
-              order={2}
-              className={CS.mb2}
-            >{t`Set up SAML-based SSO`}</Title>
-            <Text c="text-medium">
+            <Title order={2}>{t`Set up SAML-based SSO`}</Title>
+            <Text c="text-medium" mb="xl">
               {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
                 <ExternalLink
                   key="link"
@@ -115,7 +111,7 @@ export function SettingsSAMLForm() {
                 >{t`documentation`}</ExternalLink>
               )}.`}
             </Text>
-            <SamlUserProvisioning />
+            {isEnabled && <SamlUserProvisioning />}
             <FormSection title={t`Configure your identity provider (IdP)`}>
               <Text c="text-medium" mb="xl">
                 {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
@@ -164,7 +160,7 @@ export function SettingsSAMLForm() {
 
             {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <FormSection title={t`Tell Metabase about your identity provider`}>
-              <Text className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
+              <Text mb="xl" mt="sm" c="text-medium">
                 {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
                 {t`Metabase will need the following info about your provider.`}
               </Text>
