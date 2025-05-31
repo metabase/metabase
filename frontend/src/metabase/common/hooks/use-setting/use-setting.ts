@@ -48,6 +48,9 @@ export const useUserSetting = <T extends keyof UserSettings>(
   return [currentValue, shouldDebounce ? debouncedSetter : setter];
 };
 
+/**
+ * @deprecated use useAdminSetting
+ */
 export const useMergeSetting = <Key extends SettingKey>(
   displaySetting: SettingElement<Key>,
 ): SettingElement<Key> => {

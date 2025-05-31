@@ -62,7 +62,6 @@ const setup = ({
 
   renderWithProviders(
     <SwitchWithSetByEnvVar
-      onChange={onChange}
       settingKey={settingKey}
       disabled={disabled}
       {...(label ? { label } : {})}
