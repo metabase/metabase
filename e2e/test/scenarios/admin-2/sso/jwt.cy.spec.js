@@ -5,7 +5,6 @@ import {
   checkGroupConsistencyAfterDeletingMappings,
   crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
 describe("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
@@ -61,11 +60,12 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
-    getUserProvisioningInput().label.click();
-    cy.button("Save changes").click();
-    cy.wait("@updateSettings");
+    cy.findByTestId("jwt-user-provisioning-enabled?-setting")
+      .findByText("Enabled")
+      .click();
+    cy.wait("@updateSetting");
 
-    getSuccessUi().should("exist");
+    H.undoToast().findByText("Changes saved").should("be.visible");
   });
 
   it("should allow to reset jwt settings", () => {
