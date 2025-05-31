@@ -7,6 +7,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.time :as u.time]
    [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
@@ -129,8 +130,10 @@
 
 (defn humanize-datetime
   "Convert a time data type into a human friendly string."
-  [t-str unit]
-  (let [dt (u.date/parse t-str)]
+  [t unit]
+  (let [dt (if (integer? t)
+             (u.time/coerce-to-timestamp t {:unit unit})
+             (u.date/parse t))]
     (case unit
       :second          (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
       :minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))

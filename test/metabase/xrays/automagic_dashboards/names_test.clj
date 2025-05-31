@@ -1,5 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.names-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.test :as mt]
@@ -12,25 +13,43 @@
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
 (deftest ^:parallel temporal-humanization-test
-  (let [dt    #t "1990-09-09T12:30"
-        t-str "1990-09-09T12:30:00"]
-    (doseq [[unit expected] {:minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
-                             :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
-                             :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
-                             :week            (tru "in {0} week - {1}" (#'names/pluralize (u.date/extract dt :week-of-year)) (str (u.date/extract dt :year)))
-                             :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
-                             :quarter         (tru "in Q{0} - {1}" (u.date/extract dt :quarter-of-year) (str (u.date/extract dt :year)))
-                             :year            (t/format "YYYY" dt)
-                             :day-of-week     (t/format "EEEE" dt)
-                             :hour-of-day     (tru "at {0}" (t/format "h a" dt))
-                             :month-of-year   (t/format "MMMM" dt)
-                             :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
-                             :minute-of-hour  (u.date/extract dt :minute-of-hour)
-                             :day-of-month    (u.date/extract dt :day-of-month)
-                             :week-of-year    (u.date/extract dt :week-of-year)}]
-      (testing (format "unit = %s" unit)
-        (is (= (str expected)
-               (str (names/humanize-datetime t-str unit))))))))
+  (testing "Timestamp handling"
+    (let [dt    #t "1990-09-09T12:30"
+          t-str "1990-09-09T12:30:00"]
+      (doseq [[unit expected] {:minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
+                               :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
+                               :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
+                               :week            (tru "in {0} week - {1}"
+                                                     (#'names/pluralize (u.date/extract dt :week-of-year))
+                                                     (str (u.date/extract dt :year)))
+                               :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
+                               :quarter         (tru "in Q{0} - {1}"
+                                                     (u.date/extract dt :quarter-of-year)
+                                                     (str (u.date/extract dt :year)))
+                               :year            (t/format "YYYY" dt)
+                               :day-of-week     (t/format "EEEE" dt)
+                               :hour-of-day     (tru "at {0}" (t/format "h a" dt))
+                               :month-of-year   (t/format "MMMM" dt)
+                               :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
+                               :minute-of-hour  (u.date/extract dt :minute-of-hour)
+                               :day-of-month    (u.date/extract dt :day-of-month)
+                               :week-of-year    (u.date/extract dt :week-of-year)}]
+        (testing (format "unit = %s" unit)
+          (is (= (str expected)
+                 (str (names/humanize-datetime t-str unit))))))))
+  (testing "Extracted unit handling"
+    (is (= :sunday (#'u.date/start-of-week)) "adjust the test, it assumes Sunday as first day of the week")
+    (let [t 3]                          ; t = 2 or t = 4 would also work
+      (doseq [[unit expected] {:day-of-week     (-> t dec t/day-of-week str/capitalize)
+                               :hour-of-day     (str "at " t " AM")
+                               :month-of-year   (-> t t/month str/capitalize)
+                               :quarter-of-year (str "Q" t)
+                               :minute-of-hour  t
+                               :day-of-month    t
+                               :week-of-year    t}]
+        (testing (format "unit = %s" unit)
+          (is (= (str expected)
+                 (str (names/humanize-datetime t unit)))))))))
 
 (deftest ^:parallel pluralize-test
   (are [expected n] (= (str expected)
