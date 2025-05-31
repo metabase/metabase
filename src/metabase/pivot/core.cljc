@@ -12,11 +12,11 @@
 #?(:clj
    (set! *warn-on-reflection* true))
 
-(defn- json-parse
-  "Parses a JSON string in Clojure or ClojureScript into  "
-  [x]
-  #?(:cljs (js->clj (js/JSON.parse x))
-     :clj (json/decode x)))
+#?(:cljs
+   (defn- json-parse
+     "Parses a JSON string in Clojure or ClojureScript into  "
+     [x]
+     (js->clj (js/JSON.parse x))))
 
 (defn- json-roundtrip
   "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
@@ -100,38 +100,40 @@
       (transient {})
       pivot-data-without-primary))))
 
-(defn- collapse-level
-  "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
-  of the root, etc."
-  [tree level]
-  (m/map-vals
-   (if (= level 1)
-     #(assoc % :isCollapsed true)
-     #(update % :children (fn [subtree] (collapse-level subtree (dec level)))))
-   tree))
+#?(:cljs
+   (defn- collapse-level
+     "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
+     of the root, etc."
+     [tree level]
+     (m/map-vals
+      (if (= level 1)
+        #(assoc % :isCollapsed true)
+        #(update % :children (fn [subtree] (collapse-level subtree (dec level)))))
+      tree)))
 
-(defn- add-is-collapsed
-  "Annotates a row tree with :isCollapsed values, based on the contents of
-  collapsed-subtotals"
-  [tree collapsed-subtotals]
-  (let [parsed-collapsed-subtotals (map json-parse collapsed-subtotals)]
-    (reduce
-     (fn [tree collapsed-subtotal]
-       (cond
-         ;; A plain integer represents an entire level of the tree which is
-         ;; collapsed (1-indexed)
-         (int? collapsed-subtotal)
-         (collapse-level tree collapsed-subtotal)
+#?(:cljs
+   (defn- add-is-collapsed
+     "Annotates a row tree with :isCollapsed values, based on the contents of
+      collapsed-subtotals"
+     [tree collapsed-subtotals]
+     (let [parsed-collapsed-subtotals (map json-parse collapsed-subtotals)]
+       (reduce
+        (fn [tree collapsed-subtotal]
+          (cond
+             ;; A plain integer represents an entire level of the tree which is
+             ;; collapsed (1-indexed)
+            (int? collapsed-subtotal)
+            (collapse-level tree collapsed-subtotal)
 
-         ;; A seq represents a specific path in the tree which is collapsed
-         (sequential? collapsed-subtotal)
-         (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
-                              :isCollapsed)]
-           (if-not (nil? (get-in tree key-path))
-             (assoc-in tree key-path true)
-             tree))))
-     tree
-     parsed-collapsed-subtotals)))
+             ;; A seq represents a specific path in the tree which is collapsed
+            (sequential? collapsed-subtotal)
+            (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
+                                 :isCollapsed)]
+              (if-not (nil? (get-in tree key-path))
+                (assoc-in tree key-path true)
+                tree))))
+        tree
+        parsed-collapsed-subtotals))))
 
 (defn- add-path-to-tree
   "Adds a path of values to a row or column tree. Each level of the tree is an
@@ -226,19 +228,20 @@
              tree))
 
 ;; TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
-(defn- filter-collapsed-subtotals
-  [row-indexes settings col-settings]
-  (let [all-collapsed-subtotals (-> settings :pivot_table.collapsed_rows :value)
-        pivot-row-settings (map #(nth col-settings %) row-indexes)
-        column-is-collapsible? (map #(not= false (:pivot_table.column_show_totals %)) pivot-row-settings)]
-    ;; A path can't be collapsed if subtotals are turned off for that column
-    (filter (fn [path-or-length]
-              (let [path-or-length (json-parse path-or-length)
-                    length (if (sequential? path-or-length)
-                             (count path-or-length)
-                             path-or-length)]
-                (nth column-is-collapsible? (dec length) false)))
-            all-collapsed-subtotals)))
+#?(:cljs
+   (defn- filter-collapsed-subtotals
+     [row-indexes settings col-settings]
+     (let [all-collapsed-subtotals (-> settings :pivot_table.collapsed_rows :value)
+           pivot-row-settings (map #(nth col-settings %) row-indexes)
+           column-is-collapsible? (map #(not= false (:pivot_table.column_show_totals %)) pivot-row-settings)]
+       ;; A path can't be collapsed if subtotals are turned off for that column
+       (filter (fn [path-or-length]
+                 (let [path-or-length (json-parse path-or-length)
+                       length (if (sequential? path-or-length)
+                                (count path-or-length)
+                                path-or-length)]
+                   (nth column-is-collapsible? (dec length) false)))
+               all-collapsed-subtotals))))
 
 (defn- postprocess-tree
   "Converts a tree of sorted maps to a tree of vectors. This allows the tree to
@@ -263,10 +266,9 @@
 
   Takes raw pivot data and generates hierarchical tree structures for both rows
   and columns, along with a lookup map for cell values."
+  #_{:clj-kondo/ignore [:unused-binding]}
   [rows cols row-indexes col-indexes val-indexes settings col-settings]
-  (let [collapsed-subtotals (filter-collapsed-subtotals row-indexes settings col-settings)
-        ; rows (get-rows-from-pivot-data pivot-data row-indexes col-indexes)
-        {:keys [row-tree col-tree]}
+  (let [{:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
            (let [row-path (select-indexes row row-indexes)
@@ -276,7 +278,11 @@
          {:row-tree (ordered-map/ordered-map)
           :col-tree (ordered-map/ordered-map)}
          rows)
-        collapsed-row-tree (add-is-collapsed row-tree collapsed-subtotals)
+        ;; Only collapse row tree on the FE (in CLJS); keep it uncollapsed for exports (in CLJ)
+        collapsed-row-tree #?(:cljs (add-is-collapsed
+                                     row-tree
+                                     (filter-collapsed-subtotals row-indexes settings col-settings))
+                              :clj row-tree)
         row-sort-orders (sort-orders-from-settings col-settings row-indexes)
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
