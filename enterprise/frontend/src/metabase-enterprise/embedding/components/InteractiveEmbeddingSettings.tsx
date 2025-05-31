@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { SwitchWithSetByEnvVar } from "metabase/admin/settings/components/widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { useDocsUrl } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -37,7 +37,7 @@ export function InteractiveEmbeddingSettings() {
             [t`Interactive embedding`],
           ]}
         />
-        <SwitchWithSetByEnvVar
+        <EmbeddingToggle
           settingKey="enable-embedding-interactive"
           label={t`Enable Interactive embedding`}
         />

@@ -17,15 +17,12 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  SwitchWithSetByEnvVar,
-  type SwitchWithSetByEnvVarProps,
-} from "./SwitchWithSetByEnvVar";
+import { EmbeddingToggle, type EmbeddingToggleProps } from "./EmbeddingToggle";
 
 type SetupProps = Partial<
-  Pick<SwitchWithSetByEnvVarProps, "settingKey" | "label" | "disabled">
+  Pick<EmbeddingToggleProps, "settingKey" | "label" | "disabled">
 > &
-  Omit<SettingDefinition<SwitchWithSetByEnvVarProps["settingKey"]>, "key">;
+  Omit<SettingDefinition<EmbeddingToggleProps["settingKey"]>, "key">;
 
 const setup = ({
   settingKey = "enable-embedding-static",
@@ -61,7 +58,7 @@ const setup = ({
   const onChange = jest.fn();
 
   renderWithProviders(
-    <SwitchWithSetByEnvVar
+    <EmbeddingToggle
       settingKey={settingKey}
       disabled={disabled}
       {...(label ? { label } : {})}
@@ -74,7 +71,7 @@ const setup = ({
   return { onChange };
 };
 
-describe("SwitchWithSetByEnvVar", () => {
+describe("EmbeddingToggle", () => {
   it("should render 'Set via environment variable' text when is_env_setting is true", () => {
     setup({
       is_env_setting: true,
