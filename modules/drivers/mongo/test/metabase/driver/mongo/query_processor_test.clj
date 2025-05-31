@@ -445,75 +445,58 @@
 (deftest ^:synchronized temporal-arithmetic-test
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
-      (testing "Mixed integer and date arithmetic works with Mongo 5+"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
-          (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
-            (is (= {"$expr"
-                    {"$lt"
-                     [{"$dateAdd"
-                       {:startDate {"$add" [{"$dateAdd" {:startDate "$date-field"
-                                                         :unit :year
-                                                         :amount 1}}
-                                            3600000]}
-                        :unit :month
-                        :amount -1}}
-                      {"$subtract"
-                       [{"$dateSubtract" {:startDate {:$dateFromString {:dateString "2008-05-31"}}
-                                          :unit :week
-                                          :amount -1}}
-                        86400000]}]}}
-                   (mongo.qp/compile-filter [:<
-                                             [:+
-                                              [:interval 1 :year]
-                                              [:field "date-field"]
-                                              3600000
-                                              [:interval -1 :month]]
-                                             [:-
-                                              [:absolute-datetime (t/local-date "2008-05-31")]
-                                              [:interval -1 :week]
-                                              86400000]])))))))))
-
-(deftest ^:synchronized temporal-arithmetic-mongo-4-test
-  (mt/test-driver :mongo
-    (mt/with-metadata-provider (mt/id)
-      (testing "Date arithmetic fails with Mongo 4-"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Date arithmetic not supported in versions before 5"
-               (mongo.qp/compile-filter [:<
-                                         [:+
-                                          [:interval 1 :year]
-                                          [:field "date-field"]]
-                                         [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
+      (testing "Mixed integer and date arithmetic works with Mongo"
+        (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
+          (is (= {"$expr"
+                  {"$lt"
+                   [{"$dateAdd"
+                     {:startDate {"$add" [{"$dateAdd" {:startDate "$date-field"
+                                                       :unit :year
+                                                       :amount 1}}
+                                          3600000]}
+                      :unit :month
+                      :amount -1}}
+                    {"$subtract"
+                     [{"$dateSubtract" {:startDate {:$dateFromString {:dateString "2008-05-31"}}
+                                        :unit :week
+                                        :amount -1}}
+                      86400000]}]}}
+                 (mongo.qp/compile-filter [:<
+                                           [:+
+                                            [:interval 1 :year]
+                                            [:field "date-field"]
+                                            3600000
+                                            [:interval -1 :month]]
+                                           [:-
+                                            [:absolute-datetime (t/local-date "2008-05-31")]
+                                            [:interval -1 :week]
+                                            86400000]]))))))))
 
 (deftest ^:parallel datetime-math-tests
   (mt/test-driver :mongo
     (mt/dataset qp.datetime-test/times-mixed
       (mt/with-metadata-provider (mt/id)
-        ;; date arithmetic doesn't supports until mongo 5+
-        (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
-          (testing "date arithmetic with date columns"
-            (let [[col-type field-id] [:date (mt/id :times :d)]]
-              (doseq [op               [:datetime-add :datetime-subtract]
-                      unit             [:year :quarter :month :day]
-                      {:keys [expected query]}
-                      [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
-                                   (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
-                                   (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
-                                   (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]
-                        :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                  :fields      [[:expression "expr"]]}}
-                       {:expected (into [] (frequencies
-                                            [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
-                                             (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
-                                             (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
-                                             (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
-                        :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                   :aggregation [[:count]]
-                                   :breakout    [[:expression "expr"]]}}]]
-                (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-                  (is (= (set expected) (set (qp.datetime-test/test-datetime-math query)))))))))))))
+        (testing "date arithmetic with date columns"
+          (let [[col-type field-id] [:date (mt/id :times :d)]]
+            (doseq [op               [:datetime-add :datetime-subtract]
+                    unit             [:year :quarter :month :day]
+                    {:keys [expected query]}
+                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]
+                      :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                :fields      [[:expression "expr"]]}}
+                     {:expected (into [] (frequencies
+                                          [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
+                                           (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                           (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
+                                           (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :aggregation [[:count]]
+                                 :breakout    [[:expression "expr"]]}}]]
+              (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+                (is (= (set expected) (set (qp.datetime-test/test-datetime-math query))))))))))))
 
 (deftest ^:parallel expr-test
   (mt/test-driver

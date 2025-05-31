@@ -65,7 +65,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
   }
 
   beforeEach(() => {
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
 
     H.withDatabase(externalDatabaseId, ({ ORDERS, ORDERS_ID }) => {

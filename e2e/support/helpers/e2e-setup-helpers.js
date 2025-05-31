@@ -12,7 +12,7 @@ export function snapshot(name) {
  * "without-models" |
  * "default" |
  * "withSqlite" |
- * "mongo-5" |
+ * "mongo-6" |
  * "postgres-12" |
  * "postgres-writable" |
  * "mysql-8" |
