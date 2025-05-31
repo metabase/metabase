@@ -178,6 +178,46 @@
 
 ;; custom Redshift type handling
 
+(defn- external-database-type->base-type
+  "Additional type mappings of external columns. Return nil when no matching type is found."
+  [database-type]
+  (when (or (string? database-type)
+            (instance? clojure.lang.Named database-type))
+    (let [stn  (-> (name database-type) ; sanitized-type-name
+                   (u/lower-case-en))]
+      ;; Following is inspired by mysql docs and redshift jdbc driver code: https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L3414-L3448
+      (cond
+        (str/starts-with? stn "tinyint")   :type/Integer
+        (str/starts-with? stn "smallint")  :type/Integer
+        (str/starts-with? stn "mediumint") :type/Integer
+        (str/starts-with? stn "int")       :type/Integer
+        (str/starts-with? stn "bigint")    :type/BigInteger
+
+        (str/starts-with? stn "float")     :type/Float
+        (str/starts-with? stn "double")    :type/Float
+
+        (and (or (str/starts-with? stn "char")
+                 (str/starts-with? stn "varchar")
+                 (str/starts-with? stn "text"))
+             (re-find #"character set binary" stn))         :type/*
+
+        (str/starts-with? stn "char")                       :type/Text
+        (str/starts-with? stn "varchar")                    :type/Text
+        (str/starts-with? stn "text")                       :type/Text
+        ;; https://dev.mysql.com/doc/refman/8.4/en/charset-national.html
+        (str/starts-with? stn "national varchar")           :type/Text
+        (str/starts-with? stn "nvarchar")                   :type/Text
+        (str/starts-with? stn "nchar varchar")              :type/Text
+        (str/starts-with? stn "national character varying") :type/Text
+        (str/starts-with? stn "national char varying")      :type/Text
+
+        (str/starts-with? stn "tinytext")   :type/Text
+        (str/starts-with? stn "mediumtext") :type/Text
+        (str/starts-with? stn "longtext")   :type/Text
+
+        (= stn "datetime")                  :type/DateTime
+        (= stn "year")                      :type/Integer))))
+
 (def ^:private database-type->base-type
   (some-fn (sql-jdbc.sync/pattern-based-database-type->base-type
             [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
@@ -187,12 +227,18 @@
             :geometry    :type/*    ; spatial data
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal
-            :intervald2s :type/*})) ; interval literal
+            :intervald2s :type/*}   ; interval literal
+           ))
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
   (or (database-type->base-type column-type)
-      ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)))
+      (let [assumed-type ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)]
+        (if-not (contains? #{nil :type/*} assumed-type)
+          assumed-type
+          (if-some [external-assumed-type (external-database-type->base-type column-type)]
+            external-assumed-type
+            assumed-type)))))
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
