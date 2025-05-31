@@ -2,20 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import {
-  Button,
-  Group,
-  List,
-  Modal,
-  type ModalProps,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
 
-export const EmbeddingSdkLegaleseModal = ({
-  opened,
-  onClose,
-}: AdminSettingComponentProps & ModalProps) => {
+export const EmbeddingSdkLegaleseModal = ({ opened, onClose }: ModalProps) => {
   const [loading, setLoading] = useState(false);
   const { updateSettings } = useAdminSetting("show-sdk-embed-terms");
 
@@ -31,7 +20,7 @@ export const EmbeddingSdkLegaleseModal = ({
 
   return (
     <Modal
-      title={<Title order={3}>{t`First, some legalese`}</Title>}
+      title={t`First, some legalese`}
       onClose={onClose}
       opened={opened}
       size={670}

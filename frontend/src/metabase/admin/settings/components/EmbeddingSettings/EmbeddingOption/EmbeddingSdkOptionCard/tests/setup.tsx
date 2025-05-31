@@ -1,10 +1,13 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+  setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, waitFor } from "__support__/ui";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -25,7 +28,7 @@ export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
-export function setup({
+export async function setup({
   showSdkEmbedTerms = true,
   isEmbeddingSdkEnabled = false,
   hasEnterprisePlugins = false,
@@ -64,16 +67,12 @@ export function setup({
 
   setupSettingsEndpoints(settingDefinitions);
   setupPropertiesEndpoints(settingValues);
+  setupUpdateSettingEndpoint();
+  setupUpdateSettingsEndpoint();
 
-  const updateSetting = jest.fn();
-  renderWithProviders(
-    <EmbeddingSdkOptionCard updateSetting={updateSetting} />,
-    {
-      storeInitialState: state,
-    },
-  );
-
-  return {
-    updateSetting,
-  };
+  renderWithProviders(<EmbeddingSdkOptionCard />, { storeInitialState: state });
+  await waitFor(async () => {
+    const gets = await findRequests("GET");
+    expect(gets).toHaveLength(2);
+  });
 }
