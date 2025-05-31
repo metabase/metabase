@@ -607,11 +607,11 @@
     (not (:fields (lib.util/query-stage query stage-number))) (populate-fields-for-stage stage-number)))
 
 (defn- include-field [query stage-number column]
-  (let [populated  (query-with-fields query stage-number)
-        field-refs (fields populated stage-number)
+  (let [populated     (query-with-fields query stage-number)
+        field-refs    (fields populated stage-number)
         field-columns (fieldable-columns query stage-number)
-        match-ref  (lib.equality/find-matching-ref column field-refs field-columns)
-        column-ref (lib.ref/ref column)]
+        match-ref     (lib.equality/find-matching-ref column field-refs field-columns)
+        column-ref    (lib.ref/ref column)]
     (if (and match-ref
              (or (string? (last column-ref))
                  (integer? (last match-ref))))
@@ -620,14 +620,14 @@
       (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
 
 (defn- add-field-to-join [query stage-number column]
-  (let [column-ref   (lib.ref/ref column)
+  (let [column-ref (lib.ref/ref column)
         [join join-columns field] (first (for [join  (lib.join/joins query stage-number)
                                                :let [join-columns (lib.join/joinable-columns query stage-number join)
-                                                     field     (lib.equality/find-matching-column
-                                                                query stage-number column-ref join-columns)]
+                                                     field        (lib.equality/find-matching-column
+                                                                   query stage-number column-ref join-columns)]
                                                :when field]
                                            [join join-columns field]))
-        join-fields  (lib.join/join-fields join)]
+        join-fields (lib.join/join-fields join)]
 
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
