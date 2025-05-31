@@ -3,11 +3,12 @@ import { t } from "ttag";
 import { Stack } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
+
 import {
   EmbeddingSdkOptionCard,
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
-} from "../widgets/EmbeddingOption";
+} from "./EmbeddingOption";
 
 export function EmbeddingSettings() {
   return (

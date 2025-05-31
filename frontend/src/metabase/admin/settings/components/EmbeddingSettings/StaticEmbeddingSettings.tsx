@@ -5,10 +5,10 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Box, Stack } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";
-import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
 
 import { EmbeddingSecretKeyWidget } from "./EmbeddingSecretKeyWidget";
+import { EmbeddingToggle } from "./EmbeddingToggle";
 
 export function StaticEmbeddingSettings() {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
@@ -23,7 +23,7 @@ export function StaticEmbeddingSettings() {
             [t`Static embedding`],
           ]}
         />
-        <SwitchWithSetByEnvVar
+        <EmbeddingToggle
           settingKey="enable-embedding-static"
           label={t`Enable Static embedding`}
         />

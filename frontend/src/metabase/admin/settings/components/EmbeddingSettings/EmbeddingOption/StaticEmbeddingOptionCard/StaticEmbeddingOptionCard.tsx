@@ -7,9 +7,9 @@ import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Group, Text } from "metabase/ui";
 
+import { EmbeddingToggle } from "../../EmbeddingToggle";
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
 
 import { StaticEmbeddingIcon } from "./StaticEmbeddingIcon";
 
@@ -45,7 +45,7 @@ export const StaticEmbeddingOptionCard = () => {
         >
           {t`Manage`}
         </LinkButton>
-        <SwitchWithSetByEnvVar settingKey="enable-embedding-static" />
+        <EmbeddingToggle settingKey="enable-embedding-static" />
       </Group>
     </EmbeddingOption>
   );
