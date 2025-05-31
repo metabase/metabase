@@ -38,7 +38,10 @@ import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
-import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import {
+  NotFoundPlaceholder,
+  PluginPlaceholder,
+} from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
@@ -204,8 +207,8 @@ export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 export const PLUGIN_AUTH_PROVIDERS = {
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder,
-  UserProvisioningSettings: PluginPlaceholder,
-  SettingsSAMLForm: PluginPlaceholder,
+  UserProvisioningSettings: NotFoundPlaceholder,
+  SettingsSAMLForm: NotFoundPlaceholder,
   providers: [] as GetAuthProviders[],
 };
 
