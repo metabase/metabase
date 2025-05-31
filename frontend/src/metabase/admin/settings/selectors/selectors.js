@@ -9,6 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_AUTH_PROVIDERS,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
@@ -171,6 +172,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "authentication/ldap": {
     component: SettingsLdapForm,
     order: 64,
+    settings: [],
+  },
+  "authentication/saml": {
+    component: () => <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />,
+    order: 65,
     settings: [],
   },
   maps: {
