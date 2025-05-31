@@ -18,7 +18,7 @@
   #?(:clj (:import
            java.time.format.DateTimeFormatter)))
 
-(def format-strings
+(def ^:private format-strings
   "This is the complete set of keys the formats can contain, mapped to the platform-specific magic string expected
   by Moment.js or java.time.format.DateTimeFormatter. Many are the same, but not all."
   {:year              #?(:cljs "YYYY" :clj "yyyy")  ; 2022
