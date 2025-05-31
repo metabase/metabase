@@ -2522,3 +2522,32 @@ describe("issue 53036", () => {
     });
   });
 });
+
+describe("issue 57697", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.PRICE, { binning: { strategy: "default" } }],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should not show the binning in the name of the column when binning in the summarize sidebar  (metabase#57697)", () => {
+    H.summarize();
+    H.sidebar()
+      .filter(":visible")
+      .within(() => {
+        cy.findByText("Price").should("be.visible");
+        cy.findByText("Price: Auto binned").should("not.exist");
+      });
+  });
+});
