@@ -5,7 +5,8 @@
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [potemkin :as p])
   (:import
    (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
 
@@ -27,15 +28,42 @@
   []
   (recent-activity?* @latest-activity recent-window-duration))
 
-(defrecord DbActivityTracker []
+(defn- postgres-connection? [^java.sql.Connection connection]
+  (.isWrapperFor connection org.postgresql.jdbc.PgConnection))
+
+;;; I spun these out into separate functions so we can picc up changes to them in the REPL -- Cam
+
+(defn- on-acquire [_connection]
+  (reset! latest-activity (t/offset-date-time)))
+
+(defn- on-check-in [^java.sql.Connection connection]
+  (reset! latest-activity (t/offset-date-time))
+  ;; for Postgres connections, clean up all resources used in the current session. Otherwise we'll just retain a bunch
+  ;; of crap and it can eat up as much as 300MB per connection. See
+  ;; https://www.postgresql.org/docs/current/sql-discard.html for more info about what this does and
+  ;; https://metaboat.slack.com/archives/C05MPF0TM3L/p1748538414384029?thread_ts=1748507464.051999&cid=C05MPF0TM3L for
+  ;; rationale behind why we're doing it -- Cam
+  (when (postgres-connection? connection)
+    (with-open [stmt (.createStatement connection)]
+      (.execute stmt "DISCARD ALL;"))))
+
+(defn- on-check-out [_connection]
+  (reset! latest-activity (t/offset-date-time)))
+
+(defn- on-destroy [_connection]
+  ;; no-op
+  )
+
+(p/deftype+ MetabaseConnectionCustomizer []
   ConnectionCustomizer
-  (onAcquire [_ _connection _identity-token]
-    (reset! latest-activity (t/offset-date-time)))
-  (onCheckIn [_ _connection _identity-token]
-    (reset! latest-activity (t/offset-date-time)))
-  (onCheckOut [_ _connection _identity-token]
-    (reset! latest-activity (t/offset-date-time)))
-  (onDestroy [_ _connection _identity-token]))
+  (onAcquire [_this connection _identity-token]
+    (on-acquire connection))
+  (onCheckIn [_this connection _identity-token]
+    (on-check-in connection))
+  (onCheckOut [_this connection _identity-token]
+    (on-check-out connection))
+  (onDestroy [_this connection _identity-token]
+    (on-destroy connection)))
 
 (defn- register-customizer!
   "c3p0 allows for hooking into lifecycles with its interface
@@ -46,24 +74,68 @@
   [^Class klass]
   (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
                 (.setAccessible true))]
-
     (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
           (.getName klass) (.newInstance klass))))
 
-(register-customizer! DbActivityTracker)
+(register-customizer! MetabaseConnectionCustomizer)
 
 (def ^:private application-db-connection-pool-props
-  "Options for c3p0 connection pool for the application DB. These are set in code instead of a properties file because
-  we use separate options for data warehouse DBs. See
-  https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
+  "Options for c3p0 connection pool for the application DB. These are set in code instead of the `c3p0.properties` file
+  because we use separate options for data warehouse DBs, and setting them in the properties file would affect both.
+  See https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
   below (jump to the 'Simple advice on Connection testing' section.)"
-  (merge
-   {"idleConnectionTestPeriod" 60
-    "connectionCustomizerClassName" (.getName DbActivityTracker)}
-   ;; only merge in `max-pool-size` if it's actually set, this way it doesn't override any things that may have been
-   ;; set in `c3p0.properties`
-   (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
-     {"maxPoolSize" max-pool-size})))
+  {;;
+   ;; If this is a number greater than 0, c3p0 will test all idle, pooled but unchecked-out connections, every this
+   ;; number of seconds
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#idleConnectionTestPeriod
+   ;;
+   "idleConnectionTestPeriod"
+   60
+   ;;
+   ;; The fully qualified class-name of an implememtation of the ConnectionCustomizer interface, which users can
+   ;; implement to set up Connections when they are acquired from the database, or on check-out, and potentially to
+   ;; clean things up on check-in and Connection destruction. If standard Connection properties (holdability, readOnly,
+   ;; or transactionIsolation) are set in the ConnectionCustomizer's onAcquire() method, these will override the
+   ;; Connection default values.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#connectionCustomizerClassName
+   ;;
+   "connectionCustomizerClassName"
+   (.getName MetabaseConnectionCustomizer)
+   ;;
+   ;; Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the pool before
+   ;; being culled. Intended for applications that wish to aggressively minimize the number of open Connections,
+   ;; shrinking the pool back towards minPoolSize if, following a spike, the load level diminishes and Connections
+   ;; acquired are no longer needed. If maxIdleTime is set, maxIdleTimeExcessConnections should be smaller if the
+   ;; parameter is to have any effect. Zero means no enforcement, excess Connections are not idled out
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#maxIdleTimeExcessConnections
+   ;;
+   ;; We are setting this because keeping connections open forever eats up a lot of memory -- see
+   ;; https://metaboat.slack.com/archives/C05MPF0TM3L/p1748538357522569?thread_ts=1748507464.051999&cid=C05MPF0TM3L
+   ;;
+   "maxIdleTimeExcessConnections"
+   (* 10 60) ; 10 minutes
+   ;;
+   ;; Seconds, effectively a time to live. A Connection older than maxConnectionAge will be destroyed and purged from
+   ;; the pool. This differs from maxIdleTime in that it refers to absolute age. Even a Connection which has not been
+   ;; much idle will be purged from the pool if it exceeds maxConnectionAge. Zero means no maximum absolute age is
+   ;; enforced.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#maxConnectionAge
+   ;;
+   "maxConnectionAge"
+   (* 60 60) ; one hour
+   ;;
+   ;; Maximum number of Connections a pool will maintain at any given time.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#maxPoolSize
+   ;;
+   "maxPoolSize"
+   (or (config/config-int :mb-application-db-max-connection-pool-size)
+       ;; 15 is the c3p0 default but it's always nice to be explicit in case that changes
+       15)})
 
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
