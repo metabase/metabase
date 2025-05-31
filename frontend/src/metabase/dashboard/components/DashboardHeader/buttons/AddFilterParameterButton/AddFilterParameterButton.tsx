@@ -6,7 +6,7 @@ import {
   addParameter,
   hideAddParameterPopover,
   showAddParameterPopover,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/parameters";
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
