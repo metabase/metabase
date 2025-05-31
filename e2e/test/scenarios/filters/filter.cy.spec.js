@@ -504,7 +504,7 @@ describe("scenarios > question > filter", () => {
     });
 
     H.getNotebookStep("filter")
-      .findByText("Created At is in the previous 30 days")
+      .findByText("Created At is in the previous 30 days or today")
       .click();
 
     H.clauseStepPopover().within(() => {
@@ -516,7 +516,7 @@ describe("scenarios > question > filter", () => {
 
     // Back to GUI and "Include today" should be still checked
     H.getNotebookStep("filter")
-      .findByText("Created At is in the previous 30 days")
+      .findByText("Created At is in the previous 30 days or today")
       .click();
 
     H.popover()

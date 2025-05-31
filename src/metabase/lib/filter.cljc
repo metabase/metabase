@@ -333,7 +333,7 @@
                                          style))
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
-  [query stage-number [_tag _opts expr n unit] style]
+  [query stage-number [_tag opts expr n unit] style]
   (if (clojure.core/or
        (clojure.core/= n :current)
        (clojure.core/= n 0)
@@ -342,10 +342,10 @@
         (clojure.core/= unit :day)))
     (i18n/tru "{0} is {1}"
               (lib.metadata.calculation/display-name query stage-number expr style)
-              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))
     (i18n/tru "{0} is in the {1}"
               (lib.metadata.calculation/display-name query stage-number expr style)
-              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))))
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-time-interval
   [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
@@ -361,11 +361,11 @@
 
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]
-  (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
+  (lib.temporal-bucket/describe-temporal-interval n unit))
 
 (defmethod lib.metadata.calculation/display-name-method :interval
-  [_query _stage-number [_tag _opts n unit] _style]
-  (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
+  [_query _stage-number [_tag opts n unit] _style]
+  (lib.temporal-bucket/describe-temporal-interval n unit opts))
 
 (lib.common/defop and [x y & more])
 (lib.common/defop or [x y & more])
