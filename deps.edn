@@ -113,6 +113,8 @@
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.2.0"}              ; Java implementation of the JQ json query language
+  org.apache.calcite/calcite-core           {:mvn/version "1.33.0"}             ; database federation for cross db joins
+  org.apache.commons/commons-dbcp2          {:mvn/version "2.9.0"}              ; tmp for calcite
   org.apache.commons/commons-compress       {:mvn/version "1.27.1"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.17.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.24.3"}             ; apache logging framework

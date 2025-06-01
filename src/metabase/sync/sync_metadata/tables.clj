@@ -19,7 +19,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.net :as u.net]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
@@ -278,6 +281,98 @@
                 :schema schema
                 {:schema new-schema})))
 
+(def ^:private slave-sync-keys
+  [:name #_:description :entity_type :active :display_name :visibility_type #_:schema
+   :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
+   :database_require_filter])
+
+(defn- maybe-delete-net-tables!
+  [slave-id->slave-table slave-id->master-table]
+  (let [slave-ids-to-delete (apply disj
+                                   (set (keys slave-id->master-table))
+                                   (keys slave-id->slave-table))
+        master-ids-to-delete (-> slave-id->master-table
+                                 (select-keys slave-ids-to-delete)
+                                 vals
+                                 (->> (map :id)))]
+    (if (seq master-ids-to-delete)
+      (t2/delete! :model/Table :id [:in master-ids-to-delete])
+      0)))
+
+;;TODO: schema
+(defn- maybe-add-new-net-tables!
+  [master-db-id slave-id->slave-table slave-id->master-table]
+  (let [slave-ids-to-add @(def sita (apply disj
+                                           (set (keys slave-id->slave-table))
+                                           (keys slave-id->master-table)))
+        new-master-tables-data @(def nmtd (-> slave-id->slave-table
+                                              (select-keys slave-ids-to-add)
+                                              vals
+                                              (->> (map (fn [{:keys [name id] :as slave-table}]
+                                                          (-> slave-table
+                                                              (select-keys slave-sync-keys)
+                                                              (assoc :db_id master-db-id)
+                                                              (assoc :description (str id))
+                                                              (assoc :schema (-> slave-table :slave_schema))))))))]
+    (if (seq new-master-tables-data)
+      (t2/insert! :model/Table new-master-tables-data)
+      0)))
+
+(comment
+  (apply disj
+         (set (keys sti->st))
+         (keys sti->mt))
+  (maybe-add-new-net-tables! 5 sti->st sti->mt)
+  (toucan2.core/delete! :model/Table :db_id 5))
+
+(defn- maybe-update-net-tables!
+  [master-db-id slave-id->slave-table slave-id->master-table]
+  (let [master-id->slave-id-for-update (into {}
+                                             (map #(select-keys % [:id :description]))
+                                             (select-keys slave-id->master-table
+                                                          (keys slave-id->slave-table)))
+        master-id->update-data (update-vals master-id->slave-id-for-update
+                                            (fn [slave-table]
+                                              (-> (select-keys slave-table slave-sync-keys)
+                                                  (assoc :db_id master-db-id)
+                                                  (assoc :description (-> slave-table :id str))
+                                                  (assoc :schema (-> slave-table :slave_schema)))))]
+    (reduce (fn [acc [master-id update-data]]
+              (+ acc (t2/update! :model/Table :id master-id update-data)))
+            0
+            master-id->update-data)))
+
+(defn- sync-tables-and-database-for-net
+  [database]
+  (let [master-db-id (:id database)
+        master-tables @(def msms (->> (t2/select :model/Table :db_id (:id database))
+                                      (mapv u.net/preprocess-our-table)))
+        slave-dbs @(def sds (u.net/preprocessed-slave-dbs database))
+        slave-db-id->slave-db (m/index-by :id slave-dbs)
+        slave-table-id->slave-table @(def sti->st (t2/select-pk->fn
+                                                   (fn [{:keys [db_id] :as table}]
+                                                     (assoc table :slave_schema
+                                                            (format "%s__%d"
+                                                                    (get-in slave-db-id->slave-db [db_id :name])
+                                                                    db_id)))
+                                                   :model/Table :db_id [:in (map :id slave-dbs)]))
+        ;; at this point description is transformed to slave-table-id
+        slave-table-id->master-table @(def sti->mt (m/index-by :description master-tables))
+        total (+ (maybe-delete-net-tables! slave-table-id->slave-table slave-table-id->master-table)
+                 (maybe-add-new-net-tables! master-db-id slave-table-id->slave-table slave-table-id->master-table)
+                 (maybe-update-net-tables! master-db-id slave-table-id->slave-table slave-table-id->master-table))]
+    {:updated-tables total
+     :total-tables   total}))
+
+(comment
+  ()
+  (driver/with-driver :net
+    (sync-tables-and-database-for-net (toucan2.core/select-one :model/Database :id 5)))
+
+  (sync-tables-and-database-for-net (toucan2.core/select-one :model/Database :id 9))
+
+  ())
+
 (mu/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
@@ -287,47 +382,49 @@
 
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
-   (let [driver (driver.u/database->driver database)
-         db-table-metadatas    (table-set db-metadata)
-         name+schema           #(select-keys % [:name :schema])
-         name+schema->db-table (m/index-by name+schema db-table-metadatas)
-         our-metadata          (db->our-metadata database)
-         multi-level-support?  (driver.u/supports? driver :multi-level-schema database)
-         schemas-to-update     (when multi-level-support?
-                                 (adjusted-schemas driver database our-metadata))
-         our-metadata          (cond->> our-metadata
-                                 multi-level-support?
-                                 (into #{} (map (fn [table]
-                                                  (update table :schema #(get schemas-to-update %1 %1))))))
-         keep-name+schema-set  (fn [metadata]
-                                 (set (map name+schema metadata)))
-         [new-table-metadatas
-          old-table-metadatas] (data/diff
-                                (keep-name+schema-set (set (map name+schema db-table-metadatas)))
-                                (keep-name+schema-set (set (map name+schema our-metadata))))]
-     (sync-util/with-error-handling (format "Error updating table schemas for %s"
-                                            (sync-util/name-for-logging database))
-       (adjust-table-schemas! database schemas-to-update))
+   (let [driver (driver.u/database->driver database)]
+     (if (= :net driver)
+       (sync-tables-and-database-for-net database)
+       (let [db-table-metadatas    (table-set db-metadata)
+             name+schema           #(select-keys % [:name :schema])
+             name+schema->db-table (m/index-by name+schema db-table-metadatas)
+             our-metadata          (db->our-metadata database)
+             multi-level-support?  (driver.u/supports? driver :multi-level-schema database)
+             schemas-to-update     (when multi-level-support?
+                                     (adjusted-schemas driver database our-metadata))
+             our-metadata          (cond->> our-metadata
+                                     multi-level-support?
+                                     (into #{} (map (fn [table]
+                                                      (update table :schema #(get schemas-to-update %1 %1))))))
+             keep-name+schema-set  (fn [metadata]
+                                     (set (map name+schema metadata)))
+             [new-table-metadatas
+              old-table-metadatas] (data/diff
+                                    (keep-name+schema-set (set (map name+schema db-table-metadatas)))
+                                    (keep-name+schema-set (set (map name+schema our-metadata))))]
+         (sync-util/with-error-handling (format "Error updating table schemas for %s"
+                                                (sync-util/name-for-logging database))
+           (adjust-table-schemas! database schemas-to-update))
 
      ;; update database metadata from database
-     (when (some? (:version db-metadata))
-       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
-                                              (sync-util/name-for-logging database))
-         (update-database-metadata! database db-metadata)))
+         (when (some? (:version db-metadata))
+           (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                                  (sync-util/name-for-logging database))
+             (update-database-metadata! database db-metadata)))
      ;; create new tables as needed or mark them as active again
-     (when (seq new-table-metadatas)
-       (let [new-tables-info (set (map #(get name+schema->db-table (name+schema %)) new-table-metadatas))]
-         (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
-                                                (sync-util/name-for-logging database))
-           (create-or-reactivate-tables! database new-tables-info))))
+         (when (seq new-table-metadatas)
+           (let [new-tables-info (set (map #(get name+schema->db-table (name+schema %)) new-table-metadatas))]
+             (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                                    (sync-util/name-for-logging database))
+               (create-or-reactivate-tables! database new-tables-info))))
      ;; mark old tables as inactive
-     (when (seq old-table-metadatas)
-       (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
-         (retire-tables! database old-table-metadatas)))
+         (when (seq old-table-metadatas)
+           (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
+             (retire-tables! database old-table-metadatas)))
 
-     (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
+         (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
-       (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
+           (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
 
-     {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas))
-      :total-tables   (count our-metadata)})))
+         {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas))
+          :total-tables   (count our-metadata)})))))

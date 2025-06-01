@@ -39,6 +39,8 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [clojure.data :as data]
+   [medley.core :as m]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.settings.core :refer [defsetting]]
@@ -51,6 +53,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.net :as u.net]
    [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
@@ -80,46 +83,143 @@
      ;; `sync-instances`
      (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
 
+(defn- maybe-delete-net-fields!
+  [master-fields slave-ids-delete]
+  (when (seq slave-ids-delete)
+    (let [master-ids-delete (keep (fn [{id       :id
+                                        slave-id :description
+                                        :as _master-field}]
+                                    (when ((set slave-ids-delete) slave-id)
+                                      id))
+                                  master-fields)]
+      (println (str "deleting " slave-ids-delete)
+               (t2/delete! :model/Field :id [:in master-ids-delete])))))
+
+(defn- maybe-update-net-fields!
+  [master-fields slave-ids-update slave-id->slave-field]
+  (when (seq slave-ids-update)
+    (let [master-id->update-data (into {}
+                                       (keep (fn [{id :id slave-id :description :as master-field}]
+                                               (when-some [slave-field (slave-id->slave-field slave-id)]
+                                                 ;; schema no, description has to be slave-id!!!, it is actually
+                                                 ;; description has mapping
+                                                 ;; id is separate...
+                                                 ;; ignoring updated at etc...
+                                                 [id (-> slave-field
+                                                         (dissoc :id :description :table_id))])))
+                                       master-fields)]
+      (str "updating " slave-ids-update)
+      ;; should be reduce actually
+      (doseq [[id data] master-id->update-data]
+        (t2/update! :model/Field :id id data)))))
+
+(defn- maybe-add-slave-fields!
+  [slave-fields slave-ids-add slave-table-id->master-table-id]
+  (when (seq slave-ids-add)
+    (let [add-data (keep (fn [{slave-id :id slave-table-id :table_id :as slave-field}]
+                           (when ((set slave-ids-add) slave-id)
+                             (let [add-data* (-> slave-field
+                                                 (assoc :description (str slave-id))
+                                                 (assoc :table_id (doto (slave-table-id->master-table-id slave-table-id)
+                                                                    (as-> $ (assert (pos-int? $)))))
+                                                 (dissoc :id :entity_id))]
+                               add-data*)))
+                         slave-fields)]
+      (println (str "adding " slave-ids-add))
+      (doseq [data add-data]
+        (t2/insert! :model/Field data)))))
+
+;; when back finish deleteion and stuff comming from diff -- seems easy...
+(defn- sync-fields-for-net
+  "Expects master tables successfully synced. Takes master `database`, maps its tables to slave databases fields. Slave
+  database fields are then synced with master database fields."
+  [database]
+  (let [master-db @(def mmdb (u.net/master-database database))
+        master-fields @(def mmff (u.net/master-fields master-db)) ; -> nil
+        slave-fields @(def sfsf (u.net/slave-fields master-db))
+        _ (comment
+            (map #(select-keys % [:id :name]) sfsf))
+        slave-id->slave-field @(def sid->sf (m/index-by :id slave-fields))
+        slave-id->master-field @(def sid->mf (m/index-by :description master-fields))
+        master-tables @(def mtmt (u.net/master-tables master-db))
+        slave-table-id->master-table-id @(def stid->mtid
+                                           (into {}
+                                                 (map (fn [{master-table-id :id slave-table-id :description :as _master-table}]
+                                                        [slave-table-id master-table-id]))
+                                                 master-tables))
+        [slave-ids-delete
+         slave-ids-add
+         slave-ids-update]
+        @(def ddiiff (data/diff (set (keys slave-id->master-field))
+                                (set (keys slave-id->slave-field))))]
+    (maybe-delete-net-fields! master-fields slave-ids-delete)
+    (maybe-update-net-fields! master-fields slave-ids-update slave-id->slave-field)
+    (maybe-add-slave-fields! slave-fields slave-ids-add slave-table-id->master-table-id)
+    ;; what those numbers should be?
+    {:total-fields 42
+     :fields-updated 21}))
+
+(comment
+  (t2/delete! :model/Table :db_id 9)
+
+  (t2/select :model/Field :table_id [:in (t2/select-fn-vec :id :model/Table :db_id 9)])
+  (t2/count :model/Field :table_id [:in (t2/select-fn-vec :id :model/Table :db_id 9)])
+
+  (sync-fields-for-net (t2/select-one :model/Database :id 9))
+
+  (sync-fields-for-net ddd))
+
+(comment
+  (def ddd (t2/select-one :model/Database :id 5))
+  (u.net/master-database ddd)
+  (u.net/master-tables ddd)
+  (u.net/master-fields ddd)
+  (u.net/slave-tables ddd)
+  (u.net/slave-fields ddd))
+
 (mu/defn sync-fields! :- [:map
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
-  (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
-    (let [driver          (driver.u/database->driver database)
-          schemas?        (driver.u/supports? driver :schemas database)
-          fields-metadata (if schemas?
-                            (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
-                            (fetch-metadata/fields-metadata database))]
-      (transduce (comp
-                  (partition-by (juxt :table-name :table-schema))
-                  (map (fn [table-metadata]
-                         (let [fst     (first table-metadata)
-                               table   (t2/select-one :model/Table
-                                                      :db_id (:id database)
-                                                      :%lower.name (t2.util/lower-case-en (:table-name fst))
-                                                      :%lower.schema (some-> fst :table-schema t2.util/lower-case-en)
-                                                      {:where sync-util/sync-tables-clause})
-                               updated (if table
-                                         (try
+  (let [driver (driver.u/database->driver database)]
+    (if (= :net driver)
+      (sync-fields-for-net database)
+      (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
+        (let [driver          (driver.u/database->driver database)
+              schemas?        (driver.u/supports? driver :schemas database)
+              fields-metadata (if schemas?
+                                (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
+                                (fetch-metadata/fields-metadata database))]
+          (transduce (comp
+                      (partition-by (juxt :table-name :table-schema))
+                      (map (fn [table-metadata]
+                             (let [fst     (first table-metadata)
+                                   table   (t2/select-one :model/Table
+                                                          :db_id (:id database)
+                                                          :%lower.name (t2.util/lower-case-en (:table-name fst))
+                                                          :%lower.schema (some-> fst :table-schema t2.util/lower-case-en)
+                                                          {:where sync-util/sync-tables-clause})
+                                   updated (if table
+                                             (try
                                            ;; TODO: decouple nested field columns sync from field sync. This will allow
                                            ;; describe-fields to be used for field sync for databases with nested field columns
                                            ;; Also this should be a driver method, not a sql-jdbc.sync method
-                                           (let [all-metadata (fetch-metadata/include-nested-fields-for-table
-                                                               (set table-metadata)
-                                                               database
-                                                               table)]
-                                             (sync-and-update! database table all-metadata))
-                                           (catch Exception e
-                                             (log/error e)
-                                             0))
-                                         0)]
-                           {:total-fields   (count table-metadata)
-                            :updated-fields updated}))))
-                 (partial merge-with +)
-                 {:total-fields   0
-                  :updated-fields 0}
-                 fields-metadata))))
+                                               (let [all-metadata (fetch-metadata/include-nested-fields-for-table
+                                                                   (set table-metadata)
+                                                                   database
+                                                                   table)]
+                                                 (sync-and-update! database table all-metadata))
+                                               (catch Exception e
+                                                 (log/error e)
+                                                 0))
+                                             0)]
+                               {:total-fields   (count table-metadata)
+                                :updated-fields updated}))))
+                     (partial merge-with +)
+                     {:total-fields   0
+                      :updated-fields 0}
+                     fields-metadata))))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."

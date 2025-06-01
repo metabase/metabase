@@ -267,7 +267,7 @@
    critical places in the app, and we don't want a single driver to crash the app if it throws an exception, or delay the user
    if it takes a long time to execute."
   [driver feature database]
-  (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
+  (let [f (if false #_*memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
 
 (defn features

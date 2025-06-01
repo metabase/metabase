@@ -76,6 +76,7 @@
                                                      rf-or-e
                                                      reducible-rows)]
                                (catch Throwable e
+                                 (def eee e)
                                  [::error (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
                                                    {:type qp.error-type/qp}
                                                    e)]))

@@ -1,0 +1,20 @@
+info:
+  name: Metabase Database Network Driver
+  version: 0.0.1
+  description: Allows Metabase to interact with multiple databases in single query
+driver:
+  - name: net
+    display-name: Net
+    lazy-load: true
+    connection-properties:
+      - name: db-ids
+        display-name: Database ids
+        type: text
+        required: true
+        placeholder: <id>,<id>,...
+init:
+  # at this point supporting only mysql and postgres, core drivers, ie. no further deps
+  - step: load-namespace
+    namespace: metabase.driver.net
+  # - step: register-jdbc-driver
+  #   class: com.databricks.client.jdbc.Driver

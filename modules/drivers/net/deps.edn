@@ -1,0 +1,7 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ ;; calcite temporarily in core deps
+ ;; for sake of example using another pool
+ {}}

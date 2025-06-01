@@ -207,6 +207,7 @@
                               metabase-field (get name->metabase-field field-name)]]
       (sync-nested-fields-of-one-field! table field-metadata metabase-field))))
 
+;; this should be modifd
 (mu/defn sync-instances! :- ms/IntGreaterThanOrEqualToZero
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
   creating Field objects or marking them active/inactive as needed."

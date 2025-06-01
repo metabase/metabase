@@ -590,7 +590,12 @@
 (defn- get-object-of-class-thunk [^ResultSet rs, ^long i, ^Class klass]
   ^{:name (format "(.getObject rs %d %s)" i (.getCanonicalName klass))}
   (fn []
-    (.getObject rs i klass)))
+    (try
+      (.getObject rs i klass)
+      (catch Exception e
+        (def eee e)
+        (def kkk klass)
+        (throw e)))))
 
 (defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP]
   [_ rs _ i]
@@ -676,6 +681,7 @@
         (fn [^Long i]
           (let [col-name     (.getColumnLabel rsmeta i)
                 db-type-name (.getColumnTypeName rsmeta i)
+                #_#__ (do (println "ahoj") (println db-type-name))
                 base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
             (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                         i col-name db-type-name base-type driver)
@@ -742,6 +748,9 @@
     (fn [^Connection conn]
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params qp.pipeline/*canceled-chan*)
                   ^ResultSet rs (try
+                                  #_(log/info "EXEX")
+                                  #_(log/info sql)
+                                  #_(log/info (type conn))
                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                   (catch Throwable e
                                     (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
