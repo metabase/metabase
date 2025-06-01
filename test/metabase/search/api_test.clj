@@ -1800,13 +1800,13 @@
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
 (deftest ^:synchronized multiple-limits
-  (testing "Multiple `limit` query args should be handled correctly (#45345)"
-    ;(is (= {} (mt/user-real-request :crowberto :get 500 "search?q=product")))
-    ;; This test is failing with "no index" for some reason, forcing the reindex
-    (search/reindex!)
-    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                          :data count)
-          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                           :data count)]
-      (is (>= total-count result-count))
-      (is (= 1 result-count)))))
+  (search.tu/with-sync-search-indexing
+    (testing "Multiple `limit` query args should be handled correctly (#45345)"
+      ;(is (= {} (mt/user-real-request :crowberto :get 500 "search?q=product")))
+      ;; This test is failing with "no index" for some reason, forcing the reindex
+      (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+                            :data count)
+            result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
+                             :data count)]
+        (is (>= total-count result-count))
+        (is (= 1 result-count))))))
