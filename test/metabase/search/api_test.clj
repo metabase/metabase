@@ -1755,6 +1755,19 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
+(deftest ^:synchronized multiple-limits
+  (search.tu/with-sync-search-indexing
+    (search/init-index! {:force-reset? false :re-populate? false})
+    (testing "Multiple `limit` query args should be handled correctly (#45345)"
+      (is (= {} (mt/user-real-request :crowberto :get 500 "search?q=product")))
+      ;; This test is failing with "no index" for some reason, forcing the reindex
+      (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+                            :data count)
+            result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
+                             :data count)]
+        (is (>= total-count result-count))
+        (is (= 1 result-count))))))
+
 (deftest ^:synchronized include-metadata
   (testing "Include card result_metadata if include-metadata is set"
     (let [search-name (random-uuid)
@@ -1798,16 +1811,3 @@
             (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
-
-(deftest ^:synchronized multiple-limits
-  (search.tu/with-sync-search-indexing
-    (search/init-index! {:force-reset? false :re-populate? false})
-    (testing "Multiple `limit` query args should be handled correctly (#45345)"
-      (is (= {} (mt/user-real-request :crowberto :get 500 "search?q=product")))
-      ;; This test is failing with "no index" for some reason, forcing the reindex
-      (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                            :data count)
-            result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                             :data count)]
-        (is (>= total-count result-count))
-        (is (= 1 result-count))))))
