@@ -50,7 +50,6 @@
         (let [translations (ct.models/get-translations "zh_CN")]
           (is (= 1 (count translations)))
           (let [translation (first translations)]
-            (is (some? translation))
-            (is (= "zh_CN" (:locale translation)
-                   (is (= "Eat while it's hot" (:msgid translation)))
-                   (is (= "趁热吃" (:msgstr translation)))))))))))
+            (is (= "zh_CN" (:locale translation)))
+            (is (= "Eat while it's hot" (:msgid translation)))
+            (is (= "趁热吃" (:msgstr translation)))))))))

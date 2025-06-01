@@ -51,7 +51,7 @@
                 ["fr" "Hello" "Salut"]]  ; Same locale+msgid
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 3.*Hello.*en.*earlier" (first (:errors result))))))
+      (is (re-find #"Row 3.*Hello.*fr.*earlier" (first (:errors result))))))
 
   (testing "Wrong number of columns generates error"
     (let [rows [["fr" "Hello" "Bonjour" "extra"]]
