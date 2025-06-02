@@ -84,7 +84,7 @@ export function PublicOrEmbeddedQuestionView({
 
   const untranslatedRawSeries = [{ card, data: result?.data }] as RawSeries;
   const tc = useTranslateContent();
-  const rawSeries = PLUGIN_CONTENT_TRANSLATION.translateSeries(
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,
     tc,
   );
