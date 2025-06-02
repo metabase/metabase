@@ -327,7 +327,7 @@
                             (some (fn [problem]
                                     (when (= (:val problem) bad-value)
                                       problem))))]
-        (print ex-info)
+        (is (= {} ex-info))
         (is (not= :ok ex-info))
         (is (= [:change.strict/customChange :custom-change/class]
                (take-last 2 (:via specific))))))))
