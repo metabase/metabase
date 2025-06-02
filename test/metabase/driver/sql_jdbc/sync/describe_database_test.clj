@@ -250,7 +250,7 @@
                                    (filter #(not (driver/database-supports? % :table-privileges nil))))
                              (descendants driver/hierarchy :sql-jdbc))
         (let [closed-first (volatile! nil)
-              all-tables (sql-jdbc.describe-database/describe-database driver/*driver* (mt/id))]
+              all-tables (driver/describe-database driver/*driver* (mt/id))]
           (with-redefs [sql-jdbc.sync.interface/have-select-privilege?
                         (fn [driver ^Connection conn schema tbl-name]
                           (when-not @closed-first
@@ -258,6 +258,6 @@
                             (.close conn))
                           (have-select-privilege? driver conn schema tbl-name))]
             (let [table-names #(->> % :tables (map :name) set)
-                  all-tables-sans-first (table-names (sql-jdbc.describe-database/describe-database driver/*driver* (mt/id)))]
+                  all-tables-sans-first (table-names (driver/describe-database driver/*driver* (mt/id)))]
               (is (or (= (-> all-tables table-names (disj @closed-first)) all-tables-sans-first)
                       (= (-> all-tables table-names) all-tables-sans-first))))))))))
