@@ -36,7 +36,10 @@
       1
       [:field
        (if (string? id-or-name) field-id id-or-name)
-       (assoc opts :join-alias (-> candidate-tables first :alias))]
+       (let [join (first candidate-tables)]
+         (assoc opts
+                :join-alias (:alias join)
+                :original-join-alias (:original-alias join)))]
 
       ;; if there are no candidates, try looking for one in the source query if we have a source query. Otherwise we
       ;; can't do anything, so return field as-is

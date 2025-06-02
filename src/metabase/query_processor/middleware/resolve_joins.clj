@@ -71,7 +71,7 @@
   [join]
   (merge {:alias default-join-alias, :strategy :left-join} join))
 
-(defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
+(defn- source-metadata->fields [{:keys [alias original-alias], :as join} source-metadata]
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
@@ -83,8 +83,8 @@
     (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
       (if (and field-id (not (contains? duplicate-ids field-id)))
         ;; field-id is a unique reference, use it
-        [:field field-id   {:join-alias alias}]
-        [:field field-name {:base-type base-type, :join-alias alias}]))))
+        [:field field-id   {:join-alias alias, :original-join-alias original-alias}]
+        [:field field-name {:base-type base-type, :join-alias alias, :original-join-alias original-alias}]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
