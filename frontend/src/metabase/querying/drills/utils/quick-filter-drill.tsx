@@ -7,8 +7,6 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { getFilterPopover } from "./filter-drill";
-
 export const quickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
   question,
   drill,
@@ -30,7 +28,7 @@ export const quickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
 };
 
 function getActionOverrides(
-  question: Question,
+  _question: Question,
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
@@ -99,14 +97,12 @@ function getActionOverrides(
         return {
           ...action,
           title: t`Contains…`,
-          popover: getFilterPopover({ question, query, stageIndex, column }),
         };
       }
       case "does-not-contain": {
         return {
           ...action,
           title: t`Does not contain…`,
-          popover: getFilterPopover({ question, query, stageIndex, column }),
         };
       }
       default: {
