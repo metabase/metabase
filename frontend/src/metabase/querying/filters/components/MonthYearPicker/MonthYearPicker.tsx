@@ -13,10 +13,11 @@ export function MonthYearPicker({ value, onChange }: MonthYearPickerProps) {
     if (!value) {
       return;
     }
+    const dateValue = new Date(value);
     onChange({
       type: "month",
-      year: value.getFullYear(),
-      month: value.getMonth() + 1,
+      year: dateValue.getFullYear(),
+      month: dateValue.getMonth() + 1,
     });
   };
 
