@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getCrowdinUrl } from "metabase/selectors/settings";
 import {
@@ -16,19 +16,18 @@ export function CommunityLocalizationNotice({
   const applicationName = useSelector(getApplicationName);
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
   const translatedLink = (
-    <Link
-      to={getCrowdinUrl()}
-      variant="brand"
-      target="_blank"
-    >{t`contribute to translations here`}</Link>
+    <ExternalLink
+      href={getCrowdinUrl()}
+      key="crowdin-link"
+    >{t`contribute to translations here`}</ExternalLink>
   );
 
   const showLink = !isWhiteLabeling || isAdminView;
 
   return (
     <>
-      {t`Some translations are created by the ${applicationName} community, and might not be perfect.`}
-      {showLink && <> {jt`You can ${translatedLink}`}.</>}
+      <span>{t`Some translations are created by the ${applicationName} community, and might not be perfect.`}</span>
+      {showLink && <span> {jt`You can ${translatedLink}`}.</span>}
     </>
   );
 }
