@@ -598,7 +598,18 @@
       (is (= 4 (count returned)))
       (is (= (map :name returned)
              (for [col returned]
-               (:name (lib.equality/find-matching-column query -1 (lib/ref col) returned))))))))
+               (:name (lib.equality/find-matching-column query -1 (lib/ref col) returned)))))))
+  (testing "implicitly joinable columns via joins should be matched correctly"
+    (let [query         (lib.tu/query-with-self-join)
+          visible-cols  (lib/visible-columns query)]
+      (doseq [col visible-cols]
+        (is (= col (lib/find-matching-column (lib/ref col) visible-cols))))))
+  (testing "implicitly joinable columns from the previous query stage are matched correctly"
+    (let [query         (-> (lib.tu/query-with-self-join) lib/append-stage)
+          visible-cols  (lib/visible-columns query)
+          implicit-cols (filter #(= :source/implicitly-joinable (:lib/source %)) visible-cols)]
+      (doseq [col implicit-cols]
+        (is (= col (lib.equality/find-matching-column (lib.ref/ref col) implicit-cols)))))))
 
 (deftest ^:parallel field-refs-to-custom-expressions-test
   (testing "custom columns that wrap a Field must not have `:id` (#44940)"

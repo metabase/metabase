@@ -22,12 +22,22 @@ export const settingsApi = Api.injectEndpoints({
       transformResponse: (response: SettingDefinition[]) =>
         _.indexBy(response, "key") as SettingDefinitionMap,
     }),
-    getSetting: builder.query<EnterpriseSettingValue, EnterpriseSettingKey>({
+    getSetting: builder.query<
+      EnterpriseSettingValue,
+      Exclude<EnterpriseSettingKey, "version-info">
+    >({
       query: (name) => ({
         method: "GET",
         url: `/api/setting/${encodeURIComponent(name)}`,
       }),
       providesTags: ["session-properties"],
+    }),
+    getVersionInfo: builder.query<EnterpriseSettings["version-info"], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/setting/version-info",
+      }),
+      // don't provide a tag, this should never be refetched
     }),
     updateSetting: builder.mutation<
       void,
@@ -58,6 +68,7 @@ export const settingsApi = Api.injectEndpoints({
 
 export const {
   useGetSettingQuery,
+  useGetVersionInfoQuery,
   useGetAdminSettingsDetailsQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,
