@@ -1,6 +1,9 @@
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import { getDashboardCard } from "./e2e-dashboard-helpers";
+import {
+  getDashboardCard,
+  showDashboardCardActions,
+} from "./e2e-dashboard-helpers";
 import { modal, sidebar } from "./e2e-ui-elements-helpers";
 
 export function clickVisualizeAnotherWay(name: string) {
@@ -238,11 +241,11 @@ export function chartLegendItem(name: string) {
 }
 
 export function showDashcardVisualizerModal(index = 0) {
+  showDashboardCardActions(index);
+
   getDashboardCard(index)
-    .realHover()
-    .within(() => {
-      cy.findByLabelText("Edit visualization").click({ force: true });
-    });
+    .findByLabelText("Edit visualization")
+    .click({ force: true });
 
   modal().within(() => {
     cy.findByTestId("visualization-canvas-loader").should("not.exist");
