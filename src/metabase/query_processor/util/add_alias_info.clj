@@ -46,6 +46,7 @@
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
   (:require
+   [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -214,7 +215,11 @@
 (defn- field-name-match [field-name all-exports source-metadata field-exports]
   ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
   ;; name we're searching for.
-  (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+  (or (m/find-first (fn [[tag _id-or-name {::keys [original-desired-alias], :as _opts} :as _ref]]
+                      (when (#{:expression :field} tag)
+                        (= original-desired-alias field-name)))
+                    all-exports)
+      (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
                       (when (#{:expression :field} tag)
                         (= desired-alias field-name)))
                     all-exports)
@@ -414,13 +419,15 @@
 
 (defmethod clause-alias-info :field
   [inner-query unique-alias-fn field-clause]
-  (let [expensive-info (expensive-field-info inner-query field-clause)]
+  (let [expensive-info (expensive-field-info inner-query field-clause)
+        original-field-clause (mbql.u/update-field-options set/rename-keys {:original-join-alias :join-alias})]
     (merge {::source-table (field-source-table-alias inner-query field-clause)
             ::source-alias (field-source-alias inner-query field-clause expensive-info)}
            (when-let [nfc-path (:nfc-path expensive-info)]
              {::nfc-path nfc-path})
            (when-let [position (clause->position inner-query field-clause)]
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
+              ::original-desired-alias (unique-alias-fn position (field-desired-alias inner-query original-field-clause expensive-info))
               ::position      position}))))
 
 (defmulti ^:private aggregation-name
