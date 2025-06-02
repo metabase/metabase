@@ -171,7 +171,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const tc = useTranslateContent();
+  // const tc = useTranslateContent();
 
   const { rows, cols } = data;
 
@@ -238,13 +238,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
 
-      return memoize((untranslatedValue, rowIndex) => {
+      return memoize((value, rowIndex) => {
         const clicked = getCellClickedObject(columnIndex, rowIndex);
 
-        const value =
-          PLUGIN_CONTENT_TRANSLATION.shouldTranslateFieldValuesOfColumn(col)
-            ? tc(untranslatedValue)
-            : untranslatedValue;
+        // const value =
+        //   PLUGIN_CONTENT_TRANSLATION.shouldTranslateFieldValuesOfColumn(col)
+        //     ? tc(untranslatedValue)
+        //     : untranslatedValue;
 
         return formatValue(value, {
           ...columnSettings,
@@ -255,7 +255,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         });
       });
     });
-  }, [cols, settings, getCellClickedObject, tc]);
+  }, [
+    cols,
+    settings,
+    getCellClickedObject,
+    // tc
+  ]);
 
   const handleBodyCellClick = useCallback(
     (
@@ -473,7 +478,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection = getColumnSortDirection(columnIndex);
       }
 
-      const translatedColumnName = tc(columnName);
+      const translatedColumnName = columnName; // TODO: Restore
+      // const translatedColumnName = tc(columnName);
 
       const options: ColumnOptions<RowValues, RowValue> = {
         id,
@@ -562,7 +568,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     tableTheme,
     isDashboard,
-    tc,
+    // tc,
   ]);
 
   const handleColumnResize = useCallback(

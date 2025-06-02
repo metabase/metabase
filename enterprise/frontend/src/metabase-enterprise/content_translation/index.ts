@@ -8,7 +8,7 @@ import {
   translateDisplayNames,
   translateFieldValuesInHoveredObject,
   translateFieldValuesInSeries,
-  translateSeries,
+  useTranslateSeries,
 } from "./utils";
 
 if (hasPremiumFeature("content_translation")) {
@@ -20,7 +20,7 @@ if (hasPremiumFeature("content_translation")) {
     shouldTranslateFieldValuesOfColumn,
     translateFieldValuesInHoveredObject,
     translateFieldValuesInSeries,
-    translateSeries,
+    useTranslateSeries,
     // This gets overwritten in static embedding
     contentTranslationDictionaryUrl: null,
   });
