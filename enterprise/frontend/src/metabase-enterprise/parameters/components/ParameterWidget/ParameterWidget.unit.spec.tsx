@@ -64,9 +64,7 @@ describe("Parameter Widget", () => {
   describe("content translation", () => {
     const setupOptions = { locale: "de", parameterOpts: { value: "a" } };
 
-    const getContentTranslatorSpy = setupTranslateContentStringSpy(
-      (_dictionary, _locale, msgid) => `translated_${msgid}`,
-    );
+    const getContentTranslatorSpy = setupTranslateContentStringSpy();
 
     it("(OSS) should not translate any content", async () => {
       setup(setupOptions);
