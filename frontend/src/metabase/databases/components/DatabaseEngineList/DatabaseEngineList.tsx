@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
 import { getEngines } from "metabase/databases/selectors";
 import {
   getEngineLogo,
@@ -33,7 +34,7 @@ export const DatabaseEngineList = ({
   const engines = useSelector(getEngines);
   const options = getEngineOptions(engines);
 
-  const elevatedEngines = options.slice(0, 6);
+  const elevatedEngines = options.slice(0, MAX_INITIAL_ENGINES_SHOWN);
   const searchResults = options.filter(({ name }) =>
     name.toLowerCase().includes(search.toLowerCase().trim()),
   );
