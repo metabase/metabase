@@ -75,13 +75,9 @@
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
-  (let [duplicate-ids (into #{}
-                            (keep (fn [[item freq]]
-                                    (when (> freq 1)
-                                      item)))
-                            (frequencies (map :id source-metadata)))]
+  (let [stage-is-from-source-card? (:qp/stage-had-source-card join)]
     (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-      (if (and field-id (not (contains? duplicate-ids field-id)))
+      (if (and field-id (not stage-is-from-source-card?))
         ;; field-id is a unique reference, use it
         [:field field-id   {:join-alias alias}]
         [:field field-name {:base-type base-type, :join-alias alias}]))))
