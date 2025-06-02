@@ -11826,20 +11826,6 @@ databaseChangeLog:
                     deleteCascade: true
                     deleteCascadeForce: true
 
-
-  - changeSet:
-      id: v56.2025-06-02T20:11:57
-      author: nvoxland
-      comment: Drop now-unused query_analysis.card_id
-      changes:
-        - dropIndex:
-            tableName: query_analysis
-            indexName: idx_query_analysis_card_id
-      rollback:
-        changeSetId: v51.2024-07-29T09:23:12
-        changeSetAuthor: crisptrutski
-
-
   - changeSet:
       id: v56.2025-06-02T20:11:58
       author: nvoxland
