@@ -36,11 +36,11 @@ By default, Metabase will export the pivoted results, but you'll have the option
 
 ![Pivot table in Metabase](./images/pivot-table-in-metabase.png)
 
-**Exported unpivoted results**:
+**Exported unpivoted results**
 
 ![Unpivoted results](./images/unpivoted-results.png)
 
-**Exported pivoted results**:
+**Exported pivoted results**
 
 ![Pivoted results](./images/pivoted-results.png)
 
