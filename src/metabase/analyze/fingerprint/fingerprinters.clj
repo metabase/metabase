@@ -117,7 +117,7 @@
        :type/DateTime
 
        :else
-       base-type)
+       (or effective-type base-type))
      (if (isa? semantic-type :Semantic/*)
        semantic-type
        :Semantic/*)
@@ -201,6 +201,7 @@
 
 (extend-protocol ITemporalCoerceable
   nil      (->temporal [_]    nil)
+  Object   (->temporal [_]    nil)
   String   (->temporal [this] (->temporal (u.date/parse this)))
   Long     (->temporal [this] (->temporal (t/instant this)))
   Integer  (->temporal [this] (->temporal (t/instant this)))
@@ -220,9 +221,23 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (hist/insert-simple! histogram x)))
 
+(defprotocol ^:private INumberCoerceable
+  "Protocol for converting objects to a java.lang.Number."
+  (->number ^Number [this] "Coerce object to a java.lang.Number"))
+
+(extend-protocol INumberCoerceable
+  nil (->number [_] nil)
+  Object (->number [_] nil)
+  Boolean (->number [this] (if this 1 0))
+  Number (->number [this] this)
+  String (->number [this]
+           ;; faster to be optimistic and fail than to explicitely test and dispatch
+           (or (parse-long this)
+               (parse-double this))))
+
 (deffingerprinter :type/Number
   (redux/post-complete
-   ((filter u/real-number?) histogram)
+   ((comp (map ->number) (filter u/real-number?)) histogram)
    (fn [h]
      (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
        (robust-map

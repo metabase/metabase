@@ -107,6 +107,12 @@
          (transduce identity
                     (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Number}))
                     [1.0 2.0 3.0])))
+  (testing "we respect effective_type"
+    (is (= {:global {:distinct-count 4, :nil% 0.0},
+            :type {:type/Number {:min 1.0, :q1 1.15, :q3 2.15, :max 2.3, :sd 0.6027713773341707, :avg 1.65}}}
+           (transduce identity
+                      (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Number}))
+                      ["1" "2" "1.3" "2.3"]))))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= {:global {:distinct-count 7
                      :nil%           0.25}
