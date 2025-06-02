@@ -86,12 +86,6 @@ import type {
 import type {
   AdminPath,
   AdminPathKey,
-  Dispatch,
-  State,
-} from "metabase-types/store";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
-import type {
-  AdminPathKey,
   Dispatch as ReduxDispatch,
   State,
 } from "metabase-types/store";
