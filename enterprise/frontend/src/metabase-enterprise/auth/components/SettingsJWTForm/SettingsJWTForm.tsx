@@ -42,7 +42,11 @@ export const SettingsJWTForm = () => {
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
 
   const handleSubmit = async (values: Partial<JWTFormValues>) => {
-    const result = await updateSettings({ ...values, "jwt-enabled": true });
+    const result = await updateSettings({
+      ...values,
+      "jwt-enabled": true,
+      toast: false,
+    });
 
     if (result.error) {
       throw new Error(t`Error saving JWT Settings`);
