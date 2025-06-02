@@ -4,6 +4,7 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clj-time.core :as time]
+   [clojure.set :as set]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -23,6 +24,7 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -322,6 +324,19 @@
 
 (mr/def ::tool-request [:map [:conversation_id ms/UUIDString]])
 
+(mr/def ::answer-sources-arguments
+  [:and
+   [:map
+    [:with_model_fields                     {:optional true, :default true} :boolean]
+    [:with_model_metrics                    {:optional true, :default true} :boolean]
+    [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]
+    [:with_metric_queryable_dimensions      {:optional true, :default true} :boolean]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:with_model_fields                     :with-fields?
+                               :with_model_metrics                    :with-metrics?
+                               :with_metric_default_temporal_breakout :with-default-temporal-breakout?
+                               :with_metric_queryable_dimensions      :with-queryable-dimensions?})}]])
+
 (mr/def ::subscription-schedule
   (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
     [:and
@@ -388,7 +403,7 @@
   [:merge
    ::basic-metric
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:queryable_dimensions ::columns]]])
+    [:queryable_dimensions {:optional true} ::columns]]])
 
 (mr/def ::find-metric-result
   [:or
@@ -464,6 +479,19 @@
                          [:description {:optional true} :string]]]]
    [:map [:output :string]]])
 
+(mr/def ::get-metric-details-arguments
+  [:and
+   [:map
+    [:metric_id                                                      :int]
+    [:with_default_temporal_breakout {:optional true, :default true} :boolean]
+    [:with_field_values              {:optional true, :default true} :boolean]
+    [:with_queryable_dimensions      {:optional true, :default true} :boolean]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:metric_id                      :metric-id
+                               :with_default_temporal_breakout :with-default-temporal-breakout?
+                               :with_field_values              :with-field-values?
+                               :with_queryable_dimensions      :with-queryable-dimensions?})}]])
+
 (mr/def ::get-metric-details-result
   [:or
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -482,6 +510,17 @@
                          [:result_columns ::columns]]]]
    [:map [:output :string]]])
 
+(mr/def ::get-report-details-arguments
+  [:and
+   [:map
+    [:report_id                                         :int]
+    [:with_fields       {:optional true, :default true} :boolean]
+    [:with_field_values {:optional true, :default true} :boolean]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:report_id         :report-id
+                               :with_fields       :with-fields?
+                               :with_field_values :with-field-values?})}]])
+
 (mr/def ::get-report-details-result
   [:or
    [:map
@@ -498,11 +537,21 @@
 (mr/def ::get-table-details-arguments
   [:and
    [:map
-    [:model_id {:optional true} :int]
-    [:table_id {:optional true} [:or :int :string]]]
+    [:model_id                              {:optional true}                :int]
+    [:table_id                              {:optional true}                [:or :int :string]]
+    [:with_fields                           {:optional true, :default true} :boolean]
+    [:with_field_values                     {:optional true, :default true} :boolean]
+    [:with_metrics                          {:optional true, :default true} :boolean]
+    [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]]
    [:fn {:error/message "Exactly one of model_id and table_id required"}
     #(= (count (select-keys % [:model_id :table_id])) 1)]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:model_id                              :model-id
+                               :table_id                              :table-id
+                               :with_fields                           :with-fields?
+                               :with_field_values                     :with-field-values?
+                               :with_metrics                          :with-metrics?
+                               :with_metric_default_temporal_breakout :with-default-temporal-breakout?})}]])
 
 (mr/def ::basic-table
   [:map
@@ -535,18 +584,22 @@
    [:map [:output :string]]])
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
-  "Create a dashboard subscription."
+  "Return top level meta information about available information sources."
   [_route-params
    _query-params
-   {:keys [conversation_id] :as body} :- ::tool-request
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::answer-sources-arguments]]
+                                                    ::tool-request]
    {:keys [metabot-v3/metabot-id]}]
   (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
   (if-let [collection-name (get-in metabot-v3.config/metabot-config [metabot-id :collection-name])]
-    (doto (-> (mc/decode ::answer-sources-result
-                         (metabot-v3.dummy-tools/answer-sources collection-name)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))
+    (let [options (mc/encode ::answer-sources-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+      (doto (-> (mc/decode ::answer-sources-result
+                           (metabot-v3.dummy-tools/answer-sources collection-name options)
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
@@ -679,16 +732,15 @@
   [_route-params
    _query-params
    {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments [:map [:metric_id :int]]]]
+                                                    [:map [:arguments ::get-metric-details-arguments]]
                                                     ::tool-request]]
   (metabot-v3.context/log (assoc body :api :get-metric-details) :llm.log/llm->be)
-  (doto (-> (mc/decode ::get-metric-details-result
-                       (-> arguments
-                           (update-keys metabot-v3.u/safe->kebab-case-en)
-                           metabot-v3.dummy-tools/get-metric-details)
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
+  (let [arguments (mc/encode ::get-metric-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::get-metric-details-result
+                         (metabot-v3.dummy-tools/get-metric-details arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/get-query-details" :- [:merge ::get-query-details-result ::tool-request]
   "Get information about a given query."
@@ -709,16 +761,15 @@
   [_route-params
    _query-params
    {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments [:map [:report_id :int]]]]
+                                                    [:map [:arguments ::get-report-details-arguments]]
                                                     ::tool-request]]
   (metabot-v3.context/log (assoc body :api :get-report-details) :llm.log/llm->be)
-  (doto (-> (mc/decode ::get-report-details-result
-                       (-> arguments
-                           (update-keys metabot-v3.u/safe->kebab-case-en)
-                           metabot-v3.dummy-tools/get-report-details)
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
+  (let [arguments (mc/encode ::get-report-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::get-report-details-result
+                         (metabot-v3.dummy-tools/get-report-details arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/get-table-details" :- [:merge ::get-table-details-result ::tool-request]
   "Get information about a given table or model."
@@ -728,13 +779,12 @@
                                                     [:map [:arguments ::get-table-details-arguments]]
                                                     ::tool-request]]
   (metabot-v3.context/log (assoc body :api :get-table-details) :llm.log/llm->be)
-  (doto (-> (mc/decode ::get-table-details-result
-                       (metabot-v3.dummy-tools/get-table-details
-                        (mc/encode ::get-table-details-arguments
-                                   arguments (mtx/transformer {:name :tool-api-request})))
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
+  (let [arguments (mc/encode ::get-table-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::get-table-details-result
+                         (metabot-v3.dummy-tools/get-table-details arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/query-metric" :- [:merge ::filtering-result ::tool-request]
   "Construct a query from a metric."
@@ -780,7 +830,7 @@
       (if (:metabase-user-id request)
         ;; request relying on metabot-id are going to fail
         (handler request respond raise)
-        (respond request/response-unauthentic)))))
+        (respond api.response/response-unauthentic)))))
 
 (def ^{:arglists '([handler])} +tool-session
   "Wrap `routes` so they may only be accessed with proper authentication credentials."

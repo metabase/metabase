@@ -40,15 +40,10 @@
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
-(def abnormal-drivers
-  "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :druid-jdbc})
-
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
   []
-  (set/difference (tx.env/test-drivers) abnormal-drivers))
+  (set/difference (tx.env/test-drivers) data/timeseries-drivers))
 
 (defn normal-drivers-with-feature
   "Set of drivers that support a given `feature`. If additional features are given, it will ensure all features are
@@ -193,7 +188,7 @@
                :source_alias (let [table-name (if (qp.store/initialized?)
                                                 (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
                                                 (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
-                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
+                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col) nil))))))
 
 (declare cols)
 

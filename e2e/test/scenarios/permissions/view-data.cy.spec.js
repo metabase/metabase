@@ -57,7 +57,7 @@ describe("scenarios > admin > permissions > view data > blocked", () => {
 
     H.assertPermissionForItem(g, DATA_ACCESS_PERM_IDX, "Granular", false);
     H.assertPermissionForItem(g, CREATE_QUERIES_PERM_IDX, "No", false);
-    H.assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "1 million rows", false);
+    H.assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "Granular", false);
 
     H.modifyPermission(g, DATA_ACCESS_PERM_IDX, "Blocked");
 

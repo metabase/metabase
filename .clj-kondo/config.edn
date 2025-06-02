@@ -353,6 +353,7 @@
     metabase.premium-features.core            premium-features
     metabase.public-sharing.core              public-sharing
     metabase.pulse.core                       pulse
+    metabase.query-permissions.core           query-perms
     metabase.request.core                     request
     metabase.revisions.core                   revisions
     metabase.server.core                      server
