@@ -9,8 +9,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,7 +25,8 @@
   [_route-params
    _query-params
    _body]
-  (log/info "new code")
+  (log/info "new code!!!")
+  (api/check-superuser)
   (let [translations (ct/get-translations)
         csv-data (cons ["Language" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
