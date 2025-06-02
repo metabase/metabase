@@ -1,7 +1,9 @@
 import { useCallback } from "react";
 
+import { skipToken } from "metabase/api";
 import { useLocale } from "metabase/common/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useListContentTranslationsQuery } from "metabase-enterprise/api";
 
 import { translateContentString } from "./utils";
@@ -9,9 +11,14 @@ import { translateContentString } from "./utils";
 export const useTranslateContent = (): ContentTranslationFunction => {
   const locale = useLocale();
 
-  const { data } = useListContentTranslationsQuery({
-    locale,
-  });
+  const { data } = useListContentTranslationsQuery(
+    // This URL is currently only defined in static embedding
+    PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl
+      ? {
+          locale,
+        }
+      : skipToken,
+  );
   const dictionary = data?.data;
 
   return useCallback(

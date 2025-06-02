@@ -148,7 +148,7 @@ const UploadForm = ({
       if (file.size > maxContentDictionarySizeInBytes) {
         setErrorMessages([
           c("{0} is a number")
-            .t`Upload a dictionary smaller than ${approxMaxContentDictionarySizeInMB} MB`,
+            .t`The file is larger than ${approxMaxContentDictionarySizeInMB} MB`,
         ]);
         setStatus("rejected");
         return;
