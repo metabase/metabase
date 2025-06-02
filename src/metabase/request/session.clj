@@ -7,6 +7,7 @@
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def ^:private current-user-fields

@@ -249,6 +249,12 @@
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
+    metabase.util.log/tracef                                                     {:namespaces ["metabase.*"]}
+    metabase.util.log/debugf                                                     {:namespaces ["metabase.*"]}
+    metabase.util.log/infof                                                      {:namespaces ["metabase.*"]}
+    metabase.util.log/warnf                                                      {:namespaces ["metabase.*"]}
+    metabase.util.log/errorf                                                     {:namespaces ["metabase.*"]}
+    metabase.util.log/fatalf                                                     {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
@@ -283,7 +289,14 @@
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}}
+   ;; TODO [bryan] Pull the metabase.util.log/*f entries out when we've migrated off of logf et al.
+   metabase.util.log/tracef                           {:message "Use log/trace with a context map instead" :level :info}
+   metabase.util.log/debugf                           {:message "Use log/debug with a context map instead" :level :info}
+   metabase.util.log/infof                            {:message "Use log/info with a context map instead" :level :info}
+   metabase.util.log/warnf                            {:message "Use log/warn with a context map instead" :level :info}
+   metabase.util.log/errorf                           {:message "Use log/error with a context map instead" :level :info}
+   metabase.util.log/fatalf                           {:message "Use log/fatal with a context map instead" :level :info}}
+   next.jdbc/active-tx?                               {:message "Use metabase.db/in-transaction? to see if we are in a transaction"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
