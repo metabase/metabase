@@ -9,6 +9,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private http-status-unprocessable 422)
+(def ^:private http-status-conflict 409)
 
 (defn- translation-key
   "The identity of a translation. It's locale and source string so we can identify if the same translation is present
@@ -101,7 +102,7 @@
                  current-hash (generate-translations-hash current-translations)]
              (when (not= expected-hash current-hash)
                (throw (ex-info (tru "The translation data has been modified by another user. Please refresh and try again.")
-                               {:status-code 409 ;; HTTP 409 Conflict
+                               {:status-code http-status-conflict
                                 :errors [(tru "The translation data has been modified by another user. Please refresh and try again.")]})))))
          ;; Replace all existing entries
          (t2/delete! :model/ContentTranslation)
