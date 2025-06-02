@@ -180,44 +180,45 @@
 
 (deftest simple-delete-with-children-test
   (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
-    (data-editing.tu/with-temp-test-db!
-      (let [body {:action_id "data-grid.row/delete"
-                  :scope     {:table-id (mt/id :products)}
-                  :inputs    [{(mt/format-name :id) 1}
-                              {(mt/format-name :id) 2}]}
-            children-count (fn []
-                             (let [result (mt/rows (qp/process-query {:database (mt/id)
-                                                                      :type     :query
-                                                                      :query    {:source-table (mt/id :orders)
-                                                                                 :aggregation  [[:count]]
-                                                                                 :breakout     [(mt/$ids $orders.product_id)]
-                                                                                 :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
-                               (zipmap (map first result) (map second result))))]
+    (mt/with-premium-features #{:table-data-editing}
+      (data-editing.tu/with-temp-test-db!
+        (let [body {:action_id "data-grid.row/delete"
+                    :scope     {:table-id (mt/id :products)}
+                    :inputs    [{(mt/format-name :id) 1}
+                                {(mt/format-name :id) 2}]}
+              children-count (fn []
+                               (let [result (mt/rows (qp/process-query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :orders)
+                                                                                   :aggregation  [[:count]]
+                                                                                   :breakout     [(mt/$ids $orders.product_id)]
+                                                                                   :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
+                                 (zipmap (map first result) (map second result))))]
 
-        (testing "sanity check that we have children rows"
-          (is (= {1 93
-                  2 98}
-                 (children-count))))
-        (testing "delete without delete-children param will return errors with children count"
-          (is (=? {:errors [{:index     0
-                             :type      "metabase.actions.error/violate-foreign-key-constraint"
-                             :message  "Other tables rely on this row so it cannot be deleted."
-                             :errors   {}
-                             :children {(mt/id :orders) 93}}
-                            {:index    1
-                             :type     "metabase.actions.error/violate-foreign-key-constraint"
-                             :message  "Other tables rely on this row so it cannot be deleted."
-                             :errors   {}
-                             :children {(mt/id :orders) 98}}]}
-                  (mt/user-http-request :crowberto :post 400 execute-v2-url
-                                        body))))
+          (testing "sanity check that we have children rows"
+            (is (= {1 93
+                    2 98}
+                   (children-count))))
+          (testing "delete without delete-children param will return errors with children count"
+            (is (=? {:errors [{:index     0
+                               :type      "metabase.actions.error/violate-foreign-key-constraint"
+                               :message  "Other tables rely on this row so it cannot be deleted."
+                               :errors   {}
+                               :children {(mt/id :orders) 93}}
+                              {:index    1
+                               :type     "metabase.actions.error/violate-foreign-key-constraint"
+                               :message  "Other tables rely on this row so it cannot be deleted."
+                               :errors   {}
+                               :children {(mt/id :orders) 98}}]}
+                    (mt/user-http-request :crowberto :post 400 execute-v2-url
+                                          body))))
 
-        (testing "sucess with delete-children options"
-          (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
-                             {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
-                  (mt/user-http-request :crowberto :post 200 execute-v2-url
-                                        (assoc body :params {:delete-children true}))))
-          (is (empty? (children-count))))))))
+          (testing "sucess with delete-children options"
+            (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
+                               {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
+                    (mt/user-http-request :crowberto :post 200 execute-v2-url
+                                          (assoc body :params {:delete-children true}))))
+            (is (empty? (children-count)))))))))
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}
@@ -1204,31 +1205,32 @@
 ;; When we deprecate that API, we should move all the sibling tests here as well.
 (deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-test-data-and-actions-enabled
-      (testing "Executing dashcard insert"
-        (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
-          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                         :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
-                                                                  :card_id      model-id
-                                                                  :action_id    action-id}]
-            (let [execute-path "/ee/data-editing/action/v2/execute"
-                  body         {:action_id (str "dashcard:" dashcard-id)
-                                :scope     {:dashboard-id dashboard-id}
-                                :input     {"name" "Birds"}}
-                  new-row      (-> (mt/user-http-request :crowberto :post 200 execute-path body)
-                                   :outputs
-                                   first
-                                   :created-row
-                                   (update-keys (comp keyword u/lower-case-en name)))]
-              (testing "Should be able to insert"
-                (is (pos? (:id new-row)))
-                (is (partial= {:name "Birds"}
-                              new-row)))
-              (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
-                              (mt/user-http-request :crowberto :post 400 execute-path
-                                                    (assoc-in body [:input :extra] 1)))))
-              (testing "Missing other parameters should fail gracefully"
-                (is (partial= "Implicit parameters must be provided."
-                              (mt/user-http-request :crowberto :post 400 execute-path
-                                                    (assoc body :input {}))))))))))))
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/with-actions-test-data-and-actions-enabled
+        (testing "Executing dashcard insert"
+          (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
+            (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                           :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                                    :card_id      model-id
+                                                                    :action_id    action-id}]
+              (let [execute-path "/ee/data-editing/action/v2/execute"
+                    body         {:action_id (str "dashcard:" dashcard-id)
+                                  :scope     {:dashboard-id dashboard-id}
+                                  :input     {"name" "Birds"}}
+                    new-row      (-> (mt/user-http-request :crowberto :post 200 execute-path body)
+                                     :outputs
+                                     first
+                                     :created-row
+                                     (update-keys (comp keyword u/lower-case-en name)))]
+                (testing "Should be able to insert"
+                  (is (pos? (:id new-row)))
+                  (is (partial= {:name "Birds"}
+                                new-row)))
+                (testing "Extra parameter should fail gracefully"
+                  (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
+                                (mt/user-http-request :crowberto :post 400 execute-path
+                                                      (assoc-in body [:input :extra] 1)))))
+                (testing "Missing other parameters should fail gracefully"
+                  (is (partial= "Implicit parameters must be provided."
+                                (mt/user-http-request :crowberto :post 400 execute-path
+                                                      (assoc body :input {})))))))))))))

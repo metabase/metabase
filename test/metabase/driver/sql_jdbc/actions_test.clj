@@ -254,6 +254,7 @@
          (is (= {:message "Other tables rely on this row so it cannot be deleted."
                  :errors {}
                  :type        actions.error/violate-foreign-key-constraint
+                 :children   {(mt/id :user) 2}
                  :status-code 400}
                 (perform-action-ex-data :model.row/delete (mt/$ids {:database db-id
                                                                     :query    {:filter [:= $group.id 1]
