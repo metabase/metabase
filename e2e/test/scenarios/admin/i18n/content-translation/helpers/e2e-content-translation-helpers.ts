@@ -11,7 +11,10 @@ export const getCSVWithHeaderRow = (dictionary: DictionaryArray) => {
     .join("\n");
 };
 
-export const uploadTranslationDictionary = (rows: DictionaryArray) => {
+export const uploadTranslationDictionary = (
+  rows: DictionaryArray,
+  skipConfirmation = false,
+) => {
   interceptContentTranslationRoutes();
   cy.signInAsAdmin();
   cy.visit("/admin/settings/localization");
@@ -26,6 +29,19 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
     },
     { force: true },
   );
+
+  // Check if confirmation modal appears and handle it
+  cy.get("body").then(($body) => {
+    if (
+      $body.find('[data-testid="confirm-translation-upload-modal"]').length >
+        0 &&
+      !skipConfirmation
+    ) {
+      // Confirmation modal is showing, click Replace Translations
+      cy.findByText("Replace Translations").click();
+    }
+  });
+
   cy.wait("@uploadDictionary");
 };
 
@@ -80,6 +96,9 @@ export const assertOnlyTheseTranslationsAreStored = (
 export const interceptContentTranslationRoutes = () => {
   cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
     "uploadDictionary",
+  );
+  cy.intercept("GET", "/api/ee/content-translation/current").as(
+    "getCurrentTranslations",
   );
 };
 

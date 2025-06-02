@@ -1,6 +1,9 @@
 import { invalidateTags, listTag } from "metabase/api/tags";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import type { DictionaryResponse } from "metabase-types/api/content-translation";
+import type {
+  DictionaryResponse,
+  DictionaryResponseWithHash,
+} from "metabase-types/api/content-translation";
 
 import { EnterpriseApi } from "./api";
 
@@ -23,17 +26,31 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
         }),
         providesTags: () => [listTag("content-translation")],
       }),
+      getCurrentContentTranslations: builder.query<
+        DictionaryResponseWithHash,
+        void
+      >({
+        query: () => ({
+          method: "GET",
+          url: "/api/ee/content-translation/current",
+        }),
+        providesTags: () => [listTag("content-translation")],
+      }),
       uploadContentTranslationDictionary: builder.mutation<
         { success: boolean },
-        { file: File }
+        { file: File; hash?: string }
       >({
-        query: ({ file }) => {
+        query: ({ file, hash }) => {
           const formData = new FormData();
           formData.append("file", file);
 
+          const url = hash
+            ? `/api/ee/content-translation/upload-dictionary?hash=${encodeURIComponent(hash)}`
+            : "/api/ee/content-translation/upload-dictionary";
+
           return {
             method: "POST",
-            url: "/api/ee/content-translation/upload-dictionary",
+            url,
             body: { formData },
             formData: true,
             fetch: true,
@@ -48,5 +65,6 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListContentTranslationsQuery,
+  useGetCurrentContentTranslationsQuery,
   useUploadContentTranslationDictionaryMutation,
 } = contentTranslationApi;

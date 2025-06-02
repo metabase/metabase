@@ -22,7 +22,18 @@ import {
 } from "metabase/forms";
 import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
-import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
+import {
+  useGetCurrentContentTranslationsQuery,
+  useUploadContentTranslationDictionaryMutation,
+} from "metabase-enterprise/api";
+
+import { parseCSV, readFileAsText } from "../utils/csv-parser";
+import {
+  calculateTranslationDiff,
+  createDiffSummary,
+} from "../utils/translation-diff";
+
+import { UploadConfirmationModal } from "./UploadConfirmationModal";
 
 /** Maximum file size for uploaded content-translation dictionaries, expressed
  * in mebibytes. */
@@ -142,6 +153,17 @@ const UploadForm = ({
 }) => {
   const [uploadContentTranslationDictionary] =
     useUploadContentTranslationDictionaryMutation();
+  const { data: currentTranslationsData, isLoading: isLoadingCurrent } =
+    useGetCurrentContentTranslationsQuery();
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState<{
+    file: File;
+    csvData: any[];
+    diff: any;
+    summary: any;
+    hash: string;
+  } | null>(null);
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.length) {
@@ -156,7 +178,7 @@ const UploadForm = ({
         return;
       }
 
-      await uploadFile(file);
+      await processFile(file);
       resetInput();
     }
   };
@@ -171,14 +193,14 @@ const UploadForm = ({
   const { status, setStatus } = useFormContext();
 
   const uploadFile = useCallback(
-    async (file: File) => {
+    async (file: File, hash?: string) => {
       if (!file) {
         console.error("No file selected");
         return;
       }
       setErrorMessages([]);
       setStatus("pending");
-      await uploadContentTranslationDictionary({ file })
+      await uploadContentTranslationDictionary({ file, hash })
         .unwrap()
         .then(() => {
           setStatus("fulfilled");
@@ -190,6 +212,82 @@ const UploadForm = ({
     },
     [uploadContentTranslationDictionary, setErrorMessages, setStatus],
   );
+
+  const processFile = useCallback(
+    async (file: File) => {
+      if (!file) {
+        console.error("No file selected");
+        return;
+      }
+
+      setErrorMessages([]);
+      setStatus("pending");
+
+      try {
+        // Parse the CSV file
+        const csvContent = await readFileAsText(file);
+        const parseResult = parseCSV(csvContent);
+
+        if (parseResult.errors.length > 0) {
+          setErrorMessages(parseResult.errors);
+          setStatus("rejected");
+          return;
+        }
+
+        const currentTranslations = currentTranslationsData?.data || [];
+        const currentHash = currentTranslationsData?.hash || "";
+
+        // Calculate diff
+        const diff = calculateTranslationDiff(
+          currentTranslations,
+          parseResult.data,
+        );
+        const summary = createDiffSummary(diff);
+
+        // If no existing translations or no changes will result in data loss, upload directly
+        if (currentTranslations.length === 0 || !summary.hasChanges) {
+          await uploadFile(file, currentHash);
+          return;
+        }
+
+        // Show confirmation modal
+        setPendingUpload({
+          file,
+          csvData: parseResult.data,
+          diff,
+          summary,
+          hash: currentHash,
+        });
+        setShowConfirmModal(true);
+        setStatus("rejected"); // Reset status while waiting for confirmation
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        setErrorMessages([t`Error reading file: ${errorMessage}`]);
+        setStatus("rejected");
+      }
+    },
+    [currentTranslationsData, setErrorMessages, setStatus, uploadFile],
+  );
+
+  const handleConfirmUpload = useCallback(async () => {
+    if (!pendingUpload) {
+      return;
+    }
+
+    try {
+      await uploadFile(pendingUpload.file, pendingUpload.hash);
+      setShowConfirmModal(false);
+      setPendingUpload(null);
+    } catch (error) {
+      // Error handling is done in uploadFile
+    }
+  }, [pendingUpload, uploadFile]);
+
+  const handleCancelUpload = useCallback(() => {
+    setShowConfirmModal(false);
+    setPendingUpload(null);
+  }, []);
 
   const triggerUpload = () => {
     const input = inputRef.current;
@@ -204,47 +302,59 @@ const UploadForm = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Form data-testid="content-localization-setting">
-      <Stack gap="md">
-        <FormSubmitButton
-          disabled={status === "pending"}
-          label={
-            <Group gap="sm">
-              <Icon name="upload" opacity=".8" />
-              <Text c="inherit">{t`Upload translation dictionary`}</Text>
-            </Group>
-          }
-          successLabel={
-            <Group gap="sm" role="alert">
-              <Icon name="check" opacity=".8" />
-              <Text c="inherit">{t`Dictionary uploaded`}</Text>
-            </Group>
-          }
-          failedLabel={
-            <Group gap="sm" role="alert">
-              <Icon name="warning" opacity=".8" />
-              <Text c="inherit">{t`Could not upload dictionary`}</Text>
-            </Group>
-          }
-          activeLabel={
-            <Group gap="md" role="alert">
-              <Loader size="xs" opacity=".8" />
-              <Text c="inherit">{t`Uploading dictionary…`}</Text>
-            </Group>
-          }
-          maw="20rem"
-          onClick={(e) => {
-            triggerUpload();
-            e.preventDefault();
-          }}
+    <>
+      <Form data-testid="content-localization-setting">
+        <Stack gap="md">
+          <FormSubmitButton
+            disabled={status === "pending" || isLoadingCurrent}
+            label={
+              <Group gap="sm">
+                <Icon name="upload" opacity=".8" />
+                <Text c="inherit">{t`Upload translation dictionary`}</Text>
+              </Group>
+            }
+            successLabel={
+              <Group gap="sm" role="alert">
+                <Icon name="check" c="success" />
+                <Text c="inherit">{t`Dictionary uploaded`}</Text>
+              </Group>
+            }
+            failedLabel={
+              <Group gap="sm" role="alert">
+                <Icon name="warning" opacity=".8" />
+                <Text c="inherit">{t`Could not upload dictionary`}</Text>
+              </Group>
+            }
+            activeLabel={
+              <Group gap="md" role="alert">
+                <Loader size="xs" opacity=".8" />
+                <Text c="inherit">{t`Uploading dictionary…`}</Text>
+              </Group>
+            }
+            maw="20rem"
+            onClick={(e) => {
+              triggerUpload();
+              e.preventDefault();
+            }}
+          />
+          <UploadInput
+            id="content-translation-dictionary-upload-input"
+            ref={inputRef}
+            accept="text/csv"
+            onChange={handleFileChange}
+          />
+        </Stack>
+      </Form>
+      {pendingUpload && (
+        <UploadConfirmationModal
+          isOpen={showConfirmModal}
+          onClose={handleCancelUpload}
+          onConfirm={handleConfirmUpload}
+          diff={pendingUpload.diff}
+          summary={pendingUpload.summary}
+          currentTranslationsHash={pendingUpload.hash}
         />
-        <UploadInput
-          id="content-translation-dictionary-upload-input"
-          ref={inputRef}
-          accept="text/csv"
-          onChange={handleFileChange}
-        />
-      </Stack>
-    </Form>
+      )}
+    </>
   );
 };
