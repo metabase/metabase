@@ -188,7 +188,7 @@ export function MainNavbarView({
               <ErrorBoundary>
                 <GettingStartedSection
                   nonEntityItem={nonEntityItem}
-                  onModalOpen={() => {
+                  onAddDataModalOpen={() => {
                     trackAddDataModalOpened("getting-started");
                     openAddDataModal();
                   }}
@@ -254,7 +254,7 @@ export function MainNavbarView({
                 nonEntityItem={nonEntityItem}
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
-                onModalOpen={openAddDataModal}
+                onAddDataModalOpen={openAddDataModal}
               />
             </ErrorBoundary>
           </SidebarSection>
