@@ -25,7 +25,7 @@ type CSVUploadClickedEvent = ValidateEvent<{
 
 export type DatabaseAddClickedEvent = ValidateEvent<{
   event: "database_add_clicked";
-  triggered_from: "left-nav" | "db-list";
+  triggered_from: "db-list";
 }>;
 
 type OnboardingChecklistOpenedEvent = ValidateEvent<{
@@ -159,6 +159,19 @@ export type EventsClickedEvent = ValidateEvent<{
   triggered_from: "chart" | "collection";
 }>;
 
+export type AddDataModalEvent = ValidateEvent<{
+  event:
+    | "csv_upload_clicked"
+    | "sheets_connection_clicked"
+    | "database_setup_clicked";
+  triggered_from: "add-data-modal";
+}>;
+
+export type AddDataButtonClickedEvent = ValidateEvent<{
+  event: "data_add_clicked";
+  triggered_from: "getting-started" | "left-nav";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -179,4 +192,6 @@ export type SimpleEvent =
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
   | EmbeddingSetupStepSeenEvent
-  | EventsClickedEvent;
+  | EventsClickedEvent
+  | AddDataModalEvent
+  | AddDataButtonClickedEvent;
