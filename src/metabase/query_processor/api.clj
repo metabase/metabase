@@ -186,6 +186,17 @@
       (cond-> compiled
         pretty (update :query prettify)))))
 
+(api.macros/defendpoint :post "/dryrun"
+  "Run a dry run query"
+  [_route-params
+   _query-params
+   {:keys [database] :as query} :- [:map
+                                    [:database ms/PositiveInt]]]
+  (let [driver (driver.u/database->driver database)
+        db (t2/select-one :model/Database :id database)
+        compiled-query (-> query qp.compile/compile-with-inline-parameters :query)]
+    (driver/dry-run-native-query driver db compiled-query)))
+
 (api.macros/defendpoint :post "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params

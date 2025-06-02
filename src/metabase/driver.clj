@@ -833,6 +833,17 @@
   [_ native-form]
   native-form)
 
+(defmulti dry-run-native-query
+  "Method to dry run a query"
+  {:added "0.55.0", :arglists '([driver database native-form])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod dry-run-native-query ::driver
+  [_driver database native-form]
+  {:query native-form
+   :dry-run-stats {}})
+
 (def ^:dynamic ^{:added "0.51.0"} *compile-with-inline-parameters*
   "Whether to compile an MBQL query to native with parameters spliced inline (as opposed to using placeholders like `?`
   and passing the parameters separately.) Normally we want to pass parameters separately to protect against SQL

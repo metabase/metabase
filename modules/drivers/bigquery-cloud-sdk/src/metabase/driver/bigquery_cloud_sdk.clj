@@ -592,12 +592,18 @@
              bytes-info {:bytes-processed byes-processed
                          :bytes-billed    bytes-billed
                          :estimated-bytes estimated-bytes}]
-         (tap> "DRY RUN")
-         (tap> (bean stats))
-         (tap> bytes-info))
+         (tap> {:dry-run-bean-stats (bean stats)})
+         (tap> {:dry-run-bytes-info bytes-info})
+         bytes-info)
        (catch Exception e
          (tap> {:error "Failed to estimate bytes processed"
                 :exception (ex-message e)}))))
+
+(defmethod driver/dry-run-native-query :bigquery-cloud-sdk
+  [_driver database sql]
+  (let [database-details (:details database)
+        ^BigQuery client (database-details->client database-details)]
+    (dry-run-estimate-bytes-processed client sql nil)))
 
 (defn- bigquery-execute-response
   "Given the initial query page, respond with metadata and a lazy reducible that will page through the rest of the data."
@@ -645,9 +651,8 @@
                                  bytes-info {:bytes-processed byes-processed
                                              :bytes-billed    bytes-billed
                                              :estimated-bytes estimated-bytes}]
-                             (tap> "QUERY")
-                             (tap> (bean stats))
-                             (tap> bytes-info)
+                             (tap> {:query-bean-stats (bean stats)})
+                             (tap> {:query-bytes-info bytes-info})
                              (deliver result-promise [:ready result bytes-info]))
                            (throw (ex-info "Null response from query" {})))
                          (catch Throwable t
