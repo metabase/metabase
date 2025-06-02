@@ -9,6 +9,7 @@ import {
   type Ref,
   forwardRef,
 } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -735,7 +736,9 @@ class Visualization extends PureComponent<
     // We can't navigate a user to a particular card from a visualizer viz,
     // so title selection is disabled in this case
     const canSelectTitle =
-      this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
+      this.props.onChangeCardAndRun &&
+      !replacementContent &&
+      (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
 
     return (
       <ErrorBoundary
@@ -755,6 +758,7 @@ class Visualization extends PureComponent<
             <VisualizationHeader>
               <ChartCaption
                 series={series}
+                visualizerRawSeries={visualizerRawSeries}
                 settings={settings}
                 icon={headerIcon}
                 actionButtons={extra}

@@ -1,5 +1,6 @@
 import cx from "classnames";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
+import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
@@ -77,6 +78,9 @@ export const LegendCaption = ({
     }
   }, [getHref]);
 
+  const hasTitleMenuItems =
+    titleMenuItems && React.Children.count(titleMenuItems) > 1;
+
   const titleElement = (
     <LegendLabel
       className={cx(
@@ -90,7 +94,7 @@ export const LegendCaption = ({
       onMouseEnter={handleMouseEnter}
     >
       <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
-      {title && titleMenuItems && (
+      {title && hasTitleMenuItems && (
         <Icon
           style={{ flexShrink: 0, marginRight: 10 }}
           name="chevrondown"
@@ -104,10 +108,11 @@ export const LegendCaption = ({
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
-      {titleMenuItems ? (
+      {hasTitleMenuItems ? (
         <Menu>
           <Menu.Target>{titleElement}</Menu.Target>
           <Menu.Dropdown data-testid="legend-caption-menu">
+            <Menu.Label>{t`Questions in this card`}</Menu.Label>
             {titleMenuItems}
           </Menu.Dropdown>
         </Menu>
