@@ -35,6 +35,17 @@ export const CustomMappingModal = ({
     onChange(mapping);
   };
 
+  const handleClose = () => {
+    const currentMapping = fillMissingMappings(value);
+
+    // reset state when cancelling
+    if (!areMappingsEqual(mappingRef.current, currentMapping)) {
+      setMapping(currentMapping);
+    }
+
+    onClose();
+  };
+
   useLayoutEffect(() => {
     const newMapping = fillMissingMappings(value);
     const hasUnsetMappings = [...value.values()].some((mappedOrUndefined) => {
@@ -53,7 +64,7 @@ export const CustomMappingModal = ({
   }, [onChangeRef, mappingRef, value]); // run this effect only when "value" prop changes
 
   return (
-    <Modal.Root opened={isOpen} onClose={onClose}>
+    <Modal.Root opened={isOpen} onClose={handleClose}>
       <Modal.Overlay />
 
       <Modal.Content mah="75vh">
@@ -128,7 +139,7 @@ export const CustomMappingModal = ({
               py="lg"
               pos="sticky"
             >
-              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <Button onClick={handleClose}>{t`Cancel`}</Button>
 
               <Button
                 disabled={hasEmptyValues}
