@@ -79,6 +79,9 @@ export const RemappingPicker = ({
   const options = useMemo(() => {
     return getOptions(field, fieldValues?.values, fkTargetTable);
   }, [field, fieldValues, fkTargetTable]);
+  const mapping = useMemo(() => {
+    return getFieldRemappedValues(fieldValues?.values);
+  }, [fieldValues?.values]);
 
   const isFkMapping = value === "foreign" || isChoosingInitialFkTarget;
   const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
@@ -217,7 +220,7 @@ export const RemappingPicker = ({
             <>
               <CustomMappingModal
                 isOpen={isCustomMappingOpen}
-                value={getFieldRemappedValues(fieldValues?.values)}
+                value={mapping}
                 onChange={(remappings) => {
                   updateFieldValues({ id, values: Array.from(remappings) });
                   setIsCustomMappingOpen(false);
