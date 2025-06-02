@@ -37,8 +37,8 @@ export const uploadTranslationDictionary = (
         0 &&
       !skipConfirmation
     ) {
-      // Confirmation modal is showing, click Replace Translations
-      cy.findByText("Replace Translations").click();
+      // Confirmation modal is showing, confirm the modal
+      cy.findByText(/replace translations/i).click();
     }
   });
 
