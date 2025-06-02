@@ -517,3 +517,32 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
       .should("not.have.text", "");
   });
 });
+
+describe("Issue 58247", () => {
+  beforeEach(() => {
+    // It's important to restore to the "setup" to have access to "Accounts" table
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openTable({ table: REVIEWS_ID, limit: 10 });
+  });
+
+  const text =
+    "Omnis pariatur autem adipisci eligendi. Eos aut accusantium dolorem et. Numquam vero debitis id provident odit doloremque enim.";
+
+  it("should properly apply filter when clicking a string 'Contains...' filter (metabase#58247)", () => {
+    H.tableInteractiveBody().findByText(text).click();
+    H.popover().findByText("Contains…").click();
+
+    cy.findByTestId("filter-pill").should("have.text", `Body contains ${text}`);
+  });
+
+  it("should properly apply filter when clicking a string 'Does not contain...' filter (metabase#58247)", () => {
+    H.tableInteractiveBody().findByText(text).click();
+    H.popover().findByText("Does not contain…").click();
+
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      `Body does not contain ${text}`,
+    );
+  });
+});
