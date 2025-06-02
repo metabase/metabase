@@ -2,7 +2,11 @@
   overflow: auto;
 }
 
-.rightBorder {
+.borderBottom {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.borderRight {
   border-right: 1px solid var(--mb-color-border);
 }
 
