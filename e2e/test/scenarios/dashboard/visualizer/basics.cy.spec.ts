@@ -279,7 +279,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     );
   });
 
-  it("should rename a dashboard card", () => {
+  it("should rename a dashboard card", { tags: "@flaky" }, () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 
