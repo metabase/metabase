@@ -32,12 +32,16 @@
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
+(defn- include-schema-logging-exclusion [schema-inclusion-filters schema-exclusion-filters table-schema]
+  (or (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
+      (log/infof "Skipping schema '%s' because it does not match the current schema filtering settings" table-schema)))
+
 (defmethod sql-jdbc.sync.interface/filtered-syncable-schemas :sql-jdbc
-  [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
+  [driver _ metadata schema-inclusion-filters schema-exclusion-filters]
   (eduction (remove (set (sql-jdbc.sync.interface/excluded-schemas driver)))
             ;; remove the persisted_model schemas
             (remove (fn [schema] (re-find #"^metabase_cache.*" schema)))
-            (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
+            (filter #(include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters %))
             (all-schemas metadata)))
 
 (mu/defn simple-select-probe-query :- [:cat ::lib.schema.common/non-blank-string [:* :any]]
@@ -211,7 +215,7 @@
       (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
                 (fn [{table-schema :schema :as table}]
                   (and (not (contains? excluded table-schema))
-                       (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
+                       (include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters table-schema)
                        (have-select-privilege-fn? table)))))
       (map #(dissoc % :type)))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
