@@ -18,6 +18,9 @@ interface DocsConfig {
 }
 
 function formatShortcutKey(key: string): string {
+  if (key.length === 3) {
+    key = key.replace(" ", " > ")
+  }
   return key.replace('$mod', 'Ctrl/Cmd');
 }
 

@@ -16,23 +16,23 @@ in the top right corner and select **Keyboard shortcuts**.
 
 | Action                   | Shortcut    |
 | ------------------------ | ----------- |
-| Create a question        | c q         |
-| Create a native query    | c n         |
-| Create a dashboard       | c d         |
-| Create a collection      | c f         |
-| Create a model           | c m         |
-| Create a metric          | c k         |
-| Browse databases         | g d         |
-| Browse models            | g m         |
-| Browse metrics           | g k         |
+| Create a question        | c > q       |
+| Create a native query    | c > n       |
+| Create a dashboard       | c > d       |
+| Create a collection      | c > f       |
+| Create a model           | c > m       |
+| Create a metric          | c > k       |
+| Browse databases         | g > d       |
+| Browse models            | g > m       |
+| Browse metrics           | g > k       |
 | Report an issue          | Ctrl/Cmd+f1 |
 | View shortcuts           | ?           |
-| Open trash               | g t         |
-| Open personal collection | g p         |
+| Open trash               | g > t       |
+| Open personal collection | g > p       |
 | Toggle sidebar           | [           |
-| Go to admin              | g a         |
-| Go to user settings      | g u         |
-| Go to home               | g h         |
+| Go to admin              | g > a       |
+| Go to user settings      | g > u       |
+| Go to home               | g > h       |
 
 ## Dashboard
 
