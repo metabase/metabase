@@ -600,6 +600,8 @@
   "Build foreign key relationship metadata for a database.
   Returns a map of parent-table-id -> [{:table child-table-id, :fk {child-fk-col parent-pk-col}, :pk [child-pk-cols]}]"
   [database-id :- ::lib.schema.id/database]
+  ;; TODO this is not ok because we're building metadata for a whole database, which could have a lots of entries
+  ;; will need to rework foreign_key to make this work nicely
   (actions/cached-value
    [::build-fk-metadata database-id]
    (fn []
@@ -646,18 +648,19 @@
   "Delete rows from a table by their primary key values"
   [database-id table-id pk-rows]
   (when (seq pk-rows)
-    (let [database       (actions/cached-database database-id)
-          driver         (:engine database)
-          pk-name->id    (table-id->pk-field-name->id database-id table-id)
-          filter-clause  (build-pk-filter-clause-mbql pk-name->id pk-rows)
+    (let [database             (actions/cached-database database-id)
+          driver               (:engine database)
+          pk-name->id          (table-id->pk-field-name->id database-id table-id)
+          ;; TODO optimize to delete by FK instead of PK of the target table
+          filter-clause        (build-pk-filter-clause-mbql pk-name->id pk-rows)
           {:keys [from where]} (mbql-query->raw-hsql driver {:database database-id
                                                              :type     :query
                                                              :query    {:source-table table-id
                                                                         :filter       filter-clause}})
-          delete-hsql    (-> {:delete-from (first from)
-                              :where       where}
-                             (prepare-query driver :table.row/delete))
-          sql-args      (sql.qp/format-honeysql driver delete-hsql)]
+          delete-hsql          (-> {:delete-from (first from)
+                                    :where       where}
+                                   (prepare-query driver :table.row/delete))
+          sql-args            (sql.qp/format-honeysql driver delete-hsql)]
       (with-jdbc-transaction [conn database-id]
         (with-auto-parse-sql-exception driver database :table.row/delete
           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))))))
@@ -694,8 +697,6 @@
 (defn- delete-row-with-children!
   "Delete rows and all their descendants via FK relationships"
   [database-id table-id row]
-  ;; TODO this is not ok because we're building metadata for a whole database, which could have a lots of entries
-  ;; will need to rework foreign_key to make this work nicely
   (let [metadata    (build-fk-metadata database-id)
         children-fn (fn [relationship parent-rows]
                       (lookup-children-in-db relationship parent-rows database-id))
