@@ -504,6 +504,7 @@
    :uses #{analytics
            api
            config
+           content-translation
            driver
            eid-translation
            events
