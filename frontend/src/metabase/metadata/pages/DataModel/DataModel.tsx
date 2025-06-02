@@ -102,7 +102,12 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
       setIsSidebarOpen(false);
     }
 
-    if (!isSmallScreen || databaseId == null || tableId == null) {
+    if (
+      !isSmallScreen ||
+      databaseId == null ||
+      tableId == null ||
+      fieldId == null
+    ) {
       setIsSidebarOpen(true);
     }
   }, [isSmallScreen, fieldId, databaseId, tableId]);
