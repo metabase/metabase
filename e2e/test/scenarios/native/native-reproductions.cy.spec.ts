@@ -583,3 +583,24 @@ describe("issue 57441", () => {
     H.modal().findByText("Create your new snippet").should("be.visible");
   });
 });
+
+describe("issue 56905", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.startNewNativeQuestion();
+  });
+
+  it("It should be possible to run the native query when a parameter value input is focused (metabase#56905)", () => {
+    H.NativeEditor.type("select {{ foo }}");
+    cy.findByPlaceholderText("Foo").type("foobar", { delay: 0 });
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("foobar")
+      .should("be.visible");
+  });
+});

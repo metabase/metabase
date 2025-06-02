@@ -1,11 +1,15 @@
 import { useMemo } from "react";
+import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
+import { createAdminRouteGuard } from "metabase/admin/utils";
+import { Route } from "metabase/hoc/Title";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
+import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
@@ -13,6 +17,25 @@ import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.Metabot = Metabot;
+
+  PLUGIN_METABOT.adminNavItem = [
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
+  ];
+
+  PLUGIN_METABOT.AdminRoute = (
+    <Route
+      key="metabot"
+      path="metabot"
+      component={createAdminRouteGuard("metabot")}
+    >
+      <IndexRoute component={MetabotAdminPage} />
+      <Route path=":metabotId" component={MetabotAdminPage} />
+    </Route>
+  );
 
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
   PLUGIN_METABOT.MetabotContext = MetabotContext;

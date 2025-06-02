@@ -8,7 +8,7 @@ const TIMEOUT_MS = 40000;
 const CLIENT_PORT = Cypress.env("CLIENT_PORT");
 const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
-describe("Embedding SDK: vite-5-host-app compatibility", () => {
+describe("Embedding SDK: shared Host Apps compatibility tests", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
     mockAuthProviderAndJwtSignIn();

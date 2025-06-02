@@ -156,6 +156,10 @@
    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
    ;; `:source-field`.
    [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
+   ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
+   ;; referenced by a name, normally when it's coming from a card or a previous query stage.
+   [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; if this is a field from another table (implicit join), this is the join alias of the source field.
    [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; `metabase_field.fk_target_field_id` in the application database; recorded during the sync process. This Field is
