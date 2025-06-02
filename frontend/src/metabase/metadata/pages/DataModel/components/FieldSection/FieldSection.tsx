@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   DiscardFieldValuesButton,
   NameDescriptionInput,
@@ -11,11 +12,13 @@ import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
+import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
@@ -25,29 +28,44 @@ interface Props {
 }
 
 export const FieldSection = ({ databaseId, field }: Props) => {
-  const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
+  const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
-  function confirm(message: string) {
-    sendToast({ message });
-  }
 
   return (
-    <Stack gap="lg" h="100%">
-      <NameDescriptionInput
-        name={field.display_name}
-        namePlaceholder={t`Give this field a name`}
-        onNameChange={async (display_name) => {
-          await updateField({ id, display_name });
-          confirm(t`Display name for ${display_name} updated`);
-        }}
-        description={field.description ?? ""}
-        descriptionPlaceholder={t`Give this field a description`}
-        onDescriptionChange={async (description) => {
-          await updateField({ id, description });
-          confirm(t`Description for ${getFieldDisplayName(field)} updated`);
-        }}
-      />
+    <Stack gap={0} p="xl" pt={0}>
+      <Box
+        bg="accent-gray-light"
+        className={S.header}
+        pb="lg"
+        pos="sticky"
+        pt="xl"
+        top={0}
+      >
+        <NameDescriptionInput
+          name={field.display_name}
+          nameIcon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
+          namePlaceholder={t`Give this field a name`}
+          onNameChange={async (name) => {
+            await updateField({ id, display_name: name });
+
+            sendToast({
+              icon: "check",
+              message: t`Display name for ${name} updated`,
+            });
+          }}
+          description={field.description ?? ""}
+          descriptionPlaceholder={t`Give this field a description`}
+          onDescriptionChange={async (description) => {
+            await updateField({ id, description });
+
+            sendToast({
+              icon: "check",
+              message: t`Description for ${getFieldDisplayName(field)} updated`,
+            });
+          }}
+        />
+      </Box>
 
       <Stack gap="xl">
         <DataSection field={field} />

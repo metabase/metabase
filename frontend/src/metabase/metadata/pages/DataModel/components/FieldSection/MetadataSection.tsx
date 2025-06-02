@@ -19,15 +19,13 @@ interface Props {
 }
 
 export const MetadataSection = ({ databaseId, field }: Props) => {
+  const id = getRawTableFieldId(field);
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
-  function confirm(message: string) {
-    sendToast({ message, icon: "check" });
-  }
 
   return (
     <Stack gap="md">
@@ -42,9 +40,12 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
         label={t`Semantic type`}
         onUpdateField={async (field, updates) => {
           const { id: _id, ...fieldAttributes } = field;
-          const id = getRawTableFieldId(field);
           await updateField({ id, ...fieldAttributes, ...updates });
-          confirm(t`Semantic type for ${field.display_name} updated`);
+
+          sendToast({
+            icon: "check",
+            message: t`Semantic type for ${field.display_name} updated`,
+          });
         }}
       />
     </Stack>

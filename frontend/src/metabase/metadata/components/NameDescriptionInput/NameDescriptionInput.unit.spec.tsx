@@ -18,6 +18,7 @@ function setup({ description = "", name = "" }: Partial<SetupOpts> = {}) {
       description={description}
       descriptionPlaceholder="Enter description"
       name={name}
+      nameIcon="table2"
       namePlaceholder="Enter name"
       onDescriptionChange={onDescriptionChange}
       onNameChange={onNameChange}
