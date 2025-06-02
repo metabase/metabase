@@ -32,17 +32,21 @@ If you don't see the option to export results, you may not have [permissions to 
 
 By default, Metabase will export the pivoted results, but you'll have the option to export the unpivoted results.
 
-**Unpivoted results**:
+**Pivot table in Metabase**
+
+![Pivot table in Metabase](./images/pivot-table-in-metabase.png)
+
+**Exported unpivoted results**:
 
 ![Unpivoted results](./images/unpivoted-results.png)
 
-**Pivoted results**:
+**Exported pivoted results**:
 
 ![Pivoted results](./images/pivoted-results.png)
 
-The results will display as a pivot table in Excel, but you won't be able to pivot the table in Excel.
+The pivoted results will display as a flat table in Excel, not a native [Excel PivotTable](https://support.microsoft.com/en-us/office/overview-of-pivottables-and-pivotcharts-527c8fa3-02c0-445a-a2db-7794676bce96).
 
-If you want to do your _own_ pivoting in Excel, you'll instead want to export the raw, unaggregated rows of data that you'll need to create the pivot table in Excel. That is, you'll want to undo any of the summarizations and groupings in your question, _then_ export the results.
+If you want to use a native Excel PivotTable, you'll instead want to export the raw, unaggregated rows of data that you'll need. That is, you'll want to undo any of the summarizations and groupings in your question, _then_ export the results.
 
 One thing to watch out for: some summarizations in Metabase include implicit joins, so when you drop the summarizations, you may need to join tables to include all of the columns you'll need.
 
@@ -50,7 +54,7 @@ One thing to watch out for: some summarizations in Metabase include implicit joi
 
 ![Raw table](./images/raw-table.png)
 
-The reason you can't export a pivot table that you can continue to pivot in Excel is that Excel doesn't natively support all of Metabase's aggregation functions. Trying to reconstruct Metabase pivot tables in Excel without these functions can lead to correctness issues, which defeats the purpose of looking at the data in the first place.
+The reason Metabase doesn't try to export results as a native Excel PivotTable is that Excel doesn't support all of Metabase's aggregation functions. Trying to reconstruct Metabase pivot tables as Excel PivotTables without these functions can lead to correctness issues, which defeats the purpose of looking at the data in the first place.
 
 ## Export limits
 
