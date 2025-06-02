@@ -324,13 +324,11 @@ export const UtilApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setCardEndpoints(`/api/public/card/${encodedUuid}`);
+  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setDashboardEndpoints(`/api/public/dashboard/${encodedUuid}`);
+  setDashboardEndpoints(`/api/public/dashboard/${encodeURIComponent(uuid)}`);
 }
 
 export function setEmbedQuestionEndpoints(token) {
