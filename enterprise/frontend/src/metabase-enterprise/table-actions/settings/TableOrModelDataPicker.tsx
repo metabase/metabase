@@ -1,22 +1,22 @@
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  type DataPickerItem,
-  type DataPickerModalOptions,
-  type DataPickerValue,
-  type ModelItem,
-  type TableItem,
-  type TablePickerStatePath,
+  type ActionItem,
+  type ActionPickerStatePath,
+  // type DataPickerItem,
+  // type DataPickerModalOptions,
+  // type DataPickerValue,
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
   isModelItem,
-  isTableItem,
+  type ActionPickerItem,
+  type DataPickerModalOptions,
 } from "metabase/common/components/DataPicker";
-import { TablePicker } from "metabase/common/components/DataPicker/components/TablePicker";
 import { useAvailableData } from "metabase/common/components/DataPicker/hooks";
 import {
-  EntityPickerModal,
+  EntityPickerContent,
+  type EntityPickerOptions,
   type EntityPickerTab,
   defaultOptions,
 } from "metabase/common/components/EntityPicker";
@@ -26,21 +26,20 @@ import {
   type QuestionPickerStatePath,
 } from "metabase/common/components/QuestionPicker";
 import { useSetting } from "metabase/common/hooks";
+import { ActionPicker } from "metabase-enterprise/table-actions/settings/ActionPicker";
+import { isActionItem } from "metabase-enterprise/table-actions/settings/ActionPicker/utils";
 import type {
   CollectionItemModel,
   RecentContexts,
   RecentItem,
 } from "metabase-types/api";
 
-export type TableActionTargetEntity = TableItem | ModelItem;
-
 type TableActionPickerProps = {
-  value: TableActionTargetEntity | undefined;
-  onChange: (entity: TableActionTargetEntity) => void;
+  value: ActionItem | undefined;
+  onChange: (action: ActionItem) => void;
   onClose: () => void;
+  children: ReactNode;
 };
-
-const ENTITY_TYPES: DataPickerItem["model"][] = ["table", "dataset"];
 
 const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
@@ -50,7 +49,7 @@ const SEARCH_PARAMS = {
   include_dashboard_questions: true,
 };
 
-const options: DataPickerModalOptions = {
+const options: Partial<EntityPickerOptions> = {
   ...defaultOptions,
   hasConfirmButtons: false,
   showPersonalCollections: true,
@@ -58,14 +57,11 @@ const options: DataPickerModalOptions = {
   hasRecents: true,
 };
 
-const isValidItem = (item: DataPickerItem): item is TableActionTargetEntity => {
-  return ENTITY_TYPES.includes(item.model);
-};
-
 export const TableOrModelDataPicker = ({
   value,
   onChange,
   onClose,
+  children,
 }: TableActionPickerProps) => {
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const { hasModels, isLoading: isLoadingAvailableData } = useAvailableData({
@@ -85,8 +81,8 @@ export const TableOrModelDataPicker = ({
   );
 
   const handleItemSelect = useCallback(
-    (item: DataPickerItem) => {
-      if (!isValidItem(item)) {
+    (item: ActionPickerItem) => {
+      if (!isActionItem(item)) {
         return;
       }
 
@@ -97,64 +93,68 @@ export const TableOrModelDataPicker = ({
   );
 
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
-  const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
+  const [actionsPath, setActionsPath] = useState<ActionPickerStatePath>();
 
   const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<
-      DataPickerItem["id"],
-      DataPickerItem["model"],
-      DataPickerItem
-    >[] = [];
-
-    if (ENTITY_TYPES.includes("table")) {
-      computedTabs.push({
+      ActionPickerItem["id"],
+      ActionPickerItem["model"],
+      ActionPickerItem
+    >[] = [
+      {
         id: "tables-tab",
         displayName: t`Tables`,
-        models: ["table" as const],
-        folderModels: ["database" as const, "schema" as const],
+        models: ["action" as const],
+        folderModels: [
+          "database" as const,
+          "schema" as const,
+          "table" as const,
+        ],
         icon: "table",
         render: ({ onItemSelect }) => (
-          <TablePicker
-            path={tablesPath}
-            value={isTableItem(value as DataPickerValue) ? value : undefined}
+          <ActionPicker
+            path={actionsPath}
+            value={isActionItem(value) ? value : undefined}
             onItemSelect={onItemSelect}
-            onPathChange={setTablesPath}
-          />
+            onPathChange={setActionsPath}
+          >
+            {children}
+          </ActionPicker>
         ),
-      });
-    }
+      },
+    ];
 
-    const shouldShowCollectionsTab = hasModels && hasNestedQueriesEnabled;
-
-    if (shouldShowCollectionsTab) {
-      computedTabs.push({
-        id: "models-tab",
-        displayName: t`Models`,
-        models: ["dataset" as const],
-        folderModels: ["collection" as const, "dashboard" as const],
-        icon: "folder",
-        render: ({ onItemSelect }) => (
-          <QuestionPicker
-            initialValue={
-              isModelItem(value as DataPickerValue) ? value : undefined
-            }
-            models={QUESTION_PICKER_MODELS}
-            options={options}
-            path={questionsPath}
-            shouldShowItem={shouldShowItem}
-            onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
-            onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
-            onPathChange={setQuestionsPath}
-          />
-        ),
-      });
-    }
+    // const shouldShowCollectionsTab = hasModels && hasNestedQueriesEnabled;
+    //
+    // if (shouldShowCollectionsTab) {
+    //   computedTabs.push({
+    //     id: "models-tab",
+    //     displayName: t`Models`,
+    //     models: ["dataset" as const],
+    //     folderModels: ["collection" as const, "dashboard" as const],
+    //     icon: "folder",
+    //     render: ({ onItemSelect }) => (
+    //       <QuestionPicker
+    //         initialValue={
+    //           isModelItem(value as DataPickerValue) ? value : undefined
+    //         }
+    //         models={QUESTION_PICKER_MODELS}
+    //         options={options}
+    //         path={questionsPath}
+    //         shouldShowItem={shouldShowItem}
+    //         onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
+    //         onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
+    //         onPathChange={setQuestionsPath}
+    //       />
+    //     ),
+    //   });
+    // }
 
     return computedTabs;
   })();
 
   return (
-    <EntityPickerModal
+    <EntityPickerContent
       canSelectItem
       defaultToRecentTab={false}
       initialValue={value}
@@ -167,7 +167,7 @@ export const TableOrModelDataPicker = ({
       title={t`Pick action to add`}
       onClose={onClose}
       onItemSelect={handleItemSelect}
-      isLoadingTabs={isLoadingAvailableData}
+      // isLoadingTabs={isLoadingAvailableData}
     />
   );
 };

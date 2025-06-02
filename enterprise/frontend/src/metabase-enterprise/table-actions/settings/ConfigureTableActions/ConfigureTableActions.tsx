@@ -11,8 +11,9 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
+import { AddOrEditActionSettingsContent } from "../AddOrEditActionSettingsContent";
+
 import { RowActionItem } from "./RowActionItem";
-import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
 import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 
 type ConfigureTableActionsProps = {
@@ -128,18 +129,25 @@ export const ConfigureTableActions = ({
         onClick={openEditingModal}
       >{t`Add a new row action`}</Button>
 
-      <Modal
-        size={editingAction ? undefined : "xxl"}
-        opened={isEditingModalOpen}
-        onClose={cancelEditAction}
-      >
-        <RowActionSettingsModalContent
-          action={editingAction}
-          tableColumns={columns}
-          onSubmit={editingAction ? handleEditAction : handleAddAction}
+      {isEditingModalOpen && (
+        <Modal.Root
+          opened
           onClose={cancelEditAction}
-        />
-      </Modal>
+          data-testid="table-action-settings-modal"
+          h="100vh"
+          w="100vw"
+          closeOnEscape={false}
+          yOffset="10dvh"
+        >
+          <Modal.Overlay />
+          <AddOrEditActionSettingsContent
+            action={editingAction}
+            tableColumns={columns}
+            onSubmit={editingAction ? handleEditAction : handleAddAction}
+            onClose={cancelEditAction}
+          />
+        </Modal.Root>
+      )}
     </>
   );
 };

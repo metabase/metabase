@@ -2,9 +2,12 @@ import type {
   CardId,
   Collection,
   DashboardId,
+  DataGridWritebackActionId,
   DatabaseId,
   SchemaName,
+  TableActionId,
   TableId,
+  WritebackActionId,
 } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "../EntityPicker";
@@ -61,6 +64,23 @@ export type MetricItem = {
   model: "metric";
 };
 
+export type ActionItem = {
+  id: DataGridWritebackActionId;
+  name: string;
+  model: "action";
+};
+
+export type ActionPickerValue = {
+  id: WritebackActionId | TableActionId;
+  name: string;
+  model: "action";
+  // model_id?: CardId;
+} & {
+  db_id: DatabaseId;
+  schema: SchemaName;
+  table_id: TableId;
+};
+
 export type TablePickerValue = {
   id: TableId;
   name: string;
@@ -97,3 +117,12 @@ export type TablePickerStatePath = [
   SchemaName | undefined,
   TableId | undefined,
 ];
+
+export type ActionPickerFolderItem = DatabaseItem | SchemaItem | TableItem;
+export type ActionPickerStatePath = [
+  DatabaseId | undefined,
+  SchemaName | undefined,
+  TableId | undefined,
+  TableActionId | undefined,
+];
+export type ActionPickerItem = ActionPickerFolderItem | ActionItem;
