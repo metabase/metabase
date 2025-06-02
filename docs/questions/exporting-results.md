@@ -1,5 +1,6 @@
 ---
 title: Exporting results
+summary: Exporting your Metabase questions and dashboards as CSV, Excel, JSON, PDF, or PNG files.
 redirect_from:
   - /docs/latest/questions/sharing/exporting-results
 ---
