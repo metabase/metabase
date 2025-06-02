@@ -6,7 +6,7 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.content-translation.models :as ct]
+   [metabase.content-translation.api :as ct]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 

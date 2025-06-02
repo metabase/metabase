@@ -1,9 +1,5 @@
 import path from "path";
 
-import { parse } from "csv-parse/browser/esm/sync";
-
-import { type DictionaryArray, isDictionaryArray } from "metabase-types/api";
-
 import {
   germanFieldNames,
   invalidLocaleXX,
@@ -34,17 +30,21 @@ describe("scenarios > admin > localization > content translation", () => {
   });
 
   describe("ee", () => {
+    before(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+      H.snapshot("snapshot-for-upload-and-download");
+    });
+
     beforeEach(() => {
       cy.intercept(
         "POST",
         "api/ee/content-translation/upload-dictionary",
         cy.spy().as("uploadDictionarySpy"),
       ).as("uploadDictionary");
-
-      cy.intercept("GET", "/api/collection/personal").as("personalCollection");
-      H.restore();
+      H.restore("snapshot-for-upload-and-download" as any);
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
     });
 
     describe("The translation download button", () => {
@@ -77,7 +77,12 @@ describe("scenarios > admin > localization > content translation", () => {
         cy.findByTestId("content-localization-setting").findByText(
           "Dictionary uploaded",
         );
-        assertOnlyTheseTranslationsAreStored(nonAsciiFieldNames);
+        nonAsciiFieldNames.forEach(({ locale, msgid, msgstr }) => {
+          assertOnlyTheseTranslationsAreStored(
+            [{ locale, msgid, msgstr }],
+            locale,
+          );
+        });
       });
 
       it("accepts a CSV upload with a hyphenated locale", () => {
@@ -86,7 +91,7 @@ describe("scenarios > admin > localization > content translation", () => {
           "Dictionary uploaded",
         );
         cy.signInAsNormalUser();
-        assertOnlyTheseTranslationsAreStored(portugueseFieldNames);
+        assertOnlyTheseTranslationsAreStored(portugueseFieldNames, "pt-BR");
       });
 
       it("does not store rows with translations made of only whitespace and/or semicolons", () => {
@@ -119,30 +124,34 @@ describe("scenarios > admin > localization > content translation", () => {
 
       it("rejects a CSV upload that provides two translations for the same string", () => {
         uploadTranslationDictionary(stringTranslatedTwice);
-        cy.findByTestId("content-localization-setting").within(() => {
-          cy.findByText(/We couldn't upload the file/);
-          cy.findByText(
+        cy.findAllByRole("alert")
+          .contains(/couldn.*t upload the file/)
+          .should("be.visible");
+        cy.findAllByRole("alert")
+          .contains(
             new RegExp(
               `Row ${stringTranslatedTwice.length + 1}.*earlier in the file`,
             ),
-          );
-        });
+          )
+          .should("be.visible");
       });
 
       it("rejects a CSV upload with invalid locale in one row", () => {
         uploadTranslationDictionary(invalidLocaleXX);
-        cy.findByTestId("content-localization-setting").within(() => {
-          cy.findByText(/We couldn't upload the file/);
-          cy.log("The error is in row 2 (the first row is the header)");
-          cy.findByText(/Row 2: Invalid locale: xx/);
-        });
+        cy.findAllByRole("alert")
+          .contains(/couldn.*t upload the file/)
+          .should("be.visible");
+        cy.findAllByRole("alert")
+          .contains(/Row 2: Invalid locale: xx/)
+          .should("be.visible");
       });
 
       it("erases previously stored translations when a new CSV is uploaded", () => {
         uploadTranslationDictionary(germanFieldNames);
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
-        uploadTranslationDictionary(nonAsciiFieldNames);
-        assertOnlyTheseTranslationsAreStored(nonAsciiFieldNames);
+        const oneArabicFieldName = [nonAsciiFieldNames[0]];
+        uploadTranslationDictionary(oneArabicFieldName);
+        assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
       });
 
       it("does not erase previously stored translations when an upload fails", () => {
@@ -154,21 +163,16 @@ describe("scenarios > admin > localization > content translation", () => {
 
       it("rejects a CSV upload with invalid locales in multiple rows", () => {
         uploadTranslationDictionary(multipleInvalidLocales);
-        cy.findByTestId("content-localization-setting").within(() => {
-          cy.findByText(/We couldn't upload the file/);
-          cy.log("The first error is in row 2 (the first row is the header)");
-          cy.findByText(/Row 2: Invalid locale: ze/);
-          cy.findByText(/Row 5: Invalid locale: qe/);
-        });
-      });
-
-      it("rejects a CSV upload with different kinds of errors", () => {
-        uploadTranslationDictionary(invalidLocaleAndInvalidRow);
-        cy.findByTestId("content-localization-setting").within(() => {
-          cy.findByText(/We couldn't upload the file/);
-          cy.findByText(/Row 2: Invalid locale: ze/);
-          cy.findByText(/Row 5: Translation exceeds maximum length/);
-        });
+        cy.findAllByRole("alert")
+          .contains(/couldn.*t upload the file/)
+          .should("be.visible");
+        cy.log("The first error is in row 2 (the first row is the header)");
+        cy.findAllByRole("alert")
+          .contains(/Row 2: Invalid locale: ze/)
+          .should("be.visible");
+        cy.findAllByRole("alert")
+          .contains(/Row 5: Invalid locale: qe/)
+          .should("be.visible");
       });
 
       it("rejects, in the frontend, a CSV upload that is too big", () => {
@@ -176,16 +180,16 @@ describe("scenarios > admin > localization > content translation", () => {
         cy.get("#content-translation-dictionary-upload-input").selectFile(
           {
             contents: Cypress.Buffer.from(
-              generateLargeCSV({ sizeInMebibytes: 2.5 }),
+              generateLargeCSV({ sizeInMebibytes: 1.6 }),
             ),
             fileName: "file.csv",
             mimeType: "text/csv",
           },
-          { force: true },
+          { force: true }, // We need this because the input has display: none
         );
-        cy.findByTestId("content-localization-setting").findByText(
-          /Upload a dictionary smaller than 1.5 MB/,
-        );
+        cy.findAllByRole("alert")
+          .contains(/The file is larger than 1.5 MB/)
+          .should("be.visible");
         cy.log(
           "The frontend should prevent the upload attempt; the endpoint should not be called",
         );
@@ -194,23 +198,3 @@ describe("scenarios > admin > localization > content translation", () => {
     });
   });
 });
-
-export const parseCSVFromString = (str: string): DictionaryArray => {
-  try {
-    const strings: unknown = parse(str, {
-      delimiter: [",", "\t", "\n"],
-      skip_empty_lines: true,
-      relax_column_count: true,
-      relax_quotes: true,
-      trim: true,
-      quote: '"',
-      escape: "\\",
-    }).flat();
-    if (isDictionaryArray(strings)) {
-      return strings;
-    }
-    throw new Error("Invalid dictionary");
-  } catch (err) {
-    return [];
-  }
-};

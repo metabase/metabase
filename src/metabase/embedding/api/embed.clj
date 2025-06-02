@@ -17,7 +17,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.content-translation.models :as ct]
+   [metabase.content-translation.api :as ct]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embedding.jwt]
@@ -28,6 +28,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -369,4 +370,4 @@
   (unsign-and-translate-ids token)
   (if locale
     {:data (ct/get-translations locale)}
-    api/generic-204-no-content))
+    (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))

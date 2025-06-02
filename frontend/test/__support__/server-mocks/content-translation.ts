@@ -27,7 +27,9 @@ export function setupContentTranslationEndpoints({
 
 /** To check that no content translation was performed, use this spy to assert
  * that the translateContentString utility function was not invoked */
-export const setupTranslateContentStringSpy = () => {
+export const setupTranslateContentStringSpy = (
+  mockImplementation?: EnterpriseContentTranslationUtilsModule.TranslateContentStringFunction,
+) => {
   let translateContentStringSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -35,6 +37,10 @@ export const setupTranslateContentStringSpy = () => {
       EnterpriseContentTranslationUtilsModule,
       "translateContentString",
     );
+
+    if (mockImplementation) {
+      translateContentStringSpy.mockImplementation(mockImplementation);
+    }
   });
 
   afterEach(() => {
