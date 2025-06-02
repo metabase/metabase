@@ -42,51 +42,42 @@
        [:field (u/the-id field) nil])
      fields)))
 
-(defn- multiply-bucketed-field-refs
-  [source-metadata]
-  (->> source-metadata
-       (map :field_ref)
-       (group-by #(some-> % (mbql.u/update-field-options dissoc :binning :temporal-unit :original-temporal-unit)))
-       (reduce-kv (fn [duplicates ref-key field-refs]
-                    (cond-> duplicates
-                      (and ref-key (next field-refs))
-                      (into (filter (comp (some-fn :binning :temporal-unit) #(get % 2))) field-refs)))
-                  #{})))
-
 (mu/defn- source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
-  [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]
-   stage-is-from-source-card? :- :boolean]
-  (distinct
-   (for [{field-name               :name
-          base-type                :base_type
-          field-id                 :id
-          [ref-type :as field-ref] :field_ref
-          coercion-strategy        :coercion_strategy} source-metadata]
+  [{:keys [source-metadata], :as inner-query}]
+  ;; Card columns would be collapsed into a single column if referenced by ID,
+  ;; so we make sure that they get a reference by name, which is unique.
+  (let [stage-is-from-source-card? (:qp/stage-had-source-card inner-query)]
+    (distinct
+     (for [{field-name               :name
+            base-type                :base_type
+            field-id                 :id
+            [ref-type :as field-ref] :field_ref
+            coercion-strategy        :coercion_strategy} source-metadata]
        ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
        ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
        ;; bucketed in the source query; don't need to apply bucketing again in the parent query. Mark the field as
        ;; `qp/ignore-coercion` here so that it doesn't happen again in the parent query.
-     (or (and (not stage-is-from-source-card?)
-              (some-> (lib.util.match/match-one field-ref :field)
-                      (mbql.u/update-field-options dissoc :binning :temporal-unit)
-                      (cond->
-                       (or coercion-strategy
-                           (and (pos-int? field-id)
-                                (some-> (qp.store/metadata-provider)
-                                        (lib.metadata/field field-id)
-                                        :coercion-strategy)))
-                        (mbql.u/assoc-field-options :qp/ignore-coercion true))))
+       (or (and (not stage-is-from-source-card?)
+                (some-> (lib.util.match/match-one field-ref :field)
+                        (mbql.u/update-field-options dissoc :binning :temporal-unit)
+                        (cond->
+                         (or coercion-strategy
+                             (and (pos-int? field-id)
+                                  (some-> (qp.store/metadata-provider)
+                                          (lib.metadata/field field-id)
+                                          :coercion-strategy)))
+                          (mbql.u/assoc-field-options :qp/ignore-coercion true))))
              ;; otherwise construct a field reference that can be used to refer to this Field.
              ;; Force string id field if expression contains just field. See issue #28451.
-         (if (and (not= ref-type :expression)
-                  (not stage-is-from-source-card?)
-                  field-id)
+           (if (and (not= ref-type :expression)
+                    (not stage-is-from-source-card?)
+                    field-id)
                ;; If we have a Field ID, return a `:field` (id) clause
-           [:field field-id (cond-> nil coercion-strategy (assoc :qp/ignore-coercion true))]
+             [:field field-id (cond-> nil coercion-strategy (assoc :qp/ignore-coercion true))]
                ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
                ;; expression. We don't need to mark as ignore-coercion here because these won't grab the field metadata
-           [:field field-name {:base-type base-type}])))))
+             [:field field-name {:base-type base-type}]))))))
 
 (mu/defn- should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
@@ -118,10 +109,9 @@
   [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query}]
   (if-not (should-add-implicit-fields? inner-query)
     inner-query
-    (let [stage-is-from-source-card? (:qp/stage-had-source-card inner-query)
-          fields      (if source-table-id
+    (let [fields      (if source-table-id
                         (sorted-implicit-fields-for-table source-table-id)
-                        (source-metadata->fields source-metadata stage-is-from-source-card?))
+                        (source-metadata->fields inner-query))
           ;; generate a new expression ref clause for each expression defined in the query.
           expressions (for [[expression-name] expressions]
                         ;; TODO - we need to wrap this in `u/qualified-name` because `:expressions` uses
