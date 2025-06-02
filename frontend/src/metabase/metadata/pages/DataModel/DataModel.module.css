@@ -1,40 +1,11 @@
-.sidebar {
+.column {
+  overflow: auto;
+}
+
+.rightBorder {
   border-right: 1px solid var(--mb-color-border);
-  overflow: auto;
-
-  &.noBorder {
-    border-right: none;
-  }
-}
-
-.tableSectionContainer {
-  overflow: auto;
-}
-
-.contentLoadingAndErrorWrapper {
-  height: 100%;
 }
 
 .footer {
   border-top: 1px solid var(--mb-color-border);
-}
-
-.segmentsLink {
-  border-radius: 8px;
-  cursor: pointer;
-
-  &:hover,
-  &.active {
-    background-color: var(--mb-color-brand-lighter);
-    color: var(--mb-color-brand);
-
-    .segmentsIcon {
-      opacity: 1;
-    }
-  }
-}
-
-.segmentsIcon {
-  opacity: 0.5;
-  flex-shrink: 0;
 }

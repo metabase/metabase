@@ -52,7 +52,13 @@ export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
     }),
   });
 
-  const refreshToken = () => dispatch(refreshTokenAsync(MOCK_INSTANCE_URL));
+  const refreshToken = () =>
+    dispatch(
+      refreshTokenAsync({
+        metabaseInstanceUrl: MOCK_INSTANCE_URL,
+        authMethod: config.authMethod,
+      }),
+    );
 
   return (
     <div

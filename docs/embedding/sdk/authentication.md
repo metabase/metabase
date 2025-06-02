@@ -79,6 +79,8 @@ You can customize how the SDK fetches the refresh token by specifying the `fetch
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-jwt.tsx" snippet="example" %}
 ```
 
+The response should be in the form of `{ jwt: "{JWT_TOKEN}" }`
+
 ## Security warning: each end-user _must_ have their own Metabase account
 
 Each end-user _must_ have their own Metabase account.
