@@ -36,9 +36,7 @@
   (mt/user-http-request user-id :post 200 (str (data-editing.tu/table-url table-id) "/delete") {:rows [pk]}))
 
 (defn- next-batch-num [undo-or-redo user-id scope]
-  (:batch_num (mt/user-http-request user-id :post 200 (str "/ee/data-editing/" (name undo-or-redo))
-                                    {:scope scope
-                                     :no-op true})))
+  (undo/next-batch-num undo-or-redo user-id scope))
 
 (defn- undo-via-api! [user-id scope]
   (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"

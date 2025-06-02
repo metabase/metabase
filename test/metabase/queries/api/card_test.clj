@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
@@ -33,7 +34,6 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
-   [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -256,8 +256,8 @@
            (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
-  (is (= (get request/response-unauthentic :body) (client/client :get 401 "card")))
-  (is (= (get request/response-unauthentic :body) (client/client :put 401 "card/13"))))
+  (is (= (get api.response/response-unauthentic :body) (client/client :get 401 "card")))
+  (is (= (get api.response/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest ^:parallel model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}

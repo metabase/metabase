@@ -49,7 +49,6 @@
              :timestamp String
              :model :card
              :database_id db-id
-             :result_metadata nil
              :dataset_query {}
              :visualization_settings {}}]
            (mt/with-test-user :rasta
@@ -276,7 +275,6 @@
                    :display "table",
                    :model :card
                    :database_id db-id
-                   :result_metadata nil
                    :dataset_query {}
                    :visualization_settings {}}]
                  (mt/with-test-user :rasta

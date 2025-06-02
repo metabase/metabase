@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {
@@ -92,7 +91,12 @@ import type {
   VisualizationSettings,
   WritebackAction,
 } from "metabase-types/api";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
+import type {
+  AdminPath,
+  AdminPathKey,
+  Dispatch,
+  State,
+} from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -114,8 +118,6 @@ export const PLUGIN_REDUX_MIDDLEWARES = [];
 export const PLUGIN_LOGO_ICON_COMPONENTS = [];
 
 // admin nav items and routes
-export const PLUGIN_ADMIN_NAV_ITEMS = [];
-export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
@@ -224,24 +226,8 @@ export const PLUGIN_AUTH_PROVIDERS = {
 };
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
-  formFieldAttributes: [] as string[],
-  defaultableFormFieldAttributes: [] as string[],
-  formFieldsSchemas: {} as Record<string, AnySchema>,
-  UserProvisioning: (() => null) as ComponentType<{
-    settings: {
-      [setting: string]: {
-        display_name?: string | undefined;
-        description?: string | ReactNode | undefined;
-        note?: string | undefined;
-      };
-    };
-    fields: {
-      [field: string]: {
-        name: string;
-        default: boolean;
-      };
-    };
-  }>,
+  LdapUserProvisioning: PluginPlaceholder,
+  LdapGroupMembershipFilter: PluginPlaceholder,
 };
 
 // Only show the password tab in account settings if these functions all return true.
@@ -579,6 +565,11 @@ export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK = {
+  hasValidLicense: () => false,
+  SdkIframeEmbedRoute: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -733,6 +724,9 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  adminNavItem: [] as AdminPath[],
+  AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
 };

@@ -10,7 +10,6 @@
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
@@ -30,11 +29,12 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.permissions.validation :as validation]
    [metabase.public-sharing.validation :as public-sharing.validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -987,7 +987,9 @@
         (assoc-in dashcard [:visualization_settings :primitive_action] action-id)
         ;; Unpack encoded actions
         (neg-int? action-id)
-        (let [[op param] (actions/unpack-encoded-action-id action-id)]
+        (let [[op param] (actions/unpack-encoded-action-id action-id)
+              ;; very import we assoc nil rather than dissoc as otherwise shallow-updates will ignore this
+              dashcard   (assoc dashcard :action_id nil)]
           ;; This would be much better handled as multimethod, but hopefully the hacks don't live much longer.
           (if (isa? op :table.row/common)
             (assoc-in dashcard [:visualization_settings :table_action] {:kind (u/qualified-name op), :table_id param})

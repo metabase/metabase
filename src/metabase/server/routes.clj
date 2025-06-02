@@ -8,7 +8,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.core.initialization-status :as init-status]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
@@ -33,9 +32,12 @@
     (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (system/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
-;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
+;; /embed routes.
+;; /embed/sdk/v1 -> new iframe embedding based on embedding sdk components
+;; /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
+  (GET "/sdk/v1" [] index/embed-sdk)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
@@ -46,7 +48,7 @@
    (if (init-status/complete?)
      (try
        (if (or (mdb/recent-activity?)
-               (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb/data-source)}))
+               (mdb/can-connect-to-data-source? (mdb/data-source)))
          {:status 200, :body {:status "ok"}}
          {:status 503 :body {:status "Unable to get app-db connection"}})
        (catch Exception e

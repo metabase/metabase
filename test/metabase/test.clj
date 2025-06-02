@@ -14,7 +14,6 @@
    [metabase.config.core :as config]
    [metabase.core.init]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.model-persistence.test-util]
@@ -81,7 +80,6 @@
   qp.test-util/keep-me
   qp/keep-me
   schema-migrations-test.impl/keep-me
-  sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
   test-runner.assert-exprs/keep-me
   test.redefs/keep-me
@@ -114,12 +112,14 @@
   $ids
   dataset
   db
+  driver-select
   format-name
   id
   ident
   mbql-query
   metadata-provider
   native-query
+  normal-driver-select
   query
   run-mbql-query
   with-db
@@ -226,9 +226,6 @@
   with-database-timezone-id
   with-report-timezone-id!
   with-results-timezone-id]
-
- [sql-jdbc.tu
-  sql-jdbc-drivers]
 
  [sql.qp-test-util
   with-native-query-testing-context]

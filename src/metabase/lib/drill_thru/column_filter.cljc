@@ -25,9 +25,7 @@
   Question transformation:
   - None"
   (:require
-   [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.schema :as lib.schema]
@@ -79,12 +77,8 @@
                         ;; And if there isn't a later stage, add one.
                         :else      {:query        (lib.stage/append-stage query)
                                     :stage-number -1})
-        columns       (lib.filter/filterable-columns (:query base) (:stage-number base))
-        filter-column (or (lib.equality/find-matching-column
-                           (:query base) (:stage-number base) column-ref columns)
-                          (and (:lib/source-uuid column)
-                               (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
-                                             columns)))]
+        filter-column (lib.drill-thru.common/matching-filterable-column
+                       (:query base) (:stage-number base) column-ref column)]
     ;; If we cannot find the matching column, don't allow to drill
     (when filter-column
       (assoc base :column filter-column))))
