@@ -29,7 +29,6 @@ interface BaseMockConfig {
   iat?: number;
   failureUrl?: string;
   failureError?: string;
-  isPreferredAuthMethod?: boolean;
 }
 
 export interface SamlMockConfig extends BaseMockConfig {}
@@ -65,13 +64,10 @@ export const setupMockSamlEndpoints = ({
   iat = MOCK_TOKEN_IAT,
   failureUrl = MOCK_FAILURE_URL,
   failureError = MOCK_FAILURE_ERROR,
-  isPreferredAuthMethod = false,
 }: SamlMockConfig = {}) => {
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
-  if (isPreferredAuthMethod) {
-    ssoUrl.searchParams.set("preferred_method", "saml");
-  }
+  ssoUrl.searchParams.set("preferred_method", "saml");
 
   const ssoInitMock = fetchMock.get(ssoUrl.toString(), {
     url: providerUri,
@@ -167,13 +163,10 @@ export const setupMockJwtEndpoints = ({
   iat = MOCK_TOKEN_IAT,
   failureUrl = MOCK_FAILURE_URL,
   failureError = MOCK_FAILURE_ERROR,
-  isPreferredAuthMethod = false,
 }: JwtMockConfig = {}) => {
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
-  if (isPreferredAuthMethod) {
-    ssoUrl.searchParams.set("preferred_method", "jwt");
-  }
+  ssoUrl.searchParams.set("preferred_method", "jwt");
 
   const ssoInitMock = fetchMock.get(ssoUrl.toString(), {
     url: providerUri,
