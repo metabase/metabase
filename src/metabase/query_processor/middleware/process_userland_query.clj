@@ -41,7 +41,10 @@
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
-    (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))))
+    (do
+      ;; TODO: modify the app db so that we can insert byte related fields
+      (tap> {:query-execution (dissoc query-execution :json_query :estimated-bytes :bytes-processed :bytes-billed)})
+      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query :estimated-bytes :bytes-processed :bytes-billed)))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
@@ -106,7 +109,9 @@
          (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
-       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
+       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed])
+                                            (merge execution-info
+                                                   (-> acc :data :bytes-info)) @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
