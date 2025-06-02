@@ -66,8 +66,8 @@ export const defaultRootCollection = createMockCollection({
   children: [collectionOne, collectionTwo],
 });
 
-const defaultPermissionGroups: Omit<Group, "members">[] = [
-  { id: 1, name: "All Users", member_count: 40 },
+export const defaultPermissionGroups: Omit<Group, "members">[] = [
+  { id: 1, name: "All Internal Users", member_count: 40 },
   { id: 2, name: "Administrators", member_count: 2 },
   { id: 3, name: "Other Users", member_count: 33 },
 ];
@@ -112,7 +112,7 @@ interface SetupOptions {
 }
 
 export function setup({
-  initialRoute = "/admin/permissions/collections/root",
+  initialRoute = "/admin/permissions/collections",
   collections = defaultCollections,
   rootCollection = defaultRootCollection,
   permissionsGraph = defaultPermissionsGraph,
@@ -141,7 +141,7 @@ export function setup({
   renderWithProviders(
     <>
       <Route
-        path="/admin/permissions/collections/root"
+        path="/admin/permissions/collections"
         component={CollectionPermissionsPage}
       />
       <Route
