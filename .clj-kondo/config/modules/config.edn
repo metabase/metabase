@@ -1678,6 +1678,16 @@
            util
            warehouse-schema}}
 
+  enterprise/permission-debug
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}}
+
   enterprise/premium-features
   {:team "Admin Webapp"
    :api  #{}
