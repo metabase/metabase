@@ -1560,7 +1560,7 @@ describe("issue 48878", () => {
       .click();
 
     H.NativeEditor.focus().type(query);
-    cy.findByTestId("native-query-editor-sidebar")
+    cy.findByTestId("native-query-editor-container")
       .findByTestId("run-button")
       .click();
     cy.wait("@dataset");
