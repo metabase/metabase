@@ -400,6 +400,14 @@
                          cols))))))
             agg-operators))))
 
+(mu/defn filter-pivot-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
+  "Removes operators which are not supported by pivot tables built on queries that are not pre-aggregated.
+  Powers the aggregation picker used in pivot table viz settings."
+  [agg-operators :- [:maybe [:sequential OperatorWithColumns]]]
+  (remove
+   (fn [op] (#{:cum-sum :cum-count} (:short op)))
+   agg-operators))
+
 (mu/defn aggregation-ref :- :mbql.clause/aggregation
   "Find the aggregation at `ag-index` and create an `:aggregation` ref for it. Intended for use
   when creating queries using threading macros e.g.
