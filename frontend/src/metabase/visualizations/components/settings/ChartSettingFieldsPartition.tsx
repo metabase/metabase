@@ -12,6 +12,7 @@ import _ from "underscore";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
+import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Box, Button, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
@@ -69,6 +70,52 @@ const AddAggregationPopover = ({
           allowCustomExpressions={false}
           allowMetrics={false}
           onQueryChange={onAddAggregation}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+type AddBreakoutPopoverProps = {
+  query: Lib.Query;
+  onAddBreakout: (column: Lib.ColumnMetadata) => void;
+};
+
+const AddBreakoutPopover = ({
+  query,
+  onAddBreakout,
+}: AddBreakoutPopoverProps) => {
+  const [opened, { close, toggle }] = useDisclosure();
+  return (
+    <Popover
+      opened={opened}
+      onClose={close}
+      position={"right-start"}
+      onDismiss={close}
+    >
+      <Popover.Target>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          size="compact-md"
+          onClick={toggle}
+          styles={{
+            root: { paddingInline: 0 },
+          }}
+        >
+          {t`Add`}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <BreakoutPopover
+          query={query}
+          stageIndex={-1}
+          isMetric={false}
+          breakout={undefined}
+          breakoutIndex={undefined}
+          onAddBreakout={onAddBreakout}
+          onUpdateBreakoutColumn={() => {}}
+          onClose={close}
         />
       </Popover.Dropdown>
     </Popover>
@@ -210,9 +257,12 @@ export const ChartSettingFieldsPartition = ({
         const updatedColumns = updatedValue[partitionName] ?? [];
         const partitionType = getPartitionType(partitionName);
 
-        const AggregationPopover = partitionType === "metric" && (
-          <AddAggregationPopover query={query} onAddAggregation={() => {}} />
-        );
+        const AggregationPopover =
+          partitionType === "metric" ? (
+            <AddAggregationPopover query={query} onAddAggregation={() => {}} />
+          ) : (
+            <AddBreakoutPopover query={query} onAddBreakout={() => {}} />
+          );
 
         return (
           <Box py="sm" key={partitionName}>
