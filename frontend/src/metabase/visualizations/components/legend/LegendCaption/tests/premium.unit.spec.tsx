@@ -5,9 +5,7 @@ import { setupTranslateContentStringSpy } from "__support__/server-mocks/content
 import { sampleSpanishDictionary, setup } from "./setup";
 
 describe("LegendCaption (EE with token)", () => {
-  const getContentTranslatorSpy = setupTranslateContentStringSpy(
-    (_dictionary, _locale, msgid) => `translated_${msgid}`,
-  );
+  const getContentTranslatorSpy = setupTranslateContentStringSpy();
 
   it("should translate caption title", async () => {
     setup({

@@ -14,9 +14,7 @@ describe("TitleAndDescription component", () => {
         ...opts,
       });
 
-    const getContentTranslatorSpy = setupTranslateContentStringSpy(
-      (_dictionary, _locale, msgid) => `translated_${msgid}`,
-    );
+    const getContentTranslatorSpy = setupTranslateContentStringSpy();
 
     it("displays translated question title and description", async () => {
       setup();
