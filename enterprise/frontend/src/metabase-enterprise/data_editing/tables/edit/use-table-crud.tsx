@@ -16,6 +16,7 @@ import type {
   FieldWithMetadata,
   RowValue,
 } from "metabase-types/api";
+import type { RowSelectionState } from "@tanstack/react-table";
 
 import type {
   RowCellsWithPkValue,
@@ -35,11 +36,15 @@ export const useTableCRUD = ({
   scope,
   datasetData,
   stateUpdateStrategy,
+  setRowSelection,
+  onForeignKeyError,
 }: {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
+  setRowSelection?: (state: RowSelectionState) => void;
+  onForeignKeyError?: (error: any, rowIndices: number[]) => boolean;
 }) => {
   const dispatch = useDispatch();
   const {
@@ -236,7 +241,7 @@ export const useTableCRUD = ({
   );
 
   const handleRowDeleteBulk = useCallback(
-    async (rowIndices: number[]) => {
+    async (rowIndices: number[], cascadeDelete = false) => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -255,13 +260,19 @@ export const useTableCRUD = ({
         return { [pkColumn.name]: rowPkValue };
       });
 
+      const requestParams = cascadeDelete 
+        ? { params: { "delete-children": true } }
+        : {};
+
       const response = await deleteTableRows({
         rows,
         scope,
+        ...requestParams,
       });
 
       if (response.data?.outputs) {
         stateUpdateStrategy.onRowsDeleted(rows);
+        setRowSelection?.({});
         dispatch(
           addUndo({
             message: t`${rows.length} rows successfully deleted`,
@@ -270,6 +281,12 @@ export const useTableCRUD = ({
       }
 
       if (response.error) {
+        // Check if it's a foreign key constraint error and if we have a handler
+        if (onForeignKeyError && !cascadeDelete && onForeignKeyError(response.error, rowIndices)) {
+          // The error was handled by the foreign key handler
+          return false;
+        }
+        
         handleGenericUpdateError(response.error);
       }
 
@@ -280,14 +297,23 @@ export const useTableCRUD = ({
       deleteTableRows,
       scope,
       stateUpdateStrategy,
+      setRowSelection,
       dispatch,
       handleGenericUpdateError,
+      onForeignKeyError,
     ],
   );
 
   const handleRowDelete = useCallback(
-    async (rowIndex: number) => {
-      return handleRowDeleteBulk([rowIndex]);
+    async (rowIndex: number, cascadeDelete = false) => {
+      return handleRowDeleteBulk([rowIndex], cascadeDelete);
+    },
+    [handleRowDeleteBulk],
+  );
+
+  const handleRowDeleteWithCascade = useCallback(
+    async (rowIndices: number[]) => {
+      return handleRowDeleteBulk(rowIndices, true);
     },
     [handleRowDeleteBulk],
   );
@@ -305,5 +331,6 @@ export const useTableCRUD = ({
     handleRowUpdateBulk,
     handleRowDelete,
     handleRowDeleteBulk,
+    handleRowDeleteWithCascade,
   };
 };
