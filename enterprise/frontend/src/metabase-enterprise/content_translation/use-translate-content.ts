@@ -10,7 +10,17 @@ import { translateContentString } from "./utils";
 
 export const useTranslateContent = (): ContentTranslationFunction => {
   const locale = useLocale();
+  const dictionary = useListContentTranslations();
 
+  return useCallback(
+    <T = string | null | undefined>(msgid: T) =>
+      translateContentString<T>(dictionary || [], locale, msgid),
+    [locale, dictionary],
+  );
+};
+
+export const useListContentTranslations = () => {
+  const locale = useLocale();
   const { data } = useListContentTranslationsQuery(
     // This URL is currently only defined in static embedding
     PLUGIN_CONTENT_TRANSLATION.isEnabled &&
@@ -21,10 +31,5 @@ export const useTranslateContent = (): ContentTranslationFunction => {
       : skipToken,
   );
   const dictionary = data?.data;
-
-  return useCallback(
-    <T = string | null | undefined>(msgid: T) =>
-      translateContentString<T>(dictionary || [], locale, msgid),
-    [locale, dictionary],
-  );
+  return dictionary;
 };

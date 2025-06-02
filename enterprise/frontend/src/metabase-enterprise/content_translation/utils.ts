@@ -1,4 +1,5 @@
 import * as I from "icepick";
+import { useMemo } from "react";
 import _ from "underscore";
 
 import type { HoveredObject } from "metabase/visualizations/types";
@@ -138,17 +139,19 @@ export const translateFieldValuesInSeries = (
   });
 };
 
-export const translateSeries = (
+export const useTranslateSeries = (
   series: Series,
   tc: ContentTranslationFunction,
 ) => {
-  const withTranslatedDisplayNames = translateDisplayNames(series, tc);
+  return useMemo(() => {
+    const withTranslatedDisplayNames = translateDisplayNames(series, tc);
 
-  // Do not translate field values here if display is a map, since this can
-  // break the map
-  if (series?.[0]?.card?.display === "map") {
-    return withTranslatedDisplayNames;
-  }
+    // Do not translate field values here if display is a map, since this can
+    // break the map
+    if (series?.[0]?.card?.display === "map") {
+      return withTranslatedDisplayNames;
+    }
 
-  return translateFieldValuesInSeries(withTranslatedDisplayNames, tc);
+    return translateFieldValuesInSeries(withTranslatedDisplayNames, tc);
+  }, [series, tc]);
 };

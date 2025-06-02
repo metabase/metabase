@@ -61,6 +61,10 @@ export const ListField = ({
 
   const tc = useTranslateContent();
   const sortByTranslation = useSortByContentTranslation();
+  const optionsHaveSomeTranslations = useMemo(
+    () => augmentedOptions.some((option) => tc(option) !== option),
+    [augmentedOptions, tc],
+  );
 
   /**
    * Sorts options alphabetically, or by their translation if content
@@ -78,6 +82,12 @@ export const ListField = ({
       }
       if (!aSelected && bSelected) {
         return 1;
+      }
+
+      // If no options have translations, rely on the sorting that was already
+      // done in the backend
+      if (!optionsHaveSomeTranslations) {
+        return 0;
       }
 
       const aName = getOptionDisplayName(optionA),
