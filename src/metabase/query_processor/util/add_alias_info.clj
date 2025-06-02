@@ -420,14 +420,15 @@
 (defmethod clause-alias-info :field
   [inner-query unique-alias-fn field-clause]
   (let [expensive-info (expensive-field-info inner-query field-clause)
-        original-field-clause (mbql.u/update-field-options set/rename-keys {:original-join-alias :join-alias})]
+        original-field-clause (mbql.u/update-field-options field-clause set/rename-keys {:original-join-alias :join-alias})
+        _ (metabase.util.log/fatal "clause-alias-info" {:field field-clause})]
     (merge {::source-table (field-source-table-alias inner-query field-clause)
             ::source-alias (field-source-alias inner-query field-clause expensive-info)}
            (when-let [nfc-path (:nfc-path expensive-info)]
              {::nfc-path nfc-path})
            (when-let [position (clause->position inner-query field-clause)]
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
-              ::original-desired-alias (unique-alias-fn position (field-desired-alias inner-query original-field-clause expensive-info))
+              ::original-desired-alias (field-desired-alias inner-query original-field-clause expensive-info)
               ::position      position}))))
 
 (defmulti ^:private aggregation-name

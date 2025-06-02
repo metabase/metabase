@@ -301,6 +301,15 @@
   JOINING against."}
      [:maybe ::lib.schema.common/non-blank-string]]
 
+    [:original-join-alias
+     {:optional true
+      :description
+      "Replaces `joined-field`.
+
+  `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
+  JOINING against."}
+     [:maybe ::lib.schema.common/non-blank-string]]
+
     [:binning
      {:optional true
       :description
@@ -1448,6 +1457,16 @@
      JoinFields]
 
     [:alias
+     {:optional true
+      :description
+      "The name used to alias the joined table or query. This is usually generated automatically and generally looks
+  like `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias`
+  in the options.
+
+  Driver implementations: This is guaranteed to be present after pre-processing."}
+     ::lib.schema.common/non-blank-string]
+
+    [:original-alias
      {:optional true
       :description
       "The name used to alias the joined table or query. This is usually generated automatically and generally looks
