@@ -22,8 +22,8 @@ export const useTranslateContent = (): ContentTranslationFunction => {
 export const useListContentTranslations = () => {
   const locale = useLocale();
   const { data } = useListContentTranslationsQuery(
-    // This URL is currently only defined in static embedding
     PLUGIN_CONTENT_TRANSLATION.isEnabled &&
+      // This URL is currently only defined in static embedding
       PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl
       ? {
           locale,
