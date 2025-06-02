@@ -11,6 +11,7 @@ import PasswordReveal from "metabase/components/PasswordReveal";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type { User } from "metabase-types/api";
@@ -22,11 +23,11 @@ interface UserSuccessModalProps extends WithRouterProps {
   params: { userId: string };
 }
 
-export function UserSuccessModal({ params, location }: UserSuccessModalProps) {
-  const isExternalUser = location.pathname.includes("/tenants");
-
+export function UserSuccessModal({ params }: UserSuccessModalProps) {
   const userId = parseInt(params.userId);
   const { data: user, isLoading, error } = useGetUserQuery(userId);
+
+  const isExternalUser = PLUGIN_TENANTS.isExternalUser(user);
 
   const temporaryPassword = useSelector((state) =>
     getUserTemporaryPassword(state, { userId }),
