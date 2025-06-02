@@ -23,6 +23,7 @@ export function useSdkUsageProblem({
   // feature is _enabled_ first. Otherwise, when a user's instance is temporarily down,
   // their customer would see an alarming error message on production.
   const isEnabled = useSetting("enable-embedding-sdk") ?? true;
+  const jwtProviderUri = useSetting("jwt-identity-provider-uri");
 
   const hasTokenFeature = useSdkSelector((state) => {
     // We also assume that the feature is enabled if the token-features are missing.
@@ -43,14 +44,25 @@ export function useSdkUsageProblem({
     return getTokenFeature(state, "development-mode");
   });
 
+  const isJwtProviderUriSet = useMemo(() => {
+    return authConfig.authMethod === "jwt" && jwtProviderUri !== undefined;
+  }, [authConfig.authMethod, jwtProviderUri]);
+
   const usageProblem = useMemo(() => {
     return getSdkUsageProblem({
       authConfig,
       hasTokenFeature,
       isEnabled,
       isDevelopmentMode,
+      isJwtProviderUriSet,
     });
-  }, [authConfig, hasTokenFeature, isEnabled, isDevelopmentMode]);
+  }, [
+    authConfig,
+    hasTokenFeature,
+    isEnabled,
+    isDevelopmentMode,
+    isJwtProviderUriSet,
+  ]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.

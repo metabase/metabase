@@ -24,7 +24,7 @@ To set up JWT SSO with Metabase and your app, you'll need to:
 
 ### 1. Enable JWT SSO in your Metabase
 
-1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
+1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
 2. Generate a key and copy it to your clipboard.
 
 ### 2. Add a new endpoint to your backend to handle authentication
@@ -37,10 +37,22 @@ For Node.js, we recommend jsonwebtoken:
 npm install jsonwebtoken --save
 ```
 
-Next, set up your endpoint: this example code for Node.js sets up an endpoint in an app, `/sso/metabase`, that creates a token using the shared secret to authenticate calls to Metabase.
+Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that generates a JWT for the authenticated user using your Metabase JWT shared secret. This endpoint should return a JSON object with the JWT in the format `{ jwt: "{YOUR_GENERATED_JWT}" }`. It should not redirect or perform any other actions. If you are using the same endpoint for both interactive embedding (which might involve redirects) and SDK embedding, you will need to detect SDK requests (e.g., by checking a header) and return the JSON object only for those requests.
+
+This example code for Node.js sets up such an endpoint using Express:
 
 ```js
 {% include_file "{{ dirname }}/snippets/authentication/express-server.ts" %}
+```
+
+### Handling Interactive and SDK Embedding on the Same Endpoint
+
+If you have an existing backend endpoint configured for traditional interactive embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests. For SDK requests, you should return a JSON object with the JWT (`{ jwt: string }`), while for traditional interactive embedding requests, you would proceed with the redirect.
+
+Here's an example of an Express.js endpoint that handles both:
+
+```typescript
+{% include_file "{{ dirname }}/snippets/authentication/express-server-interactive-and-sdk.ts" %}
 ```
 
 ### 3. Wire the SDK in your frontend to your new endpoint
