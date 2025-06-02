@@ -10,6 +10,18 @@ For using the SDK in production, you'll need to set up authentication with JWT S
 
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
+**Note:** If both SAML and JWT are enabled in your Metabase instance, the SDK will default to using SAML authentication unless you explicitly set the `authMethod` to `"jwt"` in your `MetabaseAuthConfig`:
+
+```javascript
+authConfig: {
+  metabaseInstanceUrl: "...",
+  authMethod: "jwt",
+  // other JWT config...
+}
+```
+
+For details on SAML authentication with the SDK, see [Authenticating with SAML SSO](#authenticating-with-saml-sso).
+
 ## Setting up JWT SSO
 
 Prerequisites:
@@ -130,3 +142,33 @@ Then you can then use the API key to authenticate with Metabase in your applicat
 ```typescript
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-api-key.tsx" %}
 ```
+
+## Authenticating with SAML SSO
+
+{% include plans-blockquote.html feature="SAML authentication" sdk=true %}
+
+To use SAML single sign-on with the Embedded analytics SDK, you will first need to set up SAML in your Metabase instance and your Identity Provider (IdP).
+
+See the [SAML-based authentication documentation](../../people-and-groups/authenticating-with-saml.md) for detailed instructions on setting up SAML in Metabase.
+
+Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `authMethod` in your `MetabaseAuthConfig` to `"saml"`:
+
+```typescript
+import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
+
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase.example.com", // Required: Your Metabase instance URL
+  authMethod: "saml",
+});
+
+// Pass this configuration to MetabaseProvider
+// <MetabaseProvider authConfig={authConfig}>...</MetabaseProvider>
+```
+
+Using SAML authentication with the Embedded analytics SDK will typically involve the user being redirected to your Identity Provider's login page or a popup window for authentication. After successful authentication, the user will be redirected back to the embedded content.
+
+Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing thoroughly in your target environments.
+
+Unlike JWT authentication, SAML with the SDK does not provide the ability to implement a custom `fetchRequestToken` function on your backend.
+
+## Security warning: each end-user _must_ have their own Metabase account
