@@ -21,7 +21,17 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Button, Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Group,
+  Icon,
+  List,
+  Loader,
+  Paper,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 /** Maximum file size for uploaded content-translation dictionaries, expressed
@@ -65,6 +75,7 @@ export const ContentTranslationConfiguration = () => {
   };
 
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const [warningMessages, setWarningMessages] = useState<string[]>([]);
 
   return (
     <Stack
@@ -93,7 +104,7 @@ export const ContentTranslationConfiguration = () => {
       <Group>
         <Button
           onClick={triggerDownload}
-          leftSection={<Icon name="download" />}
+          leftSection={<Icon name="download" c="brand" />}
           maw="20rem"
         >
           {t`Download translation dictionary`}
@@ -105,7 +116,10 @@ export const ContentTranslationConfiguration = () => {
           initialValues={{}}
           onSubmit={() => {}}
         >
-          <UploadForm setErrorMessages={setErrorMessages} />
+          <UploadForm
+            setErrorMessages={setErrorMessages}
+            setWarningMessages={setWarningMessages}
+          />
         </FormProvider>
       </Group>
       {downloadErrorMessage && (
@@ -114,22 +128,62 @@ export const ContentTranslationConfiguration = () => {
         </Text>
       )}
       {!!errorMessages.length && (
-        <Stack gap="xs">
-          <Text role="alert" c="error">
-            {ngettext(
-              msgid`We couldn't upload the file due to this error:`,
-              `We couldn't upload the file due to these errors:`,
-              errorMessages.length,
-            )}
-          </Text>
-          <List withPadding>
-            {errorMessages.map((errorMessage) => (
-              <List.Item key={errorMessage} role="alert" c="danger">
-                {errorMessage}
-              </List.Item>
-            ))}
-          </List>
-        </Stack>
+        <Paper
+          px="lg"
+          py="md"
+          withBorder
+          shadow="none"
+          mah="20rem"
+          style={{ overflowY: "auto" }}
+        >
+          <Stack gap="xs" role="alert">
+            <Flex align="center" gap="sm">
+              <Icon name="warning" c="danger" />
+              <Text>
+                {ngettext(
+                  msgid`We couldn't upload the file due to this error:`,
+                  `We couldn't upload the file due to these errors:`,
+                  errorMessages.length,
+                )}
+              </Text>
+            </Flex>
+            <List withPadding>
+              {errorMessages.map((errorMessage) => (
+                <List.Item key={errorMessage} role="alert">
+                  {errorMessage}
+                </List.Item>
+              ))}
+            </List>
+          </Stack>
+        </Paper>
+      )}
+      {!!warningMessages.length && (
+        <Paper
+          px="lg"
+          py="md"
+          withBorder
+          shadow="none"
+          mah="20rem"
+          style={{ overflowY: "auto" }}
+        >
+          <Stack gap="xs" role="alert">
+            <Flex align="center" gap="sm">
+              <Icon name="info_filled" c="warning" />
+              <Text>
+                {ngettext(
+                  msgid`The dictionary was uploaded successfully, but with this warning:`,
+                  `The dictionary was uploaded successfully, but with these warnings:`,
+                  warningMessages.length,
+                )}
+              </Text>
+            </Flex>
+            <List withPadding w="90%">
+              {warningMessages.map((warningMessage) => (
+                <List.Item key={warningMessage}>{warningMessage}</List.Item>
+              ))}
+            </List>
+          </Stack>
+        </Paper>
       )}
     </Stack>
   );
@@ -137,8 +191,10 @@ export const ContentTranslationConfiguration = () => {
 
 const UploadForm = ({
   setErrorMessages,
+  setWarningMessages,
 }: {
   setErrorMessages: Dispatch<SetStateAction<string[]>>;
+  setWarningMessages: Dispatch<SetStateAction<string[]>>;
 }) => {
   const [uploadContentTranslationDictionary] =
     useUploadContentTranslationDictionaryMutation();
@@ -152,6 +208,7 @@ const UploadForm = ({
           c("{0} is a number")
             .t`The file is larger than ${approxMaxContentDictionarySizeInMB} MB`,
         ]);
+        setWarningMessages([]);
         setStatus("rejected");
         return;
       }
@@ -177,10 +234,14 @@ const UploadForm = ({
         return;
       }
       setErrorMessages([]);
+      setWarningMessages([]);
       setStatus("pending");
       await uploadContentTranslationDictionary({ file })
         .unwrap()
-        .then(() => {
+        .then((response) => {
+          if (response.warnings && response.warnings.length > 0) {
+            setWarningMessages(response.warnings);
+          }
           setStatus("fulfilled");
         })
         .catch((e) => {
@@ -188,7 +249,12 @@ const UploadForm = ({
           setStatus("rejected");
         });
     },
-    [uploadContentTranslationDictionary, setErrorMessages, setStatus],
+    [
+      uploadContentTranslationDictionary,
+      setErrorMessages,
+      setWarningMessages,
+      setStatus,
+    ],
   );
 
   const triggerUpload = () => {
@@ -210,19 +276,19 @@ const UploadForm = ({
           disabled={status === "pending"}
           label={
             <Group gap="sm">
-              <Icon name="upload" opacity=".8" />
+              <Icon name="upload" c="brand" />
               <Text c="inherit">{t`Upload translation dictionary`}</Text>
             </Group>
           }
           successLabel={
             <Group gap="sm" role="alert">
-              <Icon name="check" opacity=".8" />
+              <Icon name="check" c="success" opacity=".8" />
               <Text c="inherit">{t`Dictionary uploaded`}</Text>
             </Group>
           }
           failedLabel={
             <Group gap="sm" role="alert">
-              <Icon name="warning" opacity=".8" />
+              <Icon name="warning" c="danger" />
               <Text c="inherit">{t`Could not upload dictionary`}</Text>
             </Group>
           }

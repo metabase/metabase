@@ -27,8 +27,8 @@
   (when (not (i18n/available-locale? locale))
     (tru "Row {0}: Invalid locale: {1}" (adjust-index index) locale)))
 
-(defn- collect-duplication-error
-  "Returns an error message if this translation key has already been seen in the file. A translation key is a string
+(defn- collect-duplication-warning
+  "Returns a warning message if this translation key has already been seen in the file. A translation key is a string
   like 'de,Category'"
   [{:keys [seen] :as _state} index {:keys [msgid locale] :as translation}]
   (when (-> translation translation-key seen)
@@ -46,7 +46,12 @@
 (defn- row-errors
   [state index translation]
   (keep (fn [f] (f state index translation))
-        [collect-duplication-error collect-locale-error]))
+        [collect-locale-error]))
+
+(defn- row-warnings
+  [state index translation]
+  (keep (fn [f] (f state index translation))
+        [collect-duplication-warning]))
 
 (defn- wrong-row-shape
   [index]
@@ -56,7 +61,8 @@
 (defn- process-rows
   "Format, trim, validate rows. Takes the vectors from a csv and returns a map with the shape
   {:translations [{:locale :msgid :msgstr}]
-   :errors       [string]}.
+   :errors       [string]
+   :warnings     [string]}.
   The :seen set is returned but not meant for consumption."
   [rows]
   (reduce (fn [state [index row]]
@@ -65,20 +71,24 @@
                                                  :msgid  (str/trim msgid)
                                                  :msgstr (str/trim msgstr)}
                   errors                        (cond-> (row-errors state index translation)
-                                                  (seq extra) (conj (wrong-row-shape index)))]
+                                                  (seq extra) (conj (wrong-row-shape index)))
+                  warnings                      (row-warnings state index translation)]
               (cond-> (-> state
                           (update :seen conj (dissoc translation :msgstr))
                           (update :translations conj translation))
-                (seq errors) (update :errors into errors))))
+                (seq errors) (update :errors into errors)
+                (seq warnings) (update :warnings into warnings))))
           {:seen         #{}
            :errors       []
+           :warnings     []
            :translations []}
           (map-indexed vector rows)))
 
 (defn import-translations!
-  "Insert or update rows in the content_translation table."
+  "Insert or update rows in the content_translation table.
+  Returns a map with :success and optionally :warnings."
   [rows]
-  (let [{:keys [translations errors]} (process-rows rows)]
+  (let [{:keys [translations errors warnings]} (process-rows rows)]
     (when (seq errors)
       (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
                       {:status-code http-status-unprocessable
@@ -90,4 +100,7 @@
         (t2/delete! :model/ContentTranslation)
         ;; Insert all usable rows at once
         (when-not (empty? usable-rows)
-          (t2/insert! :model/ContentTranslation usable-rows))))))
+          (t2/insert! :model/ContentTranslation usable-rows)))
+      ;; Return success with any warnings
+      (cond-> {:success true}
+        (seq warnings) (assoc :warnings warnings)))))

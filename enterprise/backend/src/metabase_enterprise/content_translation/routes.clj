@@ -40,8 +40,7 @@
       (throw (ex-info (tru "No file provided") {:status-code 400})))
     (with-open [rdr (io/reader file)]
       (let [[_header & rows] (csv/read-csv rdr)]
-        (dictionary/import-translations! rows)))
-    {:success true}))
+        (dictionary/import-translations! rows)))))
 
 (api.macros/defendpoint :get "/csv"
   "Provides content translation dictionary in CSV"
