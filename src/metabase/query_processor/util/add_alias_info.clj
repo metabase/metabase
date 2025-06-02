@@ -215,13 +215,13 @@
 (defn- field-name-match [field-name all-exports source-metadata field-exports]
   ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
   ;; name we're searching for.
-  (or (m/find-first (fn [[tag _id-or-name {::keys [original-desired-alias], :as _opts} :as _ref]]
-                      (when (#{:expression :field} tag)
-                        (= original-desired-alias field-name)))
-                    all-exports)
-      (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+  (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
                       (when (#{:expression :field} tag)
                         (= desired-alias field-name)))
+                    all-exports)
+      (m/find-first (fn [[tag _id-or-name {::keys [original-desired-alias], :as _opts} :as _ref]]
+                      (when (#{:expression :field} tag)
+                        (= original-desired-alias field-name)))
                     all-exports)
       ;; Expressions by exact name.
       (m/find-first (fn [[_ expression-name :as _expression-clause]]

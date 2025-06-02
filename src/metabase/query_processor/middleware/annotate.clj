@@ -737,7 +737,7 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [{query-type :type, :as query
-    {:keys [card-entity-id metadata/model-metadata]} :info} rff]
+    {:keys [card-entity-id metadata/model-metadata alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
     (qp.debug/debug> (list `add-column-info query metadata))
     (if (and (= query-type :query)
@@ -745,7 +745,9 @@
              ;; or in the result metadata for the following code to work
              (or (->> query :query keys (some #{:aggregation :breakout :fields}))
                  (every? :base_type (:cols metadata))))
-      (let [query    (escape-join-aliases/restore-aliases query) ;; if we replaced aliases, restore them
+      (let [query    (cond-> query
+                       (seq escaped->original) ;; if we replaced aliases, restore them
+                       (escape-join-aliases/restore-aliases escaped->original))
             metadata (cond-> (assoc metadata :cols (merged-column-info query metadata))
                        (seq model-metadata)
                        (update :cols merge-model-metadata model-metadata card-entity-id))]

@@ -217,12 +217,14 @@
         (letfn [(rename-join-aliases* [query]
                   (lib.util.match/replace query
                     [:field id-or-name (opts :guard (comp aliases-to-replace :join-alias))]
-                    [:field id-or-name (update opts :join-alias original->new)]
+                    [:field id-or-name (-> opts
+                                           (update :join-alias original->new)
+                                           (dissoc :original-join-alias))]
 
                     (join :guard (every-pred map? :condition (comp aliases-to-replace :alias)))
                     (merge
                                                                ;; recursively update stuff inside the join
-                     (rename-join-aliases* (dissoc join :alias))
+                     (rename-join-aliases* (dissoc join :alias :original-alias))
                      {:alias (original->new (:alias join))})))]
           (rename-join-aliases* query))))))
 
