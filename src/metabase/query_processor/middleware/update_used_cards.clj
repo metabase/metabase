@@ -26,15 +26,16 @@
                                         (fn [xs] (apply t/max (map :timestamp xs))))]
     (log/debugf "Update last_used_at of %d cards" (count card-id->timestamp))
     (try
-      ;; need to use a shared lock for all updates to the card table
-      (cluster-lock/with-cluster-lock cluster-lock/card-statistics-lock
-        (t2/update! :model/Card :id [:in (keys card-id->timestamp)]
-                    {:last_used_at (into [:case]
-                                         (mapcat (fn [[id timestamp]]
-                                                   [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                                 card-id->timestamp))
-                     ;; Set updated_at to its current value to prevent it from updating automatically
-                     :updated_at :updated_at}))
+      (t2/with-connection [_conn]
+        ;; need to use a shared lock for all updates to the card table
+        (cluster-lock/with-cluster-lock cluster-lock/card-statistics-lock
+          (t2/update! :model/Card :id [:in (keys card-id->timestamp)]
+                      {:last_used_at (into [:case]
+                                           (mapcat (fn [[id timestamp]]
+                                                     [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                   card-id->timestamp))
+                       ;; Set updated_at to its current value to prevent it from updating automatically
+                       :updated_at :updated_at})))
       (catch Throwable e
         (log/error e "Error updating used cards")))))
 
