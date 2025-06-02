@@ -14,7 +14,7 @@ One of the best ways to add context and clarity when communicating with data is 
 
 ## Displaying data side by side
 
-There are two main ways to visualize data side-by-side in Metabase:
+There are two main ways to visualize multiple series in Metabase:
 
 - [**Ask a question that involves multiple dimensions**](#ask-a-question-that-involves-multiple-dimensions) with the query builder (or in SQL, if you're using SQL). For example, the count of users by region over time.
 - [**Combine multiple questions on one dashboard card**](#combining-multiple-questions-on-one-dashboard-card) that share a common dimension (like time) on a dashboard. For example, you could look at revenue over time and costs over time together.
@@ -35,21 +35,25 @@ Metabase can visualize up to 100 distinct values of a dimension at once, so if y
 
 ## Combining multiple questions on one dashboard card
 
-You can layer multiple questions on a single dashboard card. You can even layer questions that query different databases, as long as they share the same dimensions.
+You can layer multiple questions on a single dashboard card. You can even layer questions that query different databases, as long as they share the same datetime dimension.
 
 1. **Create a dashboard and enter dashboard edit mode**. On a dashboard, click the **Pencil** icon to enter editing mode.
 
-2. **Add a question** with a dimension like time or category to a dashboard. In practice, these questions will usually be line charts or bar charts.
+2. **Add a question** with a dimension like time or category to a dashboard. In practice, questions you'll typically want to overlay will be line or bar charts.
 
 3. **Edit the card's visualization**. Still in dashboard edit mode, hover over the question's card and click the **Pencil** icon to edit the card's visualization.
 
 ![Edit visualization](./images/edit-visualization.png)
 
-4. **Add more data**. Click on "Add more data" in the upper left. Metabase will list questions in the left sidebar. Valid questions that you can plot on the card will have a plus sign **+**. You can also swap out the card's current question for a different question, which may update the list of compatible questions.
+4. **Add more data**. In the Manage data sidebar on the left, click on **Add more data**. 
 
-![Add data](./images/add-data.png)
+![Manage data sidebar](./images/add-data.png)
+
+Metabase will list questions in the left sidebar. Valid questions that you can plot on the card will have a plus sign **+**. You can also swap out the card's current question for a different question, which may update the list of compatible questions.
 
 If necessary, the X and Y axes will automatically update. Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
+
+You can also swap out the chart's original question entirely, for example if you want to start over, or to reset the question's visualization to its original settings.
 
 5. (Optional) **Rename your chart** to reflect the combined data.
 
@@ -61,15 +65,15 @@ If you need to compare single numbers to get a sense of how they differ, Metabas
 
 1. **Add a number chart to a dashboard.**
 
-2. **Visualize as a funnel chart**. In dashboard edit mode, hover over the card and click on **Visualize another way**. Metabase will change the visualization to a funnel chart.
+2. **Visualize as a funnel chart**. (Yes, we know you're going for a bar chart, bear with us, you're going to switch the funnel's type to a bar chart.) In dashboard edit mode, hover over the card and click on **Visualize another way**. Metabase will change the visualization to a funnel chart.
 
 ![Visualize another way](./images/visualize-another-way.png)
 
 3. **Add more data**. Add another question that returns a single number to the chart.
 
-4. **Set the chart to a bar chart**. Click **Settings** and change **Funnel type** to "Bar chart".
+4. **Set the Funnel type to a bar chart**. Click **Settings** and change **Funnel type** to "Bar chart".
 
-![Set to bar chart](./images/set-to-bar-chart.png)
+![Set Funnel chart to Bar chart](./images/set-to-bar-chart.png)
 
 ## Multi-series charts, values, and legibility
 
