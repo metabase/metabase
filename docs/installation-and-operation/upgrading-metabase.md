@@ -107,7 +107,7 @@ With X being the latest version available for each release.
 
 Check out a list of [Metabase releases](https://github.com/metabase/metabase/releases).
 
-NOTE: when upgrading between major versions (e.g. v53.x to v54.x), please always use the latest minor version available for that major version. E.g. if you want to upgrade from v50 to v51, use v51.14 since .14 it's the latest minor version of the v51 major version.
+When upgrading between major versions (e.g. v53.x to v54.x), use the latest minor version available for that major version. E.g., if you want to upgrade from v50 to v51, use the latest point version available for 51.
 
 ## Upgrading Metabase on other platforms
 
@@ -171,4 +171,4 @@ If you're running Metabase in a cluster:
 2. Perform the upgrade as normal (as outlined above).
 3. Raise the number of nodes to the same number you had before.
 
-Please ensure that the container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, or you'll otherwise end up with a corrupted application database and you'll need to restore from a backup.
+Make sure you container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, otherwise you'll may end up with a corrupted application database and you'll need to restore from a backup.
