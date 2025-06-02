@@ -1,7 +1,11 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
+import Link from "metabase/core/components/Link";
+import { useSelector } from "metabase/lib/redux";
+import { getCrowdinUrl } from "metabase/selectors/settings";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -10,6 +14,15 @@ import { FormattingWidget } from "../widgets/FormattingWidget";
 export function LocalizationSettingsPage() {
   const availableLocales = useSetting("available-locales");
   const availableTimezones = useSetting("available-timezones");
+  const applicationName = useSelector(getApplicationName);
+  const translatedLink = (
+    <Link
+      to={getCrowdinUrl()}
+      variant="brand"
+      target="_blank"
+    >{t`contribute to translations here`}</Link>
+  );
+
   return (
     <Box w="36rem" p="0 2rem 2rem 1rem">
       <Stack gap="xl">
@@ -20,6 +33,15 @@ export function LocalizationSettingsPage() {
             ([code, label]) => ({ label, value: code }),
           )}
           inputType="select"
+          description={
+            <>
+              {t`The default language for all users across the ${applicationName} UI, system emails, subscriptions, and alerts. Each user can override this from their own account settings.`}
+              <br />
+              <br />
+              {t`Some translations are created by the ${applicationName} community, and might not be perfect.`}{" "}
+              {jt`You can ${translatedLink}`}.
+            </>
+          }
         />
         <AdminSettingInput
           name="report-timezone"

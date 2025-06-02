@@ -1,8 +1,11 @@
+import { t } from "ttag";
+
 import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getIsEmbeddingUseCase, getSteps } from "metabase/setup/selectors";
 import type { SetupStep } from "metabase/setup/types";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";
@@ -32,8 +35,17 @@ const STEP_COMPONENTS: Partial<
 
 export const SettingsPage = (): JSX.Element => {
   const steps = useSelector(getSteps);
+  const applicationName = useSelector(getApplicationName);
   const isEmbeddingUseCase = useSelector(getIsEmbeddingUseCase);
   const SELECT_WIDTH = "10rem";
+  const tooltipText = t`Some translations are created by the ${applicationName} community, and might not be perfect.`;
+  const tooltipWidth = 220;
+
+  const label = (
+    <Text size="sm" c="var(--mb-color-text-white)">
+      {tooltipText}
+    </Text>
+  );
 
   return (
     <div data-testid="setup-forms">
@@ -42,7 +54,25 @@ export const SettingsPage = (): JSX.Element => {
           <Box w={SELECT_WIDTH} className={S.Decoy} />
           <LogoIcon height={51} />
           <Box w={SELECT_WIDTH}>
-            {isEmbeddingUseCase && <LanguageSelector />}
+            {isEmbeddingUseCase && (
+              <>
+                <Flex align="center" justify="space-between" gap="sm">
+                  <LanguageSelector />
+                  <div>
+                    <Tooltip
+                      label={label}
+                      position="bottom"
+                      withArrow
+                      multiline
+                      w={tooltipWidth}
+                      ta="center"
+                    >
+                      <Icon name="info_filled" />
+                    </Tooltip>
+                  </div>
+                </Flex>
+              </>
+            )}
           </Box>
         </Flex>
       </Box>
