@@ -32,7 +32,9 @@
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
-(defn- include-schema-logging-exclusion [schema-inclusion-filters schema-exclusion-filters table-schema]
+(defn include-schema-logging-exclusion
+  "Wrapper for [[metabase.driver.sync/include-schema?]] which logs an info message in case of exclusion"
+  [schema-inclusion-filters schema-exclusion-filters table-schema]
   (or (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
       (log/infof "Skipping schema '%s' because it does not match the current schema filtering settings" table-schema)))
 
