@@ -4,18 +4,8 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.app-db.core :as mdb]
-   [metabase.auth-provider.core :as auth-provider]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.driver.settings :as driver.settings]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.driver-api.core :as driver-api]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -28,7 +18,11 @@
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
    (javax.net SocketFactory)
-   (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
+   (javax.net.ssl
+    KeyManagerFactory
+    SSLContext
+    TrustManagerFactory
+    X509TrustManager)))
 
 (set! *warn-on-reflection* true)
 
@@ -163,11 +157,11 @@
 (def ^:private ^{:arglists '([db-id])} database->driver*
   (memoize/ttl
    (-> (mu/fn :- :keyword
-         [db-id :- ::lib.schema.id/database]
-         (qp.store/with-metadata-provider db-id
-           (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
+         [db-id :- driver-api/schema.id.database]
+         (driver-api/with-metadata-provider db-id
+           (:engine (driver-api/database (driver-api/metadata-provider)))))
        (vary-meta assoc ::memoize/args-fn (fn [[db-id]]
-                                            [(mdb/unique-identifier) db-id])))
+                                            [(driver-api/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
 (mu/defn database->driver :- :keyword
@@ -180,13 +174,13 @@
                       [:map
                        [:engine [:or :keyword :string]]]
                       [:map
-                       [:id ::lib.schema.id/database]]
-                      ::lib.schema.id/database]]
+                       [:id driver-api/schema.id.database]]
+                      driver-api/schema.id.database]]
   (if-let [driver (:engine database-or-id)]
     ;; ensure we get the driver as a keyword (sometimes it's a String)
     (keyword driver)
-    (if (qp.store/initialized?)
-      (:engine (lib.metadata/database (qp.store/metadata-provider)))
+    (if (driver-api/initialized?)
+      (:engine (driver-api/database (driver-api/metadata-provider)))
       (database->driver* (u/the-id database-or-id)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -202,7 +196,7 @@
 (def ^:dynamic *memoize-supports?*
   "If true, [[supports?]] is memoized for the application DB. Memoization is disabled in dev and test mode by default to avoid
    accidental coupling between tests."
-  (not (or config/is-test? config/is-dev?)))
+  (not (or driver-api/is-test? driver-api/is-dev?)))
 
 (defn- supports?* [driver feature database]
   (try
@@ -217,7 +211,7 @@
    (-> supports?*
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver feature database]]
-                    [driver feature (mdb/unique-identifier) (:id database)
+                    [driver feature (driver-api/unique-identifier) (:id database)
                      (if (snake-hating-map? database)
                        (:updated-at database)
                        (:updated_at database))])))))
@@ -241,7 +235,7 @@
    (-> features*
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver database]]
-                    [driver (mdb/unique-identifier) (:id database)
+                    [driver (driver-api/unique-identifier) (:id database)
                      (if (snake-hating-map? database)
                        (:updated-at database)
                        (:updated_at database))])))))
@@ -256,7 +250,7 @@
   "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the
   sqlite driver on hosted metabase because hosted metabase does not support uploading a SQLite file for use."
   [driver]
-  (or (not (premium-features/is-hosted?))
+  (or (not (driver-api/is-hosted?))
       (not= :sqlite (keyword driver))))
 
 (defn available-drivers
@@ -274,8 +268,8 @@
    (semantic-version-gte [4 0 1] [4 1]) => false
    (semantic-version-gte [4 1] [4]) => true
    (semantic-version-gte [3 1] [4]) => false"
-  [xv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   yv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]]
+  [xv :- [:maybe [:sequential driver-api/schema.common.int-greater-than-or-equal-to-zero]]
+   yv :- [:maybe [:sequential driver-api/schema.common.int-greater-than-or-equal-to-zero]]]
   (loop [xv (seq xv), yv (seq yv)]
     (or (nil? yv)
         (let [[x & xs] xv
@@ -286,7 +280,7 @@
               (and (>= x y) (recur xs ys)))))))
 
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
-  (if (premium-features/is-hosted?)
+  (if (driver-api/is-hosted?)
     [(-> (assoc conn-prop
                 :name (str prop-name "-value")
                 :type "textFile"
@@ -460,7 +454,7 @@
                                                                (set (keys acc)))]
                             (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
                                      driver cyclic-props)
-                                (ex-info {:type               qp.error-type/driver
+                                (ex-info {:type               driver-api/driver
                                           :driver             driver
                                           :cyclic-visible-ifs cyclic-props})
                                 throw))))
@@ -643,6 +637,6 @@
        (driver/incorporate-auth-provider-details
         driver
         auth-provider
-        (auth-provider/fetch-auth auth-provider database-id db-details)
+        (driver-api/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))

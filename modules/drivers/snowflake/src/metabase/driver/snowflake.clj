@@ -23,8 +23,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -113,12 +111,12 @@
     :as   details}]
   (if password
     details
-    (if-let [private-key-file (secret/value-as-file! :snowflake details "private-key")]
+    (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
       (-> details
-          (secret/clean-secret-properties-from-details :snowflake)
+          (driver-api/clean-secret-properties-from-details :snowflake)
           (handle-conn-uri user account private-key-file)
           (assoc :private_key_file private-key-file))
-      (secret/clean-secret-properties-from-details details :snowflake))))
+      (driver-api/clean-secret-properties-from-details details :snowflake))))
 
 (defn- quote-name
   [raw-name]
@@ -515,8 +513,9 @@
 ;;; TODO -- I don't think these actually ever get qualified since the parent method returns things wrapped
 ;;; in [[h2x/with-database-type-info]] thus nothing will ever be an identifier.
 (defmethod sql.qp/->honeysql [:snowflake :field]
-  [driver [_ _ {::add/keys [source-table]} :as field-clause]]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])
+  [driver [_ _ opts :as field-clause]]
+  (let [source-table (get opts driver-api/qp.add.source-table)
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
         qualify?      (and
                        ;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
                        (seq (query-db-name))

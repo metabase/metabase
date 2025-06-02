@@ -12,8 +12,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.secrets.core :as secret]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -37,7 +35,7 @@
           :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
          (when auth-enabled
            {:user auth-username
-            :password (secret/value-as-string driver db-details "auth-password")})
+            :password (driver-api/secret-value-as-string driver db-details "auth-password")})
          (when (some? (driver/report-timezone))
            {:sqlTimeZone (driver/report-timezone)
             :timeZone (driver/report-timezone)})))
@@ -164,8 +162,8 @@
     (if-not (driver-api/json-field? stored-field)
       identifier
       (if (or (::sql.qp/forced-alias opts)
-              (= ::add/source (::add/source-table opts)))
-        (keyword (::add/source-alias opts))
+              (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
+        (keyword (driver-api/qp.add.source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)

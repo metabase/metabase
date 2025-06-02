@@ -21,7 +21,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
@@ -216,7 +215,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (lib.util.match/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -774,13 +773,13 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (lib.util.match/replace inner-query
+    (driver-api/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
-      (m :guard (partial remove-order-by? &parents))
-      (fix-order-bys (dissoc m :order-by))
+                        (m :guard (partial remove-order-by? &parents))
+                        (fix-order-bys (dissoc m :order-by))
 
-      (m :guard (partial add-limit? &parents))
-      (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
+                        (m :guard (partial add-limit? &parents))
+                        (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]

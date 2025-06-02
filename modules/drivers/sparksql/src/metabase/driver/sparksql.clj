@@ -16,7 +16,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.sql Connection ResultSet)))
@@ -39,13 +38,13 @@
         field-clause  (driver-api/update-field-options
                        field-clause
                        update
-                       ::add/source-table
+                       driver-api/qp.add.source-table
                        (fn [source-table]
                          (cond
                             ;; DO NOT qualify fields from field filters with `t1`, that won't
                             ;; work unless the user-written SQL query is doing the same
                             ;; thing.
-                           compiling-field-filter? ::add/none
+                           compiling-field-filter? driver-api/qp.add.none
                             ;; for all other fields from the source table qualify them with
                             ;; `t1`
                            (integer? source-table) source-table-alias

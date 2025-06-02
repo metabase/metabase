@@ -4,7 +4,6 @@
    [clojure.core.async :as a]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
-   [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -71,7 +70,7 @@
             :body             query
             :auth-enabled     (:auth-enabled details)
             :auth-username    (:auth-username details)
-            :auth-token-value (secret/value-as-string :druid details "auth-token"))
+            :auth-token-value (driver-api/secret-value-as-string :druid details "auth-token"))
       ;; don't need to do anything fancy if the query was killed
       (catch InterruptedException e
         (throw e))
@@ -94,7 +93,7 @@
         (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id))
                 :auth-enabled     (:auth-enabled details)
                 :auth-username    (:auth-username details)
-                :auth-token-value (secret/value-as-string :druid details "auth-token"))
+                :auth-token-value (driver-api/secret-value-as-string :druid details "auth-token"))
         (catch Exception cancel-e
           (log/warnf cancel-e "Failed to cancel Druid query with queryId %s" query-id))))))
 

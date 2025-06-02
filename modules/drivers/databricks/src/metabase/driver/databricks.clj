@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.hive-like :as driver.hive-like]
@@ -267,7 +266,7 @@
          :transportMode  "http"
          :ssl            1
          :HttpPath       http-path
-         :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
+         :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
          :UseNativeQuery 1}]
     (merge base-spec
            (when log-level

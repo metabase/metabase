@@ -10,11 +10,9 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.auth-provider.core :as auth-provider]
-   [metabase.classloader.core :as classloader]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -102,7 +100,7 @@
     (the-driver :baby)     ; -> Exception"
   [driver]
   {:pre [((some-fn keyword? string?) driver)]}
-  (classloader/the-classloader)
+  (driver-api/the-classloader)
   (let [driver (keyword driver)]
     (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
@@ -867,7 +865,7 @@
   [_driver _query]
   (throw (ex-info (str "metabase.driver/splice-parameters-into-native-query is deprecated, bind"
                        " metabase.driver/*compile-with-inline-parameters* during query compilation instead.")
-                  {:type ::qp.error-type/driver})))
+                  {:type driver-api/driver})))
 
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367
@@ -997,7 +995,7 @@
       (cond-> (assoc details :password access_token)
         expires_in (assoc :password-expiry-timestamp (+ (System/currentTimeMillis)
                                                         (* (- (parse-long expires_in)
-                                                              auth-provider/azure-auth-token-renew-slack-seconds)
+                                                              driver-api/azure-auth-token-renew-slack-seconds)
                                                            1000)))))
 
     (merge details auth-provider-response)))

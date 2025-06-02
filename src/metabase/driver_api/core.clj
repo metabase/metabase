@@ -1,14 +1,22 @@
 (ns metabase.driver-api.core
   (:require
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -21,9 +29,15 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
+   [metabase.secrets.core :as secrets]
+   [metabase.settings.core :as setting]
+   [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.core :as warehouses]
    [potemkin :as p]))
 
 (p/import-vars
@@ -32,6 +46,7 @@
  annotate/merged-column-info
  classloader/the-classloader
  config/is-test?
+ config/is-dev?
  config/local-process-uuid
  config/mb-app-id-string
  config/mb-version-and-process-identifier
@@ -47,11 +62,17 @@
  lib.types.isa/temporal?
  limit/absolute-max-results
  mbql.u/assoc-field-options
+ mbql.u/update-field-options
  mbql.u/desugar-filter-clause
  mbql.u/is-clause?
+ sync-util/name-for-logging
+ mi/instance-of?
  mbql.u/query->max-rows-limit
  mbql.u/unique-name-generator
+ mbql.u/dispatch-by-clause-name-or-class
  mdb/make-subname
+ mdb/unique-identifier
+ auth-provider/fetch-auth
  premium-features/is-hosted?
  qp/process-query
  qp.error-type/db
@@ -74,21 +95,63 @@
  qp.util.transformations.nest-breakouts/finest-temporal-breakout-index
  qp.util/default-query->remark
  qp.util/query->remark
+ auth-provider/azure-auth-token-renew-slack-seconds
  qp.wrap-value-literals/wrap-value-literals-in-mbql
- system/site-uuid)
+ secrets/clean-secret-properties-from-details
+ system/site-uuid
+ mbql.u/simplify-compound-filter
+ mbql.u/negate-filter-clause
+ lib.util.match/match-one
+ lib.util.match/replace
+ api/*current-user* ; very questionable
+ premium-features/enable-database-auth-providers?
+ warehouses/cloud-gateway-ips ; only in driver.common
+ lib.schema.common/instance-of-class)
 
-"
+#_{:clj-kondo/ignore [:missing-docstring]}
+;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
+(do
+  (p/import-fn setting/get-value-of-type setting-get-value-of-type)
+  (p/import-fn secrets/value-as-string secret-value-as-string)
+  (p/import-fn secrets/value-as-file! secret-value-as-file!)
+  (p/import-fn table/database table->database))
 
-lib.util.match - kondo lint-as
+(def schema.common.non-blank-string
+  "::lib.schema.common/non-blank-string"
+  ::lib.schema.common/non-blank-string)
 
- constants
- - qp.error-type
- - keywords like ::add/source ::add/source-table
+(def schema.metadata.column
+  "::lib.schema.metadata/column"
+  ::lib.schema.metadata/column)
 
- name conflicts
- - table/database lib.metadata/database
+(def schema.id.database
+  "::lib.schema.id/database"
+  ::lib.schema.id/database)
 
- secrets - lost context
- - secrets/value-as-string  vs driver/value-as-string
+(def schema.common.int-greater-than-or-equal-to-zero
+  "::lib.schema.common/int-greater-than-or-equal-to-zero"
+  ::lib.schema.common/int-greater-than-or-equal-to-zero)
 
-"
+(def schema.literal.string.datetime
+  "::lib.schema.literal/string.datetime"
+  ::lib.schema.literal/string.datetime)
+
+(def qp.add.source-table
+  "::add/source-table"
+  ::add/source-table)
+
+(def qp.add.source-alias
+  "::add/source-alias"
+  ::add/source-alias)
+
+(def qp.add.source
+  "::add/source"
+  ::add/source)
+
+(def qp.add.none
+  "::add/none"
+  ::add/none)
+
+(def qp.add.desired-alias
+  "::add/desired-alias"
+  ::add/desired-alias)

@@ -390,31 +390,12 @@
           metabase.driver.sql.util
           metabase.driver.sync
           metabase.driver.util}
-   :uses #{actions
-           api
-           app-db
-           appearance
-           auth-provider
-           classloader
-           config
-           connection-pool
-           database-routing
-           events
-           legacy-mbql
-           lib
-           lib-be
-           logger
-           models
-           premium-features
-           query-processor
-           secrets
-           settings
-           sync
-           system
-           upload
-           warehouse-schema
-           warehouses
+   :uses #{driver-api
            util}}
+
+  driver-api
+  {:api #{metabase.driver-api.core}
+   :uses #{}}
 
   eid-translation
   {:api  #{metabase.eid-translation.api

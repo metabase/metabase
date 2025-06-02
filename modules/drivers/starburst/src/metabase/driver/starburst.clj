@@ -7,9 +7,6 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -633,7 +630,7 @@
 (defn- impersonate-user
   [^Connection conn]
   (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (let [email (get (deref api/*current-user*) :email)]
+    (let [email (get (deref driver-api/*current-user*) :email)]
       (log/info "[starburst] Using legacy impersonation.")
       (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))))
 
@@ -902,7 +899,7 @@
   (-> details
       (merge {:classname   "io.trino.jdbc.TrinoDriver"
               :subprotocol "trino"
-              :subname     (mdb/make-subname host port (db-name catalog schema))})
+              :subname     (driver-api/make-subname host port (db-name catalog schema))})
       prepare-addl-opts
       prepare-roles
       (dissoc :host :port :db :catalog :schema :tunnel-enabled :engine :kerberos)
@@ -924,7 +921,7 @@
 (defn- remove-role? [details-map]
   (and
    (:impersonation details-map)
-   (not= (get (deref api/*current-user*) :email) (:user details-map))))
+   (not= (get (deref driver-api/*current-user*) :email) (:user details-map))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :starburst
   [_ details-map]
@@ -939,8 +936,8 @@
                   (assoc :SSL (:ssl details-map))
                   (assoc :source (format
                                   "Metabase %s [%s]"
-                                  (:tag config/mb-version-info "")
-                                  config/local-process-uuid))
+                                  (:tag driver-api/mb-version-info "")
+                                  driver-api/local-process-uuid))
                   (cond-> (:impersonation details-map) (assoc :clientInfo "impersonate:true"))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
                   (dissoc (if (remove-role? details-map) :roles :test))

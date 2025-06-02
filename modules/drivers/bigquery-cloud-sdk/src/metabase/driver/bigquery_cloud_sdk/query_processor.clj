@@ -11,10 +11,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -222,7 +218,7 @@
 
 (defmulti ^:private temporal-type
   {:arglists '([x])}
-  mbql.u/dispatch-by-clause-name-or-class
+  driver-api/dispatch-by-clause-name-or-class
   :hierarchy #'temporal-type-hierarchy)
 
 (defmethod temporal-type LocalDate      [_] :date)
@@ -325,7 +321,7 @@
   calling [[->temporal-type]]); and should return a Honey SQL form."
   {:arglists '([target-type x])}
   (fn [target-type x]
-    [target-type (mbql.u/dispatch-by-clause-name-or-class x)])
+    [target-type (driver-api/dispatch-by-clause-name-or-class x)])
   :hierarchy #'temporal-type-hierarchy)
 
 (defn- throw-unsupported-conversion [from to]
@@ -531,7 +527,7 @@
 
 (defmethod sql.qp/date [:bigquery-cloud-sdk :week]
   [_driver _unit expr]
-  (trunc (keyword (format "week(%s)" (name (setting/get-value-of-type :keyword :start-of-week)))) expr))
+  (trunc (keyword (format "week(%s)" (name (driver-api/setting-get-value-of-type :keyword :start-of-week)))) expr))
 
 ;; TODO: bigquery supports week(weekday), maybe we don't have to do the complicated math for bigquery?
 (defmethod sql.qp/date [:bigquery-cloud-sdk :week-of-year-iso]
@@ -667,8 +663,10 @@
   nfc-path)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field id-or-name {::add/keys [source-table source-alias], :as opts} :as field-clause]]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
+  [driver [_field id-or-name opts :as field-clause]]
+  (let [source-table (get opts driver-api/qp.add.source-table)
+        source-alias (get opts driver-api/qp.add.source-alias)
+        parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
     (binding [*field-is-from-join-or-source-query?* (not (integer? source-table))]
@@ -684,7 +682,7 @@
                            (with-temporal-type (temporal-type field-clause)))]
         (if (and (driver-api/json-field? stored-field)
                  (or (::sql.qp/forced-alias opts)
-                     (= source-table ::add/source)))
+                     (= source-table driver-api/qp.add.source)))
           (keyword source-alias)
           result)))))
 
@@ -845,8 +843,8 @@
    ;; Also it handles case as follows: `select b from T join U ... order by a`, where field a is in both T and U
    ;; tables. Problem is solved by qualifying that order by field.
    (if (and
-        (::add/desired-alias opts)
-        (or (not (pos-int? (::add/source-table opts)))
+        (driver-api/qp.add.desired-alias opts)
+        (or (not (pos-int? (driver-api/qp.add.source-table opts)))
             (:binning opts)
             (:temporal-unit opts)))
      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
@@ -1022,7 +1020,7 @@
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
   [driver                            :- :keyword
    {:keys [field], :as field-filter} :- [:map
-                                         [:field ::lib.schema.metadata/column]]]
+                                         [:field driver-api/schema.metadata.column]]]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
         result              (parent-method driver field-filter)]

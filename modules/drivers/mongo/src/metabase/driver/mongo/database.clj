@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.database
   "This namespace contains functions for work with mongo specific database and database details."
   (:require
-   [metabase.secrets.core :as secret]
+   [metabase.driver-api.core :as driver-api]
    [metabase.util.i18n :refer [tru]])
   (:import
    (com.mongodb ConnectionString)))
@@ -25,8 +25,8 @@
 (defn- update-ssl-db-details
   [db-details]
   (-> db-details
-      (secret/clean-secret-properties-from-details :mongo)
-      (assoc :client-ssl-key (secret/value-as-string :mongo db-details "client-ssl-key"))))
+      (driver-api/secret-clean-secret-properties-from-details :mongo)
+      (assoc :client-ssl-key (driver-api/secret-value-as-string :mongo db-details "client-ssl-key"))))
 
 (defn details-normalized
   "Gets db-details for `database`. Details are then validated and ssl related keys are updated."

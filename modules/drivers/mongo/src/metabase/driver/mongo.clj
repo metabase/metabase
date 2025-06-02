@@ -16,7 +16,6 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -293,8 +292,8 @@
 
 (mu/defn- describe-table :- [:sequential
                              [:map {:closed true}
-                              [:path  ::lib.schema.common/non-blank-string]
-                              [:type  ::lib.schema.common/non-blank-string]
+                              [:path  driver-api/schema.common.non-blank-string]
+                              [:type  driver-api/schema.common.non-blank-string]
                               [:index :int]]]
   "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
   Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."

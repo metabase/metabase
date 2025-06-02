@@ -10,7 +10,6 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -67,7 +66,7 @@
   ([field]
    (field->name field true))
 
-  ([field :- ::lib.schema.metadata/column
+  ([field :- driver-api/schema.metadata.column
     pr?]
    ;; for native parameters we serialize and don't need the extra pr
    (cond-> (mongo.qp/field->name field ".")
@@ -109,7 +108,7 @@
 
 (mu/defn- substitute-field-filter
   [{field :field, {:keys [value]} :value, :as field-filter} :- [:map
-                                                                [:field ::lib.schema.metadata/column]
+                                                                [:field driver-api/schema.metadata.column]
                                                                 [:value [:map [:value :any]]]]]
   (if (sequential? value)
     (format "{%s: %s}" (field->name field) (param-value->str field value))
