@@ -194,7 +194,7 @@
   If aliases were changed in [[escape-join-aliases]], there is `:original-alias` set on affected joins and
   `:original-join-alias` on affected field clauses which we can use to restore the aliases in the query."
   [query]
-  (if-not (lib.util.match/match-one query :original-alias)
+  (if-not (lib.util.match/match-one query (every-pred map? :original-alias))
     query
     (do
       (log/tracef "Rewriting join aliases")
