@@ -110,7 +110,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
   const logo = getEngineLogo(db);
 
   return (
-    <Center h="1.5rem" w="1.5rem">
+    <Center h="lg" w="lg">
       {logo ? (
         <img src={logo} width="100%" />
       ) : (
@@ -123,7 +123,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
 const NoDatabaseFound = () => {
   return (
     <Stack
-      gap="0.75rem"
+      gap="md"
       align="center"
       pt="lg"
       maw="22.5rem"
