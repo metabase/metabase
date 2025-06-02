@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
@@ -7,12 +7,9 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import Link from "metabase/core/components/Link";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
-import { getCrowdinUrl } from "metabase/selectors/settings";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { CommunityLocalizationNotice } from "metabase/localization/CommunityLocalizationNotice";
 import type { LocaleData, User } from "metabase-types/api";
 
 import type { UserProfileData } from "../../types";
@@ -41,7 +38,6 @@ const UserProfileForm = ({
   onSubmit,
 }: UserProfileFormProps): JSX.Element => {
   const schema = isSsoUser ? SSO_PROFILE_SCHEMA : LOCAL_PROFILE_SCHEMA;
-  const applicationName = useSelector(getApplicationName);
 
   const initialValues = useMemo(() => {
     return schema.cast(user, { stripUnknown: true });
@@ -54,20 +50,6 @@ const UserProfileForm = ({
   const handleSubmit = useCallback(
     (values: UserProfileData) => onSubmit(user, values),
     [user, onSubmit],
-  );
-
-  const translatedLink = (
-    <Link
-      to={getCrowdinUrl()}
-      variant="brand"
-    >{t`contribute to translations here`}</Link>
-  );
-
-  const languageDescription = (
-    <>
-      {t`Some translations are created by the ${applicationName} community, and might not be perfect.`}{" "}
-      {jt`You can ${translatedLink}`}.
-    </>
   );
 
   return (
@@ -106,7 +88,7 @@ const UserProfileForm = ({
               name="locale"
               title={t`Language`}
               options={localeOptions}
-              description={languageDescription}
+              description={<CommunityLocalizationNotice isAdminView={false} />}
             />
           </div>
           <FormSubmitButton title={t`Update`} disabled={!dirty} primary />

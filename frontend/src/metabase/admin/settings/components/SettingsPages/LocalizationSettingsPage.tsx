@@ -1,10 +1,9 @@
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
-import { getCrowdinUrl } from "metabase/selectors/settings";
+import { CommunityLocalizationNotice } from "metabase/localization/CommunityLocalizationNotice";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Stack } from "metabase/ui";
 
@@ -15,13 +14,6 @@ export function LocalizationSettingsPage() {
   const availableLocales = useSetting("available-locales");
   const availableTimezones = useSetting("available-timezones");
   const applicationName = useSelector(getApplicationName);
-  const translatedLink = (
-    <Link
-      to={getCrowdinUrl()}
-      variant="brand"
-      target="_blank"
-    >{t`contribute to translations here`}</Link>
-  );
 
   return (
     <Box w="36rem" p="0 2rem 2rem 1rem">
@@ -38,8 +30,7 @@ export function LocalizationSettingsPage() {
               {t`The default language for all users across the ${applicationName} UI, system emails, subscriptions, and alerts. Each user can override this from their own account settings.`}
               <br />
               <br />
-              {t`Some translations are created by the ${applicationName} community, and might not be perfect.`}{" "}
-              {jt`You can ${translatedLink}`}.
+              <CommunityLocalizationNotice isAdminView />
             </>
           }
         />

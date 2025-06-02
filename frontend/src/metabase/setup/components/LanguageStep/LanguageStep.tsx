@@ -1,12 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getCrowdinUrl } from "metabase/selectors/settings";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { CommunityLocalizationNotice } from "metabase/localization/CommunityLocalizationNotice";
 import type { Locale } from "metabase-types/store";
 
 import { useStep } from "../..//useStep";
@@ -32,7 +30,6 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const fieldId = useMemo(() => _.uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
   const dispatch = useDispatch();
-  const applicationName = useSelector(getApplicationName);
 
   const handleLocaleChange = (locale: Locale) => {
     dispatch(updateLocale(locale));
@@ -52,21 +49,13 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
     );
   }
 
-  const translatedLink = (
-    <Link
-      to={getCrowdinUrl()}
-      variant="brand"
-    >{t`contribute to translations here`}</Link>
-  );
-
   return (
     <ActiveStep title={t`What's your preferred language?`} label={stepLabel}>
       <StepDescription>
         {t`This language will be used throughout Metabase and will be the default for new users.`}
         <br />
         <br />
-        {t`Some translations are created by the ${applicationName} community, and might not be perfect.`}{" "}
-        {jt`You can ${translatedLink}`}.
+        <CommunityLocalizationNotice isAdminView />
       </StepDescription>
       <LocaleGroup role="radiogroup">
         {locales.map((item) => (
