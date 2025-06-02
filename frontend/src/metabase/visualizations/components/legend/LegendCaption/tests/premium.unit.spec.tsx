@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 
 import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
 
-import { sampleSpanishDictionary, setup } from "./setup";
+import { setup } from "./setup";
 
 describe("LegendCaption (EE with token)", () => {
   const getContentTranslatorSpy = setupTranslateContentStringSpy();
@@ -11,7 +11,6 @@ describe("LegendCaption (EE with token)", () => {
     setup({
       title: "Hello World",
       locale: "es",
-      translations: sampleSpanishDictionary,
       hasEnterprisePlugins: true,
       tokenFeatures: { content_translation: true },
     });
