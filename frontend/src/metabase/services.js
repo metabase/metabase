@@ -386,7 +386,9 @@ function setDashboardEndpoints(prefix) {
 }
 
 function setContentTranslationEndpoints(prefix) {
-  PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = prefix;
+  if (PLUGIN_CONTENT_TRANSLATION.isEnabled) {
+    PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = prefix;
+  }
 }
 
 export const ActionsApi = {
