@@ -58,8 +58,6 @@ export function useModelsAndOption(
   const chartModel = useMemo(() => {
     let getModel;
 
-    // NOTE: This assumes that the axes are column names which isn't always
-    // true
     settings["graph.x_axis.title_text"] = tc(
       settings["graph.x_axis.title_text"],
     );
