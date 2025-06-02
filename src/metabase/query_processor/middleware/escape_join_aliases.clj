@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.escape-join-aliases
   "Deduplicate and escape join aliases. This is done in a series of discrete steps; see the middleware
-    function, [[escape-join-aliases]] for more info.
+  function, [[escape-join-aliases]] for more info.
 
-    Enable trace logging in this namespace for easier debugging:
+  Enable trace logging in this namespace for easier debugging:
 
-      (metabase.test/set-ns-log-level! 'metabase.query-processor.middleware.escape-join-aliases :trace)"
+    (metabase.test/set-ns-log-level! 'metabase.query-processor.middleware.escape-join-aliases :trace)"
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
@@ -30,7 +30,7 @@
   (lib.util.match/replace query
     (join :guard (every-pred map? :condition :alias (complement ::alias)))
     (let [join (assoc join ::alias (escape-fn (:alias join)))]
-                            ;; now recursively add escaped aliases for `:source-query` etc.
+      ;; now recursively add escaped aliases for `:source-query` etc.
       (add-escaped-aliases join escape-fn))))
 
 (defn- add-original->escaped-alias-maps
@@ -41,7 +41,7 @@
     (m :guard (every-pred map? (some-fn :source-table :source-query) (complement ::original->escaped)))
     (let [original->escaped (into {} (map (juxt :alias ::alias) (:joins m)))
           m                 (assoc m ::original->escaped original->escaped)]
-                            ;; now recursively add `::original->escaped` for source query or joins
+      ;; now recursively add `::original->escaped` for source query or joins
       (add-original->escaped-alias-maps m))))
 
 (defn- merge-original->escaped-maps
@@ -61,14 +61,14 @@
   [query]
   (lib.util.match/replace query
     (m :guard (every-pred map? ::original->escaped))
-                          ;; first, recursively merge all the stuff in the source levels (`:source-query` and `:joins`)
+    ;; first, recursively merge all the stuff in the source levels (`:source-query` and `:joins`)
     (let [m'                                 (merge-original->escaped-maps (dissoc m ::original->escaped))
-                                ;; once things are recursively merged we can collect all the ones that are visible to this level into a
-                                ;; sequence of maps. For :source-query:
+          ;; once things are recursively merged we can collect all the ones that are visible to this level into a
+          ;; sequence of maps. For :source-query:
           source-query-original->escaped-map (get-in m' [:source-query ::original->escaped])
-                                ;; For :joins:
+          ;; For :joins:
           joins-original->escaped-maps       (keep ::original->escaped (:joins m'))
-                                ;; ...and then merge them together into one merged map.
+          ;; ...and then merge them together into one merged map.
           merged-original->escaped           (reduce (fn [m1 m2]
                                                        (merge m2 m1))
                                                      (::original->escaped m)
@@ -76,8 +76,8 @@
                                                              (cons
                                                               source-query-original->escaped-map
                                                               joins-original->escaped-maps)))]
-                            ;; now merge in the `merged-original->escaped` map into our immediate joins, so they are available in the
-                            ;; conditions.
+      ;; now merge in the `merged-original->escaped` map into our immediate joins, so they are available in the
+      ;; conditions.
       (cond-> (assoc m' ::original->escaped merged-original->escaped)
         (seq (:joins m')) (update :joins (fn [joins]
                                            (mapv (fn [join]
@@ -90,10 +90,10 @@
   (lib.util.match/replace query
     (m :guard (every-pred map? ::original->escaped))
     (let [original->escaped (::original->escaped m)
-                                ;; recursively update source levels *first*
+          ;; recursively update source levels *first*
           m'                (assoc (add-escaped-join-aliases-to-fields (dissoc m ::original->escaped))
                                    ::original->escaped original->escaped)]
-                            ;; now update any `:field` clauses that don't have an `::join-alias`
+      ;; now update any `:field` clauses that don't have an `::join-alias`
       (lib.util.match/replace m'
         [:field id-or-name (field-options :guard (every-pred map? :join-alias (complement ::join-alias)))]
         [:field id-or-name (assoc field-options ::join-alias (get original->escaped (:join-alias field-options)))]))))
@@ -138,22 +138,22 @@
   original alias and escaped alias might be different based on the level of query we're at."
   [query]
   (lib.util.match/replace query
-                          ;; update inner queries that have `::original->escaped` maps
+    ;; update inner queries that have `::original->escaped` maps
     (m :guard (every-pred map? ::original->escaped))
     (-> (dissoc m ::original->escaped)
-                              ;; recursively update source levels and `:field` clauses.
+        ;; recursively update source levels and `:field` clauses.
         replace-original-aliases-with-escaped-aliases)
 
-                          ;; update joins
+    ;; update joins
     (m :guard (every-pred map? ::alias))
     (-> m
         (assoc :original-alias (:alias m))
         (assoc :alias (::alias m))
         (dissoc ::alias)
-                              ;; recursively update source levels and `:field` clauses.
+        ;; recursively update source levels and `:field` clauses.
         replace-original-aliases-with-escaped-aliases)
 
-                          ;; update `:field` clauses
+    ;; update `:field` clauses
     [:field id-or-name (options :guard (every-pred map? ::join-alias))]
     [:field id-or-name (-> options
                            (assoc :original-join-alias (:join-alias options))
@@ -186,7 +186,7 @@
             (log/tracef "Replacing original aliases with escaped aliases\n%s" (u/pprint-to-str query))
             (replace-original-aliases-with-escaped-aliases query))]
     (let [result (if-not (:query query)
-                              ;; nothing to do if this is a native query rather than MBQL.
+                   ;; nothing to do if this is a native query rather than MBQL.
                    query
                    (-> query
                        (update :query (fn [inner-query]
@@ -223,7 +223,7 @@
 
                     (join :guard (every-pred map? :condition (comp aliases-to-replace :alias)))
                     (merge
-                                                               ;; recursively update stuff inside the join
+                     ;; recursively update stuff inside the join
                      (rename-join-aliases* (dissoc join :alias :original-alias))
                      {:alias (original->new (:alias join))})))]
           (rename-join-aliases* query))))))
