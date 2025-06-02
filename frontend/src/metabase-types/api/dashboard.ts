@@ -190,8 +190,8 @@ export type VirtualDashboardCard = BaseDashboardCard & {
   visualization_settings: BaseDashboardCard["visualization_settings"] & {
     virtual_card: VirtualCard;
     link?: LinkCardSettings;
+    text?: string;
   };
-  text: string;
 };
 
 export type DashboardTabId = number;
