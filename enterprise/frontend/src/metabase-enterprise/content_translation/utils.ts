@@ -145,7 +145,7 @@ export const translateSeries = (
   const withTranslatedDisplayNames = translateDisplayNames(series, tc);
 
   // Do not translate field values here if display is a map, since this can
-  // disrupt the map
+  // break the map
   if (series?.[0]?.card?.display === "map") {
     return withTranslatedDisplayNames;
   }
