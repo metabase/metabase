@@ -11,8 +11,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
-
 (defn- create-temp-csv-file
   "Create a temporary CSV file with the given content for testing."
   [content]
@@ -35,15 +33,28 @@
   []
   (count (t2/select :model/ContentTranslation)))
 
+;; TODO: Start with a working set of BE unit tests, maybe content verification. Iteratively mutate that file, making it more and more like this one, and see where and how it breaks.
+
 (deftest content-translation-api-test
   (testing "GET /api/ee/content-translation/csv"
-    ; TODO: This should fail but it doesn't
-    (mt/with-premium-features #{:content-translation}
-      (mt/user-http-request :rasta :get 200 "ee/content-translation/csv" {})))
+    (testing "requires content-translation feature"
+      (mt/with-premium-features #{}
+        (mt/assert-has-premium-feature-error
+         "Content translation"
+         (mt/user-http-request :crowberto :get 402 "ee/content-translation/csv" {}))))
+    (testing "fails for rasta"
+      ; TODO: This should fail but it doesn't
+      (mt/with-premium-features #{:content-translation}
+        (mt/user-http-request :rasta :get 403 "ee/content-translation/csv" {})))
+    (testing "returns csv for crowberto"
+      (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
+        (mt/with-premium-features #{:content-translation}
+          (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})))))
 
   (testing "POST /api/ee/content-translation/upload-dictionary"
     (mt/with-premium-features #{:content-translation}
-      (mt/with-empty-db
+      (mt/with-empty-h2-app-db
+        (fixtures/initialize :test-users)
         (let [csv-content (valid-csv-content)
               temp-file (create-temp-csv-file csv-content)]
           (testing "nonadmin cannot use"

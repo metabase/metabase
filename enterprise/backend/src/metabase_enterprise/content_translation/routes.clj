@@ -7,10 +7,10 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
    [metabase.content-translation.models :as ct]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,7 +25,7 @@
   [_route-params
    _query-params
    _body]
-  (api/check-superuser)
+  (log/info "new code")
   (let [translations (ct/get-translations)
         csv-data (cons ["Language" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
@@ -51,7 +51,6 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size)
       (throw (ex-info (tru "The dictionary should be less than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
@@ -68,4 +67,4 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
-  (api.macros/ns-handler *ns* +auth +require-content-translation))
+  (api.macros/ns-handler *ns* api/+check-superuser +require-content-translation))
