@@ -1,9 +1,8 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
+import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
-import * as EnterpriseContentTranslationUtilsModule from "metabase-enterprise/content_translation/utils";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import type { Parameter, TokenFeatures } from "metabase-types/api";
@@ -38,17 +37,6 @@ function setup({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
-
-    setupContentTranslationEndpoints({
-      dictionary: [
-        {
-          id: 0,
-          locale: "de",
-          msgid: "Text contains",
-          msgstr: "Text enthält",
-        },
-      ],
-    });
   }
 
   const parameter: FieldFilterUiParameter = {
@@ -76,28 +64,16 @@ describe("Parameter Widget", () => {
   describe("content translation", () => {
     const setupOptions = { locale: "de", parameterOpts: { value: "a" } };
 
-    /** Spying on the translateContentString function lets us figure out
-     * whether content translation is actually on. If the function is called,
-     * it's on. */
-    let translateContentStringSpy: any;
-
-    beforeEach(() => {
-      translateContentStringSpy = jest.spyOn(
-        EnterpriseContentTranslationUtilsModule,
-        "translateContentString",
-      );
-    });
-
-    afterEach(() => {
-      translateContentStringSpy.mockClear();
-    });
+    const getContentTranslatorSpy = setupTranslateContentStringSpy(
+      (_dictionary, _locale, msgid) => `translated_${msgid}`,
+    );
 
     it("(OSS) should not translate any content", async () => {
       setup(setupOptions);
       expect(await screen.findByTestId("field-set-legend")).toHaveTextContent(
         "Text contains",
       );
-      expect(translateContentStringSpy).not.toHaveBeenCalled();
+      expect(getContentTranslatorSpy()).not.toHaveBeenCalled();
     });
 
     it("(EE with token) should translate legend", async () => {
@@ -108,10 +84,10 @@ describe("Parameter Widget", () => {
       });
       await waitFor(async () => {
         expect(await screen.findByTestId("field-set-legend")).toHaveTextContent(
-          "Text enthält",
+          "translated_Text contains",
         );
       });
-      expect(translateContentStringSpy).toHaveBeenCalled();
+      expect(getContentTranslatorSpy()).toHaveBeenCalled();
     });
   });
 });
