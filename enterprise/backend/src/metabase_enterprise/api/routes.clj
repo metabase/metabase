@@ -79,8 +79,8 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/content-translation"        (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
+   "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
