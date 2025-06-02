@@ -107,7 +107,7 @@
     [:field id-or-name opts]
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
     ;; a bit
-    [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type)
+    [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type :original-join-alias)
                                                     (integer? id-or-name) (dissoc :base-type)))]
 
     ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
