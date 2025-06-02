@@ -17,17 +17,11 @@ const EditHeader = ({
   onSubmit,
   revisionMessageFormField,
 }) => (
-  <div className={cx(CS.wrapper, CS.py1, CS.px3, S.editHeader)}>
-    <div>{t`You are editing this page`}</div>
+  <div className={cx(CS.wrapper, CS.px3, S.editHeader)}>
     <div className={S.editHeaderButtons}>
       <button
         type="button"
-        className={cx(
-          ButtonsS.Button,
-          ButtonsS.ButtonWhite,
-          ButtonsS.ButtonSmall,
-          S.cancelButton,
-        )}
+        className={cx(ButtonsS.Button, S.cancelButton)}
         onClick={() => {
           endEditing();
           reinitializeForm();
@@ -46,8 +40,6 @@ const EditHeader = ({
             className={cx(
               ButtonsS.Button,
               ButtonsS.ButtonPrimary,
-              ButtonsS.ButtonWhite,
-              ButtonsS.ButtonSmall,
               S.saveButton,
             )}
             type="button"
@@ -62,7 +54,6 @@ const EditHeader = ({
             ButtonsS.Button,
             ButtonsS.ButtonPrimary,
             ButtonsS.ButtonWhite,
-            ButtonsS.ButtonSmall,
             S.saveButton,
           )}
           type="submit"

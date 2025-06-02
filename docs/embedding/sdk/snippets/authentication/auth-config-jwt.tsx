@@ -6,11 +6,14 @@ const yourToken = "token";
 // Pass this configuration to MetabaseProvider.
 // Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
 const authConfig = defineMetabaseAuthConfig({
-  fetchRequestToken: async (url) => {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${yourToken}` },
-    });
+  fetchRequestToken: async () => {
+    const response = await fetch(
+      "https://{{ YOUR_CLIENT_HOST }}/api/metabase/auth",
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${yourToken}` },
+      },
+    );
 
     return await response.json();
   },

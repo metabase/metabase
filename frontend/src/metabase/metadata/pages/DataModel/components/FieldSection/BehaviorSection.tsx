@@ -25,17 +25,13 @@ interface Props {
 }
 
 export const BehaviorSection = ({ databaseId, field }: Props) => {
+  const id = getRawTableFieldId(field);
   const { data: database } = useGetDatabaseQuery({
     id: databaseId,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
-  const id = getRawTableFieldId(field);
-
   const [sendToast] = useToast();
-  function confirm(message: string) {
-    sendToast({ message, icon: "check" });
-  }
 
   return (
     <Stack gap="md">
@@ -52,7 +48,11 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
             id,
             visibility_type: visibilityType,
           });
-          confirm(t`Visibility for ${field.display_name} updated`);
+
+          sendToast({
+            icon: "check",
+            message: t`Visibility for ${field.display_name} updated`,
+          });
         }}
       />
 
@@ -65,7 +65,11 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
             id,
             has_field_values: hasFieldValues,
           });
-          confirm(t`Filtering for ${field.display_name} updated`);
+
+          sendToast({
+            icon: "check",
+            message: t`Filtering for ${field.display_name} updated`,
+          });
         }}
       />
 
@@ -88,11 +92,13 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
               id,
               json_unfolding: jsonUnfolding,
             });
-            if (jsonUnfolding) {
-              confirm(t`JSON unfloding for ${field.display_name} enabled`);
-            } else {
-              confirm(t`JSON unfloding for ${field.display_name} disabled`);
-            }
+
+            sendToast({
+              icon: "check",
+              message: jsonUnfolding
+                ? t`JSON unfloding for ${field.display_name} enabled`
+                : t`JSON unfloding for ${field.display_name} disabled`,
+            });
           }}
         />
       )}
