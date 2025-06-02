@@ -20,7 +20,7 @@ type SetupOpts = {
 function setup({
   value = [],
   options = [],
-  optionRenderer = ([value]) => value,
+  optionRenderer = ([value]) => <>{value}</>,
   placeholder = "Search the list",
   checkedColor,
   isDashboardFilter,
