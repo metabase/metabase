@@ -286,7 +286,7 @@
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
   (qp.store/with-metadata-provider database-id
-    (let [card (or (some-> (or (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+    (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
                            (update-keys u/->snake_case_en)
                            (vary-meta assoc :type :model/Card))
                    ;; In the case of SQL actions, the query being executed might not act on the same database
