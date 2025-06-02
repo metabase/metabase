@@ -375,69 +375,65 @@ describe("issue 41785, issue 46756", () => {
     cy.intercept("GET", "/api/card/*").as("card");
   });
 
-  it(
-    "does not break the question when removing column with the same mapping as another column (metabase#41785) (metabase#46756)",
-    { tags: "@flaky" },
-    () => {
-      // it's important to create the model through UI to reproduce this issue
-      H.startNewModel();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
-      });
-      H.join();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
-      });
-      H.popover().findByText("ID").click();
-      H.popover().findByText("ID").click();
+  it("does not break the question when removing column with the same mapping as another column (metabase#41785) (metabase#46756)", () => {
+    // it's important to create the model through UI to reproduce this issue
+    H.startNewModel();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+    H.popover().findByText("ID").click();
+    H.popover().findByText("ID").click();
 
-      cy.findByTestId("run-button").click();
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+
+    cy.button("Save").click();
+    H.modal().button("Save").click();
+
+    cy.log(
+      "verify that we redirected after saving the model and all card data is loaded",
+    );
+    cy.url().should("contain", "products-products");
+    cy.wait("@card");
+    cy.findByTestId("visualization-root").should(
+      "contain",
+      "Rustic Paper Wallet",
+    );
+
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("Ean").should("have.length", 1);
+      cy.findAllByText("Products → Ean").should("have.length", 1);
+
+      cy.button("Add or remove columns").click();
+      cy.findAllByText("Ean").should("have.length", 1);
+      cy.findByLabelText("Ean").should("be.checked");
+
+      cy.findByLabelText("Products → Ean").should("be.checked");
+      cy.findAllByText("Products → Ean").should("have.length", 1).click();
+
       cy.wait("@dataset");
 
-      cy.button("Save").click();
-      H.modal().button("Save").click();
+      cy.log("Only the clicked column should be removed (metabase#46756)");
+      cy.findByLabelText("Products → Ean").should("not.be.checked");
+      cy.findByLabelText("Ean").should("be.checked");
+    });
 
-      cy.log(
-        "verify that we redirected after saving the model and all card data is loaded",
-      );
-      cy.url().should("contain", "products-products");
-      cy.wait("@card");
-      cy.findByTestId("visualization-root").should(
-        "contain",
-        "Rustic Paper Wallet",
-      );
+    cy.log(
+      "There should be no error in the table visualization (metabase#41785)",
+    );
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Ean)")
+      .should("be.visible");
 
-      H.openVizSettingsSidebar();
-      cy.findByTestId("chartsettings-sidebar").within(() => {
-        cy.findAllByText("Ean").should("have.length", 1);
-        cy.findAllByText("Products → Ean").should("have.length", 1);
-
-        cy.button("Add or remove columns").click();
-        cy.findAllByText("Ean").should("have.length", 1);
-        cy.findByLabelText("Ean").should("be.checked");
-
-        cy.findByLabelText("Products → Ean").should("be.checked");
-        cy.findAllByText("Products → Ean").should("have.length", 1).click();
-
-        cy.wait("@dataset");
-
-        cy.log("Only the clicked column should be removed (metabase#46756)");
-        cy.findByLabelText("Products → Ean").should("not.be.checked");
-        cy.findByLabelText("Ean").should("be.checked");
-      });
-
-      cy.log(
-        "There should be no error in the table visualization (metabase#41785)",
-      );
-      cy.findAllByTestId("header-cell")
-        .filter(":contains(Ean)")
-        .should("be.visible");
-
-      H.tableInteractive().should("contain", "Small Marble Shoes");
-    },
-  );
+    H.tableInteractive().should("contain", "Small Marble Shoes");
+  });
 });
 
 describe.skip("issue 40635", () => {
