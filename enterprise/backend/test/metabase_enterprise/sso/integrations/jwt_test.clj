@@ -7,13 +7,14 @@
    [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.config :as config]
-   [metabase.http-client :as client]
+   [metabase-enterprise.sso.integrations.token-utils :as token-utils]
+   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.appearance.settings :as appearance.settings]
+   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -436,7 +437,7 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
-                    public-settings/site-name                   (constantly "test")]
+                    appearance.settings/site-name               (constantly "test")]
         (is
          (thrown-with-msg?
           clojure.lang.ExceptionInfo
@@ -444,7 +445,18 @@
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
 
 (deftest jwt-token-test
-  (testing "should return a session token when token=true"
+  (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
+    (with-jwt-default-setup!
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+        (let [result (client/client-real-response
+                      :get 200 "/auth/sso"
+                      {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})]
+          (is (partial= {:url (sso-settings/jwt-identity-provider-uri)
+                         :method "jwt"}
+                        (:body result)))
+          (is (not (nil? (get-in result [:body :hash]))))))))
+
+  (testing "should return a session token when a JWT token and sdk headers are passed"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
@@ -458,9 +470,10 @@
                              :iat        jwt-iat-time
                              :exp        jwt-exp-time}
                             default-jwt-secret)
-              result       (client/client-real-response :get 200 "/auth/sso"
-                                                        :token true
-                                                        :jwt   jwt-payload)]
+              result (client/client-real-response :get 200 "/auth/sso"
+                                                  {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
+                                                                               "x-metabase-sdk-jwt-hash" (token-utils/generate-token)}}}
+                                                  :jwt jwt-payload)]
           (is
            (=?
             {:id  (mt/malli=? ms/UUIDString)
@@ -483,7 +496,7 @@
                              :exp        jwt-exp-time}
                             default-jwt-secret)
               result       (client/client-real-response :get 402 "/auth/sso"
-                                                        :token true
+                                                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
                                                         :jwt   jwt-payload)]
           (is result nil)))))
 

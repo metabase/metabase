@@ -16,7 +16,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { GaugeArcPath } from "./Gauge.styled";
 import { getValue } from "./utils";
@@ -75,7 +75,7 @@ export default class Gauge extends Component {
       data: { cols, rows },
     },
   ]) {
-    if (!isNumeric(cols[0])) {
+    if (!isNumeric(cols[0]) || isDate(cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
   }

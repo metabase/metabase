@@ -97,6 +97,51 @@ export type KeyboardShortcutPerformEvent = ValidateEvent<{
   event_detail: KeyboardShortcutId;
 }>;
 
+export type NewEntityInitiatedEvent = ValidateEvent<{
+  event: "plus_button_clicked";
+  triggered_from: "model" | "metric" | "collection-header" | "collection-nav";
+}>;
+
+export type NewButtonClickedEvent = ValidateEvent<{
+  event: "new_button_clicked";
+  triggered_from: "app-bar" | "empty-collection";
+}>;
+
+export type NewButtonItemClickedEvent = ValidateEvent<{
+  event: "new_button_item_clicked";
+  triggered_from: "question" | "native-query" | "dashboard";
+}>;
+
+export type VisualizeAnotherWayClickedEvent = ValidateEvent<{
+  event: "visualize_another_way_clicked";
+  triggered_from: "question-list" | "dashcard-actions-panel";
+}>;
+
+export type VisualizerModalEvent = ValidateEvent<
+  | {
+      event:
+        | "visualizer_add_more_data_clicked"
+        | "visualizer_show_columns_clicked"
+        | "visualizer_settings_clicked"
+        | "visualizer_save_clicked"
+        | "visualizer_close_clicked"
+        | "visualizer_view_as_table_clicked";
+      triggered_from: "visualizer-modal";
+    }
+  | {
+      event: "visualizer_data_changed";
+      event_detail:
+        | "visualizer_viz_type_changed"
+        | "visualizer_datasource_removed"
+        | "visualizer_datasource_added"
+        | "visualizer_datasource_replaced"
+        | "visualizer_column_removed"
+        | "visualizer_column_added";
+      event_data: string | null;
+      triggered_from: "visualizer-modal";
+    }
+>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -110,4 +155,9 @@ export type SimpleEvent =
   | ErrorDiagnosticModalSubmittedEvent
   | GsheetsConnectionClickedEvent
   | GsheetsImportClickedEvent
-  | KeyboardShortcutPerformEvent;
+  | KeyboardShortcutPerformEvent
+  | NewEntityInitiatedEvent
+  | NewButtonClickedEvent
+  | NewButtonItemClickedEvent
+  | VisualizeAnotherWayClickedEvent
+  | VisualizerModalEvent;

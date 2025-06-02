@@ -1,4 +1,4 @@
-import { is_coerceable } from "cljs/metabase.types";
+import { is_coerceable } from "cljs/metabase.types.core";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { TYPE } from "metabase-lib/v1/types/constants";

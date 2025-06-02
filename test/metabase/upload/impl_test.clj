@@ -15,9 +15,9 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -634,6 +634,7 @@
   "Because life is too short for zillions of temp files."
   [^String s]
   (let [bytes (.getBytes s "UTF-8")]
+    #_{:clj-kondo/ignore [:missing-protocol-method]}
     (reify
       io/IOFactory
       (make-input-stream [_ _opts]
@@ -1330,7 +1331,10 @@
       (testing "Driver error"
         (let [metrics (atom {})]
           (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
-                        analytics/inc! #(swap! metrics update % (fnil inc 0))]
+                        analytics/inc! (fn
+                                         ([k] (swap! metrics update k (fnil inc 0)))
+                                         ([k v] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0))))
+                                         ([k v _opts] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0)))))]
             (is (thrown-with-msg?
                  Exception
                  #"Boom"

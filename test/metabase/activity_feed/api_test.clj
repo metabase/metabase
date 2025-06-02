@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

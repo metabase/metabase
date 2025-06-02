@@ -6,6 +6,10 @@ type CastTestCase = {
   filterOperator: string;
   filterValue: string;
   expectedRowCount: number;
+  expectedTableData?: {
+    columns: string[];
+    firstRows: string[][];
+  };
 };
 
 const TEXT_TEST_CASES: CastTestCase[] = [
@@ -113,6 +117,46 @@ const DATE_TEST_CASES: CastTestCase[] = [
     filterValue: "March 15, 2025",
     expectedRowCount: 1,
   },
+  {
+    name: "Datetime",
+    expression: "date([Created At])",
+    filterOperator: "Before",
+    filterValue: "April 27, 2016",
+    expectedRowCount: 1,
+    expectedTableData: {
+      columns: ["ID", "Datetime"],
+      firstRows: [["36", "April 26, 2016"]],
+    },
+  },
+  {
+    name: "DatetimeExpression",
+    expression: "date(dateTimeAdd([Created At], 1, 'day'))",
+    filterOperator: "Before",
+    filterValue: "April 28, 2016",
+    expectedRowCount: 1,
+    expectedTableData: {
+      columns: ["ID", "DatetimeExpression"],
+      firstRows: [["36", "April 27, 2016"]],
+    },
+  },
+];
+
+const DATETIME_TEST_CASES: CastTestCase[] = [
+  {
+    name: "String",
+    expression: 'datetime("2025-03-20 12:03")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringExpression",
+    expression:
+      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 12:03"))',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
 ];
 
 const FLOAT_TEST_CASES: CastTestCase[] = [
@@ -155,6 +199,10 @@ describe(
 
     it("should support date function", () => {
       testFilterWithExpressions(DATE_TEST_CASES, addDateFilter);
+    });
+
+    it("should support datetime function", () => {
+      testFilterWithExpressions(DATETIME_TEST_CASES, addDateTimeFilter);
     });
   },
 );
@@ -201,6 +249,18 @@ function addDateFilter({ filterOperator, filterValue }: CastTestCase) {
   });
 }
 
+function addDateTimeFilter({ filterOperator, filterValue }: CastTestCase) {
+  const [dateValue, timeValue] = filterValue.split("|");
+  H.popover().within(() => {
+    cy.findByText("Fixed date range…").click();
+    cy.findByText(filterOperator).click();
+    cy.findByLabelText("Date").clear().type(dateValue);
+    cy.findByText("Add time").click();
+    cy.findByLabelText("Time").clear().type(timeValue);
+    cy.button("Add filter").click();
+  });
+}
+
 function testFilterWithExpressions(
   testCases: CastTestCase[],
   addFilter: (testCase: CastTestCase) => void,
@@ -219,6 +279,12 @@ function testFilterWithExpressions(
     addFilter(testCase);
     H.visualize();
     H.assertQueryBuilderRowCount(testCase.expectedRowCount);
+
+    if (testCase.expectedTableData) {
+      // @ts-expect-error: assertTableData is not typed
+      H.assertTableData(testCase.expectedTableData);
+    }
+
     H.openNotebook();
     removeCustomColumn(testCase);
   });

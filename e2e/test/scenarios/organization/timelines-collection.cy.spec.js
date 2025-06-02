@@ -710,23 +710,55 @@ H.describeWithSnowplow("scenarios > collections > timelines", () => {
   });
 
   it("should send snowplow events when creating a timeline event", () => {
-    // 1 - new_instance_created
-    // 2 - pageview
     cy.visit("/collection/root");
+    H.expectSnowplowEvent({
+      eventType: "page_view",
+      event: {
+        page_urlpath: "/collection/root",
+      },
+    });
 
-    // 3 - pageview
     cy.icon("calendar").click();
+    H.expectSnowplowEvent({
+      eventType: "page_view",
+      event: {
+        page_urlpath: "/collection/root/timelines",
+      },
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Create event").click();
     cy.findByLabelText("Event name").type("Event");
     cy.findByLabelText("Date").type("10/20/2026");
+    H.expectSnowplowEvent({
+      eventType: "page_view",
+      event: {
+        page_urlpath: "/collection/root/timelines/new/events/new",
+      },
+    });
 
-    // 4 - new_event_created
-    // 5 - pageview
     cy.button("Create").click();
+    H.expectSnowplowEvent({
+      event: {
+        unstruct_event: {
+          data: {
+            data: {
+              event: "new_event_created",
+            },
+          },
+        },
+      },
+    });
 
-    H.expectGoodSnowplowEvents(5);
+    H.expectSnowplowEvent(
+      {
+        eventType: "page_view",
+        event: {
+          page_urlpath: "/collection/root/timelines",
+        },
+      },
+      2,
+    ); // we viewed this page twice
   });
 });
 

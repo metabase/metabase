@@ -3,7 +3,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
-import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
+import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
 import { formatField, stripId } from "metabase/lib/formatting";
 import {
   getFieldValues,
@@ -11,6 +11,7 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
+  isAddress,
   isBoolean,
   isCoordinate,
   isCurrency,
@@ -18,7 +19,6 @@ import {
   isDateWithoutTime,
   isDimension,
   isFK,
-  isLocation,
   isMetric,
   isNumber,
   isNumeric,
@@ -197,8 +197,8 @@ export default class Field extends Base {
     return isCoordinate(this);
   }
 
-  isLocation() {
-    return isLocation(this);
+  isAddress() {
+    return isAddress(this);
   }
 
   isSummable() {

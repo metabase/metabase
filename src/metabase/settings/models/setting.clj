@@ -9,11 +9,9 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.server.middleware.json]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -32,10 +30,6 @@
    (java.time.temporal Temporal)
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
-
-;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
-;;; other things we need for `:json` settings
-(comment metabase.server.middleware.json/keep-me)
 
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
@@ -357,25 +351,18 @@
 
 (defn- has-feature?
   [feature]
-  (u/ignore-exceptions
-    (classloader/require 'metabase.premium-features.token-check))
-  (let [has-feature?' (resolve 'metabase.premium-features.token-check/has-feature?)]
-    (has-feature?' feature)))
+  ((requiring-resolve 'metabase.premium-features.core/has-feature?) feature))
 
 (defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
   []
   (or api/*is-superuser?*
-      (do
-        (when config/ee-available?
-          (classloader/require 'metabase-enterprise.advanced-permissions.common
-                               'metabase.premium-features.token-check))
-        (if-let [current-user-has-application-permissions?
-                 (and (has-feature? :advanced-permissions)
-                      (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-          (current-user-has-application-permissions? :setting)
-          false))))
+      (when (and config/ee-available?
+                 (has-feature? :advanced-permissions))
+        ((requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?)
+         :setting))
+      false))
 
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
@@ -458,7 +445,7 @@
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
   (let [f (or @db-is-set-up-var
-              (reset! db-is-set-up-var (requiring-resolve 'metabase.db/db-is-set-up?)))]
+              (reset! db-is-set-up-var (requiring-resolve 'metabase.app-db.core/db-is-set-up?)))]
     (if f (f) false)))
 
 (defn- db-or-cache-value
@@ -973,15 +960,16 @@
       (mc/assert SettingDefinition <>)
       (validate-default-value-for-type <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
-      (when-let [registered-setting (core/get @registered-settings setting-name)]
-        (when (not= setting-ns (:namespace registered-setting))
+      ;; NOCOMMIT
+      #_(when-let [registered-setting (core/get @registered-settings setting-name)]
+          (when (not= setting-ns (:namespace registered-setting))
           ;; not i18n'ed because this is supposed to be developer-facing only.
-          (throw (ex-info (format "Setting %s already registered in %s. You can remove the old definition with (swap! %s dissoc %s)"
-                                  setting-name
-                                  (:namespace registered-setting)
-                                  `registered-settings
-                                  (keyword setting-name))
-                          {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
+            (throw (ex-info (format "Setting %s already registered in %s. You can remove the old definition with (swap! %s dissoc %s)"
+                                    setting-name
+                                    (:namespace registered-setting)
+                                    `registered-settings
+                                    (keyword setting-name))
+                            {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
       (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
                                            (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine

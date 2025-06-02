@@ -3,7 +3,7 @@
   in [[metabase.model-persistence.events.persisted-model-refresh-error]]."
   (:require
    [metabase.channel.email.messages :as messages]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [methodical.core :as methodical]))
 
 (derive :event/persisted-model-refresh-error ::event)

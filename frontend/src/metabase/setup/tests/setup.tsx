@@ -57,7 +57,7 @@ export async function setup({
     setupEnterprisePlugins();
   }
 
-  fetchMock.post("path:/api/util/password_check", { valid: true });
+  fetchMock.post("path:/api/session/password-check", { valid: true });
   fetchMock.post("path:/api/setup", {});
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
   setupPropertiesEndpoints(

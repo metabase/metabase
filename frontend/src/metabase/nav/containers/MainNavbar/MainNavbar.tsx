@@ -123,6 +123,7 @@ function MainNavbar({
   return (
     <Sidebar
       isOpen={isOpen}
+      side="left"
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
       data-element-id="navbar-root"

@@ -29,10 +29,10 @@ export function menu() {
   return cy.findByRole("menu");
 }
 
-export function modal() {
+export function modal(options = {}) {
   const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
+  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","), options);
 }
 
 export function tooltip() {
@@ -341,6 +341,10 @@ export const dashboardParametersContainer = () => {
   return cy.findByTestId("dashboard-parameters-widget-container");
 };
 
+export const editingDashboardParametersContainer = () => {
+  return cy.findByTestId("edit-dashboard-parameters-widget-container");
+};
+
 export const undoToast = () => {
   return cy.findByTestId("toast-undo");
 };
@@ -425,6 +429,13 @@ export function assertRowHeight(index, height) {
     .find(`[data-index=${index}]`)
     .should("exist")
     .should("have.css", "height", `${height}px`);
+}
+
+export function getColumnWidth(columnId) {
+  return cy
+    .findAllByTestId("header-cell")
+    .filter(`:contains(${columnId})`)
+    .invoke("width");
 }
 
 export function tableAllFieldsHiddenImage() {

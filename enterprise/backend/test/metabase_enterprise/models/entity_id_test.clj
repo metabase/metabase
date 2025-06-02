@@ -46,7 +46,6 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
-    :model/FieldUsage
     :model/FieldValues
     :model/ModelIndex
     :model/ModelIndexValue
@@ -77,7 +76,6 @@
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
-    :model/TablePrivileges
     :model/TaskHistory
     :model/TimelineEvent
     :model/User

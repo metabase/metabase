@@ -1,5 +1,5 @@
 (ns metabase.query-processor.card-test
-  "There are more e2e tests in [[metabase.api.card-test]]."
+  "There are more e2e tests in [[metabase.queries.api.card-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -151,12 +151,12 @@
 (deftest ^:parallel validate-card-parameters-test-4
   (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Happy path -- API request should succeed if parameter is valid"
-      (is (= [1000]
+      (is (= [6]
              (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                                  {:parameters [{:id    "_DATE_"
                                                                 :name  "date"
                                                                 :type  :date/single
-                                                                :value "2016-01-01"}]})))))))
+                                                                :value "2014-05-07"}]})))))))
 
 (deftest ^:parallel bad-viz-settings-should-still-work-test
   (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"

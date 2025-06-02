@@ -14,9 +14,9 @@
   those Fields potentially dozens of times in a single query execution."
   (:require
    [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -176,7 +176,7 @@
 (defmacro with-metadata-provider
   "Execute `body` with an initialized QP store and metadata provider bound. You can either pass
   a [[metabase.lib.metadata.protocols/MetadataProvider]] directly, or pass a Database ID, for which we will create
-  a [[metabase.lib.metadata.jvm/application-database-metadata-provider]].
+  a [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]].
 
   If a MetadataProvider is already bound, this is a no-op."
   {:style/indent [:defn]}

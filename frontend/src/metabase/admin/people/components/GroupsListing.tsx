@@ -1,34 +1,37 @@
-import cx from "classnames";
-import { Component } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useListApiKeysQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import Alert from "metabase/components/Alert";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/components/ModalContent";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
-import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
-import AdminS from "metabase/css/admin.module.css";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { Button, Group, Icon, Stack, Text } from "metabase/ui";
-import type { ApiKey, Group as IGroup } from "metabase-types/api";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Input,
+  Menu,
+  UnstyledButton,
+} from "metabase/ui";
+import type { ApiKey, GroupInfo } from "metabase-types/api";
+
+import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
-import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -70,14 +73,14 @@ function AddGroupRow({
 // ------------------------------------------------------------ Groups Table: editing ------------------------------------------------------------
 
 interface DeleteGroupModalProps {
-  group: IGroup;
+  opened: boolean;
   apiKeys: ApiKey[];
-  onConfirm?: (group: IGroup) => void;
-  onClose?: () => void;
+  onConfirm: () => void;
+  onClose: () => void;
 }
 
 function DeleteGroupModal({
-  group,
+  opened,
   apiKeys,
   onConfirm = () => {},
   onClose = () => {},
@@ -92,6 +95,17 @@ function DeleteGroupModal({
         ? t`Are you sure you want remove this group and its API key?`
         : t`Are you sure you want remove this group and its API keys?`;
 
+  const message = hasApiKeys
+    ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
+        <Link
+          key="link"
+          to="/admin/settings/authentication/api-keys"
+          variant="brand"
+        >{t`move the API keys to another group`}</Link>
+      )}.`
+    : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
+              This can't be undone.`;
+
   const confirmButtonText =
     apiKeysCount === 0
       ? t`Remove group`
@@ -100,43 +114,22 @@ function DeleteGroupModal({
         : t`Remove group and API keys`;
 
   return (
-    <ModalContent title={modalTitle} onClose={onClose}>
-      <Stack gap="xl">
-        <Text>
-          {hasApiKeys
-            ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
-                <Link
-                  key="link"
-                  to="/admin/settings/authentication/api-keys"
-                  variant="brand"
-                >{t`move the API keys to another group`}</Link>
-              )}.`
-            : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
-                This can't be undone.`}
-        </Text>
-        <Group gap="md" justify="flex-end">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            color="error"
-            onClick={() => {
-              onClose();
-              onConfirm(group);
-            }}
-          >
-            {confirmButtonText}
-          </Button>
-        </Group>
-      </Stack>
-    </ModalContent>
+    <ConfirmModal
+      opened={opened}
+      title={modalTitle}
+      message={message}
+      confirmButtonText={confirmButtonText}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
   );
 }
 
 interface ActionsPopoverProps {
-  group: IGroup;
+  group: GroupInfo;
   apiKeys: ApiKey[];
-  onEditGroupClicked: (group: IGroup) => void;
-  onDeleteGroupClicked: (group: IGroup) => void;
+  onEditGroupClicked: (group: GroupInfo) => void;
+  onDeleteGroupClicked: (group: GroupInfo) => void;
 }
 
 function ActionsPopover({
@@ -145,32 +138,37 @@ function ActionsPopover({
   onEditGroupClicked,
   onDeleteGroupClicked,
 }: ActionsPopoverProps) {
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
+
   return (
-    <PopoverWithTrigger
-      className={CS.block}
-      triggerElement={<Icon className={CS.textLight} name="ellipsis" />}
-    >
-      <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
-        <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
-          {t`Edit Name`}
-        </EditGroupButton>
-        <ModalWithTrigger
-          as={DeleteModalTrigger}
-          triggerElement={t`Remove Group`}
-        >
-          <DeleteGroupModal
-            group={group}
-            apiKeys={apiKeys}
-            onConfirm={onDeleteGroupClicked}
-          />
-        </ModalWithTrigger>
-      </ul>
-    </PopoverWithTrigger>
+    <>
+      <Menu shadow="md" width={200} position="bottom-end">
+        <Menu.Target>
+          <UnstyledButton>
+            <Icon c="text-light" name="ellipsis" />
+          </UnstyledButton>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item onClick={() => onEditGroupClicked(group)}>
+            {t`Edit Name`}
+          </Menu.Item>
+          <Menu.Item c="danger" onClick={openModal}>
+            {t`Remove Group`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      <DeleteGroupModal
+        opened={modalOpened}
+        apiKeys={apiKeys}
+        onConfirm={() => onDeleteGroupClicked(group)}
+        onClose={closeModal}
+      />
+    </>
   );
 }
 
 interface EditingGroupRowProps {
-  group: IGroup;
+  group: GroupInfo;
   textHasChanged: boolean;
   onTextChange: (text: string) => void;
   onCancelClicked: () => void;
@@ -185,43 +183,42 @@ function EditingGroupRow({
   onDoneClicked,
 }: EditingGroupRowProps) {
   const textIsValid = group.name && group.name.length;
+
   return (
-    <tr className={cx(CS.bordered, CS.borderBrand, CS.rounded)}>
+    <Box component="tr" bd="1px solid var(--mb-color-brand)">
       <td>
         <Input
-          className={CS.h3}
+          fz="lg"
           type="text"
-          autoFocus={true}
+          autoFocus
           value={group.name}
           onChange={(e) => onTextChange(e.target.value)}
         />
       </td>
       <td />
-      <td className={CS.textRight}>
-        <span className={CS.link} onClick={onCancelClicked}>{t`Cancel`}</span>
-        <button
-          className={cx(ButtonsS.Button, CS.ml2, {
-            [ButtonsS.ButtonPrimary]: textIsValid && textHasChanged,
-          })}
+      <Box component="td" ta="right">
+        <Button variant="subtle" onClick={onCancelClicked}>{t`Cancel`}</Button>
+        <Button
+          ml="1rem"
+          variant={textIsValid && textHasChanged ? "filled" : "outline"}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
         >
           {t`Done`}
-        </button>
-      </td>
-    </tr>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
 // ------------------------------------------------------------ Groups Table: not editing ------------------------------------------------------------
 
 interface GroupRowProps {
-  group: IGroup;
-  groupBeingEdited: IGroup | null;
-  index: number;
+  group: GroupInfo;
+  groupBeingEdited: GroupInfo | null;
   apiKeys: ApiKey[];
-  onEditGroupClicked: (group: IGroup) => void;
-  onDeleteGroupClicked: (group: IGroup) => void;
+  onEditGroupClicked: (group: GroupInfo) => void;
+  onDeleteGroupClicked: (group: GroupInfo) => void;
   onEditGroupTextChange: (text: string) => void;
   onEditGroupCancelClicked: () => void;
   onEditGroupDoneClicked: () => void;
@@ -230,7 +227,6 @@ interface GroupRowProps {
 function GroupRow({
   group,
   groupBeingEdited,
-  index,
   apiKeys,
   onEditGroupClicked,
   onDeleteGroupClicked,
@@ -238,8 +234,7 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
-  const colors = getGroupRowColors();
-  const backgroundColor = colors[index % colors.length];
+  const backgroundColor = groupIdToColor(group.id);
   const showActionsButton = !isDefaultGroup(group) && !isAdminGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
 
@@ -254,26 +249,27 @@ function GroupRow({
   ) : (
     <tr>
       <td>
-        <Link
+        <Flex
+          component={Link}
+          align="center"
           to={"/admin/people/groups/" + group.id}
-          className={cx(CS.link, CS.flex, CS.alignCenter)}
+          className={CS.link}
+          gap="md"
         >
-          <span className={CS.textWhite}>
-            <UserAvatar
-              user={{ first_name: getGroupNameLocalized(group) }}
-              bg={backgroundColor}
-            />
-          </span>
-          <span className={cx(CS.ml2, CS.textBold)}>
+          <UserAvatar
+            user={{ first_name: getGroupNameLocalized(group) }}
+            bg={backgroundColor}
+          />
+          <Box component="span" fw={700} c="brand">
             {getGroupNameLocalized(group)}
-          </span>
-        </Link>
+          </Box>
+        </Flex>
       </td>
       <td>
         {group.member_count || 0}
         <ApiKeyCount apiKeys={apiKeys} />
       </td>
-      <td className={CS.textRight}>
+      <Box component="td" ta="end">
         {showActionsButton ? (
           <ActionsPopover
             group={group}
@@ -282,7 +278,7 @@ function GroupRow({
             onDeleteGroupClicked={onDeleteGroupClicked}
           />
         ) : null}
-      </td>
+      </Box>
     </tr>
   );
 }
@@ -292,32 +288,24 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <span className={CS.textLight}>
+    <Box component="span" c="text-light">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}
-    </span>
+    </Box>
   );
 };
 
-const getGroupRowColors = () => [
-  color("error"),
-  color("accent2"),
-  color("brand"),
-  color("accent4"),
-  color("accent1"),
-];
-
 interface GroupsTableProps {
-  groups: IGroup[];
+  groups: GroupInfo[];
   text: string;
-  groupBeingEdited: IGroup | null;
+  groupBeingEdited: GroupInfo | null;
   showAddGroupRow: boolean;
   onAddGroupCanceled: () => void;
   onAddGroupCreateButtonClicked: () => void;
   onAddGroupTextChanged: (text: string) => void;
-  onEditGroupClicked: (group: IGroup) => void;
-  onDeleteGroupClicked: (group: IGroup) => void;
+  onEditGroupClicked: (group: GroupInfo) => void;
+  onDeleteGroupClicked: (group: GroupInfo) => void;
   onEditGroupTextChange: (text: string) => void;
   onEditGroupCancelClicked: () => void;
   onEditGroupDoneClicked: () => void;
@@ -354,11 +342,10 @@ function GroupsTable({
         />
       ) : null}
       {groups &&
-        groups.map((group: IGroup, index: number) => (
+        groups.map((group: GroupInfo) => (
           <GroupRow
             key={group.id}
             group={group}
-            index={index}
             apiKeys={
               isDefaultGroup(group)
                 ? (apiKeys ?? [])
@@ -380,103 +367,74 @@ function GroupsTable({
 // ------------------------------------------------------------ Logic ------------------------------------------------------------
 
 interface GroupsListingProps {
-  groups: IGroup[];
+  groups: GroupInfo[];
   isAdmin: boolean;
   create: (group: { name: string }) => Promise<void>;
   update: (group: { id: number; name: string }) => Promise<void>;
-  delete: (group: IGroup) => Promise<void>;
+  delete: (group: GroupInfo, groupCount: number) => Promise<void>;
 }
 
-interface GroupsListingState {
-  text: string;
-  showAddGroupRow: boolean;
-  groupBeingEdited: IGroup | null;
-  alertMessage: string | null;
-}
+export const GroupsListing = (props: GroupsListingProps) => {
+  const [text, setText] = useState("");
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [groupBeingEdited, setGroupBeingEdited] = useState<GroupInfo | null>(
+    null,
+  );
+  const [
+    isShowingAddGroupRow,
+    { open: showAddGroupRow, close: hideAddGroupRow },
+  ] = useDisclosure(false);
 
-export class GroupsListing extends Component<
-  GroupsListingProps,
-  GroupsListingState
-> {
-  constructor(props: GroupsListingProps, context: any) {
-    super(props, context);
-    this.state = {
-      text: "",
-      showAddGroupRow: false,
-      groupBeingEdited: null,
-      alertMessage: null,
-    };
-  }
+  const onAddGroupCanceled = () => {
+    hideAddGroupRow();
+  };
 
-  alert(alertMessage: string) {
-    this.setState({ alertMessage });
-  }
+  const onDismissAlert = () => {
+    setAlertMessage(null);
+  };
 
-  onAddGroupCanceled() {
-    this.setState({
-      showAddGroupRow: false,
-    });
-  }
-
-  // TODO: move this to Redux
-  async onAddGroupCreateButtonClicked() {
+  const onAddGroupCreateButtonClicked = async () => {
+    const { create } = props;
     try {
-      await this.props.create({ name: this.state.text.trim() });
-      this.setState({
-        showAddGroupRow: false,
-        text: "",
-      });
+      await create({ name: text.trim() });
+      hideAddGroupRow();
+      setText("");
     } catch (error: any) {
       console.error("Error creating group:", error);
-      if (error.data && typeof error.data === "string") {
-        this.alert(error.data);
+      if (error.data) {
+        const errorMessage = getErrorMessage(error);
+        setAlertMessage(errorMessage);
       }
     }
-  }
+  };
 
-  onAddGroupTextChanged(newText: string) {
-    this.setState({
-      text: newText,
-    });
-  }
+  const onCreateAGroupButtonClicked = () => {
+    setText("");
+    showAddGroupRow();
+    setGroupBeingEdited(null);
+  };
 
-  onCreateAGroupButtonClicked() {
-    this.setState({
-      text: "",
-      showAddGroupRow: true,
-      groupBeingEdited: null,
-    });
-  }
+  const onEditGroupClicked = (group: GroupInfo) => {
+    setGroupBeingEdited({ ...group });
+    setText("");
+    hideAddGroupRow();
+  };
 
-  onEditGroupClicked(group: IGroup) {
-    this.setState({
-      groupBeingEdited: { ...group },
-      text: "",
-      showAddGroupRow: false,
-    });
-  }
-
-  onEditGroupTextChange(newText: string) {
-    const { groupBeingEdited } = this.state;
-
+  const onEditGroupTextChange = (newText: string) => {
     if (!groupBeingEdited) {
       throw new Error("Group being edited not found");
     }
 
-    this.setState({
-      groupBeingEdited: { ...groupBeingEdited, name: newText },
-    });
-  }
+    setGroupBeingEdited({ ...groupBeingEdited, name: newText });
+  };
 
-  onEditGroupCancelClicked() {
-    this.setState({
-      groupBeingEdited: null,
-    });
-  }
+  const onEditGroupCancelClicked = () => {
+    setGroupBeingEdited(null);
+  };
 
-  async onEditGroupDoneClicked() {
-    const { groups } = this.props;
-    const group = this.state.groupBeingEdited;
+  const onEditGroupDoneClicked = async () => {
+    const { groups, update } = props;
+    const group = groupBeingEdited;
 
     if (!group) {
       throw new Error("There is currently no group being edited");
@@ -494,69 +452,71 @@ export class GroupsListing extends Component<
 
     // if name hasn't changed there is nothing to do
     if (originalGroup.name === group.name) {
-      this.setState({ groupBeingEdited: null });
+      setGroupBeingEdited(null);
     } else {
       // ok, fire off API call to change the group
       try {
-        await this.props.update({ id: group.id, name: group.name.trim() });
-        this.setState({ groupBeingEdited: null });
+        await update({ id: group.id, name: group.name.trim() });
+        setGroupBeingEdited(null);
       } catch (error: any) {
         console.error("Error updating group name:", error);
-        if (error.data && typeof error.data === "string") {
-          this.alert(error.data);
-        }
+        const errorMessage = getErrorMessage(error);
+
+        setAlertMessage(errorMessage);
       }
     }
-  }
+  };
 
-  // TODO: move this to Redux
-  async onDeleteGroupClicked(group: IGroup) {
+  const onDeleteGroupClicked = async (
+    groups: GroupInfo[],
+    group: GroupInfo,
+  ) => {
     try {
-      await this.props.delete(group);
+      await props.delete(group, groups.length);
     } catch (error: any) {
       console.error("Error deleting group: ", error);
-      if (error.data && typeof error.data === "string") {
-        this.alert(error.data);
-      }
+      const errorMessage = getErrorMessage(error);
+
+      setAlertMessage(errorMessage);
     }
-  }
+  };
 
-  render() {
-    const { groups, isAdmin } = this.props;
-    const { alertMessage } = this.state;
+  const { groups, isAdmin } = props;
 
-    return (
-      <AdminPaneLayout
-        title={t`Groups`}
-        buttonText={isAdmin ? t`Create a group` : undefined}
-        buttonAction={
-          this.state.showAddGroupRow
-            ? undefined
-            : this.onCreateAGroupButtonClicked.bind(this)
-        }
-        description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
-      >
-        <GroupsTable
-          groups={groups}
-          text={this.state.text}
-          showAddGroupRow={this.state.showAddGroupRow}
-          groupBeingEdited={this.state.groupBeingEdited}
-          onAddGroupCanceled={this.onAddGroupCanceled.bind(this)}
-          onAddGroupCreateButtonClicked={this.onAddGroupCreateButtonClicked.bind(
-            this,
-          )}
-          onAddGroupTextChanged={this.onAddGroupTextChanged.bind(this)}
-          onEditGroupClicked={this.onEditGroupClicked.bind(this)}
-          onEditGroupTextChange={this.onEditGroupTextChange.bind(this)}
-          onEditGroupCancelClicked={this.onEditGroupCancelClicked.bind(this)}
-          onEditGroupDoneClicked={this.onEditGroupDoneClicked.bind(this)}
-          onDeleteGroupClicked={this.onDeleteGroupClicked.bind(this)}
-        />
-        <Alert
-          message={alertMessage}
-          onClose={() => this.setState({ alertMessage: null })}
-        />
-      </AdminPaneLayout>
-    );
-  }
-}
+  return (
+    <AdminPaneLayout
+      title={t`Groups`}
+      buttonText={isAdmin ? t`Create a group` : undefined}
+      buttonAction={
+        isShowingAddGroupRow ? undefined : onCreateAGroupButtonClicked
+      }
+      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
+    >
+      <GroupsTable
+        groups={groups}
+        text={text}
+        showAddGroupRow={isShowingAddGroupRow}
+        groupBeingEdited={groupBeingEdited}
+        onAddGroupCanceled={onAddGroupCanceled}
+        onAddGroupCreateButtonClicked={onAddGroupCreateButtonClicked}
+        onAddGroupTextChanged={setText}
+        onEditGroupClicked={onEditGroupClicked}
+        onEditGroupTextChange={onEditGroupTextChange}
+        onEditGroupCancelClicked={onEditGroupCancelClicked}
+        onEditGroupDoneClicked={onEditGroupDoneClicked}
+        onDeleteGroupClicked={(group) => onDeleteGroupClicked(groups, group)}
+      />
+      <ConfirmModal
+        onClose={onDismissAlert}
+        onConfirm={onDismissAlert}
+        opened={!!alertMessage}
+        message={alertMessage}
+        closeButtonText={null}
+        withCloseButton={false}
+        confirmButtonText={t`Ok`}
+        confirmButtonProps={{ color: "brand" }}
+        data-testid="alert-modal"
+      />
+    </AdminPaneLayout>
+  );
+};

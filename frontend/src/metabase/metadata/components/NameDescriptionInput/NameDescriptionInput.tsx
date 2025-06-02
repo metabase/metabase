@@ -1,6 +1,6 @@
 import { Box } from "metabase/ui";
 
-import { Input } from "./Input";
+import { Input, Textarea } from "./Input";
 import S from "./NameDescriptionInput.module.css";
 
 interface Props {
@@ -43,7 +43,7 @@ export const NameDescriptionInput = ({
         onChange={onNameChange}
       />
 
-      <Input
+      <Textarea
         classNames={{
           input: S.descriptionInput,
           root: S.description,
@@ -51,6 +51,9 @@ export const NameDescriptionInput = ({
         placeholder={descriptionPlaceholder}
         value={description}
         onChange={onDescriptionChange}
+        autosize
+        minRows={2}
+        maxRows={4}
       />
     </Box>
   );

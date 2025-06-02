@@ -202,11 +202,18 @@ const getDatasetParams = ({
       };
     }
     if (resource === "question" && uuid) {
+      const parameters = (result?.json_query?.parameters ?? []).map(
+        (param) => ({
+          id: param.id,
+          value: param.value,
+        }),
+      );
+
       return {
         method: "GET",
         url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
         params: new URLSearchParams({
-          parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+          parameters: JSON.stringify(parameters),
         }),
       };
     }
@@ -228,11 +235,24 @@ const getDatasetParams = ({
     if (resource === "question" && token) {
       const params = new URLSearchParams(window.location.search);
 
+      const convertSearchParamsToObject = (params: URLSearchParams) => {
+        const object: Record<string, string[]> = {};
+        for (const [key, value] of params.entries()) {
+          if (object[key]) {
+            object[key] = [...object[key], value];
+          } else {
+            object[key] = [value];
+          }
+        }
+
+        return object;
+      };
+
       return {
         method: "GET",
         url: Urls.embedCard(token, type),
         params: new URLSearchParams({
-          parameters: JSON.stringify(Object.fromEntries(params)),
+          parameters: JSON.stringify(convertSearchParamsToObject(params)),
           ..._.mapObject(exportParams, (value) => String(value)),
         }),
       };

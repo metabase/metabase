@@ -93,8 +93,7 @@ describe("revision history", () => {
               });
             });
 
-            // skipped because it's super flaky in CI
-            it.skip("should be able to revert a dashboard (metabase#15237)", () => {
+            it("should be able to revert a dashboard (metabase#15237)", () => {
               H.visitDashboard(ORDERS_DASHBOARD_ID);
               openRevisionHistory();
               clickRevert(/created this/);
@@ -104,13 +103,16 @@ describe("revision history", () => {
                 expect(body.cause).not.to.exist;
               });
 
-              // We reverted the dashboard to the state prior to adding any cards to it
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("This dashboard is empty");
+              cy.log(
+                "We reverted the dashboard to the state prior to adding any cards to it",
+              );
+              cy.findByTestId("dashboard-empty-state").should("exist");
 
-              // Should be able to revert back again
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("History");
+              cy.log("Should be able to revert back again");
+              cy.findByTestId("dashboard-history-list").should(
+                "contain",
+                "You reverted to an earlier version.",
+              );
               clickRevert(/added a card/);
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
@@ -118,8 +120,7 @@ describe("revision history", () => {
                 expect(body.cause).not.to.exist;
               });
 
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("117.03");
+              cy.findByTestId("visualization-root").should("contain", "117.03");
             });
 
             it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
@@ -196,14 +197,21 @@ function clickRevert(event_name, index = 0) {
 
 function openRevisionHistory() {
   cy.intercept("GET", "/api/revision*").as("revisionHistory");
-  cy.get("main header").within(() => {
-    cy.icon("info").click();
-  });
-  cy.findByRole("tab", { name: "History" }).click();
-  cy.wait("@revisionHistory");
+
+  cy.findByTestId("dashboard-header")
+    .findByLabelText("More info")
+    .should("be.visible")
+    .click();
 
   H.sidesheet().within(() => {
-    cy.findByText("History");
+    cy.findByRole("tab", { name: "History" }).click();
+    cy.wait("@revisionHistory");
+
+    cy.findByRole("tab", { name: "History" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
     cy.findByTestId("dashboard-history-list").should("be.visible");
   });
 }

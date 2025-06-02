@@ -2,10 +2,10 @@
   "Query processor generative tests."
   (:require
    [clojure.test :refer [is testing]]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util.generators :as lib.tu.gen]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]

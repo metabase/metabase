@@ -108,7 +108,7 @@ export function EmbeddingSdkSettings({
             key="switch-metabase-binaries"
             href={switchMetabaseBinariesUrl}
           >
-            switch Metabase binaries
+            {t`switch Metabase binaries`}
           </ExternalLink>
         )}, ${(
           <ExternalLink key="upgrade-url" href={upgradeUrl}>

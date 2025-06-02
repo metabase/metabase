@@ -6,6 +6,7 @@
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -23,7 +24,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime]
-   java.util.Arrays))
+   [java.util Arrays UUID]))
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
@@ -306,11 +307,9 @@
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/->honeysql [:clickhouse :date]
-  [driver [_ value]]
-  (h2x/maybe-cast "Date32"
-                  [:'parseDateTime64 (sql.qp/->honeysql driver value)
-                   [:inline "%Y-%m-%d"]]))
+(defmethod sql.qp/date-dbtype :clickhouse
+  [_driver]
+  :Date32)
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
@@ -349,25 +348,30 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:clickhouse :value]
-  [driver value]
-  (let [[_ value {base-type :base_type}] value]
-    (when (some? value)
-      (condp #(isa? %2 %1) base-type
-        :type/IPAddress [:'toIPv4 value]
-        (sql.qp/->honeysql driver value)))))
+  [driver [_ value {base-type :base_type effective-type :effective_type}]]
+  (when (some? value)
+    (condp #(isa? %2 %1) (or effective-type base-type)
+      :type/IPAddress [:'toIPv4 value]
+      :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
+                   (try
+                     (UUID/fromString value)
+                     (catch IllegalArgumentException _
+                       (h2x/with-type-info value {:database-type "String"}))))
+      (sql.qp/->honeysql driver value))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :=]
   [driver [op field value]]
-  (let [[qual valuevalue fieldinfo] value
-        hsql-field (sql.qp/->honeysql driver field)
-        hsql-value (sql.qp/->honeysql driver value)]
-    (if (and (isa? qual :value)
-             (isa? (:base_type fieldinfo) :type/Text)
-             (nil? valuevalue))
+  (if (and (coll? value)
+           (let [[qual valuevalue fieldinfo] value]
+             (and (isa? qual :value)
+                  (isa? (:base_type fieldinfo) :type/Text)
+                  (nil? valuevalue))))
+    (let [hsql-field (sql.qp/->honeysql driver field)
+          hsql-value (sql.qp/->honeysql driver value)]
       [:or
        [:= hsql-field hsql-value]
-       [:= [:'empty hsql-field] 1]]
-      ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
+       [:= [:'empty hsql-field] 1]])
+    ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
   [driver [op field value]]
@@ -405,9 +409,24 @@
   [_ dt amount unit]
   (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))]))
 
+(defn- uuid-field?
+  [x]
+  (and (mbql.u/mbql-clause? x)
+       (isa? (or (:effective-type (get x 2))
+                 (:base-type (get x 2)))
+             :type/UUID)))
+
+(defn- maybe-cast-uuid-for-text-compare
+  "For :contains, :starts-with, and :ends-with.
+   Comparing UUID fields with these operations requires casting for the positionUTF8, startsWithUTF8, and endsWithUTF8 functions."
+  [field]
+  (if (uuid-field? field)
+    (sql.qp/->honeysql :clickhouse [:text field])
+    (sql.qp/->honeysql :clickhouse field)))
+
 (defn- clickhouse-string-fn
   [fn-name field value options]
-  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+  (let [hsql-field (maybe-cast-uuid-for-text-compare field)
         hsql-value (sql.qp/->honeysql :clickhouse value)]
     (if (get options :case-sensitive true)
       [fn-name hsql-field hsql-value]
@@ -429,7 +448,7 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :contains]
   [_ [_ field value options]]
-  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+  (let [hsql-field (maybe-cast-uuid-for-text-compare field)
         hsql-value (sql.qp/->honeysql :clickhouse value)
         position-fn (if (get options :case-sensitive true)
                       :'positionUTF8
@@ -600,3 +619,7 @@
 (defmethod sql.qp/inline-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
+  [_driver this]
+  {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})

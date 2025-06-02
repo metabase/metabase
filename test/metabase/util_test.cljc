@@ -597,3 +597,19 @@
   (testing "safe min behaves like clojure.core/min"
     (is (= nil (u/safe-min nil)))
     (is (= 2 (u/safe-min nil 2 nil 3)))))
+
+(deftest ^:parallel find-first-map-indexed-test
+  (testing "find-first-map-indexed"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map-indexed nil [:a :b] 1)))
+      (is (= [1 {:a {:b 2}}]
+             (u/find-first-map-indexed test-maps [:a :b] 2)))
+      (is (nil? (u/find-first-map-indexed test-maps [:a :b] 5))))))
+
+(deftest ^:parallel find-first-map-test
+  (testing "find-first-map"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map nil [:a :b] 1)))
+      (is (nil? (u/find-first-map test-maps [:a :b] 5)))
+      (is (= {:a {:b 2}}
+             (u/find-first-map test-maps [:a :b] 2))))))

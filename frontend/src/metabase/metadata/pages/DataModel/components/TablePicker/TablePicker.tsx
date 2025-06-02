@@ -21,7 +21,7 @@ export function TablePicker({
   const deferredQuery = useDeferredValue(query);
 
   return (
-    <Stack mih={200} h="100%">
+    <Stack mih={200}>
       <Box p="xl" pb={0}>
         <Input
           value={query}
@@ -164,7 +164,7 @@ function Search({
 
 function EmptyState({ title }: { title: string }) {
   return (
-    <Stack pt="lg" align="center" className={S.emptyState} gap="md">
+    <Stack py="xl" align="center" className={S.emptyState} gap="md">
       <Flex className={S.empyIcon} p="lg" align="center" justify="center">
         <Icon name="table2" />
       </Flex>

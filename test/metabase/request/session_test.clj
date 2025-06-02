@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting-test :as setting-test]
@@ -21,7 +21,7 @@
       (is (false? api/*is-superuser?*))
       (is (= nil i18n/*user-locale*))
       (is (false? api/*is-group-manager?*))
-      (is (= (user/permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
+      (is (= (perms/user-permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
       (is (=? {:test-user-local-only-setting "XYZ"} (setting/user-local-values))))))
 
 (deftest ^:parallel as-admin-test

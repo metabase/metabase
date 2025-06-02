@@ -3,7 +3,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
@@ -20,7 +20,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log])
-  (:import  [com.clickhouse.client.api.query QuerySettings]))
+  (:import  [com.clickhouse.client.api.query QuerySettings]
+            [java.sql SQLException]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,11 +55,12 @@
                               :left-join                       (not config/is-test?)
                               :describe-fks                    false
                               :actions                         false
+                              :uuid-type                       true
                               :metadata/key-constraints        (not config/is-test?)}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
-  {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})
+  {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
 
 (defn- connection-details->spec* [details]
   (let [;; ensure defaults merge on top of nils
@@ -73,23 +75,22 @@
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
-    (->
-     {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
-      :subprotocol                    "clickhouse"
-      :subname                        (str "//" host ":" port "/" dbname)
-      :password                       (or password "")
-      :user                           user
-      :ssl                            (boolean ssl)
-      :use_server_time_zone_for_dates true
-      :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
-      :remember_last_set_roles        true
-      :http_connection_provider       "HTTP_URL_CONNECTION"
-      :jdbc_ignore_unsupported_values "true"
-      :jdbc_schema_term               "schema"
-      :max_open_connections           (or max-open-connections 100)
-      ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-      :custom_http_params             (or clickhouse-settings "")}
-     (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+    (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
+         :subprotocol                    "clickhouse"
+         :subname                        (str "//" host ":" port "/" dbname)
+         :password                       (or password "")
+         :user                           user
+         :ssl                            (boolean ssl)
+         :use_server_time_zone_for_dates true
+         :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
+         :remember_last_set_roles        true
+         :http_connection_provider       "HTTP_URL_CONNECTION"
+         :jdbc_ignore_unsupported_values "true"
+         :jdbc_schema_term               "schema"
+         :max_open_connections           (or max-open-connections 100)
+         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
+         :custom_http_params             (or clickhouse-settings "")}
+        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
   [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
@@ -290,3 +291,8 @@
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
   "NONE")
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
+  [_ ^SQLException e]
+  ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
+  (str/starts-with? (.getMessage e) "Code: 60."))

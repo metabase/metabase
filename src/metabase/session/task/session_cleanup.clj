@@ -3,10 +3,22 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.session.models.session :as session]
-   [metabase.task :as task]))
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.task.core :as task]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- cleanup-sessions!
+  "Deletes sessions from the database which are no longer valid"
+  []
+  (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form (mdb/db-type)
+                                                                   :%now
+                                                                   (- (config/config-int :max-session-age))
+                                                                   :minute)]]
+    (t2/delete! :model/Session :created_at [:< oldest-allowed])))
 
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))
 (def ^:private session-cleanup-trigger-key (triggers/key "metabase.task.session-cleanup.trigger"))
@@ -14,7 +26,7 @@
 (task/defjob ^{:doc "Job that cleans up outdated sessions."}
   SessionCleanup
   [_]
-  (session/cleanup-sessions!))
+  (cleanup-sessions!))
 
 (defmethod task/init! ::SessionCleanup [_]
   (let [job (jobs/build

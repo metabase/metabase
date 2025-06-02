@@ -6,7 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.settings :as query-analysis.settings]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]

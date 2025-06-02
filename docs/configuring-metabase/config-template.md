@@ -135,7 +135,6 @@ config:
     enable-embedding-interactive: false
     enable-embedding-sdk: false
     enable-embedding-static: false
-    enable-field-usage-analysis: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true

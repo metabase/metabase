@@ -2,9 +2,9 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.events :as events]
-   [metabase.notification.core :as notification]
+   [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.send :as notification.send]
    [metabase.task-history.core :as task-history]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -76,8 +76,8 @@
                                                       :notification_ids (map :id notifications)}}
         (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
         (doseq [notification notifications]
-          (notification/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
-                                                                         :event_topic topic})))))))
+          (notification.send/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
+                                                                              :event_topic topic})))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]

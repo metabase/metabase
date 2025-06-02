@@ -62,7 +62,7 @@ export const ModelExplanationBanner = () => {
               </Button>
             )}
             <Button variant="subtle" p={0} onClick={dismissBanner}>
-              Dismiss
+              {t`Dismiss`}
             </Button>
           </Group>
         </Stack>

@@ -1,6 +1,10 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  MaskedScimApiKey,
+  UnmaskedScimApiKey,
+} from "metabase-enterprise/user_provisioning/types";
+import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
   SettingDefinition,
@@ -31,4 +35,11 @@ export function setupUpdateSettingEndpoint(
     { status },
     { overwriteRoutes: true },
   );
+}
+
+export function setupScimEndpoints(
+  payload: MaskedScimApiKey | UnmaskedScimApiKey,
+) {
+  fetchMock.get("path:/api/ee/scim/api_key", payload);
+  fetchMock.post("path:/api/ee/scim/api_key", payload);
 }

@@ -15,22 +15,22 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.audit :as audit]
-   [metabase.config :as config]
-   [metabase.models.collection :as collection]
-   [metabase.models.moderation-review :as moderation-review]
+   [metabase.audit-app.core :as audit]
+   [metabase.classloader.core :as classloader]
+   [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
@@ -53,12 +53,7 @@
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
    (org.eclipse.jetty.server Server)
-   (org.quartz
-    CronTrigger
-    JobDetail
-    JobKey
-    Scheduler
-    Trigger)
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -656,13 +651,13 @@
 
 (defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? @task.impl/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+        (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
           (with-redefs [qs/initialize (constantly temp-scheduler)
                         ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
                         ;; after it's done, but we need the scheduler for testing
@@ -677,7 +672,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (qs/start @task/*quartz-scheduler*)
+     (qs/start @task.impl/*quartz-scheduler*)
      (thunk))))
 
 (defmacro with-temp-scheduler!
@@ -697,7 +692,7 @@
   "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler. Intended so we
   can test that things were scheduled correctly."
   []
-  (when-let [^Scheduler scheduler (#'task/scheduler)]
+  (when-let [^Scheduler scheduler (task/scheduler)]
     (vec
      (sort-by
       :key
@@ -1029,15 +1024,15 @@
      (fn []
        (t2/delete! :model/Permissions
                    :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-                   :group_id [:not= (u/the-id (perms-group/admin))])
+                   :group_id [:not= (u/the-id (perms/admin-group))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
     ;; rewriting a few tests.
     (finally
-      (when (and (:metabase.models.collection.root/is-root? collection)
+      (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -1073,14 +1068,14 @@
   For most use cases see the macro [[with-all-users-permission]]."
   [permission-path f]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms-group/all-users))
+  (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms/all-users-group))
                                                  :object permission-path}]
     (f)))
 
 (defn do-with-all-user-data-perms-graph!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
-  (let [all-users-group-id  (u/the-id (perms-group/all-users))]
+  (let [all-users-group-id  (u/the-id (perms/all-users-group))]
     (premium-features.test-util/with-additional-premium-features #{:advanced-permissions}
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-restored-perms!

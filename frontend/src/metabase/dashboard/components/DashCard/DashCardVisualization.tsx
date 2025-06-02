@@ -2,9 +2,11 @@ import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
+import { getDashcardData } from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
   isQuestionCard,
@@ -14,19 +16,37 @@ import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
-import { getVisualizationRaw } from "metabase/visualizations";
+import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
+import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type {
+  ClickActionModeGetter,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
+import {
+  createDataSource,
+  isVisualizerDashboardCard,
+  mergeVisualizerData,
+  shouldSplitVisualizerSeries,
+  splitVisualizerSeries,
+} from "metabase/visualizer/utils";
+import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import Question from "metabase-lib/v1/Question";
 import type {
+  Card,
+  CardId,
   DashCardId,
   Dashboard,
   DashboardCard,
   Dataset,
+  DatasetData,
+  RawSeries,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
+  VisualizerDataSourceId,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
@@ -85,6 +105,8 @@ interface DashCardVisualizationProps {
   onTogglePreviewing: () => void;
 
   downloadsEnabled: boolean;
+
+  onEditVisualization?: () => void;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -93,7 +115,7 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   dashboard,
-  series,
+  series: rawSeries,
   getClickActionMode,
   getHref,
   gridSize,
@@ -122,13 +144,111 @@ export function DashCardVisualization({
   onChangeLocation,
   onUpdateVisualizationSettings,
   downloadsEnabled,
+  onEditVisualization,
 }: DashCardVisualizationProps) {
+  const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
+
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
     return isQuestionCard(dashcard.card)
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const series = useMemo(() => {
+    if (
+      !dashcard ||
+      !rawSeries ||
+      rawSeries.length === 0 ||
+      !isVisualizerDashboardCard(dashcard)
+    ) {
+      return rawSeries;
+    }
+
+    const visualizerEntity = dashcard.visualization_settings.visualization;
+    const { display, columnValuesMapping, settings } = visualizerEntity;
+
+    const cards = [dashcard.card];
+    if (Array.isArray(dashcard.series)) {
+      cards.push(...dashcard.series);
+    }
+
+    const dataSources = cards.map((card) =>
+      createDataSource("card", card.id, card.name),
+    );
+
+    const dataSourceDatasets: Record<
+      VisualizerDataSourceId,
+      Dataset | null | undefined
+    > = Object.fromEntries(
+      Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
+        `card:${cardId}`,
+        dataset,
+      ]),
+    );
+
+    const didEveryDatasetLoad = dataSources.every(
+      (dataSource) => dataSourceDatasets[dataSource.id] != null,
+    );
+
+    const columns = getVisualizationColumns(
+      visualizerEntity,
+      dataSourceDatasets,
+      dataSources,
+    );
+    const card = extendCardWithDashcardSettings(
+      {
+        display,
+        name: settings["card.title"],
+        visualization_settings: settings,
+      } as Card,
+      _.omit(dashcard.visualization_settings, "visualization"),
+    ) as Card;
+
+    if (!didEveryDatasetLoad) {
+      return [{ card }];
+    }
+    const series: RawSeries = [
+      {
+        card: extendCardWithDashcardSettings(
+          {
+            display,
+            name: settings["card.title"],
+            visualization_settings: settings,
+          } as Card,
+          _.omit(dashcard.visualization_settings, "visualization"),
+        ) as Card,
+
+        data: mergeVisualizerData({
+          columns,
+          columnValuesMapping,
+          datasets: dataSourceDatasets,
+          dataSources,
+        }) as DatasetData,
+
+        // Certain visualizations memoize settings computation based on series keys
+        // This guarantees a visualization always rerenders on changes
+        started_at: new Date().toISOString(),
+      },
+    ];
+
+    if (
+      display &&
+      isCartesianChart(display) &&
+      shouldSplitVisualizerSeries(columnValuesMapping)
+    ) {
+      const dataSourceNameMap = Object.fromEntries(
+        dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
+      );
+      return splitVisualizerSeries(
+        series,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
+    }
+
+    return series;
+  }, [rawSeries, dashcard, datasets]);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -202,6 +322,50 @@ export function DashCardVisualization({
     [dashcard],
   );
 
+  const findCardById = useCallback(
+    (cardId?: CardId | null) => {
+      const lookupSeries = isVisualizerDashboardCard(dashcard)
+        ? rawSeries
+        : series;
+      return (
+        lookupSeries.find((series) => series.card.id === cardId)?.card ??
+        lookupSeries[0].card
+      );
+    },
+    [rawSeries, dashcard, series],
+  );
+
+  const onOpenQuestion = useCallback(
+    (cardId: CardId | null) => {
+      const card = findCardById(cardId);
+      onChangeCardAndRun?.({
+        previousCard: findCardById(card?.id),
+        nextCard: card,
+      });
+    },
+    [findCardById, onChangeCardAndRun],
+  );
+
+  const titleMenuItems = useMemo(
+    () =>
+      isVisualizerDashboardCard(dashcard) && rawSeries ? (
+        <>
+          <Menu.Label>{t`Questions in this card`}</Menu.Label>
+          {rawSeries.map((series, index) => (
+            <Menu.Item
+              key={index}
+              onClick={() => {
+                onOpenQuestion(series.card.id);
+              }}
+            >
+              {series.card.name}
+            </Menu.Item>
+          ))}
+        </>
+      ) : undefined,
+    [dashcard, rawSeries, onOpenQuestion],
+  );
+
   const actionButtons = useMemo(() => {
     if (!question) {
       return null;
@@ -243,6 +407,12 @@ export function DashCardVisualization({
       );
     }
 
+    // We only show the titleMenuItems if the card has no title.
+    const settings = getComputedSettingsForSeries(
+      series,
+    ) as ComputedVisualizationSettings;
+    const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+
     return (
       <DashCardMenu
         downloadsEnabled={downloadsEnabled}
@@ -252,6 +422,8 @@ export function DashCardVisualization({
         dashboardId={dashboard.id}
         token={token}
         uuid={uuid}
+        onEditVisualization={onEditVisualization}
+        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
       />
     );
   }, [
@@ -264,6 +436,8 @@ export function DashCardVisualization({
     dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
+    onEditVisualization,
+    titleMenuItems,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -280,6 +454,9 @@ export function DashCardVisualization({
       dashboard={dashboard}
       dashcard={dashcard}
       rawSeries={series}
+      visualizerRawSeries={
+        isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+      }
       metadata={metadata}
       mode={getClickActionMode}
       getHref={getHref}
@@ -309,6 +486,7 @@ export function DashCardVisualization({
       onChangeLocation={onChangeLocation}
       token={token}
       uuid={uuid}
+      titleMenuItems={titleMenuItems}
     />
   );
 }

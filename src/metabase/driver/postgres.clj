@@ -11,7 +11,7 @@
    [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -33,9 +33,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -94,7 +94,8 @@
 (doseq [feature [:actions
                  :actions/custom
                  :table-privileges
-                 :index-info]]
+                 ;; Index sync is turned off across the application as it is not used ATM.
+                 #_:index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -478,8 +479,8 @@
           (h2x/with-type-info (h2x/type-info hsql-form))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
-  [_driver]
-  (h2x/with-database-type-info :%now "timestamptz"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
@@ -674,10 +675,6 @@
 (defmethod sql.qp/->honeysql [:postgres :text]
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:postgres :date]
-  [driver [_ value]]
-  [:to_date (sql.qp/->honeysql driver value) [:inline "YYYY-MM-DD"]])
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
@@ -1190,4 +1187,9 @@
   "NONE")
 
 (defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
-  (= (sql-jdbc/get-sql-state e) "57014"))
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (mdb/query-canceled-exception? :postgres e))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

@@ -26,15 +26,6 @@ import type {
 
 import type { ValuesMode } from "./types";
 
-export function getNonVirtualFields(fields: Field[]) {
-  return fields.filter((field) => !field.isVirtual());
-}
-
-export function dedupeValues(valuesList: FieldValue[][]): FieldValue[] {
-  const uniqueValueMap = new Map(valuesList.flat().map((o) => [o[0], o]));
-  return Array.from(uniqueValueMap.values());
-}
-
 export function canUseParameterEndpoints(parameter?: Parameter) {
   return parameter != null;
 }
@@ -282,12 +273,11 @@ export function getValuesMode({
   return "none";
 }
 
-export function isNumeric(field: Field, parameter?: Parameter) {
-  if (parameter) {
-    return isNumberParameter(parameter);
-  }
-
-  return field.isNumeric();
+export function isNumeric(parameter: Parameter, fields: Field[]) {
+  return (
+    isNumberParameter(parameter) ||
+    (fields.length > 0 && fields.every((field) => field.isNumeric()))
+  );
 }
 
 export function getValue(option: FieldValue): RowValue {
@@ -314,27 +304,4 @@ export function getOption(
   }
 
   return { value: String(value), label: String(label ?? value) };
-}
-
-export function getFieldsRemappingInfo(fields: (Field | null)[]) {
-  const [field] = fields;
-  const searchField = field?.searchField();
-
-  if (
-    fields.length === 1 &&
-    field != null &&
-    searchField != null &&
-    typeof field.id === "number" &&
-    typeof searchField.id === "number" &&
-    field.id !== searchField.id
-  ) {
-    return {
-      field,
-      fieldId: field.id,
-      searchField,
-      searchFieldId: searchField.id,
-    };
-  } else {
-    return null;
-  }
 }

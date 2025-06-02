@@ -4,9 +4,9 @@
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.user :as api.user]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
+   [metabase.users.api :as api.user]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,6 +35,8 @@
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
   (t2/delete! :model/PulseChannelRecipient :user_id id)
+  (t2/delete! :model/NotificationRecipient :user_id id)
   ;; archive anything they created.
   (t2/update! :model/Pulse {:creator_id id, :archived false} {:archived true})
+  (t2/update! :model/Notification {:creator_id id :active true} {:active false})
   api/generic-204-no-content)

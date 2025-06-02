@@ -40,7 +40,7 @@
 
 (defmethod expression/type-of-method :dispatch-type/number
   [_non-integer-real]
-  ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types]] =(
+  ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types.core]] =(
   :type/Float)
 
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be

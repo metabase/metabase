@@ -27,12 +27,8 @@ const propTypes = {
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onToggleSeriesVisibility: PropTypes.func,
-  onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
-  canRemoveSeries: PropTypes.func,
 };
-
-const alwaysTrue = () => true;
 
 const Legend = ({
   className,
@@ -45,9 +41,7 @@ const Legend = ({
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
-  onRemoveSeries,
   isReversed,
-  canRemoveSeries = alwaysTrue,
 }) => {
   const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
 
@@ -79,9 +73,6 @@ const Legend = ({
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
             onToggleSeriesVisibility={onToggleSeriesVisibility}
-            onRemoveSeries={
-              canRemoveSeries(itemIndex) ? onRemoveSeries : undefined
-            }
           />
         );
       })}
@@ -104,7 +95,6 @@ const Legend = ({
                 onHoverChange={onHoverChange}
                 onSelectSeries={onSelectSeries}
                 onToggleSeriesVisibility={onToggleSeriesVisibility}
-                onRemoveSeries={onRemoveSeries}
                 isReversed={isReversed}
               />
             </LegendPopoverContainer>

@@ -31,12 +31,12 @@ H.describeWithSnowplow(
 
           H.uploadFile("#dwh-upload-csv-input", "Our analytics", testFile);
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "csv_upload_clicked",
             triggered_from: "left-nav",
           });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: testFile.valid
               ? "csv_upload_successful"
               : "csv_upload_failed",
@@ -58,7 +58,7 @@ H.describeWithSnowplow(
         cy.visit("/");
         cy.findByTestId("main-navbar-root").findByText("Add database").click();
         cy.location("pathname").should("eq", "/admin/databases/create");
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "database_add_clicked",
           triggered_from: "left-nav",
         });

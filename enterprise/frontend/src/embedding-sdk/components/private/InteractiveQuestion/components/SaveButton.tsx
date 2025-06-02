@@ -1,4 +1,5 @@
 import type { MouseEventHandler } from "react";
+import { t } from "ttag";
 
 import type { ButtonProps } from "embedding-sdk/types/ui";
 import * as Lib from "metabase-lib";
@@ -55,7 +56,7 @@ export const SaveButton = ({
 
   return (
     <ToolbarButton
-      label="Save"
+      label={t`Save`}
       disabled={!isSaveButtonEnabled}
       {...buttonProps}
     />

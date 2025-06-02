@@ -47,7 +47,9 @@ describe("issue 19180", () => {
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
           H.tableInteractive();
-          cy.findByText("Query results will appear here.").should("not.exist");
+          cy.findByText("Here's where your results will appear").should(
+            "not.exist",
+          );
         },
       );
     });
@@ -929,27 +931,22 @@ describe("issue 28971", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/card").as("createCard");
+    cy.intercept("POST", "/api/card").as("createModel");
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should be able to filter a newly created model (metabase#28971)", () => {
-    cy.visit("/");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-    H.popover().findByText("Model").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Use the notebook editor").click();
+    H.startNewModel();
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
-    cy.button("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@createCard");
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    cy.wait("@createModel");
 
     H.filter();
     H.popover().within(() => {
@@ -958,50 +955,12 @@ describe("issue 28971", () => {
       cy.button("Apply filter").click();
     });
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is equal to 20").should("exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 4 rows").should("exist");
-  });
-});
 
-describe("issue 28971", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/card").as("createCard");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should be able to filter a newly created model (metabase#28971)", () => {
-    cy.visit("/");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-    H.popover().findByText("Model").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Use the notebook editor").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
-    });
-    cy.button("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@createCard");
-
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Quantity").click();
-      cy.findByText("20").click();
-      cy.button("Apply filter").click();
-    });
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is equal to 20").should("exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 4 rows").should("exist");
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "Quantity is equal to 20",
+    );
+    cy.findByTestId("question-row-count").should("have.text", "Showing 4 rows");
   });
 });
 
@@ -1373,6 +1332,92 @@ describe("issue 53556 - nested question based on native model with remapped valu
         ["May 2022", "20", "1"],
       ],
     });
+  });
+});
+
+describe("issue 53604 - nested native question with multiple breakouts on same column", () => {
+  const questionDetails = {
+    name: "53604 base",
+    type: "question",
+    native: {
+      query: "select ID, CREATED_AT from ORDERS",
+      "template-tags": {},
+    },
+  };
+
+  function createNestedQuestion({
+    turnIntoModel: shouldTurnIntoModel = false,
+  } = {}) {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      if (shouldTurnIntoModel) {
+        H.visitQuestion(id);
+        turnIntoModel();
+      }
+      H.createQuestion(
+        {
+          type: "question",
+          name: "53604",
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+                { "temporal-unit": "month", "base-type": "type/DateTime" },
+              ],
+              [
+                "field",
+                "CREATED_AT",
+                { "temporal-unit": "year", "base-type": "type/DateTime" },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        {
+          wrapId: true,
+          idAlias: "nestedQuestionId",
+        },
+      );
+    });
+  }
+
+  function testUnderlyingRecordsDrillThru() {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    H.visitQuestion("@nestedQuestionId");
+
+    // We can click on any circle; this index was chosen randomly
+    H.cartesianChartCircle().eq(25).click({ force: true });
+    H.popover()
+      .findByText(/^See these/)
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      "CREATED_AT is May 1–31, 2024",
+    );
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      "CREATED_AT is Jan 1 – Dec 31, 2024",
+    );
+
+    H.assertQueryBuilderRowCount(520);
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Underlying records drill-through should work on nested native question (metabase#53604)", () => {
+    createNestedQuestion();
+    testUnderlyingRecordsDrillThru();
+  });
+
+  it("Underlying records drill-through should work on nested native model (metabase#53604)", () => {
+    createNestedQuestion({ turnIntoModel: true });
+    testUnderlyingRecordsDrillThru();
   });
 });
 

@@ -1259,6 +1259,76 @@ describe("issue 49304", () => {
   });
 });
 
+describe("issue 49305", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be able to use a custom column in sort for a nested query (metabase#49305)", () => {
+    const ccName = "CC Title";
+
+    // This bug does not reproduce if the base question is created via H.createQuestion or H.visitQuestionAdhoc, so create it manually in the UI.
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModalTab("Tables").click();
+    H.entityPickerModalItem(2, "Products").click();
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: 'concat("49305 ", [Title])',
+      name: ccName,
+      allowFastSet: true,
+    });
+    H.popover().button("Done").click();
+    H.saveQuestion(
+      "49305 Base question",
+      { wrapId: true },
+      { tab: "Browse", path: ["Our analytics"], select: true },
+    );
+
+    cy.get("@questionId").then((id) => {
+      const nestedQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [["count"]],
+            breakout: [["field", ccName, { "base-type": "type/Text" }]],
+            limit: 2,
+          },
+          type: "query",
+        },
+      };
+
+      H.visitQuestionAdhoc(nestedQuestion, { mode: "notebook" });
+
+      // Verify that a sort step can be added via the UI. This is the bug we are validating.
+      cy.button("Sort").click();
+      H.popover().contains(ccName).click();
+      H.getNotebookStep("sort").contains(ccName).click();
+
+      H.verifyNotebookQuery("49305 Base question", [
+        {
+          aggregations: ["Count"],
+          breakouts: [ccName],
+          limit: 2,
+          sort: [{ column: ccName, order: "desc" }],
+        },
+      ]);
+
+      H.visualize();
+      cy.findByLabelText("Switch to data").click();
+      H.assertTableData({
+        columns: ["CC Title", "Count"],
+        firstRows: [
+          ["49305 Synergistic Wool Coat", "1"],
+          ["49305 Synergistic Steel Chair", "1"],
+        ],
+      });
+    });
+  });
+});
+
 describe("issue 50925", () => {
   const questionDetails = {
     query: {

@@ -2,9 +2,7 @@ name: Embedding SDK
 
 on:
   push:
-    branches:
-      - "master"
-      - "release-**"
+
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -123,7 +121,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: ${{ job.status == 'failure' }}
-          message: "📝 One or more internal Metabase types were accidentally exported from the `@metabase/embedding‑sdk‑react` package in this pull request.<br/><br/>Publishing these types would change the public API and may drastically change generated SDK documentation.<br/><br/>Please update the code so internal types remain private and the public API stays unchanged."
+          message: "📝 Some exported from `@metabase/embedding-sdk-react` types reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name(s) of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it and a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
           include-log: true
 
   sdk-e2e-tests:
@@ -134,12 +132,14 @@ jobs:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   e2e-component-tests-embedding-sdk-cross-version:
-    if: ${{ startsWith(inputs.branch, 'release-x.') }}
+    # run on: every push on release branches, and every pr that targets a release branch
+    if: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
     secrets: inherit
 
   cross-version-for-breaking-changes:
-    if: github.event_name == 'pull_request' && startsWith(inputs.branch, 'release-x.')
+    # run on: every pr that targets a release branch
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
     uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
     secrets: inherit
     with:

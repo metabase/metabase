@@ -11,7 +11,6 @@
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.util :as u]
    [ring.util.codec :as codec]
@@ -210,11 +209,11 @@
           (testing "sanity check that the file exists in the first place"
             (is (notification.payload/is-cleanable? @f)))
           (testing "the files are cleaned up"
-            (is (not (.exists (.file @f))))))))))
+            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.TempFileStorage @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
-    (mt/with-temporary-setting-values [limit/attachment-row-limit 10]
+    (mt/with-temporary-setting-values [attachment-row-limit 10]
       (notification.tu/with-card-notification [notification {:card     {:dataset_query (mt/mbql-query orders)}
                                                              :handlers [@notification.tu/default-email-handler]}]
 
@@ -572,12 +571,15 @@
      (mt/with-premium-features #{:audit-app}
        (notification.tu/with-card-notification [notification {:handlers [{:channel_type :channel/email,
                                                                           :recipients [{:type :notification-recipient/user
-                                                                                        :user_id (mt/user->id :rasta)}]}]}]
+                                                                                        :user_id (mt/user->id :rasta)}
+                                                                                       {:type :notification-recipient/raw-value
+                                                                                        :details {:value "ngoc@metabase.com"}}]}]}]
          (notification/send-notification! notification :notification/sync? true)
          (is (=? {:topic    :alert-send
                   :user_id  (mt/user->id :crowberto)
                   :model    "Pulse"
                   :model_id (:id notification)
-                  :details  {:recipients [{:id (mt/user->id :rasta)}]
+                  :details  {:recipients [{:id (mt/user->id :rasta)}
+                                          "ngoc@metabase.com"]
                              :filters    nil}}
                  (mt/latest-audit-log-entry :alert-send (:id notification)))))))))

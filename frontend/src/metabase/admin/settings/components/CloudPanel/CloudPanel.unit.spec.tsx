@@ -37,7 +37,7 @@ describe("CloudPanel", () => {
     setupPropertiesEndpoints(createMockSettings());
     fetchMock.post(`path:/api/cloud-migration`, INIT_RESPONSE);
     fetchMock.put(`path:/api/cloud-migration/cancel`, 200);
-    fetchMock.get("path:/api/util/bug_report_details", {
+    fetchMock.get("path:/api/bug-reporting/details", {
       "metabase-info": { "run-mode": "prod" },
     });
   });

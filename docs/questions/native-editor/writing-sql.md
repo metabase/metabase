@@ -101,10 +101,10 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 
 ## Learn more
 
-- [Best practices for writing SQL queries](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-best-practices)
+- [Best practices for writing SQL queries](https://www.metabase.com/learn/sql/working-with-sql/sql-best-practices)
 - [SQL troubleshooting guide][troubleshooting-sql].
 
-[learn-sql]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql
+[learn-sql]: https://www.metabase.com/learn/sql/working-with-sql
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: https://www.metabase.com/glossary/sample_database
 [sql-gloss]: https://www.metabase.com/glossary/sql

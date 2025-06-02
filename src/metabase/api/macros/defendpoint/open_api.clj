@@ -194,11 +194,11 @@
 
 #_:clj-kondo/ignore
 (comment
-  (open-api-spec (metabase.api.macros/ns-routes 'metabase.api.geojson) "/api/geojson")
+  (open-api-spec (metabase.api.macros/ns-routes 'metabase.geojson.api) "/api/geojson")
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"
-   (:form (metabase.api.macros/find-route 'metabase.api.card :get "/:id/series"))
+   (:form (metabase.api.macros/find-route 'metabase.queries.api.card :get "/:id/series"))
 
    (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
        fix-json-schema)))

@@ -1,10 +1,13 @@
-import cx from "classnames";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import {
+  useCreateMembershipMutation,
+  useDeleteMembershipMutation,
+  useUpdateMembershipMutation,
+} from "metabase/api";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
-import CS from "metabase/css/core/index.css";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {
   canEditMembership,
@@ -12,201 +15,101 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
-import { connect } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { getUser } from "metabase/selectors/user";
-import type { Group, Member, User } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { addUndo } from "metabase/redux/undo";
+import { Box } from "metabase/ui";
+import type { Group, Member, Membership, User } from "metabase-types/api";
 
-import {
-  createMembership,
-  deleteMembership,
-  loadMemberships,
-  updateMembership,
-} from "../people";
-import { getGroupMemberships, getMembershipsByUser } from "../selectors";
+import { GroupMembersTable } from "./GroupMembersTable";
 
-import GroupMembersTable from "./GroupMembersTable";
-
-interface GroupDescriptionProps {
+interface GroupDetailProps {
   group: Group;
+  membershipsByUser: Record<User["id"], Membership[]>;
+  currentUser: User;
 }
 
-const GroupDescription = ({ group }: GroupDescriptionProps) =>
-  isDefaultGroup(group) ? (
-    <div className={cx(CS.px2, CS.textMeasure)}>
-      <p>
-        {t`All users belong to the ${getGroupNameLocalized(
-          group,
-        )} group and can't be removed from it. Setting permissions for this group is a great way to
-                make sure you know what new Metabase users will be able to see.`}
-      </p>
-    </div>
-  ) : isAdminGroup(group) ? (
-    <div className={cx(CS.px2, CS.textMeasure)}>
-      <p>
-        {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
-                settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
-      </p>
-      <p>
-        {t`To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.`}
-      </p>
-    </div>
-  ) : null;
-
-interface GroupDetailStateProps {
-  groupMemberships: Member[];
-  membershipsByUser: Record<User["id"], Member[]>;
-  currentUser: User | null;
-}
-
-interface GroupDetailOwnProps {
-  group: Group;
-  users: User[];
-}
-
-const mapStateToProps = (
-  state: State,
-  props: GroupDetailOwnProps,
-): GroupDetailStateProps => ({
-  // @ts-expect-error -- .js file imports with wrong type here, not worth fixing as we should just move to RTKQuery
-  groupMemberships: getGroupMemberships(state, props),
-  membershipsByUser: getMembershipsByUser(state),
-  currentUser: getUser(state),
-});
-
-interface GroupDetailDispatchProps {
-  createMembership: (membership: { groupId: number; userId: number }) => void;
-  updateMembership: (membership: Member) => void;
-  deleteMembership: (membershipId: number) => void;
-  loadMemberships: () => void;
-  confirmDeleteMembershipAction: (
-    membershipId: number,
-    userMemberships: Member[],
-  ) => void;
-  confirmUpdateMembershipAction: (
-    membership: Member,
-    userMemberships: Member[],
-  ) => void;
-}
-
-const mapDispatchToProps: GroupDetailDispatchProps = {
-  createMembership,
-  deleteMembership,
-  updateMembership,
-  loadMemberships,
-  confirmDeleteMembershipAction: (membershipId, userMemberships) =>
-    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
-      membershipId,
-      userMemberships,
-    ),
-  confirmUpdateMembershipAction: (membership, userMemberships) =>
-    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
-      membership,
-      userMemberships,
-    ),
-};
-
-type GroupDetailProps = GroupDetailStateProps &
-  GroupDetailOwnProps &
-  GroupDetailDispatchProps;
-
-const GroupDetailInner = ({
-  currentUser,
-  group,
-  users,
+export const GroupDetail = ({
   membershipsByUser,
-  groupMemberships,
-  createMembership,
-  updateMembership,
-  deleteMembership,
-  loadMemberships,
-  confirmDeleteMembershipAction,
-  confirmUpdateMembershipAction,
+  group,
+  currentUser,
 }: GroupDetailProps) => {
+  const dispatch = useDispatch();
+
+  const [createMembership] = useCreateMembershipMutation();
+  const [updateMembership] = useUpdateMembershipMutation();
+  const [deleteMembership] = useDeleteMembershipMutation();
+
   const { modalContent, show } = useConfirmation();
   const [addUserVisible, setAddUserVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadMemberships();
-  }, [loadMemberships]);
-
-  const alert = (message: string | null) => setAlertMessage(message);
-
   const onAddUsersClicked = () => setAddUserVisible(true);
-
   const onAddUserCanceled = () => setAddUserVisible(false);
-
   const onAddUserDone = async (userIds: number[]) => {
     setAddUserVisible(false);
     try {
       await Promise.all(
-        userIds.map(async (userId) => {
-          await createMembership({
-            groupId: group.id,
-            userId,
-          });
-        }),
+        userIds.map((userId) =>
+          createMembership({ group_id: group.id, user_id: userId }).unwrap(),
+        ),
       );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      alert(errorMessage);
+      setAlertMessage(errorMessage);
     }
   };
 
   const handleChange = async (membership: Member) => {
-    if (!currentUser) {
-      throw new Error("currentUser is not defined");
-      return;
-    }
-
     const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
       currentUser,
       membership,
     );
 
-    if (!confirmation) {
-      return await updateMembership(membership);
+    if (confirmation) {
+      show({
+        ...confirmation,
+        onConfirm: () =>
+          dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+              membership,
+              membershipsByUser[currentUser.id],
+            ),
+          ),
+      });
+    } else {
+      const { error } = await updateMembership(membership);
+      if (error) {
+        dispatch(addUndo({ message: t`Failed to update user` }));
+      }
     }
-
-    show({
-      ...confirmation,
-      title: confirmation.title ?? "",
-      onConfirm: () =>
-        confirmUpdateMembershipAction(
-          membership,
-          membershipsByUser[currentUser.id],
-        ),
-    });
   };
 
-  const handleRemove = async (membershipId: number) => {
-    if (!currentUser) {
-      throw new Error("currentUser is not defined");
-      return;
-    }
-
+  const handleRemove = async (membership: Membership) => {
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
       currentUser,
       membershipsByUser[currentUser.id],
-      membershipId,
+      membership.membership_id,
     );
 
-    if (!confirmation) {
-      return await deleteMembership(membershipId);
+    if (confirmation) {
+      show({
+        ...confirmation,
+        onConfirm: () =>
+          dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+              membership,
+              membershipsByUser[currentUser.id],
+            ),
+          ),
+      });
+    } else {
+      const { error } = await deleteMembership(membership);
+      if (error) {
+        dispatch(addUndo({ message: t`Failed to remove user from group` }));
+      }
     }
-
-    show({
-      ...confirmation,
-      title: confirmation.title ?? "",
-      onConfirm: () =>
-        confirmDeleteMembershipAction(
-          membershipId,
-          membershipsByUser[currentUser.id],
-        ),
-    });
   };
 
   return (
@@ -214,13 +117,13 @@ const GroupDetailInner = ({
       title={
         <Fragment>
           {getGroupNameLocalized(group ?? {})}
-          <span className={cx(CS.textLight, CS.ml1)}>
+          <Box component="span" c="text-light" ms="sm">
             {ngettext(
               msgid`${group.members.length} member`,
               `${group.members.length} members`,
               group.members.length,
             )}
-          </span>
+          </Box>
         </Fragment>
       }
       buttonText={t`Add members`}
@@ -229,24 +132,46 @@ const GroupDetailInner = ({
     >
       <GroupDescription group={group} />
       <GroupMembersTable
-        groupMemberships={groupMemberships}
-        membershipsByUser={membershipsByUser}
-        currentUser={currentUser}
         group={group}
-        users={users}
         showAddUser={addUserVisible}
         onAddUserCancel={onAddUserCanceled}
         onAddUserDone={onAddUserDone}
         onMembershipRemove={handleRemove}
         onMembershipUpdate={handleChange}
       />
-      <Alert message={alertMessage} onClose={() => alert(null)} />
+      <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
       {modalContent}
     </AdminPaneLayout>
   );
 };
 
-export const GroupDetail = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(GroupDetailInner);
+const GroupDescription = ({ group }: { group: Group }) => {
+  if (isDefaultGroup(group)) {
+    return (
+      <Box maw="38rem" px="1rem">
+        <p>
+          {t`All users belong to the ${getGroupNameLocalized(
+            group,
+          )} group and can't be removed from it. Setting permissions for this group is a great way to
+        make sure you know what new Metabase users will be able to see.`}
+        </p>
+      </Box>
+    );
+  }
+
+  if (isAdminGroup(group)) {
+    return (
+      <Box maw="38rem" px="1rem">
+        <p>
+          {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
+        settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
+        </p>
+        <p>
+          {t`To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.`}
+        </p>
+      </Box>
+    );
+  }
+
+  return null;
+};

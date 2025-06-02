@@ -1,6 +1,14 @@
-import fetchMock from "fetch-mock";
+import fetchMock, {
+  type MockResponse,
+  type MockResponseFunction,
+} from "fetch-mock";
 
-import type { CardId, CollectionId, DashboardId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  DashboardId,
+  User,
+} from "metabase-types/api";
 
 interface AuditInfo {
   dashboard_overview: DashboardId;
@@ -14,10 +22,20 @@ export const defaultAuditInfo: AuditInfo = {
   custom_reports: 203,
 };
 
-export const setupAuditEndpoints = ({
+export const setupAuditInfoEndpoint = ({
   auditInfo = defaultAuditInfo,
 }: {
   auditInfo?: AuditInfo;
 } = {}) => {
   fetchMock.get("path:/api/ee/audit-app/user/audit-info", auditInfo);
+};
+
+export const setupAuditUnsubscribeEndpoint = (
+  userId: User["id"],
+  response?: MockResponse | MockResponseFunction,
+) => {
+  fetchMock.delete(
+    `path:/api/ee/audit-app/user/${userId}/subscriptions`,
+    response ?? 200,
+  );
 };

@@ -41,7 +41,7 @@ const setup = async (
 
   renderWithProviders(<FontWidget />);
   await screen.findByText("Font");
-  await waitFor(async () => {
+  return waitFor(async () => {
     const gets = await findRequests("GET");
     expect(gets).toHaveLength(2);
   });
@@ -260,7 +260,8 @@ describe("FontWidget", () => {
 });
 
 async function clickSelect(from: string, to: string) {
-  const input = (await screen.findAllByDisplayValue(from))[0];
+  const input = await screen.findByRole("textbox", { name: "Font" });
+  expect(input).toHaveValue(from);
   await userEvent.click(input);
   const option = await screen.findByText(to);
   return userEvent.click(option);

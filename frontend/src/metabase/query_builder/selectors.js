@@ -61,6 +61,8 @@ export const getIsShowingSnippetSidebar = (state) =>
   getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = (state) =>
   getUiControls(state).isShowingDataReference;
+export const getHighlightedNativeQueryLineNumbers = (state) =>
+  getUiControls(state).highlightedNativeQueryLineNumbers;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
@@ -72,6 +74,7 @@ const SIDEBARS = [
   "isShowingChartTypeSidebar",
   "isShowingChartSettingsSidebar",
   "isShowingTimelineSidebar",
+  "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
 
@@ -278,7 +281,7 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getQuestionWithParameters = createSelector(
+export const getQuestionWithoutComposing = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) => {
     if (!card || !metadata) {
@@ -289,7 +292,7 @@ export const getQuestionWithParameters = createSelector(
 );
 
 export const getQuestion = createSelector(
-  [getQuestionWithParameters, getQueryBuilderMode],
+  [getQuestionWithoutComposing, getQueryBuilderMode],
   (question, queryBuilderMode) => {
     if (!question) {
       return;
@@ -670,15 +673,10 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [
-    getQuestion,
-    getFirstQueryResult,
-    getLastRunDatasetQuery,
-    getIsShowingRawTable,
-  ],
-  (question, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+  [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
+  (card, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
     const rawSeries = createRawSeries({
-      question,
+      card,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
@@ -756,6 +754,11 @@ export const getNativeEditorSelectedRange = createSelector(
 const getNativeEditorSelectedRanges = createSelector(
   [getUiControls],
   (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
+);
+
+export const getIsNativeQueryFixApplied = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls && uiControls.isNativeQueryFixApplied,
 );
 
 export const getIsTimeseries = createSelector(
@@ -1070,7 +1073,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
 
 export const getSubmittableQuestion = (state, question) => {
   const rawSeries = createRawSeries({
-    question: getQuestion(state),
+    card: getCard(state),
     queryResult: getFirstQueryResult(state),
     datasetQuery: getLastRunDatasetQuery(state),
   });

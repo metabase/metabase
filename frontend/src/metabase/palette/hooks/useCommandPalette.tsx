@@ -16,7 +16,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_METABOT } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -123,6 +123,9 @@ export const useCommandPalette = ({
     docsAction,
     showDocsAction,
   ]);
+
+  const metabotActions = PLUGIN_METABOT.useMetabotPalletteActions(trimmedQuery);
+  useRegisterActions(metabotActions, [metabotActions]);
 
   const searchResultActions = useMemo<PaletteAction[]>(() => {
     const searchLocation = {

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { Box, Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
@@ -26,7 +27,7 @@ export const PreviewSection = ({
 }: Props) => {
   return (
     <Card bg="white" h="100%" px="lg" py="md" shadow="xs">
-      <Text fw="bold">Field preview</Text>
+      <Text fw="bold">{t`Field preview`}</Text>
       <PreviewTypeSelector value={previewType} onChange={onPreviewTypeChange} />
 
       {previewType === "table" && (

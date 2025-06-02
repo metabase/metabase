@@ -1,6 +1,9 @@
 export * from "./actions";
 export * from "./activity";
 export * from "./admin";
+export * from "./ai-sql-fixer";
+export * from "./ai-sql-generation";
+export * from "./ai-entity-analysis";
 export * from "./alert";
 export * from "./autocomplete";
 export * from "./automagic-dashboards";
@@ -47,6 +50,7 @@ export * from "./user";
 export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
+export * from "./visualizer";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

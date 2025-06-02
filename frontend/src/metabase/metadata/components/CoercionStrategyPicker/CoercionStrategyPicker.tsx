@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { coercions_for_type } from "cljs/metabase.types";
+import { coercions_for_type } from "cljs/metabase.types.core";
 import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
