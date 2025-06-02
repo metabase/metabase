@@ -37,12 +37,26 @@ For Node.js, we recommend jsonwebtoken:
 npm install jsonwebtoken --save
 ```
 
-Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that generates a JWT for the authenticated user using your Metabase JWT shared secret. This endpoint should return a JSON object with the JWT in the format `{ jwt: "{YOUR_GENERATED_JWT}" }`. It should not redirect or perform any other actions. If you are using the same endpoint for both interactive embedding (which might involve redirects) and SDK embedding, you will need to detect SDK requests (e.g., by checking a header) and return the JSON object only for those requests.
+Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that generates a JWT for the authenticated user using your Metabase JWT shared secret. **This endpoint must return a JSON object with a `jwt` property containing the signed JWT.** For example: `{ "jwt": "your-signed-jwt" }`. It should not redirect or perform any other actions.
 
-This example code for Node.js sets up such an endpoint using Express:
+See the examples below for how this endpoint can be structured:
+
+This example code for Node.js sets up such an endpoint using Express (included below):
 
 ```js
 {% include_file "{{ dirname }}/snippets/authentication/express-server.ts" %}
+```
+
+Example using Next.js App Router (included below):
+
+```typescript
+{% include_file "{{ dirname }}/snippets/next-js/app-router-authentication-api-route.ts" %}
+```
+
+Example using Next.js Pages Router (included below):
+
+```typescript
+{% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" %}
 ```
 
 ### Handling Interactive and SDK Embedding on the Same Endpoint
