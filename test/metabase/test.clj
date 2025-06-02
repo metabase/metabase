@@ -4,6 +4,7 @@
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
   (:require
+   [clojure.test]
    [humane-are.core :as humane-are]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
@@ -41,6 +42,7 @@
    [metabase.test.util.misc :as tu.misc]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util.log :as log]
    [metabase.util.log.capture]
    [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
@@ -351,3 +353,12 @@
 (alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
   it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
   global state of the application database.")
+
+(def ^:private original-test-var clojure.test/test-var)
+
+(defn- test-var-with-context [v]
+  (let [test-n (-> v meta :name)]
+    (log/with-context {:test test-n}
+      (original-test-var v))))
+
+(alter-var-root #'clojure.test/test-var (constantly test-var-with-context))

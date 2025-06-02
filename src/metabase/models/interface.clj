@@ -28,6 +28,7 @@
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
@@ -835,3 +836,11 @@
 (defmethod exclude-internal-content-hsql :default
   [_model & _]
   [:= [:inline 1] [:inline 1]])
+
+(methodical/defmethod t2.pipeline/compile
+  [:default
+   :metabase/model
+   clojure.lang.IPersistentMap]
+  [query-type model query]
+  (log/info query-type model query)
+  (next-method query-type model query))
