@@ -6,13 +6,12 @@ import {
   useListDatabaseSchemasQuery,
 } from "metabase/api";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { Flex, Group, Icon } from "metabase/ui";
+import { Flex, Group, type GroupProps, Icon } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 import S from "./TableBreadcrumbs.module.css";
 
-interface Props {
-  className?: string;
+interface Props extends GroupProps {
   hideIcons?: boolean;
   hideTableName?: boolean;
   tableId: TableId;
@@ -23,6 +22,7 @@ export const TableBreadcrumbs = ({
   hideIcons,
   hideTableName,
   tableId,
+  ...props
 }: Props) => {
   const { data: table } = useGetTableQuery({ id: tableId });
 
@@ -41,6 +41,7 @@ export const TableBreadcrumbs = ({
       className={cx(S.breadcrumbs, className)}
       gap={hideIcons ? "xs" : "sm"}
       wrap="nowrap"
+      {...props}
     >
       <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
         {!hideIcons && (

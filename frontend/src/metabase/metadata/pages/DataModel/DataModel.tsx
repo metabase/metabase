@@ -9,7 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Flex, Stack, rem } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Stack, Tooltip, rem } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
@@ -90,13 +90,21 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
     <Stack gap={0} h="100%">
       {tableId && (
         <Flex
+          align="center"
           bg="white"
           className={S.borderBottom}
           flex="0 0 auto"
+          gap="lg"
           px="xl"
           py="md"
         >
-          <TableBreadcrumbs hideIcons tableId={tableId} />
+          <Tooltip label={t`Open sidebar`}>
+            <ActionIcon c="text-dark" variant="transparent">
+              <Icon name="sidebar_closed" />
+            </ActionIcon>
+          </Tooltip>
+
+          <TableBreadcrumbs c="text-secondary" hideIcons tableId={tableId} />
         </Flex>
       )}
 
