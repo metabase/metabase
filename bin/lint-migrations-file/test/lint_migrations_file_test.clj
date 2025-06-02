@@ -37,13 +37,16 @@
    {:databaseChangeLog changes}
    file))
 
+(defn- get-001-update-migrations-file []
+  (first (filter #(str/ends-with? "001_update_migrations.yaml" (.getName %)) (#'lint-migrations-file/migration-files))))
+
 (defn- validate [& changes]
   (#'lint-migrations-file/validate-migrations
    {:databaseChangeLog changes}
-   (first (filter #(str/ends-with? "001_update_migrations.yaml" (.getName %)) (#'lint-migrations-file/migration-files)))))
+   (get-001-update-migrations-file)))
 
 (defn- validate-ex-info [& changes]
-  (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes} (last (#'lint-migrations-file/migration-files)))
+  (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes} (get-001-update-migrations-file))
        (catch Exception e (ex-data e))))
 
 (defmacro is-thrown-with-error-info? [msg info & body]
@@ -327,7 +330,6 @@
                             (some (fn [problem]
                                     (when (= (:val problem) bad-value)
                                       problem))))]
-        (is (= {} ex-info))
         (is (not= :ok ex-info))
         (is (= [:change.strict/customChange :custom-change/class]
                (take-last 2 (:via specific))))))))
