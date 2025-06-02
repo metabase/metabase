@@ -403,9 +403,9 @@ function setDashboardEndpoints(prefix) {
   );
 }
 
-function setContentTranslationEndpoints(prefix) {
+function setContentTranslationEndpoints(url) {
   if (PLUGIN_CONTENT_TRANSLATION.isEnabled) {
-    PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = prefix;
+    PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = url;
   }
 }
 
