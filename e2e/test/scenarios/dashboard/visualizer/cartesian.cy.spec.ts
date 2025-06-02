@@ -47,7 +47,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
       idAlias: "productsCountByCreatedAtAndCategoryQuestionId",
-      entityIdAlias: "productsCountByCreatedAtAndCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
@@ -97,7 +96,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       // Ensure the chart legend contains original series name
       H.chartLegend().within(() => {
-        cy.findByText("Count (Products by Created At (Month))").should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       });
 
       // Edit series settings
@@ -124,9 +123,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       // Ensure the chart legend contains renamed series
       H.chartLegend().within(() => {
         cy.findByText("Series B").should("exist");
-        cy.findByText("Count (Products by Created At (Month))").should(
-          "not.exist",
-        );
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
       });
       H.chartPathWithFillColor("#DCDFE0");
     };
@@ -197,13 +194,17 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
 
     H.saveDashcardVisualizerModal("create");
+    // Wait for card queries before saving the dashboard
+    H.getDashboardCard(0).within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findByText("Created At: Month").should("exist");
+    });
+
     H.saveDashboard();
 
-    // Making sure the card renders
+    // Making sure the card renders after saving the dashboard
     H.getDashboardCard(0).within(() => {
-      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
-        "exist",
-      );
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
   });

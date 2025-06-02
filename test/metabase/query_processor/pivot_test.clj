@@ -47,7 +47,7 @@
             [0 1]
             [0]
             []]
-           (#'qp.pivot/breakout-combinations 3 [0 1 2] [])))))
+           (#'qp.pivot/breakout-combinations 3 [0 1 2] [] true true)))))
 
 (deftest ^:parallel breakout-combinations-test-2
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -67,7 +67,7 @@
              [3]
              ;; bottom right corner
              []])
-           (#'qp.pivot/breakout-combinations 4 [0 1 2] [3])))))
+           (#'qp.pivot/breakout-combinations 4 [0 1 2] [3] true true)))))
 
 (deftest ^:parallel breakout-combinations-test-3
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -80,24 +80,39 @@
               [1]
               [0]
               []]
-             (#'qp.pivot/breakout-combinations 3 [] []))))))
+             (#'qp.pivot/breakout-combinations 3 [] [] true true))))))
+
+(deftest ^:parallel breakout-combinations-test-row-totals-disabled
+  (testing "Should return the correct combos when row totals are disabled but column totals are enabled"
+    (is (= [[0 1] [0]]
+           (#'qp.pivot/breakout-combinations 2 [1] [0] false true)))))
+
+(deftest ^:parallel breakout-combinations-test-col-totals-disabled
+  (testing "Should return the correct combos when column totals are disabled but row totals are enabled"
+    (is (= [[0 1] [1]]
+           (#'qp.pivot/breakout-combinations 2 [1] [0] true false)))))
+
+(deftest ^:parallel breakout-combinations-test-row-col-totals-disabled
+  (testing "Should return only the main query when both row and column totals are disabled"
+    (is (= [[0 1]]
+           (#'qp.pivot/breakout-combinations 2 [1] [0] false false)))))
 
 (deftest ^:parallel breakout-combinations-test-4
   (testing "The breakouts are sorted ascending."
     (is (= [[0 1 2] [1 2] [2] [0 1] [1] []]
-           (#'qp.pivot/breakout-combinations 3 [1 0] [2])))))
+           (#'qp.pivot/breakout-combinations 3 [1 0] [2] true true)))))
 
 (deftest ^:parallel validate-pivot-rows-cols-test
   (testing "Should throw an Exception if you pass in invalid pivot-rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [0 1 2 3] []))))
+         (#'qp.pivot/breakout-combinations 3 [0 1 2 3] [] true true))))
   (testing "Should throw an Exception if you pass in invalid pivot-cols"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3])))))
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
   ;; TODO -- we should require these columns to be distinct as well (I think?)
   ;; TODO -- require all numbers to be positive
   ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
@@ -189,13 +204,16 @@
     (let [query         (api.pivots/pivot-query false)
           viz-settings  (:visualization_settings (api.pivots/pivot-card))
           pivot-options {:pivot-rows [1 0], :pivot-cols [2] :pivot-measures nil :column-sort-order {}}]
-      (is (= pivot-options
-             (#'qp.pivot/pivot-options query viz-settings)))
+      (let [actual-pivot-options (#'qp.pivot/pivot-options query viz-settings)]
+        (is (= (assoc pivot-options :show-row-totals true :show-column-totals true)
+               actual-pivot-options)))
       (are [num-breakouts expected] (= expected
                                        (#'qp.pivot/breakout-combinations
                                         num-breakouts
                                         (:pivot-rows pivot-options)
-                                        (:pivot-cols pivot-options)))
+                                        (:pivot-cols pivot-options)
+                                        true
+                                        true))
         3 [[0 1 2]   [1 2] [2] [0 1] [1] []]
         4 [[0 1 2 3] [1 2] [2] [0 1] [1] []]))))
 
@@ -211,10 +229,15 @@
                          {:rows    ["ID"]
                           :columns ["RATING"]}}
           pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-      (is (= {:pivot-rows [], :pivot-cols [] :pivot-measures nil :column-sort-order {}}
+      (is (= {:pivot-rows [], :pivot-cols [] :pivot-measures nil :column-sort-order {},
+              :show-row-totals true, :show-column-totals true}
              pivot-options))
       (is (= [[0 1] [1] [0] []]
-             (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options)))))))
+             (#'qp.pivot/breakout-combinations 2
+                                               (:pivot-rows pivot-options)
+                                               (:pivot-cols pivot-options)
+                                               (:show-row-totals pivot-options)
+                                               (:show-column-totals pivot-options)))))))
 
 (deftest ^:parallel nested-question-pivot-options-test
   (testing "#35025"
@@ -238,10 +261,15 @@
                                {:rows    ["CATEGORY"]
                                 :columns ["CREATED_AT"]}}
                 pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-            (is (= {:pivot-rows [0], :pivot-cols [1] :pivot-measures nil :column-sort-order {}}
+            (is (= {:pivot-rows [0], :pivot-cols [1] :pivot-measures nil :column-sort-order {},
+                    :show-row-totals true, :show-column-totals true}
                    pivot-options))
             (is (= [[0 1] [1] [0] []]
-                   (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
+                   (#'qp.pivot/breakout-combinations 2
+                                                     (:pivot-rows pivot-options)
+                                                     (:pivot-cols pivot-options)
+                                                     (:show-row-totals pivot-options)
+                                                     (:show-column-totals pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156
                      :data {:cols [{:ident (get-in query [:query :breakout-idents 0])}
@@ -727,5 +755,6 @@
                         :table.column_formatting []
                         :table.columns nil}]
       ;; Without deduplication, :pivot-rows' value would be just [0].
-      (is (= {:pivot-rows [0 1], :pivot-cols nil, :pivot-measures [2]}
+      (is (= {:pivot-rows [0 1], :pivot-cols nil, :pivot-measures [2],
+              :show-row-totals true, :show-column-totals true}
              (#'qp.pivot/column-name-pivot-options query viz-settings))))))

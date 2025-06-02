@@ -2,8 +2,8 @@
   "/api/task endpoints"
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.permissions.validation :as validation]
    [metabase.request.core :as request]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task.core :as task]
