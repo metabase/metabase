@@ -46,24 +46,26 @@ export const FkTargetPicker = ({
         data.map((option) => [option.value, option]),
       );
 
-      return { comparableIdFields, hasIdFields, data, optionsByFieldId };
+      return { comparableIdFields, data, hasIdFields, optionsByFieldId };
     }, [field, idFields]);
 
   const getFieldFromValue = (fieldId: string | null) => {
     if (fieldId == null) {
       return null;
     }
+
     const option = optionsByFieldId[fieldId];
     return option?.field;
   };
 
   const getFieldIdFromValue = (fieldId: string | null): FieldId => {
     const field = getFieldFromValue(fieldId);
-    if (field?.id === undefined || typeof field.id === "object") {
-      // this code is unreachable since we don't expect field references here
+
+    if (!field) {
       throw new Error("unreachable");
     }
-    return field.id;
+
+    return getRawTableFieldId(field);
   };
 
   const handleChange = (value: string) => {
@@ -96,6 +98,7 @@ export const FkTargetPicker = ({
           }
 
           const field = getFieldFromValue(option.value);
+
           if (!field) {
             return false;
           }

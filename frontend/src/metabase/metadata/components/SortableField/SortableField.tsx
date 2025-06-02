@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Link } from "react-router";
 
 import { Sortable } from "metabase/core/components/Sortable";
-import { Flex, Group, Icon, type IconName, Text } from "metabase/ui";
+import { Flex, Group, Icon, type IconName, Text, rem } from "metabase/ui";
 
 import S from "./SortableField.module.css";
 
@@ -36,6 +36,7 @@ export const SortableField = ({
       <Flex
         align="center"
         aria-label={label}
+        bg="bg-white"
         c="text-medium"
         className={cx(S.content, {
           [S.active]: active,
@@ -44,12 +45,11 @@ export const SortableField = ({
         component={href ? Link : undefined}
         draggable={draggable}
         gap="md"
-        mih={40}
+        mih={rem(40)}
         pos="relative"
         px="sm"
         py="xs"
         role="listitem"
-        bg="bg-white"
         // "to" prop should be undefined when Link component is not used.
         // Types do not account for conditional Link usage, hence cast.
         to={href ? href : (undefined as unknown as string)}

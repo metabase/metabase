@@ -1,22 +1,13 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import type { Dataset } from "metabase-types/api";
 
-export type PreviewType = ReturnType<
-  typeof getTypeSelectorData
->[number]["value"];
-
-export function getTypeSelectorData() {
+export function getPreviewTypeData() {
   return [
     { label: t`Table`, value: "table" as const },
     { label: t`Detail`, value: "detail" as const },
     { label: t`Filtering`, value: "filtering" as const },
   ];
-}
-
-export function usePreviewType() {
-  return useState<PreviewType>("table");
 }
 
 export function getErrorMessage(data: Dataset): string {

@@ -4,69 +4,61 @@ import { t } from "ttag";
 import { Box, Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
 
-import { ObjectDetailPreview } from "./ObjectDetail";
+import { ObjectDetailPreview } from "./ObjectDetailPreview";
 import { TablePreview } from "./TablePreview";
-import { type PreviewType, getTypeSelectorData } from "./utils";
+import type { PreviewType } from "./types";
+import { getPreviewTypeData } from "./utils";
 
 interface Props {
   databaseId: DatabaseId;
-  tableId: TableId;
-  fieldId: FieldId;
   field: Field;
+  fieldId: FieldId;
   previewType: PreviewType;
+  tableId: TableId;
   onPreviewTypeChange: (value: PreviewType) => void;
 }
 
 export const PreviewSection = ({
   databaseId,
-  tableId,
-  fieldId,
   field,
+  fieldId,
   previewType,
+  tableId,
   onPreviewTypeChange,
 }: Props) => {
+  const data = useMemo(() => getPreviewTypeData(), []);
+
   return (
     <Card bg="white" h="100%" px="lg" py="md" shadow="xs">
       <Text fw="bold">{t`Field preview`}</Text>
-      <PreviewTypeSelector value={previewType} onChange={onPreviewTypeChange} />
+
+      <Flex py="sm" w="100%">
+        <SegmentedControl
+          data={data}
+          value={previewType}
+          w="100%"
+          onChange={onPreviewTypeChange}
+        />
+      </Flex>
 
       {previewType === "table" && (
         <TablePreview
           databaseId={databaseId}
-          tableId={tableId}
-          fieldId={fieldId}
           field={field}
+          fieldId={fieldId}
+          tableId={tableId}
         />
       )}
+
       {previewType === "detail" && (
         <ObjectDetailPreview
           databaseId={databaseId}
-          tableId={tableId}
           fieldId={fieldId}
+          tableId={tableId}
         />
       )}
+
       {previewType === "filtering" && <Box>FILTERING</Box>}
     </Card>
   );
 };
-
-function PreviewTypeSelector({
-  value,
-  onChange,
-}: {
-  value: PreviewType;
-  onChange: (value: PreviewType) => void;
-}) {
-  const data = useMemo(getTypeSelectorData, []);
-
-  return (
-    <Flex py="sm" w="100%">
-      <SegmentedControl
-        data={data}
-        value={value}
-        onChange={onChange}
-        w="100%"
-      />
-    </Flex>
-  );
-}

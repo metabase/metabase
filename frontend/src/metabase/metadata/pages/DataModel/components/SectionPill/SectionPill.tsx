@@ -1,4 +1,4 @@
-import { Flex, Text } from "metabase/ui";
+import { Flex, Text, rem } from "metabase/ui";
 
 import S from "./SectionPill.module.css";
 
@@ -15,7 +15,7 @@ export const SectionPill = ({ title }: Props) => {
       display="inline-flex"
       gap="sm"
       px="sm"
-      py={6}
+      py={rem(6)}
     >
       <Text c="text-primary" size="sm">
         {title}

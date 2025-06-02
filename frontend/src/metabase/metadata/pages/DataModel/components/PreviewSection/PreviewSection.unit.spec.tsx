@@ -1,19 +1,20 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockField } from "metabase-types/api/mocks";
 
 import { PreviewSection } from "./PreviewSection";
-import { type PreviewType, usePreviewType } from "./utils";
+import type { PreviewType } from "./types";
 
 const field = createMockField();
 
-function Wrapper({
+function TestComponent({
   onPreviewTypeChange,
 }: {
   onPreviewTypeChange: (value: PreviewType) => void;
 }) {
-  const [previewType, setPreviewType] = usePreviewType();
+  const [previewType, setPreviewType] = useState<PreviewType>("table");
 
   function handlePreviewTypeChange(previewType: PreviewType) {
     onPreviewTypeChange(previewType);
@@ -23,10 +24,10 @@ function Wrapper({
   return (
     <PreviewSection
       databaseId={1}
-      tableId={field.table_id}
-      fieldId={16}
       field={field}
+      fieldId={16}
       previewType={previewType}
+      tableId={field.table_id}
       onPreviewTypeChange={handlePreviewTypeChange}
     />
   );
@@ -35,7 +36,9 @@ function Wrapper({
 function setup() {
   const onPreviewTypeChange = jest.fn();
 
-  renderWithProviders(<Wrapper onPreviewTypeChange={onPreviewTypeChange} />);
+  renderWithProviders(
+    <TestComponent onPreviewTypeChange={onPreviewTypeChange} />,
+  );
 
   return { onPreviewTypeChange };
 }
