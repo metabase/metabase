@@ -1756,17 +1756,17 @@
                 [:total :data])))))))
 
 (deftest ^:synchronized multiple-limits
-  (search.tu/with-sync-search-indexing
-    (search/init-index!)
-    (testing "Multiple `limit` query args should be handled correctly (#45345)"
-      (is (= {} (mt/user-real-request :crowberto :get 500 "search?q=product")))
-      ;; This test is failing with "no index" for some reason, forcing the reindex
-      (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                            :data count)
-            result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                             :data count)]
-        (is (>= total-count result-count))
-        (is (= 1 result-count))))))
+  (when (search/supports-index?)
+    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
+  (testing "Multiple `limit` query args should be handled correctly (#45345)"
+    (is (= {} (mt/user-real-request :crowberto :get 500 "search?q=product")))
+    ;; This test is failing with "no index" for some reason, forcing the reindex
+    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+                          :data count)
+          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
+                           :data count)]
+      (is (>= total-count result-count))
+      (is (= 1 result-count)))))
 
 (deftest ^:synchronized include-metadata
   (testing "Include card result_metadata if include-metadata is set"
