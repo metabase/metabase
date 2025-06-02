@@ -844,6 +844,17 @@
   {:query native-form
    :dry-run-stats {}})
 
+(defmulti table-preview
+  "Method to get a table preview"
+  {:added "0.55.0", :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-preview ::driver
+  [_driver database table]
+  {:table table
+   :table-preview {}})
+
 (def ^:dynamic ^{:added "0.51.0"} *compile-with-inline-parameters*
   "Whether to compile an MBQL query to native with parameters spliced inline (as opposed to using placeholders like `?`
   and passing the parameters separately.) Normally we want to pass parameters separately to protect against SQL

@@ -627,6 +627,22 @@
                           (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn))]
     (respond cols results)))
 
+(defn table-preview
+  [^BigQuery client dataset table]
+  (let [table-id (TableId/of dataset table)
+        result (.listTableData client table-id (u/varargs BigQuery$TableDataListOption
+                                                 [(BigQuery$TableDataListOption/pageSize 10)]))
+        rows (mapv (fn [row] (mapv #(.getValue %) row)) (take 10 (.iterateAll result)))]
+    {:data {:rows rows}}))
+
+(defmethod driver/table-preview :bigquery-cloud-sdk
+  [_driver database table]
+  (let [database-details (:details database)
+        ^BigQuery client (database-details->client database-details)
+        dataset-id (:schema table)
+        table-id (:name table)]
+    (table-preview client dataset-id table-id)))
+
 (defn- execute-bigquery
   [respond database-details ^String sql parameters cancel-chan]
   {:pre [(not (str/blank? sql))]}
@@ -657,7 +673,7 @@
                            (throw (ex-info "Null response from query" {})))
                          (catch Throwable t
                            (deliver result-promise [:error t]))))]
-    (dry-run-estimate-bytes-processed client sql parameters)
+    #_(dry-run-estimate-bytes-processed client sql parameters)
     ;; This `go` is responsible for cancelling the *initial* .query call.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
