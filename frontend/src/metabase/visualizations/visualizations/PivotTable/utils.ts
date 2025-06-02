@@ -10,8 +10,8 @@ import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pi
 import type {
   ColumnNameColumnSplitSetting,
   DatasetColumn,
-  DatasetData,
   PivotTableColumnSplitSetting,
+  RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -224,13 +224,15 @@ export function isSensible({ cols }: { cols: DatasetColumn[] }) {
 }
 
 export function checkRenderable(
-  [{ data }]: [{ data: DatasetData }],
-  settings: VisualizationSettings,
+  [{ data, card }]: RawSeries,
+  _settings: VisualizationSettings,
   query?: NativeQuery | null,
 ) {
-  if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
+  const isNative = card.dataset_query.type === "native";
+  if (!isNative && (data.cols.length < 2 || !data.cols.every(isColumnValid))) {
     throw new Error(t`Pivot tables can only be used with aggregated queries.`);
   }
+  // query seems to always be undefined here — is this check broken?
   if (!databaseSupportsPivotTables(query)) {
     throw new Error(t`This database does not support pivot tables.`);
   }
