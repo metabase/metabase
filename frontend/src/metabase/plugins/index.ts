@@ -86,16 +86,10 @@ import type {
 import type {
   AdminPath,
   AdminPathKey,
-  Dispatch,
   State,
+  Dispatch as ReduxDispatch,
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
-import type {
-  AdminPathKey,
-  Dispatch as ReduxDispatch,
-  State,
-} from "metabase-types/store";
 
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
