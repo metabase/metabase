@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { type ReactNode, useLayoutEffect, useState } from "react";
+import { push } from "react-router-redux";
 import { useWindowSize } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -8,6 +9,7 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -23,7 +25,7 @@ import {
   TableSection,
 } from "./components";
 import type { RouteParams } from "./types";
-import { parseRouteParams } from "./utils";
+import { getUrl, parseRouteParams } from "./utils";
 
 export const DataModel = ({
   params,
@@ -69,6 +71,7 @@ export const DataModel = ({
 };
 
 export function DataModelEditor({ params }: { params: RouteParams }) {
+  const dispatch = useDispatch();
   const { databaseId, schemaId, tableId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown = databaseId == null || tableId == null;
   const {
@@ -149,7 +152,19 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
               <ActionIcon
                 c="text-dark"
                 variant="transparent"
-                onClick={() => setIsSidebarOpen(true)}
+                onClick={() => {
+                  setIsSidebarOpen(true);
+                  dispatch(
+                    push(
+                      getUrl({
+                        databaseId,
+                        schemaId,
+                        tableId,
+                        fieldId: undefined,
+                      }),
+                    ),
+                  );
+                }}
               >
                 <Icon name="sidebar_closed" />
               </ActionIcon>
