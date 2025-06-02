@@ -20,7 +20,7 @@ export function SingleDatePickerBody({
   const [date, setDate] = useState<Date>(value);
 
   const handleDateChange = (newDate: DateValue) => {
-    newDate && onChange(setDatePart(value, newDate));
+    newDate && onChange(setDatePart(value, new Date(newDate)));
   };
 
   const handleTimeChange = (newTime: Date | null) => {
@@ -35,7 +35,7 @@ export function SingleDatePickerBody({
         popoverProps={{ opened: false }}
         aria-label={t`Date`}
         onChange={handleDateChange}
-        onDateChange={setDate}
+        onDateChange={(val) => val && setDate(new Date(val))}
       />
       {hasTime && (
         <TimeInput
@@ -48,7 +48,7 @@ export function SingleDatePickerBody({
         value={value}
         date={date}
         onChange={handleDateChange}
-        onDateChange={setDate}
+        onDateChange={(val) => val && setDate(new Date(val))}
       />
     </Stack>
   );
