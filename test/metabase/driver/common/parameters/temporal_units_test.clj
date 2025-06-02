@@ -8,15 +8,15 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
-(defn- ->local-date [t]
+(defn- ->local-date-time [t]
   (cond-> t
     (str/includes? t "T") (t/zoned-date-time)
-    true t/local-date))
+    true t/local-date-time))
 
 (defn- run-sample-query [query]
   (->> query
        qp/process-query
-       (mt/formatted-rows [->local-date])))
+       (mt/formatted-rows [->local-date-time])))
 
 (deftest can-compile-temporal-units-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
@@ -29,26 +29,39 @@
                                   :template-tags {"time-unit" {:name "id"
                                                                :display-name "id"
                                                                :type         :temporal-unit}}))
-            year-query (assoc native-query
-                              :parameters [{:type   :temporal-unit
-                                            :name   "time-unit"
-                                            :target [:variable [:template-tag "time-unit"]]
-                                            :value  "year"}])
-            month-query (assoc native-query
-                               :parameters [{:type   :temporal-unit
-                                             :name   "time-unit"
-                                             :target [:variable [:template-tag "time-unit"]]
-                                             :value  "month"}])]
-        (mt/with-native-query-testing-context year-query
-          (is (= [[#t "2019-01-01"]
-                  [#t "2018-01-01"]
-                  [#t "2019-01-01"]]
-                 (run-sample-query year-query))))
-        (mt/with-native-query-testing-context month-query
-          (is (= [[#t "2019-02-01"]
-                  [#t "2018-05-01"]
-                  [#t "2019-12-01"]]
-                 (run-sample-query month-query))))))))
+            parameterized-query (assoc native-query
+                                       :parameters [{:type   :temporal-unit
+                                                     :name   "time-unit"
+                                                     :target [:variable [:template-tag "time-unit"]]}])
+            date-types ["minute" "hour" "day" "week" "month" "quarter" "year"]
+            count-types ["second-of-minute" "minute-of-hour" "hour-of-day" "day-of-month"
+                         "day-of-year" "month-of-year" "quarter-of-year"]
+            ;; The original date is 2019-02-11T21:40:27.892
+            expected-dates [#t "2019-02-11T21:40:00"
+                            #t "2019-02-11T21:00:00"
+                            #t "2019-02-11T00:00:00"
+                            #t "2019-02-09T00:00:00"
+                            #t "2019-02-01T00:00:00"
+                            #t "2019-01-01T00:00:00"
+                            #t "2019-01-01T00:00:00"]
+            expected-counts [27 40 21 11 42 2 1]]
+        (doseq [[grouping expected-date] (map list date-types expected-dates)]
+          (is (= [[expected-date]]
+                 (-> native-query
+                     (assoc :parameters [{:type   :temporal-unit
+                                          :name   "time-unit"
+                                          :target [:variable [:template-tag "time-unit"]]
+                                          :value  grouping}])
+                     run-sample-query))))
+        (doseq [[grouping expected-count] (map list count-types expected-counts)]
+          (is (= [[expected-count]]
+                 (-> native-query
+                     (assoc :parameters [{:type   :temporal-unit
+                                          :name   "time-unit"
+                                          :target [:variable [:template-tag "time-unit"]]
+                                          :value  grouping}])
+                     qp/process-query
+                     (->> (mt/formatted-rows [int]))))))))))
 
 (deftest bad-function-names-throw-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
