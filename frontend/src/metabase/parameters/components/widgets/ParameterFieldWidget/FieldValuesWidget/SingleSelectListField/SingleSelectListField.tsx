@@ -71,7 +71,8 @@ const SingleSelectListField = ({
           getOptionDisplayName(optionB),
         ),
       ),
-    [augmentedOptions, sortByTranslation],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [augmentedOptions.length, sortByTranslation],
   );
 
   const [filter, setFilter] = useState("");
