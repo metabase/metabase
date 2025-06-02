@@ -107,7 +107,7 @@ function getActionOverrides(
             initialFilter: Lib.stringFilterClause({
               operator,
               column,
-              values: [value],
+              values: [],
               options: {},
             }) as unknown as Lib.FilterClause,
           }),
@@ -125,7 +125,7 @@ function getActionOverrides(
             initialFilter: Lib.stringFilterClause({
               operator,
               column,
-              values: [value],
+              values: [],
               options: {},
             }) as unknown as Lib.FilterClause,
           }),
