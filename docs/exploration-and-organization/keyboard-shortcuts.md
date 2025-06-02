@@ -9,7 +9,8 @@ A handy list of keyboard shortcuts to help you zip around Metabase.
 
 Shortcuts change depending on which page you're viewing in your Metabase.
 
-To view the shortcut menu in Metabase, Press `?`
+To view the shortcut menu in Metabase, press `?`, or click on the **Gear** icon
+in the top right corner and select **Keyboard shortcuts**.
 
 ## Global
 
@@ -25,7 +26,7 @@ To view the shortcut menu in Metabase, Press `?`
 | Browse models            | g m         |
 | Browse metrics           | g k         |
 | Report an issue          | Ctrl/Cmd+f1 |
-| Toggle shortcuts menu    | ?           |
+| View shortcuts           | ?           |
 | Open trash               | g t         |
 | Open personal collection | g p         |
 | Toggle sidebar           | [           |
@@ -39,7 +40,7 @@ To view the shortcut menu in Metabase, Press `?`
 | -------------------------- | ------------------ |
 | Bookmark dashboard         | o                  |
 | Add filter                 | f                  |
-| Open question sidebar    | a                  |
+| Open question sidebar      | a                  |
 | Add query builder question | q                  |
 | Add native question        | n                  |
 | Cancel edit dashboard      | e                  |
@@ -59,12 +60,12 @@ To view the shortcut menu in Metabase, Press `?`
 
 | Action                 | Shortcut           |
 | ---------------------- | ------------------ |
-| Toggle editor          | e                  |
+| Switch to editor       | e                  |
 | Open filter dropdown   | f                  |
 | Open summarize sidebar | s                  |
 | Bookmark question      | o                  |
 | Open question info     | ]                  |
-| Refetch question data  | r                  |
+| Refresh data           | r                  |
 | Toggle visualization   | v                  |
 | Toggle viz settings    | y                  |
 | Toggle viz types       | t                  |
