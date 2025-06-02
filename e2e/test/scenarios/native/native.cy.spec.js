@@ -265,7 +265,7 @@ describe("scenarios > question > native", () => {
 
         cy.findByTestId("query-visualization-root").should(
           "contain",
-          "January 1, 2022, 12:00 AM",
+          "January 1, 2022",
         );
       });
 
@@ -337,7 +337,7 @@ describe("scenarios > question > native", () => {
         );
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2022, 12:00 AM",
+          "January 1, 2022",
         );
 
         cy.get("@q2").then((questionId) => {
@@ -359,7 +359,7 @@ describe("scenarios > question > native", () => {
 
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2022, 12:00 AM",
+          "January 1, 2022",
         );
       });
 

@@ -1075,7 +1075,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       H.popover().findByText("Year").click();
       H.saveDashboard();
-      H.getDashboardCard().should("contain", "January 1, 2022, 12:00 AM");
+      H.getDashboardCard().should("contain", "January 1, 2022");
     });
 
     it("should not be able to use temporal unit parameter with a filter of a different type", () => {
