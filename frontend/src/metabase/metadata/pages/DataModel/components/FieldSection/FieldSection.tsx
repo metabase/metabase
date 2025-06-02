@@ -81,6 +81,3 @@ export const FieldSection = ({ databaseId, field }: Props) => {
     </Stack>
   );
 };
-{
-  /* <Box className={S.container} h="100%" pb="lg" px="xl"> */
-}
