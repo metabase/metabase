@@ -66,11 +66,9 @@ const ensureRoomForLabels = (
     if (min < 0) {
       const { bounds } = chartMeasurements;
       const innerHeight = Math.abs(bounds.bottom - bounds.top);
-      const textPct = CHART_STYLE.seriesLabels.size / innerHeight;
-      return {
-        ...axis,
-        boundaryGap: [textPct, 0],
-      };
+      const labelPct = CHART_STYLE.seriesLabels.size / innerHeight;
+      const lowerBoundaryGap = labelPct / 2; // `/ 2` because it's okay if the bar label overlaps the axis *line*, we just don't want it to overlap the axis *labels*
+      return { ...axis, boundaryGap: [lowerBoundaryGap, 0] };
     }
     return axis;
   }),
