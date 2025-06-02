@@ -659,7 +659,7 @@
   (let [query (orders-and-products-aggregated)]
     (is (=? [{:id                       (meta/id :products :vendor)
               :name                     "VENDOR"
-              :source-alias             key-not-present ;; XXX: Is this accurate? It's a breakout, but DCA is good.
+              :source-alias             "Products"
               :lib/source-column-alias  "VENDOR"
               :lib/desired-column-alias "Products__VENDOR"}
              {:id                       (meta/id :orders :product-id)
@@ -713,9 +713,13 @@
                                                joined-product-id)])
                       (lib/with-join-alias "Card"))))))
 
+;; XXX: START HERE: This one is failing, and maybe another farther down. Double-bagging the SCA and I'm not sure
+;; why. Probably have nesting logic at both the "card output" point and "incoming stage" point?
+;; This query works correctly in the UI, probably because the QP is computing correct metadata for the card and
+;; lib is screwing it up.
 (deftest ^:parallel column-aliases-test-4-card-source
   (let [mp    (metadata-with-aggregated-card)
-        query (-> (lib/query mp (lib.metadata/card mp 1)))]
+        query (lib/query mp (lib.metadata/card mp 1))]
     (is (=? [;; Joined summaries from the card
              {:name                     "count"
               :source-alias             key-not-present
@@ -766,20 +770,16 @@
               :lib/desired-column-alias "Card__PRODUCT_ID"}]
             (lib/returned-columns query)))))
 
-(deftest ^:parallel column-aliases-test-6-card-joined-and-summarized
+(defn- query-joining-card-summarized []
   (let [base   (query-joining-card)
         cols   (lib/returned-columns base)
-        vendor (m/find-first #(= (:lib/desired-column-alias %) "Card__Products__VENDOR") cols)
-        query  (-> (query-joining-card)
-                   (lib/aggregate (lib/count))
-                   ;; WARN: This is the trouble spot. The breakout looks like `[:field {:join-alias "Card"} 72506]`,
-                   ;; using an ID even though the column ultimately came from a card. This is a ref-generation issue;
-                   ;; the explicit join is making us "forget" that the column originally came from a card and should
-                   ;; be referenced by name henceforward.
-                   (lib/breakout vendor))
-        ;; HACK: If I bodge the bad breakout ref to the correct `[:field {:join-alias "Card"} "Products__VENDOR"]`
-        ;; then it works correctly in this test.
-        query  (assoc-in query [:stages 0 :breakout 0 2] "Products__VENDOR")]
+        vendor (m/find-first #(= (:lib/desired-column-alias %) "Card__Products__VENDOR") cols)]
+    (-> (query-joining-card)
+        (lib/aggregate (lib/count))
+        (lib/breakout vendor))))
+
+(deftest ^:parallel column-aliases-test-6-card-joined-and-summarized
+  (let [query (query-joining-card-summarized)]
     (is (=? [{:name                     "Products__VENDOR"
               :source-alias             "Card"
               :lib/source-column-alias  "Products__VENDOR"
@@ -789,3 +789,14 @@
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "count"}]
             (lib/returned-columns query)))))
+
+(deftest ^:parallel column-aliases-test-7-card-joined-summarized-and-filtered
+  (let [base   (-> (query-joining-card-summarized)
+                   lib/append-stage)
+        cols   (lib/filterable-columns base)
+        vendor (m/find-first #(= (:lib/source-column-alias %) "Card__Products__VENDOR")
+                             cols)
+        query  (lib/filter base (lib/= vendor "Some Company"))]
+    (is (=? [[:= {} [:field {:join-alias key-not-present} "Card__Products__VENDOR"]
+              "Some Company"]]
+            (lib/filters query)))))
