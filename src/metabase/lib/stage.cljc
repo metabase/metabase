@@ -80,13 +80,15 @@
    stage-number                         :- :int
    {:keys [unique-name-fn] :as options} :- lib.metadata.calculation/ReturnedColumnsOptions]
   (let [cols (for [breakout (u/prog1 (lib.breakout/breakouts-metadata query stage-number)
-                              (tap> [`breakouts-metadata query stage-number '=> <>]))]
-               (u/prog1 (assoc breakout
-                               :lib/source               :source/breakouts
-                               :source-alias             (lib.join.util/current-join-alias breakout)
-                               :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
-                               :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) breakout)
-                               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout)))
+                              (tap> [`breakouts-metadata query stage-number '=> <>]))
+                   :let [join-alias (lib.join.util/current-join-alias breakout)]]
+               (u/prog1 (cond-> (assoc breakout
+                                       :lib/source               :source/breakouts
+                                       :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
+                                       :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) breakout)
+                                       :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout)))
+
+                          join-alias (assoc :source-alias join-alias))
                  (tap> [`breakouts-column breakout '=> <>])))]
     (not-empty (concat cols
                        (lib.metadata.calculation/remapped-columns query stage-number cols options)))))
@@ -147,7 +149,7 @@
                                                            previous-stage-number
                                                            (lib.util/query-stage query previous-stage-number)
                                                            (dissoc options :unique-name-fn))
-           :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
+           :let [source-alias (or (lib.join.util/desired-alias query col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
        (-> (merge
             col
@@ -162,17 +164,22 @@
            ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
            ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
            ;; to generate `:expression` or `:field` refs.
-           (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
+           (dissoc ::lib.field/temporal-unit :lib/expression-name :source-alias))))))
 
 (mu/defn- saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   card-id        :- [:maybe ::lib.schema.id/card]
-   options        :- lib.metadata.calculation/VisibleColumnsOptions]
+  [query                    :- ::lib.schema/query
+   stage-number             :- :int
+   card-id                  :- [:maybe ::lib.schema.id/card]
+   {:keys [unique-name-fn]} :- lib.metadata.calculation/VisibleColumnsOptions]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (not-empty (lib.metadata.calculation/visible-columns query stage-number card options)))))
+      (not-empty (for [col (lib.metadata.calculation/returned-columns query stage-number card {})
+                       :let [source-alias (lib.join.util/desired-alias query col)]]
+                   (-> col
+                       (assoc :lib/source-column-alias source-alias
+                              :lib/desired-column-alias (unique-name-fn source-alias))
+                       (dissoc :source-alias)))))))
 
 (mu/defn- metric-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query         :- ::lib.schema/query

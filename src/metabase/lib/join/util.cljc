@@ -93,7 +93,8 @@
   You should pass the results thru a unique name function."
   [query          :- ::lib.schema/query
    field-metadata :- ::lib.schema.metadata/column]
-  (if-let [join-alias (or (current-join-alias field-metadata)
-                          (implicit-join-name query field-metadata))]
-    (joined-field-desired-alias join-alias (:name field-metadata))
-    (:name field-metadata)))
+  (let [field-name ((some-fn :lib/source-column-alias :name) field-metadata)]
+    (if-let [join-alias (or (current-join-alias field-metadata)
+                            (implicit-join-name query field-metadata))]
+      (joined-field-desired-alias join-alias field-name)
+      field-name)))

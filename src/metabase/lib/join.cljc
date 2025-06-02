@@ -8,6 +8,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -232,8 +233,10 @@
    join-alias      :- ::lib.schema.common/non-blank-string]
   (let [column-metadata (assoc column-metadata :source-alias join-alias)
         col             (-> (assoc column-metadata
-                                   :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
-                                   :lib/source   :source/joins)
+                                   :display-name             (lib.metadata.calculation/display-name
+                                                              query stage-number column-metadata)
+                                   :lib/source               :source/joins
+                                   :lib/previously-inherited (lib.field.util/inherited-column? column-metadata))
                             (with-join-alias join-alias))]
     (assert (= (lib.join.util/current-join-alias col) join-alias))
     col))

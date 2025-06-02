@@ -12,5 +12,6 @@
 (mu/defn inherited-column-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref."
   [column :- ::lib.schema.metadata/column]
-  (when (inherited-column? column)
-    ((some-fn :lib/desired-column-alias :name) column)))
+  (when (or (inherited-column? column)
+            (:lib/previously-inherited column))
+    ((some-fn :lib/source-column-alias :name) column)))
