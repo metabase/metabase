@@ -29,8 +29,6 @@ import type {
 
 import { useMetabotIdPath } from "./utils";
 
-const metabotContext = "{0} is the name of an AI assistant";
-
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
   const { data, isLoading, error } = useListMetabotsQuery();
@@ -54,8 +52,9 @@ export function MetabotAdminPage() {
         <Stack px="xl">
           <SettingHeader
             id="configure-metabot"
-            title={c(metabotContext).t`Configure ${metabotName}`}
-            description={c(metabotContext) // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+            title={c("{0} is the name of an AI assistant")
+              .t`Configure ${metabotName}`}
+            description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
               .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
           />
           {isEmbeddedMetabot && (
@@ -176,7 +175,8 @@ function MetabotConfigurationPane({
     <Box>
       <SettingHeader
         id="allow-metabot"
-        title={c(metabotContext).t`Collection ${metabotName} can use`}
+        title={c("{0} is the name of an AI assistant")
+          .t`Collection ${metabotName} can use`}
       />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
