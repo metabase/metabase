@@ -15,7 +15,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import TitleAndDescription from "../TitleAndDescription";
 
 export interface SetupOpts {
-  localeCode: string;
+  localeCode?: string;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   dictionary?: RetrievedDictionaryArrayRow[];
@@ -42,8 +42,8 @@ export const setup = ({
 
   return renderWithProviders(
     <TitleAndDescription
-      title={dictionary[0].msgid}
-      description={dictionary[1].msgid}
+      title={"Sample Heading"}
+      description={"Sample Description"}
     />,
     { storeInitialState },
   );

@@ -1,6 +1,9 @@
 import { invalidateTags, listTag } from "metabase/api/tags";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import type { DictionaryResponse } from "metabase-types/api/content-translation";
+import type {
+  DictionaryResponse,
+  UploadContentTranslationDictionaryRequest,
+} from "metabase-types/api/content-translation";
 
 import { EnterpriseApi } from "./api";
 
@@ -21,6 +24,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
       >({
         query: (params) => ({
           method: "GET",
+          // The URL is currently only set in static embedding
           url: PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl,
           params,
         }),

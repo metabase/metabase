@@ -9,17 +9,25 @@ import type {
   Series,
 } from "metabase-types/api";
 
-/** Translate a user-generated string
- *
- * Terminology: A "msgid" is a 'raw', untranslated string. A "msgstr" is a
- * translation of a msgid.
- * */
-export const translateContentString = <MsgidType = string | null | undefined>(
+export type TranslateContentStringFunction = <
+  MsgidType = string | null | undefined,
+>(
   dictionary: DictionaryArray | undefined,
   locale: string | undefined,
   /** This argument will be translated only if it is a string. If it is not a
    * string, it will be returned untranslated. */
   msgid: MsgidType,
+) => string | MsgidType;
+
+/** Translate a user-generated string
+ *
+ * Terminology: A "msgid" is a 'raw', untranslated string. A "msgstr" is a
+ * translation of a msgid.
+ * */
+export const translateContentString: TranslateContentStringFunction = (
+  dictionary,
+  locale,
+  msgid,
 ) => {
   if (!locale) {
     return msgid;
