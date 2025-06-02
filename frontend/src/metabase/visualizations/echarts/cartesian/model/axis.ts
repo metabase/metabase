@@ -547,6 +547,10 @@ export function getYAxisModel(
     stackType,
     formattingOptions,
   );
+  const formatGoal = getYAxisFormatter(column, settings, stackType, {
+    ...formattingOptions,
+    compact: false,
+  });
 
   return {
     seriesKeys,
@@ -554,6 +558,7 @@ export function getYAxisModel(
     column,
     label,
     formatter,
+    formatGoal,
     isNormalized: stackType === "normalized",
     splitNumber:
       settings["graph.y_axis.split_number"] > 0

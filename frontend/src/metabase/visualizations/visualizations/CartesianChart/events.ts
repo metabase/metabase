@@ -816,6 +816,7 @@ export const getTimelineEventsHoverData = (
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
+  chartModel: BaseCartesianChartModel,
 ) => {
   const element = event.event.event.target as Element;
 
@@ -823,13 +824,15 @@ export const getGoalLineHoverData = (
     return null;
   }
 
+  const formatGoal = chartModel.leftAxisModel?.formatGoal || _.identity;
+
   return {
     element,
     data: [
       {
         col: null,
         key: settings["graph.goal_label"] ?? "",
-        value: settings["graph.goal_value"] ?? "",
+        value: formatGoal(settings["graph.goal_value"] ?? ""),
       },
     ],
   };
