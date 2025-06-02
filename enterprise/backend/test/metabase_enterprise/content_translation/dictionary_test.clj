@@ -5,6 +5,7 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,21 +24,21 @@
 
 (deftest process-rows-test
   (testing "Valid rows are processed correctly"
-    (mt/with-empty-db
-      (let [rows [["en" "Hello" "Hola"]
-                  ["fr" "Goodbye" "Au revoir"]
-                  ["de" "Thank you" "Danke"]]
-            result (#'dictionary/process-rows rows)]
-        (is (empty? (:errors result)))
-        (is (= 3 (count (:translations result))))
-        (is (= #{{:locale "en" :msgid "Hello"}
-                 {:locale "fr" :msgid "Goodbye"}
-                 {:locale "de" :msgid "Thank you"}}
-               (:seen result)))
-        (is (= [{:locale "en" :msgid "Hello" :msgstr "Hola"}
-                {:locale "fr" :msgid "Goodbye" :msgstr "Au revoir"}
-                {:locale "de" :msgid "Thank you" :msgstr "Danke"}]
-               (:translations result)))))))
+    (let [rows [["en" "Hello" "Hola"]
+                ["fr" "Goodbye" "Au revoir"]
+                ["de" "Thank you" "Danke"]]
+          result (#'dictionary/process-rows rows)]
+      (log/info "process-rows-test")
+      (is (empty? (:errors result)))
+      (is (= 3 (count (:translations result))))
+      (is (= #{{:locale "en" :msgid "Hello"}
+               {:locale "fr" :msgid "Goodbye"}
+               {:locale "de" :msgid "Thank you"}}
+             (:seen result)))
+      (is (= [{:locale "en" :msgid "Hello" :msgstr "Hola"}
+              {:locale "fr" :msgid "Goodbye" :msgstr "Au revoir"}
+              {:locale "de" :msgid "Thank you" :msgstr "Danke"}]
+             (:translations result))))))
 
 (deftest process-rows-validation-test
   (testing "Invalid locale generates error"
