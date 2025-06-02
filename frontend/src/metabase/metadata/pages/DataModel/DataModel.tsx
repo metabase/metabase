@@ -1,5 +1,7 @@
 import cx from "classnames";
 import { type ReactNode, useState } from "react";
+import { useWindowSize } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -68,8 +70,7 @@ export const DataModel = ({
 
 export function DataModelEditor({ params }: { params: RouteParams }) {
   const { databaseId, tableId, fieldId } = parseRouteParams(params);
-  const isEmptyStateShown =
-    databaseId == null || tableId == null || fieldId == null;
+  const isEmptyStateShown = databaseId == null || tableId == null;
   const {
     data: table,
     error,
@@ -86,8 +87,13 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
+  const { width } = useWindowSize();
+  const isSmallScreen = width <= 1200;
+  const isFieldOpen = fieldId != null;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
-    <Stack gap={0} h="100%">
+    <Stack className={S.root} gap={0} h="100%" w="100%">
       {tableId && (
         <Flex
           align="center"
@@ -99,7 +105,11 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
           py="md"
         >
           <Tooltip label={t`Open sidebar`}>
-            <ActionIcon c="text-dark" variant="transparent">
+            <ActionIcon
+              c="text-dark"
+              variant="transparent"
+              onClick={() => setIsSidebarOpen(true)}
+            >
               <Icon name="sidebar_closed" />
             </ActionIcon>
           </Tooltip>
@@ -108,28 +118,47 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
         </Flex>
       )}
 
-      <Flex flex="1" mih={0}>
+      <Flex className={S.content} flex="1" mih={0} w="100%">
         {tableId && (
-          <Box
+          <Flex
             className={cx(S.column, S.borderRight)}
-            flex="0 0 25%"
+            flex={match({ isFieldOpen, isSidebarOpen, isSmallScreen })
+              .with(
+                {
+                  isFieldOpen: true,
+                  isSmallScreen: false,
+                },
+                () => "0 0 25%",
+              )
+              .with(
+                {
+                  isFieldOpen: true,
+                  isSmallScreen: true,
+                  isSidebarOpen: false,
+                },
+                () => "0 0 33%",
+              )
+              .otherwise(() => "1")}
             h="100%"
+            justify="center"
             miw={rem(400)}
           >
-            <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {table && (
-                <TableSection
-                  /**
-                   * Make sure internal component state is reset when changing tables.
-                   * This is to avoid state mix-up with optimistic updates.
-                   */
-                  key={table.id}
-                  params={params}
-                  table={table}
-                />
-              )}
-            </LoadingAndErrorWrapper>
-          </Box>
+            <Box maw={rem(640)}>
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {table && (
+                  <TableSection
+                    /**
+                     * Make sure internal component state is reset when changing tables.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={table.id}
+                    params={params}
+                    table={table}
+                  />
+                )}
+              </LoadingAndErrorWrapper>
+            </Box>
+          </Flex>
         )}
 
         {isEmptyStateShown && (
@@ -152,37 +181,54 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
           </Flex>
         )}
 
-        {!isEmptyStateShown && (
-          <>
-            <Box className={S.column} flex="0 0 25%" h="100%" miw={rem(400)}>
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {field && (
-                  <FieldSection
-                    databaseId={databaseId}
-                    field={field}
-                    /**
-                     * Make sure internal component state is reset when changing fields.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={getRawTableFieldId(field)}
-                  />
-                )}
-              </LoadingAndErrorWrapper>
-            </Box>
+        {databaseId && field && (
+          <Box
+            className={S.column}
+            flex={match({ isFieldOpen, isSidebarOpen, isSmallScreen })
+              .with(
+                {
+                  isFieldOpen: true,
+                  isSmallScreen: false,
+                },
+                () => "0 0 25%",
+              )
+              .with(
+                {
+                  isFieldOpen: true,
+                  isSmallScreen: true,
+                  isSidebarOpen: false,
+                },
+                () => "0 0 33%",
+              )
+              .otherwise(() => "1")}
+            h="100%"
+            miw={rem(400)}
+          >
+            <LoadingAndErrorWrapper error={error} loading={isLoading}>
+              <FieldSection
+                databaseId={databaseId}
+                field={field}
+                /**
+                 * Make sure internal component state is reset when changing fields.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={getRawTableFieldId(field)}
+              />
+            </LoadingAndErrorWrapper>
+          </Box>
+        )}
 
-            {field && (
-              <Box flex={`1 1 ${rem(200)}`} miw={0} p="xl">
-                <PreviewSection
-                  databaseId={databaseId}
-                  field={field}
-                  fieldId={fieldId}
-                  previewType={previewType}
-                  tableId={tableId}
-                  onPreviewTypeChange={setPreviewType}
-                />
-              </Box>
-            )}
-          </>
+        {databaseId && fieldId && field && tableId && (
+          <Box flex={`1 1 ${rem(200)}`} miw={rem(400)} p="xl">
+            <PreviewSection
+              databaseId={databaseId}
+              field={field}
+              fieldId={fieldId}
+              previewType={previewType}
+              tableId={tableId}
+              onPreviewTypeChange={setPreviewType}
+            />
+          </Box>
         )}
       </Flex>
     </Stack>
