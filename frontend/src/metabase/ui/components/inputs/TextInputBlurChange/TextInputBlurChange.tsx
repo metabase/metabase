@@ -30,7 +30,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   onChange,
   ...props
 }: TextInputBlurChangeProps<T>) {
-  const [internalValue, setInternalValue] = useState<T["value"]>();
+  const [internalValue, setInternalValue] = useState<T["value"]>("");
   const ref = useRef<HTMLInputElement>(null);
 
   useLayoutEffect(() => setInternalValue(value), [value]);
