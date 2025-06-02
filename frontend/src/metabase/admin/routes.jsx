@@ -87,36 +87,40 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
         </Route>
       </Route>
-      <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-        <Route title={t`Table Metadata`} component={DataModel}>
-          <IndexRedirect to="database" />
-          <Route path="database" component={DataModelEditor} />
-          <Route path="database/:databaseId" component={DataModelEditor} />
-          <Route
-            path="database/:databaseId/schema/:schemaId"
-            component={DataModelEditor}
-          />
-          <Route
-            path="database/:databaseId/schema/:schemaId/table/:tableId"
-            component={DataModelEditor}
-          />
-          <Route
-            path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-            component={DataModelEditor}
-          />
+      <Route
+        path="datamodel"
+        title={t`Table Metadata`}
+        component={createAdminRouteGuard("data-model")}
+      >
+        <IndexRedirect to="database" />
+        <Route path="database" component={DataModelEditor} />
+        <Route path="database/:databaseId" component={DataModelEditor} />
+        <Route
+          path="database/:databaseId/schema/:schemaId"
+          component={DataModelEditor}
+        />
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId"
+          component={DataModelEditor}
+        />
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+          component={DataModelEditor}
+        />
+        <Route component={DataModel}>
           <Route path="segments" component={SegmentListApp} />
           <Route path="segment/create" component={SegmentApp} />
           <Route path="segment/:id" component={SegmentApp} />
           <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
-          <Redirect
-            from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-            to="database/:databaseId/schema/:schemaId/table/:tableId"
-          />
-          <Redirect
-            from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-            to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-          />
         </Route>
+        <Redirect
+          from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+          to="database/:databaseId/schema/:schemaId/table/:tableId"
+        />
+        <Redirect
+          from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+          to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+        />
       </Route>
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>

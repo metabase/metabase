@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useLayoutEffect, useState } from "react";
 import { useWindowSize } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -69,7 +69,7 @@ export const DataModel = ({
 };
 
 export function DataModelEditor({ params }: { params: RouteParams }) {
-  const { databaseId, tableId, fieldId } = parseRouteParams(params);
+  const { databaseId, schemaId, tableId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown = databaseId == null || tableId == null;
   const {
     data: table,
@@ -91,146 +91,193 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
   const isSmallScreen = width <= 1200;
   const isFieldOpen = fieldId != null;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const showBreadcrumbs = isSmallScreen && isFieldOpen && !isSidebarOpen;
+  const showField = isSmallScreen ? !isSidebarOpen : true;
+
+  useLayoutEffect(() => {
+    if (isSmallScreen && fieldId != null) {
+      setIsSidebarOpen(false);
+    }
+
+    if (!isSmallScreen || databaseId == null || tableId == null) {
+      setIsSidebarOpen(true);
+    }
+  }, [isSmallScreen, fieldId, databaseId, tableId]);
 
   return (
-    <Stack className={S.root} gap={0} h="100%" w="100%">
-      {tableId && (
-        <Flex
-          align="center"
-          bg="white"
-          className={S.borderBottom}
-          flex="0 0 auto"
-          gap="lg"
-          px="xl"
-          py="md"
+    <Flex bg="bg-light" h="100%">
+      {isSidebarOpen && (
+        <Stack
+          bg="bg-white"
+          className={cx(S.column, S.borderRight)}
+          flex="0 0 25%"
+          gap={0}
+          h="100%"
+          maw={rem(400)}
+          miw={rem(320)}
         >
-          <Tooltip label={t`Open sidebar`}>
-            <ActionIcon
-              c="text-dark"
-              variant="transparent"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <Icon name="sidebar_closed" />
-            </ActionIcon>
-          </Tooltip>
+          <RouterTablePicker
+            databaseId={databaseId}
+            schemaId={schemaId}
+            tableId={tableId}
+          />
 
-          <TableBreadcrumbs c="text-secondary" hideIcons tableId={tableId} />
-        </Flex>
-      )}
-
-      <Flex className={S.content} flex="1" mih={0} w="100%">
-        {tableId && (
-          <Flex
-            className={cx(S.column, S.borderRight)}
-            flex={match({ isFieldOpen, isSidebarOpen, isSmallScreen })
-              .with(
-                {
-                  isFieldOpen: true,
-                  isSmallScreen: false,
-                },
-                () => "0 0 25%",
-              )
-              .with(
-                {
-                  isFieldOpen: true,
-                  isSmallScreen: true,
-                  isSidebarOpen: false,
-                },
-                () => "0 0 33%",
-              )
-              .otherwise(() => "1")}
-            h="100%"
-            justify="center"
-            miw={rem(400)}
-          >
-            <Box maw={rem(640)}>
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {table && (
-                  <TableSection
-                    /**
-                     * Make sure internal component state is reset when changing tables.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={table.id}
-                    params={params}
-                    table={table}
-                  />
-                )}
-              </LoadingAndErrorWrapper>
-            </Box>
-          </Flex>
-        )}
-
-        {isEmptyStateShown && (
-          <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
-            <Box maw={rem(320)}>
-              <EmptyState
-                illustrationElement={<img src={EmptyDashboardBot} />}
-                title={
-                  tableId
-                    ? t`Edit the table and fields`
-                    : t`Start by selecting data to model`
-                }
-                message={
-                  tableId
-                    ? t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`
-                    : t`Browse your databases to find the table you’d like to edit.`
-                }
-              />
-            </Box>
-          </Flex>
-        )}
-
-        {databaseId && field && (
-          <Box
-            className={S.column}
-            flex={match({ isFieldOpen, isSidebarOpen, isSmallScreen })
-              .with(
-                {
-                  isFieldOpen: true,
-                  isSmallScreen: false,
-                },
-                () => "0 0 25%",
-              )
-              .with(
-                {
-                  isFieldOpen: true,
-                  isSmallScreen: true,
-                  isSidebarOpen: false,
-                },
-                () => "0 0 33%",
-              )
-              .otherwise(() => "1")}
-            h="100%"
-            miw={rem(400)}
-          >
-            <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              <FieldSection
-                databaseId={databaseId}
-                field={field}
-                /**
-                 * Make sure internal component state is reset when changing fields.
-                 * This is to avoid state mix-up with optimistic updates.
-                 */
-                key={getRawTableFieldId(field)}
-              />
-            </LoadingAndErrorWrapper>
-          </Box>
-        )}
-
-        {databaseId && fieldId && field && tableId && (
-          <Box flex={`1 1 ${rem(200)}`} miw={rem(400)} p="xl">
-            <PreviewSection
-              databaseId={databaseId}
-              field={field}
-              fieldId={fieldId}
-              previewType={previewType}
-              tableId={tableId}
-              onPreviewTypeChange={setPreviewType}
+          <Box className={S.footer} mx="xl" py="sm">
+            <SegmentsLink
+              active={
+                location.pathname.startsWith("/admin/datamodel/segments") ||
+                location.pathname.startsWith("/admin/datamodel/segment/")
+              }
+              to="/admin/datamodel/segments"
             />
           </Box>
+        </Stack>
+      )}
+
+      <Stack className={S.root} gap={0} h="100%" w="100%">
+        {tableId && showBreadcrumbs && (
+          <Flex
+            align="center"
+            bg="white"
+            className={S.borderBottom}
+            flex="0 0 auto"
+            gap="lg"
+            px="xl"
+            py="md"
+          >
+            <Tooltip label={t`Open sidebar`}>
+              <ActionIcon
+                c="text-dark"
+                variant="transparent"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Icon name="sidebar_closed" />
+              </ActionIcon>
+            </Tooltip>
+
+            <TableBreadcrumbs c="text-secondary" hideIcons tableId={tableId} />
+          </Flex>
         )}
-      </Flex>
-    </Stack>
+
+        <Flex className={S.content} flex="1" mih={0} w="100%">
+          {tableId && (
+            <Flex
+              className={cx(S.column, S.borderRight)}
+              flex={match({ isFieldOpen, isSidebarOpen, isSmallScreen })
+                .with(
+                  {
+                    isFieldOpen: true,
+                    isSmallScreen: false,
+                  },
+                  () => "0 0 25%",
+                )
+                .with(
+                  {
+                    isFieldOpen: true,
+                    isSmallScreen: true,
+                    isSidebarOpen: false,
+                  },
+                  () => "0 0 33%",
+                )
+                .otherwise(() => "1")}
+              h="100%"
+              justify="center"
+              miw={rem(400)}
+            >
+              <Box maw={rem(640)}>
+                <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                  {table && (
+                    <TableSection
+                      /**
+                       * Make sure internal component state is reset when changing tables.
+                       * This is to avoid state mix-up with optimistic updates.
+                       */
+                      key={table.id}
+                      params={params}
+                      table={table}
+                    />
+                  )}
+                </LoadingAndErrorWrapper>
+              </Box>
+            </Flex>
+          )}
+
+          {isEmptyStateShown && (
+            <Flex
+              align="center"
+              bg="accent-gray-light"
+              flex="1"
+              justify="center"
+            >
+              <Box maw={rem(320)}>
+                <EmptyState
+                  illustrationElement={<img src={EmptyDashboardBot} />}
+                  title={
+                    tableId
+                      ? t`Edit the table and fields`
+                      : t`Start by selecting data to model`
+                  }
+                  message={
+                    tableId
+                      ? t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`
+                      : t`Browse your databases to find the table you’d like to edit.`
+                  }
+                />
+              </Box>
+            </Flex>
+          )}
+
+          {databaseId && field && showField && (
+            <Box
+              className={S.column}
+              flex={match({ isFieldOpen, isSidebarOpen, isSmallScreen })
+                .with(
+                  {
+                    isFieldOpen: true,
+                    isSmallScreen: false,
+                  },
+                  () => "0 0 25%",
+                )
+                .with(
+                  {
+                    isFieldOpen: true,
+                    isSmallScreen: true,
+                    isSidebarOpen: false,
+                  },
+                  () => "0 0 33%",
+                )
+                .otherwise(() => "1")}
+              h="100%"
+              miw={rem(400)}
+            >
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                <FieldSection
+                  databaseId={databaseId}
+                  field={field}
+                  /**
+                   * Make sure internal component state is reset when changing fields.
+                   * This is to avoid state mix-up with optimistic updates.
+                   */
+                  key={getRawTableFieldId(field)}
+                />
+              </LoadingAndErrorWrapper>
+            </Box>
+          )}
+
+          {databaseId && fieldId && field && tableId && showField && (
+            <Box flex={`1 1 ${rem(200)}`} miw={rem(300)} p="xl">
+              <PreviewSection
+                databaseId={databaseId}
+                field={field}
+                fieldId={fieldId}
+                previewType={previewType}
+                tableId={tableId}
+                onPreviewTypeChange={setPreviewType}
+              />
+            </Box>
+          )}
+        </Flex>
+      </Stack>
+    </Flex>
   );
 }
