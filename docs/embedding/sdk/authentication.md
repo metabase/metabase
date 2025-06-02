@@ -49,7 +49,7 @@ For Node.js, we recommend jsonwebtoken:
 npm install jsonwebtoken --save
 ```
 
-Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that generates a JWT for the authenticated user using your Metabase JWT shared secret. **This endpoint must return a JSON object with a `jwt` property containing the signed JWT.** For example: `{ "jwt": "your-signed-jwt" }`. It should not redirect or perform any other actions.
+Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that generates a JWT for the authenticated user using your Metabase JWT shared secret. **This endpoint must return a JSON object with a `jwt` property containing the signed JWT.** For example: `{ "jwt": "your-signed-jwt" }`.
 
 See the examples below for how this endpoint can be structured:
 
