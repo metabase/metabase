@@ -1,8 +1,8 @@
-(ns metabase-enterprise.data-editing.undo-test
+(ns metabase-enterprise.data-editing.models.undo-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-editing.models.undo :as undo]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
-   [metabase-enterprise.data-editing.undo :as undo]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

@@ -2,7 +2,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase-enterprise.data-editing.undo :as undo]
+   [metabase-enterprise.data-editing.models.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.util :as u]
@@ -87,6 +87,7 @@
   (case (:error (ex-data e))
     :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
     :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
+    :undo/cannot-undoable (ex-info (tru "Your change is not undoable")                           {:status-code 405} e)
     :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
     e))
 

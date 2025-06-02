@@ -777,7 +777,8 @@
         {:table-id table-id
          :db-id    database-id
          :before   row-before
-         :after    nil}))))
+         :after    nil
+         :undoable true}))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
