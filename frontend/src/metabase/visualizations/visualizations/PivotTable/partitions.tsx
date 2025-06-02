@@ -41,6 +41,13 @@ export const partitions: Partition[] = [
 
 export const nativePartitions: Partition[] = [
   {
+    name: "values",
+    title: (
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
+    ),
+  },
+  {
     name: "rows",
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -52,13 +59,6 @@ export const nativePartitions: Partition[] = [
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "values",
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
     ),
   },
 ];
