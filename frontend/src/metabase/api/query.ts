@@ -25,6 +25,8 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
 
   try {
     const response = await api[method](url)(
+      // this will transform arrays to objects with numeric keys
+      // we shouldn't be using top level-arrays in the API
       { ...args?.body, ...args?.params },
       {
         signal: ctx.signal,
