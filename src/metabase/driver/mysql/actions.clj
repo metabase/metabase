@@ -82,7 +82,7 @@
               (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (merge {:type error-type}
             (case action-type
-              :model.row/delete
+              (:table.row/delete :model.row/delete)
               {:message (tru "Other tables rely on this row so it cannot be deleted.")
                :errors  {}}
 
@@ -95,10 +95,10 @@
      (let [column (remove-backticks column)]
        {:type    error-type
         :message (case action-type
-                   :model.row/create
+                   (:table.row/create :model.row/create)
                    (tru "Unable to create a new record.")
 
-                   :model.row/update
+                   (:table.row/update :model.row/update)
                    (tru "Unable to update the record."))
         :errors  {(remove-backticks column) (tru "This {0} does not exist." (str/capitalize (remove-backticks column)))}}))))
 

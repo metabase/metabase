@@ -24,11 +24,8 @@
 (defn get-row-pks
   "Given a row, strip it down to just its primary keys."
   [pk-fields row]
-  (->> (map (comp keyword :name) pk-fields)
-       ;; Hideous workaround for QP and direct JDBC disagreeing on case
-       (select-keys (merge (update-keys row (comp keyword u/upper-case-en name))
-                           (u/lower-case-map-keys row)
-                           row))
+  (->> (map :name pk-fields)
+       (select-keys (update-keys row u/qualified-name))
        ;; Hack for now, pending discussion of the ideal fix
        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
        ;; See https://metaboat.slack.com/archives/C0641E4PB9B/p1744978660610899
@@ -117,20 +114,11 @@
   [_ {:keys [user-id invocation-stack scope]} diffs]
   (let [table-ids        (distinct (map :table-id diffs))
         table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
-        table->keymap    (u/for-map [table-id table-ids
-                                     :let [fields (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)]]
-                           [table-id (merge (u/for-map [f fields]
-                                              [(keyword (u/lower-case-en f)) (keyword f)])
-                                            (u/for-map [f fields]
-                                              [(keyword (u/upper-case-en f)) (keyword f)])
-                                            (let [kws (map keyword fields)]
-                                              (zipmap kws kws)))])
         diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
-                                     :when (or before after)
-                                     :let [keymap (table->keymap table-id)]]
+                                     :when (or before after)]
                            [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
-                                  :before (when before (update-keys before keymap))
-                                  :after  (when after (update-keys after keymap))}])]
+                                  :before before
+                                  :after  after}])]
     ;; undo snapshots, but only if we're not executing an undo
     ;; TODO fix tests that execute actions without a user scope
     (when user-id

@@ -83,12 +83,13 @@
     (catch Exception e
       (ex-data e))))
 
+(defn- field-id->name [id] (t2/select-one-fn :name :model/Field id))
+
 (defn- test-action-error-handling! [f]
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
     (mt/dataset action-error-handling
       (mt/with-actions-enabled
-        (let [db-id          (mt/id)
-              field-id->name #(t2/select-one-fn :name :model/Field %)]
+        (let [db-id          (mt/id)]
           (f {:db-id         db-id
               :group-name    (field-id->name (mt/id :group :name))
               :group-ranking (field-id->name (mt/id :group :ranking))
@@ -254,8 +255,52 @@
          (is (= {:message "Other tables rely on this row so it cannot be deleted."
                  :errors {}
                  :type        actions.error/violate-foreign-key-constraint
+                 :children   {(mt/id :user) 2}
                  :status-code 400}
                 (perform-action-ex-data :model.row/delete (mt/$ids {:database db-id
                                                                     :query    {:filter [:= $group.id 1]
                                                                                :source-table $$group}
                                                                     :type     :query})))))))))
+
+(deftest actions-return-rows-with-correct-names-test
+  (testing "rows returned by perform action should match the name in metabase_field.name"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (mt/dataset action-error-handling
+        (mt/with-actions-enabled
+          (let [db-id (mt/id)
+                created-user (actions/perform-action-with-single-input-and-output
+                              :table.row/create
+                              {:database db-id
+                               :table-id (mt/id :user)
+                               :arg      {(field-id->name (mt/id :user :name))    "New User"
+                                          (field-id->name (mt/id :user :group-id)) 1}})
+                created-user-id (get-in created-user [:row (field-id->name (mt/id :user :id))])]
+            (testing ":table.row/create"
+              (is (=? {:op       :created
+                       :row      {(field-id->name (mt/id :user :group-id)) 1
+                                  (field-id->name (mt/id :user :id))       (mt/malli=? int?)
+                                  (field-id->name (mt/id :user :name))     "New User"}
+                       :table-id (mt/id :user)}
+                      created-user)))
+
+            (testing ":table.row/update"
+              (is (=? {:op       :updated
+                       :row      {(field-id->name (mt/id :user :group-id)) 1
+                                  (field-id->name (mt/id :user :id))       (mt/malli=? int?)
+                                  (field-id->name (mt/id :user :name))     "New Name"}
+                       :table-id (mt/id :user)}
+                      (actions/perform-action-with-single-input-and-output
+                       :table.row/update
+                       {:database db-id
+                        :table-id (mt/id :user)
+                        :arg      {(field-id->name (mt/id :user :id))   created-user-id
+                                   (field-id->name (mt/id :user :name)) "New Name"}}))))
+            (testing ":table.row/delete"
+              (is (=? {:op       :deleted
+                       :row      {(field-id->name (mt/id :user :id)) created-user-id}
+                       :table-id (mt/id :user)}
+                      (actions/perform-action-with-single-input-and-output
+                       :table.row/delete
+                       {:database db-id
+                        :table-id (mt/id :user)
+                        :arg      {(field-id->name (mt/id :user :id)) created-user-id}}))))))))))
