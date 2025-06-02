@@ -50,6 +50,10 @@ export function dataModelDatabase(databaseId: DatabaseId) {
   return `/admin/datamodel/database/${databaseId}`;
 }
 
+export function uploadsSettings() {
+  return "/admin/settings/uploads";
+}
+
 export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {
   const databaseUrl = dataModelDatabase(databaseId);
   return `${databaseUrl}/schema/${schemaId}`;

@@ -49,6 +49,13 @@ export const AddDataModal = ({
               >
                 {t`Database`}
               </Tabs.Tab>
+              <Tabs.Tab
+                value="csv"
+                leftSection={<Icon name="table2" />}
+                onClick={() => trackAddDataEvent("csv_upload_clicked")}
+              >
+                {t`CSV`}
+              </Tabs.Tab>
             </Tabs.List>
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
@@ -59,6 +66,9 @@ export const AddDataModal = ({
             />
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel canSeeContent={isAdmin} />
+            </Tabs.Panel>
+            <Tabs.Panel value="csv" className={S.panel}>
+              {"CSV content"}
             </Tabs.Panel>
           </Box>
         </Tabs>
