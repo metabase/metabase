@@ -26,6 +26,7 @@ import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
 import { TenantsListingApp } from "./containers/TenantsListingApp";
+import { isExternalUser, isExternalUsersGroup } from "./utils/utils";
 
 // TODO remove `true` once feature is enabled for dev token
 // eslint-disable-next-line no-constant-condition
@@ -85,4 +86,6 @@ if (true || hasPremiumFeature("tenants")) {
 
   PLUGIN_TENANTS.FormTenantWidget = FormTenantWidget;
   PLUGIN_TENANTS.TenantDisplayName = TenantDisplayName;
+  PLUGIN_TENANTS.isExternalUsersGroup = isExternalUsersGroup;
+  PLUGIN_TENANTS.isExternalUser = isExternalUser;
 }

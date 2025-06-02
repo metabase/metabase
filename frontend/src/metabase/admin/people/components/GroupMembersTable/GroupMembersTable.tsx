@@ -7,14 +7,10 @@ import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import { usePagination } from "metabase/hooks/use-pagination";
-import {
-  isAdminGroup,
-  isDefaultGroup,
-  isExternalUsersGroup,
-} from "metabase/lib/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { Group, Member, Membership } from "metabase-types/api";
 
@@ -25,7 +21,7 @@ const isApiKeyGroupMember = (member: Member) =>
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) &&
-  !isExternalUsersGroup(group) &&
+  !PLUGIN_TENANTS.isExternalUsersGroup(group) &&
   PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
 interface GroupMembersTableProps {
@@ -123,7 +119,7 @@ const UserMemberRow = ({
   const isCurrentUser = member.user_id === currentUser.id;
   const canRemove =
     !isDefaultGroup(group) &&
-    !isExternalUsersGroup(group) &&
+    !PLUGIN_TENANTS.isExternalUsersGroup(group) &&
     !(isAdminGroup(group) && isCurrentUser);
 
   const handleTypeUpdate = (isManager: boolean) => {

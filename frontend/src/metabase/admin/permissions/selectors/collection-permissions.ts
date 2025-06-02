@@ -17,9 +17,8 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-  isExternalUsersGroup,
 } from "metabase/lib/groups";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
@@ -240,7 +239,7 @@ export const getCollectionsPermissionEditor = createSelector(
 
     const entities = groups.map((group: GroupType) => {
       const isAdmin = isAdminGroup(group);
-      const isExternal = isExternalUsersGroup(group);
+      const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
 
       const defaultGroupPermission = getCollectionPermission(
         permissions,

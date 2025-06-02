@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Group } from "metabase-types/api";
 
 const SPECIAL_GROUP_NAMES = new Map([
@@ -11,10 +12,6 @@ const SPECIAL_GROUP_NAMES = new Map([
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   ["All External Users", t`External Users`],
 ]);
-
-export function isExternalUsersGroup(group: Pick<Group, "name">) {
-  return group.name === "All External Users";
-}
 
 export function isDefaultGroup(group: Pick<Group, "name">) {
   return group.name === "All Internal Users";
@@ -29,7 +26,7 @@ export function canEditPermissions(group: Pick<Group, "name">) {
 }
 
 export function canEditMembership(group: Pick<Group, "name">) {
-  return !isDefaultGroup(group) && !isExternalUsersGroup(group);
+  return !isDefaultGroup(group) && !PLUGIN_TENANTS.isExternalUsersGroup(group);
 }
 
 export function getGroupColor(group: Pick<Group, "name">) {

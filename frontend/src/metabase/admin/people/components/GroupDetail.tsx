@@ -14,10 +14,9 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-  isExternalUsersGroup,
 } from "metabase/lib/groups";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Button } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
@@ -153,7 +152,7 @@ export const GroupDetail = ({
 };
 
 const GroupDescription = ({ group }: { group: Group }) => {
-  if (isExternalUsersGroup(group)) {
+  if (PLUGIN_TENANTS.isExternalUsersGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">
         <p>

@@ -9,11 +9,8 @@ import {
   getDefaultGroup,
   getOrderedGroups,
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
-import {
-  getGroupNameLocalized,
-  isAdminGroup,
-  isExternalUsersGroup,
-} from "metabase/lib/groups";
+import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
@@ -102,7 +99,10 @@ export const getApplicationPermissionEditor = createSelector(
 
     const allGroups = groups.flat();
 
-    const externalUsersGroup = _.find(allGroups, isExternalUsersGroup);
+    const externalUsersGroup = _.find(
+      allGroups,
+      PLUGIN_TENANTS.isExternalUsersGroup,
+    );
 
     if (!externalUsersGroup) {
       return null;
@@ -110,7 +110,7 @@ export const getApplicationPermissionEditor = createSelector(
 
     const entities = allGroups.map((group) => {
       const isAdmin = isAdminGroup(group);
-      const isExternal = isExternalUsersGroup(group);
+      const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
 
       return {
         id: group.id,
