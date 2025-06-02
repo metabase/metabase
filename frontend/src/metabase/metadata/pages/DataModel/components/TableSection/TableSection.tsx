@@ -12,7 +12,7 @@ import {
   RescanTableFieldsButton,
   SortableFieldList,
 } from "metabase/metadata/components";
-import { Box, Flex, Stack, Switch, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -67,28 +67,6 @@ export const TableSection = ({ params, table }: Props) => {
       </Box>
 
       <Stack gap="lg">
-        <Stack gap="sm">
-          <Text fw="bold" size="sm">{t`Table visibility`}</Text>
-
-          <Switch
-            checked={table.visibility_type === "hidden"}
-            label={t`Hide this table`}
-            size="sm"
-            onChange={async (event) => {
-              const visibilityType = event.target.checked ? "hidden" : null;
-              await updateTable({
-                id: table.id,
-                visibility_type: visibilityType,
-              });
-
-              sendToast({
-                icon: "check",
-                message: t`Table visibility updated`,
-              });
-            }}
-          />
-        </Stack>
-
         <Stack gap="sm">
           <Flex align="flex-end" gap="md" justify="space-between">
             <Text fw="bold" size="sm">{t`Fields`}</Text>

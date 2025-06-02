@@ -6,6 +6,7 @@ import _ from "underscore";
 import { Box, Flex, Icon, Skeleton } from "metabase/ui";
 
 import S from "./Results.module.css";
+import { TableVisibilityToggle } from "./TableVisibilityToggle";
 import type { FlatItem, TreePath } from "./types";
 import { TYPE_ICONS, hasChildren } from "./utils";
 
@@ -174,6 +175,9 @@ export function Results({
               )}
               <Flex
                 key={key}
+                align="center"
+                justify="space-between"
+                gap="sm"
                 ref={virtual.measureElement}
                 className={cx(S.item, S[type], {
                   [S.active]: isActive,
@@ -220,6 +224,14 @@ export function Results({
                     </Box>
                   )}
                 </Flex>
+                {type === "table" &&
+                  value?.tableId !== undefined &&
+                  item.table && (
+                    <TableVisibilityToggle
+                      className={S.visibilityToggle}
+                      table={item.table}
+                    />
+                  )}
               </Flex>
             </Fragment>
           );
