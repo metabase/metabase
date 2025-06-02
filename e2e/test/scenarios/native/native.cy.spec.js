@@ -488,7 +488,7 @@ describe("scenarios > question > native", () => {
           cy.findByTestId("query-validation-error").should("not.exist");
         });
 
-        it("should show validation error after invalid query", () => {
+        it("should show validation error when valid query becomes invalid", () => {
           H.startNewNativeQuestion();
 
           const query = `
