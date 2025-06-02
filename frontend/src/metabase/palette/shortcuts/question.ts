@@ -3,7 +3,7 @@ import { t } from "ttag";
 export const questionShortcuts = {
   "query-builder-toggle-notebook-editor": {
     get name() {
-      return t`Toggle editor`;
+      return t`Switch to editor`;
     },
     shortcut: ["e"],
     shortcutGroup: "question" as const,
