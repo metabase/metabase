@@ -13,12 +13,14 @@ import S from "./TableBreadcrumbs.module.css";
 
 interface Props {
   className?: string;
+  hideIcons?: boolean;
   hideTableName?: boolean;
   tableId: TableId;
 }
 
 export const TableBreadcrumbs = ({
   className,
+  hideIcons,
   hideTableName,
   tableId,
 }: Props) => {
@@ -37,13 +39,15 @@ export const TableBreadcrumbs = ({
     <Group
       align="center"
       className={cx(S.breadcrumbs, className)}
-      gap="sm"
+      gap={hideIcons ? "xs" : "sm"}
       wrap="nowrap"
     >
       <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-        <Flex>
-          <Icon name="database" />
-        </Flex>
+        {!hideIcons && (
+          <Flex>
+            <Icon name="database" />
+          </Flex>
+        )}
 
         <Ellipsified>{table.db.name}</Ellipsified>
       </Group>
@@ -53,9 +57,11 @@ export const TableBreadcrumbs = ({
           <Separator />
 
           <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-            <Flex>
-              <Icon name="folder" />
-            </Flex>
+            {!hideIcons && (
+              <Flex>
+                <Icon name="folder" />
+              </Flex>
+            )}
 
             <Ellipsified>{table.schema}</Ellipsified>
           </Group>
@@ -67,9 +73,11 @@ export const TableBreadcrumbs = ({
           <Separator />
 
           <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-            <Flex>
-              <Icon name="table" />
-            </Flex>
+            {!hideIcons && (
+              <Flex>
+                <Icon name="table" />
+              </Flex>
+            )}
 
             <Ellipsified>{table.display_name}</Ellipsified>
           </Group>

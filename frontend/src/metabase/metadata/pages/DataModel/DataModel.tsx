@@ -6,6 +6,7 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { TableBreadcrumbs } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, rem } from "metabase/ui";
@@ -87,9 +88,17 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
 
   return (
     <Stack gap={0} h="100%">
-      <Flex bg="white" className={S.borderBottom} flex="0 0 auto" px="xl" py="md">
-        bread
-      </Flex>
+      {tableId && (
+        <Flex
+          bg="white"
+          className={S.borderBottom}
+          flex="0 0 auto"
+          px="xl"
+          py="md"
+        >
+          <TableBreadcrumbs hideIcons tableId={tableId} />
+        </Flex>
+      )}
 
       <Flex flex="1" mih={0}>
         {tableId && (
