@@ -1,8 +1,7 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
+import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { RetrievedDictionaryArrayRow } from "metabase-types/api/content-translation";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -15,17 +14,7 @@ interface SetupOpts {
   locale: string | undefined;
   /** An untranslated string */
   msgid: string | null | undefined;
-  translations: RetrievedDictionaryArrayRow[] | undefined;
 }
-
-const sampleSpanishDictionary: RetrievedDictionaryArrayRow[] = [
-  {
-    id: 1,
-    locale: "es",
-    msgid: "Hello World",
-    msgstr: "Hola Mundo",
-  },
-];
 
 const TestComponent = ({ msgid }: { msgid?: string | null }) => {
   const tc = useTranslateContent();
@@ -33,9 +22,8 @@ const TestComponent = ({ msgid }: { msgid?: string | null }) => {
   return <>{msgstr}</>;
 };
 
-function setup({ locale, msgid, translations }: SetupOpts) {
+function setup({ locale, msgid }: SetupOpts) {
   setupEnterprisePlugins();
-  setupContentTranslationEndpoints({ dictionary: translations });
 
   const storeInitialState = createMockState({
     settings: mockSettings({
@@ -50,48 +38,16 @@ function setup({ locale, msgid, translations }: SetupOpts) {
 }
 
 describe("useTranslateContent", () => {
-  it("should return the original string when dictionary is undefined", async () => {
+  const getContentTranslatorSpy = setupTranslateContentStringSpy();
+
+  it("returns a function that translates the given string", async () => {
     setup({
       msgid: "Hello World",
       locale: "es",
-      translations: undefined,
     });
-    expect(await screen.findByText("Hello World")).toBeInTheDocument();
-  });
-
-  it("should return the original string when locale is undefined", async () => {
-    setup({
-      msgid: "Hello World",
-      locale: undefined,
-      translations: sampleSpanishDictionary,
-    });
-    expect(await screen.findByText("Hello World")).toBeInTheDocument();
-  });
-
-  it("should return the msgid when it is not a string", async () => {
-    setup({
-      msgid: null,
-      locale: "es",
-      translations: sampleSpanishDictionary,
-    });
-    expect(screen.queryByText("Hello World")).not.toBeInTheDocument();
-  });
-
-  it("should return the original string when no translation is found", async () => {
-    setup({
-      msgid: "Hello? World?",
-      locale: "es",
-      translations: sampleSpanishDictionary,
-    });
-    expect(await screen.findByText("Hello? World?")).toBeInTheDocument();
-  });
-
-  it("should return the translated string when a translation is found", async () => {
-    setup({
-      msgid: "Hello World",
-      locale: "es",
-      translations: sampleSpanishDictionary,
-    });
-    expect(await screen.findByText("Hola Mundo")).toBeInTheDocument();
+    expect(
+      await screen.findByText("translated_Hello World"),
+    ).toBeInTheDocument();
+    expect(getContentTranslatorSpy()).toHaveBeenCalled();
   });
 });
