@@ -4,7 +4,7 @@ import { type ReactNode, Suspense } from "react";
 import { AppProvider } from "@/app/app-provider";
 
 export const metadata: Metadata = {
-  title: "Next 14 App Router Host App",
+  title: "Next 15 App Router Host App",
   description: "For testing",
 };
 
