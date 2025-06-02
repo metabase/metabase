@@ -5,7 +5,9 @@ import { setupTranslateContentStringSpy } from "__support__/server-mocks/content
 import { sampleSpanishDictionary, setup } from "./setup";
 
 describe("LegendCaption (EE with token)", () => {
-  const getContentTranslatorSpy = setupTranslateContentStringSpy();
+  const getContentTranslatorSpy = setupTranslateContentStringSpy(
+    (_dictionary, _locale, msgid) => `translated_${msgid}`,
+  );
 
   it("should translate caption title", async () => {
     setup({
@@ -18,7 +20,7 @@ describe("LegendCaption (EE with token)", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
-        "Hola Mundo",
+        "translated_Hello World",
       );
     });
 

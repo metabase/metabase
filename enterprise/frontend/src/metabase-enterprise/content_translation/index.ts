@@ -22,6 +22,6 @@ if (hasPremiumFeature("content_translation")) {
     translateFieldValuesInSeries,
     translateSeries,
     // This gets overwritten in static embedding
-    contentTranslationDictionaryUrl: "/api/ee/content-translation/dictionary",
+    contentTranslationDictionaryUrl: null,
   });
 }
