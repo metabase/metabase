@@ -6,14 +6,17 @@ import {
   getActionErrorMessage,
   getActionExecutionMessage,
 } from "metabase/actions/utils";
-import { skipToken, useGetActionQuery } from "metabase/api";
+import {
+  skipToken,
+  useExecuteActionMutation,
+  useGetActionQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";
 import type { TableActionsExecuteFormVizOverride } from "metabase/visualizations/types/table-actions";
-import { useExecuteActionMutation } from "metabase-enterprise/api";
 import type {
   ParametersForActionExecution,
   WritebackAction,

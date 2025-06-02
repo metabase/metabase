@@ -2,14 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
+import { useGetActionsQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";
-// TODO: Remove this once we have a proper API for actions.
-// eslint-disable-next-line no-restricted-imports
-import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   ActionDashboardCard,
   Dashboard,

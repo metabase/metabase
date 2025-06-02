@@ -1,30 +1,27 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetTableQueryMetadataQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import {
   useDeleteTableRowsMutation,
+  useGetTableQueryMetadataQuery,
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
-} from "metabase-enterprise/api";
+} from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   DatasetData,
   FieldWithMetadata,
-  RowValue,
-} from "metabase-types/api";
-
-import type {
   RowCellsWithPkValue,
   RowPkValue,
+  RowValue,
   TableEditingScope,
   UpdateCellValueHandlerParams,
   UpdatedRowBulkHandlerParams,
   UpdatedRowHandlerParams,
-} from "../types";
+} from "metabase-types/api";
 
 import { useTableCrudOptimisticUpdate } from "./use-table-crud-optimistic-update";
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";

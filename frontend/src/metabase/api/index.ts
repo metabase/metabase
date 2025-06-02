@@ -31,6 +31,7 @@ export * from "./settings";
 export * from "./snippet";
 export * from "./subscription";
 export * from "./table";
+export * from "./table-data-editing";
 export * from "./task";
 export * from "./timeline";
 export * from "./timeline-event";

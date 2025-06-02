@@ -7,11 +7,11 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
-
 export type RowPkValue = string | number;
 
 export type CellUniqKey = string;
+
+export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
 
 export type TableEditingScope =
   | { "table-id": ConcreteTableId }
@@ -70,8 +70,6 @@ export type TableUndoRedoRequest = {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;
 };
-
-export type TableOperation = [string, Record<string, RowValue>];
 
 export type TableUndoRedoResponse = {
   outputs?: ExecuteOutput<"created" | "updated" | "deleted">[];

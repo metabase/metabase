@@ -13,9 +13,9 @@ import type {
   FieldWithMetadata,
   RowValue,
   Table,
+  UpdatedRowBulkHandlerParams,
 } from "metabase-types/api";
 
-import type { UpdatedRowBulkHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 

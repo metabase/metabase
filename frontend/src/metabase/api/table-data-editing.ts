@@ -1,3 +1,4 @@
+import type { TableAction, WritebackAction } from "metabase-types/api/actions";
 import type {
   TableDeleteRowsRequest,
   TableDeleteRowsResponse,
@@ -9,12 +10,13 @@ import type {
   TableUndoRedoResponse,
   TableUpdateRowsRequest,
   TableUpdateRowsResponse,
-} from "metabase-enterprise/data_editing/tables/types";
-import type { TableAction, WritebackAction } from "metabase-types/api/actions";
+} from "metabase-types/api/table-data-editing";
 
-import { EnterpriseApi } from "./api";
+import { Api } from "./api";
 
-export const tableDataEditApi = EnterpriseApi.injectEndpoints({
+const API_PATH = `/api/ee/data-editing`;
+
+export const tableDataEditingApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     insertTableRows: builder.mutation<
       TableInsertRowsResponse,
@@ -22,7 +24,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        url: `${API_PATH}/action/v2/execute-bulk`,
         body: { inputs: rows, scope, action_id: "data-grid.row/create" },
       }),
     }),
@@ -32,7 +34,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        url: `${API_PATH}/action/v2/execute-bulk`,
         body: { inputs: rows, scope, action_id: "data-grid.row/update" },
       }),
     }),
@@ -42,14 +44,14 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        url: `${API_PATH}/action/v2/execute-bulk`,
         body: { inputs: rows, scope, action_id: "data-grid.row/delete" },
       }),
     }),
     tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
       query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute`,
+        url: `${API_PATH}/action/v2/execute`,
         body: {
           input: {
             "table-id": tableId,
@@ -62,7 +64,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     tableRedo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
       query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute`,
+        url: `${API_PATH}/action/v2/execute`,
         body: {
           input: {
             "table-id": tableId,
@@ -75,7 +77,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     getActions: builder.query<Array<WritebackAction | TableAction>, void>({
       query: () => ({
         method: "GET",
-        url: `/api/ee/data-editing/tmp-action`,
+        url: `${API_PATH}/tmp-action`,
       }),
       transformResponse: (response: {
         actions: Array<WritebackAction | TableAction>;
@@ -87,7 +89,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ actionId, parameters }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute`,
+        url: `${API_PATH}/action/v2/execute`,
         body: {
           input: parameters,
           // Here we pass a dummy table id, because the BE doesn't allow scope to be optional,
@@ -113,4 +115,4 @@ export const {
   useTableRedoMutation,
   useGetActionsQuery,
   useExecuteActionMutation,
-} = tableDataEditApi;
+} = tableDataEditingApi;

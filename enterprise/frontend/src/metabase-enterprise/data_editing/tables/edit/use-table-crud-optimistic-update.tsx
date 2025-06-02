@@ -2,8 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-
-import type { CellUniqKey, RowPkValue } from "../types";
+import type { CellUniqKey, RowPkValue } from "metabase-types/api";
 
 import { ErrorUpdateToast } from "./ErrorUpdateToast";
 import type { OptimisticUpdatePatchResult } from "./use-table-state-update-strategy";

@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useGetActionsQuery } from "metabase/api";
 import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
-import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   RowActionFieldSettings,
   TableAction,

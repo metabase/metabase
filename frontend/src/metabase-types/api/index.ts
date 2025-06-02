@@ -44,6 +44,7 @@ export * from "./snippets";
 export * from "./store";
 export * from "./subscription";
 export * from "./table";
+export * from "./table-data-editing";
 export * from "./task";
 export * from "./timeline";
 export * from "./user";

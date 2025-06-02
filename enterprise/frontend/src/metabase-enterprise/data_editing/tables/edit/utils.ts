@@ -3,9 +3,13 @@ import { t } from "ttag";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, Filter, OrderBy } from "metabase-types/api";
-
-import type { CellUniqKey, RowPkValue } from "../types";
+import type {
+  CellUniqKey,
+  DatasetData,
+  Filter,
+  OrderBy,
+  RowPkValue,
+} from "metabase-types/api";
 
 export const serializeMbqlParam = (filterMbql: Array<any>): string => {
   return utf8_to_b64url(JSON.stringify(filterMbql));

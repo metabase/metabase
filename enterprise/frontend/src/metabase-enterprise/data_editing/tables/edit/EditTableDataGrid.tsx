@@ -19,13 +19,14 @@ import type {
   DatasetData,
   Field,
   FieldWithMetadata,
+  RowPkValue,
   RowValue,
   RowValues,
+  UpdateCellValueHandlerParams,
   WritebackAction,
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
-import type { RowPkValue, UpdateCellValueHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";

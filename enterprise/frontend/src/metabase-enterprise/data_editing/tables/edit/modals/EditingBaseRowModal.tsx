@@ -22,9 +22,9 @@ import type {
   RowValue,
   RowValues,
   Table,
+  UpdatedRowHandlerParams,
 } from "metabase-types/api";
 
-import type { UpdatedRowHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 

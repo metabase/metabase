@@ -6,9 +6,8 @@ import type {
   FieldWithMetadata,
   RowValue,
   RowValues,
+  UpdateCellValueHandlerParams,
 } from "metabase-types/api";
-
-import type { UpdateCellValueHandlerParams } from "../types";
 
 import S from "./EditingBodyCell.module.css";
 import { EditingBodyCellConditional } from "./inputs";
