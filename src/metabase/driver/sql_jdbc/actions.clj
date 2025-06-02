@@ -296,8 +296,9 @@
           keymap (merge (u/for-map [f field-names]
                           [(u/lower-case-en f) f])
                         (u/for-map [f field-names]
-                          [(u/upper-case-en f) f]))]
-      (map #(update-keys % keymap) rows))))
+                          [(u/upper-case-en f) f]))
+          remap  (fn [k] (get keymap k k))]
+      (map #(update-keys % remap) rows))))
 
 (defn- query-rows
   [driver conn table-id query]
@@ -416,15 +417,6 @@
     (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
-#_(mr/def ::row
-    [:map-of :string :any])
-
-#_(mr/def ::modified-row
-    [:map
-     [:pk     ::row]
-     [:before [:maybe ::row]]
-     [:after  [:maybe ::row]]])
-
 ;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
 ;;; the newly created row. This function will `SELECT` the newly created row
 ;;; assuming that `result` is a map from column names to the generated values.
@@ -536,8 +528,7 @@
 (mr/def ::table-row-input
   [:map
    [:table-id ::lib.schema.id/table]
-   [:row ::lib.schema.actions/row]
-   [:delete-children? {:optional true} [:maybe :boolean]]])
+   [:row ::lib.schema.actions/row]])
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create]
   [_action context inputs :- [:sequential ::table-row-input]]
@@ -583,7 +574,8 @@
 (mu/defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
   value build an appropriate MBQL filter clause."
-  [field-name->id row]
+  [field-name->id :- [:map-of :string :int]
+   row :- ::lib.schema.actions/row]
   (when (empty? row)
     (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
                     {:field-name->id field-name->id, :row row, :status-code 400})))
@@ -614,9 +606,10 @@
      (qp.store/with-metadata-provider database-id
        (let [all-tables          (lib.metadata.protocols/tables (qp.store/metadata-provider))
              all-fields          (mapcat #(lib.metadata.protocols/fields (qp.store/metadata-provider) (:id %)) all-tables)
-             fk-fields           (filter #(and (:fk-target-field-id %) (:active %)) all-fields)
+             fk-fields           (filter #((every-pred :fk-target-field-id :active) %) all-fields)
              pk-fields           (filter #(isa? (:semantic-type %) :type/PK) all-fields)
-             field-id->field     (into {} (map (juxt :id identity)) all-fields)
+             field-id->field     (u/index-by :id all-fields)
+             table-id->table     (u/index-by :id all-tables)
              table-id->pk-fields (group-by :table-id pk-fields)]
          (reduce
           (fn [metadata {:keys [table-id fk-target-field-id] field-name :name}]
@@ -624,9 +617,10 @@
               (let [parent-table-id (:table-id target-field)
                     child-pk-fields (table-id->pk-fields table-id)]
                 (update metadata parent-table-id (fnil conj [])
-                        {:table table-id
-                         :fk    {field-name (:name target-field)}
-                         :pk    (mapv :name child-pk-fields)}))
+                        {:table-id   table-id
+                         :table-name (get-in table-id->table [table-id :name])
+                         :fk         {field-name (:name target-field)}
+                         :pk         (mapv :name child-pk-fields)}))
               metadata))
           {}
           fk-fields))))))
@@ -685,22 +679,17 @@
 (defn- lookup-children-in-db
   "Find child rows that reference the given parent rows via FK relationships"
   [relationship parent-rows database-id]
-  (let [{:keys [table fk pk]} relationship]
+  (let [{:keys [table-id table-name fk pk]} relationship]
     (when (seq parent-rows)
       (let [driver       (driver.u/database->driver database-id)
-            table-name   (actions/cached-value
-                          [::table-name table]
-                          (fn []
-                            (qp.store/with-metadata-provider database-id
-                              (:name (lib.metadata.protocols/table (qp.store/metadata-provider) table)))))
             where-clause (build-fk-filter-clause-hsql fk parent-rows)
             query        {:select (map keyword pk)
                           :from   [(keyword table-name)]
                           :where  where-clause
                           :limit  1000}] ; Safety limit
         (with-jdbc-transaction [conn database-id]
-          [table
-           (query-rows driver conn table query)])))))
+          [table-id
+           (query-rows driver conn table-id query)])))))
 
 (defn- delete-row-with-children!
   "Delete rows and all their descendants via FK relationships"
@@ -832,7 +821,7 @@
     (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
                          (pr-str (sort pk-names))
                          (pr-str (sort (keys row))))
-                    {:row row, :pk-names pk-names, :status-code 400}))))
+                    {:row row :pk-names pk-names :status-code 400}))))
 
 (mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
