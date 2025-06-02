@@ -744,7 +744,7 @@ export const PLUGIN_CONTENT_TRANSLATION = {
     obj: Series,
     _tc: ContentTranslationFunction,
   ) => obj,
-  translateSeries: (obj: Series, _tc: ContentTranslationFunction) => obj,
+  useTranslateSeries: (obj: Series, _tc: ContentTranslationFunction) => obj,
   contentTranslationDictionaryUrl: null as string | null,
 };
 
