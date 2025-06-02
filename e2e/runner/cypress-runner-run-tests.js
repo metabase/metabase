@@ -63,9 +63,10 @@ const getHostAppE2eConfig = (suite) => ({
     return getEmbeddingSdkAppE2eConfig({
       baseUrl: getHost(),
       env,
-      specPattern: ["e2e/test-host-app", appName, "**/*.cy.spec.{js,ts}"].join(
-        "/",
-      ),
+      specPattern: [
+        "e2e/test-host-app/shared/**/*.cy.spec.{js,ts}",
+        ["e2e/test-host-app", appName, "**/*.cy.spec.{js,ts}"].join("/"),
+      ],
     });
   },
 });
