@@ -358,11 +358,7 @@
 ;;; ------------------------------------------- Content translation --------------------------------------------
 
 (api.macros/defendpoint :get "/content-translation/dictionary/:token"
-  "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.
-
-   Token should have the following format:
-
-     {:resource {:question <card-id>}}"
+  "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map
                        [:token string?]]
    {:keys [locale]}]
