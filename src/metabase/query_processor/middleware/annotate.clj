@@ -291,8 +291,8 @@
                                            :ident)]
                     {:ident ident}))))
 
-      (integer? id-or-name)
-      (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
+      (or (integer? id-or-name) (or (:field-id opts)))
+      (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) (or (when (integer? id-or-name) id-or-name) (:field-id opts)))]
                #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
                  (qp.store/->legacy-metadata field)

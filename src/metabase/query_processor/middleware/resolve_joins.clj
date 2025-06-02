@@ -80,7 +80,8 @@
       (if (and field-id (not stage-is-from-source-card?))
         ;; field-id is a unique reference, use it
         [:field field-id   {:join-alias alias}]
-        [:field field-name {:base-type base-type, :join-alias alias}]))))
+        [:field field-name (m/assoc-some {:base-type base-type, :join-alias alias}
+                                         :field-id field-id)]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."

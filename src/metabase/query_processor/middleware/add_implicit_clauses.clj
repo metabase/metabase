@@ -2,6 +2,7 @@
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -77,7 +78,8 @@
              [:field field-id (cond-> nil coercion-strategy (assoc :qp/ignore-coercion true))]
                ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
                ;; expression. We don't need to mark as ignore-coercion here because these won't grab the field metadata
-             [:field field-name {:base-type base-type}]))))))
+             [:field field-name (m/assoc-some {:base-type base-type}
+                                              :field-id field-id)]))))))
 
 (mu/defn- should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
