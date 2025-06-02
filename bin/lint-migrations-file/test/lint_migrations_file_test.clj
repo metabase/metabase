@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [lint-migrations-file :as lint-migrations-file]))
 
+(set! *warn-on-reflection* true)
+
 (defn- mock-change-set
   [& keyvals]
   {:changeSet
