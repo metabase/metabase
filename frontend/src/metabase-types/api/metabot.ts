@@ -4,6 +4,7 @@ import type {
   CollectionId,
   DashboardId,
   DatasetQuery,
+  PaginationResponse,
   SearchModel,
 } from ".";
 
@@ -99,9 +100,49 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
-export interface MetabotPromptSuggestions {
-  prompts: Array<{ prompt: string }>;
-}
+/* Metabot - Suggested Prompts */
+
+export type SuggestedMetabotPrompt = {
+  id: number;
+  metabot_id: MetabotId;
+  prompt: string;
+  model: "metric" | "model";
+  model_id: CardId;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type BaseSuggestedMetabotPromptsRequest = {
+  metabot_id: MetabotId;
+  include_disabled?: boolean;
+  model?: string;
+  model_id?: number;
+};
+export type SuggestedMetabotPromptsRequest =
+  BaseSuggestedMetabotPromptsRequest & {
+    metabot_id: MetabotId;
+    include_disabled?: boolean;
+    model?: string;
+    model_id?: number;
+  } & (
+      | { sample?: void; limit?: number | null; offset?: number | null }
+      | { sample: true; limit?: number | null; offset?: void }
+    );
+
+export type SuggestedMetabotPromptsResponse = {
+  prompts: SuggestedMetabotPrompt[];
+} & PaginationResponse;
+
+export type UpdateSuggestedMetabotPromptRequest = {
+  metabot_id: MetabotId;
+  prompt_id: SuggestedMetabotPrompt["id"];
+} & Pick<SuggestedMetabotPrompt, "enabled">;
+
+export type DeleteSuggestedMetabotPromptRequest = {
+  metabot_id: MetabotId;
+  prompt_id: SuggestedMetabotPrompt["id"];
+};
 
 /* Metabot v3 - Type Guards */
 

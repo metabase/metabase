@@ -1,18 +1,108 @@
 import _ from "underscore";
 
 import type {
+  DeleteSuggestedMetabotPromptRequest,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotApiEntity,
   MetabotEntity,
   MetabotId,
   MetabotInfo,
-  MetabotPromptSuggestions,
   PaginationRequest,
   PaginationResponse,
+  SuggestedMetabotPrompt,
+  SuggestedMetabotPromptsRequest,
+  SuggestedMetabotPromptsResponse,
+  UpdateSuggestedMetabotPromptRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
+
+const fakeSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> = {
+  "1": [
+    {
+      id: 1,
+      metabot_id: 1,
+      prompt: "What is the total revenue for this quarter?",
+      model: "metric",
+      model_id: 1,
+      enabled: true,
+      created_at: "2025-05-15T10:30:00Z",
+      updated_at: "2025-05-15T10:30:00Z",
+    },
+    {
+      id: 2,
+      metabot_id: 1,
+      prompt: "Show me the customer acquisition trends over the last 6 months",
+      model: "model",
+      model_id: 2,
+      enabled: true,
+      created_at: "2025-05-15T11:15:00Z",
+      updated_at: "2025-05-15T11:15:00Z",
+    },
+    {
+      id: 3,
+      metabot_id: 1,
+      prompt: "What are our top performing products by sales volume?",
+      model: "metric",
+      model_id: 3,
+      enabled: false,
+      created_at: "2025-05-15T14:22:00Z",
+      updated_at: "2025-05-16T09:45:00Z",
+    },
+    {
+      id: 4,
+      metabot_id: 1,
+      prompt: "How has our monthly recurring revenue changed this year?",
+      model: "model",
+      model_id: 1,
+      enabled: true,
+      created_at: "2025-05-16T08:30:00Z",
+      updated_at: "2025-05-16T08:30:00Z",
+    },
+    {
+      id: 5,
+      metabot_id: 1,
+      prompt: "What is our customer churn rate compared to last quarter?",
+      model: "metric",
+      model_id: 2,
+      enabled: true,
+      created_at: "2025-05-16T13:10:00Z",
+      updated_at: "2025-05-16T13:10:00Z",
+    },
+    {
+      id: 6,
+      metabot_id: 1,
+      prompt: "Show me the geographic distribution of our user base",
+      model: "model",
+      model_id: 4,
+      enabled: false,
+      created_at: "2025-05-17T16:45:00Z",
+      updated_at: "2025-05-18T10:20:00Z",
+    },
+    {
+      id: 7,
+      metabot_id: 1,
+      prompt: "What is the average order value for new customers?",
+      model: "metric",
+      model_id: 4,
+      enabled: true,
+      created_at: "2025-05-18T09:15:00Z",
+      updated_at: "2025-05-18T09:15:00Z",
+    },
+    {
+      id: 8,
+      metabot_id: 1,
+      prompt: "How do our conversion rates vary by traffic source?",
+      model: "model",
+      model_id: 3,
+      enabled: true,
+      created_at: "2025-05-18T15:30:00Z",
+      updated_at: "2025-05-18T15:30:00Z",
+    },
+  ],
+  "2": [],
+};
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -80,11 +170,94 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: ["metabot-entities-list"],
     }),
-    getSuggestedMetabotPrompts: builder.query<MetabotPromptSuggestions, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/ee/metabot-v3/v2/prompt-suggestions",
-      }),
+    getSuggestedMetabotPrompts: builder.query<
+      SuggestedMetabotPromptsResponse,
+      SuggestedMetabotPromptsRequest
+    >({
+      // query: ({ metabot_id, ...params }) => ({
+      //   method: "GET",
+      //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
+      //   params,
+      // }),
+      queryFn: async ({
+        metabot_id,
+        include_disabled,
+        sample,
+        offset,
+        limit,
+      }) => {
+        const suggestions = fakeSuggestedPrompts[metabot_id].filter(
+          (s) => s.enabled || include_disabled,
+        );
+
+        const sortedSuggestions = sample ? _.shuffle(suggestions) : suggestions;
+
+        const paginatedSuggestions = sortedSuggestions.slice(
+          offset ?? 0,
+          (offset ?? 0) + (limit ?? 50),
+        );
+
+        return {
+          data: {
+            prompts: paginatedSuggestions,
+            total: suggestions.length,
+            limit: limit ?? null,
+            offset: offset ?? null,
+          },
+        };
+      },
+      // TODO: make cache tags limited that metabot id
+      providesTags: () => ["metabot-prompt-suggestions"],
+    }),
+    updateSuggestedMetabotPrompt: builder.mutation<
+      void,
+      UpdateSuggestedMetabotPromptRequest
+    >({
+      // query: ({ metabot_id, prompt_id, ...body }) => ({
+      //   method: "PUT",
+      //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
+      //   body,
+      // }),
+      queryFn: async ({ metabot_id, prompt_id, ...body }) => {
+        fakeSuggestedPrompts[metabot_id] = fakeSuggestedPrompts[metabot_id].map(
+          (prompt) => {
+            if (prompt.id === prompt_id) {
+              return Object.assign({}, prompt, body);
+            } else {
+              return prompt;
+            }
+          },
+        );
+        return { data: {} as any };
+      },
+      invalidatesTags: () => ["metabot-prompt-suggestions"],
+    }),
+    deleteSuggestedMetabotPrompt: builder.mutation<
+      void,
+      DeleteSuggestedMetabotPromptRequest
+    >({
+      // query: ({ metabot_id, prompt_id }) => ({
+      //   method: "DELETE",
+      //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
+      // }),
+      queryFn: async ({ metabot_id, prompt_id }) => {
+        fakeSuggestedPrompts[metabot_id] = fakeSuggestedPrompts[
+          metabot_id
+        ].filter((s) => s.id !== prompt_id);
+        return { data: {} as any };
+      },
+      invalidatesTags: () => ["metabot-prompt-suggestions"],
+    }),
+    refreshSuggestedMetabotPrompts: builder.mutation<void, MetabotId>({
+      // query: (metabot_id) => ({
+      //   method: "DELETE",
+      //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
+      // }),
+      queryFn: async () => {
+        window.location.reload();
+        return { data: {} as any };
+      },
+      invalidatesTags: () => ["metabot-prompt-suggestions"],
     }),
   }),
 });
@@ -97,4 +270,7 @@ export const {
   useUpdateMetabotEntitiesMutation,
   useDeleteMetabotEntitiesMutation,
   useGetSuggestedMetabotPromptsQuery,
+  useUpdateSuggestedMetabotPromptMutation,
+  useDeleteSuggestedMetabotPromptMutation,
+  useRefreshSuggestedMetabotPromptsMutation,
 } = metabotApi;

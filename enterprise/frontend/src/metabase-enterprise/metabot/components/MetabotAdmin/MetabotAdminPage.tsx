@@ -8,23 +8,40 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/components/PaginationControls";
+import { usePagination } from "metabase/hooks/use-pagination";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Center,
+  Checkbox,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
 import {
   useDeleteMetabotEntitiesMutation,
+  useDeleteSuggestedMetabotPromptMutation,
+  useGetSuggestedMetabotPromptsQuery,
   useListMetabotsEntitiesQuery,
   useListMetabotsQuery,
   useUpdateMetabotEntitiesMutation,
+  useUpdateSuggestedMetabotPromptMutation,
 } from "metabase-enterprise/api";
 import type {
   CollectionEssentials,
   MetabotEntity,
   MetabotId,
+  SuggestedMetabotPrompt,
 } from "metabase-types/api";
 
 import { useMetabotIdPath } from "./utils";
@@ -49,23 +66,30 @@ export function MetabotAdminPage() {
     <ErrorBoundary>
       <Flex p="xl">
         <MetabotNavPane />
-        <Stack px="xl">
-          <SettingHeader
-            id="configure-metabot"
-            title={c("{0} is the name of an AI assistant")
-              .t`Configure ${metabotName}`}
-            description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
-              .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
-          />
-          {isEmbeddedMetabot && (
-            <Text c="text-medium" maw="40rem">
-              {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
-            </Text>
+        <Stack w="100%" px="xl" gap="xl">
+          <Box>
+            <SettingHeader
+              id="configure-metabot"
+              title={c("{0} is the name of an AI assistant")
+                .t`Configure ${metabotName}`}
+              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+                .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
+            />
+            {isEmbeddedMetabot && (
+              <Text c="text-medium" maw="40rem">
+                {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
+              </Text>
+            )}
+          </Box>
+          {metabotId && (
+            <>
+              <MetabotConfigurationPane
+                metabotId={metabotId}
+                metabotName={metabotName}
+              />
+              <MetabotPromptSuggestionPane metabotId={metabotId} />
+            </>
           )}
-          <MetabotConfigurationPane
-            metabotId={metabotId}
-            metabotName={metabotName}
-          />
         </Stack>
       </Flex>
     </ErrorBoundary>
@@ -110,22 +134,19 @@ function MetabotConfigurationPane({
   metabotId,
   metabotName,
 }: {
-  metabotId: MetabotId | null;
+  metabotId: MetabotId;
   metabotName: string;
 }) {
   const {
     data: entityList,
     isLoading,
     error,
-  } = useListMetabotsEntitiesQuery(metabotId ? { id: metabotId } : skipToken);
+  } = useListMetabotsEntitiesQuery({ id: metabotId });
   const [updateEntities] = useUpdateMetabotEntitiesMutation();
   const [deleteEntity] = useDeleteMetabotEntitiesMutation();
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
-  if (!metabotId) {
-    return null;
-  }
   if (isLoading || !entityList || error) {
     return (
       <LoadingAndErrorWrapper
@@ -251,5 +272,140 @@ const CollectionDisplay = ({
         {collection.name}
       </Text>
     </Flex>
+  );
+};
+
+const MetabotPromptSuggestionPane = ({
+  metabotId,
+}: {
+  metabotId: MetabotId;
+}) => {
+  const pageSize = 6;
+  const { handleNextPage, handlePreviousPage, page } = usePagination();
+  const offset = page * pageSize;
+
+  const { data, isLoading, error } = useGetSuggestedMetabotPromptsQuery({
+    metabot_id: metabotId,
+    limit: pageSize,
+    include_disabled: true,
+    offset,
+  });
+  const [updatePrompt] = useUpdateSuggestedMetabotPromptMutation();
+  const [deletePrompt] = useDeleteSuggestedMetabotPromptMutation();
+  // const [refreshPrompts] = useRefreshSuggestedMetabotPromptsMutation();
+
+  const [sendToast] = useToast();
+
+  const prompts = data?.prompts ?? [];
+  const total = data?.total ?? 0;
+
+  if (isLoading) {
+    return <div>loading...</div>;
+  }
+  if (error) {
+    return <div>error...</div>;
+  }
+
+  return (
+    <Stack w="100%">
+      <SettingHeader id="prompt-suggestions" title={t`Prompt suggestions`} />
+      <Table<SuggestedMetabotPrompt>
+        columns={[
+          { name: "Prompt", key: "prompt", sortable: false },
+          { name: "Model or metric", key: "model", sortable: false },
+          { name: "", key: "trash", sortable: false },
+        ]}
+        rows={prompts}
+        rowRenderer={(row) => (
+          <SuggestedPromptRow
+            row={row}
+            onToggleEnabled={async (enabled) => {
+              // TODO: success / failure handling
+              const { error } = await updatePrompt({
+                metabot_id: metabotId,
+                prompt_id: row.id,
+                enabled,
+              });
+              if (error) {
+                sendToast({
+                  message: enabled
+                    ? t`Failed to enable prompt`
+                    : t`Failed to disabled prompt`,
+                  icon: "warning",
+                });
+              } else {
+                sendToast({
+                  message: enabled
+                    ? t`Succesfully enabled prompt`
+                    : t`Succesfully disabled prompt`,
+                  icon: "check",
+                });
+              }
+            }}
+            onDelete={async () => {
+              // TODO: success / failure handling
+              const { error } = await deletePrompt({
+                metabot_id: metabotId,
+                prompt_id: row.id,
+              });
+              sendToast({
+                message: error
+                  ? t`Failed to delete prompt`
+                  : t`Succesfully deleted prompt`,
+                icon: error ? "warning" : "check",
+              });
+            }}
+          />
+        )}
+        emptyBody={
+          <Center my="lg" fw="bold" c="text-light">
+            {t`No prompts found.`}
+          </Center>
+        }
+      />
+      <Flex align="center" justify="flex-end" w="100%">
+        <PaginationControls
+          page={page}
+          pageSize={pageSize}
+          itemsLength={prompts.length}
+          total={total}
+          showTotal
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+        />
+      </Flex>
+    </Stack>
+  );
+};
+
+const SuggestedPromptRow = ({
+  row,
+  onToggleEnabled,
+  onDelete,
+}: {
+  row: SuggestedMetabotPrompt;
+  onToggleEnabled: (enabled: boolean) => Promise<void>;
+  onDelete: () => Promise<void>;
+}) => {
+  return (
+    <tr>
+      <td>
+        <Flex gap="sm">
+          <Checkbox
+            checked={row.enabled}
+            onChange={(e) => onToggleEnabled(e.target.checked)}
+          />
+          {row.prompt}
+        </Flex>
+      </td>
+      <td>
+        {row.model} {row.model_id}
+      </td>
+      <td>
+        <ActionIcon onClick={onDelete} h="sm">
+          <Icon name="trash" size="1rem" />
+        </ActionIcon>
+      </td>
+    </tr>
   );
 };
