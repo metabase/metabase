@@ -1,18 +1,11 @@
 import { invalidateTags, listTag } from "metabase/api/tags";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import type {
-  DictionaryResponse,
-  UploadContentTranslationDictionaryRequest,
-} from "metabase-types/api/content-translation";
+import type { DictionaryResponse } from "metabase-types/api/content-translation";
 
 import { EnterpriseApi } from "./api";
 
 type ListContentTranslationsRequest = {
   locale?: string;
-};
-
-type UploadContentTranslationDictionaryRequest = {
-  file: File;
 };
 
 export const contentTranslationApi = EnterpriseApi.injectEndpoints({
@@ -32,7 +25,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
       }),
       uploadContentTranslationDictionary: builder.mutation<
         { success: boolean },
-        UploadContentTranslationDictionaryRequest
+        { file: File }
       >({
         query: ({ file }) => {
           const formData = new FormData();
