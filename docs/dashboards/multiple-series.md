@@ -21,9 +21,9 @@ There are two main ways to visualize data side-by-side in Metabase:
 
 ## Ask a question that involves multiple dimensions
 
-If you're creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it into two or more groups.
+If you're creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it by two or more dimensions.
 
-For example, we might want to see sales by product category. In the **Sample Database** that ships with Metabase, you would count the number of rows, then group by the `Product -> Category` and `Created At`:
+For example, we might want to see sales by month and product category. In the **Sample Database** that ships with Metabase, you would count the number of rows, then group by the `Product -> Category` and `Created At`:
 
 ![Orders by product category](./images/editor-orders-by-product-category.png)
 
