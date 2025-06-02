@@ -80,9 +80,9 @@ export const translateDisplayNames = <T>(
 };
 
 export const shouldTranslateFieldValuesOfColumn = (col: DatasetColumn) =>
-  col.semantic_type === "type/Category" ||
-  col.semantic_type === "type/State" ||
-  col.semantic_type === "type/Country";
+  ["type/Category", "type/Country", "type/State", "type/Source"].includes(
+    col?.semantic_type || "",
+  );
 
 export const translateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,

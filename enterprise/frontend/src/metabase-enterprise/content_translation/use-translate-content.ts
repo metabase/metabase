@@ -13,7 +13,8 @@ export const useTranslateContent = (): ContentTranslationFunction => {
 
   const { data } = useListContentTranslationsQuery(
     // This URL is currently only defined in static embedding
-    PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl
+    PLUGIN_CONTENT_TRANSLATION.isEnabled &&
+      PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl
       ? {
           locale,
         }
