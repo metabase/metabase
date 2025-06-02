@@ -38,7 +38,7 @@ export const questionShortcuts = {
   },
   "query-builder-data-refresh": {
     get name() {
-      return t`Refetch question data`;
+      return t`Refresh data`;
     },
     shortcut: ["r"],
     shortcutGroup: "question" as const,
