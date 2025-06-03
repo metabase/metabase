@@ -12,6 +12,13 @@
 (mu/defn inherited-column-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref."
   [column :- ::lib.schema.metadata/column]
+  #_(cond
+    ;; This column came from a previous stage, so use its desired-column-alias here.
+    ;; TODO: This is actually a misuse of `desired-column-alias` - if the column has eg. `:source/previous-stage`
+    ;; then it should also have a correct `:lib/source-column-alias`!
+      (inherited-column? column)         ((some-fn :lib/desired-column-alias :name) column)
+    ;; This column need a string-based name, but it's from this stage.
+      (:lib/previously-inherited column) ((some-fn :lib/source-column-alias :name) column))
   (when (or (inherited-column? column)
             (:lib/previously-inherited column))
     ((some-fn :lib/source-column-alias :name) column)))
