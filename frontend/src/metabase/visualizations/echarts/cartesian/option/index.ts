@@ -44,7 +44,7 @@ export const getSharedEChartsOptions = (isAnimated: boolean) => ({
 
 type Axes = ReturnType<typeof buildAxes>;
 
-const ensureRoomForLabels = (
+export const ensureRoomForLabels = (
   axes: Axes,
   { leftAxisModel, rightAxisModel }: CartesianChartModel,
   chartMeasurements: ChartMeasurements,
