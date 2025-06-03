@@ -3,7 +3,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Card,
   DatabaseId,
   DatasetColumn,
   DatasetQuery,
@@ -14,21 +13,22 @@ import type {
   RawSeries,
   TableId,
 } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
 import { getErrorMessage } from "./utils";
 
 const PREVIEW_ROW_COUNT = 5;
 
-type TablePreviewProps = {
-  fieldId: FieldId;
+interface Props {
   databaseId: DatabaseId;
-  tableId: TableId;
   field: Field;
-};
+  fieldId: FieldId;
+  tableId: TableId;
+}
 
-export function TablePreview(props: TablePreviewProps) {
-  const { rawSeries, error } = useDataSample(props);
+export function TablePreview(props: Props) {
+  const { error, rawSeries } = useDataSample(props);
 
   if (error) {
     return <Error message={error} />;
@@ -44,20 +44,13 @@ export function TablePreview(props: TablePreviewProps) {
   );
 }
 
-function useDataSample({
-  fieldId,
-  tableId,
-  databaseId,
-  field,
-}: TablePreviewProps) {
-  let options = null;
-  if (isa(field.base_type, TYPE.DateTime)) {
-    options = {
-      "base-type": "type/DateTime",
-      "temporal-unit": "minute" as const,
-    };
-  }
-
+function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
+  const options = isa(field.base_type, TYPE.DateTime)
+    ? {
+        "base-type": "type/DateTime",
+        "temporal-unit": "minute" as const,
+      }
+    : null;
   const fieldRef: FieldReference = ["field", fieldId, options];
   const filter: FieldFilter = ["not-null", fieldRef];
   const breakout = [fieldRef];
@@ -95,11 +88,11 @@ function useDataSample({
 
   const rawSeries: RawSeries = [
     {
-      card: {
+      card: createMockCard({
         dataset_query: datasetQuery,
         display: "table",
         visualization_settings: {},
-      } as Card,
+      }),
       data: {
         // create a stub column in the data
         ...data.data,

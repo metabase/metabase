@@ -8,10 +8,10 @@ import {
   canCoerceFieldType,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Flex, Icon, Stack, Switch, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Switch, TextInput, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
-import { SectionPill } from "../SectionPill";
+import { SectionPill } from "../../SectionPill";
 
 import S from "./DataSection.module.css";
 import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?component";
@@ -40,27 +40,27 @@ export const DataSection = ({ field }: Props) => {
       </Box>
 
       <TextInput
+        classNames={{ input: S.disabledInput }}
         disabled
         label={t`Field name`}
-        rightSection={<Icon name="lock" className={S.disabledInputIcon} />}
+        rightSection={<Icon className={S.disabledInputIcon} name="lock" />}
         rightSectionPointerEvents="none"
         value={field.name}
-        classNames={{ input: S.disabledInput }}
       />
 
       <Stack gap={0}>
         <TextInput
+          classNames={{ input: S.disabledInput }}
           disabled
           label={t`Data type`}
-          rightSection={<Icon name="lock" className={S.disabledInputIcon} />}
+          rightSection={<Icon className={S.disabledInputIcon} name="lock" />}
           rightSectionPointerEvents="none"
           value={field.database_type}
-          classNames={{ input: S.disabledInput }}
         />
 
         {canCoerceFieldType(field) && (
           <>
-            <Flex gap="xs" ml={12}>
+            <Flex gap="xs" ml={rem(12)}>
               {isCasting ? (
                 <SubInputFollowIllustration />
               ) : (

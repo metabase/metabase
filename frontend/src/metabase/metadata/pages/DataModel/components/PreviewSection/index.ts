@@ -1,2 +1,2 @@
 export * from "./PreviewSection";
-export { usePreviewType } from "./utils";
+export * from "./types";

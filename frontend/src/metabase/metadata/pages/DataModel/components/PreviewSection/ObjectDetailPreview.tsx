@@ -5,7 +5,6 @@ import EmptyState from "metabase/components/EmptyState";
 import { Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
-  Card,
   DatabaseId,
   DatasetQuery,
   FieldFilter,
@@ -14,20 +13,19 @@ import type {
   RawSeries,
   TableId,
 } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
 import { getErrorMessage } from "./utils";
 
-export function ObjectDetailPreview({
-  databaseId,
-  tableId,
-  fieldId,
-}: {
-  tableId: TableId;
+interface Props {
   databaseId: DatabaseId;
   fieldId: FieldId;
-}) {
-  const { rawSeries, error } = useDataSample({
+  tableId: TableId;
+}
+
+export function ObjectDetailPreview({ databaseId, fieldId, tableId }: Props) {
+  const { error, rawSeries } = useDataSample({
     databaseId,
     tableId,
     fieldId,
@@ -51,15 +49,7 @@ export function ObjectDetailPreview({
   return <Visualization rawSeries={rawSeries} />;
 }
 
-function useDataSample({
-  databaseId,
-  tableId,
-  fieldId,
-}: {
-  databaseId: DatabaseId;
-  tableId: TableId;
-  fieldId: FieldId;
-}) {
+function useDataSample({ databaseId, fieldId, tableId }: Props) {
   const reference: FieldReference = ["field", fieldId, null];
   const filter: FieldFilter = ["not-null", reference];
 
@@ -80,9 +70,9 @@ function useDataSample({
   if (data?.status === "failed") {
     return {
       ...rest,
-      rawSeries: undefined,
-      isError: true,
       error: getErrorMessage(data),
+      isError: true,
+      rawSeries: undefined,
     };
   }
 
@@ -92,11 +82,11 @@ function useDataSample({
 
   const rawSeries: RawSeries = [
     {
-      card: {
+      card: createMockCard({
         dataset_query: datasetQuery,
         display: "object",
         visualization_settings: {},
-      } as Card,
+      }),
       data: data.data,
     },
   ];

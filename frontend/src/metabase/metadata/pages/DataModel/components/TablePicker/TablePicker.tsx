@@ -3,7 +3,7 @@ import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { Box, Flex, Icon, Input, Stack } from "metabase/ui";
+import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";
 import S from "./TablePicker.module.css";
@@ -21,13 +21,13 @@ export function TablePicker({
   const deferredQuery = useDeferredValue(query);
 
   return (
-    <Stack mih={200}>
+    <Stack mih={rem(200)}>
       <Box p="xl" pb={0}>
         <Input
-          value={query}
-          onChange={(evt) => setQuery(evt.target.value)}
-          placeholder={t`Search tables, fields…`}
           leftSection={<Icon name="search" />}
+          placeholder={t`Search tables`}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
         />
       </Box>
 
@@ -110,7 +110,7 @@ function Search({
 
   // search results need their own keypress handling logic
   // because we want to keep the focus on the search input
-  useKeyPressEvent("ArrowDown", (evt) => {
+  useKeyPressEvent("ArrowDown", (event) => {
     setSelectedIndex((selectedIndex) => {
       const nextTableIndex = items.findIndex(
         (item, index) => item.type === "table" && index > selectedIndex,
@@ -121,9 +121,10 @@ function Search({
       const firstTableIndex = items.findIndex((item) => item.type === "table");
       return firstTableIndex;
     });
-    evt.preventDefault();
+    event.preventDefault();
   });
-  useKeyPressEvent("ArrowUp", (evt) => {
+
+  useKeyPressEvent("ArrowUp", (event) => {
     setSelectedIndex((selectedIndex) => {
       const previousTableIndex = items.findLastIndex(
         (item, index) => item.type === "table" && index < selectedIndex,
@@ -136,14 +137,14 @@ function Search({
       );
       return lastTableIndex;
     });
-    evt.preventDefault();
+    event.preventDefault();
   });
 
-  useKeyPressEvent("Enter", (evt) => {
+  useKeyPressEvent("Enter", (event) => {
     const item = items[selectedIndex];
     if (item.value) {
       onChange?.(item.value);
-      evt.preventDefault();
+      event.preventDefault();
     }
   });
 

@@ -1,5 +1,5 @@
 import { getFieldCurrency } from "metabase/metadata/utils/field";
-import { Flex, type SelectProps, Stack } from "metabase/ui";
+import { Flex, type SelectProps, Stack, rem } from "metabase/ui";
 import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
 
@@ -76,7 +76,7 @@ export const SemanticTypeAndTargetPicker = ({
 
       {showCurrencyTypeSelect && (
         <>
-          <Flex ml={12}>
+          <Flex ml={rem(12)}>
             <SubInputIllustration />
           </Flex>
 
@@ -91,7 +91,7 @@ export const SemanticTypeAndTargetPicker = ({
 
       {showFKTargetSelect && (
         <>
-          <Flex ml={12}>
+          <Flex ml={rem(12)}>
             <SubInputIllustration />
           </Flex>
 

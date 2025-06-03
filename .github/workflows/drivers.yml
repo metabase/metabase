@@ -1097,7 +1097,7 @@ jobs:
       - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
-      - be-tests-snowflake-ee
+      # - be-tests-snowflake-ee FIXME temporarily disabled DRI-325
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver

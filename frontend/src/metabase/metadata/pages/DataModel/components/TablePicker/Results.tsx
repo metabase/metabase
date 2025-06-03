@@ -1,9 +1,9 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, type KeyboardEvent, useEffect, useRef } from "react";
 import _ from "underscore";
 
-import { Box, Flex, Icon, Skeleton } from "metabase/ui";
+import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
@@ -114,25 +114,25 @@ export function Results({
             );
           }
 
-          const handleKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
+          const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
             if (typeof selectedIndex === "number") {
               // If there is a selected index externally
               // don't handle the key events
               return;
             }
-            if (evt.code === "ArrowDown") {
+            if (event.code === "ArrowDown") {
               // focus the next item in the list
               // does not wrap at around
               itemByIndex(index + 1)?.focus();
-              evt.preventDefault();
+              event.preventDefault();
             }
-            if (evt.code === "ArrowUp") {
+            if (event.code === "ArrowUp") {
               // focus the previous item in the list
               // does not wrap at around
               itemByIndex(index - 1)?.focus();
-              evt.preventDefault();
+              event.preventDefault();
             }
-            if (evt.code === "ArrowLeft") {
+            if (event.code === "ArrowLeft") {
               if (isExpanded && type !== "table") {
                 // when expanded, close the item
                 toggle?.(key, false);
@@ -140,9 +140,9 @@ export function Results({
                 // when already closed, go to parent node
                 itemByIndex(parentIndex)?.focus();
               }
-              evt.preventDefault();
+              event.preventDefault();
             }
-            if (evt.code === "ArrowRight") {
+            if (event.code === "ArrowRight") {
               if (!isExpanded) {
                 // expand the item
                 if (type !== "table") {
@@ -152,13 +152,13 @@ export function Results({
                 // go to first child
                 itemByIndex(index + 1)?.focus();
               }
-              evt.preventDefault();
+              event.preventDefault();
             }
 
-            if (evt.code === "Space" || evt.code === "Enter") {
+            if (event.code === "Space" || event.code === "Enter") {
               // toggle the current item
               handleItemSelect();
-              evt.preventDefault();
+              event.preventDefault();
             }
           };
 
@@ -194,7 +194,7 @@ export function Results({
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
                 }}
-                data-test-id="tree-item"
+                data-testid="tree-item"
                 data-type={type}
                 onKeyDown={handleKeyDown}
                 onClick={() => handleItemSelect()}
@@ -218,7 +218,7 @@ export function Results({
                     <Box
                       pl="sm"
                       className={S.label}
-                      data-test-id="tree-item-label"
+                      data-testid="tree-item-label"
                     >
                       {label}
                     </Box>
@@ -243,12 +243,13 @@ export function Results({
 
 function Loading() {
   const w = 20 + Math.random() * 80;
+
   return (
     <Skeleton
-      radius="sm"
+      data-testid="loading-placeholder"
+      height={rem(12)}
       width={`${w}%`}
-      height={12}
-      data-test-id="loading-placeholder"
+      radius="sm"
     />
   );
 }

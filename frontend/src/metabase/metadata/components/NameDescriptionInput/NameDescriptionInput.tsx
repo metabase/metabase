@@ -1,4 +1,4 @@
-import { Box, Flex, Icon, type IconName } from "metabase/ui";
+import { Box, Flex, Icon, type IconName, rem } from "metabase/ui";
 
 import { Input } from "./Input";
 import S from "./NameDescriptionInput.module.css";
@@ -36,9 +36,9 @@ export const NameDescriptionInput = ({
             align="center"
             bg="brand"
             className={S.iconContainer}
-            h={24}
+            h={rem(24)}
             justify="center"
-            w={24}
+            w={rem(24)}
           >
             <Icon c="white" name={nameIcon} size={12} />
           </Flex>

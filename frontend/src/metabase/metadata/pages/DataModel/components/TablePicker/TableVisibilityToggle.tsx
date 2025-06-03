@@ -66,8 +66,8 @@ export function TableVisibilityToggle({
       <ActionIcon
         variant="transparent"
         className={className}
-        onClick={(evt) => {
-          evt.stopPropagation();
+        onClick={(event) => {
+          event.stopPropagation();
 
           if (isHidden) {
             unhide();

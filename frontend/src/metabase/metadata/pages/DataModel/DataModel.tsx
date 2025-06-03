@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -8,16 +8,16 @@ import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
   FieldSection,
   PreviewSection,
+  type PreviewType,
   RouterTablePicker,
   SegmentsLink,
   TableSection,
-  usePreviewType,
 } from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
@@ -34,14 +34,14 @@ export const DataModel = ({
   const { databaseId, tableId, schemaId } = parseRouteParams(params);
 
   return (
-    <Flex h="100%" bg="bg-light">
+    <Flex bg="bg-light" h="100%">
       <Stack
+        bg="bg-white"
         className={S.column}
         flex="0 0 25%"
-        miw="320px"
         gap={0}
         h="100%"
-        bg="bg-white"
+        miw={rem(320)}
       >
         <RouterTablePicker
           databaseId={databaseId}
@@ -49,7 +49,7 @@ export const DataModel = ({
           tableId={tableId}
         />
 
-        <Box mx="xl" py="sm" className={S.footer}>
+        <Box className={S.footer} mx="xl" py="sm">
           <SegmentsLink
             active={
               location.pathname.startsWith("/admin/datamodel/segments") ||
@@ -83,7 +83,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
         },
   );
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const [previewType, setPreviewType] = usePreviewType();
+  const [previewType, setPreviewType] = useState<PreviewType>("table");
 
   return (
     <>
@@ -92,7 +92,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
           className={cx(S.column, S.rightBorder)}
           flex="0 0 25%"
           h="100%"
-          miw="400px"
+          miw={rem(400)}
         >
           <LoadingAndErrorWrapper error={error} loading={isLoading}>
             {table && (
@@ -112,7 +112,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
 
       {isEmptyStateShown && (
         <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
-          <Box maw={320}>
+          <Box maw={rem(320)}>
             <EmptyState
               illustrationElement={<img src={EmptyDashboardBot} />}
               title={
@@ -132,7 +132,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
 
       {!isEmptyStateShown && (
         <>
-          <Box className={S.column} flex="0 0 25%" h="100%" miw="400px">
+          <Box className={S.column} flex="0 0 25%" h="100%" miw={rem(400)}>
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && (
                 <FieldSection
@@ -149,7 +149,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
           </Box>
 
           {field && (
-            <Box flex="1 1 200px" miw={0} p="xl">
+            <Box flex={`1 1 ${rem(200)}`} miw={0} p="xl">
               <PreviewSection
                 databaseId={databaseId}
                 field={field}
