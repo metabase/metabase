@@ -168,7 +168,9 @@
     (if-not (> file-length part-size)
       ;; single put uses SSE, but multipart doesn't support it.
       (put-file upload_url file on-progress :headers {"x-amz-server-side-encryption" "aws:kms"})
-      (let [parts
+      (let [;; seq of up to part-size ranges
+            ;; e.g. for a 250mb file [[0 100e6] [100e6 200e6] [200e6 250e6]]
+            parts
             (partition 2 1 (-> (range 0 file-length part-size)
                                vec
                                (conj file-length)))
@@ -181,11 +183,15 @@
                 json/decode+kw)
 
             etags
-            (->> (map (fn [[start end] [part-number url]]
-                        [part-number
-                         (get-in (put-file url file on-progress :start start :end end)
-                                 [:headers "ETag"])])
-                      parts multipart-urls)
+            (->> parts
+                 (map-indexed (fn [idx [start end]]
+                                (let [;; look up idx in multipart-urls, which starts at :1 up to (count parts)
+                                      part-id (-> idx inc str keyword)
+                                      url (multipart-urls part-id)
+                                      ;; upload and get the etag from the headers
+                                      resp (put-file url file on-progress :start start :end end)
+                                      etag (get-in resp [:headers "ETag"])]
+                                  [part-id etag])))
                  (into {}))]
         (http/put (migration-url external_id "/multipart/complete")
                   {:form-params  {:multipart_upload_id multipart-upload-id
