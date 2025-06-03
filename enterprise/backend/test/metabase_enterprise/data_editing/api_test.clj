@@ -1191,7 +1191,33 @@
                            :display_name "ID"
                            :type "type/BigInteger"}]
                          (->> (:parameters body)
-                              (map #(select-keys % [:id :display_name :type]))))))))))))))
+                              (map #(select-keys % [:id :display_name :type])))))))))
+
+          (mt/with-temp
+            [:model/Dashboard dashboard {}
+             :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
+                                            :visualization_settings {:table_id @test-table}}]
+            (testing "table actions (old picker shim)"
+              (let [create-id "table.row/create"
+                    update-id "table.row/update"
+                    delete-id "table.row/delete"]
+                (doseq [[testing-msg scope] [["table scope" {:table-id @test-table}]
+                                             ["dashcard scope" {:dashcard-id (:id dashcard)}]]]
+                  (testing testing-msg
+                    (testing "create"
+                      (let [{:keys [status]} (req {:scope scope
+                                                   :action_id create-id})]
+                        (is (= 200 status))))
+
+                    (testing "update"
+                      (let [{:keys [status]} (req {:scope scope
+                                                   :action_id update-id})]
+                        (is (= 200 status))))
+
+                    (testing "delete"
+                      (let [{:keys [status]} (req {:scope scope
+                                                   :action_id delete-id})]
+                        (is (= 200 status))))))))))))))
 
 ;; Taken from metabase-enterprise.data-editing.api-test.
 ;; When we deprecate that API, we should move all the sibling tests here as well.
