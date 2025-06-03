@@ -1,17 +1,14 @@
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import {
-  type ActionItem,
-  type ActionPickerStatePath,
-  // type DataPickerItem,
-  // type DataPickerModalOptions,
-  // type DataPickerValue,
-  createQuestionPickerItemSelectHandler,
-  createShouldShowItem,
-  isModelItem,
-  type ActionPickerItem,
-  type DataPickerModalOptions,
+import type {
+  ActionItem,
+  ModelActionPickerItem,
+  ModelActionPickerStatePath,
+  ModelActionPickerValue,
+  TableActionPickerItem,
+  TableActionPickerStatePath,
+  TableActionPickerValue,
 } from "metabase/common/components/DataPicker";
 import { useAvailableData } from "metabase/common/components/DataPicker/hooks";
 import {
@@ -20,28 +17,17 @@ import {
   type EntityPickerTab,
   defaultOptions,
 } from "metabase/common/components/EntityPicker";
-import { useLogRecentItem } from "metabase/common/components/EntityPicker/hooks";
-import {
-  QuestionPicker,
-  type QuestionPickerStatePath,
-} from "metabase/common/components/QuestionPicker";
-import { useSetting } from "metabase/common/hooks";
-import { ActionPicker } from "metabase-enterprise/table-actions/settings/ActionPicker";
-import { isActionItem } from "metabase-enterprise/table-actions/settings/ActionPicker/utils";
-import type {
-  CollectionItemModel,
-  RecentContexts,
-  RecentItem,
-} from "metabase-types/api";
+import type { RecentContexts, RecentItem } from "metabase-types/api";
 
-type TableActionPickerProps = {
+import { ModelActionPicker, TableActionPicker } from "./ActionPicker";
+import { isActionItem } from "./ActionPicker/utils";
+
+type TableOrModelDataPickerProps = {
   value: ActionItem | undefined;
-  onChange: (action: ActionItem) => void;
+  onChange: (action: ActionItem | undefined) => void;
   onClose: () => void;
   children: ReactNode;
 };
-
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
@@ -52,8 +38,6 @@ const SEARCH_PARAMS = {
 const options: Partial<EntityPickerOptions> = {
   ...defaultOptions,
   hasConfirmButtons: false,
-  showPersonalCollections: true,
-  showRootCollection: true,
   hasRecents: true,
 };
 
@@ -62,18 +46,11 @@ export const TableOrModelDataPicker = ({
   onChange,
   onClose,
   children,
-}: TableActionPickerProps) => {
-  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
+}: TableOrModelDataPickerProps) => {
   const { hasModels, isLoading: isLoadingAvailableData } = useAvailableData({
     databaseId: undefined,
     models: ["dataset"],
   });
-
-  const { tryLogRecentItem } = useLogRecentItem();
-
-  const shouldShowItem = useMemo(() => {
-    return createShouldShowItem(QUESTION_PICKER_MODELS);
-  }, []);
 
   const recentFilter = useCallback(
     (recentItems: RecentItem[]) => recentItems,
@@ -81,25 +58,27 @@ export const TableOrModelDataPicker = ({
   );
 
   const handleItemSelect = useCallback(
-    (item: ActionPickerItem) => {
+    (item: TableActionPickerItem | ModelActionPickerItem) => {
       if (!isActionItem(item)) {
+        onChange(undefined);
         return;
       }
 
       onChange(item);
-      tryLogRecentItem(item);
     },
-    [onChange, tryLogRecentItem],
+    [onChange],
   );
 
-  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
-  const [actionsPath, setActionsPath] = useState<ActionPickerStatePath>();
+  const [tableActionPath, setTableActionPath] =
+    useState<TableActionPickerStatePath>();
+  const [modelActionPath, setModelActionPath] =
+    useState<ModelActionPickerStatePath>();
 
   const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<
-      ActionPickerItem["id"],
-      ActionPickerItem["model"],
-      ActionPickerItem
+      TableActionPickerItem["id"] | ModelActionPickerItem["id"],
+      TableActionPickerItem["model"] | ModelActionPickerItem["model"],
+      TableActionPickerItem | ModelActionPickerItem
     >[] = [
       {
         id: "tables-tab",
@@ -112,43 +91,37 @@ export const TableOrModelDataPicker = ({
         ],
         icon: "table",
         render: ({ onItemSelect }) => (
-          <ActionPicker
-            path={actionsPath}
-            value={isActionItem(value) ? value : undefined}
+          <TableActionPicker
+            path={tableActionPath}
+            value={value as TableActionPickerValue | undefined}
             onItemSelect={onItemSelect}
-            onPathChange={setActionsPath}
+            onPathChange={setTableActionPath}
           >
             {children}
-          </ActionPicker>
+          </TableActionPicker>
         ),
       },
     ];
 
-    // const shouldShowCollectionsTab = hasModels && hasNestedQueriesEnabled;
-    //
-    // if (shouldShowCollectionsTab) {
-    //   computedTabs.push({
-    //     id: "models-tab",
-    //     displayName: t`Models`,
-    //     models: ["dataset" as const],
-    //     folderModels: ["collection" as const, "dashboard" as const],
-    //     icon: "folder",
-    //     render: ({ onItemSelect }) => (
-    //       <QuestionPicker
-    //         initialValue={
-    //           isModelItem(value as DataPickerValue) ? value : undefined
-    //         }
-    //         models={QUESTION_PICKER_MODELS}
-    //         options={options}
-    //         path={questionsPath}
-    //         shouldShowItem={shouldShowItem}
-    //         onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
-    //         onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
-    //         onPathChange={setQuestionsPath}
-    //       />
-    //     ),
-    //   });
-    // }
+    if (hasModels) {
+      computedTabs.push({
+        id: "models-tab",
+        displayName: t`Models`,
+        models: ["action" as const],
+        folderModels: ["dataset" as const],
+        icon: "model",
+        render: ({ onItemSelect }) => (
+          <ModelActionPicker
+            path={modelActionPath}
+            value={value as ModelActionPickerValue | undefined}
+            onItemSelect={onItemSelect}
+            onPathChange={setModelActionPath}
+          >
+            {children}
+          </ModelActionPicker>
+        ),
+      });
+    }
 
     return computedTabs;
   })();
@@ -167,7 +140,7 @@ export const TableOrModelDataPicker = ({
       title={t`Pick action to add`}
       onClose={onClose}
       onItemSelect={handleItemSelect}
-      // isLoadingTabs={isLoadingAvailableData}
+      isLoadingTabs={isLoadingAvailableData}
     />
   );
 };

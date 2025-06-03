@@ -1,1 +1,2 @@
-export { ActionPicker } from "./ActionPicker";
+export { TableActionPicker } from "./TableActionPicker";
+export { ModelActionPicker } from "./ModelActionPicker";

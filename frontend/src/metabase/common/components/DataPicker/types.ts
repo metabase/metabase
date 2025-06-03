@@ -70,15 +70,20 @@ export type ActionItem = {
   model: "action";
 };
 
-export type ActionPickerValue = {
-  id: WritebackActionId | TableActionId;
+export type TableActionPickerValue = {
+  id: TableActionId;
   name: string;
   model: "action";
-  // model_id?: CardId;
-} & {
   db_id: DatabaseId;
   schema: SchemaName;
   table_id: TableId;
+};
+
+export type ModelActionPickerValue = {
+  id: WritebackActionId;
+  name: string;
+  model: "action";
+  model_id: CardId;
 };
 
 export type TablePickerValue = {
@@ -118,11 +123,17 @@ export type TablePickerStatePath = [
   TableId | undefined,
 ];
 
-export type ActionPickerFolderItem = DatabaseItem | SchemaItem | TableItem;
-export type ActionPickerStatePath = [
+export type TableActionPickerFolderItem = DatabaseItem | SchemaItem | TableItem;
+export type TableActionPickerStatePath = [
   DatabaseId | undefined,
   SchemaName | undefined,
   TableId | undefined,
   TableActionId | undefined,
 ];
-export type ActionPickerItem = ActionPickerFolderItem | ActionItem;
+export type TableActionPickerItem = TableActionPickerFolderItem | ActionItem;
+
+export type ModelActionPickerStatePath = [
+  CardId | undefined,
+  TableActionId | undefined,
+];
+export type ModelActionPickerItem = ModelItem | ActionItem;

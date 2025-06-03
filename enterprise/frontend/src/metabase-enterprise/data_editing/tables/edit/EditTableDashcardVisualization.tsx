@@ -337,23 +337,23 @@ export const EditTableDashcardVisualization = memo(
         ) : (
           <>
             <Box pos="relative" className={S.gridWrapper}>
-              {/*<EditTableDataOverlay*/}
-              {/*  show={shouldDisableActions}*/}
-              {/*  message={currentActionLabel ?? ""}*/}
-              {/*/>*/}
-              {/*<EditTableDataGrid*/}
-              {/*  data={data}*/}
-              {/*  fieldMetadataMap={tableFieldMetadataMap}*/}
-              {/*  cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}*/}
-              {/*  onCellValueUpdate={handleCellValueUpdate}*/}
-              {/*  onRowExpandClick={openEditRowModal}*/}
-              {/*  columnsConfig={columnsConfig}*/}
-              {/*  getColumnSortDirection={getColumnSortDirection}*/}
-              {/*  rowActions={tableActions}*/}
-              {/*  onActionRun={handleTableActionRun}*/}
-              {/*  rowSelection={rowSelection}*/}
-              {/*  onRowSelectionChange={setRowSelection}*/}
-              {/*/>*/}
+              <EditTableDataOverlay
+                show={shouldDisableActions}
+                message={currentActionLabel ?? ""}
+              />
+              <EditTableDataGrid
+                data={data}
+                fieldMetadataMap={tableFieldMetadataMap}
+                cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
+                onCellValueUpdate={handleCellValueUpdate}
+                onRowExpandClick={openEditRowModal}
+                columnsConfig={columnsConfig}
+                getColumnSortDirection={getColumnSortDirection}
+                rowActions={tableActions}
+                onActionRun={handleTableActionRun}
+                rowSelection={rowSelection}
+                onRowSelectionChange={setRowSelection}
+              />
             </Box>
 
             <Flex

@@ -11,6 +11,7 @@ interface Props {
   isCurrentLevel: boolean;
   selectedItem: TableItem | null;
   tables: Table[] | undefined;
+  isFolder?: () => boolean;
   onClick: (item: TableItem) => void;
 }
 
@@ -22,6 +23,7 @@ export const TableList = ({
   isCurrentLevel,
   selectedItem,
   tables,
+  isFolder: isFolderProp,
   onClick,
 }: Props) => {
   const items: TableItem[] | undefined = useMemo(() => {
@@ -37,7 +39,7 @@ export const TableList = ({
       <ItemList
         error={error}
         isCurrentLevel={isCurrentLevel}
-        isFolder={isFolder}
+        isFolder={isFolderProp ?? isFolder}
         isLoading={isLoading}
         items={items}
         selectedItem={selectedItem}

@@ -18,13 +18,12 @@ import { SchemaList } from "metabase/common/components/DataPicker/components/Sch
 import { TableList } from "metabase/common/components/DataPicker/components/TableList";
 import type {
   ActionItem,
-  ActionPickerFolderItem,
-  ActionPickerItem,
-  ActionPickerStatePath,
-  ActionPickerValue,
+  TableActionPickerFolderItem,
+  TableActionPickerItem,
+  TableActionPickerStatePath,
+  TableActionPickerValue,
 } from "metabase/common/components/DataPicker/types";
 import {
-  generateKey,
   getDbItem,
   getSchemaItem,
   getTableItem,
@@ -33,8 +32,6 @@ import { AutoScrollBox } from "metabase/common/components/EntityPicker";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
 import { useGetActionsQuery } from "metabase-enterprise/api";
-import { ActionList } from "metabase-enterprise/table-actions/settings/ActionPicker/ActionList";
-import { getActionItem } from "metabase-enterprise/table-actions/settings/ActionPicker/utils";
 import type {
   DataGridWritebackActionId,
   DatabaseId,
@@ -43,31 +40,29 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { ActionList } from "./ActionList";
+import { generateTableActionKey, getActionItem } from "./utils";
+
+const isTableFolder = () => true;
+
 interface Props {
-  databaseId?: DatabaseId;
-  path: ActionPickerStatePath | undefined;
-  value: ActionPickerValue | undefined;
-  onItemSelect: (value: ActionPickerItem) => void;
-  onPathChange: (path: ActionPickerStatePath) => void;
+  path: TableActionPickerStatePath | undefined;
+  value: TableActionPickerValue | undefined;
+  onItemSelect: (value: TableActionPickerItem) => void;
+  onPathChange: (path: TableActionPickerStatePath) => void;
   children?: ReactNode;
 }
 
-export const ActionPicker = ({
-  databaseId,
+export const TableActionPicker = ({
   path,
   value,
   onItemSelect,
   onPathChange,
   children,
 }: Props) => {
-  const defaultPath = useMemo<ActionPickerStatePath>(() => {
-    return [
-      databaseId ?? value?.db_id,
-      value?.schema,
-      value?.table_id,
-      value?.id,
-    ];
-  }, [databaseId, value]);
+  const defaultPath = useMemo<TableActionPickerStatePath>(() => {
+    return [value?.db_id, value?.schema, value?.table_id, value?.id];
+  }, [value]);
   const [initialDbId, initialSchemaId, initialTableId, initialActionId] =
     path ?? defaultPath;
   const [dbId, setDbId] = useState<DatabaseId | undefined>(initialDbId);
@@ -112,12 +107,7 @@ export const ActionPicker = ({
   const actions = useMemo(
     () =>
       allActions?.filter((action) => {
-        // if (actionTarget?.model === "dataset") {
-        //   return (action as WritebackAction).model_id === actionTarget.id;
-        // }
-        // if (actionTarget?.model === "table") {
         return (action as TableAction).table_id === tableId;
-        // }
       }) || [],
     [allActions, tableId],
   );
@@ -149,7 +139,7 @@ export const ActionPicker = ({
   );
 
   const handleFolderSelect = useCallback(
-    (folder: ActionPickerFolderItem) => {
+    (folder: TableActionPickerFolderItem) => {
       if (folder.model === "database") {
         if (dbId === folder.id) {
           const newSchemaName =
@@ -160,7 +150,7 @@ export const ActionPicker = ({
             newSchemaName,
             schemas?.length === 1,
           );
-          const newPath: ActionPickerStatePath = [
+          const newPath: TableActionPickerStatePath = [
             dbId,
             newSchemaName,
             undefined,
@@ -170,7 +160,7 @@ export const ActionPicker = ({
           onPathChange(newPath);
           onItemSelect(newSchemaItem ?? folder);
         } else {
-          const newPath: ActionPickerStatePath = [
+          const newPath: TableActionPickerStatePath = [
             folder.id,
             undefined,
             undefined,
@@ -184,7 +174,7 @@ export const ActionPicker = ({
       }
 
       if (folder.model === "schema") {
-        const newPath: ActionPickerStatePath = [
+        const newPath: TableActionPickerStatePath = [
           dbId,
           folder.id,
           undefined,
@@ -302,26 +292,25 @@ export const ActionPicker = ({
 
   return (
     <AutoScrollBox
-      contentHash={generateKey(
+      contentHash={generateTableActionKey(
         selectedDbItem,
         selectedSchemaItem,
         selectedTableItem,
+        selectedActionItem,
       )}
       data-testid="nested-item-picker"
     >
       <Flex h="100%" w="fit-content">
-        {!databaseId && (
-          <DatabaseList
-            databases={databases}
-            error={errorDatabases}
-            isCurrentLevel={
-              schemaName == null || (schemas?.length === 1 && !tableId)
-            }
-            isLoading={isLoadingDatabases}
-            selectedItem={selectedDbItem}
-            onClick={handleFolderSelect}
-          />
-        )}
+        <DatabaseList
+          databases={databases}
+          error={errorDatabases}
+          isCurrentLevel={
+            schemaName == null || (schemas?.length === 1 && !tableId)
+          }
+          isLoading={isLoadingDatabases}
+          selectedItem={selectedDbItem}
+          onClick={handleFolderSelect}
+        />
 
         {isNotNull(dbId) && (
           <SchemaList
@@ -343,6 +332,7 @@ export const ActionPicker = ({
             isLoading={isLoadingTables}
             selectedItem={selectedTableItem}
             tables={isLoadingTables ? undefined : tables}
+            isFolder={isTableFolder}
             onClick={handleFolderSelect}
           />
         )}
