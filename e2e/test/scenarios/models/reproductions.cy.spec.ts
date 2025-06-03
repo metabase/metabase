@@ -367,11 +367,12 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
   });
 });
 
-describe.skip("issue 41785, issue 46756", () => {
+describe("issue 41785, issue 46756", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/card/*").as("card");
   });
 
   it("does not break the question when removing column with the same mapping as another column (metabase#41785) (metabase#46756)", () => {
@@ -395,8 +396,15 @@ describe.skip("issue 41785, issue 46756", () => {
     cy.button("Save").click();
     H.modal().button("Save").click();
 
-    cy.findByTestId("loading-indicator").should("exist");
-    cy.findByTestId("loading-indicator").should("not.exist");
+    cy.log(
+      "verify that we redirected after saving the model and all card data is loaded",
+    );
+    cy.url().should("contain", "products-products");
+    cy.wait("@card");
+    cy.findByTestId("visualization-root").should(
+      "contain",
+      "Rustic Paper Wallet",
+    );
 
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {

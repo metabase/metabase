@@ -16,17 +16,25 @@ const BASE_SETUP_CONFIG = {
 };
 
 export const HOST_APP_SETUP_CONFIGS = {
-  "vite-5-host-app-e2e": {
+  "vite-6-host-app-e2e": {
     ...BASE_SETUP_CONFIG,
-    appName: "vite-5-host-app",
+    appName: "vite-6-host-app",
     env: {
       ...BASE_ENV,
       VITE_MB_PORT: BASE_ENV.MB_PORT,
     },
   },
-  "nextjs-host-app-e2e": {
+  "next-15-app-router-host-app-e2e": {
     ...BASE_SETUP_CONFIG,
-    appName: "nextjs-host-app",
+    appName: "next-15-app-router-host-app",
+    env: {
+      ...BASE_ENV,
+      NEXT_PUBLIC_MB_PORT: BASE_ENV.MB_PORT,
+    },
+  },
+  "next-15-pages-router-host-app-e2e": {
+    ...BASE_SETUP_CONFIG,
+    appName: "next-15-pages-router-host-app",
     env: {
       ...BASE_ENV,
       NEXT_PUBLIC_MB_PORT: BASE_ENV.MB_PORT,

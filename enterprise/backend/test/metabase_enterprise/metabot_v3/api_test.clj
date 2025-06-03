@@ -7,8 +7,6 @@
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase.test :as mt]))
 
-(set! *warn-on-reflection* true)
-
 (deftest agent-test
   (let [ai-requests (atom [])
         conversation-id (str (random-uuid))
