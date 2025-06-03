@@ -337,15 +337,13 @@ export const useTableCRUD = ({
 };
 
 export const isForeignKeyConstraintErrorResponse = (error: any): boolean => {
-  if (!error?.data?.errors || !Array.isArray(error.data.errors)) {
+  if (!error?.data?.errors) {
     return false;
   }
 
-  return error.data.errors.some(isForeignKeyConstraintError);
+  return isForeignKeyConstraintError(error.data.errors);
 };
 
 export function isForeignKeyConstraintError(error: any): boolean {
-  return (
-    error?.type === "metabase.actions.error/violate-foreign-key-constraint"
-  );
+  return error?.type === "metabase.actions.error/children-exist";
 }

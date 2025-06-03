@@ -26,7 +26,7 @@ describe("useForeignKeyConstraintHandling", () => {
 
       const error = {
         data: {
-          errors: [{ type: "some.other.error", message: "Some other error" }],
+          errors: { type: "some.other.error", message: "Some other error" },
         },
       } as any;
 
@@ -36,7 +36,7 @@ describe("useForeignKeyConstraintHandling", () => {
       expect(result.current.foreignKeyError).toBe(null);
     });
 
-    it("should not open modal or set error for errors without data.errors array", () => {
+    it("should not open modal or set error for errors without data.errors", () => {
       const { result, rerender } = renderHook(
         (props) => useForeignKeyConstraintHandling(props),
         { initialProps: defaultProps },
@@ -57,15 +57,13 @@ describe("useForeignKeyConstraintHandling", () => {
       );
 
       const error = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "Foreign key constraint violation",
-              children: { "2": 5, "3": 2 },
-            },
-          ],
+          errors: {
+            type: "metabase.actions.error/children-exist",
+            message: "Foreign key constraint violation",
+            "children-count": { "2": 5, "3": 2 },
+          },
         },
       } as any;
 
@@ -73,7 +71,7 @@ describe("useForeignKeyConstraintHandling", () => {
 
       expect(result.current.isForeignKeyModalOpen).toBe(true);
       expect(result.current.foreignKeyError).toEqual({
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         message: "Foreign key constraint violation",
         children: { "2": 5, "3": 2 },
       });
@@ -88,62 +86,22 @@ describe("useForeignKeyConstraintHandling", () => {
       );
 
       const error = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation 1",
-              children: { "2": 3, "3": 1 },
-            },
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation 2",
-              children: { "2": 2, "4": 5 },
-            },
-          ],
+          errors: {
+            type: "metabase.actions.error/children-exist",
+            message: "FK violation 1",
+            "children-count": { "2": 3, "3": 1 },
+          },
         },
       } as any;
 
       rerender({ ...defaultProps, constraintError: error });
 
       expect(result.current.foreignKeyError).toEqual({
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         message: "FK violation 1",
-        children: { "2": 5, "3": 1, "4": 5 },
-      });
-      expect(result.current.isForeignKeyModalOpen).toBe(true);
-    });
-
-    it("should handle mixed error types and only accumulate from foreign key errors", () => {
-      const { result, rerender } = renderHook(
-        (props) => useForeignKeyConstraintHandling(props),
-        { initialProps: defaultProps },
-      );
-
-      const error = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
-        data: {
-          errors: [
-            {
-              type: "some.other.error",
-              message: "Other error",
-            },
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation",
-              children: { "2": 3 },
-            },
-          ],
-        },
-      } as any;
-
-      rerender({ ...defaultProps, constraintError: error });
-
-      expect(result.current.foreignKeyError).toEqual({
-        type: "metabase.actions.error/violate-foreign-key-constraint",
-        message: "FK violation",
-        children: { "2": 3 },
+        children: { "2": 3, "3": 1 },
       });
       expect(result.current.isForeignKeyModalOpen).toBe(true);
     });
@@ -155,21 +113,20 @@ describe("useForeignKeyConstraintHandling", () => {
       );
 
       const error = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation without children",
-            },
-          ],
+          errors: {
+            type: "metabase.actions.error/children-exist",
+            message: "FK violation without children",
+            "children-count": {},
+          },
         },
       } as any;
 
       rerender({ ...defaultProps, constraintError: error });
 
       expect(result.current.foreignKeyError).toEqual({
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         message: "FK violation without children",
         children: {},
       });
@@ -186,13 +143,11 @@ describe("useForeignKeyConstraintHandling", () => {
 
       const error = {
         data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation",
-              children: { "2": 5 },
-            },
-          ],
+          errors: {
+            type: "metabase.actions.error/children-exist",
+            message: "FK violation",
+            "children-count": { "2": 5 },
+          },
         },
       } as any;
 
@@ -208,15 +163,13 @@ describe("useForeignKeyConstraintHandling", () => {
       );
 
       const error = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation",
-              children: { "2": 5 },
-            },
-          ],
+          errors: {
+            type: "metabase.actions.error/children-exist",
+            message: "FK violation",
+            "children-count": { "2": 5 },
+          },
         },
       } as any;
 
@@ -249,15 +202,13 @@ describe("useForeignKeyConstraintHandling", () => {
       );
 
       const error = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation",
-              children: { "2": 5 },
-            },
-          ],
+          errors: {
+            type: "metabase.actions.error/children-exist",
+            message: "FK violation",
+            "children-count": { "2": 5 },
+          },
         },
       } as any;
 
@@ -288,15 +239,13 @@ describe("useForeignKeyConstraintHandling", () => {
       );
 
       const error = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation",
-              children: { "2": 5 },
-            },
-          ],
+          errors: {
+            type: "metabase.actions.error/children-exist",
+            message: "FK violation",
+            "children-count": { "2": 5 },
+          },
         },
       } as any;
 
@@ -319,14 +268,14 @@ describe("useForeignKeyConstraintHandling", () => {
       mockOnCascadeDelete.mockResolvedValue(false);
       const currentSelectedIndices = [1, 3];
       const initialErrorState = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         message: "FK violation",
-        children: { "2": 5 },
+        "children-count": { "2": 5 },
       };
       const errorPayload = {
-        type: "metabase.actions.error/violate-foreign-key-constraint",
+        type: "metabase.actions.error/children-exist",
         data: {
-          errors: [initialErrorState],
+          errors: initialErrorState,
         },
       } as any;
 

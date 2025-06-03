@@ -2,10 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  isForeignKeyConstraintError,
-  isForeignKeyConstraintErrorResponse,
-} from "../use-table-crud";
+import { isForeignKeyConstraintErrorResponse } from "../use-table-crud";
 
 export interface ForeignKeyConstraintError {
   type: string;
@@ -71,31 +68,24 @@ export function useForeignKeyConstraintHandling({
 }
 
 function extractForeignKeyError(error: any): ForeignKeyConstraintError | null {
-  const foreignKeyErrors = error.data.errors.filter(
-    isForeignKeyConstraintError,
-  );
+  const foreignKeyError = error.data.errors;
 
-  if (foreignKeyErrors.length === 0) {
+  if (!foreignKeyError) {
     return null;
   }
 
   // Accumulate children from all foreign key errors
   const accumulatedChildren: Record<string, number> = {};
 
-  foreignKeyErrors.forEach((fkError: any) => {
-    const children = fkError.children || {};
-    Object.entries(children).forEach(([tableId, count]) => {
-      const currentCount = accumulatedChildren[tableId] || 0;
-      accumulatedChildren[tableId] = currentCount + (count as number);
-    });
+  const childrenCount = foreignKeyError["children-count"] || {};
+  Object.entries(childrenCount).forEach(([tableId, count]) => {
+    const currentCount = accumulatedChildren[tableId] || 0;
+    accumulatedChildren[tableId] = currentCount + (count as number);
   });
 
-  // Use the message from the first foreign key error
-  const firstError = foreignKeyErrors[0];
-
   return {
-    type: firstError.type,
-    message: firstError.message,
+    type: foreignKeyError.type,
+    message: foreignKeyError.message,
     children: accumulatedChildren,
   };
 }

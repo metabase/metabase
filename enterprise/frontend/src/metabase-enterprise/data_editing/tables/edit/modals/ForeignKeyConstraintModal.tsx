@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
@@ -19,20 +19,18 @@ interface TableRowProps {
   count: number;
 }
 
-const TableRow = ({ tableId, count }: TableRowProps) => {
+const TableRow = ({ tableId, count = 0 }: TableRowProps) => {
   const { data: table } = useGetTableQuery({ id: parseInt(tableId, 10) });
 
   const tableName = table?.display_name || t`Table ${tableId}`;
+  const countText = count > 50 ? "50+" : count.toString();
+  // for some reason ngettext throws an error here.
+  // const recordsText = ngettext(msgid`record`, "records", count);
+  const recordsText = count === 1 ? t`record` : t`records`;
 
   return (
     <Flex align="center" gap="sm">
-      <Text fw="bold">
-        {t`${count > 50 ? "50+" : count.toString()} ${ngettext(
-          msgid`record`,
-          "records",
-          count,
-        )}`}
-      </Text>
+      <Text fw="bold">{`${countText} ${recordsText}`}</Text>
       <Text c="text-medium">{t`in`}</Text>
       <Flex align="center" gap="xs">
         <Icon name="table" size={16} color="var(--mb-color-brand)" />
