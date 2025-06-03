@@ -13,7 +13,6 @@ import {
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { CloudPanel } from "../components/CloudPanel";
 import {
   EmbeddingSdkSettings,
   EmbeddingSettings,
@@ -23,6 +22,7 @@ import { SettingsLdapForm } from "../components/SettingsLdapForm";
 import SettingsLicense from "../components/SettingsLicense";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
+import { CloudSettingsPage } from "../components/SettingsPages/CloudSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
@@ -256,11 +256,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: (settings) =>
-      settings["token-features"]?.hosting === true ||
-      settings["airgap-enabled"],
+    getHidden: (settings) => settings["airgap-enabled"],
     order: 140,
-    component: CloudPanel,
+    component: CloudSettingsPage,
     settings: [],
     isUpsell: true,
   },
