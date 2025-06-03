@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -6,27 +5,15 @@ import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { Flex, Group } from "metabase/ui";
 
-import { EmbeddingSdkLegaleseModal } from "../../../EmbeddingSettings/EmbeddingSdkLegaleseModal";
-import type { AdminSettingComponentProps } from "../../../EmbeddingSettings/types";
+import { EmbeddingToggle } from "../../EmbeddingToggle";
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
 
 import { SdkIcon } from "./SdkIcon";
 
-export function EmbeddingSdkOptionCard({
-  updateSetting,
-}: AdminSettingComponentProps) {
+export function EmbeddingSdkOptionCard() {
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
-  const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
   const isEE = PLUGIN_EMBEDDING.isEnabled();
-  function onToggle(value: boolean) {
-    updateSetting({ key: "enable-embedding-sdk" }, value);
-  }
-  const [
-    isLegaleseModalOpen,
-    { open: openLegaleseModal, close: closeLegaleseModal },
-  ] = useDisclosure(false);
 
   return (
     <EmbeddingOption
@@ -49,19 +36,7 @@ export function EmbeddingSdkOptionCard({
         <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
           {!isEE ? t`Try it out` : t`Configure`}
         </LinkButton>
-        <SwitchWithSetByEnvVar
-          settingKey="enable-embedding-sdk"
-          onChange={(value) =>
-            showSdkEmbedTerms && !isEmbeddingSdkEnabled
-              ? openLegaleseModal()
-              : onToggle(value)
-          }
-        />
-        <EmbeddingSdkLegaleseModal
-          opened={isLegaleseModalOpen}
-          onClose={closeLegaleseModal}
-          updateSetting={updateSetting}
-        />
+        <EmbeddingToggle settingKey="enable-embedding-sdk" />
       </Group>
     </EmbeddingOption>
   );
