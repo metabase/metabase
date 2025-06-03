@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Card, Flex, SegmentedControl, Text } from "metabase/ui";
+import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
 
+import { FilteringPreview } from "./FilteringPreview";
 import { ObjectDetailPreview } from "./ObjectDetailPreview";
 import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
@@ -59,7 +60,14 @@ export const PreviewSection = ({
         />
       )}
 
-      {previewType === "filtering" && <Box>FILTERING</Box>}
+      {previewType === "filtering" && (
+        <FilteringPreview
+          databaseId={databaseId}
+          field={field}
+          fieldId={fieldId}
+          tableId={tableId}
+        />
+      )}
     </Card>
   );
 };
