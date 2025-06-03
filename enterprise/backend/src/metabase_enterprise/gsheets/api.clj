@@ -281,8 +281,8 @@
           (= "active" status)
           (assoc (setting->response saved-setting)
                  :status "active"
-                 :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
-                 :next_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15))) nil))
+                 :last_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)))
+                 :next_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15)))))
 
           (or (= "syncing" status) (= "initializing" status))
           (assoc (setting->response saved-setting)
