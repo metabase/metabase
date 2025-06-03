@@ -609,9 +609,9 @@
            {:tables (into #{}
                           (comp (filter (fn [{schema :schema table-name :name}]
                                           (and (not (contains? excluded-schemas schema))
-                                               (driver.s/include-schema? inclusion-patterns
-                                                                         exclusion-patterns
-                                                                         schema)
+                                               (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
+                                                                                                            exclusion-patterns
+                                                                                                            schema)
                                                (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
                                 (map #(dissoc % :type)))
                           ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current

@@ -10,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -51,6 +52,37 @@
   "Does the source table for this `query` have more than one primary key?"
   [query]
   (> (count (lib.metadata.calculation/primary-keys query)) 1))
+
+(defn- find-column-in-visible-columns-ignoring-joins
+  [query stage-number column]
+  (->> (lib.metadata.calculation/visible-columns
+        query
+        stage-number
+        (lib.util/query-stage query stage-number)
+        {:unique-name-fn                               (lib.util/unique-name-generator)
+         :include-joined?                              false
+         :include-expressions?                         false
+         :include-implicitly-joinable?                 false
+         :include-implicitly-joinable-for-source-card? false})
+       (lib.equality/find-matching-column query stage-number column)))
+
+(defn primary-key?
+  "Is `column` a primary key of `query`?
+
+  Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] and `column` is found in the stage's non-joined
+  visible-columns."
+  [query stage-number column]
+  (boolean (and (lib.types.isa/primary-key? column)
+                (find-column-in-visible-columns-ignoring-joins query stage-number column))))
+
+(defn foreign-key?
+  "Is `column` a foreign key of `query`?
+
+  Returns true iff `column` satisfies [[lib.types.isa/foreign-key?]] and `column` is found in the stage's non-joined
+  visible-columns."
+  [query stage-number column]
+  (boolean (and (lib.types.isa/foreign-key? column)
+                (find-column-in-visible-columns-ignoring-joins query stage-number column))))
 
 (defn drill-value->js
   "Convert a drill value to a JS value."
