@@ -436,7 +436,7 @@ Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
 Syntax: `date(value)`
 
-Example 1: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
+Example: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
 
 ISO 8601 standard format:
 
@@ -455,7 +455,7 @@ Valid ISO 8601 examples include:
 - Date with time: `2025-03-25T14:30:45`
 - Date with time and timezone offset: `2025-03-25T14:30:45+01:00`
 
-Example 2: `date(2025-04-19T17:42:53+01:00)` would return `2025-04-19`.
+Another example: `date(2025-04-19T17:42:53+01:00)` would return `2025-04-19`.
 
 Related: [datetime](#datetime)
 
@@ -568,14 +568,14 @@ Related: [notEmpty](#notempty), [isNull](#isnull).
 
 > Not available for non-JDBC Apache Druid driver.
 
-- When used on a string, converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
-- When used on a floating point value, rounds it to an integer.
+- Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
+- Converts a floating point value by rounding it to an integer.
 
 Syntax: `integer(value)`
 
-Example 1: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+String example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
 
-Example 2: `integer(123.45)` would return `123`.
+Float example: `integer(123.45)` would return `123`.
 
 Related: [round](#round).
 
@@ -716,7 +716,7 @@ Related: [regexExtract](#regexextract), [replace](#replace).
 
 ### text
 
-> Not available for non-JDBC Druid driver
+> Not available for the non-JDBC Druid driver
 
 Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
 
