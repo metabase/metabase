@@ -103,27 +103,49 @@
                                     result))))
                              kfs)))
 
-(defmulti fingerprinter
-  "Return a fingerprinter transducer for a given field based on the field's type."
-  {:arglists '([field])}
-  (fn [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit]}]
-    [(cond
-       (u.date/extract-units unit)
-       :type/Integer
+(def ^:private supported-coercions
+  #{:Coercion/String->Temporal
+    :Coercion/Bytes->Temporal
+    :Coercion/Temporal->Temporal
+    :Coercion/Number->Temporal
+    :Coercion/String->Number
+    ;; the numeric fingerprinter consider every number as a double
+    :Coercion/Float->Integer})
+
+(defn- ensure-coercion-is-supported [{coercion-strategy :coercion_strategy :as field}]
+  (when coercion-strategy
+    (when-not (some #(isa? coercion-strategy %) supported-coercions)
+      (throw (ex-info (format "Coercion strategy %s not supported by fingerprinters" coercion-strategy) field)))))
+
+(defn- fingerprinter-dispatch
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit] :as field}]
+  (ensure-coercion-is-supported field)
+  [(cond
+     (u.date/extract-units unit)
+     :type/Integer
 
        ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
        ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
-       (isa? (or effective-type base-type) :type/Temporal)
-       :type/DateTime
+     (isa? (or effective-type base-type) :type/Temporal)
+     :type/DateTime
 
-       :else
-       (or effective-type base-type))
-     (if (isa? semantic-type :Semantic/*)
-       semantic-type
-       :Semantic/*)
-     (if (isa? semantic-type :Relation/*)
-       semantic-type
-       :Relation/*)]))
+     :else
+     (or effective-type base-type))
+   (if (isa? semantic-type :Semantic/*)
+     semantic-type
+     :Semantic/*)
+   (if (isa? semantic-type :Relation/*)
+     semantic-type
+     :Relation/*)])
+
+(defmulti fingerprinter
+  "Return a fingerprinter transducer for a given field based on the field's type."
+  {:arglists '([field])}
+  (fn [field]
+    (do-with-error-handling
+     (fingerprinter-dispatch field)
+     (fn [_] nil)
+     "Error during fingerprinter dispatch")))
 
 (defn- global-fingerprinter []
   (redux/post-complete
