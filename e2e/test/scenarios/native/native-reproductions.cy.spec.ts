@@ -617,7 +617,7 @@ describe("issue 57644", () => {
       });
     });
 
-    it("It should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+    it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
       cy.findByTestId("native-query-top-bar")
         .findByText("Select a database")
         .should("be.visible");
@@ -639,7 +639,7 @@ describe("issue 57644", () => {
       });
     });
 
-    it("It should open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+    it("should open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
       H.popover()
         .should("be.visible")
         .and("contain", "Sample Database")
