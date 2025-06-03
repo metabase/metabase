@@ -36,7 +36,7 @@ function setup({
 }
 
 describe("CommunityLocalizationNotice", () => {
-  it("should render", () => {
+  it("should render notice and link when white labeling is disabled", () => {
     setup({ isAdminView: false, isWhiteLabeling: false });
     expect(
       screen.getByText(
@@ -46,7 +46,7 @@ describe("CommunityLocalizationNotice", () => {
     expect(screen.getByText(/you can \./i)).toBeInTheDocument();
   });
 
-  it("should not render link when white labeling is enabled", () => {
+  it("should render notice and not link when white labeling is enabled", () => {
     setup({ isAdminView: false, isWhiteLabeling: true });
     expect(
       screen.getByText(
@@ -60,7 +60,7 @@ describe("CommunityLocalizationNotice", () => {
     setup({ isAdminView: true, isWhiteLabeling: true });
     expect(
       screen.getByText(
-        "Some translations are created by the Basemeta community, and might not be perfect.",
+        "Some translations are created by the Metabase community, and might not be perfect.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/you can \./i)).toBeInTheDocument();

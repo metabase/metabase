@@ -27,10 +27,12 @@ export function CommunityLocalizationNotice({
   );
 
   const showLink = showMetabaseLinks || isAdminView;
+  // eslint-disable-next-line no-literal-metabase-strings -- For admin screens we want to original app name
+  const displayName = isAdminView ? "Metabase" : applicationName;
 
   return (
     <span>
-      <span>{getLocalizationNoticeText(applicationName)}</span>
+      <span>{getLocalizationNoticeText(displayName)}</span>
       {showLink && <span> {jt`You can ${translatedLink}`}.</span>}
     </span>
   );
