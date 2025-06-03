@@ -463,6 +463,49 @@
                 (group-memberships
                  (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com"))))))))))))
 
+(deftest login-update-account-test
+  (testing "An existing user will be reactivated upon login"
+    (with-jwt-default-setup!
+      (with-users-with-email-deleted "newuser@metabase.com"
+        ;; just create the user
+        (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri
+                                                       :jwt
+                                                       (jwt/sign
+                                                        {:email      "newuser@metabase.com"
+                                                         :first_name "New"
+                                                         :last_name  "User"}
+                                                        default-jwt-secret))]
+          (is (saml-test/successful-login? response)))
+
+        ;; deactivate the user
+        (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
+        (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+
+        (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri
+                                                       :jwt
+                                                       (jwt/sign
+                                                        {:email      "newuser@metabase.com"
+                                                         :first_name "New"
+                                                         :last_name  "User"}
+                                                        default-jwt-secret))]
+          (is (saml-test/successful-login? response))
+          (is (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+
+        ;; deactivate the user again
+        (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
+        (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+        (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
+                      appearance.settings/site-name               (constantly "test")]
+          (is
+           (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
+            (#'mt.jwt/fetch-or-create-user! "Test" "User" "newuser@metabase.com" nil))))))))
+
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!

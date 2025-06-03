@@ -98,20 +98,15 @@
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old -- prefixed with a date two days ago or older?"
   []
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (let [metadata (.getMetaData conn)]
-       (with-open [rset (.getCatalogs metadata)]
-         (loop [acc []]
-           (if-not (.next rset)
-             acc
-             (let [catalog (.getString rset "TABLE_CAT")
-                   acc     (cond-> acc
-                             (sql.tu.unique-prefix/old-dataset-name? catalog) (conj catalog))]
-               (recur acc)))))))))
+  ;; modified the query from the snowflake driver:
+  ;; https://github.com/snowflakedb/snowflake-jdbc/blob/fa58e3496809395d039ee4d8fb2cf2767997cdd4/src/main/java/net/snowflake/client/jdbc/SnowflakeDatabaseMetaData.java#L1644C21-L1644C90
+  ;; We run into issues where this returns more than 10,000 items and we get an error: "The result set size exceeded
+  ;; the max number of rows(10000) supported for SHOW statements. Use LIMIT option to limit result set"
+  (let [query "show /* JDBC:DatabaseMetaData.getCatalogs() with limit */ databases in account limit 10000"]
+    (into []
+          (comp (map :name)
+                (filter sql.tu.unique-prefix/old-dataset-name?))
+          (jdbc/reducible-query (no-db-connection-spec) [query] {:raw? true}))))
 
 (defn- delete-old-datasets!
   "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
