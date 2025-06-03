@@ -77,6 +77,34 @@
                                             (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
+(api.macros/defendpoint :get "/v2/"
+  "TODO describe new picker"
+  [_route-params
+   {:keys [model-id table-id] :- [:map
+                                  [:model-id {:optional true} ms/PositiveInt]
+                                  [:table-id {:optional true} ms/PositiveInt]]}
+   _body-params]
+  ;API should not return the list of tables in OSS instances, since for now we are keeping table actions feature not available on OSS
+  ;Do not return models without actions
+  ;Do not return DBs that don't have data editing enabled
+  ;When listing the models we also want to display information about the collection they are saved to
+  ;Search - aside from the list of tables and models should also return information about the db/schema the table belongs to or the collection_name for models (no collection hierarchy needed for models, just the collection name they are saved to).
+
+  {:models  [{:id 2
+              :name "blah"
+              :collection {:id nil
+                           :name "blah"}}]
+   :tables  []
+   :actions [{:id 2
+              :parameters [{:display-name "Name",
+                            :id "name",
+                            :is-auto-increment false,
+                            :required false,
+                            :target ("variable" ("template-tag" "name")),
+                            :type "type/Text"}]}]}
+
+  nil)
+
 (api.macros/defendpoint :get "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []

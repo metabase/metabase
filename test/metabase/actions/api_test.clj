@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.actions.api-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.actions.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -78,6 +80,7 @@
     :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}])
 
 (deftest list-actions-test
+  (search/reset-tracking!)
   (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-actions-test-data-tables #{"users"}
@@ -105,7 +108,7 @@
                                     :model_id   card-id
                                     :kind       "row/create"
                                     :parameters [{:id "x" :type "number"}]}
-                          _        {:name                   "Archived example"
+                          archived {:name                   "Archived example"
                                     :type                   :query
                                     :model_id               card-id
                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
@@ -126,22 +129,22 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
                 "Should not be able to list actions without read permission on the model"))
-          #_(testing "Can list all actions"
-              (let [response (mt/user-http-request :crowberto :get 200 "action")
-                    action-ids (into #{} (map :id) response)]
-                (is (set/subset? (into #{} (map :action-id) [action-1 action-2 action-3])
-                                 action-ids))
-                (doseq [action response
-                        :when (= (:type action) "query")]
-                  (testing "Should return a query action deserialized (#23201)"
-                    (is (malli= ExpectedGetQueryActionAPIResponse
-                                action))))
-                (testing "Does not have archived actions"
-                  (is (not (contains? action-ids (:id archived)))))
-                (testing "Does not return actions on models without permissions"
-                  (let [rasta-list (mt/user-http-request :rasta :get 200 "action")]
-                    (is (empty? (set/intersection (into #{} (map :action-id) [action-1 action-2 action-3])
-                                                  (into #{} (map :id) rasta-list)))))))))))))
+          (testing "Can list all actions"
+            (let [response (mt/user-http-request :crowberto :get 200 "action")
+                  action-ids (into #{} (map :id) response)]
+              (is (set/subset? (into #{} (map :action-id) [action-1 action-2 action-3])
+                               action-ids))
+              (doseq [action response
+                      :when (= (:type action) "query")]
+                (testing "Should return a query action deserialized (#23201)"
+                  (is (malli= ExpectedGetQueryActionAPIResponse
+                              action))))
+              (testing "Does not have archived actions"
+                (is (not (contains? action-ids (:id archived)))))
+              (testing "Does not return actions on models without permissions"
+                (let [rasta-list (mt/user-http-request :rasta :get 200 "action")]
+                  (is (empty? (set/intersection (into #{} (map :action-id) [action-1 action-2 action-3])
+                                                (into #{} (map :id) rasta-list)))))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
