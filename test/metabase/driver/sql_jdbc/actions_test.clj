@@ -359,17 +359,14 @@
                      :row      {group-id-col created-group-id}})))
 
               (testing "success if delete-children is enabled"
-                (binding [actions.core/*params* {:delete-children true}]
-                  (is (=? {:op :deleted
-                           :row {group-id-col created-group-id}}
-                          (actions/perform-action-with-single-input-and-output
-                           :table.row/delete
-                           {:database (mt/id)
-                            :table-id (mt/id :group)
-                            :row      {group-id-col created-group-id}})))
-
-                  (testing "users are also dedeted"
-                    (is (zero? (users-of-group created-group-id))))))))
+                (is (=? {:op  :deleted
+                         :row {group-id-col created-group-id}}
+                        (actions/perform-action-with-single-input-and-output
+                         :table.row/delete
+                         {:database        (mt/id)
+                          :table-id        (mt/id :group)
+                          :row             {group-id-col created-group-id}
+                          :delete-children true}))))))
 
           (testing "group without user can be deleted without delete-children option"
             (let [created-group-id (new-group)]

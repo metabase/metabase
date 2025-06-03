@@ -355,14 +355,19 @@
                            (api/read-check :model/Dashboard dashboard-id)
                            {:dashboard-action (parse-long dashcard-id)})
                          ;; Not a fancy encoded string, it must refer directly to a primitive.
-                         {:action-kw (keyword raw-id)}))
+                         (let [kw (keyword raw-id)]
+                           {:action-kw kw
+                            :mapping   (actions/default-mapping kw scope)})))
     :else
     (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
 (defn- hydrate-mapping [mapping]
   (walk/postwalk-replace
-   {"::root" ::root
-    "::key"  ::key}
+   {"::root"   ::root
+    "::key"    ::key
+    "::input"  ::input
+    "::params" ::params
+    "::param"  ::param}
    mapping))
 
 (defn- augment-params [{:keys [dashcard-id param-map] :as _action} input params]
@@ -398,7 +403,8 @@
      param-map)))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
-  (let [mapping (hydrate-mapping mapping)]
+  (let [mapping (hydrate-mapping mapping)
+        tag?    #(and (vector? %2) (= %1 (first %2)))]
     (if-not mapping
       (if (or params (:param-map action))
         (map #(augment-params action % params) inputs)
@@ -409,11 +415,12 @@
          (fn [x]
            (cond
              ;; TODO handle the fact this stuff can be json-ified better
-             (= ::root x)
-             root
+             (= ::root x)   root
+             (= ::input x)  input
+             (= ::params x) params
              ;; specific key
-             (and (vector? x) (= ::key (first x)))
-             (get root (keyword (second x)))
+             (tag? ::key x)   (get root (keyword (second x)))
+             (tag? ::param x) (get params (keyword (second x)))
              :else
              x))
          mapping)))))
@@ -487,9 +494,7 @@
          [:scope                   ::types/scope.raw]
          [:inputs                  [:sequential :map]]
          [:params {:optional true} [:map-of :keyword :any]]]]
-    ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
-    {:outputs (binding [actions/*params* params]
-                (execute!* action_id scope (dissoc params :delete-children) inputs))}))
+    {:outputs (execute!* action_id scope params inputs)}))
 
 (def tmp-modal
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."

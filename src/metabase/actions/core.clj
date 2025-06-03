@@ -28,6 +28,7 @@
   cached-database
   cached-database-via-table-id
   cached-table
+  default-mapping
   handle-effects!*
   perform-action!
   ;; allow actions to be defined in the data-editing module
@@ -63,8 +64,3 @@
  [metabase.actions.scope
   hydrate-scope
   normalize-scope])
-
-(def ^:dynamic *params*
-  "Temporary dynamic vars used to pass params from api to actions execution.
-  Should be removed once we reworked the inputs for perform-action!*."
-  {})
