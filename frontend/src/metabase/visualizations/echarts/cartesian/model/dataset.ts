@@ -29,6 +29,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getBreakoutDimensionsIndexes } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import {
   invalidDateWarning,
@@ -93,7 +94,7 @@ interface DatasetColumnInfo {
  * @param {RowValue[]} row - The raw row of values.
  * @param {number} cardId - The ID of the card.
  * @param {number} dimensionIndex — Index of the dimension column of a card
- * @param {number | undefined} breakoutIndex - The breakout column index for charts with two dimension columns selected.
+ * @param {number[] | undefined} breakoutIndexes[] - The breakout column index for charts with two dimension columns selected.
  */
 const aggregateColumnValuesForDatum = (
   datum: Record<DataKey, RowValue>,
@@ -101,17 +102,23 @@ const aggregateColumnValuesForDatum = (
   row: RowValue[],
   cardId: number,
   dimensionIndex: number,
-  breakoutIndex: number | undefined,
+  breakoutIndexes: number[] | undefined,
   showWarning?: ShowWarning,
 ): void => {
   columns.forEach(({ column, isMetric }, columnIndex) => {
     const rowValue = row[columnIndex];
     const isDimensionColumn = columnIndex === dimensionIndex;
 
+    // Build composite breakout value if breakoutIndexes are provided
+    let breakoutValue: RowValue | undefined = undefined;
+    if (breakoutIndexes && breakoutIndexes.length > 0) {
+      breakoutValue = breakoutIndexes.map((idx) => row[idx]).join(" - ");
+    }
+
     const seriesKey =
-      breakoutIndex == null
+      !breakoutIndexes || breakoutIndexes.length === 0
         ? getDatasetKey(column, cardId)
-        : getDatasetKey(column, cardId, row[breakoutIndex]);
+        : getDatasetKey(column, cardId, breakoutValue);
 
     // The dimension values should not be aggregated, only metrics
     if (isMetric && !isDimensionColumn) {
@@ -159,8 +166,10 @@ export const getJoinedCardsDataset = (
     const chartColumns = cardsColumns[index];
 
     const dimensionIndex = chartColumns.dimension.index;
-    const breakoutIndex =
-      "breakout" in chartColumns ? chartColumns.breakout.index : undefined;
+    const breakoutIndexes =
+      "breakout" in chartColumns
+        ? getBreakoutDimensionsIndexes(chartColumns.breakout)
+        : undefined;
 
     for (const row of rows) {
       const dimensionValue = row[dimensionIndex];
@@ -180,7 +189,7 @@ export const getJoinedCardsDataset = (
         row,
         card.id,
         dimensionIndex,
-        breakoutIndex,
+        breakoutIndexes,
         showWarning,
       );
     }
@@ -972,14 +981,17 @@ export const getCardColumnByDataKeyMap = (
 ): Record<DataKey, DatasetColumn> => {
   const breakoutValues =
     "breakout" in columns
-      ? getBreakoutDistinctValues(data, columns.breakout.index)
+      ? getBreakoutDistinctValues(
+          data,
+          getBreakoutDimensionsIndexes(columns.breakout),
+        )
       : null;
 
   return data.cols.reduce(
     (acc, column) => {
       if (breakoutValues != null) {
-        breakoutValues.forEach((breakoutValue) => {
-          acc[getDatasetKey(column, card.id, breakoutValue)] = column;
+        breakoutValues.forEach(({ formatted }) => {
+          acc[getDatasetKey(column, card.id, formatted)] = column;
         });
       } else {
         acc[getDatasetKey(column, card.id)] = column;

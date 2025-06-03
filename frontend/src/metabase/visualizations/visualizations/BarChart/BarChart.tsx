@@ -21,6 +21,7 @@ Object.assign(
     getUiName: () => t`Bar`,
     identifier: "bar",
     iconName: "bar",
+    maxDimensionsSupported: 3,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`bar chart`,
     minSize: getMinSize("bar"),

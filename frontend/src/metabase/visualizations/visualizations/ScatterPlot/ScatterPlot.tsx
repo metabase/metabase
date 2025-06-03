@@ -27,6 +27,7 @@ Object.assign(
     getUiName: () => t`Scatter`,
     identifier: "scatter",
     iconName: "bubble",
+    maxDimensionsSupported: 3,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`scatter plot`,
     minSize: getMinSize("scatter"),

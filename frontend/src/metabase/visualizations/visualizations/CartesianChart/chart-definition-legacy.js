@@ -51,67 +51,69 @@ function transformSingleSeries(s, series, seriesIndex) {
       : [];
 
   if (dimensions.length > 1) {
-    const [dimensionColumnIndex, seriesColumnIndex] = dimensionColumnIndexes;
+    const dimensionColumnIndex = dimensionColumnIndexes[0];
+    const seriesColumnIndexes = dimensionColumnIndexes.slice(1);
+
     const rowColumnIndexes = [dimensionColumnIndex].concat(
       metricColumnIndexes,
       extraColumnIndexes,
     );
 
     const breakoutValues = [];
+    const groupParts = [];
     const breakoutRowsByValue = new Map();
 
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
-      const seriesValue = row[seriesColumnIndex];
+      const stackedKeys = seriesColumnIndexes.map((id) => row[id]);
+      const seriesValue = stackedKeys.join(" - ");
 
       let seriesRows = breakoutRowsByValue.get(seriesValue);
       if (!seriesRows) {
         breakoutRowsByValue.set(seriesValue, (seriesRows = []));
         breakoutValues.push(seriesValue);
+        groupParts.push(stackedKeys);
       }
-
       const newRow = rowColumnIndexes.map((columnIndex) => row[columnIndex]);
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);
     }
 
-    return breakoutValues.map((breakoutValue) => ({
-      ...s,
-      card: {
-        ...card,
-        // if multiseries include the card title as well as the breakout value
-        name: [
-          // show series title if it's multiseries
-          series.length > 1 && card.name,
-          // always show grouping value
-          formatValue(
-            isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
-            { column: cols[seriesColumnIndex] },
-          ),
-        ]
-          .filter((n) => n)
-          .join(": "),
-        originalCardName: card.name,
-        _breakoutValue: breakoutValue,
-        _breakoutColumn: cols[seriesColumnIndex],
-      },
-      data: {
-        rows: breakoutRowsByValue.get(breakoutValue),
-        cols: rowColumnIndexes.map((i) => cols[i]),
-        results_timezone: data.results_timezone,
-        _rawCols: cols,
-        _transformed: true,
-      },
-      // for when the legend header for the breakout is clicked
-      clicked: {
-        dimensions: [
-          {
-            value: breakoutValue,
-            column: cols[seriesColumnIndex],
-          },
-        ],
-      },
-    }));
+    return breakoutValues.map((breakoutValue) => {
+      return {
+        ...s,
+        card: {
+          ...card,
+          name: [
+            // show series title if it's multiseries
+            series.length > 1 && card.name,
+            // always show grouping value
+            formatValue(
+              isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
+              { column: breakoutValue },
+            ),
+          ]
+            .filter((n) => n)
+            .join(": "),
+          originalCardName: card.name,
+          _breakoutValue: groupParts,
+          _breakoutColumns: seriesColumnIndexes.map((idx) => cols[idx]),
+        },
+        data: {
+          rows: breakoutRowsByValue.get(breakoutValue),
+          cols: rowColumnIndexes.map((i) => cols[i]),
+          results_timezone: data.results_timezone,
+          _rawCols: cols,
+          _transformed: true,
+        },
+        clicked: {
+          dimensions: seriesColumnIndexes.map((idx, i) => ({
+            value: groupParts[i],
+            column: cols[idx],
+          })),
+        },
+      };
+    });
   } else {
     // dimensions.length <= 1
     const dimensionColumnIndex = dimensionColumnIndexes[0];

@@ -86,17 +86,26 @@ export const getGroupedDataset = (
     datum.metrics = sumMetrics(rowMetrics, datum.metrics);
 
     if ("breakout" in chartColumns) {
-      const breakoutName = columnFormatter(
-        row[chartColumns.breakout.index],
-        chartColumns.breakout.column,
+      const breakoutValues = chartColumns.breakout.breakoutDimensions.map(
+        (b) => row[b.index],
       );
+      const breakoutName = breakoutValues
+        .map((val, i) =>
+          columnFormatter(
+            val,
+            chartColumns.breakout.breakoutDimensions[i].column,
+          ),
+        )
+        .join(" - ");
 
-      const breakoutRawRows = datum.breakout?.[breakoutName]?.rawRows ?? [];
-      breakoutRawRows.push(row);
+      const prevBreakout = datum.breakout?.[breakoutName];
+      const breakoutRawRows = prevBreakout?.rawRows
+        ? [...prevBreakout.rawRows, row]
+        : [row];
 
       const breakoutMetrics = sumMetrics(
         rowMetrics,
-        datum.breakout?.[breakoutName]?.metrics ?? {},
+        prevBreakout?.metrics ?? {},
       );
 
       datum.breakout = {
@@ -171,21 +180,23 @@ export const trimData = (
 
 const getBreakoutDistinctValues = (
   data: DatasetData,
-  breakout: ColumnDescriptor,
+  breakoutDimensions: ColumnDescriptor[],
   columnFormatter: ColumnFormatter,
 ) => {
+  const seen = new Set<string>();
   const formattedDistinctValues: string[] = [];
-  const usedRawValues = new Set<RowValue>();
 
   data.rows.forEach((row) => {
-    const rawValue = row[breakout.index];
-
-    if (usedRawValues.has(rawValue)) {
+    const rawValues = breakoutDimensions.map((b) => row[b.index]);
+    const key = JSON.stringify(rawValues);
+    if (seen.has(key)) {
       return;
     }
-
-    usedRawValues.add(rawValue);
-    formattedDistinctValues.push(columnFormatter(rawValue, breakout.column));
+    seen.add(key);
+    const formatted = rawValues
+      .map((val, i) => columnFormatter(val, breakoutDimensions[i].column))
+      .join(" - ");
+    formattedDistinctValues.push(formatted);
   });
 
   return formattedDistinctValues;
@@ -239,7 +250,7 @@ export const getSeries = (
   if ("breakout" in chartColumns) {
     const breakoutValues = getBreakoutDistinctValues(
       data,
-      chartColumns.breakout,
+      chartColumns.breakout.breakoutDimensions,
       columnFormatter,
     );
 
@@ -264,9 +275,9 @@ export const getOrderedSeries = (
   return seriesOrder
     .filter((orderSetting) => orderSetting.enabled)
     .map((orderSetting) => {
-      const foundSeries = series.find(
-        (singleSeries) => singleSeries.seriesKey === orderSetting.key,
-      );
+      const foundSeries = series.find((singleSeries) => {
+        return singleSeries.seriesKey === orderSetting.key;
+      });
       if (foundSeries === undefined) {
         throw new TypeError("Series not found");
       }
