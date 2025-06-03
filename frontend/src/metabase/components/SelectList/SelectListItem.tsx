@@ -20,6 +20,7 @@ export interface SelectListItemProps
     icon?: string;
     label?: string;
   };
+  renderTitle?: (name: string) => React.ReactNode;
 }
 
 const getIconProps = (icon?: string | IconProps): IconProps =>
@@ -31,6 +32,7 @@ export function SelectListItem({
   rightIcon,
   className,
   classNames = {},
+  renderTitle,
   ...otherProps
 }: SelectListItemProps) {
   const iconProps = getIconProps(icon);
@@ -49,14 +51,18 @@ export function SelectListItem({
       {icon && (
         <ItemIcon className={classNames.icon} color="brand" {...iconProps} />
       )}
-      <ItemTitle
-        className={classNames.label}
-        fw="bold"
-        lh="normal"
-        data-testid="option-text"
-      >
-        <Ellipsified>{name}</Ellipsified>
-      </ItemTitle>
+      {renderTitle ? (
+        renderTitle(name)
+      ) : (
+        <ItemTitle
+          className={classNames.label}
+          fw="bold"
+          lh="normal"
+          data-testid="option-text"
+        >
+          <Ellipsified>{name}</Ellipsified>
+        </ItemTitle>
+      )}
       {rightIconProps.name && (
         <ItemIcon className={classNames.icon} {...rightIconProps} />
       )}
