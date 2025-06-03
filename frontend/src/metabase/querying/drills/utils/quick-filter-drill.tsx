@@ -109,7 +109,7 @@ function getActionOverrides(
               column,
               values: [],
               options: {},
-            }) as unknown as Lib.FilterClause,
+            }),
           }),
         };
       }
@@ -127,7 +127,7 @@ function getActionOverrides(
               column,
               values: [],
               options: {},
-            }) as unknown as Lib.FilterClause,
+            }),
           }),
         };
       }
