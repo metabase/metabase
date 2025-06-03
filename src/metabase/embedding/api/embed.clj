@@ -15,6 +15,7 @@
                   :dashboard <dashboard-id>}
        :params   <params>}"
   (:require
+   [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.api :as ct]
@@ -354,16 +355,3 @@
         lat-field    (json/decode+kw lat-field)
         lon-field    (json/decode+kw lon-field)]
     (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))
-
-;;; ------------------------------------------- Content translation --------------------------------------------
-
-(api.macros/defendpoint :get "/content-translation/dictionary/:token"
-  "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
-  [{:keys [token]} :- [:map
-                       [:token string?]]
-   {:keys [locale]}]
-  ;; this will error if bad
-  (unsign-and-translate-ids token)
-  (if locale
-    {:data (ct/get-translations locale)}
-    (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
