@@ -814,7 +814,6 @@
            premium-features
            public-sharing
            pulse
-           query-analysis
            query-permissions
            query-processor
            request
@@ -823,18 +822,6 @@
            util
            view-log
            warehouse-schema}}
-
-  query-analysis
-  {:api  #{metabase.query-analysis.core
-           metabase.query-analysis.init}
-   :uses #{config
-           driver
-           legacy-mbql
-           lib
-           query-processor
-           settings
-           task
-           util}}
 
   query-permissions
   {:api  #{metabase.query-permissions.core}
@@ -1376,7 +1363,6 @@
    :uses #{api
            driver
            enterprise/metabot-v3
-           query-analysis
            query-processor
            util}}
 
@@ -1548,14 +1534,6 @@
   enterprise/premium-features
   {:api  #{}
    :uses #{premium-features
-           util}}
-
-  enterprise/query-reference-validation
-  {:api  #{metabase-enterprise.query-reference-validation.api}
-   :uses #{api
-           collections
-           query-analysis
-           request
            util}}
 
   enterprise/sandbox

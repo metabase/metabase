@@ -66,7 +66,6 @@
     :model/PulseChannel
     :model/PulseChannelRecipient
     :model/Query
-    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField

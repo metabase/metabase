@@ -20,7 +20,6 @@
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
-   [metabase-enterprise.query-reference-validation.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.serialization.api]
@@ -45,7 +44,6 @@
    :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
-   :query-reference-validation (deferred-tru "Query Reference Validation")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
    :upload-management          (deferred-tru "Upload Management")
@@ -85,7 +83,6 @@
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-v3"                 (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/metabot-tools"              metabase-enterprise.metabot-v3.tools.api/routes
-   "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                      (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
