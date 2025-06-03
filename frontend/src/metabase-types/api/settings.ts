@@ -226,7 +226,6 @@ export const tokenFeatures = [
   "embedding_sdk",
   "embedding_iframe_sdk",
   "hosting",
-  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "scim",
