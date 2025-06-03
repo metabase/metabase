@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from "react";
+import type { RowSelectionState } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
@@ -35,13 +36,16 @@ export const useTableCRUD = ({
   scope,
   datasetData,
   stateUpdateStrategy,
+  setRowSelection,
 }: {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
+  setRowSelection?: (state: RowSelectionState) => void;
 }) => {
   const dispatch = useDispatch();
+  const [crudError, setCrudError] = useState<any | null>(null);
   const {
     cellsWithFailedUpdatesMap,
     handleCellValueUpdateError,
@@ -236,7 +240,7 @@ export const useTableCRUD = ({
   );
 
   const handleRowDeleteBulk = useCallback(
-    async (rowIndices: number[]) => {
+    async (rowIndices: number[], cascadeDelete = false) => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -255,13 +259,20 @@ export const useTableCRUD = ({
         return { [pkColumn.name]: rowPkValue };
       });
 
+      const requestParams = cascadeDelete
+        ? { params: { "delete-children": true } }
+        : {};
+
       const response = await deleteTableRows({
         rows,
         scope,
+        ...requestParams,
       });
 
       if (response.data?.outputs) {
         stateUpdateStrategy.onRowsDeleted(rows);
+        setRowSelection?.({});
+        setCrudError(null);
         dispatch(
           addUndo({
             message: t`${rows.length} rows successfully deleted`,
@@ -270,6 +281,13 @@ export const useTableCRUD = ({
       }
 
       if (response.error) {
+        setCrudError(response.error);
+
+        // This type of errors is handled specifically by `useForeignKeyConstraintHandling` hook.
+        if (isForeignKeyConstraintErrorResponse(response.error)) {
+          return false;
+        }
+
         handleGenericUpdateError(response.error);
       }
 
@@ -280,14 +298,22 @@ export const useTableCRUD = ({
       deleteTableRows,
       scope,
       stateUpdateStrategy,
+      setRowSelection,
       dispatch,
       handleGenericUpdateError,
     ],
   );
 
   const handleRowDelete = useCallback(
-    async (rowIndex: number) => {
-      return handleRowDeleteBulk([rowIndex]);
+    async (rowIndex: number, cascadeDelete = false) => {
+      return handleRowDeleteBulk([rowIndex], cascadeDelete);
+    },
+    [handleRowDeleteBulk],
+  );
+
+  const handleRowDeleteWithCascade = useCallback(
+    async (rowIndices: number[]) => {
+      return handleRowDeleteBulk(rowIndices, true);
     },
     [handleRowDeleteBulk],
   );
@@ -298,6 +324,7 @@ export const useTableCRUD = ({
     isUpdating,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
+    error: crudError,
 
     handleCellValueUpdate,
     handleRowCreate,
@@ -305,5 +332,18 @@ export const useTableCRUD = ({
     handleRowUpdateBulk,
     handleRowDelete,
     handleRowDeleteBulk,
+    handleRowDeleteWithCascade,
   };
 };
+
+export const isForeignKeyConstraintErrorResponse = (error: any): boolean => {
+  if (!error?.data?.errors) {
+    return false;
+  }
+
+  return isForeignKeyConstraintError(error.data.errors);
+};
+
+export function isForeignKeyConstraintError(error: any): boolean {
+  return error?.type === "metabase.actions.error/children-exist";
+}

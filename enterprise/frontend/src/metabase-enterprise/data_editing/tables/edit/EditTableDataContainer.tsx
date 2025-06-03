@@ -25,7 +25,9 @@ import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { ForeignKeyConstraintModal } from "./modals/ForeignKeyConstraintModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
+import { useForeignKeyConstraintHandling } from "./modals/use-foreign-key-constraint-handling";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { getTableEditPathname } from "./url";
@@ -105,12 +107,16 @@ export const EditTableDataContainer = ({
     return { "table-id": tableId };
   }, [tableId]);
 
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
+
   const {
     isInserting,
     isDeleting,
     isUpdating,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
+    error,
 
     handleCellValueUpdate,
     handleRowCreate,
@@ -118,11 +124,25 @@ export const EditTableDataContainer = ({
     handleRowUpdateBulk,
     handleRowDelete,
     handleRowDeleteBulk,
+    handleRowDeleteWithCascade,
   } = useTableCRUD({
     tableId,
     scope: editingScope,
     datasetData,
     stateUpdateStrategy,
+    setRowSelection,
+  });
+
+  const {
+    isForeignKeyModalOpen,
+    foreignKeyError,
+    handleForeignKeyConfirmation,
+    handleForeignKeyCancel,
+  } = useForeignKeyConstraintHandling({
+    onCascadeDelete: handleRowDeleteWithCascade,
+    selectedRowIndices,
+    setRowSelection,
+    constraintError: error,
   });
 
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
@@ -131,9 +151,6 @@ export const EditTableDataContainer = ({
       scope: editingScope,
       stateUpdateStrategy,
     });
-
-  const { rowSelection, selectedRowIndices, setRowSelection } =
-    useEditingTableRowSelection();
 
   const {
     isDeleteBulkRequested,
@@ -287,6 +304,14 @@ export const EditTableDataContainer = ({
         isDeleting={isDeleting}
         isInserting={isInserting}
         isLocationAllowed={handleIsLeaveLocationAllowed}
+      />
+      <ForeignKeyConstraintModal
+        opened={isForeignKeyModalOpen}
+        onClose={handleForeignKeyCancel}
+        onConfirm={handleForeignKeyConfirmation}
+        isLoading={isDeleting}
+        childRecords={foreignKeyError?.children || {}}
+        message={foreignKeyError?.message}
       />
     </>
   );
