@@ -2,6 +2,7 @@
   "Implementation of dictionary upload and retrieval logic for content translations"
   (:require
    [clojure.string :as str]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :as i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -78,6 +79,7 @@
 (defn import-translations!
   "Insert or update rows in the content_translation table."
   [rows]
+  (premium-features/assert-has-feature :content-translation (tru "Content translation"))
   (let [{:keys [translations errors]} (process-rows rows)]
     (when (seq errors)
       (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")

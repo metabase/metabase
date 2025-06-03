@@ -1,6 +1,8 @@
 (ns metabase.content-translation.models
   "A model representing dictionary entries for translations."
   (:require
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -17,6 +19,7 @@
   ([]
    (get-translations nil))
   ([locale]
+   (premium-features/assert-has-feature :content-translation (tru "Content translation"))
    (if locale
      (t2/select :model/ContentTranslation :locale locale)
      (t2/select :model/ContentTranslation))))
