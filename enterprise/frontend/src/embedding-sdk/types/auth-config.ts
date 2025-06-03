@@ -11,7 +11,19 @@ type BaseMetabaseAuthConfig = {
    * The refresh token should be in the format of {@link UserBackendJwtResponse}
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
+
+  /**
+   * Which authentication method to use.
+   * If both SAML and JWT are enabled at the same time,
+   * it defaults to SAML unless the authMethod is specified.
+   */
+  authMethod?: MetabaseAuthMethod;
 };
+
+/**
+ * @inline
+ **/
+export type MetabaseAuthMethod = "saml" | "jwt";
 
 /**
  * @category MetabaseProvider

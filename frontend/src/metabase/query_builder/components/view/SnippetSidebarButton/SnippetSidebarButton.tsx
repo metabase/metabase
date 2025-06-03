@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { Icon, Tooltip } from "metabase/ui";
+import { Box, Icon, Tooltip } from "metabase/ui";
 
 import SnippetSidebarButtonS from "./SnippetSidebarButton.module.css";
 
@@ -19,12 +19,14 @@ export const SnippetSidebarButton = ({
   toggleSnippetSidebar,
 }: SnippetSidebarButtonProps) => (
   <Tooltip label={t`SQL Snippets`}>
-    <a
+    <Box
+      component="a"
+      h={size}
       className={cx(className, SnippetSidebarButtonS.ButtonRoot, {
         [SnippetSidebarButtonS.isSelected]: isShowingSnippetSidebar,
       })}
     >
       <Icon name="snippet" size={size} onClick={toggleSnippetSidebar} />
-    </a>
+    </Box>
   </Tooltip>
 );

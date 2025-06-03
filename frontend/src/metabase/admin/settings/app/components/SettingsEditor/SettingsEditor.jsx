@@ -10,7 +10,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SwagButton } from "metabase/admin/settings/components/Swag/SwagButton";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
-import { useGetSettingQuery } from "metabase/api";
+import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
@@ -65,7 +65,7 @@ const mapDispatchToProps = (dispatch) => ({
 });
 
 const NewVersionIndicatorWrapper = () => {
-  const { data: versionInfo } = useGetSettingQuery("version-info");
+  const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSelector(getCurrentVersion);
   const updateChannel = useSetting("update-channel") ?? "latest";
   const latestVersion = versionInfo?.[updateChannel]?.version;

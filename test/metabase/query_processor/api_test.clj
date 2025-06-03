@@ -543,6 +543,60 @@
                         (nth cols 3))))
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
+(deftest ^:parallel pivot-dataset-row-totals-disabled-test
+  (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot with row totals disabled"
+        (let [query (merge (api.pivots/pivot-query true)
+                           {:show_row_totals false
+                            :show_column_totals true})
+              result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
+              rows   (mt/rows result)]
+          (is (= 912 (:row_count result)))
+          (is (= "completed" (:status result)))
+          ;; Only pivot groupings necessary for data and col totals
+          (is (= [0 1 3]
+                 (->> rows
+                      (map #(nth % 3))
+                      distinct
+                      vec))))))))
+
+(deftest ^:parallel pivot-dataset-column-totals-disabled-test
+  (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot with column totals disabled"
+        (let [query (merge (api.pivots/pivot-query true)
+                           {:show_row_totals true
+                            :show_column_totals false})
+              result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
+              rows   (mt/rows result)]
+          (is (= 1114 (:row_count result)))
+          (is (= "completed" (:status result)))
+          ;; Only pivot groupings necessary for data and row totals
+          (is (= [0 4]
+                 (->> rows
+                      (map #(nth % 3))
+                      distinct
+                      vec))))))))
+
+(deftest ^:parallel pivot-dataset-both-totals-disabled-test
+  (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot with row and column totals disabled"
+        (let [query (merge (api.pivots/pivot-query true)
+                           {:show_row_totals false
+                            :show_column_totals false})
+              result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
+              rows   (mt/rows result)]
+          (is (= 888 (:row_count result)))
+          (is (= "completed" (:status result)))
+          ;; Only pivot groupings necessary for data
+          (is (= [0]
+                 (->> rows
+                      (map #(nth % 3))
+                      distinct
+                      vec))))))))
+
 (deftest ^:parallel pivot-filter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data

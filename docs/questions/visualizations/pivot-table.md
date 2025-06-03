@@ -38,3 +38,7 @@ Where it makes sense, Metabase will automatically include subtotals for grouped 
 To collapse a group on a pivot table, you can click on the minus (–) button next to the group's heading (or the plus (+) button to expand it). When you save a pivot table, Metabase will remember which groups were expanded and which were collapsed.
 
 For more, check out [How to create a pivot table to summarize your data](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/how-to-create-pivot-tables).
+
+## Pivot table exports
+
+See [Exporting pivot tables](../exporting-results.md#exporting-pivot-tables).
