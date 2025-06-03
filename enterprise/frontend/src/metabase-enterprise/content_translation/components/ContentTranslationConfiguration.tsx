@@ -4,6 +4,7 @@ import {
   type ReactNode,
   type SetStateAction,
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -46,25 +47,56 @@ export const ContentTranslationConfiguration = () => {
   const [downloadErrorMessage, setDownloadErrorMessage] = useState<
     string | null
   >();
+  const [isDownloadInProgress, setIsDownloadInProgress] = useState(false);
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const [showDownloadingIndicator, setShowDownloadingIndicator] =
+    useState(false);
+
+  const showDownloadError = useCallback((errorMessage: string) => {
+    setDownloadErrorMessage(errorMessage);
+    setIsDownloadInProgress(false);
+  }, []);
 
   const triggerDownload = async () => {
-    const response = await fetch("/api/ee/content-translation/csv", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    setDownloadErrorMessage(null);
+    setIsDownloadInProgress(true);
+    try {
+      const response = await fetch("/api/ee/content-translation/csv", {
+        method: "GET",
+      });
 
-    if (!response.ok) {
-      setDownloadErrorMessage(t`Couldn't download this file`);
+      if (!response.ok) {
+        showDownloadError(t`Couldn't download this file`);
+        return;
+      }
+
+      const blob = await response.blob();
+      const filename = "metabase-content-translations.csv";
+      openSaveDialog(filename, blob);
+      setIsDownloadInProgress(false);
+    } catch {
+      showDownloadError(t`An error occurred`);
     }
-
-    const blob = await response.blob();
-    const filename = "metabase-content-translations.csv";
-    openSaveDialog(filename, blob);
   };
 
-  const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  useEffect(
+    function delayDownloadIndicator() {
+      // To avoid jankiness, only show the download indicator once the download
+      // has been in progress for longer than this many milliseconds
+      const DELAY = 250;
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+      if (isDownloadInProgress) {
+        timeout = setTimeout(() => setShowDownloadingIndicator(true), DELAY);
+      } else {
+        setShowDownloadingIndicator(false);
+        timeout && clearTimeout(timeout);
+      }
+      return () => {
+        timeout && clearTimeout(timeout);
+      };
+    },
+    [isDownloadInProgress],
+  );
 
   return (
     <Stack
@@ -93,10 +125,18 @@ export const ContentTranslationConfiguration = () => {
       <Group>
         <Button
           onClick={triggerDownload}
-          leftSection={<Icon name="download" />}
-          maw="20rem"
+          leftSection={
+            showDownloadingIndicator ? null : <Icon name="download" c="brand" />
+          }
+          miw="10rem"
+          style={{ flexGrow: 1 }}
+          disabled={isDownloadInProgress}
         >
-          {t`Download translation dictionary`}
+          {showDownloadingIndicator ? (
+            <Loader size="sm" />
+          ) : (
+            t`Download translation dictionary`
+          )}
         </Button>
         <FormProvider
           // We're only using Formik to make the appearance of the submit button
@@ -204,25 +244,29 @@ const UploadForm = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Form data-testid="content-localization-setting">
-      <Stack gap="md">
+    <Form
+      data-testid="content-localization-setting"
+      style={{ display: "flex" }}
+    >
+      <Stack gap="md" display="flex" style={{ flexGrow: 1 }}>
         <FormSubmitButton
+          style={{ flexGrow: 1 }}
           disabled={status === "pending"}
           label={
             <Group gap="sm">
-              <Icon name="upload" opacity=".8" />
+              <Icon name="upload" c="brand" />
               <Text c="inherit">{t`Upload translation dictionary`}</Text>
             </Group>
           }
           successLabel={
             <Group gap="sm" role="alert">
-              <Icon name="check" opacity=".8" />
+              <Icon name="check" c="success" />
               <Text c="inherit">{t`Dictionary uploaded`}</Text>
             </Group>
           }
           failedLabel={
             <Group gap="sm" role="alert">
-              <Icon name="warning" opacity=".8" />
+              <Icon name="warning" c="danger" />
               <Text c="inherit">{t`Could not upload dictionary`}</Text>
             </Group>
           }
@@ -232,7 +276,6 @@ const UploadForm = ({
               <Text c="inherit">{t`Uploading dictionary…`}</Text>
             </Group>
           }
-          maw="20rem"
           onClick={(e) => {
             triggerUpload();
             e.preventDefault();
