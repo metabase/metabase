@@ -25,8 +25,6 @@
   [_route-params
    _query-params
    _body]
-  (log/info "new code!!!")
-  (api/check-superuser)
   (let [translations (ct/get-translations)
         csv-data (cons ["Language" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
