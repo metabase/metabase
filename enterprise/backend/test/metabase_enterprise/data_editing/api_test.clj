@@ -200,16 +200,7 @@
                     2 98}
                    (children-count))))
           (testing "delete without delete-children param will return errors with children count"
-            (is (=? {:errors [{:index     0
-                               :type      "metabase.actions.error/violate-foreign-key-constraint"
-                               :message  "Other tables rely on this row so it cannot be deleted."
-                               :errors   {}
-                               :children {(mt/id :orders) 93}}
-                              {:index    1
-                               :type     "metabase.actions.error/violate-foreign-key-constraint"
-                               :message  "Other tables rely on this row so it cannot be deleted."
-                               :errors   {}
-                               :children {(mt/id :orders) 98}}]}
+            (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :orders) 191}}}
                     (mt/user-http-request :crowberto :post 400 execute-v2-url
                                           body))))
 
