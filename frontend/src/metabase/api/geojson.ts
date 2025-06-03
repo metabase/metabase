@@ -8,12 +8,6 @@ import { Api } from "./api";
 
 export const geojsonApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getGeoJSON: builder.query<GeoJSONData, string>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/setting/${id}`,
-      }),
-    }),
     loadGeoJSON: builder.query<GeoJSONData, { url: string }>({
       query: (params) => ({
         method: "GET",
@@ -84,4 +78,4 @@ function assertsValidGeoJson(
   }
 }
 
-export const { useGetGeoJSONQuery, useLazyLoadGeoJSONQuery } = geojsonApi;
+export const { useLazyLoadGeoJSONQuery } = geojsonApi;

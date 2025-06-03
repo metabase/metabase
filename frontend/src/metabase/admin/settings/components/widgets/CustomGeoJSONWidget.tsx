@@ -29,10 +29,12 @@ export const CustomGeoJSONWidget = () => {
     CustomGeoJSONMap | undefined
   >();
   const [currentId, setCurrentId] = useState<string | undefined>();
-  const [
-    triggerLoadGeoJSON,
-    { data: geoJson, error: geoJsonError, isLoading: geoJsonLoading },
-  ] = useLazyLoadGeoJSONQuery();
+  const [triggerLoadGeoJSON, result] = useLazyLoadGeoJSONQuery();
+  const {
+    data: geoJson,
+    error: geoJsonError,
+    isFetching: geoJsonLoading,
+  } = result;
 
   const {
     value: settingValue,
@@ -90,7 +92,7 @@ export const CustomGeoJSONWidget = () => {
       setMap({ ...mapToEdit });
       setOriginalMap(mapToEdit);
       setCurrentId(mapId);
-      triggerLoadGeoJSON({ url: mapToEdit.url });
+      triggerLoadGeoJSON({ url: mapToEdit.url }, true);
     },
     [triggerLoadGeoJSON],
   );
@@ -418,11 +420,15 @@ const EditMap = ({
             loading={geoJsonLoading}
             error={geoJsonError}
           >
-            {() => (
+            <LoadingAndErrorWrapper
+              className={cx(CS.flex, CS.fullHeight, CS.fullWidth)}
+              loading={geoJsonLoading}
+              error={geoJsonError}
+            >
               <div className={cx(CS.spread, CS.relative)}>
-                <ChoroplethPreview geoJson={geoJson} />
+                <ChoroplethPreview geoJson={geoJson} key={map.url} />
               </div>
-            )}
+            </LoadingAndErrorWrapper>
           </LoadingAndErrorWrapper>
         ) : (
           <div
