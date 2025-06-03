@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { c, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useDocsUrl } from "metabase/common/hooks";
