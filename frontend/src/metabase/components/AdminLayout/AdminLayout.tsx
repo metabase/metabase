@@ -1,3 +1,4 @@
+import { SettingsNav } from "metabase/admin/settings/components/SettingsNav";
 import { Flex } from "metabase/ui";
 
 import {
@@ -24,7 +25,7 @@ export function AdminLayout({
     <AdminWrapper headerHeight={headerHeight}>
       <AdminMain>
         <AdminSidebar data-testid="admin-layout-sidebar">
-          {sidebar}
+          <SettingsNav />
         </AdminSidebar>
         <AdminContent data-testid="admin-layout-content">
           {upsell ? (

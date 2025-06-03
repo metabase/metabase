@@ -50,6 +50,7 @@ import {
 
 import { PerformanceTabId } from "./performance/types";
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
+import { settingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
@@ -148,12 +149,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
       </Route>
       {/* SETTINGS */}
-      <Route path="settings" component={createAdminRouteGuard("settings")}>
-        <IndexRedirect to="general" />
-        <Route title={t`Settings`}>
-          <Route path="*" component={SettingsEditor} />
-        </Route>
-      </Route>
+      {settingsRoutes}
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}

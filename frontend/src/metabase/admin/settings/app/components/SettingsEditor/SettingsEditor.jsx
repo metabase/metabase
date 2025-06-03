@@ -8,6 +8,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SettingsNav } from "metabase/admin/settings/components/SettingsNav";
 import { SwagButton } from "metabase/admin/settings/components/Swag/SwagButton";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useGetVersionInfoQuery } from "metabase/api";
@@ -278,7 +279,7 @@ class SettingsEditor extends Component {
 
   render() {
     return (
-      <AdminLayout sidebar={this.renderSettingsSections()}>
+      <AdminLayout sidebar={SettingsNav}>
         <Box w="100%">
           <SaveStatus ref={this.saveStatusRef} />
           <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>

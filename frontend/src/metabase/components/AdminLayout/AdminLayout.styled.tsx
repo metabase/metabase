@@ -4,11 +4,9 @@ import styled from "@emotion/styled";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const AdminWrapper = styled.div<{ headerHeight?: number }>`
-  height: ${(props) =>
-    props.headerHeight ? `calc(100% - ${props.headerHeight}px)` : "100%"};
+  height: 100%;
   display: flex;
   flex-direction: column;
-  padding-left: 2rem;
   position: relative;
 `;
 
@@ -18,18 +16,23 @@ export const AdminMain = styled.div`
 `;
 
 export const AdminSidebar = styled.div`
+  padding-top: 1rem;
   overflow-y: auto;
-  /* left padding matches negative margin in standard sidebar component */
-  padding: 2rem 1rem 2rem 0.5em;
   flex-shrink: 0;
+  height: 100%;
+  border-right: 1px solid var(--mb-color-border);
 `;
 
 export const AdminContent = styled.div`
+  background-color: var(--mb-color-bg-light);
   overflow-y: auto;
   flex: 1;
   width: 100%;
-  padding: 2rem 2rem 2rem 1rem;
+  padding: 2rem;
   position: relative;
+  height: 100%;
+  justify-content: center;
+  display: flex;
 
   ${breakpointMaxSmall} {
     min-width: 100vw;
