@@ -429,7 +429,7 @@ Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
 ### date
 
-> Not available for Oracle and then non-JDBC Apache Druid driver.
+> Not available for Oracle or the non-JDBC Apache Druid driver.
 
 - When used on a string, converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format. If the string contains time, the time part is truncated.
 - When used on a datetime value, truncates datetime to a date.
@@ -566,7 +566,7 @@ Related: [notEmpty](#notempty), [isNull](#isnull).
 
 ### integer
 
-> Not available for non-JDBC Apache Druid driver.
+> Not available for the non-JDBC Apache Druid driver.
 
 - Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
 - Converts a floating point value by rounding it to an integer.
