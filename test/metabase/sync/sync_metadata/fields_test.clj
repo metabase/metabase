@@ -351,7 +351,9 @@
               (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
                 ;; 1. delete the fields that were just synced
                 (t2/delete! :model/Field :table_id [:in (map :id tables)])
-                ;; 2. sync the metadata for each table
+                ;; 2. reset the sync status for each table
+                (t2/update! :model/Table :id [:in (map :id tables)] {:initial_sync_status "incomplete"})
+                ;; 3. sync the metadata for each table
                 (if (= "for entire DB" message)
                   (let [tables-updated (atom nil)
                         original-set-initial-table-sync-complete-for-db! sync-util/set-initial-table-sync-complete-for-db!]
