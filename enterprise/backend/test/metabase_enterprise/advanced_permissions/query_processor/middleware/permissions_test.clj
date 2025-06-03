@@ -9,7 +9,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -21,15 +20,17 @@
    (clojure.lang ExceptionInfo)))
 
 (defn- do-with-download-perms!
-  [db-or-id graph f]
-  (let [all-users-group-id (u/the-id (perms-group/all-users))
-        db-id              (u/the-id db-or-id)
-        revision           (:revision (data-perms.graph/api-graph))]
-    (mt/with-premium-features #{:advanced-permissions}
-      (perms.test-util/with-restored-data-perms!
-        (data-perms.graph/update-data-perms-graph! {:revision revision
-                                                    :groups   {all-users-group-id {db-id {:download graph}}}})
-        (f)))))
+  ([db-or-id graph f]
+   (do-with-download-perms! (perms/all-users-group) db-or-id graph f))
+  ([group-or-id db-or-id graph f]
+   (let [group-id (u/the-id group-or-id)
+         db-id    (u/the-id db-or-id)
+         revision (:revision (data-perms.graph/api-graph))]
+     (mt/with-premium-features #{:advanced-permissions}
+       (perms.test-util/with-restored-data-perms!
+         (data-perms.graph/update-data-perms-graph! {:revision revision
+                                                     :groups   {group-id {db-id {:download graph}}}})
+         (f))))))
 
 (defn- remove-metadata [m]
   (lib.util.match/replace m
