@@ -55,7 +55,7 @@ export const AddDataModal = ({
             <PanelsHeader
               activeTab={activeTab}
               isAdmin={isAdmin}
-              onClose={onClose}
+              onAddDataModalClose={onClose}
             />
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel canSeeContent={isAdmin} />
