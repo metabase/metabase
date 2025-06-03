@@ -532,18 +532,20 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByTestId("dashboard-parameters-and-cards")
           .next("aside")
           .as("subscriptionBar")
-          .findByText("Text is Corbin Mertz");
+          .should("contain.text", "Text: Corbin Mertz");
         clickButton("Done");
 
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Corbin Mertz")
+          .should("contain.text", "Text: Corbin Mertz")
           .click();
 
         H.sendEmailAndVisitIt();
-        cy.get("table.header").within(() => {
-          cy.findByText("Text").next().findByText("Corbin Mertz");
-          cy.findByText("Text 1").should("not.exist");
-        });
+        cy.get("table.header")
+          .first()
+          .within(() => {
+            cy.findByText("Text").next().findByText("Corbin Mertz");
+            cy.findByText("Text 1").should("not.exist");
+          });
 
         // change default text to sallie
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
@@ -567,15 +569,17 @@ describe("scenarios > dashboard > subscriptions", () => {
         // verify existing subscription shows new default in UI
         openDashboardSubscriptions();
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Sallie Flatley")
+          .findByText("Text: Sallie Flatley")
           .click();
 
         // verify existing subscription show new default in email
         H.sendEmailAndVisitIt();
-        cy.get("table.header").within(() => {
-          cy.findByText("Text").next().findByText("Sallie Flatley");
-          cy.findByText("Text 1").should("not.exist");
-        });
+        cy.get("table.header")
+          .first()
+          .within(() => {
+            cy.findByText("Text").next().findByText("Sallie Flatley");
+            cy.findByText("Text 1").should("not.exist");
+          });
       });
     });
   });
@@ -661,15 +665,17 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         // verify defaults are listed correctly in UI
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Corbin Mertz")
+          .findByText("Text: Corbin Mertz")
           .click();
 
         // verify defaults are listed correctly in email
         H.sendEmailAndVisitIt();
-        cy.get("table.header").within(() => {
-          cy.findByText("Text").next().findByText("Corbin Mertz");
-          cy.findByText("Text 1").should("not.exist");
-        });
+        cy.get("table.header")
+          .first()
+          .within(() => {
+            cy.findByText("Text").next().findByText("Corbin Mertz");
+            cy.findByText("Text 1").should("not.exist");
+          });
 
         // change default text to sallie
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
@@ -696,15 +702,17 @@ describe("scenarios > dashboard > subscriptions", () => {
         // verify existing subscription shows new default in UI
         openDashboardSubscriptions();
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Sallie Flatley")
+          .findByText("Text: Sallie Flatley")
           .click();
 
         // verify existing subscription show new default in email
         H.sendEmailAndVisitIt();
-        cy.get("table.header").within(() => {
-          cy.findByText("Text").next().findByText("Sallie Flatley");
-          cy.findByText("Text 1").should("not.exist");
-        });
+        cy.get("table.header")
+          .first()
+          .within(() => {
+            cy.findByText("Text").next().findByText("Sallie Flatley");
+            cy.findByText("Text 1").should("not.exist");
+          });
       });
 
       it("should allow for setting parameters in subscription", () => {
@@ -733,7 +741,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.wait("@pulsePut");
         cy.findByTestId("dashboard-parameters-and-cards")
           .next("aside")
-          .findByText("Text is 2 selections and 1 more filter")
+          .findByText("Text: 2 selections and 1 more filter")
           .click();
 
         H.sendEmailAndVisitIt();
