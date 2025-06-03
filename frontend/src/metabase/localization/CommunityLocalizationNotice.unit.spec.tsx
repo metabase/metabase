@@ -6,13 +6,20 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { CommunityLocalizationNotice } from "./CommunityLocalizationNotice";
 
-function setup(isAdminView: boolean, isWhiteLabeling: boolean) {
+function setup({
+  isAdminView,
+  isWhiteLabeling,
+}: {
+  isAdminView: boolean;
+  isWhiteLabeling: boolean;
+}) {
   const state = createMockState({
     settings: mockSettings({
       "application-name": isWhiteLabeling ? "Basemeta" : "Metabase",
       "token-features": createMockTokenFeatures({
         whitelabel: isWhiteLabeling,
       }),
+      "show-metabase-links": !isWhiteLabeling,
     }),
   });
 
@@ -30,7 +37,7 @@ function setup(isAdminView: boolean, isWhiteLabeling: boolean) {
 
 describe("CommunityLocalizationNotice", () => {
   it("should render", () => {
-    setup(false, false);
+    setup({ isAdminView: false, isWhiteLabeling: false });
     expect(
       screen.getByText(
         "Some translations are created by the Metabase community, and might not be perfect.",
@@ -40,7 +47,7 @@ describe("CommunityLocalizationNotice", () => {
   });
 
   it("should not render link when white labeling is enabled", () => {
-    setup(false, true);
+    setup({ isAdminView: false, isWhiteLabeling: true });
     expect(
       screen.getByText(
         "Some translations are created by the Basemeta community, and might not be perfect.",
@@ -50,7 +57,7 @@ describe("CommunityLocalizationNotice", () => {
   });
 
   it("should render link for admins when white labeling is enabled", () => {
-    setup(true, true);
+    setup({ isAdminView: true, isWhiteLabeling: true });
     expect(
       screen.getByText(
         "Some translations are created by the Basemeta community, and might not be perfect.",

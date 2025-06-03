@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getCrowdinUrl } from "metabase/selectors/settings";
 import {
   getApplicationName,
-  getIsWhiteLabeling,
+  getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 
 export function getLocalizationNoticeText(applicationName: string) {
@@ -18,7 +18,7 @@ export function CommunityLocalizationNotice({
   isAdminView: boolean;
 }) {
   const applicationName = useSelector(getApplicationName);
-  const isWhiteLabeling = useSelector(getIsWhiteLabeling);
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const translatedLink = (
     <ExternalLink
       href={getCrowdinUrl()}
@@ -26,7 +26,7 @@ export function CommunityLocalizationNotice({
     >{t`contribute to translations here`}</ExternalLink>
   );
 
-  const showLink = !isWhiteLabeling || isAdminView;
+  const showLink = showMetabaseLinks || isAdminView;
 
   return (
     <span>
