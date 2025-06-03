@@ -153,7 +153,7 @@
 
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."
-  [{:keys [token]}
+  [{:keys [token]} :- [:map [:token [:string {:api/regex #"[0-9a-zA-Z-_]+"}]]]
    _
    _]
   (check-permissions)
