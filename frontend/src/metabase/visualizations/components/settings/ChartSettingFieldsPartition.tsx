@@ -193,6 +193,8 @@ export const ChartSettingFieldsPartition = ({
     return;
   }
 
+  const wrappedQuery = Lib.wrapAdhocNativeQuery(query, metadataResults);
+
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -275,9 +277,12 @@ export const ChartSettingFieldsPartition = ({
 
         const AggregationPopover =
           partitionType === "metric" ? (
-            <AddAggregationPopover query={query} onAddAggregation={() => {}} />
+            <AddAggregationPopover
+              query={wrappedQuery}
+              onAddAggregation={() => {}}
+            />
           ) : (
-            <AddBreakoutPopover query={query} onAddBreakout={() => {}} />
+            <AddBreakoutPopover query={wrappedQuery} onAddBreakout={() => {}} />
           );
 
         return (

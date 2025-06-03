@@ -141,3 +141,10 @@ export function previewQuery(
 ): Query | null {
   return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
 }
+
+export function wrapAdhocNativeQuery(
+  query: Query,
+  metadata: ColumnMetadata,
+): Query {
+  return ML.wrap_adhoc_native_query(query, metadata);
+}
