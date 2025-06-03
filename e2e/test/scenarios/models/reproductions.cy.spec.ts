@@ -1553,6 +1553,7 @@ describe("issue 55486", () => {
         name: MODEL_NAME,
         query: {
           "source-table": PRODUCTS_ID,
+          limit: 5,
         },
       },
       { visitQuestion: true },
