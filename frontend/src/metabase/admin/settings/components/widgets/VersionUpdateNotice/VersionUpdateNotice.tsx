@@ -26,6 +26,8 @@ export function VersionUpdateNotice() {
   const displayVersion = formatVersion(currentVersion);
 
   if (isHosted) {
+    // FIXME: this is unreachable because we hide the updates section
+    // for cloud customers
     return <CloudCustomers currentVersion={displayVersion} />;
   }
 
