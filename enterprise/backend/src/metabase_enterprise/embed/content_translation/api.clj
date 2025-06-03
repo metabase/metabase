@@ -2,9 +2,9 @@
   "Enterprise endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch data needed for embedded
   content translation. See the documentation for metabase.embedding.api.embed."
   (:require
-   [metabase.api.macros :as api.macros]
-   [metabase.content-translation.api :as ct]
    [metabase-enterprise.api.routes.common :as ee.api.common]
+   [metabase.api.macros :as api.macros]
+   [metabase.content-translation.models :as ct]
    [metabase.embedding.jwt :as embedding.jwt]
    [metabase.util.i18n :refer [tru deferred-tru]]))
 
