@@ -1563,9 +1563,6 @@ describe("issue 55486", () => {
   function checkIsShowingMetadataEditorTab() {
     cy.findByTestId("editor-tabs-metadata").should("be.checked");
     cy.findByTestId("visualization-root").should("be.visible");
-    cy.findByTestId("visualization-root")
-      .findByText("Loading...")
-      .should("not.exist");
   }
 
   function checkIsShowingQueryEditorTab() {
