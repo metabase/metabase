@@ -64,6 +64,7 @@ const getPermission = (
   groupId: number,
   defaultGroup: Group,
   permissionKey: ApplicationPermissionKey,
+  isDisabled: boolean,
 ) => {
   const value = getApplicationPermission(permissions, groupId, permissionKey);
   const defaultGroupValue = getApplicationPermission(
@@ -76,7 +77,7 @@ const getPermission = (
 
   return {
     permission: permissionKey,
-    isDisabled: isAdmin,
+    isDisabled,
     warning,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     value: getApplicationPermission(permissions, groupId, permissionKey),
@@ -122,6 +123,7 @@ export const getApplicationPermissionEditor = createSelector(
             group.id,
             isExternal ? externalUsersGroup : defaultGroup,
             "setting",
+            isAdmin || isExternal,
           ),
           getPermission(
             permissions,
@@ -129,6 +131,7 @@ export const getApplicationPermissionEditor = createSelector(
             group.id,
             isExternal ? externalUsersGroup : defaultGroup,
             "monitoring",
+            isAdmin || isExternal,
           ),
           getPermission(
             permissions,
@@ -136,6 +139,7 @@ export const getApplicationPermissionEditor = createSelector(
             group.id,
             isExternal ? externalUsersGroup : defaultGroup,
             "subscription",
+            isAdmin || isExternal,
           ),
         ],
       };
