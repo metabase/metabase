@@ -84,19 +84,12 @@
            base-type :base_type
            field-id :id
            field-ref :field_ref} source-metadata]
+      ;; if `field-ref` is a unique id-based reference, use it
+      ;; use an id-based reference only if the source query uses it
       (or (when (and field-id (not (contains? duplicate-ids field-id)))
-            ;; Return `field-ref` directly if it's a `:field` clause already. Remove binning/temporal bucketing info.
-            ;; The field should already be getting bucketed in the source query; don't need to apply bucketing again in
-            ;; the parent query.
-            ;; TODO `resolve-joined-fields` middleware breaks the query if `:base-type` is not removed. The middleware
-            ;; should be fixed to not include `:join-alias` to irrelevant id-based refs. When it's fixed, we can leave
-            ;; `:base-type` here.
             (lib.util.match/match-one field-ref
-              [:field id-or-name opts]
-              [:field id-or-name (cond-> (-> opts
-                                             (assoc :join-alias alias)
-                                             (dissoc :binning :temporal-unit))
-                                   (integer? id-or-name) (dissoc :base-type))]))
+              [:field (id :guard pos-int?) _opts]
+              [:field field-id {:join-alias alias}]))
           [:field field-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
