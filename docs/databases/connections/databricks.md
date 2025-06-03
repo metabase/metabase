@@ -51,7 +51,7 @@ You can't sync Databricks's legacy catalogs, however, including the `samples` or
 
 ### Catalogs and schemas
 
-You can specify which catalogs schemas you want to sync and scan. Options are:
+You can specify which catalogs and schemas you want to sync and scan. Options are:
 
 - All
 - Only these...
