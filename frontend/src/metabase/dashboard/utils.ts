@@ -113,6 +113,12 @@ export function getVirtualCardType(dashcard: BaseDashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
+export function isHeadingDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
+  return getVirtualCardType(dashcard) === "heading";
+}
+
 export function isLinkDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is VirtualDashboardCard {
