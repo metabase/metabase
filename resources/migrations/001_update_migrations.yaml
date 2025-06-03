@@ -11781,6 +11781,26 @@ databaseChangeLog:
               );
 
   - changeSet:
+      id: v56.2025-06-02T20:11:53
+      author: nvoxland
+      comment: Drop column query_table.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_table
+            constraintName: fk_query_table_analysis_id
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-02T20:11:54
+      author: nvoxland
+      comment: Drop column query_field.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_field
+            constraintName: fk_query_field_analysis_id
+      rollback:
+
+  - changeSet:
       id: v56.2025-06-02T20:11:55
       author: nvoxland
       comment: Drop column query_table.analysis_id
