@@ -933,6 +933,30 @@
       (create-editable-table-card! dashboard-id dashcard table-id)
       dashcard)))
 
+(defn- create-or-fix-action-id
+  "Even though currently these actions only live in the visualization settings, they are conceptually first-class
+  actions, which can be used with the /execute API etc. This means that they need unique identifiers, and since we need
+  a way to retrieve the corresponding JSON easily, we embed the dashcard id within their string id.
+
+  Since we are saving this JSON inside the dashcard, there's a chicken-and-egg problem when pre-configuring actions
+  before saving the dashcard for the first time. In this case, we use a placeholder, and rely on the fact that these
+  actions will be executed with the same dashcard in their :scope.
+
+  When the dashcard is saved for the second time, we fix all these placeholders, so that the ids are less obscure, and
+  the semantically dubious dependency on :scope is minimized.
+
+  Once these actions are stored in some sort of first-class action table, we won't have this issue."
+  [dashcard id]
+  (cond
+    ;; new action, give it an id
+    (not id)
+    (str "dashcard:" (:id dashcard "unknown") ":" (u/generate-nano-id))
+    ;; chicken-and-egg resulted in a suboptimal id, fix it
+    (and (string? id) (str/starts-with? id "dashcard:unknown:") (:id dashcard))
+    (str/replace id #"dashcard:unknown" (str "dashcard:" (:id dashcard)))
+    :else
+    id))
+
 (defn- init-grid-actions
   "Actions can be added to editable grids. This makes sure we actually create the corresponding actions.
   For now, this just means generating an id, and setting default / fallback values."
@@ -941,30 +965,13 @@
    dashcard
    [:visualization_settings :editableTable.enabledActions]
    (partial map
-            (fn [{action-id :id :as grid-action}]
-              (if (contains? #{"row/create" "row/delete"} action-id)
-                ;; Certain ids correspond not to primitive actions, but to hard-coded handlers in the FE.
-                ;; Leave them alone.
-                grid-action
-                (-> grid-action
-                    ;; We can leave "id" (should be "action_id") packed, since it's not being saved as a row.
-                    ;; If we removed it, editing these actions would not work properly.
-                    identity
-                    ;; Generate initial ids in the BE, preparing for a time when these are first-class db records.
-                    ;; FE needs to rename "id" to "action_id", and then this can be renamed to "id"
-                    ;; NOTE: it's possible that the dashcard has not been saved to the database yet, and there does not
-                    ;;       have an id. in this case, we'll have to use the action execution scope to find the dashcard
-                    ;;       which contains this JSON defining the relevant grid action. that isn't great, so we'll
-                    ;;       try to heal such under-defined actions when the dashboard is next saved. once these actions
-                    ;;       are first-class database records, we won't have this problem.
-                    (update :actual_id (fn [id]
-                                         (if (or (int? id) (not (str/includes? (str id) ":unknown:")))
-                                           id
-                                           (str "dashcard:" (:id dashcard "unknown") ":" (u/generate-nano-id)))))
-                    ;; At the time of writing, the FE only allows the creation of row actions. Make this explicit.
-                    (update :type #(or % "row-action"))
-                    ;; By default actions are enabled.
-                    (update :enabled #(if (some? %) % true))))))))
+            (fn [grid-action]
+              (-> grid-action
+                  (update :id (partial create-or-fix-action-id dashcards))
+                  ;; At the time of writing, the FE only allows the creation of row actions. Make this explicit.
+                  (update :actionType #(or % "data-grid/row-action"))
+                  ;; By default actions are enabled.
+                  (update :enabled #(if (some? %) % true)))))))
 
 (defn- unpack-dashcard-button
   "There are three flavors of action we can link buttons to: saved, primitive, and encoded.
