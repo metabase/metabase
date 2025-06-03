@@ -244,9 +244,11 @@
 (deftest resilient-to-conn-close?-test
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
     (let [have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
-          default-have-select-privilege? #(identical? have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
+          default-have-select-privilege? #(identical? have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? %))
+          jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))]
       (mt/test-drivers (into #{}
                              (comp (filter default-have-select-privilege?)
+                                   (filter jdbc-describe-database)
                                    (filter #(not (driver/database-supports? % :table-privileges nil))))
                              (descendants driver/hierarchy :sql-jdbc))
         (let [closed-first (volatile! nil)
