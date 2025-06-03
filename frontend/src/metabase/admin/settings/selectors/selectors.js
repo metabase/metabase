@@ -21,11 +21,11 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import { SettingsLdapForm } from "../components/SettingsLdapForm";
-import { SettingsLicense } from "../components/SettingsLicense";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { LicenseSettingsPage } from "../components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
@@ -245,7 +245,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   license: {
     name: t`License`,
     order: 110,
-    component: SettingsLicense,
+    component: LicenseSettingsPage,
     settings: [],
   },
   llm: {

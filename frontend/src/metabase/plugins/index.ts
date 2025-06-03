@@ -123,6 +123,7 @@ export const PLUGIN_ADMIN_TROUBLESHOOTING = {
 
 export const PLUGIN_ADMIN_SETTINGS = {
   InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
+  LicenseAndBillingSettings: PluginPlaceholder,
 };
 
 // functions that update the sections
