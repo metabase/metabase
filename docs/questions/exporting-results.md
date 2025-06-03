@@ -112,6 +112,14 @@ If you don't see this option, you may not have [permissions to download results]
 
 You can use [dashboard subscriptions](../dashboards/subscriptions.md) to regularly export data from all questions on a dashboard, and include those results as an attachment.
 
+## Remove Metabase branding from exports
+
+By default, data exports (PDFs, PNGs, alert and subscription emails, etc.) feature Metabase branding, like this "Made with Metabase" logo:
+
+![Question with Metabase logo](./images/question-with-metabase-logo.png)
+
+To remove the Metabase branding on exports, you'll need to subscribe to a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
+
 ## Further reading
 
 - [Alerts](./alerts.md)
