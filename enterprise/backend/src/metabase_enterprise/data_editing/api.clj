@@ -344,7 +344,7 @@
                              inner-id    (:actionId viz-action)
                              unified     (fetch-unified-action scope inner-id)
                              action-type (:actionType viz-action "data-grid/row-action")
-                             mapping     (:parameterMappings viz-action {})]
+                             mapping     (:mapping viz-action {})]
                          (assert (:enabled viz-action) "Cannot call disabled actions")
                          (case action-type
                            ("data-grid/built-in"

@@ -877,12 +877,12 @@
                                                                :actionId   (:id action)
                                                                :actionType "data-grid/row-action"
                                                                :enabled    true}
-                                                              {:id                "dashcard:unknown:fedcba"
-                                                               :actionId          "table.row/update"
-                                                               :actionType        "data-grid/row-action"
-                                                               :parameterMappings {:table-id @test-table
-                                                                                   :row      "::root"}
-                                                               :enabled           true}
+                                                              {:id         "dashcard:unknown:fedcba"
+                                                               :actionId   "table.row/update"
+                                                               :actionType "data-grid/row-action"
+                                                               :mapping    {:table-id @test-table
+                                                                            :row      "::root"}
+                                                               :enabled    true}
                                                               {:id         "dashcard:unknown:xyzabc"
                                                                :actionId   (#'actions/encoded-action-id :table.row/update @test-table)
                                                                :actionType "data-grid/row-action"
