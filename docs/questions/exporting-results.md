@@ -118,7 +118,7 @@ By default, data exports (PDFs, PNGs, alert and subscription emails, etc.) featu
 
 ![Question with Metabase logo](./images/question-with-metabase-logo.png)
 
-To remove the Metabase branding on exports, you'll need to subscribe to a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
+To remove the Metabase logo and branding on exports, you'll need to subscribe to a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
 
 ## Further reading
 
