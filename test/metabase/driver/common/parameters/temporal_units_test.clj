@@ -36,32 +36,40 @@
             date-types ["minute" "hour" "day" "week" "month" "quarter" "year"]
             count-types ["second-of-minute" "minute-of-hour" "hour-of-day" "day-of-month"
                          "day-of-year" "month-of-year" "quarter-of-year"]
-            ;; The original date is 2019-02-11T21:40:27.892
-            expected-dates [#t "2019-02-11T21:40:00"
-                            #t "2019-02-11T21:00:00"
-                            #t "2019-02-11T00:00:00"
-                            #t "2019-02-10T00:00:00"
-                            #t "2019-02-01T00:00:00"
-                            #t "2019-01-01T00:00:00"
-                            #t "2019-01-01T00:00:00"]
-            expected-counts [27 40 21 11 42 2 1]]
+            ;; The original dates are 2019-02-11T21:40:27.892 and 2018-05-15T08:04:04.580
+            expected-dates [[[#t "2019-02-11T21:40:00"] [#t "2018-05-15T08:04:00"]]
+                            [[#t "2019-02-11T21:00:00"] [#t "2018-05-15T08:00:00"]]
+                            [[#t "2019-02-11T00:00:00"] [#t "2018-05-15T00:00:00"]]
+                            [[#t "2019-02-10T00:00:00"] [#t "2018-05-13T00:00:00"]]
+                            [[#t "2019-02-01T00:00:00"] [#t "2018-05-01T00:00:00"]]
+                            [[#t "2019-01-01T00:00:00"] [#t "2018-04-01T00:00:00"]]
+                            [[#t "2019-01-01T00:00:00"] [#t "2018-01-01T00:00:00"]]]
+            expected-counts [[[27] [4]]
+                             [[40] [4]]
+                             [[21] [8]]
+                             [[11] [15]]
+                             [[42] [135]]
+                             [[2] [5]]
+                             [[1] [2]]]]
         (doseq [[grouping expected-date] (map list date-types expected-dates)]
-          (is (= [[expected-date]]
+          (is (= expected-date
                  (-> native-query
                      (assoc :parameters [{:type   :temporal-unit
                                           :name   "time-unit"
                                           :target [:variable [:template-tag "time-unit"]]
                                           :value  grouping}])
-                     run-sample-query))))
+                     run-sample-query
+                     (subvec 0 2)))))
         (doseq [[grouping expected-count] (map list count-types expected-counts)]
-          (is (= [[expected-count]]
+          (is (= expected-count
                  (-> native-query
                      (assoc :parameters [{:type   :temporal-unit
                                           :name   "time-unit"
                                           :target [:variable [:template-tag "time-unit"]]
                                           :value  grouping}])
                      qp/process-query
-                     (->> (mt/formatted-rows [int]))))))))))
+                     (->> (mt/formatted-rows [int]))
+                     (subvec 0 2)))))))))
 
 (deftest bad-function-names-throw-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
