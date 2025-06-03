@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { c, t } from "ttag";
+import { c, ngettext, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -116,9 +116,11 @@ export const ContentTranslationConfiguration = () => {
       {!!errorMessages.length && (
         <Stack gap="xs">
           <Text role="alert" c="error">
-            {errorMessages.length === 1
-              ? t`We couldn't upload the file due to this error:`
-              : t`We couldn't upload the file due to these errors:`}
+            {ngettext(
+              msgid`We couldn't upload the file due to this error:`,
+              `We couldn't upload the file due to these errors:`,
+              errorMessages.length,
+            )}
           </Text>
           <List withPadding>
             {errorMessages.map((errorMessage) => (
