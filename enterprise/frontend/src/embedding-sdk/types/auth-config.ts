@@ -23,6 +23,8 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
    * The refresh token should be in the format of {@link UserBackendJwtResponse}
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
+
+  apiKey?: never;
 };
 
 /**
@@ -35,6 +37,7 @@ export type MetabaseAuthConfigWithSaml = BaseMetabaseAuthConfig & {
    * it defaults to SAML unless the authMethod is specified.
    */
   authMethod?: "saml";
+  apiKey?: never;
   fetchRequestToken?: never;
 };
 
