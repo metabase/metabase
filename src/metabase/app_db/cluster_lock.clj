@@ -4,6 +4,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
@@ -56,6 +57,7 @@
         (t2/query-one {:insert-into [:metabase_cluster_lock]
                        :columns [:lock_name]
                        :values [[lock-name-str]]})))
+    (log/info "Obtained cluster lock")
     (thunk)))
 
 (mu/defn do-with-cluster-lock
