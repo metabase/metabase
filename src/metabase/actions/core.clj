@@ -35,6 +35,7 @@
   action-arg-map-spec
   normalize-action-arg-map]
  [metabase.actions.error
+  children-exist
   incorrect-value-type
   violate-foreign-key-constraint
   violate-not-null-constraint
