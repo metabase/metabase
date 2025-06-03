@@ -542,6 +542,7 @@ export interface EnterpriseSettings extends Settings {
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
+  "jwt-identity-provider-uri"?: string | null;
   /**
    * @deprecated
    */
