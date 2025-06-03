@@ -7,7 +7,6 @@ import {
   shouldTranslateFieldValuesOfColumn,
   translateDisplayNames,
   translateFieldValuesInHoveredObject,
-  translateFieldValuesInSeries,
   useTranslateSeries,
 } from "./utils";
 
@@ -19,7 +18,6 @@ if (hasPremiumFeature("content_translation")) {
     ContentTranslationConfiguration,
     shouldTranslateFieldValuesOfColumn,
     translateFieldValuesInHoveredObject,
-    translateFieldValuesInSeries,
     useTranslateSeries,
     // This gets overwritten in static embedding
     contentTranslationDictionaryUrl: null,
