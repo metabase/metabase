@@ -248,9 +248,9 @@ To run these tests locally, run:
 ENTERPRISE_TOKEN=<token> TEST_SUITE=<host_app_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
 ```
 
-For example for the `vite-5-host-app` Host App, run:
+For example for the `vite-6-host-app` Host App, run:
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=vite-5-host-app-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+ENTERPRISE_TOKEN=<token> TEST_SUITE=vite-6-host-app-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
 ```
 
 #### CI runs

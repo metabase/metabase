@@ -42,7 +42,7 @@ export function getDashboardCardMenu(index = 0) {
 }
 
 export function showDashboardCardActions(index = 0) {
-  getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
+  return getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
 }
 
 /**
@@ -90,6 +90,9 @@ export function saveDashboard({
     "saveDashboard-saveDashboardCards",
   );
   cy.intercept("GET", "/api/dashboard/*").as("saveDashboard-getDashboard");
+  cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
+    "saveDashboard-getDashboardMetadata",
+  );
 
   cy.findByText(editBarText).should("be.visible");
   cy.button(buttonLabel).click();
@@ -97,6 +100,7 @@ export function saveDashboard({
   if (awaitRequest) {
     cy.wait("@saveDashboard-saveDashboardCards");
     cy.wait("@saveDashboard-getDashboard");
+    cy.wait("@saveDashboard-getDashboardMetadata");
   }
 
   cy.findByText(editBarText).should("not.exist");

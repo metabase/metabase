@@ -636,7 +636,7 @@ describe("scenarios > question > custom column", () => {
 
     H.queryBuilderMain().findByText("MiscDate").should("be.visible");
     cy.findByTestId("qb-filters-panel")
-      .findByText("MiscDate is in the previous 30 years")
+      .findByText("MiscDate is in the previous 30 years or this year")
       .should("be.visible");
   });
 

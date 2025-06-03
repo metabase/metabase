@@ -501,7 +501,7 @@
         ; don't stomp on `:updated_at` if it's already explicitly specified.
         changes-already-include-updated-at? (some #{:updated_at} changed-fields)
         has-non-ignored-fields? (seq (set/difference changed-fields (non-timestamped-fields obj)))
-        should-set-updated-at? (or (empty? changed-fields) (and has-non-ignored-fields? (not changes-already-include-updated-at?)))]
+        should-set-updated-at? (and has-non-ignored-fields? (not changes-already-include-updated-at?))]
     (cond-> obj
       should-set-updated-at? (assoc :updated_at (now)))))
 
@@ -546,6 +546,7 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
 ;; --- helper fns
 (defn changes-with-pk

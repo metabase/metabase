@@ -304,7 +304,11 @@ jobs:
     needs: [ get-build-requirements, build ]
     strategy:
       matrix:
-        test_suite: [ "vite-5-host-app-e2e" ]
+        test_suite: [
+          "vite-6-host-app-e2e",
+          "next-15-app-router-host-app-e2e",
+          "next-15-pages-router-host-app-e2e"
+        ]
         environment: [ "production", "development" ]
     if: |
       !cancelled() && needs.build.result == 'success'
