@@ -379,3 +379,40 @@
                 (is (= 5 (count-batches [:= :user_id user-2])))
                 (is (= 1 (count-batches [:= :table_id table-1])))
                 (is (= 7 (count-batches [:= :table_id table-2])))))))))))
+
+(deftest undo-non-undoable-batch-test
+  (mt/with-empty-h2-app-db
+    (mt/with-premium-features #{:table-data-editing}
+      (testing "Cannot undo a batch marked as undoable: false"
+        (with-open [table-ref (data-editing.tu/open-test-table! {:id   [:int]
+                                                                 :name [:text]}
+                                                                {:primary-key [:id]})]
+          (let [table-id   @table-ref
+                user-id    (mt/user->id :crowberto)
+                test-scope {:table-id table-id}]
+            (data-editing.tu/toggle-data-editing-enabled! true)
+
+            ;; Create a regular undoable change first
+            (create-row! user-id table-id {:id 1, :name "Undoable change"})
+
+            ;; Manually create a non-undoable change using track-change! directly
+            (undo/track-change!
+             user-id
+             test-scope
+             {table-id
+              {{:id 2} {:raw_before nil                                  ; before (nil for create)
+                        :raw_after  {:id 2, :name "Non-undoable change"} ; after
+                        :undoable   false}}})                            ; mark as non-undoable
+
+            (is (= [[1 "Undoable change"]] (table-rows table-id)))
+
+            ;; Should have batches available to undo
+            (is (next-batch-num :undo user-id test-scope))
+            (is (not (next-batch-num :redo user-id test-scope)))
+
+            ;; Try to undo - should fail because the latest batch has undoable: false
+            (is (= "Your change cannot be undo"
+                   (undo-via-api! user-id test-scope)))
+
+            ;; Table should remain unchanged
+            (is (= [[1 "Undoable change"]] (table-rows table-id)))))))))

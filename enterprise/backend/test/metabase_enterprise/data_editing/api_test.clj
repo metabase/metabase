@@ -218,7 +218,13 @@
                                {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
                     (mt/user-http-request :crowberto :post 200 execute-v2-url
                                           (assoc body :params {:delete-children true}))))
-            (is (empty? (children-count)))))))))
+            (is (empty? (children-count)))
+            (testing "the change is not undoable"
+              (is (= "Your change cannot be undo"
+                     (mt/user-http-request :crowberto :post 405 execute-v2-url
+                                           {:action_id "data-editing/undo"
+                                            :scope     {:table-id (mt/id :products)}
+                                            :inputs    []}))))))))))
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}

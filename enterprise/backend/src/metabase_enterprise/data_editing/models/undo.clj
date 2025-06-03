@@ -216,12 +216,10 @@
                                          :user-id user-id
                                          :scope   scope}))
       (some (comp false? :undoable) batch)
-      (throw (ex-info (if undo?
-                        "This operation cannot be undone"
-                        "This operation cannot be redone")
-                      {:error   :undo/cannot-undoable
-                       :user-id user-id
-                       :scope   scope
+      (throw (ex-info "Batch contains changes that are not undoable"
+                      {:error     :undo/cannot-undo
+                       :user-id   user-id
+                       :scope     scope
                        :batch-num (:batch_num (first batch))}))
       (conflict? undo? batch) (throw (ex-info "Blocked by other changes"
                                               ;; It would be nice if we gave the batch_num for the first conflict.
