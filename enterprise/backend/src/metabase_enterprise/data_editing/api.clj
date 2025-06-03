@@ -340,16 +340,16 @@
                        (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) (parse-long dashcard-id))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
                              actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
-                             ;; TODO actual_id should get renamed to id at some point in the FE
-                             viz-action  (api/check-404 (first (filter (comp #{raw-id} #(or (:actual_id %) (:id %))) actions)))
-                             ;; TODO id should get renamed to action_id at some point as well
-                             inner-id    (or (:action_id viz-action) (:id viz-action))
+                             viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
+                             inner-id    (:actionId viz-action)
                              unified     (fetch-unified-action scope inner-id)
-                             action-type (:type viz-action "row-action")
+                             action-type (:actionType viz-action "data-grid/row-action")
                              mapping     (:parameterMappings viz-action {})]
                          (assert (:enabled viz-action) "Cannot call disabled actions")
                          (case action-type
-                           "row-action" {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
+                           ("data-grid/built-in"
+                            "data-grid/row-action")
+                           {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
                        (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
                          ;; Dashboard buttons can only be invoked from dashboards
                          ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
