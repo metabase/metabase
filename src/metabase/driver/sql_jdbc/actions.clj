@@ -596,7 +596,7 @@
 
 ;;;; Foreign Key Cascade Deletion
 
-(mu/defn- build-fk-metadata :- [:map-of ::lib.schema.id/table [:sequential :map]]
+(mu/defn- build-fk-metadata #_:- #_[:map-of ::lib.schema.id/table [:sequential :map]]
   "Build foreign key relationship metadata for a database.
   Returns a map of parent-table-id -> [{:table child-table-id, :fk {child-fk-col parent-pk-col}, :pk [child-pk-cols]}]"
   [database-id :- ::lib.schema.id/database]
@@ -618,7 +618,8 @@
             (if-let [target-field (field-id->field fk-target-field-id)]
               (let [parent-table-id (:table-id target-field)
                     child-pk-fields (table-id->pk-fields table-id)]
-                (update metadata parent-table-id (fnil conj [])
+                (update metadata {:id parent-table-id
+                                  :name (get-in table-id->table [parent-table-id :name])} (fnil conj [])
                         {:table-id   table-id
                          :table-name (get-in table-id->table [table-id :name])
                          :fk         {field-name (:name target-field)}
@@ -626,6 +627,10 @@
               metadata))
           {}
           fk-fields))))))
+
+(build-fk-metadata 1)
+
+(t2/select [:model/Field :name :fk_target_field_id] :table_id 8)
 
 (defn- build-pk-filter-clause-mbql
   "Build an efficient filter clause for matching rows by primary key.
@@ -694,11 +699,26 @@
           [table-id
            (query-rows driver conn table-id query)])))))
 
+(defn- metadata-lookup
+  [table-id]
+  (actions/cached-value
+   [::table-fk-relationship table-id]
+   (fn []
+     (let [table-fields          (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+           table-id->table-field (u/index-by :id table-fields)
+           table-pks             (filter #(isa? (:semantic_type %) :type/PK) table-fields)
+           table-pk-ids          (set (map :id table-pks))
+           fk-fields             (t2/select :model/Field :fk_target_field_id [:in table-pk-ids])]
+       (for [{fk-field-name :name table-id :table_id target-field-id :fk_target_field_id} fk-fields]
+         {:table-id   table-id
+          :table-name (t2/select-one-fn :name :model/Table table-id)
+          :fk         {fk-field-name  (get-in table-id->table-field [target-field-id :name])}
+          :pk         (map :name table-pks)})))))
+
 (defn- delete-row-with-children!
   "Delete rows and all their descendants via FK relationships"
   [database-id table-id row]
-  (let [metadata    (build-fk-metadata database-id)
-        children-fn (fn [relationship parent-rows]
+  (let [children-fn (fn [relationship parent-rows]
                       (lookup-children-in-db relationship parent-rows database-id))
         delete-fn   (fn [items-by-table]
                       (doseq [[table-id rows] (reverse items-by-table)]
@@ -707,16 +727,15 @@
                           (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
         table-pks   (keys (table-id->pk-field-name->id database-id table-id))
         row-pk      (select-keys row table-pks)]
-    (actions/delete-recursively table-id [row-pk] metadata children-fn delete-fn :max-queries 50)))
+    (actions/delete-recursively table-id [row-pk] metadata-lookup children-fn delete-fn :max-queries 50)))
 
 (defn- count-row-descendants
   [database-id table-id row]
-  (let [metadata    (build-fk-metadata database-id)
-        children-fn (fn [relationship parent-rows]
+  (let [children-fn (fn [relationship parent-rows]
                       (lookup-children-in-db relationship parent-rows database-id))
         table-pks   (keys (table-id->pk-field-name->id database-id table-id))
         row-pk      (select-keys row table-pks)]
-    (actions/count-descendants table-id [row-pk] metadata children-fn :max-queries 50)))
+    (actions/count-descendants table-id [row-pk] metadata-lookup children-fn :max-queries 50)))
 
 ;;;; `:table.row/delete`
 
