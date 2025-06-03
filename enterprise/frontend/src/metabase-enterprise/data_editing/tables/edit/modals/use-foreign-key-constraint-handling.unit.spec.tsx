@@ -8,6 +8,7 @@ const mockSetRowSelection = jest.fn();
 const defaultProps = {
   onCascadeDelete: mockOnCascadeDelete,
   selectedRowIndices: [0, 1, 2],
+  constraintError: null,
   setRowSelection: mockSetRowSelection,
 };
 
@@ -16,39 +17,47 @@ describe("useForeignKeyConstraintHandling", () => {
     jest.clearAllMocks();
   });
 
-  describe("foreign key error detection", () => {
-    it("should return false for non-foreign key errors", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+  describe("foreign key error detection and modal opening via useEffect", () => {
+    it("should not open modal or set error for non-foreign key errors", () => {
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
 
       const error = {
         data: {
           errors: [{ type: "some.other.error", message: "Some other error" }],
         },
-      };
+      } as any;
 
-      const isHandled = result.current.handleForeignKeyError(error, [0]);
-      expect(isHandled).toBe(false);
+      rerender({ ...defaultProps, constraintError: error });
+
+      expect(result.current.isForeignKeyModalOpen).toBe(false);
+      expect(result.current.foreignKeyError).toBe(null);
     });
 
-    it("should return false for errors without data.errors array", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+    it("should not open modal or set error for errors without data.errors array", () => {
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
 
-      const error = { message: "Some error" };
+      const error = { message: "Some error" } as any;
 
-      const isHandled = result.current.handleForeignKeyError(error, [0]);
-      expect(isHandled).toBe(false);
+      rerender({ ...defaultProps, constraintError: error });
+
+      expect(result.current.isForeignKeyModalOpen).toBe(false);
+      expect(result.current.foreignKeyError).toBe(null);
     });
 
-    it("should return true for foreign key constraint errors", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+    it("should open modal and set error for foreign key constraint errors", () => {
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
 
       const error = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
         data: {
           errors: [
             {
@@ -58,21 +67,28 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      const isHandled = result.current.handleForeignKeyError(error, [0]);
-      expect(isHandled).toBe(true);
+      rerender({ ...defaultProps, constraintError: error });
+
       expect(result.current.isForeignKeyModalOpen).toBe(true);
+      expect(result.current.foreignKeyError).toEqual({
+        type: "metabase.actions.error/violate-foreign-key-constraint",
+        message: "Foreign key constraint violation",
+        children: { "2": 5, "3": 2 },
+      });
     });
   });
 
   describe("error accumulation", () => {
     it("should accumulate children from multiple foreign key errors", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
 
       const error = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
         data: {
           errors: [
             {
@@ -87,25 +103,26 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      act(() => {
-        result.current.handleForeignKeyError(error, [0, 1]);
-      });
+      rerender({ ...defaultProps, constraintError: error });
 
       expect(result.current.foreignKeyError).toEqual({
         type: "metabase.actions.error/violate-foreign-key-constraint",
         message: "FK violation 1",
-        children: { "2": 5, "3": 1, "4": 5 }, // 3+2=5 for table 2
+        children: { "2": 5, "3": 1, "4": 5 },
       });
+      expect(result.current.isForeignKeyModalOpen).toBe(true);
     });
 
     it("should handle mixed error types and only accumulate from foreign key errors", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
 
       const error = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
         data: {
           errors: [
             {
@@ -119,25 +136,26 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      act(() => {
-        result.current.handleForeignKeyError(error, [0]);
-      });
+      rerender({ ...defaultProps, constraintError: error });
 
       expect(result.current.foreignKeyError).toEqual({
         type: "metabase.actions.error/violate-foreign-key-constraint",
         message: "FK violation",
         children: { "2": 3 },
       });
+      expect(result.current.isForeignKeyModalOpen).toBe(true);
     });
 
     it("should handle errors with missing children property", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
 
       const error = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
         data: {
           errors: [
             {
@@ -146,27 +164,25 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      act(() => {
-        result.current.handleForeignKeyError(error, [0]);
-      });
+      rerender({ ...defaultProps, constraintError: error });
 
       expect(result.current.foreignKeyError).toEqual({
         type: "metabase.actions.error/violate-foreign-key-constraint",
         message: "FK violation without children",
         children: {},
       });
+      expect(result.current.isForeignKeyModalOpen).toBe(true);
     });
   });
 
   describe("modal management", () => {
-    it("should open modal when foreign key error is handled", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+    it("should open modal when constraintError prop contains a foreign key error", () => {
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
-
-      expect(result.current.isForeignKeyModalOpen).toBe(false);
 
       const error = {
         data: {
@@ -178,21 +194,21 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      act(() => {
-        result.current.handleForeignKeyError(error, [0, 1]);
-      });
+      rerender({ ...defaultProps, constraintError: error });
 
       expect(result.current.isForeignKeyModalOpen).toBe(true);
     });
 
     it("should close modal and reset state when cancelled", () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        { initialProps: defaultProps },
       );
 
       const error = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
         data: {
           errors: [
             {
@@ -202,11 +218,9 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      act(() => {
-        result.current.handleForeignKeyError(error, [0, 1]);
-      });
+      rerender({ ...defaultProps, constraintError: error });
 
       expect(result.current.isForeignKeyModalOpen).toBe(true);
       expect(result.current.foreignKeyError).toBeTruthy();
@@ -221,13 +235,21 @@ describe("useForeignKeyConstraintHandling", () => {
   });
 
   describe("cascade delete confirmation", () => {
-    it("should call onCascadeDelete with pending row indices on confirmation", async () => {
+    it("should call onCascadeDelete with selectedRowIndices on confirmation", async () => {
       mockOnCascadeDelete.mockResolvedValue(true);
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+      const currentSelectedIndices = [1, 3, 5];
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        {
+          initialProps: {
+            ...defaultProps,
+            selectedRowIndices: currentSelectedIndices,
+          },
+        },
       );
 
       const error = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
         data: {
           errors: [
             {
@@ -237,26 +259,36 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      act(() => {
-        result.current.handleForeignKeyError(error, [1, 3, 5]);
+      rerender({
+        ...defaultProps,
+        selectedRowIndices: currentSelectedIndices,
+        constraintError: error,
       });
 
       await act(async () => {
         await result.current.handleForeignKeyConfirmation();
       });
 
-      expect(mockOnCascadeDelete).toHaveBeenCalledWith([1, 3, 5]);
+      expect(mockOnCascadeDelete).toHaveBeenCalledWith(currentSelectedIndices);
     });
 
     it("should clear selection and close modal on successful cascade delete", async () => {
       mockOnCascadeDelete.mockResolvedValue(true);
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+      const currentSelectedIndices = [1, 3];
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        {
+          initialProps: {
+            ...defaultProps,
+            selectedRowIndices: currentSelectedIndices,
+          },
+        },
       );
 
       const error = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
         data: {
           errors: [
             {
@@ -266,10 +298,12 @@ describe("useForeignKeyConstraintHandling", () => {
             },
           ],
         },
-      };
+      } as any;
 
-      act(() => {
-        result.current.handleForeignKeyError(error, [1, 3]);
+      rerender({
+        ...defaultProps,
+        selectedRowIndices: currentSelectedIndices,
+        constraintError: error,
       });
 
       await act(async () => {
@@ -281,26 +315,35 @@ describe("useForeignKeyConstraintHandling", () => {
       expect(result.current.foreignKeyError).toBe(null);
     });
 
-    it("should close modal but not clear state on failed cascade delete", async () => {
+    it("should close modal but not clear selection state on failed cascade delete", async () => {
       mockOnCascadeDelete.mockResolvedValue(false);
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+      const currentSelectedIndices = [1, 3];
+      const initialErrorState = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
+        message: "FK violation",
+        children: { "2": 5 },
+      };
+      const errorPayload = {
+        type: "metabase.actions.error/violate-foreign-key-constraint",
+        data: {
+          errors: [initialErrorState],
+        },
+      } as any;
+
+      const { result, rerender } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        {
+          initialProps: {
+            ...defaultProps,
+            selectedRowIndices: currentSelectedIndices,
+          },
+        },
       );
 
-      const error = {
-        data: {
-          errors: [
-            {
-              type: "metabase.actions.error/violate-foreign-key-constraint",
-              message: "FK violation",
-              children: { "2": 5 },
-            },
-          ],
-        },
-      };
-
-      act(() => {
-        result.current.handleForeignKeyError(error, [1, 3]);
+      rerender({
+        ...defaultProps,
+        selectedRowIndices: currentSelectedIndices,
+        constraintError: errorPayload,
       });
 
       await act(async () => {
@@ -309,13 +352,17 @@ describe("useForeignKeyConstraintHandling", () => {
 
       expect(mockSetRowSelection).not.toHaveBeenCalled();
       expect(result.current.isForeignKeyModalOpen).toBe(false);
-      // Error state should remain for retry
-      expect(result.current.foreignKeyError).toBeTruthy();
     });
 
-    it("should close modal when no pending row indices", async () => {
-      const { result } = renderHook(() =>
-        useForeignKeyConstraintHandling(defaultProps),
+    it("should close modal and not call onCascadeDelete when selectedRowIndices is empty", async () => {
+      const { result } = renderHook(
+        (props) => useForeignKeyConstraintHandling(props),
+        {
+          initialProps: {
+            ...defaultProps,
+            selectedRowIndices: [],
+          },
+        },
       );
 
       await act(async () => {
@@ -324,6 +371,7 @@ describe("useForeignKeyConstraintHandling", () => {
 
       expect(mockOnCascadeDelete).not.toHaveBeenCalled();
       expect(result.current.isForeignKeyModalOpen).toBe(false);
+      expect(result.current.foreignKeyError).toBe(null);
     });
   });
 });

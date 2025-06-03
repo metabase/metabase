@@ -43,11 +43,11 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       query: ({ rows, scope, params }) => ({
         method: "POST",
         url: `/api/ee/data-editing/action/v2/execute-bulk`,
-        body: { 
-          inputs: rows, 
-          scope, 
+        body: {
+          inputs: rows,
+          scope,
           action_id: "data-grid.row/delete",
-          ...(params && { params })
+          ...(params && { params }),
         },
       }),
     }),

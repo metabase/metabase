@@ -1,15 +1,16 @@
-import { t } from "ttag";
+import { useMemo } from "react";
+import { msgid, ngettext, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { Icon, Stack, Text, Flex } from "metabase/ui";
+import { Flex, Icon, Stack, Text } from "metabase/ui";
 
 export interface ForeignKeyConstraintModalProps {
   opened: boolean;
   onClose: () => void;
   onConfirm: () => void;
   isLoading?: boolean;
-  children: Record<string, number>;
+  childRecords: Record<string, number>;
   message?: string;
 }
 
@@ -20,15 +21,19 @@ interface TableRowProps {
 
 const TableRow = ({ tableId, count }: TableRowProps) => {
   const { data: table } = useGetTableQuery({ id: parseInt(tableId, 10) });
-  
-  const displayCount = count > 50 ? "50+" : count.toString();
-  const recordText = count === 1 ? "record" : "records";
-  const tableName = table?.display_name || `Table ${tableId}`;
+
+  const tableName = table?.display_name || t`Table ${tableId}`;
 
   return (
     <Flex align="center" gap="sm">
-      <Text fw="bold">{displayCount} {recordText}</Text>
-      <Text c="text-medium">in</Text>
+      <Text fw="bold">
+        {t`${count > 50 ? "50+" : count.toString()} ${ngettext(
+          msgid`record`,
+          "records",
+          count,
+        )}`}
+      </Text>
+      <Text c="text-medium">{t`in`}</Text>
       <Flex align="center" gap="xs">
         <Icon name="table" size={16} color="var(--mb-color-brand)" />
         <Text fw="500">{tableName}</Text>
@@ -42,13 +47,17 @@ export const ForeignKeyConstraintModal = ({
   onClose,
   onConfirm,
   isLoading = false,
-  children,
+  childRecords,
   message,
 }: ForeignKeyConstraintModalProps) => {
-  const childrenInfo = Object.entries(children).map(([tableId, count]) => ({
-    tableId,
-    count,
-  }));
+  const childRecordsInfo = useMemo(() => {
+    return childRecords
+      ? Object.entries(childRecords).map(([tableId, count]) => ({
+          tableId,
+          count,
+        }))
+      : [];
+  }, [childRecords]);
 
   return (
     <ConfirmModal
@@ -59,26 +68,24 @@ export const ForeignKeyConstraintModal = ({
       message={
         <Stack gap="lg">
           <Text>
-            {message || 
-              t`This record is linked to other records in connected tables. Deleting it will also delete them. This action can't be undone! Here's what will be deleted:`
-            }
+            {message ||
+              t`This record is linked to other records in connected tables. Deleting it will also delete them. This action can't be undone! Here's what will be deleted:`}
           </Text>
-          
+
           <Stack gap="md" ml="0">
-            {childrenInfo.map(({ tableId, count }) => (
+            {childRecordsInfo.map(({ tableId, count }) => (
               <TableRow key={tableId} tableId={tableId} count={count} />
             ))}
           </Stack>
         </Stack>
       }
       confirmButtonText={t`Delete this and linked records`}
-      closeButtonText={t`Cancel`}
-      confirmButtonProps={{ 
-        color: "danger", 
+      confirmButtonProps={{
+        color: "danger",
         variant: "filled",
-        loading: isLoading
+        loading: isLoading,
       }}
       size="md"
     />
   );
-}; 
+};

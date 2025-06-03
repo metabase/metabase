@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from "react";
+import type { RowSelectionState } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
@@ -16,7 +17,6 @@ import type {
   FieldWithMetadata,
   RowValue,
 } from "metabase-types/api";
-import type { RowSelectionState } from "@tanstack/react-table";
 
 import type {
   RowCellsWithPkValue,
@@ -37,16 +37,15 @@ export const useTableCRUD = ({
   datasetData,
   stateUpdateStrategy,
   setRowSelection,
-  onForeignKeyError,
 }: {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
   setRowSelection?: (state: RowSelectionState) => void;
-  onForeignKeyError?: (error: any, rowIndices: number[]) => boolean;
 }) => {
   const dispatch = useDispatch();
+  const [crudError, setCrudError] = useState<any | null>(null);
   const {
     cellsWithFailedUpdatesMap,
     handleCellValueUpdateError,
@@ -260,7 +259,7 @@ export const useTableCRUD = ({
         return { [pkColumn.name]: rowPkValue };
       });
 
-      const requestParams = cascadeDelete 
+      const requestParams = cascadeDelete
         ? { params: { "delete-children": true } }
         : {};
 
@@ -273,6 +272,7 @@ export const useTableCRUD = ({
       if (response.data?.outputs) {
         stateUpdateStrategy.onRowsDeleted(rows);
         setRowSelection?.({});
+        setCrudError(null);
         dispatch(
           addUndo({
             message: t`${rows.length} rows successfully deleted`,
@@ -281,12 +281,13 @@ export const useTableCRUD = ({
       }
 
       if (response.error) {
-        // Check if it's a foreign key constraint error and if we have a handler
-        if (onForeignKeyError && !cascadeDelete && onForeignKeyError(response.error, rowIndices)) {
-          // The error was handled by the foreign key handler
+        setCrudError(response.error);
+
+        // This type of errors is handled specifically by `useForeignKeyConstraintHandling` hook.
+        if (isForeignKeyConstraintErrorResponse(response.error)) {
           return false;
         }
-        
+
         handleGenericUpdateError(response.error);
       }
 
@@ -300,7 +301,6 @@ export const useTableCRUD = ({
       setRowSelection,
       dispatch,
       handleGenericUpdateError,
-      onForeignKeyError,
     ],
   );
 
@@ -324,6 +324,7 @@ export const useTableCRUD = ({
     isUpdating,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
+    error: crudError,
 
     handleCellValueUpdate,
     handleRowCreate,
@@ -334,3 +335,17 @@ export const useTableCRUD = ({
     handleRowDeleteWithCascade,
   };
 };
+
+export const isForeignKeyConstraintErrorResponse = (error: any): boolean => {
+  if (!error?.data?.errors || !Array.isArray(error.data.errors)) {
+    return false;
+  }
+
+  return error.data.errors.some(isForeignKeyConstraintError);
+};
+
+export function isForeignKeyConstraintError(error: any): boolean {
+  return (
+    error?.type === "metabase.actions.error/violate-foreign-key-constraint"
+  );
+}

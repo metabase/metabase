@@ -1,6 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import {
+  isForeignKeyConstraintError,
+  isForeignKeyConstraintErrorResponse,
+} from "../use-table-crud";
 
 export interface ForeignKeyConstraintError {
   type: string;
@@ -11,92 +16,58 @@ export interface ForeignKeyConstraintError {
 export interface UseForeignKeyConstraintHandlingProps {
   onCascadeDelete: (rowIndices: number[]) => Promise<boolean>;
   selectedRowIndices: number[];
+  constraintError: { type: string } | null;
   setRowSelection: (state: RowSelectionState) => void;
 }
 
 export function useForeignKeyConstraintHandling({
   onCascadeDelete,
   selectedRowIndices,
+  constraintError,
   setRowSelection,
 }: UseForeignKeyConstraintHandlingProps) {
   const [
     isForeignKeyModalOpen,
     { open: openForeignKeyModal, close: closeForeignKeyModal },
   ] = useDisclosure(false);
-  
-  const [foreignKeyError, setForeignKeyError] = useState<ForeignKeyConstraintError | null>(null);
-  const [pendingRowIndices, setPendingRowIndices] = useState<number[]>([]);
 
-  const isForeignKeyConstraintError = useCallback((error: any): boolean => {
-    if (!error?.data?.errors || !Array.isArray(error.data.errors)) {
-      return false;
-    }
+  const [foreignKeyError, setForeignKeyError] =
+    useState<ForeignKeyConstraintError | null>(null);
 
-    return error.data.errors.some(
-      (err: any) => err?.type === "metabase.actions.error/violate-foreign-key-constraint"
-    );
-  }, []);
-
-  const extractForeignKeyError = useCallback((error: any): ForeignKeyConstraintError | null => {
-    if (!error?.data?.errors || !Array.isArray(error.data.errors)) {
-      return null;
-    }
-
-    // Filter to only foreign key constraint errors
-    const foreignKeyErrors = error.data.errors.filter(
-      (err: any) => err?.type === "metabase.actions.error/violate-foreign-key-constraint"
-    );
-
-    if (foreignKeyErrors.length === 0) {
-      return null;
-    }
-
-    // Accumulate children from all foreign key errors
-    const accumulatedChildren: Record<string, number> = {};
-    
-    foreignKeyErrors.forEach((fkError: any) => {
-      const children = fkError.children || {};
-      Object.entries(children).forEach(([tableId, count]) => {
-        const currentCount = accumulatedChildren[tableId] || 0;
-        accumulatedChildren[tableId] = currentCount + (count as number);
-      });
-    });
-
-    // Use the message from the first foreign key error
-    const firstError = foreignKeyErrors[0];
-    
-    return {
-      type: firstError.type,
-      message: firstError.message,
-      children: accumulatedChildren,
-    };
-  }, []);
-
-  const handleForeignKeyError = useCallback((error: any, rowIndices: number[]) => {
-    const foreignKeyError = extractForeignKeyError(error);
-    if (foreignKeyError) {
-      setForeignKeyError(foreignKeyError);
-      setPendingRowIndices(rowIndices);
+  useEffect(() => {
+    if (isForeignKeyConstraintErrorResponse(constraintError)) {
+      setForeignKeyError(extractForeignKeyError(constraintError));
       openForeignKeyModal();
-      return true;
     }
-    return false;
-  }, [extractForeignKeyError, openForeignKeyModal]);
+  }, [constraintError, openForeignKeyModal]);
+
+  // const handleForeignKeyError = useCallback(() => {
+  //   const foreignKeyError = extractForeignKeyError(constraintError);
+  //   if (foreignKeyError) {
+  //     setForeignKeyError(foreignKeyError);
+  //     openForeignKeyModal();
+  //     return true;
+  //   }
+  //   return false;
+  // }, [constraintError, openForeignKeyModal]);
 
   const handleForeignKeyConfirmation = useCallback(async () => {
-    if (pendingRowIndices.length > 0) {
-      const success = await onCascadeDelete(pendingRowIndices);
+    if (selectedRowIndices.length > 0) {
+      const success = await onCascadeDelete(selectedRowIndices);
       if (success) {
-        setPendingRowIndices([]);
+        setRowSelection({});
         setForeignKeyError(null);
-        setRowSelection({}); // Clear selection after successful deletion
       }
     }
     closeForeignKeyModal();
-  }, [onCascadeDelete, pendingRowIndices, closeForeignKeyModal, setRowSelection]);
+  }, [
+    onCascadeDelete,
+    selectedRowIndices,
+    closeForeignKeyModal,
+    setRowSelection,
+  ]);
 
   const handleForeignKeyCancel = useCallback(() => {
-    setPendingRowIndices([]);
     setForeignKeyError(null);
     closeForeignKeyModal();
   }, [closeForeignKeyModal]);
@@ -104,8 +75,38 @@ export function useForeignKeyConstraintHandling({
   return {
     isForeignKeyModalOpen,
     foreignKeyError,
-    handleForeignKeyError,
+    // handleForeignKeyError,
     handleForeignKeyConfirmation,
     handleForeignKeyCancel,
   };
-} 
+}
+
+function extractForeignKeyError(error: any): ForeignKeyConstraintError | null {
+  const foreignKeyErrors = error.data.errors.filter(
+    isForeignKeyConstraintError,
+  );
+
+  if (foreignKeyErrors.length === 0) {
+    return null;
+  }
+
+  // Accumulate children from all foreign key errors
+  const accumulatedChildren: Record<string, number> = {};
+
+  foreignKeyErrors.forEach((fkError: any) => {
+    const children = fkError.children || {};
+    Object.entries(children).forEach(([tableId, count]) => {
+      const currentCount = accumulatedChildren[tableId] || 0;
+      accumulatedChildren[tableId] = currentCount + (count as number);
+    });
+  });
+
+  // Use the message from the first foreign key error
+  const firstError = foreignKeyErrors[0];
+
+  return {
+    type: firstError.type,
+    message: firstError.message,
+    children: accumulatedChildren,
+  };
+}

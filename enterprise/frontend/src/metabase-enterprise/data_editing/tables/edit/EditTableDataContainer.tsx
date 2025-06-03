@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -27,9 +27,9 @@ import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { ForeignKeyConstraintModal } from "./modals/ForeignKeyConstraintModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
+import { useForeignKeyConstraintHandling } from "./modals/use-foreign-key-constraint-handling";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
-import { useForeignKeyConstraintHandling } from "./modals/use-foreign-key-constraint-handling";
 import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
@@ -110,29 +110,13 @@ export const EditTableDataContainer = ({
   const { rowSelection, selectedRowIndices, setRowSelection } =
     useEditingTableRowSelection();
 
-  // Use a ref to hold the cascade delete function to avoid circular dependency
-  const cascadeDeleteRef = useRef<((rowIndices: number[]) => Promise<boolean>) | null>(null);
-
-  const {
-    isForeignKeyModalOpen,
-    foreignKeyError,
-    handleForeignKeyError,
-    handleForeignKeyConfirmation,
-    handleForeignKeyCancel,
-  } = useForeignKeyConstraintHandling({
-    onCascadeDelete: (rowIndices: number[]) => {
-      return cascadeDeleteRef.current ? cascadeDeleteRef.current(rowIndices) : Promise.resolve(false);
-    },
-    selectedRowIndices,
-    setRowSelection,
-  });
-
   const {
     isInserting,
     isDeleting,
     isUpdating,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
+    error,
 
     handleCellValueUpdate,
     handleRowCreate,
@@ -147,11 +131,19 @@ export const EditTableDataContainer = ({
     datasetData,
     stateUpdateStrategy,
     setRowSelection,
-    onForeignKeyError: handleForeignKeyError,
   });
 
-  // Update the ref with the actual cascade delete function
-  cascadeDeleteRef.current = handleRowDeleteWithCascade;
+  const {
+    isForeignKeyModalOpen,
+    foreignKeyError,
+    handleForeignKeyConfirmation,
+    handleForeignKeyCancel,
+  } = useForeignKeyConstraintHandling({
+    onCascadeDelete: handleRowDeleteWithCascade,
+    selectedRowIndices,
+    setRowSelection,
+    constraintError: error,
+  });
 
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
     useTableEditingUndoRedo({
@@ -318,7 +310,7 @@ export const EditTableDataContainer = ({
         onClose={handleForeignKeyCancel}
         onConfirm={handleForeignKeyConfirmation}
         isLoading={isDeleting}
-        children={foreignKeyError?.children || {}}
+        childRecords={foreignKeyError?.children || {}}
         message={foreignKeyError?.message}
       />
     </>
