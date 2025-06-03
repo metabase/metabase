@@ -44,6 +44,7 @@ export const PublicLinksDashboardListing = () => {
 export const PublicLinksQuestionListing = () => {
   const query = useListPublicCardsQuery();
   const [revoke] = useDeleteCardPublicLinkMutation();
+
   return (
     <div className={cx(CS.bordered, CS.rounded, CS.full)}>
       <PublicLinksListing<GetPublicCard>

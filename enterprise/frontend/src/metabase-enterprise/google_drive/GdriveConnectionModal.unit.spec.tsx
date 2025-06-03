@@ -1,32 +1,44 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
+  setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { Settings } from "metabase-types/api";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import type { GdrivePayload } from "metabase-types/api";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
-type GsheetsStatus = Settings["gsheets"]["status"];
 
-const setup = ({ settingStatus }: { settingStatus: GsheetsStatus }) => {
-  const updatedSettings = createMockSettings({
+const setup = ({
+  status,
+  isAdmin = true,
+}: {
+  status: GdrivePayload["status"];
+  isAdmin?: boolean;
+}) => {
+  const settings = createMockSettings({
     "show-google-sheets-integration": true,
-    gsheets: {
-      status: settingStatus,
-      folder_url: null,
-    },
+    "token-features": createMockTokenFeatures({
+      attached_dwh: true,
+    }),
   });
 
-  setupPropertiesEndpoints(updatedSettings);
+  setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupGdrivePostFolderEndpoint();
+  setupGdriveGetFolderEndpoint({
+    status,
+  });
   setupGdriveServiceAccountEndpoint(
     "super-service-account@testing.metabase.com",
   );
@@ -35,13 +47,8 @@ const setup = ({ settingStatus }: { settingStatus: GsheetsStatus }) => {
     <GdriveConnectionModal onClose={() => {}} isModalOpen reconnect={false} />,
     {
       storeInitialState: {
-        settings: createMockSettingsState({
-          gsheets: {
-            status: settingStatus,
-            folder_url: null,
-          },
-        }),
-        currentUser: createMockUser({ is_superuser: true }),
+        settings: createMockSettingsState(settings),
+        currentUser: createMockUser({ is_superuser: isAdmin }),
       },
     },
   );
@@ -50,21 +57,21 @@ const setup = ({ settingStatus }: { settingStatus: GsheetsStatus }) => {
 describe("Google Drive > Connect / Disconnect modal", () => {
   it("should show disconnect modal if connected", async () => {
     setup({
-      settingStatus: "complete",
+      status: "active",
     });
     expect(await screen.findByText("Disconnect")).toBeInTheDocument();
   });
 
   it("should show connection modal if not connected", async () => {
     setup({
-      settingStatus: "not-connected",
+      status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
   });
 
   it("should show service acocunt email", async () => {
     setup({
-      settingStatus: "not-connected",
+      status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
 
@@ -75,7 +82,7 @@ describe("Google Drive > Connect / Disconnect modal", () => {
 
   it("should show 'import folder' button when folder is selected", async () => {
     setup({
-      settingStatus: "not-connected",
+      status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
 
@@ -87,7 +94,7 @@ describe("Google Drive > Connect / Disconnect modal", () => {
 
   it("should show 'import file' button when file is selected", async () => {
     setup({
-      settingStatus: "not-connected",
+      status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
 
@@ -97,9 +104,9 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     expect(await screen.findByText("Import file")).toBeInTheDocument();
   });
 
-  it("should POST folder data to /api/ee/gsheets/folder", async () => {
+  it("should POST folder data to /api/ee/gsheets/connection", async () => {
     setup({
-      settingStatus: "not-connected",
+      status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
 
@@ -115,23 +122,20 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     await userEvent.click(importButton);
 
     await waitFor(async () => {
-      const post = fetchMock.calls("path:/api/ee/gsheets/folder");
-      expect(post.length).toBe(1);
+      const posts = await findRequests("POST");
+      expect(posts.length).toBe(1);
     });
 
-    const post = fetchMock.calls("path:/api/ee/gsheets/folder");
-    const postBody = await post?.[0]?.[1]?.body;
-    expect(postBody).toEqual(
-      JSON.stringify({
-        url: "https://drive.google.com/drive/folders/1234567890",
-        link_type: "folder",
-      }),
-    );
+    const [{ body: postBody }] = await findRequests("POST");
+    expect(postBody).toEqual({
+      link_type: "folder",
+      url: "https://drive.google.com/drive/folders/1234567890",
+    });
   });
 
-  it("should POST file data to /api/ee/gsheets/folder", async () => {
+  it("should POST file data to /api/ee/gsheets/connection", async () => {
     setup({
-      settingStatus: "not-connected",
+      status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
 
@@ -150,17 +154,26 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     await userEvent.click(importButton);
 
     await waitFor(async () => {
-      const post = fetchMock.calls("path:/api/ee/gsheets/folder");
-      expect(post.length).toBe(1);
+      const posts = await findRequests("POST");
+      expect(posts.length).toBe(1);
     });
 
-    const post = fetchMock.calls("path:/api/ee/gsheets/folder");
-    const postBody = await post?.[0]?.[1]?.body;
-    expect(postBody).toEqual(
-      JSON.stringify({
-        url: "https://drive.google.com/drive/folders/1234567890",
-        link_type: "file",
-      }),
-    );
+    const [{ body: postBody }] = await findRequests("POST");
+    expect(postBody).toEqual({
+      url: "https://drive.google.com/drive/folders/1234567890",
+      link_type: "file",
+    });
+  });
+
+  it("should not make any gdrive api requests for non-admins", async () => {
+    await setup({
+      status: "not-connected",
+      isAdmin: false,
+    });
+
+    expect(screen.queryByText("Import Google Sheets")).not.toBeInTheDocument();
+
+    const gets = await findRequests("GET");
+    expect(gets.length).toBe(0);
   });
 });

@@ -8,7 +8,7 @@ import type { State } from "metabase-types/store";
 const EMPTY_PROVIDERS: AuthProvider[] = [];
 
 export const getAuthProviders = createSelector([getSettings], () =>
-  PLUGIN_AUTH_PROVIDERS.reduce(
+  PLUGIN_AUTH_PROVIDERS.providers.reduce(
     (providers, getProviders) => getProviders(providers),
     EMPTY_PROVIDERS,
   ),

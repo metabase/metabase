@@ -824,7 +824,10 @@
                               {:display_name   column-name
                                :field_ref      [:field column-name {:base-type :type/Integer}]
                                :name           column-name
-                               :ident          (str "native__" card-eid "__" column-name)
+                               ;; Yes, native models have model[card-eid]__native[card-eid]__COLUMN_NAME idents.
+                               :ident          (lib/model-ident
+                                                (lib/native-ident column-name card-eid)
+                                                card-eid)
                                :base_type      :type/Integer
                                :effective_type :type/Integer
                                :semantic_type  nil
@@ -858,6 +861,7 @@
                                     (result-metadata-for eid "B2")]})
                {:name            "Joined"
                 :id              3
+                :entity-id       (u/generate-nano-id)
                 :database-id     (meta/id)
                 :type            :model
                 :dataset-query   {:database (meta/id)

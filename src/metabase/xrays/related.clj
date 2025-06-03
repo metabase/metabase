@@ -45,7 +45,7 @@
   {:arglists '([instance])}
   mi/model)
 
-(defmethod definition :model/LegacyMetric
+(defmethod definition :xrays/Metric
   [metric]
   (-> metric :definition ((juxt :aggregation :filter))))
 
@@ -109,12 +109,6 @@
   (filter-visible (t2/select :model/Card
                              :table_id (:id table)
                              :type :metric
-                             :archived false)))
-
-(defn- legacy-metrics-for-table
-  [table]
-  (filter-visible (t2/select :model/LegacyMetric
-                             :table_id (:id table)
                              :archived false)))
 
 (defn- segments-for-table
@@ -244,14 +238,10 @@
   [query]
   (related (mi/instance :model/Card query)))
 
-(defmethod related :model/LegacyMetric
+(defmethod related :xrays/Metric
   [metric]
   (let [table (t2/select-one :model/Table :id (:table_id metric))]
     {:table    table
-     :metrics  (->> table
-                    legacy-metrics-for-table
-                    (rank-by-similarity metric)
-                    interesting-mix)
      :segments (->> table
                     segments-for-table
                     (rank-by-similarity metric)

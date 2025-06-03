@@ -76,7 +76,7 @@
       (let [request (.. ^AsyncContextEvent event getHttpChannelState getBaseRequest)
             time-ms (- (System/currentTimeMillis) (.getTimeStamp request))]
         (dec! request-counter)
-        (request-time time-ms)
+        (request-time (/ time-ms 1000))
         (update-response request)
         (dec! async-counter)))))
 

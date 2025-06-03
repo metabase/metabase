@@ -16,27 +16,6 @@ export abstract class ExpressionError extends Error {
 export class CompileError extends ExpressionError {
   constructor(
     message: string,
-    private data: any,
-  ) {
-    super(message);
-  }
-
-  get friendly(): boolean {
-    return true;
-  }
-
-  get pos(): number | null {
-    return this.data?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.data?.token?.len ?? null;
-  }
-}
-
-export class ResolverError extends ExpressionError {
-  constructor(
-    message: string,
     private node?: Node,
   ) {
     super(message);
@@ -76,30 +55,6 @@ export class DiagnosticError extends ExpressionError {
     this.pos = pos;
     this.len = len;
     this.friendly = friendly;
-  }
-}
-
-export class ParseError extends ExpressionError {
-  pos: number | null;
-  len: number | null;
-
-  constructor(
-    message: string,
-    {
-      pos = null,
-      len = null,
-    }: {
-      pos?: number | null;
-      len?: number | null;
-    } = {},
-  ) {
-    super(message);
-    this.pos = pos;
-    this.len = len;
-  }
-
-  get friendly(): boolean {
-    return true;
   }
 }
 

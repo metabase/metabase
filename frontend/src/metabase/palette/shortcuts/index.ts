@@ -1,3 +1,4 @@
+import { adminShortcuts } from "./admin";
 import { collectionShortcuts } from "./collection";
 import { dashboardShortcuts } from "./dashboard";
 import { globalShortcuts } from "./global";
@@ -8,4 +9,7 @@ export const shortcuts = {
   ...dashboardShortcuts,
   ...collectionShortcuts,
   ...questionShortcuts,
+  ...adminShortcuts,
 };
+
+export type KeyboardShortcutId = keyof typeof shortcuts;

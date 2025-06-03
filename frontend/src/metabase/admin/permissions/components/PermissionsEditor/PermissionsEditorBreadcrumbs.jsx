@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { Fragment } from "react";
 
-import { Icon } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 
 import {
   BreadcrumbsLink,
@@ -21,15 +21,28 @@ export const PermissionsEditorBreadcrumbs = ({
     <Fragment>
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
+        const subtext = item.subtext ? (
+          <Text display="inline-block" c="text-secondary" fw="500" fz="1em">
+            {item.subtext}
+          </Text>
+        ) : null;
+
         return (
           <Fragment key={index}>
             {isLast ? (
-              item.text
+              <>
+                {item.text} {subtext}
+              </>
             ) : (
               <Fragment>
-                <BreadcrumbsLink onClick={() => onBreadcrumbsItemSelect(item)}>
-                  {item.text}
-                </BreadcrumbsLink>
+                <>
+                  <BreadcrumbsLink
+                    onClick={() => onBreadcrumbsItemSelect(item)}
+                  >
+                    {item.text}
+                  </BreadcrumbsLink>
+                  {subtext ? <> {subtext}</> : null}
+                </>
                 <BreadcrumbsSeparator>
                   <Icon name="chevronright" />
                 </BreadcrumbsSeparator>

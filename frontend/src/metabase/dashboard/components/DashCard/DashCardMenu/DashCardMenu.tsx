@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { isValidElement, useState } from "react";
+import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import type { MetabasePluginsConfig } from "embedding-sdk";
@@ -14,7 +15,9 @@ import {
   canEditQuestion,
 } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useStore } from "metabase/lib/redux";
+import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import {
@@ -24,6 +27,7 @@ import {
   Menu,
   type MenuItemProps,
 } from "metabase/ui";
+import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -45,6 +49,8 @@ interface DashCardMenuProps {
   token?: string;
   visualizationSettings?: VisualizationSettings;
   downloadsEnabled: boolean;
+  onEditVisualization?: () => void;
+  openUnderlyingQuestionItems?: React.ReactNode;
 }
 
 export type DashCardMenuItem = {
@@ -75,9 +81,25 @@ export const DashCardMenu = ({
   dashcardId,
   uuid,
   token,
+  onEditVisualization,
+  openUnderlyingQuestionItems,
 }: DashCardMenuProps) => {
   const store = useStore();
   const { plugins } = useInteractiveDashboardContext();
+  const canDownloadPng = canSavePng(question.display());
+  const formats = canDownloadPng
+    ? [...exportFormats, exportFormatPng]
+    : exportFormats;
+
+  const { value: formatPreference, setValue: setFormatPreference } =
+    useUserKeyValue({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      defaultValue: {
+        last_download_format: formats[0],
+        last_table_download_format: exportFormats[0],
+      },
+    });
 
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
@@ -116,6 +138,8 @@ export const DashCardMenu = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
+          formatPreference={formatPreference}
+          setFormatPreference={setFormatPreference}
           onDownload={(opts) => {
             close();
             handleDownload(opts);
@@ -125,12 +149,44 @@ export const DashCardMenu = ({
     }
 
     return (
-      <DashCardMenuItems
-        question={question}
-        result={result}
-        isDownloadingData={isDownloadingData}
-        onDownload={() => setMenuView("download")}
-      />
+      <>
+        <DashCardMenuItems
+          dashcardId={dashcardId}
+          question={question}
+          result={result}
+          isDownloadingData={isDownloadingData}
+          onDownload={() => setMenuView("download")}
+          onEditVisualization={onEditVisualization}
+        />
+        {openUnderlyingQuestionItems && (
+          <Menu trigger="click-hover" shadow="md" position="right" width={200}>
+            <Menu.Target>
+              <Menu.Item
+                fw="bold"
+                styles={{
+                  // styles needed to override the hover styles
+                  // as hovering is bugged for submenus
+                  // this'll be much better in v8
+                  item: {
+                    backgroundColor: "transparent",
+                    color: "var(--mb-color-text-primary)",
+                  },
+                  itemSection: {
+                    color: "var(--mb-color-text-primary)",
+                  },
+                }}
+                leftSection={<Icon name="external" aria-hidden />}
+                rightSection={<Icon name="chevronright" aria-hidden />}
+              >
+                {t`View question(s)`}
+              </Menu.Item>
+            </Menu.Target>
+            <Menu.Dropdown data-testid="dashcard-menu-open-underlying-question">
+              {openUnderlyingQuestionItems}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </>
     );
   };
 

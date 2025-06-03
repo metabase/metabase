@@ -138,48 +138,55 @@ describe("scenarios > visualizations > sankey", () => {
     H.modal().findByText("Saved! Add this to a dashboard?");
   });
 
-  it("should render sankey charts in dashboard context", () => {
-    H.createDashboard({
-      name: "Sankey Dashboard",
-    }).then(({ body: dashboard }) => {
-      H.createNativeQuestion({
-        name: "Sankey Question",
-        native: {
-          query: SANKEY_QUERY,
-        },
-        display: "sankey",
-        visualization_settings: {
-          "graph.show_values": true,
-          "graph.label_value_formatting": "compact",
-        },
-      }).then(({ body: card }) => {
-        H.addOrUpdateDashboardCard({
-          card_id: card.id,
-          dashboard_id: dashboard.id,
-          card: {
-            size_x: 12,
-            size_y: 8,
-          },
+  [false, true].forEach((devMode) => {
+    it(`should render sankey charts in dashboard context - development-mode: ${devMode}`, () => {
+      cy.intercept("/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["token-features"]["development-mode"] = devMode;
         });
-
-        H.visitDashboard(dashboard.id);
       });
-    });
+      H.createDashboard({
+        name: "Sankey Dashboard",
+      }).then(({ body: dashboard }) => {
+        H.createNativeQuestion({
+          name: "Sankey Question",
+          native: {
+            query: SANKEY_QUERY,
+          },
+          display: "sankey",
+          visualization_settings: {
+            "graph.show_values": true,
+            "graph.label_value_formatting": "compact",
+          },
+        }).then(({ body: card }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: card.id,
+            dashboard_id: dashboard.id,
+            card: {
+              size_x: 12,
+              size_y: 8,
+            },
+          });
 
-    H.echartsContainer().findByText("Social Media");
+          H.visitDashboard(dashboard.id);
+        });
+      });
 
-    // Ensure drill-through works
-    H.chartPathWithFillColor("#ED8535").first().click();
-    H.popover().within(() => {
-      cy.findByText("=").should("be.visible");
-      cy.findByText("≠").should("be.visible");
+      H.echartsContainer().findByText("Social Media");
 
-      cy.findByText("Is Paid Subscription").click();
-    });
+      // Ensure drill-through works
+      H.chartPathWithFillColor("#ED8535").first().click();
+      H.popover().within(() => {
+        cy.findByText("=").should("be.visible");
+        cy.findByText("≠").should("be.visible");
 
-    cy.findAllByTestId("filter-pill").should("have.length", 1);
-    cy.findByTestId("filter-pill").within(() => {
-      cy.findByText("TARGET is Paid Subscription").should("be.visible");
+        cy.findByText("Is Paid Subscription").click();
+      });
+
+      cy.findAllByTestId("filter-pill").should("have.length", 1);
+      cy.findByTestId("filter-pill").within(() => {
+        cy.findByText("TARGET is Paid Subscription").should("be.visible");
+      });
     });
   });
 });

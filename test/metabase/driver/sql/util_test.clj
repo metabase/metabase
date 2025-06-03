@@ -55,6 +55,17 @@
                (h2x/identifier :field "E" "D")
                [(h2x/identifier :field "F")            (h2x/identifier :field-alias "D_2")]]))))))
 
+(deftest ^:parallel select-clause-deduplicate-aliases-4
+  (testing 'select-clause-deduplicate-aliases
+    (testing "should handle literal values from custom expressions"
+      (is (= [[nil                                     (h2x/identifier :field-alias "Expr")]
+              [""                                      (h2x/identifier :field-alias "Expr_2")]
+              [123                                     (h2x/identifier :field-alias "Expr_3")]]
+             (sql.u/select-clause-deduplicate-aliases
+              [[nil                                    (h2x/identifier :field-alias "Expr")]
+               [""                                     (h2x/identifier :field-alias "Expr")]
+               [123                                    (h2x/identifier :field-alias "Expr")]]))))))
+
 (deftest ^:parallel escape-sql-test
   (doseq [[escape-strategy s->expected]
           {:ansi

@@ -16,5 +16,4 @@
         (testing "can be set to `true` when `ee-openai-api-key` is set."
           (llm.settings/ee-openai-api-key! "TOTALLY_REAL_KEY")
           (llm.settings/ee-ai-features-enabled! true)
-          (is (= true
-                 (llm.settings/ee-ai-features-enabled))))))))
+          (is (true? (llm.settings/ee-ai-features-enabled))))))))

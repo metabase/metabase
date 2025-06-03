@@ -6,13 +6,14 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
-   [metabase.events.notification :as events.notification]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.notification.core :as notification]
+   [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.task.send :as task.notification]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -50,15 +51,25 @@
   `(binding [notification.send/*default-options* {:notification/sync? true}]
      ~@body))
 
+(defmacro with-javascript-visualization-stub
+  "Rebind `metabase.channel.render.js.svg/*javascript-visualization*` to a stub function. Used to speed up tests that don't require the correct visualization for cards."
+  [& body]
+  `(binding [js.svg/*javascript-visualization*
+             (fn [~'& ~'_]
+               {:type :svg
+                :content "<svg width=\"300\" height=\"130\" xmlns=\"http://www.w3.org/2000/svg\">\n  <rect width=\"200\" height=\"100\" x=\"10\" y=\"10\" rx=\"20\" ry=\"20\" fill=\"blue\" />\n</svg>"})]
+     ~@body))
+
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
-  (with-send-notification-sync
-    (let [channel-messages (atom {})]
-      (with-redefs [channel/send! (fn [channel message]
-                                    (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+  (with-javascript-visualization-stub
+    (with-send-notification-sync
+      (let [channel-messages (atom {})]
+        (with-redefs [channel/send! (fn [channel message]
+                                      (swap! channel-messages update (:type channel) u/conjv message))]
+          (thunk)
+          @channel-messages)))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -257,7 +268,7 @@
   ([subscription-id cron-schedule]
    (subscription->trigger-info subscription-id cron-schedule "UTC"))
   ([subscription-id cron-schedule timezone]
-   {:key      (.getName (#'task.notification/send-notification-trigger-key subscription-id))
+   {:key      (.getName ^org.quartz.TriggerKey (#'task.notification/send-notification-trigger-key subscription-id))
     :schedule cron-schedule
     :data     {"subscription-id" subscription-id}
     :timezone timezone}))

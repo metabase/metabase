@@ -157,6 +157,7 @@ type EntityWithPermissions = {
   entityId: EntityId;
   canSelect?: boolean;
   permissions: PermissionSectionConfig[];
+  callout?: string;
 };
 
 export const getDatabasesPermissionEditor = createSelector(
@@ -261,6 +262,9 @@ export const getDatabasesPermissionEditor = createSelector(
             id: database.id,
             name: database.name,
             entityId,
+            callout: database.hasDatabaseRoutingEnabled()
+              ? t`(Database routing enabled)`
+              : undefined,
             canSelect: true,
             permissions: buildSchemasPermissions(
               entityId,
@@ -319,7 +323,7 @@ export const getDatabasesPermissionEditor = createSelector(
 type DataPermissionEditorEntity = {
   id: Group["id"];
   name: Group["name"];
-  hint: string | null;
+  hint: React.ReactNode | string | null;
   entityId: {
     databaseId?: DatabaseId;
     schemaName?: Schema["name"];

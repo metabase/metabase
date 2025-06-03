@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.settings :as sso.settings]
    [toucan2.core :as t2]))

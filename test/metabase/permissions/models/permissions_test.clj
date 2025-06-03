@@ -1,7 +1,8 @@
 (ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.collection :as collection]
+   [metabase.audit-app.impl :as audit.impl]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
@@ -13,35 +14,6 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
-
-;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
-
-(deftest ^:parallel collection-path-test
-  (doseq [[perms-type f-symb] {:read      'collection-read-path
-                               :readwrite 'collection-readwrite-path}
-          :let                [f (ns-resolve 'metabase.permissions.models.permissions f-symb)]]
-    (doseq [[input expected]
-            {1                                                        {:read      "/collection/1/read/"
-                                                                       :readwrite "/collection/1/"}
-             {:id 1}                                                  {:read      "/collection/1/read/"
-                                                                       :readwrite "/collection/1/"}
-             collection/root-collection                               {:read      "/collection/root/read/"
-                                                                       :readwrite "/collection/root/"}
-             (assoc collection/root-collection :namespace "snippets") {:read      "/collection/namespace/snippets/root/read/"
-                                                                       :readwrite "/collection/namespace/snippets/root/"}
-             (assoc collection/root-collection :namespace "a/b")      {:read      "/collection/namespace/a\\/b/root/read/"
-                                                                       :readwrite "/collection/namespace/a\\/b/root/"}
-             (assoc collection/root-collection :namespace :a/b)       {:read      "/collection/namespace/a\\/b/root/read/"
-                                                                       :readwrite "/collection/namespace/a\\/b/root/"}}
-            :let [expected (get expected perms-type)]]
-      (testing (pr-str (list f-symb input))
-        (is (= expected
-               (f input)))))
-    (doseq [input [{} nil "1"]]
-      (testing (pr-str (list f-symb input))
-        (is (thrown?
-             Exception
-             (f input)))))))
 
 ;;; This originally lived in [[metabase.permissions.models.permissions]] but it is only used in tests these days so I moved it here.
 (defn is-permissions-set?
@@ -324,3 +296,27 @@
       ;; Note that WE DON'T break out the root collection bits at this point. Maybe we will down the road, but we need
       ;; to think about how this works since the collection ID will be `NULL`.
       "/collection/root/" {})))
+
+(deftest cannot-grant-application-permissions-to-tenant-groups
+  (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                          (perms/grant-application-permissions! tenant-group-id :subscription)))))
+
+(deftest cannot-grant-write-permissions-to-tenant-group
+  (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
+                 :model/Collection {coll-id :id} {:location "/"}]
+    ;; just call grant/revoke to show that nothing here throws
+    (perms/grant-collection-read-permissions! tenant-group-id coll-id)
+    (perms/revoke-collection-permissions! tenant-group-id coll-id)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot have write access to any collections\."
+                          (perms/grant-collection-readwrite-permissions! tenant-group-id coll-id)))))
+
+(deftest cannot-grant-read-or-write-permissions-on-analytics-to-tenant-group
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
+                 :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
+    (with-redefs [audit.impl/is-collection-id-audit? (constantly true)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot receive any access to the audit collection\."
+                            (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
+      ;; does not throw - it's not a tenant group
+      (perms/grant-collection-read-permissions! normal-group-id coll-id))))

@@ -1,19 +1,18 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
+   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -115,14 +114,14 @@
   (testing "respects `enable-nested-queries` server setting when true"
     (qp.store/with-metadata-provider mock-metadata-provider
       ;; by default nested queries are enabled:
-      (is (true? (public-settings/enable-nested-queries)))
+      (is (true? (lib-be/enable-nested-queries)))
       (is (some? (resolve-source-cards (lib.tu.macros/mbql-query nil {:source-table "card__1"})))))))
 
 (deftest resolve-mbql-queries-test-5
   (testing "respects `enable-nested-queries` server setting when false"
     ;; if the env var is set, the setting respects it:
     (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
-      (is (false? (public-settings/enable-nested-queries))))
+      (is (false? (lib-be/enable-nested-queries))))
     (qp.store/with-metadata-provider mock-metadata-provider
 
 ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
@@ -180,14 +179,20 @@
                 {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
-  (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-       [(mt/mbql-query venues {:limit 100})
-        {:database lib.schema.id/saved-questions-virtual-database-id
-         :type     :query
-         :query    {:source-table "card__1"
-                    :limit        50}}])
-      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]})))
+  (let [base     (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                     (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                      [(mt/mbql-query venues {:limit 100})
+                       {:database lib.schema.id/saved-questions-virtual-database-id
+                        :type     :query
+                        :query    {:source-table "card__1"
+                                   :limit        50}}]))
+        card     (lib.metadata/card base 1)
+        eid      (lib/random-ident)
+        metadata (mapv #(update % :ident lib/model-ident eid) (:result-metadata card))]
+    (lib.tu/merged-mock-metadata-provider base {:cards [{:id              1
+                                                         :type            :model
+                                                         :entity-id       eid
+                                                         :result-metadata metadata}]})))
 
 (deftest ^:parallel nested-nested-queries-test-2
   (testing "Marks datasets as from a dataset"

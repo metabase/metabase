@@ -148,10 +148,15 @@ export const FIELD_FILTER_OPERATORS = {
       numberArgument,
     ],
     placeholders: [
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Select longitude field`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter upper latitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter left longitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter lower latitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter right longitude`,
     ],
     formatOptions: [
@@ -192,90 +197,411 @@ export const FIELD_FILTER_OPERATORS = {
 };
 
 const DEFAULT_FILTER_OPERATORS = [
-  { name: "=", verboseName: t`Is` },
-  { name: "!=", verboseName: t`Is not` },
-  { name: "is-null", verboseName: t`Is empty` },
-  { name: "not-null", verboseName: t`Not empty` },
+  {
+    name: "=",
+    get verboseName() {
+      return t`Is`;
+    },
+  },
+  {
+    name: "!=",
+    get verboseName() {
+      return t`Is not`;
+    },
+  },
+  {
+    name: "is-null",
+    get verboseName() {
+      return t`Is empty`;
+    },
+  },
+  {
+    name: "not-null",
+    get verboseName() {
+      return t`Not empty`;
+    },
+  },
 ];
 
 const KEY_FILTER_OPERATORS = [
-  { name: "=", verboseName: t`Is` },
-  { name: "!=", verboseName: t`Is not` },
-  { name: ">", verboseName: t`Greater than` },
-  { name: "<", verboseName: t`Less than` },
-  { name: "between", verboseName: t`Between` },
-  { name: ">=", verboseName: t`Greater than or equal to` },
-  { name: "<=", verboseName: t`Less than or equal to` },
-  { name: "is-null", verboseName: t`Is empty` },
-  { name: "not-null", verboseName: t`Not empty` },
+  {
+    name: "=",
+    get verboseName() {
+      return t`Is`;
+    },
+  },
+  {
+    name: "!=",
+    get verboseName() {
+      return t`Is not`;
+    },
+  },
+  {
+    name: ">",
+    get verboseName() {
+      return t`Greater than`;
+    },
+  },
+  {
+    name: "<",
+    get verboseName() {
+      return t`Less than`;
+    },
+  },
+  {
+    name: "between",
+    get verboseName() {
+      return t`Between`;
+    },
+  },
+  {
+    name: ">=",
+    get verboseName() {
+      return t`Greater than or equal to`;
+    },
+  },
+  {
+    name: "<=",
+    get verboseName() {
+      return t`Less than or equal to`;
+    },
+  },
+  {
+    name: "is-null",
+    get verboseName() {
+      return t`Is empty`;
+    },
+  },
+  {
+    name: "not-null",
+    get verboseName() {
+      return t`Not empty`;
+    },
+  },
 ];
 
 // ordered list of operators and metadata per type
 export const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
-    { name: "=", verboseName: t`Equal to` },
-    { name: "!=", verboseName: t`Not equal to` },
-    { name: ">", verboseName: t`Greater than` },
-    { name: "<", verboseName: t`Less than` },
-    { name: "between", verboseName: t`Between` },
-    { name: ">=", verboseName: t`Greater than or equal to` },
-    { name: "<=", verboseName: t`Less than or equal to` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Equal to`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Not equal to`;
+      },
+    },
+    {
+      name: ">",
+      get verboseName() {
+        return t`Greater than`;
+      },
+    },
+    {
+      name: "<",
+      get verboseName() {
+        return t`Less than`;
+      },
+    },
+    {
+      name: "between",
+      get verboseName() {
+        return t`Between`;
+      },
+    },
+    {
+      name: ">=",
+      get verboseName() {
+        return t`Greater than or equal to`;
+      },
+    },
+    {
+      name: "<=",
+      get verboseName() {
+        return t`Less than or equal to`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
   ],
   [STRING]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "contains", verboseName: t`Contains` },
-    { name: "does-not-contain", verboseName: t`Does not contain` },
-    { name: "is-null", verboseName: t`Is null` },
-    { name: "not-null", verboseName: t`Not null` },
-    { name: "is-empty", verboseName: t`Is empty` },
-    { name: "not-empty", verboseName: t`Not empty` },
-    { name: "starts-with", verboseName: t`Starts with` },
-    { name: "ends-with", verboseName: t`Ends with` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "contains",
+      get verboseName() {
+        return t`Contains`;
+      },
+    },
+    {
+      name: "does-not-contain",
+      get verboseName() {
+        return t`Does not contain`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is null`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not null`;
+      },
+    },
+    {
+      name: "is-empty",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-empty",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
+    {
+      name: "starts-with",
+      get verboseName() {
+        return t`Starts with`;
+      },
+    },
+    {
+      name: "ends-with",
+      get verboseName() {
+        return t`Ends with`;
+      },
+    },
   ],
   [STRING_LIKE]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "is-null", verboseName: t`Is null` },
-    { name: "not-null", verboseName: t`Not null` },
-    { name: "is-empty", verboseName: t`Is empty` },
-    { name: "not-empty", verboseName: t`Not empty` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is null`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not null`;
+      },
+    },
+    {
+      name: "is-empty",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-empty",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
   ],
   [TEMPORAL]: [
-    { name: "!=", verboseName: t`Excludes` },
-    { name: "=", verboseName: t`Is` },
-    { name: "<", verboseName: t`Before` },
-    { name: ">", verboseName: t`After` },
-    { name: "between", verboseName: t`Between` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Is not empty` },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Excludes`;
+      },
+    },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "<",
+      get verboseName() {
+        return t`Before`;
+      },
+    },
+    {
+      name: ">",
+      get verboseName() {
+        return t`After`;
+      },
+    },
+    {
+      name: "between",
+      get verboseName() {
+        return t`Between`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Is not empty`;
+      },
+    },
   ],
   [LOCATION]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
-    { name: "contains", verboseName: t`Contains` },
-    { name: "does-not-contain", verboseName: t`Does not contain` },
-    { name: "starts-with", verboseName: t`Starts with` },
-    { name: "ends-with", verboseName: t`Ends with` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
+    {
+      name: "contains",
+      get verboseName() {
+        return t`Contains`;
+      },
+    },
+    {
+      name: "does-not-contain",
+      get verboseName() {
+        return t`Does not contain`;
+      },
+    },
+    {
+      name: "starts-with",
+      get verboseName() {
+        return t`Starts with`;
+      },
+    },
+    {
+      name: "ends-with",
+      get verboseName() {
+        return t`Ends with`;
+      },
+    },
   ],
   [COORDINATE]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "inside", verboseName: t`Inside` },
-    { name: ">", verboseName: t`Greater than` },
-    { name: "<", verboseName: t`Less than` },
-    { name: "between", verboseName: t`Between` },
-    { name: ">=", verboseName: t`Greater than or equal to` },
-    { name: "<=", verboseName: t`Less than or equal to` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "inside",
+      get verboseName() {
+        return t`Inside`;
+      },
+    },
+    {
+      name: ">",
+      get verboseName() {
+        return t`Greater than`;
+      },
+    },
+    {
+      name: "<",
+      get verboseName() {
+        return t`Less than`;
+      },
+    },
+    {
+      name: "between",
+      get verboseName() {
+        return t`Between`;
+      },
+    },
+    {
+      name: ">=",
+      get verboseName() {
+        return t`Greater than or equal to`;
+      },
+    },
+    {
+      name: "<=",
+      get verboseName() {
+        return t`Less than or equal to`;
+      },
+    },
   ],
   [BOOLEAN]: [
-    { name: "=", verboseName: t`Is`, multi: false },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+      multi: false,
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
   ],
   [FOREIGN_KEY]: KEY_FILTER_OPERATORS,
   [PRIMARY_KEY]: KEY_FILTER_OPERATORS,

@@ -1,7 +1,11 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.driver.mysql :as mysql]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test :as mt]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -10,6 +14,34 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]))
 
 (sql-jdbc.tx/add-test-extensions! :mysql)
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name perms] table-perms]
+          (let [columns (:columns perms)
+                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
+                grant-stmt (if (not= select-cols "")
+                             (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
+                             (format "GRANT SELECT ON %s TO %s" table-name role-name))]
+            (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))
+
+(defmethod tx/create-and-grant-roles! :mysql
+  [driver details roles user-name default-role]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [statement [(format "DROP USER IF EXISTS '%s'@'%%';" user-name)
+                       (format "CREATE USER '%s'@'%%' IDENTIFIED BY '';" user-name)
+                       (format "DROP ROLE IF EXISTS %s;" default-role)
+                       (format "CREATE ROLE %s;" default-role)
+                       (format "GRANT SELECT ON *.* TO %s;" default-role)
+                       (format "GRANT %s TO %s;" default-role user-name)
+                       (format "SET DEFAULT ROLE %s %s %s;" default-role (if (mysql/mariadb? (mt/db)) "for" "to") user-name)]]
+      (jdbc/execute! spec [statement]))
+    (sql-jdbc.tx/drop-if-exists-and-create-roles! driver details roles)
+    (grant-table-perms-to-roles! driver details roles)
+    (sql-jdbc.tx/grant-roles-to-user! driver details roles user-name)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"

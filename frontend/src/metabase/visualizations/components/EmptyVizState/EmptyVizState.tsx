@@ -43,14 +43,6 @@ export const EmptyVizState = ({
     utm: utmTags,
   });
 
-  const handleClick = () => {
-    if (!onEditSummary) {
-      return;
-    }
-
-    onEditSummary();
-  };
-
   if (!isValidChartType) {
     return null;
   }
@@ -69,6 +61,7 @@ export const EmptyVizState = ({
     >
       <Box maw="20rem" mb="3rem">
         <img
+          className={CS.pointerEventsNone}
           src={imgSrc}
           alt={c("{0} refers to the chart type")
             .t`${emptyVizChart} chart example illustration`}
@@ -89,7 +82,7 @@ export const EmptyVizState = ({
           </>
         )}
 
-        {isSummarizeCTA && (
+        {isSummarizeCTA && onEditSummary && (
           <>
             <Text>{c(
               "{0} refers to the 'Summarize'. {1} refers to the follow up instructions.",
@@ -97,7 +90,7 @@ export const EmptyVizState = ({
               isSummarizeSidebarOpen ? (
                 <strong key="summarize">{t`Summarize`}</strong>
               ) : (
-                <SummarizeCTA onClick={handleClick} key="summarize-cta" />
+                <SummarizeCTA onClick={onEditSummary} key="summarize-cta" />
               )
             } at the top right corner. ${primaryText}`}</Text>
             <Text c="text-light">{secondaryText}</Text>

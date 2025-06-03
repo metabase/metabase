@@ -18,6 +18,9 @@ inputs:
     required: true
   trunk-api-token:
     required: true
+  variant:
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -49,6 +52,7 @@ runs:
       uses: trunk-io/analytics-uploader@main
       with:
         junit-paths: ${{ inputs.input-path }}
+        variant: ${{ inputs.variant || inputs.output-name }}
         org-slug: metabase
         token: ${{ inputs.trunk-api-token }}
       continue-on-error: true

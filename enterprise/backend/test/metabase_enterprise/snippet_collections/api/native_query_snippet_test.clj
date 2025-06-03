@@ -1,7 +1,7 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -25,8 +25,8 @@
           (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
             (testing "\nShould be allowed regardless if EE features aren't enabled"
               (mt/with-premium-features #{}
-                (is (= true
-                       (has-perms? snippet))
+                (is (true?
+                     (has-perms? snippet))
                     "allowed?")))
             (testing "\nWith EE features enabled"
               (mt/with-premium-features #{:snippet-collections}
@@ -45,8 +45,8 @@
                       "allowed?"))
                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
                 (testing (format "\nShould be allowed if we have write perms for %s" collection-name)
-                  (is (= true
-                         (has-perms? snippet))
+                  (is (true?
+                       (has-perms? snippet))
                       "allowed?"))))))))))
 
 (deftest list-test
@@ -118,8 +118,8 @@
                     (testing (format "\nMove from %s -> %s should need write ('curate') perms for both" (:name source-collection) (:name dest-collection))
                       (testing "\nShould be allowed if EE perms aren't enabled"
                         (mt/with-premium-features #{}
-                          (is (= true
-                                 (has-perms?)))))
+                          (is (true?
+                               (has-perms?)))))
                       (mt/with-premium-features #{:snippet-collections}
                         (doseq [c [source-collection dest-collection]]
                           (testing (format "\nPerms for only %s should fail" (:name c))
@@ -133,13 +133,38 @@
                           (try
                             (doseq [c [source-collection dest-collection]]
                               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c))
-                            (is (= true
-                                   (has-perms?)))
+                            (is (true?
+                                 (has-perms?)))
                             (finally
                               (doseq [c [source-collection dest-collection]]
                                 (perms/revoke-collection-permissions! (perms-group/all-users) c)))))))))))))))))
 
-(deftest snippet-collection-items-test
+(deftest ^:parallel snippet-collection-items-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Native query snippets should come back when fetching the items in a Collection in the `:snippets` namespace"
+      (mt/with-temp [:model/Collection         collection {:namespace "snippets", :name "My Snippet Collection"}
+                     :model/NativeQuerySnippet snippet    {:collection_id (:id collection), :name "My Snippet"}
+                     :model/NativeQuerySnippet archived   {:collection_id (:id collection) , :name "Archived Snippet", :archived true}]
+        (mt/with-premium-features #{:snippet-collections}
+          (is (=? [{:id        (:id snippet)
+                    :name      "My Snippet"
+                    :entity_id (:entity_id snippet)
+                    :model     "snippet"}]
+                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
+          (testing "\nShould be able to fetch archived Snippets"
+            (is (=? [{:id        (:id archived)
+                      :name      "Archived Snippet"
+                      :entity_id (:entity_id archived)
+                      :model     "snippet"}]
+                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
+          (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
+            (is (=? [{:id        (:id snippet)
+                      :name      "My Snippet"
+                      :entity_id (:entity_id snippet)
+                      :model     "snippet"}]
+                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection))))))))))))
+
+(deftest snippet-collection-items-test-2
   (testing "GET /api/collection/:id/items"
     (testing "Snippet collections should be returned on EE with the snippet-collections feature flag, rather than
              returning all nested snippets as a flat list"
@@ -166,7 +191,7 @@
                                      (= (:id snippet) (:id a-snippet)))
                                    response))))]
           (testing "\nIf we have a valid EE token, we should only see Snippets in the Root Collection with valid perms"
-            (mt/with-premium-features #{:enhancements}
+            (mt/with-premium-features #{:snippet-collections}
               (is (false? (can-see-snippet?)))
               (perms/grant-collection-read-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?)))))

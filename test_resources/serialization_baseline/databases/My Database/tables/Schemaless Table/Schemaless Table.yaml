@@ -19,4 +19,3 @@ serdes/meta:
 - id: Schemaless Table
   model: Table
 database_require_filter: null
-entity_id: KhHJ3brgFTO9CIBiZA4uE

@@ -32,7 +32,7 @@ import {
 } from "../components/BrowseTable.styled";
 
 import { trackModelClick } from "./analytics";
-import type { ModelResult } from "./types";
+import type { ModelResult, SortColumn } from "./types";
 import { getIcon, getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
@@ -53,7 +53,7 @@ const collectionProps: ResponsiveProps = {
   containerName: itemsTableContainerName,
 };
 
-const DEFAULT_SORTING_OPTIONS: SortingOptions = {
+const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "collection",
   sort_direction: SortDirection.Asc,
 };
@@ -62,9 +62,7 @@ export const ModelsTable = ({
   models = [],
   skeleton = false,
 }: ModelsTableProps) => {
-  const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
-    DEFAULT_SORTING_OPTIONS,
-  );
+  const [sortingOptions, setSortingOptions] = useState(DEFAULT_SORTING_OPTIONS);
 
   const sortedModels = sortModels(models, sortingOptions);
 
@@ -74,7 +72,7 @@ export const ModelsTable = ({
 
   const handleUpdateSortOptions = skeleton
     ? undefined
-    : (newSortingOptions: SortingOptions) => {
+    : (newSortingOptions: SortingOptions<SortColumn>) => {
         setSortingOptions(newSortingOptions);
       };
 

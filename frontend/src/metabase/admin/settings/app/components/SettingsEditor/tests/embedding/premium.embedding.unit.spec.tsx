@@ -599,7 +599,7 @@ describe("[EE, with token] embedding settings", () => {
 
         expect(
           screen.getByText(
-            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.",
+            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included. Changes will take effect within one minute.",
           ),
         ).toBeInTheDocument();
       });
@@ -692,7 +692,7 @@ describe("[EE, with token] embedding settings", () => {
 
         expect(
           screen.getByText(
-            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.",
+            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included. Changes will take effect within one minute.",
           ),
         ).toBeInTheDocument();
       });

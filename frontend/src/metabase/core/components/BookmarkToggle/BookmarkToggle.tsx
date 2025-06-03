@@ -40,13 +40,16 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
   }, []);
 
   const iconName = isBookmarked ? "bookmark_filled" : "bookmark";
+  const label = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   return (
-    <Tooltip
-      label={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
-      position={tooltipPlacement}
-    >
-      <BookmarkButton {...props} ref={ref} onClick={handleClick}>
+    <Tooltip label={label} position={tooltipPlacement}>
+      <BookmarkButton
+        {...props}
+        aria-label={label}
+        ref={ref}
+        onClick={handleClick}
+      >
         <BookmarkIcon
           name={iconName}
           isBookmarked={isBookmarked}

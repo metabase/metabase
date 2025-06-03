@@ -9,7 +9,12 @@ import type { Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockStructuredDatasetQuery,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { Funnel } from "./Funnel";
 
@@ -47,6 +52,22 @@ const MOCK_SERIES = [
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
+    <Box h={500}>
+      <Visualization rawSeries={MOCK_SERIES} width={500} />
+    </Box>
+  </VisualizationWrapper>
+);
+
+export const Watermark: StoryFn = () => (
+  <VisualizationWrapper
+    initialStore={createMockState({
+      settings: createMockSettingsState({
+        "token-features": createMockTokenFeatures({
+          "development-mode": true,
+        }),
+      }),
+    })}
+  >
     <Box h={500}>
       <Visualization rawSeries={MOCK_SERIES} width={500} />
     </Box>

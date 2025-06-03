@@ -1,0 +1,34 @@
+name: Docs Bump Detected
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+
+jobs:
+  push_workflow_to_docs_metabase_github_io_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report changed docs files exist
+        run: |
+          echo "A change in the docs directory was detected."
+
+      - name: Trigger repo dispatch
+        uses: actions/github-script@v7
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref  }}
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | #js
+            if (process.env.BRANCH_NAME === "master" ||
+                /^release-x\.\d+\.x$/.test(process.env.BRANCH_NAME)) {
+              github.rest.repos.createDispatchEvent({
+                owner: "${{ github.repository_owner }}",
+                repo: "docs.metabase.github.io",
+                event_type: "docs_update",
+                client_payload: { branch_name: process.env.BRANCH_NAME
+                }
+              });
+            } else {
+              console.log("Branch name is not to be published: ", process.env.BRANCH_NAME);
+            }

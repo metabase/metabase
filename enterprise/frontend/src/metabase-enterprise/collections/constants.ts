@@ -8,17 +8,21 @@ import type {
 
 export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
   type: null,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: t`Regular`,
   icon: "folder",
 };
 
 export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   type: "official",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: t`Official`,
   icon: "official_collection",
   color: "saturated-yellow",
   tooltips: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     default: t`Official collection`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     belonging: t`Belongs to an Official collection`,
   },
 };
@@ -26,6 +30,7 @@ export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
 export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
   {
     type: "instance-analytics",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Instance Analytics`,
     icon: "audit",
   };

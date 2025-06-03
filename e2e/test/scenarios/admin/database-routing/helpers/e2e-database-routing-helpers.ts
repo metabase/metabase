@@ -55,7 +55,7 @@ export const BASE_POSTGRES_MIRROR_DB_INFO = {
     "tunnel-enabled": false,
     "advanced-options": false,
   },
-  name: "Destination DB",
+  name: "DestinationDB",
   engine: "postgres",
 };
 
@@ -181,24 +181,24 @@ export function createDbWithIdentifierTable({ dbName }: { dbName: string }) {
 
           -- Revoke existing privileges first
           REVOKE ALL ON db_identifier FROM blue_role;
-          
+
           -- Drop policy if it exists
           IF EXISTS (
-              SELECT 1 FROM pg_policies 
-              WHERE tablename = 'db_identifier' 
+              SELECT 1 FROM pg_policies
+              WHERE tablename = 'db_identifier'
               AND policyname = 'blue_policy'
           ) THEN
               DROP POLICY blue_policy ON db_identifier;
               RAISE NOTICE 'Dropped existing blue_policy';
           END IF;
-          
+
           -- Grant fresh permissions
           GRANT SELECT ON db_identifier TO blue_role;
           ALTER TABLE db_identifier ENABLE ROW LEVEL SECURITY;
-        
+
         -- Create policy
-          CREATE POLICY blue_policy ON db_identifier 
-          FOR SELECT TO blue_role 
+          CREATE POLICY blue_policy ON db_identifier
+          FOR SELECT TO blue_role
           USING (color = 'blue');
       END
       $$;

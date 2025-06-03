@@ -32,10 +32,18 @@ import {
 } from "./SchedulePicker.styled";
 
 const optionNameTranslations: Partial<Record<ScheduleType, string>> = {
-  hourly: t`Hourly`,
-  daily: t`Daily`,
-  weekly: t`Weekly`,
-  monthly: t`Monthly`,
+  get hourly() {
+    return t`Hourly`;
+  },
+  get daily() {
+    return t`Daily`;
+  },
+  get weekly() {
+    return t`Weekly`;
+  },
+  get monthly() {
+    return t`Monthly`;
+  },
 };
 
 export type ScheduleProperty = keyof ScheduleSettings;

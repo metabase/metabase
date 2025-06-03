@@ -28,7 +28,7 @@ export const SidesheetSubPageTitle = ({
     <Button variant="subtle" onClick={onClick} p={0}>
       <Flex align="center" justify="center" gap="md">
         <Icon name="chevronleft" />
-        <Title order={2}>{title}</Title>
+        <Title order={3}>{title}</Title>
       </Flex>
     </Button>
   );

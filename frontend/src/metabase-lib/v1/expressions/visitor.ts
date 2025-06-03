@@ -1,35 +1,16 @@
-import type { Expression, ExpressionOperand } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
-import { isCaseOrIf, isFunction } from "./matchers";
+type Visitor = (expression: Lib.ExpressionParts | Lib.ExpressionArg) => void;
 
-type ExpressionNode =
-  | Expression
-  | ExpressionOperand
-  | number
-  | bigint
-  | string
-  | boolean;
-
-type Visitor = (expression: ExpressionNode) => void;
-
-export function visit(node: ExpressionNode, visitor: Visitor) {
+export function visit(
+  node: Lib.ExpressionParts | Lib.ExpressionArg,
+  visitor: Visitor,
+) {
   visitor(node);
 
-  if (isCaseOrIf(node)) {
-    const pairs = node[1];
-    for (const pair of pairs) {
-      visit(pair[0], visitor);
-      visit(pair[1], visitor);
-    }
-    if (node[2]?.default !== undefined) {
-      visit(node[2].default, visitor);
-    }
-  }
-
-  if (isFunction(node)) {
-    const [_operator, ...operands] = node;
-    for (const operand of operands) {
-      visit(operand, visitor);
+  if (Lib.isExpressionParts(node)) {
+    for (const arg of node.args) {
+      visit(arg, visitor);
     }
   }
 }

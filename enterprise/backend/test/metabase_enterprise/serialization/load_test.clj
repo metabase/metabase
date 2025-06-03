@@ -9,7 +9,6 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.models.visualization-settings-test :as mb.viz-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
@@ -25,7 +24,6 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once
-  mb.viz-test/with-spec-instrumentation-fixture
   (fixtures/initialize :test-users-personal-collections))
 
 (defn- delete-directory!
@@ -56,7 +54,10 @@
 (defn- card-query-results [card]
   (let [query (:dataset_query card)]
     (binding [qp.perms/*card-id* nil]
-      (qp/process-query (assoc-in query [:info :card-id] (:id card))))))
+      (-> query
+          (assoc-in [:info :card-id] (:id card))
+          (assoc-in [:info :card-entity-id] (:entity_id card))
+          qp/process-query))))
 
 (defn- query-res-match
   "Checks that the queries for a card match between original (pre-dump) and new (after load). For now, just checks the

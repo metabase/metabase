@@ -11,9 +11,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.logger :as logger]
+   [metabase.appearance.core :as appearance]
+   [metabase.logger.core :as logger]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
@@ -68,7 +68,7 @@
 (defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts}]
   (let [dirname  (or dirname
                      (format "%s-%s"
-                             (u/slugify (public-settings/site-name))
+                             (u/slugify (appearance/site-name))
                              (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
         path     (io/file parent-dir dirname)
         dst      (io/file (str (.getPath path) ".tar.gz"))

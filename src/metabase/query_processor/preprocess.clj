@@ -105,6 +105,7 @@
   [#'normalize/normalize-preprocessing-middleware
    (ensure-pmbql #'qp.perms/remove-permissions-key)
    (ensure-pmbql #'qp.perms/remove-source-card-keys)
+   (ensure-pmbql #'qp.perms/remove-gtapped-table-keys)
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)

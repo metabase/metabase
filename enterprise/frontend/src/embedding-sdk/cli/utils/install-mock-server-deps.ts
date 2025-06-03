@@ -1,8 +1,8 @@
 import { exec as execCallback } from "child_process";
+import path from "path";
 
 import { detect } from "detect-package-manager";
 import ora from "ora";
-import path from "path";
 import { match } from "ts-pattern";
 import { promisify } from "util";
 

@@ -98,10 +98,12 @@
   (let [manifest (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml"))
         properties (some->
                     (slurp manifest)
-                    yaml/parse-string
+                    (yaml/parse-string)
                     :driver
+                    u/one-or-many
+                    first
                     (parse-connection-properties))]
     (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))))
 
 (comment
-  (load-connection-properties :snowflake))
+  (load-connection-properties :databricks))

@@ -10,6 +10,7 @@ import {
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
+import { setupEntityIdEndpoint } from "__support__/server-mocks/entity-id";
 import {
   act,
   mockGetBoundingClientRect,
@@ -22,9 +23,10 @@ import {
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
+import type { BaseEntityId, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -36,6 +38,7 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
 
@@ -43,7 +46,6 @@ import {
   type BaseInteractiveQuestionProps,
   InteractiveQuestion,
 } from "./InteractiveQuestion";
-
 const TEST_PARAM = createMockParameter({
   type: "number/=",
   slug: "product_id",
@@ -87,6 +89,8 @@ function InteractiveQuestionCustomLayout({
   );
 }
 
+const TEST_CARD_ID: CardId = 1 as const;
+const TEST_ENTITY_ID = createMockEntityId();
 const TEST_CARD = createMockCard({
   name: "My Question",
   parameters: [TEST_PARAM],
@@ -98,6 +102,7 @@ const setup = ({
   withCustomLayout = false,
   withChartTypeSelector = false,
   initialSqlParameters,
+  cardId = TEST_CARD_ID,
 }: Partial<
   Pick<BaseInteractiveQuestionProps, "initialSqlParameters"> &
     Pick<
@@ -106,7 +111,7 @@ const setup = ({
     > & {
       isValidCard?: boolean;
       withCustomLayout?: boolean;
-    }
+    } & { cardId: BaseEntityId | CardId }
 > = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
@@ -130,9 +135,11 @@ const setup = ({
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
+  setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
+
   return renderWithSDKProviders(
     <InteractiveQuestion
-      questionId={TEST_CARD.id}
+      questionId={cardId}
       title={title}
       withChartTypeSelector={withChartTypeSelector}
       initialSqlParameters={initialSqlParameters}
@@ -141,9 +148,7 @@ const setup = ({
     </InteractiveQuestion>,
     {
       sdkProviderProps: {
-        authConfig: createMockAuthProviderUriConfig({
-          authProviderUri: "http://TEST_URI/sso/metabase",
-        }),
+        authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
     },
@@ -349,5 +354,17 @@ describe("InteractiveQuestion", () => {
       target: TEST_PARAM.target,
       value: [1024],
     });
+  });
+
+  it("should not flash an error when loading with an entity ID (metabase#57059)", async () => {
+    setup({ cardId: TEST_ENTITY_ID });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Query results will appear here."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
   });
 });

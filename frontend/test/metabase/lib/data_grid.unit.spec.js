@@ -176,6 +176,7 @@ describe("data_grid", () => {
         columnShowTotals = [],
         showColumnTotals = true,
         showRowTotals = true,
+        condenseDuplicateTotals = true,
       } = {},
     ) => {
       const settings = {
@@ -194,6 +195,7 @@ describe("data_grid", () => {
         [COLLAPSED_ROWS_SETTING]: { value: collapsedRows },
         "pivot.show_row_totals": showRowTotals,
         "pivot.show_column_totals": showColumnTotals,
+        "pivot.condense_duplicate_totals": condenseDuplicateTotals,
       };
       data = {
         ...data,
@@ -641,6 +643,31 @@ describe("data_grid", () => {
           expect(getRowSection(0, 1)).toEqual([
             { isSubtotal: true, value: "7" },
           ]);
+        });
+
+        it("does not condense duplicate totals", () => {
+          const data = makePivotData([
+            ["a", "x", 1],
+            ["a", "y", 2],
+            ["b", "x", 3],
+          ]);
+          const { topHeaderItems, leftHeaderItems } = multiLevelPivotForIndexes(
+            data,
+            [0],
+            [1],
+            [2],
+            {
+              condenseDuplicateTotals: false,
+            },
+          );
+          expect(getValues(leftHeaderItems)).toEqual([
+            "x",
+            "Totals for x",
+            "y",
+            "Totals for y",
+            "Grand totals",
+          ]);
+          expect(getValues(topHeaderItems)).toEqual(["a", "b", "Row totals"]);
         });
       });
 

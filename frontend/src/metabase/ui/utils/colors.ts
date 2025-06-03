@@ -48,6 +48,7 @@ const CUSTOM_COLORS = [
   // TODO: Check with an adult and make sure this is okay
   "text-primary",
   "text-secondary",
+  "text-secondary-inverse",
   "text-tertiary",
   "background",
   "background-disabled",

@@ -4,7 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]

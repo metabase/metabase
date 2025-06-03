@@ -6,6 +6,7 @@
 *.po~
 *.sqlite
 *.trace.db
+*.trace.db.old
 *.xcworkspacedata
 .DS_Store
 .\#*
@@ -43,6 +44,9 @@
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
+!/e2e/tmp/db_dumps
+/e2e/tmp/db_dumps/*
+!/e2e/tmp/db_dumps/.gitkeep
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -54,7 +58,10 @@
 /reset-password-artifacts
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
+/resources/frontend_client/app/embed.js
+/resources/frontend_client/tmp-embed-js/
 /resources/frontend_client/embed.html
+/resources/frontend_client/embed-sdk.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/embedding-sdk
@@ -130,8 +137,14 @@ modules/drivers/*/.lsp/*
 
 # jar downloader
 /jars/
+
+# metabot
+llm-payloads
+
 /bin/bb
 
 .aider*
 /config.yml
 CLAUDE.local.md
+
+.eslintcache

@@ -55,7 +55,7 @@ export const SdkSaveQuestionForm = ({
       targetCollection={id}
     >
       <Stack p="md">
-        <Title>
+        <Title order={2}>
           <SaveQuestionTitle />
         </Title>
         <SaveQuestionForm onCancel={() => onCancel?.()} />

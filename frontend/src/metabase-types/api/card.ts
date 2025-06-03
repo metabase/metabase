@@ -13,7 +13,11 @@ import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { Parameter } from "./parameters";
+import type {
+  Parameter,
+  ParameterId,
+  ParameterValueOrArray,
+} from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
@@ -70,6 +74,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   creator?: CreatorInfo;
   "last-edit-info"?: LastEditInfo;
+  table_id?: TableId;
 }
 
 export interface PublicCard {
@@ -452,3 +457,9 @@ export type CardQueryRequest = {
 export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
+
+export type GetRemappedCardParameterValueRequest = {
+  card_id: CardId;
+  parameter_id: ParameterId;
+  value: ParameterValueOrArray;
+};

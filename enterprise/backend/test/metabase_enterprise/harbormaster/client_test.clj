@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting]
    [metabase.test.util :as mt]))
 
 (deftest ->config-good-test
@@ -24,11 +25,11 @@
     ;; mt/with-temporary-setting-values is not used here because we want to test the behavior of the function when the
     ;; api-key is blank or nil, and mt/with-temporary-setting-values will not allow us to set the api-key to blank
     ;; or nil.
-    (with-redefs [setting/get-raw-value (+value-for-setting grv :api-key "")]
+    (with-redefs [metabase.settings.models.setting/get-raw-value (+value-for-setting grv :api-key "")]
       (is (thrown-with-msg? Exception
                             #"Missing api-key."
                             (#'hm.client/->config))))
-    (with-redefs [setting/get-raw-value (+value-for-setting grv :api-key nil)]
+    (with-redefs [metabase.settings.models.setting/get-raw-value (+value-for-setting grv :api-key nil)]
       (is (thrown-with-msg? Exception
                             #"Missing api-key."
                             (#'hm.client/->config))))))

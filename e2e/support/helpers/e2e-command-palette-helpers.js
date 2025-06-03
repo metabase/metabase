@@ -3,10 +3,12 @@ export const shortcutModal = () =>
   cy.findByRole("dialog", { name: "Shortcuts" });
 
 export const openCommandPalette = () => cy.get("body").type("{ctrl+k}{cmd+k}");
-export const openShortcutModal = () => cy.get("body").type("?");
+export const openShortcutModal = () => cy.get("body").type("{shift+?}");
 
 export const commandPaletteButton = () =>
-  cy.findByTestId("app-bar").findByRole("button", { name: /Search/ });
+  cy
+    .findByTestId("app-bar")
+    .findByRole("button", { name: /Search|Ask Metabot or search/ });
 
 export const closeCommandPalette = () => cy.get("body").type("{esc}");
 

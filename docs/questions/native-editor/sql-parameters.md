@@ -168,7 +168,7 @@ If you want to change the filter widget for a particular field, you'll need to a
 
 Create a simple **Text** or **Number** variable. Additionally, you can use a Field Filter with a field that has its **Filtering on this field** value set to "Plain input box".
 
-Note: to guard against SQL injection attacks, Metabase converts whatever is in the Search box to a string. If you want to use wildcards, check out [our Learn article][basic-input].
+Note: to guard against SQL injection attacks, Metabase converts whatever is in the Search box to a string. If you want to use wildcards, check out [our Learn article][sql-variables].
 
 ### Filter widget with search box
 
@@ -439,4 +439,3 @@ More on [Dashboard filters][dashboard-filters].
 [sql-variables]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-variables
 [troubleshooting-filters]: ../../troubleshooting-guide/filters.md
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
-[basic-input]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables

@@ -11,6 +11,7 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
+   [iapetos.registry.collectors :as collectors]
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics.settings :refer [prometheus-server-port]]
@@ -22,9 +23,12 @@
    [potemkin.types :as p.types]
    [ring.adapter.jetty :as ring-jetty])
   (:import
-   (io.prometheus.client Collector
-                         GaugeMetricFamily)
-   (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)
+   (io.prometheus.client Collector GaugeMetricFamily SimpleCollector)
+   (io.prometheus.client.hotspot
+    GarbageCollectorExports
+    MemoryPoolsExports
+    StandardExports
+    ThreadExports)
    (java.util ArrayList List)
    (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
@@ -236,14 +240,6 @@
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})
-   (prometheus/counter :metabase-sdk/response-ok
-                       {:description "Number of successful SDK requests."})
-   (prometheus/counter :metabase-sdk/response-error
-                       {:description "Number of errors when responding to SDK requests."})
-   (prometheus/counter :metabase-embedding-iframe/response-ok
-                       {:description "Number of successful iframe embedding requests."})
-   (prometheus/counter :metabase-embedding-iframe/response-error
-                       {:description "Number of errors when responding to iframe embedding requests."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
@@ -252,23 +248,31 @@
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
-   (prometheus/counter :metabase-search/index
-                       {:description "Number of entries indexed for search"
+   (prometheus/gauge :metabase-database/status
+                     {:description "Does a given database using driver pass a health check."
+                      :labels [:driver :healthy :reason]})
+   (prometheus/counter :metabase-search/index-reindexes
+                       {:description "Number of reindexed search entries"
                         :labels      [:model]})
-   (prometheus/counter :metabase-database/healthy
-                       {:description "Does a given database using driver pass a health check."
-                        :labels [:driver]})
-   (prometheus/counter :metabase-database/unhealthy
-                       {:description "Does a given database using driver fail a health check."
-                        :labels [:driver]})
+   (prometheus/counter :metabase-search/index-updates
+                       {:description "Number of updated search entries"
+                        :labels      [:model]})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
-   (prometheus/counter :metabase-search/index-ms
-                       {:description "Total number of ms indexing took"})
-   (prometheus/histogram :metabase-search/index-duration-ms
-                         {:description "Duration in milliseconds that indexing jobs take."
+   (prometheus/counter :metabase-search/index-update-ms
+                       {:description "Total number of ms updating the index"})
+   (prometheus/histogram :metabase-search/index-update-duration-ms
+                         {:description "Duration in milliseconds that index update jobs took."
       ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-search/index-reindex-ms
+                       {:description "Total number of ms reindexing the index"})
+   (prometheus/histogram :metabase-search/index-reindex-duration-ms
+                         {:description "Duration in milliseconds that index reindex jobs took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/gauge :metabase-search/appdb-index-size
+                     {:description "Number of rows in the active index table."})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
@@ -313,13 +317,28 @@
                      {:description "Number of concurrent notification sends."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
-   (prometheus/counter :metabase-gsheets/connection-creation-ok
-                       {:description "How many times the instance has created a Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
                        {:description "How many failures there were when creating a Google Sheets connection."
                         :labels [:reason]})
+   (prometheus/counter :metabase-sdk/response
+                       {:description "Number of SDK embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-iframe/response
+                       {:description "Number of iframe embedding responses by status code."
+                        :labels [:status]})
    (prometheus/counter :metabase-gsheets/connection-deleted
-                       {:description "How many times the instance has deleted their Google Sheets connection."})])
+                       {:description "How many times the instance has deleted their Google Sheets connection."})
+   (prometheus/counter :metabase-gsheets/connection-manually-synced
+                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})])
+
+(defn- quartz-collectors
+  []
+  [(prometheus/counter :metabase-tasks/quartz-tasks-executed
+                       {:description "How many tasks this metabase instance has executed by job-name and status"
+                        :labels [:status :job-name]})
+   (prometheus/gauge :metabase-tasks/quartz-tasks-states
+                     {:description "How many tasks are in a given state in the entire quartz cluster"
+                      :labels [:state]})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
@@ -362,7 +381,8 @@
                         (concat (jvm-collectors)
                                 (jetty-collectors)
                                 [@c3p0-collector]
-                                (product-collectors)))]
+                                (product-collectors)
+                                (quartz-collectors)))]
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
       (prometheus/inc registry metric (qualified-vals labels) value))
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
@@ -473,10 +493,20 @@
      (setup!))
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
+(defn clear!
+  "Call Collector.clear() on given metric."
+  [metric]
+  (when-not system
+    (setup!))
+  (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil))))
+
 (comment
   ;; want to see what's in the registry?
   (require 'iapetos.export)
   (spit "metrics" (iapetos.export/text-format (:registry system)))
+
+  ;; See all metrics that match a given prefix:
+  ; (filter #(.startsWith % "metabase_search_") (clojure.string/split-lines (iapetos.export/text-format (:registry system))))
 
   ;; need to restart the server to see the metrics? use:
   (shutdown!)

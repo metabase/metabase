@@ -188,6 +188,27 @@ describe("CollectionHeader", () => {
     });
   });
 
+  describe("new collection button", () => {
+    it("should have a new collection button with the curate permissions", async () => {
+      const collection = { can_write: true };
+      setup({ collection });
+
+      expect(
+        await screen.findByLabelText("Create a new collection"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not have a new collection button without the curate permissions", async () => {
+      const collection = { can_write: false };
+      setup({ collection });
+
+      expect(await screen.findByLabelText("bookmark icon")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Create a new collection"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("uploads", () => {
     it("should show the upload button if uploads are enabled and the user has write permissions", () => {
       setup({

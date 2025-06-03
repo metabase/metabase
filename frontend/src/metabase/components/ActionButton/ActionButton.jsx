@@ -31,10 +31,18 @@ export default class ActionButton extends Component {
     className: ButtonsS.Button,
     successClassName: ButtonsS.ButtonSuccess,
     failedClassName: ButtonsS.ButtonDanger,
-    normalText: t`Save`,
-    activeText: t`Saving...`,
-    failedText: t`Save failed`,
-    successText: t`Saved`,
+    get normalText() {
+      return t`Save`;
+    },
+    get activeText() {
+      return t`Saving...`;
+    },
+    get failedText() {
+      return t`Save failed`;
+    },
+    get successText() {
+      return t`Saved`;
+    },
     forceActiveStyle: false,
   };
 

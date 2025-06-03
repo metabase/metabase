@@ -133,7 +133,10 @@ export const BreakoutPopover = ({
         if (isMetric && !Lib.isDateOrDateTime(column)) {
           return columns;
         } else if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
-          columns.push(Lib.breakoutColumn(query, stageIndex, breakout));
+          const column = Lib.breakoutColumn(query, stageIndex, breakout);
+          if (column != null) {
+            columns.push(column);
+          }
         } else {
           columns.push(column);
         }

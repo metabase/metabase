@@ -1,0 +1,7 @@
+.CollapseButton {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -576,6 +577,88 @@ describe("scenarios > question > saved", () => {
       cy.get("@questionId").then(H.visitQuestion);
 
       H.queryBuilderHeader().findByText("View-only").should("be.visible");
+    });
+  });
+
+  describe("with watermark", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+
+      cy.intercept("/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["token-features"]["development-mode"] = true;
+        });
+      });
+
+      cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
+        collection_position: 1,
+        enable_embedding: true,
+      });
+
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+        enable_embedding: true,
+      });
+    });
+
+    it("should show questions with a watermark when in dev mode whereever we show visualizations", () => {
+      H.visitQuestion(ORDERS_QUESTION_ID);
+
+      cy.findByTestId("development-watermark").should("exist");
+
+      H.appBar()
+        .findByRole("link", { name: /Our analytics/i })
+        .click();
+      cy.findByTestId("pinned-items")
+        .findAllByTestId("development-watermark")
+        .should("have.length.above", 0);
+
+      cy.findByTestId("collection-table")
+        .findByRole("link", { name: /Orders in a dashboard/i })
+        .click();
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.above",
+        0,
+      );
+
+      H.visitEmbeddedPage({
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      });
+
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.greaterThan",
+        0,
+      );
+
+      H.visitEmbeddedPage({
+        resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
+        params: {},
+      });
+
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.greaterThan",
+        0,
+      );
+
+      //Need to sign in to generate the public link for the orders question
+      cy.signInAsAdmin();
+
+      H.visitPublicQuestion(ORDERS_QUESTION_ID);
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.above",
+        0,
+      );
+
+      //Need to sign in to generate the public link for the orders dashboard
+      cy.signInAsAdmin();
+
+      H.visitPublicDashboard(ORDERS_DASHBOARD_ID);
+      cy.findAllByTestId("development-watermark").should(
+        "have.length.above",
+        0,
+      );
     });
   });
 });

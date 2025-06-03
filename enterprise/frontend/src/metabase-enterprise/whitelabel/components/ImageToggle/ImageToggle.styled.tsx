@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 export const ToggleRoot = styled.div`
   display: flex;
   flex: 1 1 auto;
-  max-width: 33rem;
+  max-width: 36rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
 `;

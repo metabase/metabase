@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from "__support__/ui";
 import type { DashboardAlertListItem } from "metabase/account/notifications/types";
 import type { Channel } from "metabase-types/api";
 import {
+  createMockAlert,
   createMockChannel,
-  createMockPulse,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -13,7 +13,7 @@ const getPulseItem = ({
   creator = getUser(),
   channels = [getChannel()],
 } = {}): DashboardAlertListItem => ({
-  item: createMockPulse({
+  item: createMockAlert({
     creator,
     channels,
     created_at: "2021-05-08T02:02:07.441Z",

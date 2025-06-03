@@ -3,7 +3,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
-import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
+import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
 import { formatField, stripId } from "metabase/lib/formatting";
 import {
   getFieldValues,
@@ -11,15 +11,14 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
+  isAddress,
   isBoolean,
-  isCategory,
   isCoordinate,
   isCurrency,
   isDate,
   isDateWithoutTime,
   isDimension,
   isFK,
-  isLocation,
   isMetric,
   isNumber,
   isNumeric,
@@ -198,16 +197,12 @@ export default class Field extends Base {
     return isCoordinate(this);
   }
 
-  isLocation() {
-    return isLocation(this);
+  isAddress() {
+    return isAddress(this);
   }
 
   isSummable() {
     return isSummable(this);
-  }
-
-  isCategory() {
-    return isCategory(this);
   }
 
   isMetric() {
@@ -311,11 +306,24 @@ export default class Field extends Base {
 
   // REMAPPINGS
 
+  remappedField() {
+    return this.remappedInternalField() ?? this.remappedExternalField();
+  }
+
+  remappedInternalField() {
+    const dimensions = this.dimensions ?? [];
+    if (dimensions.length > 0 && dimensions[0].type === "internal") {
+      return this;
+    }
+
+    return null;
+  }
+
   /**
    * Returns the remapped field, if any
    * @return {?Field}
    */
-  remappedField() {
+  remappedExternalField() {
     const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
@@ -371,7 +379,7 @@ export default class Field extends Base {
       return this.isSearchable() ? this : null;
     }
 
-    const remappedField = this.remappedField();
+    const remappedField = this.remappedExternalField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }

@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -197,6 +198,10 @@
   [_driver _unit x y]
   (h2x/->integer [:trunc (h2x/- (extract :epoch y) (extract :epoch x))]))
 
+(defmethod sql.qp/float-dbtype :vertica
+  [_]
+  "DOUBLE PRECISION")
+
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
@@ -323,3 +328,11 @@
         (let [t (u.date/parse s timezone)]
           (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
           t)))))
+
+(defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42V01"))

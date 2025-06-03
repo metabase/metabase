@@ -19,7 +19,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
   const loginPageIllustration = useSelector(getLoginPageIllustration);
 
   return (
-    <LayoutRoot>
+    <LayoutRoot data-testid="login-page">
       {loginPageIllustration && (
         <LayoutIllustration
           data-testid="login-page-illustration"

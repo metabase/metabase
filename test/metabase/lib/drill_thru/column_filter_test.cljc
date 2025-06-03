@@ -253,45 +253,48 @@
 
 (deftest ^:parallel native-models-with-renamed-columns-test
   (testing "Generate sane queries for native query models with renamed columns (#22715 #36583)"
-    (let [metadata-provider (lib.tu/mock-metadata-provider
-                             meta/metadata-provider
-                             {:cards [{:name                   "Card 5"
-                                       :result-metadata        [{:description        "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."
-                                                                 :semantic_type      :type/PK
-                                                                 :name               "ID"
-                                                                 :settings           nil
-                                                                 :fk_target_field_id nil
-                                                                 :field_ref          [:field "ID" {:base-type :type/Integer}]
-                                                                 :effective_type     :type/Integer
-                                                                 :id                 (meta/id :orders :id)
-                                                                 :visibility_type    :normal
-                                                                 :display_name       "ID"
-                                                                 :fingerprint        nil
-                                                                 :base_type          :type/Integer}
-                                                                {:description        "The date and time an order was submitted."
-                                                                 :semantic_type      :type/CreationTimestamp
-                                                                 :name               "ALIAS_CREATED_AT"
-                                                                 :settings           nil
-                                                                 :fk_target_field_id nil
-                                                                 :field_ref          [:field "ALIAS_CREATED_AT" {:base-type :type/DateTime}]
-                                                                 :effective_type     :type/DateTime
-                                                                 :id                 (meta/id :orders :created-at)
-                                                                 :visibility_type    :normal
-                                                                 :display_name       "Created At"
-                                                                 :fingerprint        {:global {:distinct-count 1, :nil% 0.0}
-                                                                                      :type   #:type{:DateTime {:earliest "2023-12-08T23:49:58.310952Z", :latest "2023-12-08T23:49:58.310952Z"}}}
-                                                                 :base_type          :type/DateTime}]
-                                       :database-id            (meta/id)
-                                       :query-type             :native
-                                       :dataset-query          {:database (meta/id)
-                                                                :native   {:query "select 1 as \"ID\", current_timestamp::datetime as \"ALIAS_CREATED_AT\"", :template-tags {}}
-                                                                :type     :native}
-                                       :id                     5
-                                       :parameter-mappings     []
-                                       :display                :table
-                                       :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}
-                                       :parameters             []
-                                       :type                   :model}]})
+    (let [card-eid          (lib/random-ident)
+          metadata-provider (-> {:name                   "Card 5"
+                                 :result-metadata        [{:description        "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."
+                                                           :semantic_type      :type/PK
+                                                           :name               "ID"
+                                                           :ident              (lib/native-ident "ID" card-eid)
+                                                           :settings           nil
+                                                           :fk_target_field_id nil
+                                                           :field_ref          [:field "ID" {:base-type :type/Integer}]
+                                                           :effective_type     :type/Integer
+                                                           :id                 (meta/id :orders :id)
+                                                           :visibility_type    :normal
+                                                           :display_name       "ID"
+                                                           :fingerprint        nil
+                                                           :base_type          :type/Integer}
+                                                          {:description        "The date and time an order was submitted."
+                                                           :semantic_type      :type/CreationTimestamp
+                                                           :name               "ALIAS_CREATED_AT"
+                                                           :ident              (lib/native-ident "ALIAS_CREATED_AT" card-eid)
+                                                           :settings           nil
+                                                           :fk_target_field_id nil
+                                                           :field_ref          [:field "ALIAS_CREATED_AT" {:base-type :type/DateTime}]
+                                                           :effective_type     :type/DateTime
+                                                           :id                 (meta/id :orders :created-at)
+                                                           :visibility_type    :normal
+                                                           :display_name       "Created At"
+                                                           :fingerprint        {:global {:distinct-count 1, :nil% 0.0}
+                                                                                :type   #:type{:DateTime {:earliest "2023-12-08T23:49:58.310952Z", :latest "2023-12-08T23:49:58.310952Z"}}}
+                                                           :base_type          :type/DateTime}]
+                                 :database-id            (meta/id)
+                                 :query-type             :native
+                                 :dataset-query          {:database (meta/id)
+                                                          :native   {:query "select 1 as \"ID\", current_timestamp::datetime as \"ALIAS_CREATED_AT\"", :template-tags {}}
+                                                          :type     :native}
+                                 :id                     5
+                                 :entity-id              card-eid
+                                 :parameter-mappings     []
+                                 :display                :table
+                                 :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}
+                                 :parameters             []}
+                                lib.tu/as-model
+                                lib.tu/metadata-provider-with-mock-card)
           query             (lib/query metadata-provider (lib.metadata/card metadata-provider 5))
           _                 (is (=? {:stages [{:lib/type :mbql.stage/mbql, :source-card 5}]}
                                     query))

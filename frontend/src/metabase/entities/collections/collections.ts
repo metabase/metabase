@@ -71,7 +71,9 @@ const Collections = createEntity({
   path: "/api/collection",
   schema: CollectionSchema,
 
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameOne: t`collection`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`collections`,
 
   rtk: {

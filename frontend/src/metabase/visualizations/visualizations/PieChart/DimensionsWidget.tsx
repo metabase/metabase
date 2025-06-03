@@ -25,7 +25,7 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type { RawSeries } from "metabase-types/api";
 
-import Styles from "./DimensionsWidget.modules.css";
+import Styles from "./DimensionsWidget.module.css";
 import { PieRowsPicker } from "./PieRowsPicker";
 
 function DimensionPicker({
@@ -61,8 +61,11 @@ function DimensionPicker({
   );
 }
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const INNER_RING_TITLE = t`Inner Ring`;
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const MIDDLE_RING_TITLE = t`Middle Ring`;
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const OUTER_RING_TITLE = t`Outer Ring`;
 
 const TWO_RING_SETTING_TITLES = [INNER_RING_TITLE, OUTER_RING_TITLE];

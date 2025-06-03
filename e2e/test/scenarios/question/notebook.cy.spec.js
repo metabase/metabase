@@ -1015,8 +1015,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should let the user navigate back (metabase#50971)", () => {
-    cy.visit("/");
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();

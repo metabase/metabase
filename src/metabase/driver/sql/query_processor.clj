@@ -124,7 +124,31 @@
   (and (vector? honeysql-expr)
        (= (first honeysql-expr) :inline)))
 
+(defn- untyped-inline-value [h2x]
+  (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
+    (cond
+      (or (float?   unwrapped)
+          (string?  unwrapped)
+          (integer? unwrapped))
+      unwrapped
+
+      (inline? unwrapped)
+      (second unwrapped)
+
+      :else
+      nil)))
+
 ;; this is the primary way to override behavior for a specific clause or object class.
+
+(defmulti integer-dbtype
+  "Return the name of the integer type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod integer-dbtype :sql
+  [_driver]
+  :BIGINT)
 
 (defmulti ->integer
   "Cast to integer"
@@ -133,8 +157,42 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod ->integer :sql
-  [_ value]
-  (h2x/->integer value))
+  [driver value]
+  (h2x/maybe-cast (integer-dbtype driver) value))
+
+(defn coerce-integer
+  "Convert honeysql numbers or text to integer, being smart about converting inline constants at compile-time."
+  [driver h2x-expr]
+  (let [inline (untyped-inline-value h2x-expr)]
+    (cond
+      (nil? h2x-expr)
+      nil
+
+      (not inline)
+      (->integer driver h2x-expr)
+
+      (float? inline)
+      (h2x/with-database-type-info (inline-num (Math/round ^Double inline)) (integer-dbtype driver))
+
+      (integer? inline)
+      (h2x/with-database-type-info (inline-num inline) (integer-dbtype driver))
+
+      (string? inline)
+      (h2x/with-database-type-info (inline-num (Long/parseLong inline)) (integer-dbtype driver))
+
+      :else
+      (ex-info (str "Cannot convert " (pr-str h2x-expr) " to integer.")
+               {:value h2x-expr}))))
+
+(defmulti float-dbtype
+  "Return the name of the floating point type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod float-dbtype :sql
+  [_driver]
+  :double)
 
 (defmulti ->float
   "Cast to float."
@@ -144,22 +202,63 @@
 
 (defmethod ->float :sql
   [driver value]
-  ;; optimization: we don't need to cast a number literal that is already a `Float` or a `Double` to `FLOAT`. Other
-  ;; number literals can be converted to doubles in Clojure-land. Note that there is a little bit of a mismatch between
-  ;; FLOAT and DOUBLE here, but that's mostly because I'm not 100% sure which drivers have both types. In the future
-  ;; maybe we can fix this.
-  (cond
-    (float? value)
-    (h2x/with-database-type-info (inline-num value) "float")
+  (h2x/maybe-cast (float-dbtype driver) value))
 
-    (number? value)
-    (recur driver (double value))
+(defn coerce-float
+  "Convert honeysql numbers/strings to floats, being smart about converting inlines and constants at compile-time."
+  [driver value]
+  ;; The smarts of this function are to cast inline numbers and strings at
+  ;; query-compile time (in Clojure) instead of in SQL
+  (let [inline (untyped-inline-value value)]
+    (cond
+      (nil? value)
+      nil
 
-    (inline? value)
-    (recur driver (second value))
+      (not inline)
+      (->float driver value)
 
-    :else
-    (h2x/cast :float value)))
+      (number? inline)
+      (h2x/with-database-type-info (inline-num (double inline)) (float-dbtype driver))
+
+      (string? inline)
+      (h2x/with-database-type-info (inline-num (Double/parseDouble inline)) (float-dbtype driver))
+
+      :else
+      (ex-info (str "Cannot convert " (pr-str value) " to float.")
+               {:value value}))))
+
+(defmulti date-dbtype
+  "Return the name of the date type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod date-dbtype :sql
+  [_driver]
+  :date)
+
+(defmulti ->date
+  "Cast to date."
+  {:added "0.55.0" :arglists '([driver honeysql-expr])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->date :sql
+  [driver value]
+  (h2x/maybe-cast (date-dbtype driver) value))
+
+(defn ->integer-with-round
+  "Helper function for drivers that need to round before converting to integer.
+
+  Used in implementations of ->integer."
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (->> value
+       (->float driver)
+       (vector :round)
+       (h2x/maybe-cast (integer-dbtype driver))))
 
 (defmulti ^clojure.lang.MultiFn inline-value
   "Return an inline value (as a raw SQL string) for an object `x`, e.g.
@@ -318,7 +417,7 @@
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :us))
 
-;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.public-settings/start-of-week]]
+;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.lib-be.core/start-of-week]]
 (defmethod date [:sql :week-of-year-instance]
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
@@ -357,7 +456,7 @@
       (truncate-fn expr))))
 
 (mu/defn adjust-day-of-week
-  "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
+  "Adjust day of week to respect the [[metabase.lib-be.core/start-of-week]] Setting.
 
   The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
 
@@ -658,12 +757,49 @@
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
+               [(:isa? :type/DateTime) (:isa? :Coercion/DateTime->Date)]
+               (->date driver honeysql-form)
+
                [:type/Text (:isa? :Coercion/String->Float)]
                (->float driver honeysql-form)
+
+               [:type/Text (:isa? :Coercion/String->Integer)]
+               (->integer driver honeysql-form)
+
+               [:type/Float (:isa? :Coercion/Float->Integer)]
+               (->integer driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
+
+(defmethod ->honeysql [:sql :datetime]
+  [driver [_ value mode]]
+  (let [honeysql-form (->honeysql driver value)
+        coercion-strategy (case (or mode :iso)
+                            ;; String
+                            :iso              :Coercion/ISO8601->DateTime
+                            :simple           :Coercion/YYYYMMDDHHMMSSString->DateTime
+                            ;; Number
+                            :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
+                            :unixseconds      :Coercion/UNIXSeconds->DateTime
+                            :unixmicroseconds :Coercion/UNIXMicroSeconds->DateTime
+                            :unixnanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
+    (cond
+      (isa? coercion-strategy :Coercion/UNIXTime->Temporal)
+      (unix-timestamp->honeysql driver
+                                (semantic-type->unix-timestamp-unit coercion-strategy)
+                                honeysql-form)
+
+      (isa? coercion-strategy :Coercion/String->Temporal)
+      (cast-temporal-string driver coercion-strategy honeysql-form)
+
+      :else
+      (throw (ex-info "Don't know how to convert the value to datetime."
+                      {:value value
+                       :honeysql honeysql-form
+                       :mode mode
+                       :coercion-strategy coercion-strategy})))))
 
 ;;; it's a little weird that we're calling [[->honeysql]] on an identifier, which is a Honey SQL form and not an MBQL
 ;;; form. See [[throw-double-compilation-error]] for more info.
@@ -733,8 +869,7 @@
   nil)
 
 (defmethod ->honeysql [:sql :field]
-  [driver [_ id-or-name {:keys [database-type] :as options}
-           :as field-clause]]
+  [driver [_ id-or-name options :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
@@ -747,20 +882,20 @@
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
-          database-type        (or database-type
-                                   (:database-type field-metadata))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
+          casted-field         (cast-field-if-needed driver field-metadata identifier)
+          database-type        (or (h2x/database-type casted-field)
+                                   (:database-type field-metadata))
           maybe-add-db-type    (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
                                    (h2x/with-database-type-info expr database-type)))]
       (u/prog1
-        (cond->> identifier
-          allow-casting?           (cast-field-if-needed driver field-metadata)
+        (cond->> (if allow-casting? casted-field identifier)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
           database-type            maybe-add-db-type
           (:temporal-unit options) (apply-temporal-bucketing driver options)
@@ -824,6 +959,12 @@
   (cond-> agg
     (and (vector? agg) (= (first agg) :aggregation-options)) second))
 
+(defn- contains-clause?
+  [clause-pred form]
+  (boolean (and (vector? form)
+                (or (clause-pred (first form))
+                    (m/find-first (partial contains-clause? clause-pred) (rest form))))))
+
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
@@ -834,7 +975,7 @@
                   (if (aggregation? expr)
                     (let [[_aggregation index] expr
                           agg (unwrap-aggregation-option (aggregations index))]
-                      (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
                         [(->honeysql driver agg) direction]))
                     [(->honeysql driver expr) direction])))
           order-bys)))
@@ -1027,39 +1168,42 @@
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
 
 (defn- safe-denominator
-  "Make sure we're not trying to divide by zero."
+  "Convert zeros to null to avoid dividing by zero."
   [denominator]
-  (cond
-    ;; try not to generate hairy nonsense like `CASE WHERE 7.0 = 0 THEN NULL ELSE 7.0` if we're dealing with number
-    ;; literals and can determine this stuff ahead of time.
-    (and (number? denominator)
-         (zero? denominator))
-    nil
+  (let [inline (untyped-inline-value denominator)]
+    (cond
+      (nil? denominator)
+      nil
 
-    (number? denominator)
-    (inline-num denominator)
+      (nil? inline)
+      [:nullif denominator [:inline 0.0]]
 
-    (inline? denominator)
-    (recur (second denominator))
+      (and (number? inline)
+           (zero? inline))
+      nil
 
-    :else
-    [:nullif denominator [:inline 0]]))
+      :else ;; inline value
+      denominator)))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
   (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
-                                     (->honeysql driver (if (integer? mbql-expr)
-                                                          (double mbql-expr)
-                                                          mbql-expr)))]
-    (into [:/ (->float driver numerator)]
+                                     (coerce-float driver (->honeysql driver mbql-expr)))]
+    (into [:/ numerator]
           (map safe-denominator)
           denominators)))
 
+(defmethod ->honeysql [:sql :integer]
+  [driver [_ value]]
+  (coerce-integer driver (->honeysql driver value)))
+
+(defmethod ->honeysql [:sql :float]
+  [driver [_ value]]
+  (coerce-float driver (->honeysql driver value)))
+
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
-  [:sum [:case
-         (->honeysql driver pred) (->honeysql driver arg)
-         :else                    [:inline 0.0]]])
+  (->honeysql driver [:sum [:case [[pred arg]] {:default 0.0}]]))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1072,8 +1216,7 @@
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
-   [:case
-    (->honeysql driver pred) (->honeysql driver arg)]])
+   (->honeysql driver [:case [[pred arg]]])])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
@@ -1167,6 +1310,14 @@
 (mu/defmethod ->honeysql [:sql :time] :- some?
   [driver [_ value unit]]
   (date driver unit (->honeysql driver value)))
+
+(defmethod ->honeysql [:sql :date]
+  [driver [_ value]]
+  (->date driver (->honeysql driver value)))
+
+(defmethod ->honeysql [:sql :text]
+  [driver [_ value]]
+  (->honeysql driver [::cast-to-text value]))
 
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
@@ -1266,9 +1417,19 @@
     ;; Honey SQL 2
     (as [:field \"x\" {:base-type :type/Text, :temporal-unit :month}])
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
-    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\""
+    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
+
+  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
+    ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
+    ;; -> SELECT CAST(1 AS bit) AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [honeysql-form (->honeysql driver clause)
+  (let [cast-type     (-> clause mbql.u/field-options ::add-cast)
+        wrap-cast     #(vector ::cast % cast-type)
+        maybe-cast    #(cond-> % cast-type wrap-cast)
+        honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
       [honeysql-form [field-alias]]
@@ -1639,30 +1800,17 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defn- has-to-honeysql-impl-for-legacy-table? [driver]
-  (not (identical? (get-method ->honeysql [driver :model/Table])
-                   (get-method ->honeysql [:sql :model/Table]))))
-
+;;; This was deprecated in 0.48.0 but not removed until 0.55.0; if any drivers were still using it give them a useful
+;;; error. We can probably take this out in 0.56.0
 (defmethod ->honeysql [:sql :model/Table]
-  [driver table]
-  (sql.qp.deprecated/log-deprecation-warning
-   driver
-   "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-   "0.48.0")
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  [driver _table]
+  (throw (ex-info "metabase.driver.sql.query-processor/->honeysql is no longer supported for :model/Table, use :metadata/table instead"
+                  {:driver driver, :type qp.error-type/driver})))
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (if (has-to-honeysql-impl-for-legacy-table? driver)
-    (do
-      (sql.qp.deprecated/log-deprecation-warning
-       driver
-       "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-       "0.48.0")
-      (->honeysql driver #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/->legacy-metadata table)))
-    (let [{table-name :name, schema :schema} table]
-      (->honeysql driver (h2x/identifier :table schema table-name)))))
+  (let [{table-name :name, schema :schema} table]
+    (->honeysql driver (h2x/identifier :table schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]
@@ -1696,19 +1844,12 @@
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
   (binding [driver/*driver* driver]
-    (if (map? honeysql-form)
-      (sql/format honeysql-form {:dialect      dialect
-                                 :quoted       true
-                                 :quoted-snake false
-                                 :inline       driver/*compile-with-inline-parameters*})
-      ;; for weird cases when we want to compile just one particular snippet. Why are we doing this? Who knows. This seems
-      ;; to not really be supported by Honey SQL 2, so hack around it for now. See upstream issue
-      ;; https://github.com/seancorfield/honeysql/issues/456
-      (binding [sql/*dialect*      (sql/get-dialect dialect)
-                sql/*quoted*       true
-                sql/*quoted-snake* false
-                sql/*inline*       driver/*compile-with-inline-parameters*]
-        (sql/format-expr honeysql-form {:nested true})))))
+    (sql/format honeysql-form {:dialect      dialect
+                               :quoted       true
+                               :quoted-snake false
+                               :inline       driver/*compile-with-inline-parameters*
+                               ;; Enable :nested when we want to compile just one particular snippet.
+                               :nested (not (map? honeysql-form))})))
 
 (defmulti format-honeysql
   "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a

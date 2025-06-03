@@ -32,5 +32,5 @@
   ;; We need to install the classloader here before other namespaces are loaded since they could launch threads on load.
   ;; If a thread is spun uo and put back into a pool before this happens that pool will have a poisoned thread unable to
   ;; see classes in our classloader.
-  ((requiring-resolve 'metabase.plugins.classloader/the-classloader))
+  ((requiring-resolve 'metabase.classloader.core/the-classloader))
   (apply (requiring-resolve 'metabase.core.core/entrypoint) args))

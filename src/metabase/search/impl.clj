@@ -1,18 +1,17 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as collection.root]
-   [metabase.models.database :as database]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -20,6 +19,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
@@ -54,6 +54,8 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
+;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
@@ -200,7 +202,7 @@
 (defn default-engine
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
-  (if-let [s (public-settings/search-engine)]
+  (if-let [s (search.settings/search-engine)]
     (let [engine (keyword "search.engine" (name s))]
       (if (search.engine/supported-engine? engine)
         engine
@@ -405,14 +407,14 @@
 (defn- add-metadata [search-results]
   (let [card-ids (into #{}
                        (comp
-                        (filter #(= (:model %) "card"))
+                        (filter #(contains? #{"card" "metric" "dataset"} (:model %)))
                         (map :id))
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
                         (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
     (map (fn [{:keys [model id] :as item}]
-           (if (= model "card")
+           (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))
              item))
          search-results)))

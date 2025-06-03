@@ -349,7 +349,7 @@ export function withUserAttributes(ComposedComponent) {
     state = { userAttributes: [] };
 
     async componentDidMount() {
-      if (MetabaseSettings.enhancementsEnabled()) {
+      if (MetabaseSettings.sandboxingEnabled()) {
         this.setState({ userAttributes: await GTAPApi.attributes() });
       }
     }

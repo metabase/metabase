@@ -12,6 +12,7 @@
 
 (deftest bigint?-test
   (testing "should check if the value is a bigint"
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [exp value] (= exp (u.number/bigint? value))
       true  (u.number/bigint 10)
       true  (u.number/bigint "9007199254740993")
@@ -20,6 +21,7 @@
 
 (deftest integer?-test
   (testing "should check if the value is an integer"
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [exp value] (= exp (u.number/integer? value))
       true  0
       true  10

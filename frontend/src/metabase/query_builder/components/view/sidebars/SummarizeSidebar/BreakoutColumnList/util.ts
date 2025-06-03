@@ -6,9 +6,14 @@ export function getBreakoutListItem(
   query: Lib.Query,
   stageIndex: number,
   breakout: Lib.BreakoutClause,
-): ListItem {
+): ListItem | undefined {
   const column = Lib.breakoutColumn(query, stageIndex, breakout);
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
+  if (column == null) {
+    return;
+  }
+
+  const columnWithoutBinning = Lib.withBinning(column, null);
+  const columnInfo = Lib.displayInfo(query, stageIndex, columnWithoutBinning);
   return { ...columnInfo, column, breakout };
 }
 
@@ -24,14 +29,18 @@ function getColumnListItems(
     return [{ ...columnInfo, column }];
   }
 
-  return breakoutPositions.map((index) => {
+  return breakoutPositions.reduce((items: ListItem[], index) => {
     const breakout = breakouts[index];
-    return {
-      ...columnInfo,
-      column: Lib.breakoutColumn(query, stageIndex, breakout),
-      breakout,
-    };
-  });
+    const column = Lib.breakoutColumn(query, stageIndex, breakout);
+    if (column != null) {
+      items.push({
+        ...columnInfo,
+        column,
+        breakout,
+      });
+    }
+    return items;
+  }, []);
 }
 
 export function getColumnSections(

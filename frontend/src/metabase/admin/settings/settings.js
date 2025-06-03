@@ -5,14 +5,7 @@ import {
   handleActions,
 } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import {
-  EmailApi,
-  GoogleApi,
-  LdapApi,
-  SamlApi,
-  SettingsApi,
-  SlackApi,
-} from "metabase/services";
+import { EmailApi, SamlApi, SettingsApi, SlackApi } from "metabase/services";
 
 // ACTION TYPES AND ACTION CREATORS
 
@@ -137,19 +130,6 @@ export const updateSlackSettings = createThunkAction(
   {},
 );
 
-export const UPDATE_LDAP_SETTINGS =
-  "metabase/admin/settings/UPDATE_LDAP_SETTINGS";
-export const updateLdapSettings = createThunkAction(
-  UPDATE_LDAP_SETTINGS,
-  function (settings) {
-    return async function (dispatch) {
-      const result = await LdapApi.updateSettings(settings);
-      await dispatch(reloadSettings());
-      return result;
-    };
-  },
-);
-
 export const UPDATE_SAML_SETTINGS =
   "metabase/admin/settings/UPDATE_SAML_SETTINGS";
 export const updateSamlSettings = createThunkAction(
@@ -157,19 +137,6 @@ export const updateSamlSettings = createThunkAction(
   function (settings) {
     return async function (dispatch) {
       const result = await SamlApi.updateSettings(settings);
-      await dispatch(reloadSettings());
-      return result;
-    };
-  },
-);
-
-export const UPDATE_GOOGLE_SETTINGS =
-  "metabase/admin/settings/UPDATE_GOOGLE_SETTINGS";
-export const updateGoogleSettings = createThunkAction(
-  UPDATE_GOOGLE_SETTINGS,
-  function (settings) {
-    return async function (dispatch) {
-      const result = await GoogleApi.updateSettings(settings);
       await dispatch(reloadSettings());
       return result;
     };

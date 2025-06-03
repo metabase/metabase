@@ -9,12 +9,12 @@ describe("suggestLiterals", () => {
       to: 3,
       options: [
         {
-          icon: "boolean",
+          icon: "io",
           label: "True",
           type: "literal",
         },
         {
-          icon: "boolean",
+          icon: "io",
           label: "False",
           type: "literal",
         },
@@ -29,12 +29,12 @@ describe("suggestLiterals", () => {
       to: 3,
       options: [
         {
-          icon: "boolean",
+          icon: "io",
           label: "True",
           type: "literal",
         },
         {
-          icon: "boolean",
+          icon: "io",
           label: "False",
           type: "literal",
         },

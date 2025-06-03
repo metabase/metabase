@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { Tooltip } from "metabase/ui";
+import { Text, Tooltip } from "metabase/ui";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 
@@ -103,7 +103,7 @@ export function PermissionsTable({
             const entityName = (
               <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
-                {entity.hint && (
+                {typeof entity.hint === "string" && (
                   <Tooltip tooltip={entity.hint}>
                     <HintIcon />
                   </Tooltip>
@@ -119,6 +119,9 @@ export function PermissionsTable({
                     </EntityNameLink>
                   ) : (
                     <EntityName>{entityName}</EntityName>
+                  )}
+                  {entity.callout && (
+                    <Text c="text-secondary">{entity.callout}</Text>
                   )}
                 </PermissionsTableCell>
 

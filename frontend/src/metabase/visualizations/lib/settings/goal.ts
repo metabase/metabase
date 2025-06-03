@@ -25,16 +25,24 @@ export const getChartGoal = (
 
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
-    section: t`Display`,
-    title: t`Goal line`,
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Goal line`;
+    },
     widget: "toggle",
     default: false,
     inline: true,
     marginBottom: "1rem",
   },
   "graph.goal_value": {
-    section: t`Display`,
-    title: t`Goal value`,
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Goal value`;
+    },
     widget: "number",
     default: 0,
     getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>
@@ -42,8 +50,12 @@ export const GRAPH_GOAL_SETTINGS = {
     readDependencies: ["graph.show_goal"],
   },
   "graph.goal_label": {
-    section: t`Display`,
-    title: t`Goal label`,
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Goal label`;
+    },
     widget: "input",
     getDefault: getDefaultGoalLabel,
     getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>

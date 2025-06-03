@@ -10,11 +10,14 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.util :as render.util]
+   [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
-   [metabase.models.params.shared :as shared.params]
+   [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
-   [metabase.public-settings :as public-settings]
+   [metabase.parameters.shared :as shared.params]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -22,7 +25,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
-   [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
@@ -43,7 +45,7 @@
                                  :message      message
                                  :bcc?         (if recipient-type
                                                  (= :bcc recipient-type)
-                                                 (email/bcc-enabled?))}))
+                                                 (channel.settings/bcc-enabled?))}))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Render Utils                                             ;;
@@ -105,8 +107,19 @@
 
 (defn- assoc-attachment-booleans [part-configs parts]
   (for [{{result-card-id :id} :card :as result} parts
-       ;; TODO: check if does this match by dashboard_card_id or card_id?
-        :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) part-configs)]]
+        :let [result-dashboard-card-id (:id (:dashcard result))
+              is-visualizer-part (render.util/is-visualizer-dashcard? (:dashcard result))
+              ;; For visualizer dashcards we match on both card_id and dashboard_card_id
+              ;; To disambiguate between regular cards and regular cards that were turned into visualizer dashcards
+              noti-dashcard (or (and is-visualizer-part
+                                     (m/find-first (fn [config]
+                                                     (and (= (:card_id config) result-card-id)
+                                                          (= (:dashboard_card_id config) result-dashboard-card-id)))
+                                                   part-configs))
+                                ;; Fall back to just matching on card_id
+                                (m/find-first (fn [config]
+                                                (= (:card_id config) result-card-id))
+                                              part-configs))]]
     (if result-card-id
       (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
@@ -239,7 +252,7 @@
                                                     :width "50%"
                                                     :padding "4px 16px 4px 8px"
                                                     :vertical-align "baseline"})}
-                     (shared.params/value-string filter (public-settings/site-locale))]]]])
+                     (shared.params/value-string filter (system/site-locale))]]]])
                parameters)
         rows  (partition-all 2 cells)]
     (html
@@ -293,7 +306,7 @@
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters           (when parameters
+                                                    :filters           (when (seq parameters)
                                                                          (render-filters parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))

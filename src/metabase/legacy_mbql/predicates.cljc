@@ -17,6 +17,10 @@
   "Is this a valid `:filter` clause?"
   (mr/validator mbql.s/Filter))
 
+(def ^{:arglists '([emptyable-clause])} Emptyable?
+  "Is this a valid Emptyable clause?"
+  (mr/validator mbql.s/Emptyable))
+
 (def ^{:arglists '([filter-clause])} DatetimeExpression?
   "Is this a valid DatetimeExpression clause?"
   (mr/validator mbql.s/DatetimeExpression))

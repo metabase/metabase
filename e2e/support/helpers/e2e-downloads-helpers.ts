@@ -1,6 +1,9 @@
 import xlsx, { type Sheet } from "xlsx";
 
-import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
+import {
+  getDashboardCard,
+  getDashboardCardMenu,
+} from "./e2e-dashboard-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
 interface DownloadAndAssertParams {
@@ -27,8 +30,9 @@ interface DownloadAndAssertParams {
 }
 
 export const exportFromDashcard = (format: string) => {
+  cy.get("[aria-label='Download results']").click();
+
   popover().within(() => {
-    cy.findByText("Download results").click();
     cy.findByText(format).click();
     cy.findByTestId("download-results-button").click();
   });
@@ -50,6 +54,7 @@ export function downloadAndAssert(
     downloadUrl,
     downloadMethod = "POST",
     isDashboard,
+    isEmbed = false,
     enableFormatting = true,
     pivoting,
   }: DownloadAndAssertParams,
@@ -89,20 +94,26 @@ export function downloadAndAssert(
   cy.log(`Downloading ${fileType} file`);
 
   if (isDashboard) {
-    getDashboardCardMenu().click();
-    cy.findByText("Download results").click();
-  } else {
-    cy.findByTestId("download-button").click();
+    if (isEmbed) {
+      getDashboardCard().realHover();
+    } else {
+      getDashboardCardMenu().click();
+    }
   }
+
+  cy.get("[aria-label='Download results']").click();
 
   popover().within(() => {
     cy.findByText(`.${fileType}`).click();
 
-    const formattingButtonLabel = enableFormatting
-      ? "Formatted"
-      : "Unformatted";
-
-    cy.findByText(formattingButtonLabel).click();
+    cy.findByTestId("keep-data-formatted")
+      .as("keep-data-formatted")
+      .then(($checkbox) => {
+        const isChecked = $checkbox.prop("checked");
+        if (enableFormatting !== isChecked) {
+          cy.get("@keep-data-formatted").click();
+        }
+      });
 
     if (pivoting != null) {
       cy.findByTestId("keep-data-pivoted")

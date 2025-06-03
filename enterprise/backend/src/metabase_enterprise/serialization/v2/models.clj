@@ -23,6 +23,7 @@
   (concat data-model
           content
           ["FieldValues"
+           "Metabot"
            "Setting"]))
 
 (def inlined-models
@@ -34,6 +35,7 @@
    "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
+   "MetabotEntity"
    "TimelineEvent"])
 
 (def excluded-models
@@ -52,12 +54,9 @@
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
-   "FieldUsage"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
-   "LegacyMetric"
-   "LegacyMetricImportantField"
    "LoginHistory"
    "ModelIndex"
    "ModelIndexValue"
@@ -88,7 +87,6 @@
    "SearchIndexMetadata"
    "Secret"
    "Session"
-   "TablePrivileges"
    "TaskHistory"
    "User"
    "UserKeyValue"

@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -126,7 +126,7 @@
 (defn user-details
   [username]
   (-> (mt/fetch-user username)
-      (dissoc :date_joined :last_login :is_superuser :is_qbnewb :locale)
+      (dissoc :date_joined :last_login :is_superuser :is_qbnewb :locale :tenant_id)
       mt/derecordize))
 
 ;; create a channel then select its details

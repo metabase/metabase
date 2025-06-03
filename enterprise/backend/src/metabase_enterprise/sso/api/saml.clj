@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [saml20-clj.core :as saml]))
 

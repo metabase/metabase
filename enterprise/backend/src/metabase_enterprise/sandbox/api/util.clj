@@ -4,9 +4,9 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
-   [metabase.models.user :as user]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 

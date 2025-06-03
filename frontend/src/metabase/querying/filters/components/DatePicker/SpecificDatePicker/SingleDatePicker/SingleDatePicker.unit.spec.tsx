@@ -10,7 +10,6 @@ const DATE_TIME = new Date(2020, 0, 10, 10, 20);
 
 interface SetupOpts {
   value?: SingleDatePickerValue;
-  submitButtonLabel?: string;
   hasTimeToggle?: boolean;
 }
 
@@ -20,7 +19,6 @@ const userEvent = _userEvent.setup({
 
 function setup({
   value = { date: DATE, hasTime: false },
-  submitButtonLabel = "Apply",
   hasTimeToggle = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
@@ -29,7 +27,6 @@ function setup({
   renderWithProviders(
     <SingleDatePicker
       value={value}
-      submitButtonLabel={submitButtonLabel}
       hasTimeToggle={hasTimeToggle}
       onChange={onChange}
       onSubmit={onSubmit}

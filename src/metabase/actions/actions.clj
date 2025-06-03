@@ -2,26 +2,20 @@
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
+   [metabase.actions.settings :as actions.settings]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
-
-(setting/defsetting database-enable-actions
-  (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
-  :default false
-  :type :boolean
-  :visibility :public
-  :database-local :only)
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -124,8 +118,8 @@
                               (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
-  (binding [setting/*database-local-values* db-settings]
-    (when-not (database-enable-actions)
+  (setting/with-database-local-values db-settings
+    (when-not (actions.settings/database-enable-actions)
       (throw (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
 

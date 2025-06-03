@@ -1,10 +1,10 @@
-import { EDITOR_QUOTES } from "./config";
-
 const DOUBLE_QUOTE = '"';
 const SINGLE_QUOTE = "'";
 const OPEN_BRACKET = "[";
 const CLOSE_BRACKET = "]";
 const BACKSLASH = "\\";
+
+export const STRING_LITERAL_DEFAULT_QUOTE = '"';
 
 export type Delimiter =
   | typeof DOUBLE_QUOTE
@@ -45,13 +45,9 @@ const DELIMITER_PAIRS: Record<StartDelimiter, Delimiter> = {
 
 export function formatStringLiteral(
   node: string,
-  {
-    delimiters = EDITOR_QUOTES,
-  }: {
-    delimiters?: { literalQuoteDefault: StartDelimiter };
-  } = {},
+  delimiter: StartDelimiter = STRING_LITERAL_DEFAULT_QUOTE,
 ) {
-  return quoteString(node, delimiters.literalQuoteDefault);
+  return quoteString(node, delimiter);
 }
 
 export function quoteString(string: string, delimiter: StartDelimiter) {
@@ -77,16 +73,23 @@ export function quoteString(string: string, delimiter: StartDelimiter) {
   return OPEN + str + CLOSE;
 }
 
-export function unquoteString(string: string) {
-  const OPEN = string.charAt(0);
-  assertStartDelimiter(OPEN);
+export function unquoteString(
+  string: string,
+  delimiter: string = string.charAt(0),
+) {
+  assertStartDelimiter(delimiter);
+  const OPEN = delimiter;
   const CLOSE = DELIMITER_PAIRS[OPEN];
 
   let str = "";
   let escaping = false;
 
-  for (let i = 1; i <= string.length - 1; i++) {
+  for (let i = 0; i <= string.length - 1; i++) {
     const ch = string[i];
+
+    if (i === 0 && ch === OPEN) {
+      continue;
+    }
 
     if (ch === BACKSLASH && !escaping) {
       escaping = true;

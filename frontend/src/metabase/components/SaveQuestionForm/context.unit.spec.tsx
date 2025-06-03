@@ -1,7 +1,7 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   defaultAuditInfo,
-  setupAuditEndpoints,
+  setupAuditInfoEndpoint,
   setupCollectionByIdEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
@@ -56,7 +56,7 @@ const setup = ({
   const onCreate = jest.fn();
   const onSave = jest.fn();
 
-  setupAuditEndpoints();
+  setupAuditInfoEndpoint();
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({

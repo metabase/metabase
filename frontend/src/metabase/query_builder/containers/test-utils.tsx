@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
@@ -376,7 +377,7 @@ export const triggerVisualizationQueryChange = async () => {
   await userEvent.click(within(popover).getByText("Total"));
   const maxInput = within(popover).getByPlaceholderText("Max");
   await userEvent.type(maxInput, "1000");
-  await userEvent.click(await screen.findByText("Add filter"));
+  await userEvent.click(await screen.findByText("Apply filter"));
 };
 
 export const triggerNotebookQueryChange = async () => {

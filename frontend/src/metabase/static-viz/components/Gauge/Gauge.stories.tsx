@@ -33,3 +33,8 @@ export const TruncatedLabels = {
   render: Template,
   args: { ...TRUNCATED_LABELS, getColor: color },
 };
+
+export const Watermark = {
+  render: Template,
+  args: { ...DEFAULT, getColor: color, hasDevWatermark: true },
+};

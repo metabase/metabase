@@ -116,6 +116,10 @@ export const SettingsSetting = (props) => {
   );
 };
 
+/**
+ * @deprecated
+ * use SetByEnvVar from metabase/admin/settings/components/widgets/AdminSettingInput instead
+ */
 export const SetByEnvVar = ({ setting }) => {
   const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
 

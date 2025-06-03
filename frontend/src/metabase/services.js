@@ -35,10 +35,22 @@ export const StoreApi = {
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
+  // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
+  // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols } = getPivotOptions(question);
-      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+      const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
+        getPivotOptions(question);
+      return api(
+        {
+          ...params,
+          pivot_rows,
+          pivot_cols,
+          show_row_totals,
+          show_column_totals,
+        },
+        ...rest,
+      );
     };
   }
 
@@ -52,17 +64,17 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   }
 
   const mapping = [
+    [MetabaseApi.dataset, MetabaseApi.dataset_pivot, { wrap: true }],
     [CardApi.query, CardApi.query_pivot],
     [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
-    [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
     [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
     [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
     [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
   ];
-  for (const [from, to] of mapping) {
+  for (const [from, to, options = {}] of mapping) {
     if (api === from) {
-      return wrap(to);
+      return options.wrap ? wrap(to) : to;
     }
   }
   return api;
@@ -211,16 +223,8 @@ export const SlackApi = {
   updateSettings: PUT("/api/slack/settings"),
 };
 
-export const LdapApi = {
-  updateSettings: PUT("/api/ldap/settings"),
-};
-
 export const SamlApi = {
   updateSettings: PUT("/api/saml/settings"),
-};
-
-export const GoogleApi = {
-  updateSettings: PUT("/api/google/settings"),
 };
 
 export const MetabaseApi = {
@@ -296,19 +300,10 @@ export const SettingsApi = {
 };
 
 export const PermissionsApi = {
-  groups: GET("/api/permissions/group"),
-  groupDetails: GET("/api/permissions/group/:id"),
   graph: GET("/api/permissions/graph"),
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  memberships: GET("/api/permissions/membership"),
-  createMembership: POST("/api/permissions/membership"),
-  deleteMembership: DELETE("/api/permissions/membership/:id"),
-  updateMembership: PUT("/api/permissions/membership/:id"),
-  clearGroupMembership: PUT("/api/permissions/membership/:id/clear"),
-  updateGroup: PUT("/api/permissions/group/:id"),
-  deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
 export const PersistedModelsApi = {
@@ -329,14 +324,14 @@ export const UserApi = {
 };
 
 export const UtilApi = {
-  password_check: POST("/api/util/password_check"),
+  password_check: POST("/api/session/password-check"),
   random_token: GET("/api/util/random_token"),
-  logs: GET("/api/util/logs"),
-  bug_report_details: GET("/api/util/bug_report_details"),
+  logs: GET("/api/logger/logs"),
+  bug_report_details: GET("/api/bug-reporting/details"),
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link
     // and it can be deployed at subpath
-    const path = "/api/util/diagnostic_info/connection_pool_info";
+    const path = "/api/bug-reporting/connection-pool-details";
     const { href } = new URL(api.basename + path, location.origin);
 
     return href;
@@ -357,35 +352,21 @@ export function setPublicDashboardEndpoints(uuid) {
 }
 
 export function setEmbedQuestionEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setCardEndpoints(`/api/embed/card/${encodeURIComponent(token)}`);
-  }
+  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
 }
 
 export function setEmbedDashboardEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints(`/api/embed/dashboard/${encodeURIComponent(token)}`);
-  } else {
-    setDashboardParameterValuesEndpoint(embedBase);
-  }
+  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
 }
 
 function GET_with(url, omitKeys) {
   return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
 
-function setFieldEndpoints(prefix) {
-  PLUGIN_API.getFieldValuesUrl = (fieldId) =>
-    `${prefix}/field/${fieldId}/values`;
-  PLUGIN_API.getSearchFieldValuesUrl = (fieldId, searchFieldId) =>
-    `${prefix}/field/${fieldId}/search/${searchFieldId}`;
-  PLUGIN_API.getRemappedFieldValueUrl = (fieldId, remappedFieldId) =>
-    `${prefix}/field/${fieldId}/remapping/${remappedFieldId}`;
-}
-
 function setCardEndpoints(prefix) {
   // RTK query
-  setFieldEndpoints(prefix);
+  PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
   CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
@@ -399,7 +380,10 @@ function setCardEndpoints(prefix) {
 
 function setDashboardEndpoints(prefix) {
   // RTK query
-  setFieldEndpoints(prefix);
+  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
+    _dashboardId,
+    parameterId,
+  ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
   DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
@@ -408,12 +392,6 @@ function setDashboardEndpoints(prefix) {
   DashboardApi.parameterSearch = GET_with(
     `${prefix}/params/:paramId/search/:query`,
     ["dashId"],
-  );
-}
-
-function setDashboardParameterValuesEndpoint(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
 }
 

@@ -25,13 +25,17 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
+export type BooleanParameterType = "boolean/=";
+
 export type ParameterType =
   | StringParameterType
   | NumberParameterType
   | DateParameterType
+  | BooleanParameterType
   | "id"
-  | "category"
-  | "temporal-unit";
+  | "category" // x-rays only
+  | "temporal-unit"
+  | string; // x-rays generate broken parameter types not in the list
 
 export type ParameterId = string;
 

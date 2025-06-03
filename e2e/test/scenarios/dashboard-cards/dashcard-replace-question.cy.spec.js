@@ -139,7 +139,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Orders",
     });
-    H.expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
       assertDashCardTitle("Orders");
       cy.findByText("Product ID").should("exist");
@@ -184,7 +184,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
       .eq(0)
       .should(($el) => {
         // we wait for element to take its position after animation
-        expect($el.position().top).to.be.equal(0);
+        expect($el.position().left).to.be.equal(0);
       })
       .button("Undo")
       .click();

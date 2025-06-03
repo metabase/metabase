@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -155,11 +155,11 @@
                             :limit        1}}]
       (mt/with-temp [:model/User                       {user-id :id} {}
                      :model/PermissionsGroup           {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:group_id group-id :user_id user-id}
                      :model/Collection                 {collection-id :id} {}
                      :model/Card                       {card-id :id} {:collection_id collection-id
                                                                       :dataset_query query}
                      :model/Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
+        (perms/add-user-to-group! user-id group-id)
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -182,7 +182,7 @@
                      (run-ad-hoc-query))))
               (testing "sanity check: should be able to run query as saved Question before block perms are set."
                 (is (run-saved-question))
-                (is (= true (check-block-perms))))
+                (is (true? (check-block-perms))))
               ;; 'grant' the block permissions.
               (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
                 (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
@@ -196,7 +196,7 @@
                        (run-ad-hoc-query))))
                 (testing "should STILL be able to run query as saved Question"
                   (is (run-saved-question))
-                  (is (= true (check-block-perms)))))
+                  (is (true? (check-block-perms)))))
               (testing "once blocked in all groups, now access is truly blocked"
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
                 (testing "disallow running the query"
@@ -216,8 +216,8 @@
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
       (mt/with-temp [:model/User                       {user-id :id} {}
-                     :model/PermissionsGroup           {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:group_id group-id :user_id user-id}]
+                     :model/PermissionsGroup           {group-id :id} {}]
+        (perms/add-user-to-group! user-id group-id)
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
             (testing "legacy-no-self-service does not override block perms for a table"
@@ -390,3 +390,23 @@
              clojure.lang.ExceptionInfo
              #"You do not have permissions to run this query"
              (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" card-id)))))))))
+
+(deftest native-sandboxes-still-block-other-joined-tables
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
+                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                                                      :table_id             (mt/id :checkins)
+                                                      :card_id              card-id
+                                                      :attribute_remappings {}}
+                     :model/Card {query-card-id :id} {:dataset_query (mt/mbql-query checkins
+                                                                       {:aggregation [[:count]]
+                                                                        :joins       [{:source-table $$venues
+                                                                                       :alias        "v"
+                                                                                       :strategy     :left-join
+                                                                                       :condition    [:= $venue_id &v.venues.id]}]})}]
+        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {(mt/id 'venues) :blocked})
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" query-card-id)))))))))

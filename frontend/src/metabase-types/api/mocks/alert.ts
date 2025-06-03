@@ -4,7 +4,7 @@ import type { Channel } from "../notification-channels";
 import { createMockEntityId } from "./entity-id";
 import { createMockUserInfo } from "./user";
 
-export const createMockPulse = (opts?: Partial<Alert>): Alert => ({
+export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
   id: 1,
   name: "Pulse",
   alert_above_goal: true,

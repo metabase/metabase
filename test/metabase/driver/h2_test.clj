@@ -5,9 +5,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.actions.error :as actions.error]
-   [metabase.config :as config]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
@@ -220,6 +220,7 @@
 
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
       "select 1"
       "update venues set name = 'bill'"

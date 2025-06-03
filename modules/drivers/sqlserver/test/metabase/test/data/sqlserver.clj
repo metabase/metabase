@@ -1,7 +1,10 @@
 (ns metabase.test.data.sqlserver
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -10,6 +13,81 @@
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
+
+(defn drop-if-exists-and-create-roles!
+  [driver details roles]
+  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[user-name _table-perms] roles]
+      (let [role-login (str user-name "_login")
+            role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
+            user-name (sql.tx/qualify-and-quote driver user-name)]
+        (doseq [statement [(format (str "IF NOT EXISTS ("
+                                        "SELECT name FROM master.sys.server_principals WHERE name = '%s')"
+                                        "BEGIN CREATE LOGIN %s WITH PASSWORD = N'%s' END")
+                                   role-login role-login (:password details))
+                           (format "DROP USER IF EXISTS %s;" user-name)
+                           (format "CREATE USER %s FOR LOGIN %s;" user-name role-login)
+                           (format "DROP ROLE IF EXISTS %s;" role-name)
+                           (format "CREATE ROLE %s;" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name perms] table-perms]
+          (let [columns (:columns perms)
+                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
+                grant-stmt (if (not= select-cols "")
+                             (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
+                             (format "GRANT SELECT ON %s TO %s" table-name role-name))]
+            (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))
+
+(defn grant-roles-to-user!
+  [driver details roles db-user]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        db-user (sql.tx/qualify-and-quote driver db-user)]
+    (doseq [[user-name _table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
+            user-name (sql.tx/qualify-and-quote driver user-name)]
+        (doseq [statement [(format "EXEC sp_addrolemember %s, %s" role-name user-name)
+                           (format "GRANT IMPERSONATE ON USER::%s TO %s" user-name db-user)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defmethod tx/create-and-grant-roles! :sqlserver
+  [driver details roles user-name _default-role]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    ;; create a non-sa user
+    (doseq [statement [(format (str "IF NOT EXISTS ("
+                                    "SELECT name FROM master.sys.server_principals WHERE name = '%s')"
+                                    " BEGIN CREATE LOGIN [%s] WITH PASSWORD = N'%s' END")
+                               user-name user-name (:password details))
+                       (format "DROP USER IF EXISTS [%s];" user-name)
+                       (format "CREATE USER %s FOR LOGIN %s;" user-name user-name)
+                       (format "EXEC sp_addrolemember 'db_owner', %s;" user-name)]]
+      (jdbc/execute! spec [statement])))
+  (drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (grant-roles-to-user! driver details roles user-name))
+
+(defmethod tx/drop-roles! :sqlserver
+  [driver details roles db-user]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[user-name _table-perms] roles]
+      (let [role-login (str user-name "_login")
+            role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
+            user-name (sql.tx/qualify-and-quote driver user-name)]
+        (doseq [statement [(format "EXEC sp_droprolemember %s, %s" role-name user-name)
+                           (format "REVOKE IMPERSONATE ON USER::%s FROM %s" user-name db-user)
+                           (format "DROP ROLE IF EXISTS %s;" role-name)
+                           (format "DROP USER IF EXISTS %s;" user-name)
+                           (format "DROP LOGIN %s;" role-login)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))
+    (doseq [statement [(format "EXEC sp_droprolemember 'db_owner', %s" db-user)
+                       (format "DROP USER IF EXISTS %s;" db-user)
+                       (format "DROP LOGIN %s;" db-user)]]
+      (jdbc/execute! spec [statement] {:transaction? false}))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BIT"

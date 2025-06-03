@@ -4,6 +4,28 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.55.0
+
+- `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
+
+- `GET /api/util/stats` has been renamed to `GET /api/analytics/anonymous-stats`.
+
+- `GET /api/util/bug_report_details` has been renamed to `GET /api/bug-reporting/details`.
+
+- `POST /api/util/product-feedback` has been renamed to `POST /api/product-feedback`.
+
+- `POST /api/util/entity_id` has been renamed to `POST /api/eid-translation/translate`.
+
+- `POST /api/util/password_check` has been renamed to `POST /api/session/password-check`.
+
+- `GET /api/util/logs` has been renamed to `GET /api/logger/logs`.
+
+- `GET /api/util/openapi` has been removed; you can use `GET /api/docs/openapi.json` instead, which does the same
+  thing.
+
+- `GET /api/util/diagnostic_info/connection_pool_info` has been renamed to `GET
+  /api/bug-reporting/connection-pool-details`.
+
 ## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:

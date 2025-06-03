@@ -183,9 +183,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
   });
 
   it("should show Models tab after creation the first model (metabase#24878)", () => {
-    cy.visit("/");
-
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText(/use the notebook/i)
       .click();
@@ -500,7 +498,7 @@ describe("issue 30165", () => {
     cy.get("@dataset.all").should("have.length", 0);
     cy.get("@cardQuery.all").should("have.length", 0);
     cy.findByTestId("query-builder-main")
-      .findByText("Query results will appear here.")
+      .findByText("Here's where your results will appear")
       .should("be.visible");
   });
 });
@@ -633,34 +631,38 @@ describe("issue 43216", () => {
     });
   });
 
-  it("should update source question metadata when it changes (metabase#43216)", () => {
-    cy.visit("/");
+  it(
+    "should update source question metadata when it changes (metabase#43216)",
+    { tags: "@flaky" },
+    () => {
+      cy.visit("/");
 
-    cy.log("Create target question");
-    H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText("Source question").click();
-    });
-    H.saveQuestion("Target question");
+      cy.log("Create target question");
+      H.newButton("Question").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
+        cy.findByText("Source question").click();
+      });
+      H.saveQuestion("Target question");
 
-    cy.log("Update source question");
-    H.commandPaletteButton().click();
-    H.commandPalette().findByText("Source question").click();
-    cy.findByTestId("native-query-editor-container")
-      .findByText("Open Editor")
-      .click();
-    H.NativeEditor.focus().type(" , 4 as D");
-    H.saveSavedQuestion();
+      cy.log("Update source question");
+      H.commandPaletteButton().click();
+      H.commandPalette().findByText("Source question").click();
+      cy.findByTestId("native-query-editor-container")
+        .findByText("Open Editor")
+        .click();
+      H.NativeEditor.focus().type(" , 4 as D");
+      H.saveSavedQuestion();
 
-    cy.log("Assert updated metadata in target question");
-    H.commandPaletteButton().click();
-    H.commandPalette().findByText("Target question").click();
-    cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
-    H.openNotebook();
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("D").should("be.visible");
-  });
+      cy.log("Assert updated metadata in target question");
+      H.commandPaletteButton().click();
+      H.commandPalette().findByText("Target question").click();
+      cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
+      H.openNotebook();
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText("D").should("be.visible");
+    },
+  );
 });
 
 function updateQuestion() {

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.channel.api.email :as api.email]
    [metabase.channel.email :as email]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]))

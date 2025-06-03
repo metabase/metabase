@@ -4,6 +4,8 @@ import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
 import type { ColorGetter } from "metabase/visualizations/types";
 
+import Watermark from "../../watermark.svg?component";
+
 import GaugeLabel from "./GaugeLabel";
 import GaugeNeedle from "./GaugeNeedle";
 import {
@@ -34,6 +36,7 @@ interface GaugeProps {
   gaugeLabels: GaugeLabelData[];
   center: Position;
   getColor: ColorGetter;
+  hasDevWatermark: boolean;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -44,6 +47,7 @@ export default function Gauge({
   gaugeLabels,
   center,
   getColor,
+  hasDevWatermark,
 }: GaugeProps) {
   const segmentMinValue = segments[0].min;
   const segmentMaxValue = segments[segments.length - 1].max;
@@ -166,6 +170,15 @@ export default function Gauge({
           </Group>
         </g>
       </g>
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={CHART_HEIGHT}
+          width={CHART_WIDTH}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 }

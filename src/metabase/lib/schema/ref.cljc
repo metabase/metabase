@@ -11,10 +11,10 @@
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
-   [metabase.types]
+   [metabase.types.core]
    [metabase.util.malli.registry :as mr]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 (mr/def ::field.options
   [:merge
@@ -127,11 +127,7 @@
 (lib.hierarchy/derive :segment ::ref)
 
 (mbql-clause/define-tuple-mbql-clause :metric :- ::expression/type.unknown
-  ;; String references are allowed to support legacy questions
-  ;; (see metabase.lib.convert-test/round-trip-test for examples).
-  ;; :string should be removed once the legacy questions don't have to be
-  ;; supported.
-  #_metric-id [:schema [:ref ::id/metric]])
+  #_metric-id [:schema [:ref ::id/card]])
 
 (lib.hierarchy/derive :metric ::ref)
 

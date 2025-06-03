@@ -2,8 +2,8 @@ import type { Dayjs } from "dayjs";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
 import type {
+  INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -27,7 +27,8 @@ export type DataKey =
   | SeriesDataKey
   | StackTotalDataKey
   | string
-  | typeof X_AXIS_DATA_KEY;
+  | typeof X_AXIS_DATA_KEY
+  | typeof INDEX_KEY;
 
 export type VizSettingsKey = string;
 
@@ -88,7 +89,7 @@ export type DimensionModel = {
 
 export type Datum = Record<DataKey, RowValue> & {
   [X_AXIS_DATA_KEY]: RowValue;
-  [ORIGINAL_INDEX_DATA_KEY]?: number;
+  [INDEX_KEY]?: number;
 };
 export type ChartDataset<D extends Datum = Datum> = D[];
 export type Extent = [number, number];
@@ -178,6 +179,7 @@ export type YAxisModel = {
   column: DatasetColumn;
   label?: string;
   formatter: AxisFormatter;
+  splitNumber?: number;
   isNormalized?: boolean;
 };
 

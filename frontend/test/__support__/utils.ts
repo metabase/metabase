@@ -1,10 +1,15 @@
-import type fetchMock from "fetch-mock";
+import fetchMock from "fetch-mock";
 
 import { act, waitFor } from "./ui";
 
 export const getNextId = (() => {
   let id = 0;
-  return () => ++id;
+  return (startingId?: number) => {
+    if (startingId) {
+      id = startingId;
+    }
+    return ++id;
+  };
 })();
 
 export async function delay(duration: number) {
@@ -35,3 +40,16 @@ export const waitForRequest = async (
     throw error;
   }
 };
+
+export async function findRequests(method: "PUT" | "POST" | "DELETE" | "GET") {
+  const calls = fetchMock.calls();
+  const data = calls.filter((call) => call[1]?.method === method) ?? [];
+
+  const reqs = data.map(async ([url, details]) => {
+    const body = ((await details?.body) as string) ?? "{}";
+
+    return { url: url, body: JSON.parse(body ?? "{}") };
+  });
+
+  return Promise.all(reqs);
+}

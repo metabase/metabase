@@ -1,8 +1,12 @@
-import { type ReactNode, useCallback, useEffect } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+} from "react";
 import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkLoader,
@@ -15,17 +19,18 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
 import { InteractiveDashboardProvider } from "./context";
 
@@ -51,15 +56,14 @@ export type InteractiveDashboardProps = {
   /**
    * Height of a question component when drilled from the dashboard to a question level.
    */
-  drillThroughQuestionHeight?: number;
+  drillThroughQuestionHeight?: CSSProperties["height"];
 
   /**
    * Props of a question component when drilled from the dashboard to a question level.
    */
-  drillThroughQuestionProps?: Omit<BaseInteractiveQuestionProps, "questionId"> &
-    InteractiveQuestionDefaultViewProps;
+  drillThroughQuestionProps?: DrillThroughQuestionProps;
 } & SdkDashboardDisplayProps &
-  PublicOrEmbeddedDashboardEventHandlersProps;
+  DashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
   dashboardId: initialDashboardId,
@@ -67,7 +71,6 @@ const InteractiveDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
-  withFooter = true,
   hiddenParameters = [],
   drillThroughQuestionHeight,
   plugins,
@@ -96,7 +99,6 @@ const InteractiveDashboardInner = ({
     dashboardId: initialDashboardId,
     withDownloads,
     withTitle,
-    withFooter,
     hiddenParameters,
     initialParameters,
   });
@@ -116,7 +118,7 @@ const InteractiveDashboardInner = ({
     ({ question }) =>
       getEmbeddingMode({
         question,
-        plugins,
+        plugins: plugins as InternalMetabasePluginsConfig,
       }),
     [plugins],
   );
@@ -168,7 +170,7 @@ const InteractiveDashboardInner = ({
             background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
-            withFooter={displayOptions.withFooter}
+            withFooter={false}
             theme={theme}
             getClickActionMode={getClickActionMode}
             isFullscreen={isFullscreen}

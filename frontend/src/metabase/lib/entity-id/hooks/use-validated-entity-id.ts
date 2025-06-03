@@ -3,19 +3,13 @@ import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { useTranslateEntityIdQuery } from "metabase/api/entity-id";
-import type {
-  BaseEntityId,
-  CardId,
-  CollectionId,
-  DashboardId,
-} from "metabase-types/api";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
-type SUPPORTED_ENTITIES = {
-  dashboard: DashboardId;
-  card: CardId;
-  collection: CollectionId;
-};
+import type {
+  SUPPORTED_ENTITIES,
+  ValidatedEntityIdProps,
+  ValidatedEntityIdReturned,
+} from "../types";
 
 /**
  * A hook that validates and potentially translates an entity ID.
@@ -35,26 +29,15 @@ export const useValidatedEntityId = <
 >({
   type,
   id,
-}: {
-  type: TEntity;
-  id: BaseEntityId | string | number | null | undefined;
-}):
-  | { id: TReturnedId; isLoading: false; isError: false }
-  | {
-      id: null;
-      isLoading: true;
-      isError: false;
-    }
-  | {
-      id: null;
-      isLoading: false;
-      isError: true;
-    } => {
+}: ValidatedEntityIdProps<TEntity>): ValidatedEntityIdReturned<
+  TEntity,
+  TReturnedId
+> => {
   const isEntityId = isBaseEntityID(id);
   const {
     data: entity_ids,
     isError,
-    isLoading,
+    isFetching,
   } = useTranslateEntityIdQuery(
     id && isEntityId
       ? {
@@ -73,7 +56,7 @@ export const useValidatedEntityId = <
       } as const;
     }
 
-    if (isLoading) {
+    if (isFetching) {
       return {
         id: null,
         isLoading: true,
@@ -99,5 +82,5 @@ export const useValidatedEntityId = <
 
     // something went wrong, either entity_ids is empty or the translation failed
     return { id: null, isLoading: false, isError: true } as const;
-  }, [isEntityId, isLoading, isError, entity_ids, id]);
+  }, [isEntityId, isFetching, isError, entity_ids, id]);
 };

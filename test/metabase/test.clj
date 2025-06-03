@@ -8,16 +8,14 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
+   [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.channel.email-test]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.init]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-   [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.http-client :as client]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
@@ -32,6 +30,7 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
    [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
@@ -81,7 +80,6 @@
   qp.test-util/keep-me
   qp/keep-me
   schema-migrations-test.impl/keep-me
-  sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
   test-runner.assert-exprs/keep-me
   test.redefs/keep-me
@@ -114,11 +112,14 @@
   $ids
   dataset
   db
+  driver-select
   format-name
   id
+  ident
   mbql-query
   metadata-provider
   native-query
+  normal-driver-select
   query
   run-mbql-query
   with-db
@@ -206,6 +207,8 @@
 
  [qp.test-util
   boolish->bool
+  card-with-metadata
+  card-with-updated-metadata
   card-with-source-metadata-for-query
   col
   cols
@@ -213,6 +216,7 @@
   formatted-rows+column-names
   format-rows-by
   formatted-rows
+  metadata->native-form
   nest-query
   normal-drivers
   normal-drivers-with-feature
@@ -222,9 +226,6 @@
   with-database-timezone-id
   with-report-timezone-id!
   with-results-timezone-id]
-
- [sql-jdbc.tu
-  sql-jdbc-drivers]
 
  [sql.qp-test-util
   with-native-query-testing-context]
@@ -306,7 +307,7 @@
  [tu.misc
   object-defaults
   with-clock
-  with-single-admin-user]
+  with-single-admin-user!]
 
  [u.random
   random-name

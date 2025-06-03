@@ -133,7 +133,7 @@
 (defn- format-identifier [_tag [_identifier-type components :as _args]]
   ;; don't error if the identifier has something 'suspicious' like a semicolon in it -- it's ok because we're quoting
   ;; everything
-  (binding [sql/*allow-suspicious-entities* true]
+  (binding [sql/*options* (assoc @#'sql/*options* :allow-suspicious-entities true)]
     [(str/join \. (map (fn [component]
                          ;; `:aliased` `true` => don't split dots in the middle of components
                          (sql/format-entity component {:aliased true}))
@@ -180,7 +180,9 @@
 
 (sql/register-fn! ::literal #'format-literal)
 
-(defn literal
+(def Literal "A `literal` tagged string or keyword" [:tuple [:= ::literal] :string])
+
+(mu/defn literal :- Literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
 
   We'll try to escape single quotes in the literal, unless they're already escaped (either as `''` or as `\\`, but
@@ -412,3 +414,11 @@
 (def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial sql/call :quarter))
 (def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial sql/call :year))
 (def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial sql/call :concat))
+
+(defn current-datetime-honeysql-form
+  "HoneySQL form that should be used to get the current `datetime` (or equivalent), e.g. `:%now`."
+  [db-type]
+  (case db-type
+    :h2       (with-database-type-info :%now "timestamp")
+    :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
+    :postgres (with-database-type-info :%now "timestamptz")))

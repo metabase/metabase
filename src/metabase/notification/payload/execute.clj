@@ -3,21 +3,21 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.channel.urls :as urls]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
-   [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
-   [metabase.public-settings :as public-settings]
+   [metabase.parameters.shared :as shared.params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
@@ -132,7 +132,7 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (system/site-locale) (escape-markdown-chars? dashcard))))
 
 (def ^{:private true
        :doc     "If a query has more than the number of rows specified here, we store the data to disk instead of in memory."}
@@ -148,6 +148,13 @@
     (do
       (log/debugf "Storing %d rows to disk" (:row_count qp-result))
       (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
+
+(defn- fixup-viz-settings
+  "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
+  See #58469.
+  TODO: remove this hack when it's fixed in QP."
+  [qp-result]
+  (update-in qp-result [:data :viz-settings] merge (get-in qp-result [:json_query :viz-settings])))
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -165,22 +172,23 @@
                                 :dashcard dashcard
                                 ;; TODO should this be dashcard?
                                 :type     :card
-                                :result   (qp.dashboard/process-query-for-dashcard
-                                           :dashboard-id  dashboard_id
-                                           :card-id       card-id
-                                           :dashcard-id   (u/the-id dashcard)
-                                           :context       :dashboard-subscription
-                                           :export-format :api
-                                           :parameters    parameters
-                                           :constraints   {}
-                                           :middleware    {:process-viz-settings?             true
-                                                           :js-int-to-string?                 false
-                                                           :add-default-userland-constraints? false}
-                                           :make-run      (fn make-run [qp _export-format]
-                                                            (^:once fn* [query info]
-                                                              (qp
-                                                               (qp/userland-query query info)
-                                                               nil))))})
+                                :result   (fixup-viz-settings
+                                           (qp.dashboard/process-query-for-dashcard
+                                            :dashboard-id  dashboard_id
+                                            :card-id       card-id
+                                            :dashcard-id   (u/the-id dashcard)
+                                            :context       :dashboard-subscription
+                                            :export-format :api
+                                            :parameters    parameters
+                                            :constraints   {}
+                                            :middleware    {:process-viz-settings?             true
+                                                            :js-int-to-string?                 false
+                                                            :add-default-userland-constraints? false}
+                                            :make-run      (fn make-run [qp _export-format]
+                                                             (^:once fn* [query info]
+                                                               (qp
+                                                                (qp/userland-query query info)
+                                                                nil)))))})
               result         (result-fn card_id)
               series-results (mapv (comp result-fn :id) multi-cards)]
           (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -276,19 +284,20 @@
   [creator-id :- pos-int?
    card-id :- pos-int?]
   (let [result (request/with-current-user creator-id
-                 (qp.card/process-query-for-card card-id :api
-                                                 ;; TODO rename to :notification?
-                                                 :context     :pulse
-                                                 :constraints {}
-                                                 :middleware  {:skip-results-metadata?            false
-                                                               :process-viz-settings?             true
-                                                               :js-int-to-string?                 false
-                                                               :add-default-userland-constraints? false}
-                                                 :make-run    (fn make-run [qp _export-format]
-                                                                (^:once fn* [query info]
-                                                                  (qp
-                                                                   (qp/userland-query query info)
-                                                                   nil)))))]
+                 (fixup-viz-settings
+                  (qp.card/process-query-for-card card-id :api
+                                                  ;; TODO rename to :notification?
+                                                  :context     :pulse
+                                                  :constraints {}
+                                                  :middleware  {:skip-results-metadata?            false
+                                                                :process-viz-settings?             true
+                                                                :js-int-to-string?                 false
+                                                                :add-default-userland-constraints? false}
+                                                  :make-run    (fn make-run [qp _export-format]
+                                                                 (^:once fn* [query info]
+                                                                   (qp
+                                                                    (qp/userland-query query info)
+                                                                    nil))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)

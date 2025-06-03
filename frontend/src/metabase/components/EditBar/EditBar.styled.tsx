@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
@@ -7,7 +8,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import { Icon } from "metabase/ui";
 
 export const Root = styled(FullWidthContainer, {
-  shouldForwardProp: (propName) => propName !== "admin",
+  shouldForwardProp: isPropValid,
 })<{ admin: boolean }>`
   display: flex;
   align-items: center;

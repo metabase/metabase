@@ -1,3 +1,4 @@
+import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
   InteractiveQuestion,
@@ -8,12 +9,10 @@ import {
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { modal, updateSetting } from "e2e/support/helpers";
-import {
-  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-  mockAuthProviderAndJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
@@ -389,6 +388,66 @@ describe("scenarios > embedding-sdk > styles", () => {
         expectElementToHaveNoAppliedCssRules(tag);
       }
     });
+
+    it("css variables should not leak outside of mb-wrapper", () => {
+      cy.mount(
+        <MantineProvider
+          theme={{ colors: { brand: colorTuple("rgb(255, 0, 255)") } }}
+        >
+          <Button color="brand">outside sdk provider</Button>
+
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
+          >
+            <Button color="brand">outside sdk wrapper</Button>
+
+            <InteractiveQuestion
+              questionId={ORDERS_QUESTION_ID}
+              isSaveEnabled
+            />
+          </MetabaseProvider>
+        </MantineProvider>,
+      );
+
+      cy.log(
+        "Customer's elements outside of the SDK provider should have their brand color intact",
+      );
+
+      cy.contains("button", "outside sdk provider").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 0, 255)",
+      );
+
+      cy.log(
+        "Customer's elements outside of the SDK components should have their brand color intact",
+      );
+
+      cy.contains("button", "outside sdk wrapper").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 0, 255)",
+      );
+
+      cy.log(
+        "SDK elements should have the brand color from the Metabase theme",
+      );
+
+      getSdkRoot().within(() => {
+        cy.get("button")
+          .contains("Filter")
+          .should("have.css", "color", "rgb(255, 0, 0)");
+
+        cy.findByTestId("notebook-button").click();
+
+        cy.findByRole("button", { name: "Visualize" }).should(
+          "have.css",
+          "background-color",
+          "rgb(255, 0, 0)",
+        );
+      });
+    });
   });
 });
 
@@ -425,3 +484,17 @@ function wrapBrowserDefaultFont() {
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });
 }
+
+export const colorTuple = (value: string) =>
+  [
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+  ] as const;

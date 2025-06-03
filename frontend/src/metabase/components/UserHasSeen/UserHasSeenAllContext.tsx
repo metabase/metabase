@@ -61,7 +61,7 @@ const useUserHasSeenAll = (id: string) => {
     defaultValue: EMPTY_ARRAY,
   });
 
-  useKeyPressEvent("q", () => setSeenBadges([]));
+  useKeyPressEvent("q", () => setSeenBadges?.([]));
 
   const unseenBadges = useMemo(() => {
     return badges
@@ -71,7 +71,7 @@ const useUserHasSeenAll = (id: string) => {
 
   const handleUpdate = useCallback(() => {
     if (!unseenBadges.every((b) => seenBadges.includes(b))) {
-      setSeenBadges([...seenBadges, ...unseenBadges]);
+      setSeenBadges?.([...seenBadges, ...unseenBadges]);
     }
   }, [unseenBadges, seenBadges, setSeenBadges]);
 

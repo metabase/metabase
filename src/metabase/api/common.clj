@@ -3,9 +3,9 @@
 ;; We use a custom macro called `defendpoint` for defining all endpoints. It's best illustrated with an example:
 ;;
 ;; <pre><code>
-;; (ns metabase.api.dashboard ...)
+;; (ns metabase.dashboards.api ...)
 ;;
-;; (api/defendpoint GET "/"
+;; (api/defendpoint :get "/"
 ;;  "Get `Dashboards`. With filter option `f`..."
 ;;  [f]
 ;;  {f [:maybe [:enum "all" "mine" "archived"]]}
@@ -80,10 +80,11 @@
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
    [metabase.api.open-api :as open-api]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]
@@ -313,6 +314,7 @@
    (try
      (check-403 (mi/can-read? obj))
      (catch clojure.lang.ExceptionInfo e
+       (log/error e "Read permissions failure")
        (events/publish-event! :event/read-permission-failure {:user-id    *current-user-id*
                                                               :object     obj
                                                               :has-access false})

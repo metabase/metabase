@@ -211,6 +211,11 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "cardQuery",
+    );
+    cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
   });
 
   describe("mapping targets", () => {
@@ -230,10 +235,15 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       cy.log("single breakout");
       addQuestion(singleBreakoutQuestionDetails.name);
+      H.ensureDashboardCardHasText("April 2022");
+      cy.wait("@queryMetadata");
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
       H.popover().findByText("Created At").click();
       H.saveDashboard();
+
+      cy.wait("@cardQuery");
+      H.ensureDashboardCardHasText("April 2022");
       H.filterWidget().click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
@@ -255,6 +265,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .eq(0)
         .click();
       H.saveDashboard();
+      cy.wait("@cardQuery");
+      H.ensureDashboardCardHasText("Created At: Year");
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
@@ -773,7 +785,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addTemporalUnitParameter();
       H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
       // eslint-disable-next-line no-unsafe-element-filtering
-      H.undoToastList().last().button("Auto-connect").click();
+      H.undoToastList().last().findByText("Auto-connect").click();
       H.saveDashboard();
 
       cy.log("verify data with 2 parameters");

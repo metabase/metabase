@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.sso.common :as integrations.common]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -138,7 +138,7 @@
           (with-redefs [t2/delete!
                         (fn [model & _args]
                           (when (= model :model/PermissionsGroupMembership)
-                            (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)
+                            (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
                                             {:status-code 400}))))
                         clojure.tools.logging/log*
                         (fn [_logger level _throwable msg]

@@ -46,10 +46,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
-    :model/FieldUsage
     :model/FieldValues
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -79,7 +76,6 @@
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
-    :model/TablePrivileges
     :model/TaskHistory
     :model/TimelineEvent
     :model/User
@@ -97,7 +93,7 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension"]))
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotEntity"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))

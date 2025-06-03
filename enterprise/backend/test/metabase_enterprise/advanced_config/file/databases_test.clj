@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]

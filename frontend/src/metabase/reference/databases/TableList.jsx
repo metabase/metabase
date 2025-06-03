@@ -25,7 +25,9 @@ import {
 } from "../selectors";
 
 const emptyStateData = {
-  message: t`Tables in this database will appear here as they're added`,
+  get message() {
+    return t`Tables in this database will appear here as they're added`;
+  },
   icon: "table2",
 };
 
@@ -82,7 +84,6 @@ export const separateTablesBySchema = (
 
 class TableList extends Component {
   static propTypes = {
-    style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     database: PropTypes.object.isRequired,
     hasSingleSchema: PropTypes.bool,
@@ -91,19 +92,13 @@ class TableList extends Component {
   };
 
   render() {
-    const {
-      entities,
-      style,
-      database,
-      hasSingleSchema,
-      loadingError,
-      loading,
-    } = this.props;
+    const { entities, database, hasSingleSchema, loadingError, loading } =
+      this.props;
 
     const tables = Object.values(entities);
 
     return (
-      <div style={style} className={CS.full} data-testid="table-list">
+      <div data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
           type="tables"

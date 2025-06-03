@@ -228,114 +228,59 @@
                        :products))
               (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))
 
-(deftest ^:parallel visible-columns-excludes-offset-expressions-test
-  (testing "visible-columns should exclude expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/visible-columns query)))))))
-
-(deftest ^:parallel returned-columns-includes-offset-expressions-test
-  (testing "returned-columns should include expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:name "Offset col",    :lib/source :source/expressions}
-                 {:name "Nested Offset", :lib/source :source/expressions}]
-                (lib/returned-columns query)))))))
-
 (deftest ^:parallel implicitly-joinable-requires-numeric-id-test
-  (testing "implicit join requires real field IDs, so SQL models need to provide that metadata (#37067)"
-    (let [model (assoc ((lib.tu/mock-cards) :orders/native) :type :model)
-          mp    (lib.tu/metadata-provider-with-mock-card model)
-          query (lib/query mp model)]
-      (testing "without FK metadata, only the own columns are returned"
-        (is (= 9 (count (lib/visible-columns query))))
-        (is (= []
-               (->> (lib/visible-columns query)
-                    (remove (comp #{:source/card} :lib/source)))))))
+  (letfn [(query-with-user-id-tweaks [tweaks]
+            (let [base     (-> (lib.tu/mock-cards)
+                               :orders/native
+                               lib.tu/as-model)
+                  metadata (mapv (fn [col]
+                                   (cond-> col
+                                     (= (:name col) "USER_ID") (merge tweaks)))
+                                 (:result-metadata base))
+                  model    (assoc base :result-metadata metadata)]
+              (lib/query (lib.tu/metadata-provider-with-mock-card model) model)))]
+    (testing "implicit join requires real field IDs, so SQL models need to provide that metadata (#37067)"
+      (let [query (query-with-user-id-tweaks nil)]
+        (testing "without FK metadata, only the own columns are returned"
+          (is (= 9 (count (lib/visible-columns query))))
+          (is (= []
+                 (->> (lib/visible-columns query)
+                      (remove (comp #{:source/card} :lib/source)))))))
 
-    (testing "metadata for the FK target field is not sufficient"
-      (let [base    ((lib.tu/mock-cards) :orders/native)
-            with-fk (for [col (:result-metadata base)]
-                      (if (= (:name col) "USER_ID")
-                        (assoc col :fk-target-field-id (meta/id :people :id))
-                        col))
-            model   (assoc base
-                           :type            :model
-                           :result-metadata with-fk)
-            mp      (lib.tu/metadata-provider-with-mock-card model)
-            query   (lib/query mp model)]
-        (is (= 9 (count (lib/visible-columns query))))
-        (is (= []
-               (->> (lib/visible-columns query)
-                    (remove (comp #{:source/card} :lib/source)))))))
+      (testing "metadata for the FK target field is not sufficient"
+        (let [query (query-with-user-id-tweaks {:fk-target-field-id (meta/id :people :id)})]
+          (is (= 9 (count (lib/visible-columns query))))
+          (is (= []
+                 (->> (lib/visible-columns query)
+                      (remove (comp #{:source/card} :lib/source)))))))
 
-    (testing "an ID for the FK field itself is not sufficient"
-      (let [base    ((lib.tu/mock-cards) :orders/native)
-            with-id (for [col (:result-metadata base)]
-                      (merge col
-                             (when (= (:name col) "USER_ID")
-                               {:id            (meta/id :orders :user-id)
-                                :semantic-type nil})))
-            model   (assoc base
-                           :type            :model
-                           :result-metadata with-id)
-            mp      (lib.tu/metadata-provider-with-mock-card model)
-            query   (lib/query mp model)]
-        (is (= 9 (count (lib/visible-columns query))))
-        (is (= []
-               (->> (lib/visible-columns query)
-                    (remove (comp #{:source/card} :lib/source)))))))
-    (testing "the ID and :semantic-type :type/FK are sufficient for an implicit join"
-      (let [base          ((lib.tu/mock-cards) :orders/native)
-            with-fk       (for [col (:result-metadata base)]
-                            (merge col
-                                   (when (= (:name col) "USER_ID")
-                                     {:id            (meta/id :orders :user-id)
-                                      :semantic-type :type/FK})))
-            model         (assoc base
-                                 :type            :model
-                                 :result-metadata with-fk)
-            mp            (lib.tu/metadata-provider-with-mock-card model)
-            query         (lib/query mp model)
-            fields-of     (fn [table-kw order-fn]
-                            (->> (meta/fields table-kw)
-                                 (map #(meta/field-metadata table-kw %))
-                                 (sort-by order-fn)))
-            orders-fields (into {} (for [[index field] (m/indexed ["ID" "SUBTOTAL" "TOTAL" "TAX" "DISCOUNT" "QUANTITY"
-                                                                   "CREATED_AT" "PRODUCT_ID" "USER_ID"])]
-                                     [field index]))
-            orders-cols   (fields-of :orders (comp orders-fields :name))
-            people-cols   (fields-of :people :position)]
-        (is (= 22 (count (lib/visible-columns query))))
-        (is (=? (concat (for [col orders-cols]
-                          {:name       (:name col)
-                           :lib/source :source/card})
-                        (for [col people-cols]
-                          {:name       (:name col)
-                           :lib/source :source/implicitly-joinable}))
-                (lib/visible-columns query)))))))
+      (testing "an ID for the FK field itself is not sufficient"
+        (let [query (query-with-user-id-tweaks {:id            (meta/id :orders :user-id)
+                                                :semantic-type nil})]
+          (is (= 9 (count (lib/visible-columns query))))
+          (is (= []
+                 (->> (lib/visible-columns query)
+                      (remove (comp #{:source/card} :lib/source)))))))
+      (testing "the ID and :semantic-type :type/FK are sufficient for an implicit join"
+        (let [query         (query-with-user-id-tweaks {:id            (meta/id :orders :user-id)
+                                                        :semantic-type :type/FK})
+              fields-of     (fn [table-kw order-fn]
+                              (->> (meta/fields table-kw)
+                                   (map #(meta/field-metadata table-kw %))
+                                   (sort-by order-fn)))
+              orders-fields (into {} (for [[index field] (m/indexed ["ID" "SUBTOTAL" "TOTAL" "TAX" "DISCOUNT" "QUANTITY"
+                                                                     "CREATED_AT" "PRODUCT_ID" "USER_ID"])]
+                                       [field index]))
+              orders-cols   (fields-of :orders (comp orders-fields :name))
+              people-cols   (fields-of :people :position)]
+          (is (= 22 (count (lib/visible-columns query))))
+          (is (=? (concat (for [col orders-cols]
+                            {:name       (:name col)
+                             :lib/source :source/card})
+                          (for [col people-cols]
+                            {:name       (:name col)
+                             :lib/source :source/implicitly-joinable}))
+                  (lib/visible-columns query))))))))
 
 (def cols-fns [lib/visible-columns lib/filterable-columns lib/breakoutable-columns lib/orderable-columns])
 

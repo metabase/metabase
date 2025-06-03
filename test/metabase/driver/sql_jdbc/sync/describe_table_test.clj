@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql :as driver.sql]
@@ -517,8 +517,8 @@
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
-                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
-                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
                  (mysql-test/db->fields (mt/db)))))
         (testing "Nested field columns are correct"
           (is (= #{{:name              "jsoncol → mybool"
@@ -576,7 +576,7 @@
                                                                    []
 
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
-                    metadata-queries/nested-field-sample-limit 4]
+                    table-rows-sample/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
           (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))
@@ -634,8 +634,8 @@
           (tx/destroy-db! driver/*driver* dataset))))))
 
 (deftest describe-table-indexes-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info]})
     (do-with-temporary-dataset
      (mt/dataset-definition "indexes"
                             ["single_index"
@@ -670,8 +670,8 @@
     false))
 
 (deftest describe-table-indexes-unique-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::unique-index)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::unique-index]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-unique"
@@ -687,8 +687,8 @@
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index))))))))))
 
 (deftest describe-table-indexes-hashed-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-hashed"
@@ -712,8 +712,8 @@
   true)
 
 (deftest describe-table-indexes-clustered-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::clustered-index)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::clustered-index]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-clustered"
@@ -741,8 +741,8 @@
   true)
 
 (deftest describe-table-indexes-conditional-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::conditional-index)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::conditional-index]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-conditional"

@@ -2,14 +2,13 @@
   "/api/alert endpoints.
 
   Deprecated: will soon be migrated to notification APIs."
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.config :as config]
-   [metabase.notification.api.notification :as api.notification]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
+   [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -86,7 +85,7 @@
   (let [user-id (if api/*is-superuser?*
                   user_id
                   api/*current-user-id*)]
-    (->> (api.notification/list-notifications
+    (->> (notification.api/list-notifications
           {:payload_type   :notification/card
            :legacy-user-id user-id
            :legacy-active  (not archived)})
@@ -97,7 +96,7 @@
   "Fetch an alert by ID"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (api.notification/get-notification id)
+  (-> (notification.api/get-notification id)
       api/read-check
       notification->pulse))
 
@@ -105,5 +104,5 @@
   "For users to unsubscribe themselves from the given alert."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api.notification/unsubscribe-user! id api/*current-user-id*)
+  (notification.api/unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)

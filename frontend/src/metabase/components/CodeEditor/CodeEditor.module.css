@@ -1,0 +1,12 @@
+.codeEditor {
+  :global {
+    .cm-gutter {
+      background-color: var(--mb-color-brand-light);
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.highlight {
+  background-color: var(--mb-color-brand-light);
+}

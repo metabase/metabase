@@ -6,6 +6,7 @@ import { t } from "ttag";
 import type { ColorGetter } from "metabase/visualizations/types";
 
 import { formatNumber } from "../../lib/numbers";
+import Watermark from "../../watermark.svg?component";
 import { Text } from "../Text";
 
 import { CheckMarkIcon } from "./CheckMarkIcon";
@@ -39,12 +40,14 @@ export interface ProgressBarProps {
     format: any;
   };
   getColor: ColorGetter;
+  hasDevWatermark?: boolean;
 }
 
 const ProgressBar = ({
   data,
   settings: { color, format },
   getColor,
+  hasDevWatermark = false,
 }: ProgressBarProps) => {
   const colors = getColors(data, color || getColor("accent1"));
   const barWidth = layout.width - layout.margin.left - layout.margin.right;
@@ -153,6 +156,15 @@ const ProgressBar = ({
           {t`Goal ${formatNumber(data.goal, format)}`}
         </Text>
       </Group>
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={layout.height}
+          width={layout.width}
+          preserveAspectRatio="xMidYMid slice"
+        />
+      )}
     </svg>
   );
 };

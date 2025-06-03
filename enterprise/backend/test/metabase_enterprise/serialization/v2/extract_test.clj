@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
@@ -1269,7 +1269,7 @@
                                                                                                     :id        mapping-id
                                                                                                     :dimension dimension}}}}})}}}]
 
-      (testing "selecting a collection includes settings and data model by default"
+      (testing "selecting a collection includes settings metabot and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
                (->> {:targets [["Collection" coll1-id]]}
                     extract/extract
@@ -1696,3 +1696,110 @@
                   :tabs [{:name "Tab 1"}
                          {:name "Tab 2"}]}]
                 (by-model "Dashboard" extraction)))))))
+
+(deftest metabot-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [:model/Card {model-id :id
+                    model-eid :entity_id} {:name "AI Model"
+                                           :type :model}
+
+       :model/Metabot {metabot-id :id
+                       metabot-eid :entity_id} {:name "Test Metabot"
+                                                :description "A test metabot"}
+
+       :model/MetabotEntity {metabot-entity-eid :entity_id} {:metabot_id metabot-id
+                                                             :model :dataset
+                                                             :model_id model-id}]
+
+      (testing "metabot extraction"
+        (let [ser (ts/extract-one "Metabot" metabot-id)]
+          (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
+                   :name "Test Metabot"
+                   :description "A test metabot"
+                   :entity_id metabot-eid
+                   :entities [{:model "dataset"
+                               :model_id model-eid
+                               :entity_id metabot-entity-eid
+                               :serdes/meta [{:model "Metabot" :id metabot-eid} {:model "MetabotEntity" :id metabot-entity-eid}]
+                               :created_at string?}]
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "metabot depends on its model entities"
+            (is (= #{[{:model "Card" :id model-eid}]}
+                   (set (serdes/dependencies ser))))))))))
+
+(deftest metabot-collection-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [:model/Collection {model-id :id
+                          model-eid :entity_id} {:name "AI Model"}
+
+       :model/Metabot {metabot-id :id
+                       metabot-eid :entity_id} {:name "Test Metabot"
+                                                :description "A test metabot"}
+
+       :model/MetabotEntity {metabot-entity-eid :entity_id} {:metabot_id metabot-id
+                                                             :model :collection
+                                                             :model_id model-id}]
+
+      (testing "metabot extraction"
+        (let [ser (ts/extract-one "Metabot" metabot-id)]
+          (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
+                   :name "Test Metabot"
+                   :description "A test metabot"
+                   :entity_id metabot-eid
+                   :entities [{:model "collection"
+                               :model_id model-eid
+                               :entity_id metabot-entity-eid
+                               :serdes/meta [{:model "Metabot" :id metabot-eid} {:model "MetabotEntity" :id metabot-entity-eid}]
+                               :created_at string?}]
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "metabot depends on its model entities"
+            (is (= #{[{:model "Collection" :id model-eid}]}
+                   (set (serdes/dependencies ser))))))))))
+
+(deftest visualizer-dashboard-card-settings-test
+  (testing "visualizer settings transform entity IDs <-> card IDs"
+    (let [card-entity-id "WcMlLFNVcy0iO49mKW3WH"
+          card-id 621]
+      (with-redefs [serdes/*import-fk* (fn [_entity-id _model]
+                                         card-id)
+                    serdes/*export-fk* (fn [_card-id _model]
+                                         card-entity-id)]
+        (testing "transforms sourceId in column mappings"
+          (let [input {:visualization
+                       {:columnValuesMapping
+                        {:COLUMN_1 [{:sourceId (str "card:" card-entity-id)
+                                     :originalName "CREATED_AT"
+                                     :name "COLUMN_1"}]
+                         :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
+                expected {:visualization
+                          {:columnValuesMapping
+                           {:COLUMN_1 [{:sourceId (str "card:" card-id)
+                                        :originalName "CREATED_AT"
+                                        :name "COLUMN_1"}]
+                            :DIMENSION [(str "$_card:" card-id "_name")]}}}
+                result (serdes/import-visualizer-settings input)]
+            (is (= expected result))))
+
+        (testing "transforms sourceId in column mappings"
+          (let [input {:visualization
+                       {:columnValuesMapping
+                        {:COLUMN_1 [{:sourceId (str "card:" card-id)
+                                     :originalName "CREATED_AT"
+                                     :name "COLUMN_1"}]
+                         :DIMENSION [(str "$_card:" card-id "_name")]}}}
+                expected {:visualization
+                          {:columnValuesMapping
+                           {:COLUMN_1 [{:sourceId (str "card:" card-entity-id)
+                                        :originalName "CREATED_AT"
+                                        :name "COLUMN_1"}]
+                            :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
+                result (serdes/export-visualizer-settings input)]
+            (is (= expected result))))))))

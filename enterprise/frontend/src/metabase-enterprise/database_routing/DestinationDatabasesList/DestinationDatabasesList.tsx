@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
 import { useListDatabasesQuery } from "metabase/api";
@@ -61,7 +61,9 @@ export const DestinationDatabasesList = ({
                 td="underline"
                 to={Urls.viewDestinationDatabases(primaryDatabaseId)}
               >
-                View all {destinationDatabases.length}
+                {c(
+                  "{0} is a number. This text is short for 'View all N databases.'",
+                ).t`View all ${destinationDatabases.length}`}
               </Text>
             )}
           </>
@@ -105,7 +107,7 @@ const DestinationDatabasesListItem = ({
             component={ForwardRefLink}
             to={Urls.editDestinationDatabase(primaryDatabaseId, database.id)}
           >
-            Edit
+            {t`Edit`}
           </Menu.Item>
           {isAdmin && (
             <Menu.Item
@@ -115,7 +117,7 @@ const DestinationDatabasesListItem = ({
                 database.id,
               )}
             >
-              Remove
+              {t`Remove`}
             </Menu.Item>
           )}
         </Menu.Dropdown>

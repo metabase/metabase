@@ -57,31 +57,34 @@ export function expressionParts(
 }
 
 export function expressionClause(
+  parts: ExpressionParts | ExpressionArg,
+): ExpressionClause;
+export function expressionClause(
   operator: ExpressionOperator,
-  args: (ExpressionArg | AggregationClause | ExpressionClause | FilterClause)[],
-  options: ExpressionOptions | null = null,
+  args: (
+    | ExpressionParts
+    | ExpressionArg
+    | AggregationClause
+    | ExpressionClause
+    | FilterClause
+  )[],
+  options?: ExpressionOptions | null,
+): ExpressionClause;
+export function expressionClause(
+  operatorOrParts: ExpressionOperator | ExpressionParts | ExpressionArg,
+  args?: (
+    | ExpressionParts
+    | ExpressionArg
+    | AggregationClause
+    | ExpressionClause
+    | FilterClause
+  )[],
+  options?: ExpressionOptions | null,
 ): ExpressionClause {
-  return ML.expression_clause(operator, args, options);
-}
-
-export function expressionClauseForLegacyExpression(
-  query: Query,
-  stageIndex: number,
-  mbql: any,
-): ExpressionClause {
-  return ML.expression_clause_for_legacy_expression(query, stageIndex, mbql);
-}
-
-export function legacyExpressionForExpressionClause(
-  query: Query,
-  stageIndex: number,
-  expressionClause: ExpressionClause | AggregationClause | FilterClause,
-): any {
-  return ML.legacy_expression_for_expression_clause(
-    query,
-    stageIndex,
-    expressionClause,
-  );
+  if (args === undefined && options === undefined) {
+    return ML.expression_clause(operatorOrParts);
+  }
+  return ML.expression_clause(operatorOrParts, args, options ?? null);
 }
 
 export type ExpressionMode = "expression" | "aggregation" | "filter";
@@ -89,14 +92,14 @@ export function diagnoseExpression(
   query: Query,
   stageIndex: number,
   expressionMode: ExpressionMode,
-  mbql: any,
+  expression: ExpressionClause,
   expressionIndex?: number,
 ): ErrorWithMessage | null {
   return ML.diagnose_expression(
     query,
     stageIndex,
     expressionMode,
-    mbql,
+    expression,
     expressionIndex,
   );
 }

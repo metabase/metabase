@@ -924,18 +924,6 @@ class Question {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
 
-    // If the card has a top-level entity_id, use that. Otherwise, use the one on the query info.
-    // If neither of those exists, synthesize a random one.
-    const innerEntityIdPath = ["dataset_query", "info", "card-entity-id"];
-    const entity_id =
-      card.entity_id || getIn(card, innerEntityIdPath) || Lib.randomIdent();
-
-    // Then set both locations.
-    card = chain(card)
-      .assoc("entity_id", entity_id)
-      .assocIn(innerEntityIdPath, entity_id)
-      .value();
-
     return new Question(card, metadata, parameterValues);
   }
 }

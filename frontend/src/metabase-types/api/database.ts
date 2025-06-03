@@ -24,7 +24,9 @@ export type DatabaseFeature =
   | "expression-literals"
   | "expressions"
   | "expressions/date"
+  | "expressions/datetime"
   | "expressions/integer"
+  | "expressions/float"
   | "expressions/text"
   | "native-parameters"
   | "nested-queries"
@@ -46,6 +48,7 @@ export type DatabaseFeature =
   | "native-requires-specified-collection"
   | "window-functions/offset"
   | "distinct-where"
+  | "saved-question-sandboxing"
   | "split-part";
 
 export interface Database extends DatabaseData {

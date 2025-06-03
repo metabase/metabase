@@ -44,7 +44,7 @@ export const AddFilterParameterButton = () => {
   useRegisterShortcut(
     [
       {
-        id: "add-filter",
+        id: "dashboard-add-filter",
         perform: () =>
           isOpened
             ? dispatch(hideAddParameterPopover())

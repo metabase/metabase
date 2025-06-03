@@ -1,1 +1,1 @@
-export { default } from "./AdminContentTable";
+export * from "./AdminContentTable";

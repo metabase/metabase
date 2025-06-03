@@ -1,12 +1,10 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
@@ -15,7 +13,9 @@
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLTimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -38,21 +38,21 @@
                        fk-metadata))))))))
 
 (deftest ^:parallel table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (is (= [["20th Century Cafe"]
             ["25°"]
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                    [(t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                    (constantly conj))
+           (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                     [(t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                     (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
                 (take 5))))))
 
 (deftest ^:parallel table-rows-seq-test
-  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
             {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
             {:name "The Apple Pan", :price 2, :category_id 11, :id 3}
@@ -116,7 +116,7 @@
 
 (deftest ^:parallel splice-parameters-mbql-string-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/$ids venues
         (testing "splicing a string"
           (test-spliced-count-of :venues [:starts-with $name "Sushi"] 3)
@@ -125,7 +125,7 @@
 
 (deftest ^:parallel splice-parameters-mbql-number-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/$ids venues
         (testing "splicing an integer"
           (test-spliced-count-of :venues [:= $price 3] 13))
@@ -134,14 +134,14 @@
 
 (deftest ^:parallel splice-parameters-mbql-nil-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/$ids venues
         (testing "splicing nil"
           (test-spliced-count-of :venues [:is-null $price] 0))))))
 
 (deftest ^:parallel splice-parameters-mbql-boolean-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/dataset places-cam-likes
         (mt/$ids places
           (testing "splicing a boolean"
@@ -149,15 +149,14 @@
 
 (deftest ^:parallel splice-parameters-mbql-date-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/$ids checkins
         (testing "splicing a date"
           (test-spliced-count-of :checkins [:= $date "2014-03-05"] 3))))))
 
 (deftest ^:parallel splice-parameters-mbql-time-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (set/intersection (sql-jdbc.tu/normal-sql-jdbc-drivers)
-                                       (mt/normal-drivers-with-feature :test/time-type))
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :+features [:test/time-type]})
       (testing "splicing a time"
         (mt/dataset time-test-data
           (mt/$ids users
@@ -169,10 +168,9 @@
                  (driver/connection-properties driver))))
 
 (deftest syncable-schemas-with-schema-filters-test
-  (mt/test-drivers (set (for [driver (set/intersection (sql-jdbc.tu/sql-jdbc-drivers)
-                                                       (mt/normal-drivers-with-feature :actions))
-                              :when  (driver.u/find-schema-filters-prop driver)]
-                          driver))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:actions]
+                                             :+conn-props ["schema-filters"]})
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
       (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
                                                              (fn [metadata]
@@ -207,23 +205,18 @@
                 (is (not (contains? syncable fake-schema-name)))))))))))
 
 (deftest ^:parallel uuid-filtering-test
-  (mt/test-drivers (set/intersection
-                    (mt/sql-jdbc-drivers)
-                    (mt/normal-drivers-with-feature :uuid-type))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :+features [:uuid-type]})
     (let [uuid (random-uuid)
           uuid-query (mt/native-query {:query (format "select cast('%s' as %s) as x"
                                                       uuid
-                                                      (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})
-          results (qp/process-query uuid-query)
-          result-metadata (get-in results [:data :results_metadata :columns])
-          col-metadata (first result-metadata)]
-      (is (= :type/UUID (:base_type col-metadata)))
-      (mt/with-temp [:model/Card card {:type :model
-                                       :result_metadata result-metadata
-                                       :dataset_query uuid-query}]
-        (let [model-query {:database (mt/id)
+                                                      (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})]
+      (mt/with-temp [:model/Card card (-> (mt/card-with-source-metadata-for-query uuid-query)
+                                          (assoc :type :model))]
+        (let [col-metadata (first (:result_metadata card))
+              model-query {:database (mt/id)
                            :type :query
                            :query {:source-table (str "card__" (:id card))}}]
+          (is (= :type/UUID (:base_type col-metadata)))
           (are [expected filt]
                (= expected
                   (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
@@ -275,3 +268,9 @@
                     (sql.qp/->honeysql
                      driver/*driver*
                      [:= (:field_ref col-metadata) uuid])))))))))
+
+(deftest query-canceled-test?
+  (testing "walks a chain of exceptions"
+    (let [e (Exception. (Exception. (Exception. (SQLTimeoutException.))))]
+      (testing "checks for SQLTimeoutException as the default case"
+        (is (true? (driver/query-canceled? :sql-jdbc e)))))))

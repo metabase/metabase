@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import * as jose from "jose";
+import { SignJWT } from "jose";
 import { useMemo } from "react";
 
 import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
@@ -21,10 +21,9 @@ export const getStorybookSdkAuthConfigForUser = (
   user: keyof typeof USERS = "normal",
 ): MetabaseAuthConfig => ({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
-      const signedUserData = await new jose.SignJWT({
+      const jwt = await new SignJWT({
         email: USERS[user].email,
         exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
       })
@@ -32,17 +31,10 @@ export const getStorybookSdkAuthConfigForUser = (
         .setIssuedAt()
         .setExpirationTime(Math.round(Date.now() / 1000) + 10 * 60) // token expiration time, e.g., "1 day"
         .sign(secret);
-
-      const ssoUrl = new URL("/auth/sso", METABASE_INSTANCE_URL);
-      ssoUrl.searchParams.set("jwt", signedUserData);
-      ssoUrl.searchParams.set("token", "true");
-
-      const response = await fetch(ssoUrl, { method: "GET" });
-
-      return response.json();
+      return { jwt };
     } catch (e) {
       console.error("Failed to generate JWT", e);
-      return `Failed to generate JWT for storybook: ${e}`;
+      throw new Error(`Failed to generate JWT for storybook: ${e}`);
     }
   },
 });
@@ -53,15 +45,22 @@ export const storybookSdkAuthDefaultConfig =
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
-
+  const locale = context.globals.locale;
   const user = context.globals.user;
+
+  const key = `${user}-${locale}`;
 
   const authConfig = useMemo(() => {
     return getStorybookSdkAuthConfigForUser(user);
   }, [user]);
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} key={user}>
+    <MetabaseProvider
+      authConfig={authConfig}
+      theme={theme}
+      key={key}
+      locale={locale}
+    >
       <Story />
     </MetabaseProvider>
   );

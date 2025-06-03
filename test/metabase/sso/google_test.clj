@@ -43,6 +43,7 @@
 (deftest allow-autocreation-test
   (with-no-sso-google-token!
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+      #_{:clj-kondo/ignore [:equals-true]}
       (are [allowed? email] (= allowed?
                                (#'google/autocreate-user-allowed-for-email? email))
         true  "cam@metabase.com"

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
@@ -313,3 +314,56 @@
                 (is (= second-row (ctd/rows-without-index (qp/process-query (get-mbql* :d32 "2019-11-30"))))))
               (testing "second row (DateTime64 field match)"
                 (is (= second-row (ctd/rows-without-index (qp/process-query (get-mbql* :dt64 "2019-11-30T23:00:00")))))))))))))
+
+(deftest ^:parallel variable-filter-with-question-mark-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a variable filter that includes a question mark will work as expected"
+      (let [uuid (str (java.util.UUID/randomUUID))]
+        (is (= [["?"]]
+               (mt/rows (qp/process-query
+                         {:database (mt/id)
+                          :type "native"
+                          :native {:collection "products"
+                                   :template-tags
+                                   {:x {:id uuid
+                                        :default "Gizmo"
+                                        :name "x"
+                                        :display-name "X"
+                                        :type "text"}}
+                                   :query  "select '?' from test_data.products where category = {{x}} limit 1"}
+                          :parameters [{:type "category"
+                                        :value "Gizmo"
+                                        :target ["variable" ["template-tag" "x"]]
+                                        :id uuid}]}))))))))
+
+(deftest clickhouse-native-query-with-uuid-filter-test
+  (mt/test-driver :clickhouse
+    (mt/dataset
+      (mt/dataset-definition "uuid_filter_db"
+                             ["uuid_filter_table"
+                              [{:field-name "uuid"
+                                :base-type {:native "UUID"}
+                                :semantic-type :type/PK}
+                               {:field-name "value"
+                                :base-type :type/Integer}]
+                              [[#uuid "89c77143-0c9a-4686-b241-5b21b9ab44f1" 10]
+                               [#uuid "89c77143-0c9a-4686-b241-5b21b9ab44f2" 20]]])
+      (let [query {:database   (mt/id)
+                   :type       :native
+                   :native     {:query         "select sum(value) from `uuid_filter_db`.`uuid_filter_table` where {{uuid}}"
+                                :template-tags {"uuid" {:type         :dimension
+                                                        :dimension    ["field" (mt/id :uuid_filter_table :uuid) nil]
+                                                        :default      ["89c77143-0c9a-4686-b241-5b21b9ab44f2"]
+                                                        :name         "uuid"
+                                                        :display-name "UUID"
+                                                        :widget-type  "id"}}}
+                   :parameters [{:type   "id"
+                                 :target [:dimension [:template-tag "uuid"]]
+                                 :value  ["89c77143-0c9a-4686-b241-5b21b9ab44f2"]}]}]
+        (is (= [[20]]
+               (mt/formatted-rows [int]
+                                  (qp/process-query query))))
+        (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
+                    "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('89c77143-0c9a-4686-b241-5b21b9ab44f2' AS UUID))")
+               (:query (qp.compile/compile-with-inline-parameters query))))))))
+

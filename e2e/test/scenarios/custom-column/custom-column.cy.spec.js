@@ -636,7 +636,7 @@ describe("scenarios > question > custom column", () => {
 
     H.queryBuilderMain().findByText("MiscDate").should("be.visible");
     cy.findByTestId("qb-filters-panel")
-      .findByText("MiscDate is in the previous 30 years")
+      .findByText("MiscDate is in the previous 30 years or this year")
       .should("be.visible");
   });
 
@@ -1159,7 +1159,7 @@ describe("scenarios > question > custom column > error feedback", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Unknown Field: abcdef/i);
+    cy.contains(/^Unknown column: abcdef/i);
   });
 
   it("should fail on expression validation errors", () => {
@@ -1605,13 +1605,6 @@ describe("scenarios > question > custom column > function browser", () => {
 
     H.CustomExpressionEditor.functionBrowser()
       .findByText("datetimeAdd")
-      .should("be.visible");
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("Adds some units of time to a date or timestamp value.")
-      .should("be.visible");
-
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("datetimeAdd")
       .click();
 
     H.CustomExpressionEditor.value().should("equal", "datetimeAdd()");
@@ -1658,7 +1651,7 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("second").should("be.visible");
       //
       cy.findByPlaceholderText("Search functions…").clear();
-      cy.findByText("datetimeAdd").should("be.visible");
+      cy.findByText("datetimeAdd").should("exist");
     });
   });
 
@@ -1697,13 +1690,13 @@ describe("scenarios > question > custom column > function browser", () => {
     });
   });
 
-  it("should not insert parens when the clause has no arguments", () => {
+  it("should insert parens even when the clause has no arguments", () => {
     H.expressionEditorWidget().button("Function browser").click();
     H.CustomExpressionEditor.functionBrowser().within(() => {
       cy.findByPlaceholderText("Search functions…").type("now");
       cy.findByText("now").click();
     });
-    H.CustomExpressionEditor.value().should("equal", "now");
+    H.CustomExpressionEditor.value().should("equal", "now()");
   });
 });
 

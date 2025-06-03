@@ -12,11 +12,18 @@
 #?(:clj
    (set! *warn-on-reflection* true))
 
-(defn- json-parse
-  "Parses a JSON string in Clojure or ClojureScript into  "
+#?(:cljs
+   (defn- json-parse
+     "Parses a JSON string in Clojure or ClojureScript into  "
+     [x]
+     (js->clj (js/JSON.parse x))))
+
+(defn- json-roundtrip
+  "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
+  Does nothing in CLJS."
   [x]
-  #?(:cljs (js->clj (js/JSON.parse x))
-     :clj (json/decode x)))
+  #?(:cljs x
+     :clj (json/decode (json/encode x))))
 
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
@@ -84,7 +91,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (mapv #(nth row %) column-indexes)
+                  (let [grouping-key (json-roundtrip (mapv #(nth row %) column-indexes))
                         values (mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
@@ -93,36 +100,40 @@
       (transient {})
       pivot-data-without-primary))))
 
-(defn- collapse-level
-  "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
-  of the root, etc."
-  [tree level]
-  (m/map-vals
-   (if (= level 1)
-     #(assoc % :isCollapsed true)
-     #(update % :children (fn [subtree] (collapse-level subtree (dec level)))))
-   tree))
+#?(:cljs
+   (defn- collapse-level
+     "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
+     of the root, etc."
+     [tree level]
+     (m/map-vals
+      (if (= level 1)
+        #(assoc % :isCollapsed true)
+        #(update % :children (fn [subtree] (collapse-level subtree (dec level)))))
+      tree)))
 
-(defn- add-is-collapsed
-  "Annotates a row tree with :isCollapsed values, based on the contents of
-  collapsed-subtotals"
-  [tree collapsed-subtotals]
-  (let [parsed-collapsed-subtotals (map json-parse collapsed-subtotals)]
-    (reduce
-     (fn [tree collapsed-subtotal]
-       (cond
-         ;; A plain integer represents an entire level of the tree which is
-         ;; collapsed (1-indexed)
-         (int? collapsed-subtotal)
-         (collapse-level tree collapsed-subtotal)
+#?(:cljs
+   (defn- add-is-collapsed
+     "Annotates a row tree with :isCollapsed values, based on the contents of
+      collapsed-subtotals"
+     [tree collapsed-subtotals]
+     (let [parsed-collapsed-subtotals (map json-parse collapsed-subtotals)]
+       (reduce
+        (fn [tree collapsed-subtotal]
+          (cond
+             ;; A plain integer represents an entire level of the tree which is
+             ;; collapsed (1-indexed)
+            (int? collapsed-subtotal)
+            (collapse-level tree collapsed-subtotal)
 
-         ;; A seq represents a specific path in the tree which is collapsed
-         (sequential? collapsed-subtotal)
-         (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
-                              :isCollapsed)]
-           (assoc-in tree key-path true))))
-     tree
-     parsed-collapsed-subtotals)))
+             ;; A seq represents a specific path in the tree which is collapsed
+            (sequential? collapsed-subtotal)
+            (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
+                                 :isCollapsed)]
+              (if-not (nil? (get-in tree key-path))
+                (assoc-in tree key-path true)
+                tree))))
+        tree
+        parsed-collapsed-subtotals))))
 
 (defn- add-path-to-tree
   "Adds a path of values to a row or column tree. Each level of the tree is an
@@ -130,7 +141,10 @@
   {:children (ordered-map/ordered-map)}."
   [path tree]
   (if (seq path)
-    (let [v (first path)]
+    ;; In `add-is-collapsed` we parse JSON from the viz settings to determine
+    ;; the path of values to collapse. So we have to roundtrip values from the QP
+    ;; to JSON and back to make sure their types match.
+    (let [v (json-roundtrip (first path))]
       (update tree v
               (fn [node]
                 (let [subtree (or (:children node) (ordered-map/ordered-map))]
@@ -151,7 +165,7 @@
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (select-indexes row col-and-row-indexes)
+       (let [value-key  (json-roundtrip (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (into []
                               (map-indexed
@@ -214,19 +228,20 @@
              tree))
 
 ;; TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
-(defn- filter-collapsed-subtotals
-  [row-indexes settings col-settings]
-  (let [all-collapsed-subtotals (-> settings :pivot_table.collapsed_rows :value)
-        pivot-row-settings (map #(nth col-settings %) row-indexes)
-        column-is-collapsible? (map #(not= false (:pivot_table.column_show_totals %)) pivot-row-settings)]
-    ;; A path can't be collapsed if subtotals are turned off for that column
-    (filter (fn [path-or-length]
-              (let [path-or-length (json-parse path-or-length)
-                    length (if (sequential? path-or-length)
-                             (count path-or-length)
-                             path-or-length)]
-                (nth column-is-collapsible? (dec length) false)))
-            all-collapsed-subtotals)))
+#?(:cljs
+   (defn- filter-collapsed-subtotals
+     [row-indexes settings col-settings]
+     (let [all-collapsed-subtotals (-> settings :pivot_table.collapsed_rows :value)
+           pivot-row-settings (map #(nth col-settings %) row-indexes)
+           column-is-collapsible? (map #(not= false (:pivot_table.column_show_totals %)) pivot-row-settings)]
+       ;; A path can't be collapsed if subtotals are turned off for that column
+       (filter (fn [path-or-length]
+                 (let [path-or-length (json-parse path-or-length)
+                       length (if (sequential? path-or-length)
+                                (count path-or-length)
+                                path-or-length)]
+                   (nth column-is-collapsible? (dec length) false)))
+               all-collapsed-subtotals))))
 
 (defn- postprocess-tree
   "Converts a tree of sorted maps to a tree of vectors. This allows the tree to
@@ -251,10 +266,9 @@
 
   Takes raw pivot data and generates hierarchical tree structures for both rows
   and columns, along with a lookup map for cell values."
+  #_{:clj-kondo/ignore [:unused-binding]}
   [rows cols row-indexes col-indexes val-indexes settings col-settings]
-  (let [collapsed-subtotals (filter-collapsed-subtotals row-indexes settings col-settings)
-        ; rows (get-rows-from-pivot-data pivot-data row-indexes col-indexes)
-        {:keys [row-tree col-tree]}
+  (let [{:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
            (let [row-path (select-indexes row row-indexes)
@@ -264,7 +278,11 @@
          {:row-tree (ordered-map/ordered-map)
           :col-tree (ordered-map/ordered-map)}
          rows)
-        collapsed-row-tree (add-is-collapsed row-tree collapsed-subtotals)
+        ;; Only collapse row tree on the FE (in CLJS); keep it uncollapsed for exports (in CLJ)
+        collapsed-row-tree #?(:cljs (add-is-collapsed
+                                     row-tree
+                                     (filter-collapsed-subtotals row-indexes settings col-settings))
+                              :clj row-tree)
         row-sort-orders (sort-orders-from-settings col-settings row-indexes)
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
@@ -327,79 +345,85 @@
 (defn- create-subtotal-node
   "Creates a subtotal node for the given row item."
   [row-item]
-  {:value (i18n/tru "Totals for {0}" (:value row-item))
-   :rawValue (:rawValue row-item)
-   :span 1
-   :isSubtotal true
-   :children []})
+  (let [subtotal-val (or (get-in row-item [:value :xlsx-formatted-value])
+                         (:value row-item))]
+    {:value (i18n/tru "Totals for {0}" subtotal-val)
+     :rawValue (:rawValue row-item)
+     :span 1
+     :isSubtotal true
+     :children []}))
 
-(defn- should-create-subtotal?
-  "Determines if a subtotal should be created based on settings and row structure."
-  [is-subtotal-enabled should-show-subtotal]
-  (and is-subtotal-enabled should-show-subtotal))
+(defn- subtotal-permitted?
+  "Returns true if subtotals are enabled for this column and visible for this row."
+  [subtotal-enabled-for-col? visible?]
+  (and subtotal-enabled-for-col? visible?))
+
+(defn- subtotal-visible?
+  "Determines whether a subtotal should be shown for a given row."
+  [row-item settings]
+  (let [condense? (true? (:pivot.condense_duplicate_totals settings true))
+        child-count (count (:children row-item))]
+    (or (> child-count 1)
+        (not condense?)
+        (:isCollapsed row-item))))
 
 (declare add-subtotal)
 
 (defn- process-children
   "Recursively processes children nodes to add subtotals."
-  [children rest-subtotal-settings should-show-fn]
+  [children remaining-col-settings settings]
   (persistent!
    (reduce (fn [acc child]
              (if (seq (:children child))
                (add-subtotal child
-                             rest-subtotal-settings
-                             (should-show-fn child)
-                             acc)
+                             remaining-col-settings
+                             (subtotal-visible? child settings)
+                             acc
+                             settings)
                (conj! acc child)))
-           (transient []) children)))
+           (transient [])
+           children)))
 
 (defn- add-subtotal
   "Adds subtotal nodes to a row item based on subtotal settings.
-   Returns a sequence of nodes (the original node and possibly a subtotal node).
-  `transient-row` is the accumulator where results are added."
-  [row-item subtotal-settings-by-col should-show-subtotal transient-row]
-  (let [current-col-setting    (first subtotal-settings-by-col)
-        remaining-col-settings (rest subtotal-settings-by-col)
-        subtotal-enabled?      (should-create-subtotal? current-col-setting should-show-subtotal)
-        subtotal-node          (when subtotal-enabled?
-                                 (create-subtotal-node row-item))]
-    (if (:isCollapsed row-item)
+   Returns a sequence of nodes (the original node and possibly a subtotal node)."
+  [row-item subtotal-settings-by-col visible? transient-row settings]
+  (let [subtotal-enabled-for-col? (first subtotal-settings-by-col)
+        remaining-col-settings    (rest subtotal-settings-by-col)
+        subtotal-node             (when (subtotal-permitted? subtotal-enabled-for-col? visible?)
+                                    (create-subtotal-node row-item))
+        is-collapsed?             (:isCollapsed row-item)]
+    (if is-collapsed?
       ;; For collapsed items, just add subtotals if applicable
       (conj! transient-row subtotal-node)
-      ;; For expanded items, process children recursively
-      (let [should-show-fn     (fn [child]
-                                 (or (> (count (:children child)) 1)
-                                     (:isCollapsed child)))
-            processed-children (process-children (:children row-item)
+      ;; For expanded items, recurse.
+      (let [processed-children (process-children (:children row-item)
                                                  remaining-col-settings
-                                                 should-show-fn)
+                                                 settings)
             updated-node       (-> row-item
                                    (assoc :children processed-children)
-                                   (assoc :hasSubtotal subtotal-enabled?))]
+                                   (assoc :hasSubtotal (boolean subtotal-node)))]
         (cond-> (conj! transient-row updated-node)
           subtotal-node (conj! subtotal-node))))))
 
 (defn- add-subtotals
-  "Adds subtotal rows to the pivot table based on settings.
-   Returns the tree with subtotals added where appropriate."
+  "Adds subtotal rows to the pivot table based on settings."
   [row-tree row-indexes settings col-settings]
   (if-not (should-show-column-totals? settings)
     (vec row-tree)
     (let [subtotal-settings-by-col (map (fn [idx]
                                           (not= ((nth col-settings idx) :pivot_table.column_show_totals)
                                                 false))
-                                        row-indexes)
-          has-multiple-children    (some #(> (count (:children %)) 1) row-tree)
-          should-show-root-total   (fn [row-item]
-                                     (or has-multiple-children
-                                         (> (count (:children row-item)) 1)))]
+                                        row-indexes)]
       (persistent!
        (reduce (fn [acc row-item]
                  (add-subtotal row-item
                                subtotal-settings-by-col
-                               (should-show-root-total row-item)
-                               acc))
-               (transient []) row-tree)))))
+                               (subtotal-visible? row-item settings)
+                               acc
+                               settings))
+               (transient [])
+               row-tree)))))
 
 (defn display-name-for-col
   "Translated from frontend/src/metabase/lib/formatting/column.ts"
@@ -493,7 +517,8 @@
 (defn- get-normal-cell-values
   "Processes and formats values for normal data cells (non-subtotal)."
   [values-by-key index-values value-formatters color-getter]
-  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values) formatted-values (format-values values value-formatters)]
+  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)
+        formatted-values (format-values values value-formatters)]
     (if-not data
       formatted-values
       (map-indexed

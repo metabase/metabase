@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { callMockEvent } from "__support__/events";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import registerVisualizations from "metabase/visualizations/register";
@@ -33,6 +34,7 @@ describe("QueryBuilder - beforeunload events", () => {
     HTMLElement.prototype.getBoundingClientRect = jest
       .fn()
       .mockReturnValue({ height: 1, width: 1 });
+    setupLastDownloadFormatEndpoints();
   });
 
   afterEach(() => {

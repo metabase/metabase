@@ -1,7 +1,7 @@
 (ns metabase-enterprise.database-routing.common
   (:require
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -11,6 +11,8 @@
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
   (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
+
+(def ^:dynamic ^:private *database-routing-on* :unset)
 
 (defn router-db-or-id->mirror-db-id
   "Given a user and a database (or id), returns the ID of the mirror database that the user's query should ultimately be
@@ -22,16 +24,20 @@
    (when-let [attr-name (user-attribute db-or-id)]
      (let [database-name (get (:login_attributes user) attr-name)]
        (cond
+         ;; if database routing is EXPLICITLY off, e.g. in `POST /api/database/:id/sync_schema`, don't do any routing.
+         (= :off *database-routing-on*)
+         nil
+
          (nil? user)
          (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400}))
 
          (= database-name "__METABASE_ROUTER__")
-         (u/the-id db-or-id)
+         nil
 
          ;; superusers default to the Router Database
          (and (nil? database-name)
               api/*is-superuser?*)
-         (u/the-id db-or-id)
+         nil
 
          ;; non-superusers get an error
          (nil? database-name)
@@ -63,38 +69,36 @@
 ;; The former looks like:
 ;; - I am looking at a Router Database,
 ;; - `router-db-or-id->mirror-db-id` returns a *different* database ID, and
-;; - `*database-routing-on?*` is `true` or `nil` (unset)
+;; - `*database-routing-on*` is `:on` or `:unset`
 ;;
 ;; The latter looks like:
 ;; - I am looking at a Mirror Database,
-;; - `*database-routing-on?*` is `false` or `nil` (unset)
-
-(def ^:dynamic ^:private *database-routing-on?* nil)
+;; - `*database-routing-on*` is `:off` or `:unset`
 
 (defenterprise with-database-routing-on-fn
   "Enterprise version. Calls the function with Database Routing allowed."
   :feature :database-routing
   [f]
-  (binding [*database-routing-on?* true]
+  (binding [*database-routing-on* :on]
     (f)))
 
 (defenterprise with-database-routing-off-fn
   "Enterprise version. Calls the function with Database Routing prohibited."
   :feature :database-routing
   [f]
-  (binding [*database-routing-on?* false]
+  (binding [*database-routing-on* :off]
     (f)))
 
 (defn- is-disallowed-router-db-access?
   [db-or-id]
   (and (some-> (router-db-or-id->mirror-db-id db-or-id)
                (not= db-or-id))
-       (not= *database-routing-on?* false)))
+       (not= *database-routing-on* :off)))
 
 (defn- is-disallowed-mirror-db-access?
   [db-or-id]
   (and (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
-       (not= *database-routing-on?* true)))
+       (not= *database-routing-on* :on)))
 
 (defenterprise check-allowed-access!
   "This is intended as a safety harness. In dev/testing, if any access to a router or destination database is detected

@@ -13,7 +13,6 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
@@ -40,7 +39,7 @@
                                       :inside (lib/expression-clause short-op [col 12 34 56 78 90] {})
                                       (:< :>) (lib/expression-clause short-op [col col] {})
                                       (lib/expression-clause short-op [col 123] {}))]]
-      (testing (str short-op " with " (lib.types.isa/field-type col))
+      (testing (str short-op " with " (:name col))
         (is (=? {:lib/type :mbql/expression-parts
                  :operator short-op
                  :args vector?}
@@ -251,6 +250,18 @@
                   1]}
           (lib/expression-parts (lib.tu/venues-query) -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                                 1)))))
+
+(deftest ^:parallel normalize-expression-clause-test
+  (let [column (meta/field-metadata :checkins :date)]
+    (testing "normalizes week-mode correctly"
+      (doseq [[expected strings] {:us ["US" "us" "Us"], :iso ["ISO" "iso" "Iso"]}
+              week-mode strings]
+        (is (= expected
+               (last (lib/expression-clause {:lib/type :mbql/expression-parts
+                                             :operator :get-week
+                                             :options {}
+                                             :args [column week-mode]}))))))))
+
 (deftest ^:parallel case-or-if-parts-test
   (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
         int-field    (meta/field-metadata :venues :category-id)

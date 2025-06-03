@@ -8,10 +8,9 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.config :as config]
-   [metabase.formatter :as formatter]
+   [metabase.config.core :as config]
+   [metabase.formatter.core :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -215,9 +214,9 @@
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
 (deftest truncation-warning-when-rows-exceed-max
-  (is (= true
-         (let [html-output (html (#'body/render-truncation-warning 10 100))]
-           (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
+  (is (true?
+       (let [html-output (html (#'body/render-truncation-warning 10 100))]
+         (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
 
 (def ^:private test-columns-with-date-semantic-type
   (update test-columns 2 merge {:base_type    :type/Text
@@ -423,6 +422,45 @@
           {:cols         default-columns
            :rows         [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]
            :viz-settings {}})))))
+
+(deftest render-funnel-visualizer
+  (testing "Visualizer funnel charts render"
+    (let [test-card-1 {:id 192 :entity_id "abc" :name "SCALAR 3"}
+          test-card-2 {:id 191 :entity_id "def" :name "SCALAR 2"}
+          test-card-3 {:id 190 :entity_id "ghi" :name "SCALAR 1"}
+          test-dashcard {:series-results
+                         [{:result {:data {:rows [[420]] :cols [{:name "count"}]}}
+                           :card test-card-2}
+                          {:result {:data {:rows [[2495]] :cols [{:name "count"}]}}
+                           :card test-card-3}]
+                         :visualization_settings
+                         {:visualization
+                          {:display "funnel",
+                           :columns
+                           [{:name "COLUMN_1",
+                             :display_name "Count"}
+                            {:name "DIMENSION",
+                             :display_name "DIMENSION"}],
+                           :columnValuesMapping
+                           {:COLUMN_1
+                            [{:sourceId "card:abc", :originalName "count", :name "COLUMN_1"}
+                             {:sourceId "card:def", :originalName "count", :name "COLUMN_2"}
+                             {:sourceId "card:ghi", :originalName "count", :name "COLUMN_3"}],
+                            :DIMENSION
+                            ["$_card:abc_name" "$_card:def_name" "$_card:ghi_name"]},
+                           :settings
+                           {:card.title "My new visualization",
+                            :funnel.metric "COLUMN_1",
+                            :funnel.dimension "DIMENSION",
+                            :funnel.order_dimension "DIMENSION",
+                            :funnel.rows
+                            [{:key "SCALAR 1" :name "SCALAR 1" :enabled true}
+                             {:key "SCALAR 2" :name "SCALAR 2" :enabled true}
+                             {:key "SCALAR 3" :name "SCALAR 3" :enabled true}]}}}}
+          test-data {:rows [[168]]
+                     :cols [{:name "count" :display_name "Count"}]}]
+      (is (has-inline-image?
+           (body/render :funnel :inline pacific-tz test-card-1 test-dashcard test-data))))))
 
 (defn- render-error?
   [pulse-body]
@@ -970,7 +1008,7 @@
 
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
-    (mt/with-temporary-setting-values [public-settings/start-of-week "monday"]
+    (mt/with-temporary-setting-values [start-of-week "monday"]
       (mt/dataset test-data
         (let [q    (mt/mbql-query products
                      {:aggregation [[:sum $price]]
@@ -993,9 +1031,9 @@
 
 (deftest render-correct-custom-date-style
   (testing "The static-viz respects custom formatting for temporal axis label"
-    (mt/with-temporary-setting-values [public-settings/custom-formatting {:type/Temporal
-                                                                          {:date_style "YYYY/M/D"
-                                                                           :date_separator "/"}}]
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal
+                                                          {:date_style "YYYY/M/D"
+                                                           :date_separator "/"}}]
       (mt/dataset test-data
         (let [q    (mt/mbql-query products
                      {:aggregation [[:count]]
@@ -1019,7 +1057,7 @@
   (when config/ee-available?
     (testing "The static-viz respects custom whitelabel colors"
       (mt/with-premium-features #{:whitelabel}
-        (mt/with-temporary-setting-values [public-settings/application-colors {:accent0 "#0005FF"}]
+        (mt/with-temporary-setting-values [application-colors {:accent0 "#0005FF"}]
           (mt/dataset test-data
             (let [q    (mt/mbql-query products
                          {:aggregation [[:count]]

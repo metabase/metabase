@@ -4,7 +4,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import AdminContentTable from "metabase/components/AdminContentTable";
+import { AdminContentTable } from "metabase/components/AdminContentTable";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
@@ -22,7 +22,7 @@ import {
   GroupMappingsWidgetToggleRoot as ToggleRoot,
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
 } from "./GroupMappingsWidget.styled";
-import MappingRow from "./MappingRow";
+import { MappingRow } from "./MappingRow";
 
 const groupIsMappable = (group) => !isDefaultGroup(group);
 
@@ -121,6 +121,7 @@ function GroupMappingsWidget({
             <Tooltip
               label={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
               position="top"
+              maw="20rem"
             >
               <AboutContentRoot>
                 <Icon name="info" />

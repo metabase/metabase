@@ -28,6 +28,7 @@ import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   label: t`Sandboxed`,
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",

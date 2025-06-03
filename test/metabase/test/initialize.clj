@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [mb.hawk.init]
-   [metabase.config :as config]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.notification.core :as notification]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 

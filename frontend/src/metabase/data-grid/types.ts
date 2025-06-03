@@ -2,10 +2,14 @@ import type {
   Cell,
   CellContext,
   ColumnDefTemplate,
+  ColumnPinningState,
   ColumnSizingState,
   HeaderContext,
+  OnChangeFn,
   Row,
   RowData,
+  RowSelectionOptions,
+  RowSelectionState,
   SortingState,
   Table,
 } from "@tanstack/react-table";
@@ -150,6 +154,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
 
+  /** Pinning state of columns */
+  columnPinning?: ColumnPinningState;
+
   /** Array of column sorting options */
   sorting?: SortingState;
 
@@ -159,11 +166,20 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Configuration for columns */
   columnsOptions: ColumnOptions<TData, TValue>[];
 
+  /**
+   * Configuration row selection column. It's separated from `columnsOptions`
+   * since `columnsOptions` are memoized and row selection should not be memoized
+   * due to how checkboxes behave (props are not changed) */
+  columnRowSelectOptions?: ColumnOptions<TData, TValue>;
+
   /** Row ID accessor and display options */
   rowId?: RowIdColumnOptions;
 
   /** Width in pixels at which to truncate long cell content */
   truncateLongCellWidth?: number;
+
+  /** Minimum width in pixels for the table. Expands table columns to fit the table. */
+  minGridWidth?: number;
 
   /** Data grid theme */
   theme?: DataGridTheme;
@@ -171,11 +187,20 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Controlls whether cell selection is enabled */
   enableSelection?: boolean;
 
+  /** Controlls whether row selection is enabled */
+  enableRowSelection?: RowSelectionOptions<TData>["enableRowSelection"];
+
+  /** Row selection state */
+  rowSelection?: RowSelectionState;
+
+  /** Callback when row selection is changed */
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+
   /** Items per page. Undefined disables pagination. */
   pageSize?: number;
 
-  /** Callback when a column is resized */
-  onColumnResize?: (columnSizingMap: ColumnSizingState) => void;
+  /** Callback when a column is resized. */
+  onColumnResize?: (columnName: string, width: number) => void;
 
   /** Callback when columns are reordered */
   onColumnReorder?: (columnOrder: string[]) => void;
@@ -241,7 +266,6 @@ export interface DataGridInstance<TData> {
   enableRowVirtualization: boolean;
   enablePagination: boolean;
   theme?: DataGridTheme;
-  measureColumnWidths: () => void;
   getTotalHeight: () => number;
   getVisibleRows: () => MaybeVirtualRow<TData>[];
   onHeaderCellClick?: (

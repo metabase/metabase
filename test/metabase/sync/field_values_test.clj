@@ -5,12 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
-   [metabase.models.field-values :as field-values]
    [metabase.sync.core :as sync]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []

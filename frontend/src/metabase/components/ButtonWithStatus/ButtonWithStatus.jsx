@@ -5,10 +5,18 @@ import { t } from "ttag";
 import { Button } from "metabase/ui";
 
 const defaultTitleForState = {
-  default: t`Save`,
-  inProgress: t`Saving...`,
-  completed: t`Saved!`,
-  failed: t`Saving failed.`,
+  get default() {
+    return t`Save`;
+  },
+  get inProgress() {
+    return t`Saving...`;
+  },
+  get completed() {
+    return t`Saved!`;
+  },
+  get failed() {
+    return t`Saving failed.`;
+  },
 };
 
 // TODO: Tom Robinson 4/16/2018: Is this the same functionality as ActionButton?

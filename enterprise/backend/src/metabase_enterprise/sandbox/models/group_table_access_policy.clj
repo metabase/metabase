@@ -6,12 +6,11 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
+   [metabase.classloader.core :as classloader]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.request.core :as request]
@@ -19,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

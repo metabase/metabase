@@ -1,41 +1,55 @@
 (ns metabase.analytics.core
   (:require
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.analytics.sdk :as sdk]
-   [metabase.analytics.snowplow :as snowplow]
-   [metabase.analytics.stats :as stats]
+   [metabase.analytics.prometheus]
+   [metabase.analytics.quartz]
+   [metabase.analytics.sdk]
+   [metabase.analytics.settings]
+   [metabase.analytics.snowplow]
+   [metabase.analytics.stats]
    [potemkin :as p]))
 
 (comment
-  prometheus/keep-me
-  sdk/keep-me
-  snowplow/keep-me
-  stats/keep-me)
+  metabase.analytics.prometheus/keep-me
+  metabase.analytics.quartz/keep-me
+  metabase.analytics.sdk/keep-me
+  metabase.analytics.settings/keep-me
+  metabase.analytics.snowplow/keep-me
+  metabase.analytics.stats/keep-me)
 
 (p/import-vars
- [prometheus
+ [metabase.analytics.prometheus
 
   known-labels
   initial-value
+  clear!
   connection-pool-info
   inc!
   set!
   setup!
   shutdown!]
 
- [sdk
+ [metabase.analytics.quartz
+
+  add-listeners-to-scheduler!]
+
+ [metabase.analytics.sdk
 
   embedding-mw
   include-sdk-info
   with-client! get-client
   with-version! get-version]
 
- [snowplow
+ [metabase.analytics.settings
 
-  instance-creation
+  anon-tracking-enabled
+  anon-tracking-enabled!
+  instance-creation]
+
+ [metabase.analytics.snowplow
+
   track-event!]
 
- [stats
+ [metabase.analytics.stats
 
   environment-type
   legacy-anonymous-usage-stats

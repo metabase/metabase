@@ -730,7 +730,10 @@ export const setOrUnsetParameterValues =
     const parameterValues = getParameterValues(getState());
     parameterIdValuePairs
       .map(([id, value]) =>
-        setParameterValue(id, value === parameterValues[id] ? null : value),
+        setParameterValue(
+          id,
+          _.isEqual(value, parameterValues[id]) ? null : value,
+        ),
       )
       .forEach(dispatch);
   };

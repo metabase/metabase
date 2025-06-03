@@ -2,7 +2,9 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  NORMAL_USER_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -2069,8 +2071,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         "Product → Created At",
         // 1st stage - Aggregations & breakouts
         "Created At: Month",
-        "Category",
-        "Created At: Year",
+        "Product → Category",
+        "User → Created At: Year",
         "Count",
         "Sum of Total",
         // 2nd stage - Custom columns
@@ -2083,10 +2085,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         "Reviews - Created At: Month → Body",
         "Reviews - Created At: Month → Created At",
         // 2nd stage - Aggregations & breakouts
-        "Category",
-        "Created At",
+        "Product → Category",
+        "Reviews - Created At: Month → Created At",
         "Count",
-        "Sum of Rating",
+        "Sum of Reviews - Created At: Month → Rating",
       ]);
 
       // 1st stage - Orders
@@ -2115,7 +2117,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.popover().findByText("Product → Category").click();
 
       // 1st stage - Aggregations & breakouts
-      getClickMapping("Category").first().click();
+      getClickMapping("Product → Category").eq(2).click();
       H.popover().findByText("Product → Category").click();
 
       // 2nd stage - Custom columns
@@ -2698,6 +2700,41 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         expect(search).to.equal("");
       });
     });
+  });
+
+  it("should allow to map numeric columns to user attributes", () => {
+    cy.log("set user attributes");
+    cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
+      login_attributes: { attr_uid: NORMAL_USER_ID },
+    });
+
+    cy.log("setup a click behavior");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.showDashboardCardActions();
+    H.getDashboardCard().findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
+      cy.findByText("Product ID").click();
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
+    });
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Questions").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("click-mappings").findByText("Product ID").click();
+    H.popover().findByText("attr_uid").click();
+    H.saveDashboard();
+
+    cy.log("login as a user with a user attribute and ad-hoc query access");
+    cy.signInAsNormalUser();
+
+    cy.log("visit the dashboard and click on a cell with the click behavior");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.getDashboardCard().findByText("123").click();
+    H.queryBuilderFiltersPanel()
+      .findByText(`Product ID is ${NORMAL_USER_ID}`)
+      .should("be.visible");
   });
 });
 

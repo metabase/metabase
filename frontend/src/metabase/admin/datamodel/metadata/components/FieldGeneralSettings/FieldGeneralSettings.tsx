@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";

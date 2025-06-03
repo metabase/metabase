@@ -70,6 +70,7 @@ const SlackForm = ({
   );
 };
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const SLACK_BUG_REPORT_DESCRIPTION = t`This channel will receive bug reports submitted by users.`;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

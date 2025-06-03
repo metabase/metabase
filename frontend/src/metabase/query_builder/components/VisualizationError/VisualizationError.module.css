@@ -29,7 +29,6 @@
 
 .QueryErrorLink {
   color: var(--mb-color-brand);
-  margin: 1rem 0;
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: bold;

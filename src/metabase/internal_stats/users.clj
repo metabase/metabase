@@ -1,6 +1,6 @@
 (ns metabase.internal-stats.users
   (:require
-   [metabase.db :as db]
+   [metabase.app-db.core :as db]
    [toucan2.core :as t2]))
 
 (defn email-domain-count

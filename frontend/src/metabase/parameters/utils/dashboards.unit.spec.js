@@ -1,8 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
   createParameter,
-  getDashboardUiParameters,
   getFilteringParameterValuesMap,
+  getUnsavedDashboardUiParameters,
   hasMapping,
   hasMatchingParameters,
   setParameterName,
@@ -533,7 +533,7 @@ describe("metabase/parameters/utils/dashboards", () => {
       );
 
       expect(
-        getDashboardUiParameters(
+        getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
           metadata,

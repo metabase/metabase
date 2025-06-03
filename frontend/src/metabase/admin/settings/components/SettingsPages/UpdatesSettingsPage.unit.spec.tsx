@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { act } from "react-dom/test-utils";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
+  setupSettingEndpoint,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
@@ -33,7 +34,14 @@ const setup = async (props: {
       tag: props.versionTag,
       hash: "4742ea1",
     },
-    "version-info": {
+  } as const;
+
+  const settings = createMockSettings(updatesSettings);
+  setupPropertiesEndpoints(settings);
+  setupUpdateSettingEndpoint();
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {
       beta: {
         version: "v1.54.0-beta",
         released: "2025-03-24",
@@ -48,11 +56,7 @@ const setup = async (props: {
         released: "2024-12-16",
       },
     },
-  } as const;
-
-  const settings = createMockSettings(updatesSettings);
-  setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
+  });
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
       createMockSettingDefinition({ key: key as SettingKey, value }),
@@ -137,36 +141,23 @@ describe("UpdatesSettingsPage", () => {
     await userEvent.click(await screen.findByRole("switch"));
 
     await waitFor(async () => {
-      const puts = await findPuts();
+      const puts = await findRequests("PUT");
       expect(puts).toHaveLength(2);
     });
 
-    const puts = await findPuts();
-    const [updateChannelPutUrl, updateChannelPutDetails] = puts[0];
-    const [checkForUpdatesUrl, checkForUpdatesDetails] = puts[1];
+    const puts = await findRequests("PUT");
+    const { url: updateChannelPutUrl, body: updateChannelPutBody } = puts[0];
+    const { url: checkForUpdatesPutUrl, body: checkForUpdatesBody } = puts[1];
 
     expect(updateChannelPutUrl).toContain("/api/setting/update-channel");
-    expect(updateChannelPutDetails).toEqual({ value: "beta" });
+    expect(updateChannelPutBody).toEqual({ value: "beta" });
 
-    expect(checkForUpdatesUrl).toContain("/api/setting/check-for-updates");
-    expect(checkForUpdatesDetails).toEqual({ value: false });
+    expect(checkForUpdatesPutUrl).toContain("/api/setting/check-for-updates");
+    expect(checkForUpdatesBody).toEqual({ value: false });
 
     await waitFor(() => {
-      const toasts = screen.getAllByLabelText("check icon");
+      const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(2);
     });
   });
 });
-
-async function findPuts() {
-  const calls = fetchMock.calls();
-  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
-
-  const puts = data.map(async ([putUrl, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
-
-    return [putUrl, JSON.parse(body ?? "{}")];
-  });
-
-  return Promise.all(puts);
-}

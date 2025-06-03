@@ -1,7 +1,7 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 import type { IconName } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Group, Tooltip } from "metabase/ui";
 
 import {
   SkeletonDescription,
@@ -15,6 +15,7 @@ import {
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
+  nameRightSection?: ReactNode;
   description?: string | null;
   icon?: StaticSkeletonIconProps;
   tooltip?: string;
@@ -26,6 +27,7 @@ export interface StaticSkeletonIconProps {
 
 const StaticSkeleton = ({
   name,
+  nameRightSection,
   description,
   icon,
   tooltip,
@@ -47,7 +49,10 @@ const StaticSkeleton = ({
           </SkeletonIconContainer>
         </Tooltip>
       )}
-      <SkeletonTitle>{name}</SkeletonTitle>
+      <Group gap="0.5rem">
+        <SkeletonTitle>{name}</SkeletonTitle>
+        {nameRightSection}
+      </Group>
 
       <SkeletonDescription>{defaultedDescription}</SkeletonDescription>
     </SkeletonRoot>

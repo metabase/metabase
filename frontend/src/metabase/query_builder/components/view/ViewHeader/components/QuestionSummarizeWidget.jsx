@@ -25,7 +25,7 @@ export function QuestionSummarizeWidget({
   useRegisterShortcut(
     [
       {
-        id: "toggle-summarize-sidebar",
+        id: "query-builder-toggle-summarize-sidebar",
         perform: handleClick,
       },
     ],

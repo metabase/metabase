@@ -20,3 +20,5 @@ export type ModelFilterControlsProps = {
   modelFilters: ModelFilterSettings;
   setModelFilters: (settings: ModelFilterSettings) => void;
 };
+
+export type SortColumn = "name" | "collection" | "description";

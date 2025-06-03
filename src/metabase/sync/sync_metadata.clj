@@ -7,7 +7,6 @@
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
-   [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
@@ -15,12 +14,12 @@
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.sync-metadata.indexes :as sync-indexes]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
-   [metabase.sync.sync-metadata.sync-table-privileges :as sync-table-privileges]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.table :as table]))
 
 (defn- sync-dbms-version-summary [{:keys [version] :as _step-info}]
   (if version
@@ -57,10 +56,8 @@
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
    ;; Sync index info if the database supports it
    (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-indexes-summary)
-   ;; Sync the metadata metadata table if it exists.
-   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))
-   ;; Now sync the table privileges if the database enables it
-   (sync-util/create-sync-step "sync-table-privileges" sync-table-privileges/sync-table-privileges!)])
+   ;; Sync the metabase metadata table if it exists.
+   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."

@@ -12,7 +12,6 @@ export interface BaseUser {
   common_name: string;
   email: string;
   locale: string | null;
-  google_auth: boolean;
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
@@ -20,17 +19,17 @@ export interface BaseUser {
   date_joined: string;
   last_login: string;
   first_login: string;
+  updated_at: string;
 }
 
 export interface User extends BaseUser {
-  google_auth: boolean;
   login_attributes: Record<UserAttribute, UserAttribute> | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   personal_collection_id: CollectionId;
-  sso_source: "saml" | null;
+  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
@@ -84,6 +83,7 @@ export type CreateUserRequest = {
   last_name?: string;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   login_attributes?: Record<UserAttribute, UserAttribute>;
+  password?: string;
 };
 
 export type UpdatePasswordRequest = {
@@ -122,6 +122,14 @@ export type UserKeyValue =
       namespace: "user_acknowledgement";
       key: string;
       value: boolean;
+    }
+  | {
+      namespace: "last_download_format";
+      key: string;
+      value: {
+        last_download_format: "csv" | "xlsx" | "json" | "png";
+        last_table_download_format: "csv" | "xlsx" | "json";
+      };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

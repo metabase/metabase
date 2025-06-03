@@ -1,27 +1,23 @@
 import type { PropsWithChildren } from "react";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
   LoadSdkQuestionParams,
+  MetabaseQuestion,
   SdkQuestionId,
+  SqlParameterValues,
 } from "embedding-sdk/types/question";
-import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
-import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
-import type { ParameterId } from "metabase-types/api";
-
-export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
-
-export type ParameterValues = Record<ParameterId, string | number>;
 
 type InteractiveQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypeFilter?: EntityTypeFilterKeys[];
+  entityTypes?: EmbeddingEntityType[];
 
   /**
    * Whether to show the save button.
@@ -31,7 +27,7 @@ type InteractiveQuestionConfig = {
   /**
    * Initial values for the SQL parameters.
    **/
-  initialSqlParameters?: ParameterValues;
+  initialSqlParameters?: SqlParameterValues;
 
   /**
    * Enables the ability to download results in the interactive question.
@@ -91,8 +87,7 @@ export type InteractiveQuestionContextType = Omit<
     InteractiveQuestionConfig,
     "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
-  Pick<InteractiveQuestionProviderProps, "variant"> &
-  Pick<QBNotebookProps, "modelsFilterList"> & {
+  Pick<InteractiveQuestionProviderProps, "variant"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
     resetQuestion: () => void;
@@ -100,6 +95,5 @@ export type InteractiveQuestionContextType = Omit<
     onCreate: (question: Question) => Promise<Question>;
     onSave: (question: Question) => Promise<void>;
   } & {
-    isCardIdError: boolean;
     originalId: SdkQuestionId | null;
   };

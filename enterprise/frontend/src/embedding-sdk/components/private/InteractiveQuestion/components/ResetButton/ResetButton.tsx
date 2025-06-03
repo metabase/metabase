@@ -1,8 +1,8 @@
 import type { MouseEvent } from "react";
 
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
+import type { ButtonProps } from "embedding-sdk/types/ui";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
-import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../context";

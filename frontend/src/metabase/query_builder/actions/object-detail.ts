@@ -81,7 +81,6 @@ export const followForeignKey = createThunkAction(
 
       const metadata = getMetadata(getState());
       const databaseId = new Question(card, metadata).databaseId();
-
       if (!databaseId) {
         return;
       }
@@ -89,6 +88,9 @@ export const followForeignKey = createThunkAction(
       const tableId = fk.origin.table.id;
       const metadataProvider = Lib.metadataProvider(databaseId, metadata);
       const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+      if (table == null) {
+        return;
+      }
       const baseQuery = Lib.queryFromTableOrCardMetadata(
         metadataProvider,
         table,
@@ -139,6 +141,9 @@ export const loadObjectDetailFKReferences = createThunkAction(
         }
         const metadataProvider = Lib.metadataProvider(databaseId, metadata);
         const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+        if (table == null) {
+          return;
+        }
         const baseQuery = Lib.queryFromTableOrCardMetadata(
           metadataProvider,
           table,

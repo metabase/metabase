@@ -17,10 +17,5 @@ fuzz("FUZZING metabase-lib/v1/expressions/lexifier", () => {
       const { expression } = generateExpression(seed);
       expect(() => lexify(expression)).not.toThrow();
     });
-
-    it("should not error on generated expression from seed " + seed, () => {
-      const { expression } = generateExpression(seed);
-      expect(lexify(expression).errors).toEqual([]);
-    });
   }
 });

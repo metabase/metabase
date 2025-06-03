@@ -185,9 +185,8 @@ describe("issue 17524", () => {
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("1");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       cy.get("polygon");
     });
   });
@@ -606,6 +605,7 @@ describe("issue 21665", () => {
     native: { query: "select 2" },
     display: "scalar",
   };
+
   function editQ2NativeQuery(query, questionId) {
     cy.request("PUT", `/api/card/${questionId}`, {
       dataset_query: {
@@ -619,6 +619,8 @@ describe("issue 21665", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.createNativeQuestionAndDashboard({
       questionDetails: Q1,
@@ -640,12 +642,15 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    cy.findByTestId("add-series-button").click({ force: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(Q2.name).click();
-
-    cy.findByTestId("add-series-modal").button("Done").click();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(Q2.name);
+      cy.button("Save").click();
+    });
 
     H.saveDashboard();
     cy.wait("@getDashboard");

@@ -22,8 +22,7 @@ initial_sync_status: complete
 serdes/meta:
 - id: My Database
   model: Database
-entity_id: ykVHi-GHcd1td4Lvb62pr
+router_database_id: null
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null
-router_database_id: null

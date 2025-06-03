@@ -1,5 +1,6 @@
 (ns mage.util
   (:require
+   [babashka.fs :as fs]
    [babashka.tasks :refer [shell]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -100,5 +101,43 @@
         :out
         (str/split-lines)
         ;; filter out any files that have been deleted/moved
+        (remove #{""})
         (filter (fn [filename]
-                  (.exists (io/file (str project-root-directory "/" filename))))))))
+                  (fs/exists? (str project-root-directory "/" filename)))))))
+
+(comment
+  (count (updated-files "master"))
+  (count (updated-files "master...")))
+
+(defn with-throbber
+  "Calls a function f and displays a throbber animation while waiting
+   for it to complete. Returns the result of calling f."
+  [message f]
+  (let [frames ["⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"]
+        delay  100
+        done?  (atom false)
+        result (atom nil)
+        err    (atom nil)]
+    (future (try
+              (loop [i 0]
+                (when (not @done?)
+                  (print (str "\r" (nth frames (mod i (count frames))) " " message))
+                  (flush)
+                  (Thread/sleep delay)
+                  (recur (inc i))))
+              (catch Exception e
+                (reset! err e)))
+            ;; Clear the throbber when done
+            (print "\r")
+            (flush))
+
+    ;; Execute the function
+    (try
+      (let [res (f)]
+        (reset! result res)
+        res)
+      (catch Exception e
+        (reset! err e)
+        (throw e))
+      (finally
+        (reset! done? true)))))

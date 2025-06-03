@@ -2,10 +2,10 @@
   "Misc Ring middleware."
   (:require
    [clojure.string :as str]
-   [metabase.db :as mdb]
-   [metabase.public-settings :as public-settings]
+   [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
+   [metabase.system.core :as system]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -41,13 +41,13 @@
 ;; the (initial) value of `site-url`
 (defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers, uri :uri}]
   (when (and (mdb/db-is-set-up?)
-             (not (public-settings/site-url))
+             (not (system/site-url))
              (not= uri "/api/health")
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/infof "Setting Metabase site URL to %s" site-url)
       (try
-        (public-settings/site-url! site-url)
+        (system/site-url! site-url)
         (catch Throwable e
           (log/warn e "Failed to set site-url"))))))
 

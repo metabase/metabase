@@ -66,9 +66,20 @@
     (do (print-help) (System/exit 1))
 
     :else
-    ;; at this point, we always have a valid task,
-    ;; and we know there is a bb executable at `./bin/bb`.
-    (apply sh/sh (into ["./bin/bb"] *command-line-args*))))
+    ;; at this point, we always have a valid task, and we are running in bb, so
+    ;; we can call the task directly with `bt/run`.
+    (try
+      ;; the task is the first command-line argument
+      (let [[task & args] *command-line-args*]
+        (binding [*command-line-args* args]
+          (try (bt/run task)
+               (catch Exception e
+                 (let [message (ex-message e)
+                       data (ex-data e)]
+                   (when message (println (c/red    (c/reverse-color "Error     :")) message))
+                   (when data    (println (c/yellow (c/reverse-color "Error data:")) data))
+                   (when e       (println (c/yellow "\nException:\n") e))
+                   (System/exit (:mage/exit-code data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (-main))

@@ -181,7 +181,9 @@ describe("scenarios > embedding > native questions", () => {
         .click();
 
       // Open variable editor
-      cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
+      cy.findByTestId("native-query-editor-action-buttons")
+        .icon("variable")
+        .click();
 
       // Now check that all disabled parameters can't be required and the rest can
       assertRequiredEnabledForName({ name: "id", enabled: true });
@@ -355,16 +357,16 @@ describe("scenarios > embedding > native questions", () => {
 
     it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
       H.visitQuestion("@questionId");
-      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openStaticEmbeddingModal({
+        activeTab: "parameters",
+      });
       H.visitIframe();
 
       cy.log("should show card results by default");
       cy.findByTestId("visualization-root")
         .findByText("2,500")
         .should("be.visible");
-      cy.findByTestId("visualization-root")
-        .findByText("test question")
-        .should("be.visible");
+      cy.findByRole("heading", { name: "test question" }).should("be.visible");
     });
   });
 });
