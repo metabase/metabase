@@ -43,16 +43,16 @@ const setup = async (
 };
 
 const fields = [
-  [/SAML Identity Provider URL/, "https://example.test"],
-  [/SAML Identity Provider Certificate/, "abc-123"],
-  [/SAML Identity Provider Issuer/, "example.test.sso"],
-] as [RegExp, string][];
+  { label: /SAML Identity Provider URL/, value: "https://example.test" },
+  { label: /SAML Identity Provider Certificate/, value: "abc-123" },
+  { label: /SAML Identity Provider Issuer/, value: "example.test.sso" },
+] as { label: RegExp; value: string }[];
 
 describe("SettingsSAMLForm", () => {
   it("Can enable SAML via form input", async () => {
     await setup();
 
-    for (const [label, value] of fields) {
+    for (const { label, value } of fields) {
       // can't use forEach 🫠
       const input = await screen.findByLabelText(label);
       await userEvent.type(input, value);
@@ -75,20 +75,20 @@ describe("SettingsSAMLForm", () => {
     expect(puts).toHaveLength(1);
     const [{ url, body }] = puts;
     expect(url).toMatch(/api\/saml\/settings/);
-    expect(body["saml-identity-provider-uri"]).toBe(fields[0][1]);
-    expect(body["saml-identity-provider-certificate"]).toBe(fields[1][1]);
-    expect(body["saml-identity-provider-issuer"]).toBe(fields[2][1]);
+    expect(body["saml-identity-provider-uri"]).toBe(fields[0].value);
+    expect(body["saml-identity-provider-certificate"]).toBe(fields[1].value);
+    expect(body["saml-identity-provider-issuer"]).toBe(fields[2].value);
   });
 
   it("Can update existing SAML settings", async () => {
     await setup({
       "saml-enabled": true,
       "saml-identity-provider-uri": "www.happy.toast",
-      "saml-identity-provider-certificate": fields[1][1],
-      "saml-identity-provider-issuer": fields[2][1],
+      "saml-identity-provider-certificate": fields[1].value,
+      "saml-identity-provider-issuer": fields[2].value,
     });
 
-    const input = await screen.findByLabelText(fields[0][0]);
+    const input = await screen.findByLabelText(fields[0].label);
     await userEvent.clear(input);
     await userEvent.type(input, "www.sad.sandwich");
 
@@ -109,7 +109,7 @@ describe("SettingsSAMLForm", () => {
     const [{ url, body }] = puts;
     expect(url).toMatch(/api\/saml\/settings/);
     expect(body["saml-identity-provider-uri"]).toBe("www.sad.sandwich");
-    expect(body["saml-identity-provider-certificate"]).toBe(fields[1][1]);
-    expect(body["saml-identity-provider-issuer"]).toBe(fields[2][1]);
+    expect(body["saml-identity-provider-certificate"]).toBe(fields[1].value);
+    expect(body["saml-identity-provider-issuer"]).toBe(fields[2].value);
   });
 });
