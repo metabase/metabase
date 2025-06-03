@@ -10,6 +10,7 @@
 
 (defn- ->local-date-time [t]
   (cond-> t
+    (str/includes? t " ") (str/replace " " "T")
     (str/includes? t "T") (t/zoned-date-time)
     true t/local-date-time))
 
@@ -53,23 +54,19 @@
                              [[1] [2]]]]
         (doseq [[grouping expected-date] (map list date-types expected-dates)]
           (is (= expected-date
-                 (-> native-query
-                     (assoc :parameters [{:type   :temporal-unit
-                                          :name   "time-unit"
-                                          :target [:variable [:template-tag "time-unit"]]
-                                          :value  grouping}])
+                 (-> parameterized-query
+                     (assoc-in [:parameters 0 :value] grouping)
                      run-sample-query
-                     (subvec 0 2)))))
+                     (subvec 0 2)))
+              (str "Unexpected results for grouping " grouping)))
         (doseq [[grouping expected-count] (map list count-types expected-counts)]
           (is (= expected-count
-                 (-> native-query
-                     (assoc :parameters [{:type   :temporal-unit
-                                          :name   "time-unit"
-                                          :target [:variable [:template-tag "time-unit"]]
-                                          :value  grouping}])
+                 (-> parameterized-query
+                     (assoc-in [:parameters 0 :value] grouping)
                      qp/process-query
                      (->> (mt/formatted-rows [int]))
-                     (subvec 0 2)))))))))
+                     (subvec 0 2)))
+              (str "Unexpected results for grouping " grouping)))))))
 
 (deftest bad-function-names-throw-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
