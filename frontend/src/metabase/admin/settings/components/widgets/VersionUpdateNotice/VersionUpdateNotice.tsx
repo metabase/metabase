@@ -22,14 +22,7 @@ export function VersionUpdateNotice() {
   const currentVersion = useSelector(getCurrentVersion);
   const updateChannel = useSetting("update-channel") ?? "latest";
   const latestVersion = versionInfo?.[updateChannel]?.version;
-  const isHosted = useSetting("is-hosted?");
   const displayVersion = formatVersion(currentVersion);
-
-  if (isHosted) {
-    // FIXME: this is unreachable because we hide the updates section
-    // for cloud customers
-    return <CloudCustomers currentVersion={displayVersion} />;
-  }
 
   if (latestVersion && versionIsLatest({ currentVersion, latestVersion })) {
     return <OnLatestVersion currentVersion={displayVersion} />;
@@ -46,14 +39,6 @@ export function VersionUpdateNotice() {
     );
   }
   return <DefaultUpdateMessage currentVersion={displayVersion} />;
-}
-
-function CloudCustomers({ currentVersion }: { currentVersion: string }) {
-  return (
-    <div>
-      {t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
-    </div>
-  );
 }
 
 function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
