@@ -13,10 +13,18 @@ import {
   provideParameterValuesTags,
 } from "./tags";
 
+interface RefetchDeps {
+  /**
+   * This attribute won't be a part of the API request and can be used to invalidate
+   * the cache of a given RTK query using its built-in caching mechanism.
+   */
+  _refetchDeps: unknown;
+}
+
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getAdhocQuery: builder.query<Dataset, DatasetQuery>({
-      query: (body) => ({
+    getAdhocQuery: builder.query<Dataset, DatasetQuery & RefetchDeps>({
+      query: ({ _refetchDeps, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
         body,
