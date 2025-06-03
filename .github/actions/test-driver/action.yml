@@ -43,5 +43,5 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-${{ github.job }}
-        path: logs/test.log
+        path: logs/test-log.json
         retention-days: 1

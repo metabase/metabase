@@ -3,13 +3,13 @@
    [clojure.test :refer :all]
    [metabase.util.log :as log])
   (:import
-   (org.apache.logging.log4j ThreadContext)
-   (org.apache.logging.log4j.util ReadOnlyStringMap)))
+   (java.util Map)
+   (org.apache.logging.log4j ThreadContext)))
 
 (set! *warn-on-reflection* true)
 
 (defn- to-map [immutable-context]
-  (into {} (.toMap ^ReadOnlyStringMap immutable-context)))
+  (into {} immutable-context))
 
 (defn- get-context-fn
   []

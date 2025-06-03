@@ -836,11 +836,3 @@
 (defmethod exclude-internal-content-hsql :default
   [_model & _]
   [:= [:inline 1] [:inline 1]])
-
-(methodical/defmethod t2.pipeline/compile
-  [:default
-   :metabase/model
-   clojure.lang.IPersistentMap]
-  [query-type model query]
-  (log/info query-type model query)
-  (next-method query-type model query))

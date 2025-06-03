@@ -42,11 +42,14 @@
    [metabase.test.util.misc :as tu.misc]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.log.capture]
    [metabase.util.random :as u.random]
+   [methodical.core :as methodical]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -356,9 +359,28 @@
 
 (def ^:private original-test-var clojure.test/test-var)
 
-(defn- test-var-with-context [v]
-  (let [test-n (-> v meta :name)]
-    (log/with-context {:test test-n}
+(defn- test-var-with-context
+  "A modified version of `clojure.test/test-var` that:
+  - logs every toucan2 query we run, with details on the query type, model, args, and resulting query
+  - adds some context to any logs emitted during the test, so that we have information on what test ran
+  "
+  [v]
+  (let [test-n (-> v meta :name)
+        test-ns (-> v meta :ns str)]
+    (log/with-context {:test (str test-ns "/" test-n)}
       (original-test-var v))))
 
 (alter-var-root #'clojure.test/test-var (constantly test-var-with-context))
+
+(methodical/defmethod t2.pipeline/compile
+  [#_query-type  :default
+   #_model       :default
+   #_built-query :default]
+  [query-type model built-query]
+  (u/prog1 (next-method query-type model built-query)
+    (log/with-context {:query-type query-type
+                       :model model
+                       :compiled-query (first <>)
+                       :compiled-query-args (rest <>)}
+      (when config/is-test?
+        (log/info "Compiled query")))))
