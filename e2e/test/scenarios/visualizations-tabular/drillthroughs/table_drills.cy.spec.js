@@ -520,7 +520,6 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
 
 describe("Issue 58247", () => {
   beforeEach(() => {
-    // It's important to restore to the "setup" to have access to "Accounts" table
     H.restore();
     cy.signInAsNormalUser();
     H.openTable({ table: REVIEWS_ID, limit: 10 });
