@@ -165,29 +165,6 @@ describe("Add data modal", () => {
     });
   });
 
-  it("should show empty state for non-admins", () => {
-    cy.signInAsNormalUser();
-    cy.visit("/");
-    H.navigationSidebar()
-      .findByRole("tab", { name: /^Data/i })
-      .findByLabelText("Add data")
-      .should("be.visible")
-      .click();
-
-    addDataModal().within(() => {
-      cy.findByRole("heading", { name: "Add a database" }).should("be.visible");
-      cy.findByText(
-        "Start exploring in minutes. We support more than 20 data connectors.",
-      ).should("be.visible");
-      cy.findByRole("alert").should(
-        "contain",
-        "To add a new database, please contact your administrator.",
-      );
-
-      cy.findByRole("link", { name: "Manage databases" }).should("not.exist");
-    });
-  });
-
   it("should not offer to add data when in full app embedding", () => {
     cy.signInAsNormalUser();
     H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });

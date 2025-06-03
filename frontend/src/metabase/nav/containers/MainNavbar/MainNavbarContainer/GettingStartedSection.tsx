@@ -11,11 +11,11 @@ import type { SelectedItem } from "../types";
 
 export const GettingStartedSection = ({
   nonEntityItem,
-  onModalOpen,
+  onAddDataModalOpen,
   children,
 }: PropsWithChildren<{
   nonEntityItem: SelectedItem;
-  onModalOpen: () => void;
+  onAddDataModalOpen: () => void;
 }>) => {
   const [opened, { toggle }] = useDisclosure(true);
 
@@ -43,7 +43,7 @@ export const GettingStartedSection = ({
         role="tabpanel"
         aria-expanded={opened}
       >
-        <PaddedSidebarLink icon="add_data" onClick={onModalOpen}>
+        <PaddedSidebarLink icon="add_data" onClick={onAddDataModalOpen}>
           {t`Add data`}
         </PaddedSidebarLink>
 
