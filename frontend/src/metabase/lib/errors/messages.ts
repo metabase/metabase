@@ -18,6 +18,15 @@ export function getResponseErrorMessage(error: unknown): string | undefined {
     ) {
       return response.data.errors?._error;
     }
+
+    if (
+      Array.isArray(response.data?.errors) &&
+      response.data.errors.length > 0
+    ) {
+      const error =
+        response.data.errors[0]?.error || response.data.errors[0]?.message;
+      return error;
+    }
   }
 
   if (response.message) {
