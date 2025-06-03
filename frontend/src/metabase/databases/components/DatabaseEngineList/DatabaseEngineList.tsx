@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
 import { getEngines } from "metabase/databases/selectors";
 import {
   getEngineLogo,
@@ -33,7 +34,7 @@ export const DatabaseEngineList = ({
   const engines = useSelector(getEngines);
   const options = getEngineOptions(engines);
 
-  const elevatedEngines = options.slice(0, 6);
+  const elevatedEngines = options.slice(0, MAX_INITIAL_ENGINES_SHOWN);
   const searchResults = options.filter(({ name }) =>
     name.toLowerCase().includes(search.toLowerCase().trim()),
   );
@@ -109,7 +110,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
   const logo = getEngineLogo(db);
 
   return (
-    <Center h="1.5rem" w="1.5rem">
+    <Center h="lg" w="lg">
       {logo ? (
         <img src={logo} width="100%" />
       ) : (
@@ -122,7 +123,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
 const NoDatabaseFound = () => {
   return (
     <Stack
-      gap="0.75rem"
+      gap="md"
       align="center"
       pt="lg"
       maw="22.5rem"
