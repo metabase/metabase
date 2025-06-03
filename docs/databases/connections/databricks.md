@@ -45,7 +45,7 @@ Toggle on to sync multiple catalogs. If you enable this, you'll be able to [spec
 
 ### Default catalog
 
-Required. You must specify a default catalog (so you don't have to deail with catalog qualification in native queries).
+Required. You must specify a default catalog (so you don't have to deal with catalog qualification in native queries).
 
 You can't sync Databricks's legacy catalogs, however, including the `samples` or `hive_metastore` catalogs.
 
