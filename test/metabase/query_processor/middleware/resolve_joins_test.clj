@@ -256,7 +256,7 @@
                    :limit  10}))))))
 
 (deftest ^:parallel native-model-field-ref-test
-  (testing "should use name-based field refs for joined native models with mapped database fields"
+  (testing "should use name-based field refs for joined native models with mapped database fields (metabase#58829)"
     (let [source-metadata [{:id            (mt/id :checkins :id)
                             :name          "_USER_ID"
                             :display_name  "User ID"
