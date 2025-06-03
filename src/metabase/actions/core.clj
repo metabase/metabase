@@ -26,6 +26,7 @@
   check-data-editing-enabled-for-database!
   cached-database
   cached-database-via-table-id
+  cached-table
   handle-effects!*
   perform-action!
   ;; allow actions to be defined in the data-editing module
@@ -34,6 +35,7 @@
   action-arg-map-spec
   normalize-action-arg-map]
  [metabase.actions.error
+  children-exist
   incorrect-value-type
   violate-foreign-key-constraint
   violate-not-null-constraint

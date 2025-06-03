@@ -200,16 +200,7 @@
                     2 98}
                    (children-count))))
           (testing "delete without delete-children param will return errors with children count"
-            (is (=? {:errors [{:index     0
-                               :type      "metabase.actions.error/violate-foreign-key-constraint"
-                               :message  "Other tables rely on this row so it cannot be deleted."
-                               :errors   {}
-                               :children {(mt/id :orders) 93}}
-                              {:index    1
-                               :type     "metabase.actions.error/violate-foreign-key-constraint"
-                               :message  "Other tables rely on this row so it cannot be deleted."
-                               :errors   {}
-                               :children {(mt/id :orders) 98}}]}
+            (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :orders) 191}}}
                     (mt/user-http-request :crowberto :post 400 execute-v2-url
                                           body))))
 
@@ -900,13 +891,14 @@
                   (is (= 403 (:status (req {:user      :rasta
                                             :action_id (:id action)
                                             :scope     {:dashcard-id (:id dashcard)}
-                                            :input     {:id 1 :status "approved"}})))))
+                                            :input     {:id 1}
+                                            :params    {:status "approved"}})))))
                 (testing "non-row action modifying a row"
                   (testing "underlying row does not exist, action not executed"
                     (is (= 400 (:status (req {:action_id (:id action)
                                               :scope     {:dashcard-id (:id dashcard)}
-                                              :input     {:id     1
-                                                          :status "approved"}})))))
+                                              :input     {:id 1}
+                                              :params    {:status "approved"}})))))
                   (testing "underlying row exists, action executed"
                     (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                           {:rows [{:name "Widgets", :status "waiting"}]})
@@ -914,16 +906,16 @@
                             :body   {:outputs [{:rows-updated 1}]}}
                            (-> (req {:action_id (:id action)
                                      :scope     {:dashcard-id (:id dashcard)}
-                                     :input     {:id     1
-                                                 :status "approved"}})
+                                     :input     {:id 1}
+                                     :params    {:status "approved"}})
                                (select-keys [:status :body]))))))
                 (testing "dashcard row action modifying a row - implicit action"
                   (let [action-id "dashcard:unknown:abcdef"]
                     (testing "underlying row does not exist, action not executed"
                       (is (= 404 (:status (req {:action_id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id     2
-                                                            :status "approved"}})))))
+                                                :input     {:id 2}
+                                                :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
                       (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                             {:rows [{:name "Sprockets", :status "waiting"}]})
@@ -931,16 +923,16 @@
                               :body   {:outputs [{:rows-updated 1}]}}
                              (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id     2
-                                                   :status "approved"}})
+                                       :input     {:id 2}
+                                       :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))
                 (testing "dashcard row action modifying a row - primitive action"
                   (let [action-id "dashcard:unknown:fedcba"]
                     (testing "underlying row does not exist, action not executed"
                       (is (= 404 (:status (req {:action_id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id     3
-                                                            :status "approved"}})))))
+                                                :input     {:id 3}
+                                                :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
                       (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                             {:rows [{:name "Braai tongs", :status "waiting"}]})
@@ -950,8 +942,8 @@
                                                   :row      {:id 3, :name "Braai tongs", :status "approved"}}]}}
                              (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id     3
-                                                   :status "approved"}})
+                                       :input     {:id 3}
+                                       :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))
                 (testing "dashcard row action modifying a row - encoded action"
                   (let [action-id "dashcard:unknown:xyzabc"]
@@ -969,8 +961,8 @@
                                                   :row      {:id 4, :name "Salad spinners", :status "approved"}}]}}
                              (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id     4
-                                                   :status "approved"}})
+                                       :input     {:id 4}
+                                       :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))))))))))
 
 (deftest list-and-add-to-dashcard-test

@@ -15,3 +15,7 @@
 (def incorrect-value-type
   "Error type for SQL incorrect value type."
   ::incorrect-value-type)
+
+(def children-exist
+  "Error type for when trying to delete a row that has dependent children rows."
+  ::children-exist)

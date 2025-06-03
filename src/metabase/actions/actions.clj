@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
@@ -170,28 +171,29 @@
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential :map]
    & {:as _opts}]
-  (let [invocation-id  (nano-id/nano-id)
-        context-before (-> (assoc ctx :invocation-id invocation-id)
-                           (update :invocation-stack u/conjv [action-kw invocation-id]))]
-    (actions.events/publish-action-invocation! action-kw context-before inputs)
-    (try
-      (u/prog1 (perform-action!* action-kw context-before inputs)
-        (let [{context-after :context, :keys [outputs]} <>]
-          (doseq [k [:invocation-id :invocation-stack :user-id]]
-            (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
-          ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
-          (handle-effects! context-after)
-          (actions.events/publish-action-success! action-kw context-after outputs)))
-      ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
-      (catch Throwable e
-        (let [msg  (ex-message e)
-              ;; Can't be nil or adding metadata will NPE
-              info (or (ex-data e) {})
-              ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
-              info (with-meta info (merge (meta info) {:exception e}))]
-          ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
-          (actions.events/publish-action-failure! action-kw context-before msg info)
-          (throw e))))))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [invocation-id  (nano-id/nano-id)
+          context-before (-> (assoc ctx :invocation-id invocation-id)
+                             (update :invocation-stack u/conjv [action-kw invocation-id]))]
+      (actions.events/publish-action-invocation! action-kw context-before inputs)
+      (try
+        (u/prog1 (perform-action!* action-kw context-before inputs)
+          (let [{context-after :context, :keys [outputs]} <>]
+            (doseq [k [:invocation-id :invocation-stack :user-id]]
+              (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+           ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
+            (handle-effects! context-after)
+            (actions.events/publish-action-success! action-kw context-after outputs)))
+       ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
+        (catch Throwable e
+          (let [msg  (ex-message e)
+               ;; Can't be nil or adding metadata will NPE
+                info (or (ex-data e) {})
+               ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
+                info (with-meta info (merge (meta info) {:exception e}))]
+           ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
+            (actions.events/publish-action-failure! action-kw context-before msg info)
+            (throw e)))))))
 
 (defn perform-nested-action!
   "Similar to [[perform-action!]] but taking an existing context.
@@ -211,11 +213,19 @@
                 #(qp.store/with-metadata-provider db-id
                    (lib.metadata/database (qp.store/metadata-provider)))))
 
+(defn cached-table
+  "Uses cache to prevent redundant look-ups with an action call chain."
+  [db-id table-id]
+  (assert db-id "Id cannot be nil")
+  (cached-value [:tables table-id]
+                #(qp.store/with-metadata-provider db-id
+                   (lib.metadata/table (qp.store/metadata-provider) table-id))))
+
 (defn cached-database-via-table-id
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (:db_id (cached-value [:tables table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
+  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
 
 (mu/defn perform-action!
   "Perform an *implicit* `action`. Invoke this function for performing actions, e.g. in API endpoints;

@@ -25,6 +25,10 @@
 
    :projects   [{:table :tasks, :fk {:project :id} :pk [:id]}]})
 
+(defn metadata-fn
+  [ttype]
+  (get metadata ttype))
+
 (def db
   {:orders      [{:id 42}
                  {:id 43}]
@@ -77,10 +81,10 @@
 (deftest walk-test
   (is (= {:complete? true
           :items     {:order-items #{{:id 1338} {:id 1337}}}}
-         (fks/walk :orders [{:id 42}] metadata lookup-children)))
+         (fks/walk :orders [{:id 42}] metadata-fn lookup-children)))
   (is (= {:complete? true
           :items     {:people #{{:id 5} {:id 4} {:id 3}}}}
-         (fks/walk :people [{:id 1}] metadata lookup-children)))
+         (fks/walk :people [{:id 1}] metadata-fn lookup-children)))
   (is (= {:complete? true
           :items     {:users      #{{:id :user/cto}
                                     {:id :user/cpo}
@@ -94,22 +98,22 @@
                       :programmes #{{:id :programme/skunk-works}}
                       :projects   #{{:id :project/gamma}}
                       :tasks      #{{:id :task/foo}}}}
-         (fks/walk :users [{:id :user/ceo}] metadata lookup-children))))
+         (fks/walk :users [{:id :user/ceo}] metadata-fn lookup-children))))
 
 (deftest count-descendants-test
   (is (= {:complete? true
           :counts    {:order-items 2}}
-         (fks/count-descendants :orders [{:id 42}] metadata lookup-children)))
+         (fks/count-descendants :orders [{:id 42}] metadata-fn lookup-children)))
   (is (= {:complete? true
           :counts    {:people 3}}
-         (fks/count-descendants :people [{:id 1}] metadata lookup-children)))
+         (fks/count-descendants :people [{:id 1}] metadata-fn lookup-children)))
   (is (= {:complete? true
           :counts    {:users      7
                       :teams      2
                       :programmes 1
                       :projects   1
                       :tasks      1}}
-         (fks/count-descendants :users [{:id :user/ceo}] metadata lookup-children))))
+         (fks/count-descendants :users [{:id :user/ceo}] metadata-fn lookup-children))))
 
 (defn- delete-items [db items]
   (reduce
@@ -124,7 +128,7 @@
   (let [*db       (atom db)
         lookup-fn #(apply lookup-children @*db %&)
         delete-fn #(swap! *db delete-items %)]
-    (fks/delete-recursively table rows metadata lookup-fn delete-fn)
+    (fks/delete-recursively table rows metadata-fn lookup-fn delete-fn)
     (select-keys @*db
                  (case table
                    :orders [:orders :order-items]
