@@ -16,6 +16,7 @@
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-routing.api]
+   [metabase-enterprise.embed.content-translation.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
@@ -80,6 +81,7 @@
    "/content-translation"        (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/embed/content-translation"  (premium-handler metabase-enterprise.embed.content-translation.api/routes :content-translation)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
