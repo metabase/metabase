@@ -44,6 +44,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [ceil](#ceil)
     - [exp](#exp)
     - [floor](#floor)
+    - [integer](#integer)
     - [log](#log)
     - [power](#power)
     - [round](#round)
@@ -57,6 +58,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [doesNotContain](#doesnotcontain)
     - [domain](#domain)
     - [endsWith](#endswith)
+    - [float](#float)
     - [host](#host)
     - [in](#in)
     - [isEmpty](./expressions/isempty.md)
@@ -80,6 +82,7 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Date functions](#date-functions)
 
     - [convertTimezone](./expressions/converttimezone.md)
+    - [date](#date)
     - [datetime](#datetime)
     - [datetimeAdd](./expressions/datetimeadd.md)
     - [datetimeDiff](./expressions/datetimediff.md)
@@ -103,6 +106,8 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Type-casting functions](#type-casting-functions)
 
     - [date](#date)
+    - [datetime](#datetime)
+    - [float](#float)
     - [integer](#integer)
     - [text](#text)
 
@@ -424,13 +429,14 @@ Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
 ### date
 
-> Only available for PostgreSQL.
+> Not available for Oracle and then non-JDBC Apache Druid driver.
 
-Converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format.
+- When used on a string, converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format. If the string contains time, the time part is truncated.
+- When used on a datetime value, truncates datetime to a date.
 
 Syntax: `date(value)`
 
-Example: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
+Example 1: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
 
 ISO 8601 standard format:
 
@@ -448,6 +454,31 @@ Valid ISO 8601 examples include:
 - Date only: `2025-03-25`
 - Date with time: `2025-03-25T14:30:45`
 - Date with time and timezone offset: `2025-03-25T14:30:45+01:00`
+
+Example 2: `date(2025-04-19T17:42:53+01:00)` would return `2025-04-19`.
+
+Related: [datetime](#datetime)
+
+### datetime
+
+> Available on PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, ClickHouse, and Snowflake
+
+Converts a datetime string to a datetime.
+
+Syntax: `datetime(column)`
+
+Example: `datetime("2025-03-20 12:45:04")`
+
+`datetime` supports the following datetime string formats:
+
+```txt
+2025-05-15T22:20:01
+2025-05-15 22:20:01
+```
+
+But some databases may also work with other datetime formats.
+
+Related: [date](#date)
 
 ### doesNotContain
 
@@ -489,6 +520,16 @@ Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
+### float
+
+> Available for PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, ClickHouse, and Snowflake.
+
+Converts a string to a floating point value. Useful if you want to do some math on numbers, but your data is stored as strings.
+
+Syntax: `float(value)`
+
+Example: `float("123.45")` would return `123.45` as a floating point value.
+
 ### host
 
 Extracts the host, which is the domain and the TLD, from a URL or email.
@@ -521,17 +562,22 @@ Syntax: `isEmpty(column)`
 
 Example: `isEmpty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
 
-Related: [notEmpty](#notempty), [isNull](#isnull)
+Related: [notEmpty](#notempty), [isNull](#isnull).
 
 ### integer
 
-> Only available for PostgreSQL.
+> Not available for non-JDBC Apache Druid driver.
 
-Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
+- When used on a string, converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
+- When used on a floating point value, rounds it to an integer.
 
 Syntax: `integer(value)`
 
-Example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+Example 1: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+
+Example 2: `integer(123.45)` would return `123`.
+
+Related: [round](#round).
 
 ### lTrim
 
@@ -605,7 +651,7 @@ Example: `replace([Title], "Enormous", "Gigantic")`
 
 ### splitPart
 
-> Only available on PostgreSQL.
+> Available in PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, Clickhouse, and Snowflake
 
 Splits a string on a specified delimiter and returns the nth substring.
 
@@ -670,7 +716,7 @@ Related: [regexExtract](#regexextract), [replace](#replace).
 
 ### text
 
-> Only available for PostgreSQL.
+> Not available for non-JDBC Druid driver
 
 Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
 
@@ -709,23 +755,6 @@ Syntax: `convertTimezone(column, target, source)`
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
 See the [database limitations](./expressions/converttimezone.md#limitations) for `convertTimezone`.
-
-### datetime
-
-Converts a datetime string to a datetime.
-
-Syntax: `datetime(column)` 
-
-Example: `datetime("2025-03-20 12:45:04")`
-
-`datetime` supports the following datetime string formats:
-
-```txt
-2025-05-15T22:20:01
-2025-05-15 22:20:01
-```
-
-But some databases may also work with other datetime formats.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
@@ -933,6 +962,8 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 ## Type-casting functions
 
 - [date](#date)
+- [datetime](#datetime)
+- [float](#float)
 - [integer](#integer)
 - [text](#text)
 
@@ -984,29 +1015,31 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexExtract`.
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
-**Athena**: `convertTimezone`.
+**Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**Databricks**: `convertTimezone`.
+**Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexExtract` is only available for the Druid-JDBC driver.
+**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.
 
-**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
 **MariaDB**: `Median`, `Percentile`, `Offset`.
 
 **MySQL**: `Median`, `Percentile`, `Offset`.
 
-**Presto**: `convertTimezone`. Only provides _approximate_ results for `Median` and `Percentile`.
+**Oracle**: `date`, `datetime`, `float`, `splitPart`.
 
-**SparkSQL**: `convertTimezone`.
+**Presto**: `convertTimezone`, `datetime`, `float`, `splitPart`. Only provides _approximate_ results for `Median` and `Percentile`.
 
-**SQL Server**: `Median`, `Percentile` and `regexExtract`.
+**SparkSQL**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt` and `Variance`.
+**SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
-**Vertica**: `Median` and `Percentile`.
+**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
+
+**Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
