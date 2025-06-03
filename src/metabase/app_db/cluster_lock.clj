@@ -8,15 +8,20 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement)))
+   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private cluster-lock-timeout-seconds 1)
 
-(defn- is-canceled-statement?
+(defn- retryable?
   [^Throwable e]
-  (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e))
+  ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
+  ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
+  ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
+  (or (instance? SQLIntegrityConstraintViolationException e)
+      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
+      (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
   {:max-attempts 5
@@ -24,7 +29,7 @@
    :randomization-factor 0.1
    :initial-interval-millis 1000
    :max-interval-millis 1000
-   :retry-on-exception-pred is-canceled-statement?})
+   :retry-on-exception-pred retryable?})
 
 (defn prepare-statement
   "Create a prepared statement to query cache"
@@ -74,7 +79,7 @@
             (try
               (retrier do-with-cluster-lock**)
               (catch Throwable e
-                (if (is-canceled-statement? e)
+                (if (retryable? e)
                   (throw (ex-info "Failed to run statement with cluster lock"
                                   {:retries (:max-attempts config)}
                                   e))
