@@ -965,6 +965,109 @@
                                        :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))))))))))
 
+(deftest unified-execute-server-side-mapping-test
+  (let [url "ee/data-editing/action/v2/execute"
+        req #(mt/user-http-request-full-response (:user % :crowberto) :post url
+                                                 (merge {:scope {:unknown :legacy-action} :input {}}
+                                                        (dissoc % :user-id)))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (mt/with-actions-enabled
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (with-open [table-1-ref (data-editing.tu/open-test-table!
+                                     {:id  'auto-inc-type
+                                      :col [:text]}
+                                     {:primary-key [:id]})
+                        table-2-ref (data-editing.tu/open-test-table!
+                                     {:id 'auto-inc-type
+                                      :a  [:text]
+                                      :b  [:text]
+                                      :c  [:text]
+                                      :d  [:text]}
+                                     {:primary-key [:id]})]
+              (mt/with-temp [:model/Card          model    {:type           :model
+                                                            :table_id       @table-1-ref
+                                                            :database_id    (mt/id)
+                                                            :dataset_query  {:database (mt/id)
+                                                                             :type :query
+                                                                             :query {:source-table @table-1-ref}}}
+                             :model/Dashboard     dash     {}
+                             :model/DashboardCard dashcard {:dashboard_id   (:id dash)
+                                                            :card_id        (:id model)
+                                                            :visualization_settings
+                                                            {:editableTable.enabledActions
+                                                             [{:id         "dashcard:unknown:my-row-action"
+                                                               :actionId   "table.row/update"
+                                                               :actionType "data-grid/row-action"
+                                                               :mapping    {:table-id @table-2-ref
+                                                                            :row      {:a [::key "b"]
+                                                                                       :b [::key "b"]}}
+                                                               :parameterMappings
+                                                               (let [field-id (t2/select-one-pk :model/Field :table_id @table-1-ref :name "col")]
+                                                                 [{:parameterId "a", :sourceType "row-data", :sourceValueTarget field-id}
+                                                                  {:parameterId "b", :sourceType "ask-user"}
+                                                                  {:parameterId "c", :sourceType "ask-user", :value "default"}
+                                                                  {:parameterId "d", :sourceType "constant", :value "hard-coded"}])
+                                                               :enabled    true}]}}]
+                (testing "dashcard row action modifying a row - primitive action"
+                  (let [action-id "dashcard:unknown:my-row-action"]
+                    (testing "underlying row does not exist, action not executed"
+                      (is (= 404 (:status (req {:action_id action-id
+                                                :scope     {:dashcard-id (:id dashcard)}
+                                                :input     {:id 1}
+                                                :params    {:status "approved"}})))))
+                    (testing "underlying row exists, action executed\n"
+                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @table-1-ref)
+                                            {:rows [{:col "database-value"}]})
+
+                      (let [base-req {:action_id action-id
+                                      :scope     {:dashcard-id (:id dashcard)}
+                                      :input     {:id 1, :col "stale-value"}
+                                      :params    {:b nil}}]
+                        (testing "missing required param"
+                          (is (= {:status 500
+                                  :body "sad"}
+                                 (-> (req base-req)
+                                     (select-keys [:status :body])))))
+                        (testing "missing optional param"
+                          (is (= {:status 200
+                                  :body   {:outputs [{:table-id @table-1-ref
+                                                      :op       "updated"
+                                                      :row      {:id 1
+                                                                 :a  "database-value"
+                                                                 :b  "necessary"
+                                                                 :c  "default"
+                                                                 :d  "hard-coded"}}]}}
+                                 (-> (req (assoc-in base-req [:params :b] "necessary"))
+                                     (select-keys [:status :body])))))
+                        (testing "null optional param"
+                          (is (= {:status 200
+                                  :body   {:outputs [{:table-id @table-1-ref
+                                                      :op       "updated"
+                                                      :row      {:id 2
+                                                                 :a  "database-value"
+                                                                 :b  "necessary"
+                                                                 :c  nil
+                                                                 :d  "hard-coded"}}]}}
+                                 (-> (req (-> base-req
+                                              (assoc-in [:params :b] "necessary")
+                                              (assoc-in [:params :c] nil)))
+                                     (select-keys [:status :body])))))
+                        (testing "provided optional param"
+                          (is (= {:status 200
+                                  :body   {:outputs [{:table-id @table-1-ref
+                                                      :op       "updated"
+                                                      :row      {:id 3
+                                                                 :a  "database-value"
+                                                                 :b  "necessary"
+                                                                 :c  "optional"
+                                                                 :d  "hard-coded"}}]}}
+                                 (-> (req (-> base-req
+                                              (assoc-in [:params :b] "necessary")
+                                              (assoc-in [:params :c] "optional")))
+                                     (select-keys [:status :body])))))))))))))))))
+
 (deftest list-and-add-to-dashcard-test
   (let [list-req #(mt/user-http-request-full-response
                    (:user % :crowberto)
