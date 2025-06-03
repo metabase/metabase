@@ -17,7 +17,7 @@ import {
   Text,
 } from "metabase/ui";
 
-import { ELLIPSIS, GROUP_LABLES } from "../../constants";
+import { ELLIPSIS, GROUP_LABELS } from "../../constants";
 
 const groupedShortcuts = _.groupBy(
   _.mapObject(ALL_SHORTCUTS, (val, id) => ({ id, ...val })),
@@ -61,7 +61,7 @@ export const PaletteShortcutsModal = ({
         <Tabs.List miw={200}>
           {shortcutGroups.map((shortcutGroup) => (
             <Tabs.Tab key={shortcutGroup} value={shortcutGroup} data-autofocus>
-              {GROUP_LABLES[shortcutGroup]}
+              {GROUP_LABELS[shortcutGroup]}
             </Tabs.Tab>
           ))}
         </Tabs.List>

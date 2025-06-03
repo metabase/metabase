@@ -14,6 +14,10 @@ Find data, explore questions and dashboards, and bookmark your favorites.
 
 Organize questions, dashboards, and models with collections.
 
+## [Keyboard shortcuts](./keyboard-shortcuts.md)
+
+A handy list of keyboard shortcuts to help you zip around Metabase.
+
 ## [History](./history.md)
 
 View changes to a question, dashboard or model and revert to previous versions.

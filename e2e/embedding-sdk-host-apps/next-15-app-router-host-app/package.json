@@ -1,5 +1,5 @@
 {
-  "name": "next-14-pages-router-host-app",
+  "name": "next-15-app-router-host-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@metabase/embedding-sdk-react": "file:../../../resources/embedding-sdk",
-    "next": "14.2.29",
+    "next": "15.4.0",
     "react": "^18",
     "react-dom": "^18"
   },
