@@ -20,7 +20,7 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import { SettingsLdapForm } from "../components/SettingsLdapForm";
-import SettingsLicense from "../components/SettingsLicense";
+import { SettingsLicense } from "../components/SettingsLicense";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
