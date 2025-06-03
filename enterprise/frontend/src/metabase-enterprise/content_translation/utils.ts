@@ -2,8 +2,8 @@ import * as I from "icepick";
 import { useMemo } from "react";
 import _ from "underscore";
 
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type { ContentTranslationFunction } from "metabase-lib";
 import type {
   DatasetColumn,
   DictionaryArray,
@@ -62,6 +62,9 @@ export const translateDisplayNames = <T>(
   tc: ContentTranslationFunction,
   fieldsToTranslate = ["display_name", "displayName"],
 ): T => {
+  if (!tc.hasTranslations) {
+    return obj;
+  }
   const traverse = (o: T): T => {
     if (Array.isArray(o)) {
       return o.map((item) => traverse(item)) as T;
@@ -89,7 +92,7 @@ export const translateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,
   tc?: ContentTranslationFunction,
 ) => {
-  if (!tc) {
+  if (!tc?.hasTranslations) {
     return obj;
   }
   return {
@@ -110,10 +113,13 @@ export const translateFieldValuesInHoveredObject = (
   };
 };
 
-export const translateFieldValuesInSeries = (
+const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
 ) => {
+  if (!tc?.hasTranslations) {
+    return series;
+  }
   return series.map((singleSeries) => {
     if (!singleSeries.data) {
       return singleSeries;
@@ -144,6 +150,9 @@ export const useTranslateSeries = (
   tc: ContentTranslationFunction,
 ) => {
   return useMemo(() => {
+    if (!tc.hasTranslations) {
+      return series;
+    }
     const withTranslatedDisplayNames = translateDisplayNames(series, tc);
 
     // Do not translate field values here if display is a map, since this can
