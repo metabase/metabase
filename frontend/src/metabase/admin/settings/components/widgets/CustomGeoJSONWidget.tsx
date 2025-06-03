@@ -426,6 +426,10 @@ const EditMap = ({
               error={geoJsonError}
             >
               <div className={cx(CS.spread, CS.relative)}>
+                {/* The key is needed to update the map in the ChoroplethPreview.
+                    ChoroplethPreview eventually renders a CardRenderer but the props
+                    that we provide in this specific use-case never change, hence the key.
+                 */}
                 <ChoroplethPreview geoJson={geoJson} key={map.url} />
               </div>
             </LoadingAndErrorWrapper>
