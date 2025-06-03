@@ -1588,5 +1588,13 @@ describe("issue 55486", () => {
     cy.log("Back button should show the query editor");
     cy.go("back");
     checkIsShowingQueryEditorTab();
+
+    cy.log("Forward button should show the query editor");
+    cy.go("forward");
+    checkIsShowingMetadataEditorTab();
+
+    cy.log("Forward button should show the query editor");
+    cy.go("forward");
+    checkIsShowingQueryEditorTab();
   });
 });
