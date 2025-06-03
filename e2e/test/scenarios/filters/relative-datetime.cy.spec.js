@@ -1,4 +1,5 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import "metabase/lib/dayjs";
+import dayjs from "dayjs";
 
 const { H } = cy;
 
@@ -13,7 +14,7 @@ const STARTING_FROM_UNITS = [
 ];
 
 describe("scenarios > question > relative-datetime", () => {
-  const now = moment().utc();
+  const now = dayjs().utc();
 
   beforeEach(() => {
     H.restore();
@@ -237,7 +238,7 @@ const nativeSQL = (values) => {
   cy.intercept("POST", "/api/dataset").as("dataset");
 
   const queries = values.map((value) => {
-    const date = moment(value).utc();
+    const date = dayjs(value).utc();
     return `SELECT '${date.toISOString()}'::timestamp as "testcol"`;
   });
 
