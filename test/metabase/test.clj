@@ -378,9 +378,11 @@
    #_built-query :default]
   [query-type model built-query]
   (u/prog1 (next-method query-type model built-query)
-    (log/with-context {:query-type query-type
-                       :model model
-                       :compiled-query (first <>)
-                       :compiled-query-args (rest <>)}
-      (when config/is-test?
-        (log/info "Compiled query")))))
+    (let [compiled-query-arg-map (into {} (map-indexed (fn [i v] [(str "compiled-query-arg-" i) v]) (rest <>)))]
+      (log/with-context (merge {:query-type query-type
+                                :model model
+                                :compiled-query (first <>)
+                                :compiled-query-args (rest <>)}
+                               compiled-query-arg-map)
+        (when config/is-test?
+          (log/info "Compiled query"))))))
