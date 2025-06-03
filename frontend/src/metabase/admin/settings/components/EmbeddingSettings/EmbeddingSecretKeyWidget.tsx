@@ -65,6 +65,7 @@ export const EmbeddingSecretKeyWidget = () => {
             <Button
               variant="filled"
               onClick={generateToken}
+              style={{ flexShrink: 0 }}
             >{t`Generate key`}</Button>
           )}
         </Flex>

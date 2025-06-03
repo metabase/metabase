@@ -2,17 +2,16 @@ import { t } from "ttag";
 
 import { Stack } from "metabase/ui";
 
-import { SettingHeader } from "../SettingHeader";
-
 import {
   EmbeddingSdkOptionCard,
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
-} from "./EmbeddingOption";
+} from "../EmbeddingSettings/EmbeddingOption";
+import { SettingHeader } from "../SettingHeader";
 
-export function EmbeddingSettings() {
+export function EmbeddingSettingsPage() {
   return (
-    <Stack gap="2.5rem" p="0.5rem 1rem 0">
+    <Stack gap="2.5rem">
       <SettingHeader
         id="enable-embedding"
         title={t`Embedding`}
