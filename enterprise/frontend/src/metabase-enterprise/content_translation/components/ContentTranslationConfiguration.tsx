@@ -1,6 +1,7 @@
 import {
   type ChangeEvent,
   type Dispatch,
+  type PropsWithChildren,
   type ReactNode,
   type SetStateAction,
   useCallback,
@@ -22,7 +23,16 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Button, Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Group,
+  Icon,
+  List,
+  Loader,
+  Stack,
+  Text,
+  type TextProps,
+} from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 /** Maximum file size for uploaded content-translation dictionaries, expressed
@@ -107,19 +117,32 @@ export const ContentTranslationConfiguration = () => {
     >
       <SettingHeader
         id="content-translation-header"
-        title={t`Content translation`}
+        title={t`Upload a dictionary to translate user-generated content`}
         description={
-          <Markdown
-            components={{
-              strong: ({ children }: { children: ReactNode }) => (
-                <ExternalLink href={availableLocalesDocsUrl}>
-                  {children}
-                </ExternalLink>
-              ),
-            }}
-          >
-            {t`You can upload a translation dictionary. We'll use this to translate user-provided strings (like question names) into the viewer's language. (Built-in strings won't be affected.) Your translation dictionary should be a CSV with three columns: Locale code, String, Translation. Supported locale codes are **listed here**. Uploading a new dictionary will replace the existing translations. Don't translate sensitive data, since the dictionary will be accessible to all users as well as viewers of public links.`}
-          </Markdown>
+          <>
+            <Stack gap="sm">
+              <DescriptionText>{t`You can upload a translation dictionary to handle user-generated strings, like dashboard names.`}</DescriptionText>
+              <DescriptionText>{t`The dictionary must be a CSV with these columns:`}</DescriptionText>
+              <List ms="sm" c="text-medium">
+                <List.Item c="inherit">{t`Locale Code`}</List.Item>
+                <List.Item c="inherit">{t`String`}</List.Item>
+                <List.Item c="inherit">{t`Translation`}</List.Item>
+              </List>
+              <DescriptionText>{t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.`}</DescriptionText>
+              <DescriptionText>{t`Uploading a new dictionary will replace the existing dictionary.`}</DescriptionText>
+              <Markdown
+                components={{
+                  em: ({ children }: { children: ReactNode }) => (
+                    <ExternalLink href={availableLocalesDocsUrl}>
+                      {children}
+                    </ExternalLink>
+                  ),
+                }}
+              >
+                {t`See a list of *supported locales*.`}
+              </Markdown>
+            </Stack>
+          </>
         }
       />
       <Group>
@@ -291,3 +314,7 @@ const UploadForm = ({
     </Form>
   );
 };
+
+const DescriptionText = (props: PropsWithChildren<TextProps>) => (
+  <Text c="inherit" lh="1.5" {...props} />
+);
