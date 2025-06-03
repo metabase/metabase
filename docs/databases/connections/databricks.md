@@ -41,7 +41,7 @@ See [Authenticate access with a service principal using OAuth](https://docs.data
 
 ### Enable multiple catalogs
 
-Toggle on to sync multiple catalogs. If you enable this, you'll be able to [filter catalogs](#catalogs-and-schemas).
+Toggle on to sync multiple catalogs. If you enable this, you'll be able to [specify which catalogs to sync](#catalogs-and-schemas).
 
 ### Default catalog
 
