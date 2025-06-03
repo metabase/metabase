@@ -116,6 +116,22 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       });
     });
   });
+
+  it("should not show version pinning section", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      showSdkEmbedTerms: false,
+    });
+    expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Request version pinning" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 function assertLegaleseModal() {

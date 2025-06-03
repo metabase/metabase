@@ -16,6 +16,7 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./email";
+export * from "./embed";
 export * from "./field";
 export * from "./gdrive";
 export * from "./geojson";
