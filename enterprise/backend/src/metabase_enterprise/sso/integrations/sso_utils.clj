@@ -84,7 +84,7 @@
   (let [;; if the user is not active, we will want to mark them as active if they are actually reactivated.
         new-user-data (merge user-from-sso {:is_active true})
         user-keys (keys new-user-data)]
-    (when-let [{:keys [id] :as user} (t2/select-one (into [:model/User :id] user-keys)
+    (when-let [{:keys [id] :as user} (t2/select-one (into [:model/User :id :last_login] user-keys)
                                                     :%lower.email (u/lower-case-en email))]
       (when (or (:is_active user)
                 reactivate?)
