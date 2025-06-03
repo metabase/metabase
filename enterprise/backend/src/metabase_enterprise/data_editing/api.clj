@@ -340,10 +340,8 @@
                        (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) (parse-long dashcard-id))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
                              actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
-                             ;; TODO actual_id should get renamed to id at some point in the FE
-                             viz-action  (api/check-404 (first (filter (comp #{raw-id} #(or (:actual_id %) (:id %))) actions)))
-                             ;; TODO id should get renamed to action_id at some point as well
-                             inner-id    (or (:action_id viz-action) (:id viz-action))
+                             viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
+                             inner-id    (:actionId viz-action)
                              unified     (fetch-unified-action scope inner-id)
                              action-type (:actionType viz-action "data-grid/row-action")
                              mapping     (:parameterMappings viz-action {})]
