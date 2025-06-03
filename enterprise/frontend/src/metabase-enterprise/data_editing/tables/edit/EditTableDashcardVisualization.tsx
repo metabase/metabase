@@ -41,7 +41,9 @@ import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { ForeignKeyConstraintModal } from "./modals/ForeignKeyConstraintModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
+import { useForeignKeyConstraintHandling } from "./modals/use-foreign-key-constraint-handling";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
@@ -141,6 +143,7 @@ export const EditTableDashcardVisualization = memo(
       isUpdating,
       tableFieldMetadataMap,
       cellsWithFailedUpdatesMap,
+      error,
 
       handleCellValueUpdate,
       handleRowCreate,
@@ -148,6 +151,7 @@ export const EditTableDashcardVisualization = memo(
       handleRowUpdateBulk,
       handleRowDelete,
       handleRowDeleteBulk,
+      handleRowDeleteWithCascade,
     } = useTableCRUD({
       tableId,
       scope: editingScope,
@@ -204,6 +208,18 @@ export const EditTableDashcardVisualization = memo(
       handleRowDeleteBulk,
       selectedRowIndices,
       setRowSelection,
+    });
+
+    const {
+      isForeignKeyModalOpen,
+      foreignKeyError,
+      handleForeignKeyConfirmation,
+      handleForeignKeyCancel,
+    } = useForeignKeyConstraintHandling({
+      onCascadeDelete: handleRowDeleteWithCascade,
+      selectedRowIndices,
+      setRowSelection,
+      constraintError: error,
     });
 
     const isActionExecuteModalOpen = !!selectedTableActionState;
@@ -410,6 +426,14 @@ export const EditTableDashcardVisualization = memo(
             isInserting={isInserting}
           />
         )}
+        <ForeignKeyConstraintModal
+          opened={isForeignKeyModalOpen}
+          onClose={handleForeignKeyCancel}
+          onConfirm={handleForeignKeyConfirmation}
+          isLoading={isDeleting}
+          childRecords={foreignKeyError?.children || {}}
+          message={foreignKeyError?.message}
+        />
       </Stack>
     );
   },

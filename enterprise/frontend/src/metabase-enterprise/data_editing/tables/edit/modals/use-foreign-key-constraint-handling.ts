@@ -14,9 +14,9 @@ export interface ForeignKeyConstraintError {
 }
 
 export interface UseForeignKeyConstraintHandlingProps {
+  constraintError: { type: string } | null;
   onCascadeDelete: (rowIndices: number[]) => Promise<boolean>;
   selectedRowIndices: number[];
-  constraintError: { type: string } | null;
   setRowSelection: (state: RowSelectionState) => void;
 }
 
@@ -40,16 +40,6 @@ export function useForeignKeyConstraintHandling({
       openForeignKeyModal();
     }
   }, [constraintError, openForeignKeyModal]);
-
-  // const handleForeignKeyError = useCallback(() => {
-  //   const foreignKeyError = extractForeignKeyError(constraintError);
-  //   if (foreignKeyError) {
-  //     setForeignKeyError(foreignKeyError);
-  //     openForeignKeyModal();
-  //     return true;
-  //   }
-  //   return false;
-  // }, [constraintError, openForeignKeyModal]);
 
   const handleForeignKeyConfirmation = useCallback(async () => {
     if (selectedRowIndices.length > 0) {
@@ -75,7 +65,6 @@ export function useForeignKeyConstraintHandling({
   return {
     isForeignKeyModalOpen,
     foreignKeyError,
-    // handleForeignKeyError,
     handleForeignKeyConfirmation,
     handleForeignKeyCancel,
   };
