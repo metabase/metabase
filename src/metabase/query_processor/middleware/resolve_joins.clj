@@ -80,13 +80,17 @@
                                     (when (> freq 1)
                                       item)))
                             (frequencies (map :id source-metadata)))]
-    (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref} source-metadata]
-      (if (and field-id (not (contains? duplicate-ids field-id)))
-        ;; field-id is a unique reference, use it
-        (-> field-ref
-            (mbql.u/update-field-options assoc :join-alias alias)
-            (mbql.u/update-field-options dissoc :binning :temporal-unit))
-        [:field field-name {:base-type base-type, :join-alias alias}]))))
+    (for [{field-name :name
+           base-type :base_type
+           field-id :id
+           field-ref :field_ref} source-metadata]
+      (or (when (and field-id (not (contains? duplicate-ids field-id)))
+                ;; field-id is a unique reference, use it
+            (lib.util.match/match-one field-ref
+              [:field id-or-name opts]
+              (cond-> (dissoc opts :source-field :effective-type)
+                (integer? id-or-name) (dissoc :base-type))))
+          [:field field-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
