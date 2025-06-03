@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks/use-docs-url"; // Corrected import
 import LogoIcon from "metabase/components/LogoIcon";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Center, Flex, Icon, Text } from "metabase/ui";
 
 const ICON_SIZE = 30;
 const STEP_GAP = 22;
@@ -44,6 +44,7 @@ export const EmbeddingSetupSidebar = () => {
     [steps, pathname],
   );
 
+  // TODO: use real page
   const { url: helpLink } = useDocsUrl("embedding/analytics");
 
   return (
@@ -86,16 +87,16 @@ export const EmbeddingSetupSidebar = () => {
           />
         ))}
       </Box>
-      <Box mt="auto" pt="xl">
+      <Center mt="auto" pt="xl" mb="xxl">
         <a
           href={helpLink}
           target="_blank"
           rel="noopener noreferrer"
           className="link"
         >
-          {t`Need assistance?`}
+          <Text fw="bold">{t`Need assistance?`}</Text>
         </a>
-      </Box>
+      </Center>
     </Box>
   );
 };
