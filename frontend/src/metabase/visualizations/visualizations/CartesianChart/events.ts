@@ -33,6 +33,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/guards";
 import { getOtherSeriesAggregationLabel } from "metabase/visualizations/echarts/cartesian/model/other-series";
 import type {
+  AxisFormatter,
   BaseCartesianChartModel,
   BaseSeriesModel,
   ChartDataset,
@@ -816,7 +817,7 @@ export const getTimelineEventsHoverData = (
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-  chartModel: BaseCartesianChartModel,
+  formatGoal?: AxisFormatter,
 ) => {
   const element = event.event.event.target as Element;
 
@@ -824,7 +825,7 @@ export const getGoalLineHoverData = (
     return null;
   }
 
-  const formatGoal = chartModel.leftAxisModel?.formatGoal || _.identity;
+  const goalValue = settings["graph.goal_value"] ?? "";
 
   return {
     element,
@@ -832,7 +833,7 @@ export const getGoalLineHoverData = (
       {
         col: null,
         key: settings["graph.goal_label"] ?? "",
-        value: formatGoal(settings["graph.goal_value"] ?? ""),
+        value: formatGoal ? formatGoal(goalValue) : goalValue,
       },
     ],
   };
