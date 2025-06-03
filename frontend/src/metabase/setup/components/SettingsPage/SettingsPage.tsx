@@ -1,7 +1,6 @@
 import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getLocalizationNoticeText } from "metabase/localization";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getIsEmbeddingUseCase, getSteps } from "metabase/setup/selectors";
 import type { SetupStep } from "metabase/setup/types";
 import { Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
@@ -34,10 +33,9 @@ const STEP_COMPONENTS: Partial<
 
 export const SettingsPage = (): JSX.Element => {
   const steps = useSelector(getSteps);
-  const applicationName = useSelector(getApplicationName);
   const isEmbeddingUseCase = useSelector(getIsEmbeddingUseCase);
   const SELECT_WIDTH = "10rem";
-  const tooltipText = getLocalizationNoticeText(applicationName);
+  const tooltipText = getLocalizationNoticeText("Metabase");
   const TOOLTIP_WIDTH = 220;
 
   const label = (
