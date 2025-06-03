@@ -355,8 +355,7 @@
                                              #(t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))]
                      (if-not table-id
                        ;; this is not an Editable, it must be a question - so we use the client-side row
-                       #p
-                        (update-keys input name)
+                       (update-keys input name)
                        ;; TODO batch fetching all these rows, across all inputs
                        (let [fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
                              pk-fields (filter #(= :type/PK (:semantic_type %)) fields)
