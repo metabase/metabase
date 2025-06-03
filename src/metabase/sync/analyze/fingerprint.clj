@@ -21,6 +21,8 @@
    [redux.core :as redux]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
    *completed* analysis. All Fields who get new fingerprints should get marked as having the latest fingerprint
@@ -193,17 +195,21 @@
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
   [table :- i/TableInstance]
-  (if-let [fields (fields-to-fingerprint table)]
-    (do
-      (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-      (let [stats (sync-util/with-error-handling
-                   (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                    (fingerprint-fields! table fields))]
-        (if (instance? Exception stats)
-          (assoc (empty-stats-map 0)
-                 :throwable stats)
-          stats)))
-    (empty-stats-map 0)))
+  (let [start (System/currentTimeMillis)
+        r (if-let [fields (fields-to-fingerprint table)]
+            (do
+              (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+              (let [stats (sync-util/with-error-handling
+                           (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                            (fingerprint-fields! table fields))]
+                (if (instance? Exception stats)
+                  (assoc (empty-stats-map 0)
+                         :throwable stats)
+                  stats)))
+            (empty-stats-map 0))
+        dur (- (System/currentTimeMillis) start)]
+    (log/infof "Fingerprint of table %s took %d ms" (:id table) dur)
+    r))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :any])
