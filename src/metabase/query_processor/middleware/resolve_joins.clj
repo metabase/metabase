@@ -85,11 +85,15 @@
            field-id :id
            field-ref :field_ref} source-metadata]
       (or (when (and field-id (not (contains? duplicate-ids field-id)))
-                ;; field-id is a unique reference, use it
+            ;; Return `field-ref` directly if it's a `:field` clause already. Remove binning/temporal bucketing info.
+            ;; The field should already be getting bucketed in the source query; don't need to apply bucketing again in
+            ;; the parent query.
             (lib.util.match/match-one field-ref
               [:field id-or-name opts]
-              (cond-> (dissoc opts :source-field :effective-type)
-                (integer? id-or-name) (dissoc :base-type))))
+              [:field id-or-name (cond-> (-> opts
+                                             (assoc :join-alias alias)
+                                             (dissoc :binning :temporal-unit))
+                                   (integer? id-or-name) (dissoc :base-type))]))
           [:field field-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
