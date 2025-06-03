@@ -784,8 +784,8 @@
       [:not-null & _]
       (i18n/tru "Is Not Empty")
 
-      [:time-interval _ (x :guard temporal?) n unit]
-      (lib.temporal-bucket/describe-temporal-interval n unit)
+      [:time-interval opts (x :guard temporal?) n unit]
+      (lib.temporal-bucket/describe-temporal-interval n unit opts)
 
       [:relative-time-interval _ (x :guard temporal?) n unit offset offset-unit]
       (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)
