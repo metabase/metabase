@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { splice } from "icepick";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Draggable,
   Droppable,
@@ -13,6 +13,7 @@ import { AggregationPicker } from "metabase/common/components/AggregationPicker"
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
+import { MetabaseApi } from "metabase/services";
 import { Box, Button, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
@@ -165,6 +166,33 @@ export const ChartSettingFieldsPartition = ({
   columns,
   canEditColumns,
 }: ChartSettingsFieldPartitionProps) => {
+  const updatedValue = useMemo(
+    () =>
+      _.mapObject(value || {}, (columnNames) =>
+        columnNames
+          .map((columnName) => columns.find((col) => col.name === columnName))
+          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
+      ),
+    [columns, value],
+  );
+
+  const query = question.query();
+  const datasetQuery = question.datasetQuery();
+
+  // TODO: figure out the right way to do this API call instead of on every component mount
+  const [metadataResults, setMetadataResults] = useState(null);
+  useEffect(() => {
+    MetabaseApi.result_metadata(datasetQuery)
+      .then(setMetadataResults)
+      .catch((err) => {
+        console.error("Failed to fetch metadata", err);
+      });
+  }, [datasetQuery]);
+
+  if (!metadataResults) {
+    return;
+  }
+
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -234,18 +262,6 @@ export const ChartSettingFieldsPartition = ({
       });
     }
   };
-
-  const updatedValue = useMemo(
-    () =>
-      _.mapObject(value || {}, (columnNames) =>
-        columnNames
-          .map((columnName) => columns.find((col) => col.name === columnName))
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
-      ),
-    [columns, value],
-  );
-
-  const query = question.query();
 
   const emptyColumnMessage = canEditColumns
     ? t`Add fields here`
