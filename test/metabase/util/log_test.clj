@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.util.log :as log])
   (:import
-   (java.util Map)
    (org.apache.logging.log4j ThreadContext)))
 
 (set! *warn-on-reflection* true)

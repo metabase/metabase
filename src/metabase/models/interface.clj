@@ -28,7 +28,6 @@
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
