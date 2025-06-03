@@ -1,7 +1,6 @@
-import { t } from "ttag";
-
 import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
+import { getLocalizationNoticeText } from "metabase/localization";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getIsEmbeddingUseCase, getSteps } from "metabase/setup/selectors";
 import type { SetupStep } from "metabase/setup/types";
@@ -38,8 +37,8 @@ export const SettingsPage = (): JSX.Element => {
   const applicationName = useSelector(getApplicationName);
   const isEmbeddingUseCase = useSelector(getIsEmbeddingUseCase);
   const SELECT_WIDTH = "10rem";
-  const tooltipText = t`Some translations are created by the ${applicationName} community, and might not be perfect.`;
-  const tooltipWidth = 220;
+  const tooltipText = getLocalizationNoticeText(applicationName);
+  const TOOLTIP_WIDTH = 220;
 
   const label = (
     <Text size="sm" c="var(--mb-color-text-white)">
@@ -55,23 +54,21 @@ export const SettingsPage = (): JSX.Element => {
           <LogoIcon height={51} />
           <Box w={SELECT_WIDTH}>
             {isEmbeddingUseCase && (
-              <>
-                <Flex align="center" justify="space-between" gap="sm">
-                  <LanguageSelector />
-                  <div>
-                    <Tooltip
-                      label={label}
-                      position="bottom"
-                      withArrow
-                      multiline
-                      w={tooltipWidth}
-                      ta="center"
-                    >
-                      <Icon name="info_filled" />
-                    </Tooltip>
-                  </div>
-                </Flex>
-              </>
+              <Flex align="center" justify="space-between" gap="sm">
+                <LanguageSelector />
+                <div>
+                  <Tooltip
+                    label={label}
+                    position="bottom"
+                    withArrow
+                    multiline
+                    w={TOOLTIP_WIDTH}
+                    ta="center"
+                  >
+                    <Icon name="info_filled" aria-label={tooltipText} />
+                  </Tooltip>
+                </div>
+              </Flex>
             )}
           </Box>
         </Flex>

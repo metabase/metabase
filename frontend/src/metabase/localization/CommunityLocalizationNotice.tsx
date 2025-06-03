@@ -8,6 +8,10 @@ import {
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
 
+export function getLocalizationNoticeText(applicationName: string) {
+  return t`Some translations are created by the ${applicationName} community, and might not be perfect.`;
+}
+
 export function CommunityLocalizationNotice({
   isAdminView = false,
 }: {
@@ -25,9 +29,9 @@ export function CommunityLocalizationNotice({
   const showLink = !isWhiteLabeling || isAdminView;
 
   return (
-    <>
-      <span>{t`Some translations are created by the ${applicationName} community, and might not be perfect.`}</span>
+    <span>
+      <span>{getLocalizationNoticeText(applicationName)}</span>
       {showLink && <span> {jt`You can ${translatedLink}`}.</span>}
-    </>
+    </span>
   );
 }

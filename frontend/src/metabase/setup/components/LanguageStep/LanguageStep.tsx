@@ -4,7 +4,8 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { CommunityLocalizationNotice } from "metabase/localization/CommunityLocalizationNotice";
+import { CommunityLocalizationNotice } from "metabase/localization";
+import { Stack } from "metabase/ui";
 import type { Locale } from "metabase-types/store";
 
 import { useStep } from "../..//useStep";
@@ -52,10 +53,10 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   return (
     <ActiveStep title={t`What's your preferred language?`} label={stepLabel}>
       <StepDescription>
-        {t`This language will be used throughout Metabase and will be the default for new users.`}
-        <br />
-        <br />
-        <CommunityLocalizationNotice isAdminView />
+        <Stack gap="md">
+          {t`This language will be used throughout Metabase and will be the default for new users.`}
+          <CommunityLocalizationNotice isAdminView />
+        </Stack>
       </StepDescription>
       <LocaleGroup role="radiogroup">
         {locales.map((item) => (
