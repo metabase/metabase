@@ -9,7 +9,7 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException)))
+   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -20,8 +20,8 @@
   ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
   ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
   ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
-  (or (instance? SQLIntegrityConstraintViolationException e)
-      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
+  (or (instance? SQLException e)
+      (instance? SQLException (ex-cause e))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
