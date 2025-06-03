@@ -243,9 +243,7 @@ const _DatasetEditorInner = (props) => {
     });
   }, [question, height]);
 
-  const [editorHeight, setEditorHeight] = useState(
-    isEditingQuery ? initialEditorHeight : 0,
-  );
+  const [editorHeight, setEditorHeight] = useState(initialEditorHeight);
 
   const [focusedFieldName, setFocusedFieldName] = useState();
 
