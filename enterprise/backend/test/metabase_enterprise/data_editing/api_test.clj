@@ -873,20 +873,20 @@
                                                             :card_id        (:id model)
                                                             :visualization_settings
                                                             {:editableTable.enabledActions
-                                                             [{:actual_id #_:id "dashcard:unknown:abcdef"
-                                                               :id #_:action_id (:id action)
-                                                               :type            "row-action"
-                                                               :enabled         true}
-                                                              {:actual_id #_:id   "dashcard:unknown:fedcba"
-                                                               :id #_:action_id   "table.row/update"
-                                                               :type              "row-action"
+                                                             [{:id         "dashcard:unknown:abcdef"
+                                                               :actionId   (:id action)
+                                                               :actionType "data-grid/row-action"
+                                                               :enabled    true}
+                                                              {:id                "dashcard:unknown:fedcba"
+                                                               :actionId          "table.row/update"
+                                                               :actionType        "data-grid/row-action"
                                                                :parameterMappings {:table-id @test-table
                                                                                    :row      "::root"}
                                                                :enabled           true}
-                                                              {:actual_id #_:id "dashcard:unknown:xyzabc"
-                                                               :id #_:action_id (#'actions/encoded-action-id :table.row/update @test-table)
-                                                               :type            "row-action"
-                                                               :enabled         true}]}}]
+                                                              {:id         "dashcard:unknown:xyzabc"
+                                                               :actionId   (#'actions/encoded-action-id :table.row/update @test-table)
+                                                               :actionType "data-grid/row-action"
+                                                               :enabled    true}]}}]
                 (testing "no access to the model"
                   (is (= 403 (:status (req {:user      :rasta
                                             :action_id (:id action)
