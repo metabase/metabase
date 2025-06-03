@@ -130,8 +130,16 @@ export const QuestionDownloadWidget = ({
     isPivoted &&
     !dismissedExcelPivotExportsBanner &&
     showMetabaseLinks;
+
   return (
-    <Stack w={336} p="0.75rem" gap="md" {...stackProps}>
+    <Stack
+      {...stackProps}
+      style={{
+        padding: "0.75rem",
+        width: 336,
+        gap: 24,
+      }}
+    >
       <Title order={5}>{t`Download data`}</Title>
       <ExportSettingsWidget
         selectedFormat={format}
@@ -150,6 +158,9 @@ export const QuestionDownloadWidget = ({
           bg="var(--mb-color-background-light)"
           align="center"
           justify="space-between"
+          style={{
+            borderRadius: 8,
+          }}
         >
           <Text fz="12px" lh="16px" c="text-medium">
             {t`Trying to pivot this data in Excel? You should download the raw data instead.`}{" "}
