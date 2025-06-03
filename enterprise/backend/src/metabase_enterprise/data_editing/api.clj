@@ -468,7 +468,32 @@
    {}
    {:keys [action_id scope #_input]}]
   (let [scope   (actions/hydrate-scope scope)
-        unified (fetch-unified-action scope action_id)
+        unified
+        ;; this mess can go once callers are on new listing API, leaving only the unified-action call.
+        ;; but then this routes lifetime should be similarly limited!
+        (cond
+          (not (#{"table.row/create"
+                  "table.row/update"
+                  "table.row/delete"} action_id))
+          (fetch-unified-action scope action_id)
+
+          (:table-id scope)
+          {:action-kw (keyword action_id)
+           :mapping {:table-id (:table-id scope)
+                     :row ::root}}
+
+          (:dashcard-id scope)
+          (let [{:keys [dashcard-id]} scope
+                {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
+            (api/read-check (t2/select-one :model/Dashboard dashboard_id))
+            {:action-kw (keyword action_id)
+             :mapping {:table-id (:table_id visualization_settings)
+                       :row ::root}})
+          :else
+          (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
+                          {:status-code 400
+                           :scope scope
+                           :action_id action_id})))
 
         ;; todo mapping support
         describe-saved-action
