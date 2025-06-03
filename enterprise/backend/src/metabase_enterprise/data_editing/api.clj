@@ -345,11 +345,13 @@
                              ;; TODO id should get renamed to action_id at some point as well
                              inner-id    (or (:action_id viz-action) (:id viz-action))
                              unified     (fetch-unified-action scope inner-id)
-                             action-type (:type viz-action "row-action")
+                             action-type (:actionType viz-action "data-grid/row-action")
                              mapping     (:parameterMappings viz-action {})]
                          (assert (:enabled viz-action) "Cannot call disabled actions")
                          (case action-type
-                           "row-action" {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
+                           ("data-grid/built-in"
+                            "data-grid/row-action")
+                           {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
                        (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
                          ;; Dashboard buttons can only be invoked from dashboards
                          ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
