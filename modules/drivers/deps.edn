@@ -1,10 +1,11 @@
 {
- ;; we have to copy over the Maven repos used for the Athena and Redshift drivers to here as well -- this is
+ ;; we have to copy over the Maven repos used for certain drivers to here as well -- this is
  ;; apparently done on purpose, as a security thing. See
  ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
  :mvn/repos
- {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}
-  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"} ;; athena
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}        ;; redshift
+  "shibboleth" {:url "https://build.shibboleth.net/maven/releases"}}                    ;; hive-like
 
  :deps
  {metabase/athena             {:local/root "athena"}
