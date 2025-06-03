@@ -457,8 +457,9 @@
        [:scope                   ::types/scope.raw]
        [:inputs                  [:sequential :map]]
        [:params {:optional true} :map]]]
+  ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
   {:outputs (binding [actions/*params* params]
-              (execute!* action_id params scope inputs))})
+              (execute!* action_id scope (dissoc params :delete-children) inputs))})
 
 (api.macros/defendpoint :post "/tmp-modal"
   "Temporary endpoint for describing an actions parameters
@@ -507,8 +508,9 @@
 
         ;; todo mapping support
         describe-table-action
-        (fn [& {:keys [action-kw table-id _mapping]}]
-          (let [table (api/read-check (t2/select-one :model/Table :id table-id :active true))]
+        (fn [& {:keys [action-kw mapping] :as _}]
+          (let [table-id (api/check-500 (:table-id mapping))
+                table (api/read-check (t2/select-one :model/Table :id table-id :active true))]
             {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
              :parameters
              (->> (for [field (->> (t2/select :model/Field :table_id table-id)
@@ -538,10 +540,7 @@
 
       ;; table action
       (:action-kw unified)
-      (let [action-kw (keyword (:action-kw unified))
-            table-id  (:table-id unified)]
-        (describe-table-action :action-kw action-kw
-                               :table-id table-id))
+      (describe-table-action unified)
 
       (:row-action unified)
       (let [row-action  (:row-action unified)

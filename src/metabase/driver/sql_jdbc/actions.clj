@@ -788,6 +788,7 @@
         [errors results] (batch-execution-by-table-id!
                           {:inputs        inputs
                            :row-action    :model.row/delete
+                           ;; TODO :delete-children should get passed in as part of inputs, and we should get rid of *params*
                            :row-fn        (if (:delete-children actions/*params*) row-delete!*-with-children row-delete!*)
                            :validate-fn   (fn [database table-id rows]
                                             (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
