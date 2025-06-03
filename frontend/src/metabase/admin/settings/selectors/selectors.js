@@ -9,6 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_AUTH_PROVIDERS,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -170,6 +171,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "authentication/ldap": {
     component: SettingsLdapForm,
     order: 64,
+    settings: [],
+  },
+  "authentication/saml": {
+    component: () => <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />,
+    order: 65,
+    settings: [],
+  },
+  "authentication/jwt": {
+    component: () => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />,
+    order: 66,
     settings: [],
   },
   maps: {
