@@ -596,40 +596,32 @@
 
 ;;;; Foreign Key Cascade Deletion
 
-(defn- build-pk-filter-clause-mbql
-  "Build an efficient filter clause for matching rows by primary key.
-  Uses IN clause for single PK, OR of AND clauses for composite PK."
-  [pk-name->id pk-rows]
-  (cond
-    (= 1 (count pk-rows))
-    (row->mbql-filter-clause pk-name->id (first pk-rows))
-
-    (= 1 (count pk-name->id))
-    (let [[pk-name pk-field-id] (first pk-name->id)
-          pk-values             (map #(get % pk-name) pk-rows)]
-      (into [:in [:field pk-field-id nil]] pk-values))
-
-    :else
-    (into [:or]
-          (map #(row->mbql-filter-clause pk-name->id %) pk-rows))))
+(declare check-consistent-row-keys)
+(defn- build-pk-filter-clause-hsql
+  "Build an efficient filter clause for matching rows by foreign key.
+  Uses IN clause for single FK, OR of AND clauses for composite FK."
+  [pk-rows]
+  (check-consistent-row-keys pk-rows)
+  (let [pk-cols (keys (first pk-rows))]
+    (if (= 1 (count pk-cols))
+      [:in (-> pk-cols first keyword) (set (mapcat vals pk-rows))]
+      (into [:or]
+            (map (fn [pk-row]
+                   (into [:and]
+                         (for [[pk val] pk-row]
+                           [:= (keyword pk) val])))
+                 pk-rows)))))
 
 (defn- delete-rows-by-pk!
   "Delete rows from a table by their primary key values"
   [database-id table-id pk-rows]
   (when (seq pk-rows)
-    (let [database             (actions/cached-database database-id)
-          driver               (:engine database)
-          pk-name->id          (table-id->pk-field-name->id database-id table-id)
-          ;; TODO optimize to delete by FK instead of PK of the target table
-          filter-clause        (build-pk-filter-clause-mbql pk-name->id pk-rows)
-          {:keys [from where]} (mbql-query->raw-hsql driver {:database database-id
-                                                             :type     :query
-                                                             :query    {:source-table table-id
-                                                                        :filter       filter-clause}})
-          delete-hsql          (-> {:delete-from (first from)
-                                    :where       where}
-                                   (prepare-query driver :table.row/delete))
-          sql-args            (sql.qp/format-honeysql driver delete-hsql)]
+    (let [database    (actions/cached-database database-id)
+          driver      (:engine database)
+          delete-hsql (-> {:delete-from (keyword (:name (actions/cached-table database-id table-id)))
+                           :where       (build-pk-filter-clause-hsql pk-rows)}
+                          (prepare-query driver :table.row/delete))
+          sql-args    (sql.qp/format-honeysql driver delete-hsql)]
       (with-jdbc-transaction [conn database-id]
         (with-auto-parse-sql-exception driver database :table.row/delete
           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))))))
@@ -749,13 +741,13 @@
                     {:status-code 400, :repeated-rows repeats}))))
 
 (defn- row-delete!*-with-children
-  [_action database query]
+  [action database query]
   (let [table-id             (get-in query [:query :source-table])
         database-id          (:id database)
         driver               (:engine database)
         {:keys [from where]} (mbql-query->raw-hsql driver query)]
     (with-jdbc-transaction [conn database-id]
-      (let [row-before (->> (prepare-query {:select [:*] :from from :where where} driver _action)
+      (let [row-before (->> (prepare-query {:select [:*] :from from :where where} driver action)
                             (query-rows driver conn table-id)
                             first)]
         (when-not row-before
@@ -766,6 +758,11 @@
          :db-id    database-id
          :before   row-before
          :after    nil}))))
+#_(row-delete!*-with-children :model.row/delete
+                              (t2/select-one :model/Database 1)
+                              {:database 1,
+                               :type :query,
+                               :query {:source-table 3, :filter [:and [:= [:field 8 nil] 42]]}})
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]

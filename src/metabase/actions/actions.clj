@@ -211,11 +211,19 @@
                 #(qp.store/with-metadata-provider db-id
                    (lib.metadata/database (qp.store/metadata-provider)))))
 
+(defn cached-table
+  "Uses cache to prevent redundant look-ups with an action call chain."
+  [db-id table-id]
+  (assert db-id "Id cannot be nil")
+  (cached-value [:tables table-id]
+                #(qp.store/with-metadata-provider db-id
+                   (lib.metadata/table (qp.store/metadata-provider) table-id))))
+
 (defn cached-database-via-table-id
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (:db_id (cached-value [:tables table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
+  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :name :db_id] table-id)))))
 
 (mu/defn perform-action!
   "Perform an *implicit* `action`. Invoke this function for performing actions, e.g. in API endpoints;

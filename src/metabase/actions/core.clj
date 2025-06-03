@@ -26,6 +26,7 @@
   check-data-editing-enabled-for-database!
   cached-database
   cached-database-via-table-id
+  cached-table
   handle-effects!*
   perform-action!
   ;; allow actions to be defined in the data-editing module
