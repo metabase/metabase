@@ -127,7 +127,7 @@
                                         (lib/with-join-alias join-column
                                                              "alias"))])
                           (lib/with-join-alias "alias"))))]
-        (doseq [query [base (lib/append-stage base)]]
+        (testing "same stage"
           (is (=? [{:display-name "Grandparent: Parent: Child"
                     :long-display-name "Grandparent: Parent: Child"}
                    {:display-name "Grandparent"
@@ -140,9 +140,27 @@
                     :long-display-name "alias → Grandparent"}
                    {:display-name "Grandparent: Parent"
                     :long-display-name "alias → Grandparent: Parent"}]
-                  (->> query
+                  (->> base
                        lib/visible-columns
-                       (map #(lib/display-info base -1 %))))))))))
+                       (map #(lib/display-info base -1 %))))))
+        (testing "later stage"
+          (let [query (lib/append-stage base)]
+            (is (=? [{:display-name "Grandparent: Parent: Child"
+                      :long-display-name "Grandparent: Parent: Child"}
+                     {:display-name "Grandparent"
+                      :long-display-name "Grandparent"}
+                     {:display-name "Grandparent: Parent"
+                      :long-display-name "Grandparent: Parent"}
+                     {:display-name "alias → Grandparent: Parent: Child"
+                      :long-display-name "alias → Grandparent: Parent: Child"}
+                     {:display-name "alias → Grandparent"
+                      :long-display-name "alias → Grandparent"}
+                     {:display-name "alias → Grandparent: Parent"
+                      :long-display-name "alias → Grandparent: Parent"}]
+                    (->> query
+                         lib/append-stage
+                         lib/visible-columns
+                         (map #(lib/display-info query -1 %)))))))))))
 
 (deftest ^:parallel col-info-field-literals-test
   (testing "field literals should get the information from the matching `:lib/stage-metadata` if it was supplied"
@@ -192,9 +210,7 @@
                                         "Products__CATEGORY"]]}]}
                       query'))
               (is (=? [{:name              "CATEGORY"
-                        :display-name      (if has-result-metadata?
-                                             "Products → Category"
-                                             "Category")
+                        :display-name      "Products → Category"
                         :long-display-name "Products → Category"
                         :effective-type    :type/Text}]
                       (map #(lib/display-info query' %)
@@ -1018,6 +1034,10 @@
                       (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                       (lib/append-stage))
           columns (lib/fieldable-columns query)]
+      #_(tap> [`returned-vs-visible
+               ^{:portal.viewer/default :portal.viewer/diff}
+               [(vec (lib/returned-columns query 0 (metabase.lib.util/query-stage query 0)))
+                (vec columns)]])
       (testing "removing the column coming from the first breakout"
         (is (=? [[:field {} "CREATED_AT_2"] [:field {} "count"]]
                 (-> query
@@ -1601,8 +1621,9 @@
                                (dissoc :id :table-id)))
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
-                                     :source-alias "Products")
+                                     #_#_:source-alias "Products")
                               (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
+                              (update :display-name #(str "Products → " %))
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)

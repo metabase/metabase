@@ -149,7 +149,7 @@
           cols              (lib/returned-columns q)]
       (is (=? [{:name                     "CATEGORY"
                 :lib/source               :source/card
-                :lib/source-column-alias  "CATEGORY"
+                :lib/source-column-alias  "Products__CATEGORY"
                 :lib/desired-column-alias "Products__CATEGORY"}
                {:name                     "count"
                 :lib/source               :source/card
@@ -219,12 +219,12 @@
 
 (deftest ^:parallel display-name-of-joined-cards-is-clean-test
   (testing "We get proper field names rather than ids (#27323)"
-    (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards) (:products (lib.tu/mock-cards)))
+    (let [base (lib/query (lib.tu/metadata-provider-with-mock-cards) (:products (lib.tu/mock-cards)))
           people-card (:people (lib.tu/mock-cards))
-          lhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-lhs-columns query 0 people-card nil nil))
-          rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
+          lhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-lhs-columns base 0 people-card nil nil))
+          rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns base 0 people-card nil nil))
           join-clause (lib/join-clause people-card [(lib/= lhs rhs)])
-          query (lib/join query join-clause)
+          query (lib/join base join-clause)
           filter-col (m/find-first (comp #{"Mock people card__ID"} :lib/desired-column-alias)
                                    (lib/filterable-columns query))
           query (-> query
@@ -234,7 +234,7 @@
                                                             (lib/breakoutable-columns $q)))))]
       (is (= ["Source" "Distinct values of ID"]
              (map #(lib/display-name query %) (lib/returned-columns query))))
-      (is (= ["ID is 1"]
+      (is (= ["ID is equal to 1"]
              (map #(lib/display-name query %) (lib/filters query)))))))
 
 (deftest ^:parallel card-display-info-test
