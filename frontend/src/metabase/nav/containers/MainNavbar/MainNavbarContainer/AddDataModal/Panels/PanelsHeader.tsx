@@ -9,9 +9,13 @@ import S from "../AddDataModal.module.css";
 interface HeaderProps {
   activeTab: string | null;
   isAdmin: boolean;
-  onClose: () => void;
+  onAddDataModalClose: () => void;
 }
-export const PanelsHeader = ({ activeTab, isAdmin, onClose }: HeaderProps) => {
+export const PanelsHeader = ({
+  activeTab,
+  isAdmin,
+  onAddDataModalClose,
+}: HeaderProps) => {
   const showDatabasesLink = activeTab === "db" && isAdmin;
 
   return (
@@ -25,7 +29,7 @@ export const PanelsHeader = ({ activeTab, isAdmin, onClose }: HeaderProps) => {
             c="brand"
           >{t`Manage databases`}</Box>
         )}
-        <Modal.CloseButton size="1rem" onClick={onClose} />
+        <Modal.CloseButton size="1rem" onClick={onAddDataModalClose} />
       </Group>
     </Box>
   );

@@ -1,17 +1,17 @@
 import { t } from "ttag";
 
-export const GROUP_LABLES = {
+export const GROUP_LABELS = {
   get global() {
     return t`General`;
   },
   get dashboard() {
-    return t`Dashboard`;
+    return t`Dashboards`;
   },
   get question() {
-    return t`Querying & the notebook`;
+    return t`Questions`;
   },
   get collection() {
-    return t`Collection`;
+    return t`Collections`;
   },
   get admin() {
     return t`Admin`;
