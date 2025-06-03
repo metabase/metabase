@@ -1,11 +1,7 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type {
-  RetrievedDictionaryArrayRow,
-  TokenFeatures,
-} from "metabase-types/api";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -18,14 +14,12 @@ export interface SetupOpts {
   localeCode?: string;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  dictionary?: RetrievedDictionaryArrayRow[];
 }
 
 export const setup = ({
   localeCode,
   hasEnterprisePlugins,
   tokenFeatures = {},
-  dictionary = [],
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     settings: mockSettings({
@@ -37,8 +31,6 @@ export const setup = ({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
-
-  setupContentTranslationEndpoints({ dictionary });
 
   return renderWithProviders(
     <TitleAndDescription
