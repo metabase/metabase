@@ -596,42 +596,6 @@
 
 ;;;; Foreign Key Cascade Deletion
 
-(mu/defn- build-fk-metadata #_:- #_[:map-of ::lib.schema.id/table [:sequential :map]]
-  "Build foreign key relationship metadata for a database.
-  Returns a map of parent-table-id -> [{:table child-table-id, :fk {child-fk-col parent-pk-col}, :pk [child-pk-cols]}]"
-  [database-id :- ::lib.schema.id/database]
-  ;; TODO this is not ok because we're building metadata for a whole database, which could have a lots of entries
-  ;; will need to rework foreign_key to make this work nicely
-  (actions/cached-value
-   [::build-fk-metadata database-id]
-   (fn []
-     (qp.store/with-metadata-provider database-id
-       (let [all-tables          (lib.metadata.protocols/tables (qp.store/metadata-provider))
-             all-fields          (mapcat #(lib.metadata.protocols/fields (qp.store/metadata-provider) (:id %)) all-tables)
-             fk-fields           (filter #((every-pred :fk-target-field-id :active) %) all-fields)
-             pk-fields           (filter #(isa? (:semantic-type %) :type/PK) all-fields)
-             field-id->field     (u/index-by :id all-fields)
-             table-id->table     (u/index-by :id all-tables)
-             table-id->pk-fields (group-by :table-id pk-fields)]
-         (reduce
-          (fn [metadata {:keys [table-id fk-target-field-id] field-name :name}]
-            (if-let [target-field (field-id->field fk-target-field-id)]
-              (let [parent-table-id (:table-id target-field)
-                    child-pk-fields (table-id->pk-fields table-id)]
-                (update metadata {:id parent-table-id
-                                  :name (get-in table-id->table [parent-table-id :name])} (fnil conj [])
-                        {:table-id   table-id
-                         :table-name (get-in table-id->table [table-id :name])
-                         :fk         {field-name (:name target-field)}
-                         :pk         (mapv :name child-pk-fields)}))
-              metadata))
-          {}
-          fk-fields))))))
-
-(build-fk-metadata 1)
-
-(t2/select [:model/Field :name :fk_target_field_id] :table_id 8)
-
 (defn- build-pk-filter-clause-mbql
   "Build an efficient filter clause for matching rows by primary key.
   Uses IN clause for single PK, OR of AND clauses for composite PK."
@@ -704,16 +668,21 @@
   (actions/cached-value
    [::table-fk-relationship table-id]
    (fn []
-     (let [table-fields          (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
-           table-id->table-field (u/index-by :id table-fields)
-           table-pks             (filter #(isa? (:semantic_type %) :type/PK) table-fields)
-           table-pk-ids          (set (map :id table-pks))
-           fk-fields             (t2/select :model/Field :fk_target_field_id [:in table-pk-ids])]
-       (for [{fk-field-name :name table-id :table_id target-field-id :fk_target_field_id} fk-fields]
-         {:table-id   table-id
-          :table-name (t2/select-one-fn :name :model/Table table-id)
-          :fk         {fk-field-name  (get-in table-id->table-field [target-field-id :name])}
-          :pk         (map :name table-pks)})))))
+     (let [table-fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+           table-pks       (filter #(isa? (:semantic_type %) :type/PK) table-fields)
+           pk-names        (map :name table-pks)
+           fk-fields       (when-let [pk-ids (seq (map :id table-pks))]
+                             (t2/select :model/Field :fk_target_field_id [:in pk-ids]))
+           ;; Pre-fetch table names to avoid repeated queries
+           table-ids       (distinct (map :table_id fk-fields))
+           table-id->-name (when (seq table-ids)
+                             (t2/select-pk->fn :name :model/Table :id [:in table-ids]))
+           field-id->name (u/index-by :id table-fields)]
+       (for [{:keys [name table_id fk_target_field_id]} fk-fields]
+         {:table-id   table_id
+          :table-name (get table-id->-name table_id)
+          :fk         {name (get-in field-id->name [fk_target_field_id :name])}
+          :pk         pk-names})))))
 
 (defn- delete-row-with-children!
   "Delete rows and all their descendants via FK relationships"
