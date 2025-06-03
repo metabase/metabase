@@ -88,6 +88,9 @@
             ;; Return `field-ref` directly if it's a `:field` clause already. Remove binning/temporal bucketing info.
             ;; The field should already be getting bucketed in the source query; don't need to apply bucketing again in
             ;; the parent query.
+            ;; TODO `resolve-joined-fields` middleware breaks the query if `:base-type` is not removed. The middleware
+            ;; should be fixed to not include `:join-alias` to irrelevant id-based refs. When it's fixed, we can leave
+            ;; `:base-type` here.
             (lib.util.match/match-one field-ref
               [:field id-or-name opts]
               [:field id-or-name (cond-> (-> opts
