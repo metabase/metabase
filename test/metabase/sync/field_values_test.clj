@@ -282,9 +282,7 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; we throw ConnectException, which is a non-recoverable exception
       (with-redefs [field-values/create-or-update-full-field-values! (fn [& _] (throw (java.net.ConnectException.)))]
-        (is (->> (sync/update-field-values! (data/db))
-                 :steps
-                 (filter (fn [[k _]] (= k "update-field-values")))
-                 first
-                 second
-                 :throwable))))))
+        (is (=?
+             {:steps [["delete-expired-advanced-field-values" {}]
+                      ["update-field-values" {:throwable #(instance? Exception %)}]]}
+             (sync/update-field-values! (data/db))))))))
