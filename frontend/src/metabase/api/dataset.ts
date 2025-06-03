@@ -18,7 +18,7 @@ interface RefetchDeps {
    * This attribute won't be a part of the API request and can be used to invalidate
    * the cache of a given RTK query using its built-in caching mechanism.
    */
-  _refetchDeps: unknown;
+  _refetchDeps?: unknown;
 }
 
 export const datasetApi = Api.injectEndpoints({
