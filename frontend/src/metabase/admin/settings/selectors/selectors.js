@@ -9,7 +9,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -247,31 +246,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 110,
     component: SettingsLicense,
     settings: [],
-  },
-  llm: {
-    name: t`AI Features`,
-    getHidden: (settings) =>
-      !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
-    order: 131,
-    settings: [
-      {
-        key: "ee-ai-features-enabled",
-        display_name: t`AI features enabled`,
-        description: (
-          <>
-            <div>{t`Enable AI features.`}</div>
-            <div>{t`You must supply an API key before AI features can be enabled.`}</div>
-          </>
-        ),
-        type: "boolean",
-      },
-      {
-        key: "ee-openai-api-key",
-        display_name: t`EE OpenAI API Key`,
-        description: t`API key used for Enterprise AI features`,
-        type: "string",
-      },
-    ],
   },
   appearance: {
     // OSS Version
