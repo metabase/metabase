@@ -299,13 +299,13 @@
                   (undo/track-change! user-1
                                       {:table-id table-1}
                                       {table-1
-                                       {{:id 1} [(if (even? i) {} nil)
-                                                 (if (even? i) nil {})]
-                                        {:id 2} [(if (odd? i) {} nil)
-                                                 (if (odd? i) nil {})]}}))
+                                       {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                 :raw_after  (if (even? i) nil {})}
+                                        {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                 :raw_after  (if (odd? i) nil {})}}})))
 
-                (is (= 16 (t2/count :model/Undo)))
-                (is (= 8 (count-batches)))))
+              (is (= 16 (t2/count :model/Undo)))
+              (is (= 8 (count-batches))))
 
             (testing "Total batches"
               (with-redefs [undo/retention-total-batches 15]
@@ -313,13 +313,13 @@
                   (undo/track-change! user-1
                                       {:table-id table-1}
                                       {table-1
-                                       {{:id 1} [(if (even? i) {} nil)
-                                                 (if (even? i) nil {})]
-                                        {:id 2} [(if (odd? i) {} nil)
-                                                 (if (odd? i) nil {})]}}))
+                                       {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                 :raw_after  (if (even? i) nil {})}
+                                        {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                 :raw_after  (if (odd? i) nil {})}}})))
 
-                (is (= 30 (t2/count :model/Undo)))
-                (is (= 15 (count-batches)))))
+              (is (= 30 (t2/count :model/Undo)))
+              (is (= 15 (count-batches))))
 
             (testing "User id"
               (with-redefs [undo/retention-batches-per-user 5]
@@ -328,15 +328,15 @@
                   (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
                                       {:table-id table-1}
                                       {table-1
-                                       {{:id 1} [(if (even? i) {} nil)
-                                                 (if (even? i) nil {})]
-                                        {:id 2} [(if (odd? i) {} nil)
-                                                 (if (odd? i) nil {})]}}))
+                                       {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                 :raw_after  (if (even? i) nil {})}
+                                        {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                 :raw_after  (if (odd? i) nil {})}}})))
 
-                (is (= 20 (t2/count :model/Undo)))
-                (is (= 10 (count-batches)))
-                (is (= 5 (count-batches [:= :user_id user-1])))
-                (is (= 5 (count-batches [:= :user_id user-2])))))
+              (is (= 20 (t2/count :model/Undo)))
+              (is (= 10 (count-batches)))
+              (is (= 5 (count-batches [:= :user_id user-1])))
+              (is (= 5 (count-batches [:= :user_id user-2]))))
 
             (testing "Scope"
               (t2/delete! :model/Undo)
@@ -347,10 +347,10 @@
                     (undo/track-change! user-1
                                         {:table-id table-id}
                                         {table-id
-                                         {{:id 1} [(if (even? i) {} nil)
-                                                   (if (even? i) nil {})]
-                                          {:id 2} [(if (odd? i) {} nil)
-                                                   (if (odd? i) nil {})]}})))
+                                         {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                   :raw_after  (if (even? i) nil {})}
+                                          {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                   :raw_after  (if (odd? i) nil {})}}})))
 
                 (is (= 32 (t2/count :model/Undo)))
                 (is (= 16 (count-batches)))
@@ -368,17 +368,17 @@
                   (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
                                       {:dashboard-id 1}
                                       {(if (zero? (mod i 5)) table-1 table-2)
-                                       {{:id 1} [(if (even? i) {} nil)
-                                                 (if (even? i) nil {})]
-                                        {:id 2} [(if (odd? i) {} nil)
-                                                 (if (odd? i) nil {})]}}))
+                                       {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                 :raw_after  (if (even? i) nil {})}
+                                        {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                 :raw_after  (if (odd? i) nil {})}}})))
 
-                (is (= 16 (t2/count :model/Undo)))
-                (is (= 8 (count-batches)))
-                (is (= 3 (count-batches [:= :user_id user-1])))
-                (is (= 5 (count-batches [:= :user_id user-2])))
-                (is (= 1 (count-batches [:= :table_id table-1])))
-                (is (= 7 (count-batches [:= :table_id table-2])))))))))))
+              (is (= 16 (t2/count :model/Undo)))
+              (is (= 8 (count-batches)))
+              (is (= 3 (count-batches [:= :user_id user-1])))
+              (is (= 5 (count-batches [:= :user_id user-2])))
+              (is (= 1 (count-batches [:= :table_id table-1])))
+              (is (= 7 (count-batches [:= :table_id table-2]))))))))))
 
 (deftest undo-non-undoable-batch-test
   (mt/with-empty-h2-app-db
