@@ -775,7 +775,10 @@
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
-  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+  (when (> 1 (count (distinct (keep :delete-children inputs))))
+    (throw (ex-info (tru "Cannot mix values of :delete-children, behavior would be ambiguous") {:status-code 400})))
+  (let [delete-children?  (some :delete-children inputs)
+        table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database       (actions/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))

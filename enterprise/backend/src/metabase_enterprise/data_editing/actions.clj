@@ -33,9 +33,13 @@
       (throw (ex-info "Cannot perform data-grid actions without a table in scope."
                       {:error :data-grid.row/unknown-table})))))
 
-(defn- map-inputs [table-id inputs]
-  (for [row (data-editing/apply-coercions table-id inputs)]
-    {:table-id table-id :row row}))
+(defn- map-inputs [inputs]
+  (let [input->coerced (u/for-map [[table-id inputs] (group-by :table-id inputs)
+                                   :let [coerced]    (data-editing/apply-coercions table-id (map :row inputs))
+                                   input+row         (map vector inputs coerced)]
+                         input+row)]
+    (for [input inputs]
+      (assoc input row (input->coerced input)))))
 
 (defn- perform-table-row-action!
   "Perform an action directly, skipping permissions checks etc, and generate outputs based on the table modifications."
