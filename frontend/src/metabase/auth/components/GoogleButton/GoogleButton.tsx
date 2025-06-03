@@ -6,16 +6,12 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Box, Checkbox } from "metabase/ui";
 
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
-import {
-  AuthError,
-  AuthErrorRoot,
-  GoogleButtonRoot,
-  TextLink,
-} from "./GoogleButton.styled";
+import { AuthError, AuthErrorRoot, TextLink } from "./GoogleButton.styled";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -27,6 +23,7 @@ interface CredentialResponse {
 }
 
 export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
+  const [remember, setRemember] = useState(false);
   const clientId = useSelector(getGoogleClientId);
   const locale = useSelector(getSiteLocale);
   const [errors, setErrors] = useState<string[]>([]);
@@ -36,12 +33,14 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
     async ({ credential = "" }: CredentialResponse) => {
       try {
         setErrors([]);
-        await dispatch(loginGoogle({ credential, redirectUrl })).unwrap();
+        await dispatch(
+          loginGoogle({ credential, redirectUrl, remember }),
+        ).unwrap();
       } catch (error) {
         setErrors(getErrors(error));
       }
     },
-    [dispatch, redirectUrl],
+    [dispatch, redirectUrl, remember],
   );
 
   const handleError = useCallback(() => {
@@ -51,7 +50,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   }, []);
 
   return (
-    <GoogleButtonRoot>
+    <Box>
       {isCard && clientId ? (
         <ErrorBoundary>
           <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
@@ -62,6 +61,12 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
               locale={locale}
             />
           </GoogleOAuthProvider>
+          <Checkbox
+            mt="1rem"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            label={t`Remember me`}
+          />
         </ErrorBoundary>
       ) : (
         <TextLink to={Urls.login(redirectUrl)}>
@@ -76,7 +81,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
           ))}
         </AuthErrorRoot>
       )}
-    </GoogleButtonRoot>
+    </Box>
   );
 };
 

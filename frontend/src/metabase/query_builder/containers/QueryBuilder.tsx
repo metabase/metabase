@@ -437,7 +437,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     }
   };
 
-  useHotkeys([["mod+Enter", handleCmdEnter]]);
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   return (
     <>
