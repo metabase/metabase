@@ -7,6 +7,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   DatabaseId,
   DatasetQuery,
+  Field,
   FieldFilter,
   FieldId,
   FieldReference,
@@ -20,15 +21,22 @@ import { getErrorMessage } from "./utils";
 
 interface Props {
   databaseId: DatabaseId;
+  field: Field;
   fieldId: FieldId;
   tableId: TableId;
 }
 
-export function ObjectDetailPreview({ databaseId, fieldId, tableId }: Props) {
+export function ObjectDetailPreview({
+  databaseId,
+  field,
+  fieldId,
+  tableId,
+}: Props) {
   const { error, rawSeries } = useDataSample({
     databaseId,
-    tableId,
+    field,
     fieldId,
+    tableId,
   });
 
   if (error) {
@@ -49,7 +57,7 @@ export function ObjectDetailPreview({ databaseId, fieldId, tableId }: Props) {
   return <Visualization rawSeries={rawSeries} />;
 }
 
-function useDataSample({ databaseId, fieldId, tableId }: Props) {
+function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   const reference: FieldReference = ["field", fieldId, null];
   const filter: FieldFilter = ["not-null", reference];
 
@@ -63,7 +71,10 @@ function useDataSample({ databaseId, fieldId, tableId }: Props) {
     },
   };
 
-  const { data, ...rest } = useGetAdhocQueryQuery(datasetQuery);
+  const { data, ...rest } = useGetAdhocQueryQuery({
+    ...datasetQuery,
+    _refetchDeps: field,
+  });
 
   const base = { ...rest, error: undefined, rawSeries: undefined };
 

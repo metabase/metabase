@@ -53,6 +53,7 @@ export const PreviewSection = ({
       {previewType === "detail" && (
         <ObjectDetailPreview
           databaseId={databaseId}
+          field={field}
           fieldId={fieldId}
           tableId={tableId}
         />
