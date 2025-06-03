@@ -1,4 +1,4 @@
-import { dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import {
