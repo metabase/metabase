@@ -967,7 +967,7 @@
    (partial map
             (fn [grid-action]
               (-> grid-action
-                  (update :id (partial create-or-fix-action-id dashcards))
+                  (update :id (partial create-or-fix-action-id dashcard))
                   ;; At the time of writing, the FE only allows the creation of row actions. Make this explicit.
                   (update :actionType #(or % "data-grid/row-action"))
                   ;; By default actions are enabled.
