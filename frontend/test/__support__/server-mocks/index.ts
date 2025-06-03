@@ -28,6 +28,7 @@ export * from "./model-indexes";
 export * from "./native-query-snippet";
 export * from "./performance";
 export * from "./permissions";
+export * from "./premium-features";
 export * from "./public";
 export * from "./pulse";
 export * from "./revision";
