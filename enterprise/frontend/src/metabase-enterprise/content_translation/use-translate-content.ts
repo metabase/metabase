@@ -12,11 +12,15 @@ export const useTranslateContent = (): ContentTranslationFunction => {
   const locale = useLocale();
   const dictionary = useListContentTranslations();
 
-  return useCallback(
+  const tc = useCallback<ContentTranslationFunction>(
     <T = string | null | undefined>(msgid: T) =>
       translateContentString<T>(dictionary || [], locale, msgid),
     [locale, dictionary],
   );
+
+  tc.hasTranslations = !!dictionary?.length;
+
+  return tc;
 };
 
 export const useListContentTranslations = () => {
