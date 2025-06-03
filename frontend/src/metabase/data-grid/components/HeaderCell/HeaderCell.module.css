@@ -8,19 +8,20 @@
   font-weight: 700;
   padding: 0 12px;
   border-bottom: unset;
+  background-color: #FAFAFB;
 }
 
 .content {
+  border-radius: 8px;
   display: flex;
   align-items: center;
   padding: 0.25rem 0.625em;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--mb-color-brand);
-  border-radius: 5px;
   overflow: auto;
   outline: none;
   gap: 0.25rem;
+  font-size: 12px;
 }
 
 .alignRight {
@@ -29,12 +30,13 @@
 
 .light .content {
   transition: background-color 200ms ease-in-out;
-  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 92%);
+  background-color: #F4F4F5;
   cursor: pointer;
 }
 
 .light .content:hover {
-  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 82%);
+  background-color: var(--mb-color-background-selected);
+  color: var(--mb-color-text-white);
 }
 
 .outline .content {
@@ -43,4 +45,12 @@
 
 .sortIndicator {
   flex-shrink: 0;
+}
+
+.firstHeaderCell .content {
+  border-radius: 8px 0 0 8px;
+}
+
+.lastHeaderCell .content {
+  border-radius: 0 8px 8px 0;
 }

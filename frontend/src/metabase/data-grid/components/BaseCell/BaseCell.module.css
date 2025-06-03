@@ -1,13 +1,16 @@
 .root {
   overflow: hidden;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   height: 100%;
   width: 100%;
   cursor: default;
   border-bottom: 1px solid var(--mb-color-border-alpha-30);
   padding: 0 12px;
   background-color: var(--cell-bg-color);
+  font-weight: normal;
+  font-size: 14px;
+  color: var(--mb-color-text-primary);
 }
 
 .root:hover {

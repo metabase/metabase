@@ -484,6 +484,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             <HeaderCellWithColumnInfo
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
+                [S.firstHeaderCell]: columnIndex === 0,
+                [S.lastHeaderCell]: columnIndex === cols.length - 1,
               })}
               infoPopoversDisabled={!hasMetadataPopovers || isDashboard}
               timezone={data.results_timezone}
@@ -679,6 +681,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    defaultRowHeight: ROW_HEIGHT,
   });
   const { virtualGrid } = tableProps;
 
@@ -727,7 +730,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           <ErrorMessage
             type="noRows"
             title={t`No results!`}
-            message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
+            message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
             action={undefined}
           />
         </Flex>
