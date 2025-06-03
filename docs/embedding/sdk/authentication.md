@@ -10,7 +10,7 @@ For using the SDK in production, you'll need to set up authentication with JWT S
 
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
-**Note:** If both SAML and JWT are enabled in your Metabase instance, the SDK will default to using SAML authentication unless you explicitly set the `authMethod` to `"jwt"` in your `MetabaseAuthConfig`:
+If both SAML and JWT are enabled in your Metabase, the SDK will default to using SAML authentication unless you explicitly set the `authMethod` to `"jwt"` in your `MetabaseAuthConfig`:
 
 ```javascript
 authConfig: {
@@ -49,31 +49,32 @@ For Node.js, we recommend jsonwebtoken:
 npm install jsonwebtoken --save
 ```
 
-Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that generates a JWT for the authenticated user using your Metabase JWT shared secret. **This endpoint must return a JSON object with a `jwt` property containing the signed JWT.** For example: `{ "jwt": "your-signed-jwt" }`.
+Next, set up an endpoint on your backend (e.g., `/sso/metabase`) that uses your Metabase JWT shared secret to generate a JWT for the authenticated user. **This endpoint must return a JSON object with a `jwt` property containing the signed JWT.** For example: `{ "jwt": "your-signed-jwt" }`.
 
-See the examples below for how this endpoint can be structured:
-
-This example code for Node.js sets up such an endpoint using Express (included below):
+This example code for Node.js sets up an endpoint using Express:
 
 ```js
 {% include_file "{{ dirname }}/snippets/authentication/express-server.ts" %}
 ```
 
-Example using Next.js App Router (included below):
+Example using Next.js App Router:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/next-js/app-router-authentication-api-route.ts" %}
 ```
 
-Example using Next.js Pages Router (included below):
+Example using Next.js Pages Router:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" %}
 ```
 
-### Handling Interactive and SDK Embedding on the Same Endpoint
+### Handling interactive and SDK embeds with the same endpoint
 
-If you have an existing backend endpoint configured for traditional interactive embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests. For SDK requests, you should return a JSON object with the JWT (`{ jwt: string }`), while for traditional interactive embedding requests, you would proceed with the redirect.
+If you have an existing backend endpoint configured for interactive embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests. 
+
+- For SDK requests, you should return a JSON object with the JWT (`{ jwt: string }`).
+- For interactive embedding requests, you would proceed with the redirect.
 
 Here's an example of an Express.js endpoint that handles both:
 
@@ -147,9 +148,7 @@ Then you can then use the API key to authenticate with Metabase in your applicat
 
 {% include plans-blockquote.html feature="SAML authentication" sdk=true %}
 
-To use SAML single sign-on with the Embedded analytics SDK, you will first need to set up SAML in your Metabase instance and your Identity Provider (IdP).
-
-See the [SAML-based authentication documentation](../../people-and-groups/authenticating-with-saml.md) for detailed instructions on setting up SAML in Metabase.
+To use SAML single sign-on with the Embedded analytics SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../../people-and-groups/authenticating-with-saml.md).
 
 Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `authMethod` in your `MetabaseAuthConfig` to `"saml"`:
 
@@ -165,10 +164,10 @@ const authConfig = defineMetabaseAuthConfig({
 // <MetabaseProvider authConfig={authConfig}>...</MetabaseProvider>
 ```
 
-Using SAML authentication with the Embedded analytics SDK will typically involve the user being redirected to your Identity Provider's login page or a popup window for authentication. After successful authentication, the user will be redirected back to the embedded content.
+Using SAML authentication with the Embedded analytics SDK will typically involve redirecting people to your Identity Provider's login page or a popup window for authentication. After successful authentication, the person will be redirected back to the embedded content.
 
-Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing thoroughly in your target environments.
+Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing auth flows in your target environments.
 
-Unlike JWT authentication, SAML with the SDK does not provide the ability to implement a custom `fetchRequestToken` function on your backend.
+Unlike JWT authentication, you won't be able to implement a custom `fetchRequestToken` function on your backend when pairing SAML with the SDK.
 
 ## Security warning: each end-user _must_ have their own Metabase account
