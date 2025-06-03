@@ -34,22 +34,7 @@ export const FinalStep = () => {
   const currentDashboard = dashboards[currentDashboardIndex];
 
   const getEmbedCode = (dashboard: Dashboard) => {
-    return `import { MetabaseProvider } from "@metabase/embedding-sdk-react";
-
-function App() {
-  return (
-    <MetabaseProvider
-      metabaseInstanceUrl="${window.location.origin}"
-      jwtProviderUri="${window.location.origin}/sso/metabase"
-    >
-      <iframe
-        src="${window.location.origin}/embed/dashboard/${dashboard.id}"
-        style={{ width: "100%", height: "600px", border: "none" }}
-        title="${dashboard.name}"
-      />
-    </MetabaseProvider>
-  );
-}`;
+    return `<iframe src="${window.location.origin}/embed/dashboard/${dashboard.id}" />`;
   };
 
   return (
@@ -114,13 +99,16 @@ function App() {
         )}
 
         {currentDashboard && (
-          <Box>
+          <>
             <Title
               order={3}
               mb="md"
             >{t`Code snippet for ${currentDashboard.name}`}</Title>
-            <CodeSnippet code={getEmbedCode(currentDashboard)} language="tsx" />
-          </Box>
+            <CodeSnippet
+              code={getEmbedCode(currentDashboard)}
+              language="html"
+            />
+          </>
         )}
 
         {sandboxingColumn && (

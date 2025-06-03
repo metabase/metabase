@@ -13,6 +13,7 @@ export const CodeSnippet = ({ code }: CodeSnippetProps) => {
         backgroundColor: "var(--mb-color-bg-light)",
         borderRadius: "4px",
         overflow: "auto",
+        width: "100%",
       }}
     >
       <Code block>{code}</Code>
