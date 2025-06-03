@@ -26,10 +26,10 @@ import { AuthenticationSettingsPage } from "../components/SettingsPages/Authenti
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
+import { MapsSettingsPage } from "../components/SettingsPages/MapsSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
@@ -175,28 +175,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   maps: {
     name: t`Maps`,
     order: 70,
-    settings: [
-      {
-        key: "map-tile-server-url",
-        display_name: t`Map tile server URL`,
-        description: (
-          <>
-            <div>
-              {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
-            </div>
-            <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
-          </>
-        ),
-        type: "string",
-      },
-      {
-        key: "custom-geojson",
-        display_name: t`Custom Maps`,
-        description: t`Add your own GeoJSON files to enable different region map visualizations`,
-        widget: CustomGeoJSONWidget,
-        noHeader: true,
-      },
-    ],
+    component: MapsSettingsPage,
+    settings: [],
   },
   localization: {
     name: t`Localization`,

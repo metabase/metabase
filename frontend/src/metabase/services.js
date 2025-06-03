@@ -338,11 +338,6 @@ export const UtilApi = {
   },
 };
 
-export const GeoJSONApi = {
-  load: GET("/api/geojson"),
-  get: GET("/api/geojson/:id"),
-};
-
 export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
 }
