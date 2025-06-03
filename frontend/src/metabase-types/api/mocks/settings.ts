@@ -179,6 +179,23 @@ export const createMockSettings = (
   "bug-reporting-enabled": false,
   "bcc-enabled?": true,
   "cloud-gateway-ips": null,
+  "custom-geojson": {
+    us_states: {
+      name: "United States",
+      url: "app/assets/geojson/us-states.json",
+      region_key: "STATE",
+      region_name: "NAME",
+      builtin: true,
+    },
+    world_countries: {
+      name: "World",
+      url: "app/assets/geojson/world.json",
+      region_key: "ISO_A2",
+      region_name: "NAME",
+      builtin: true,
+    },
+  },
+  "custom-geojson-enabled": true,
   "custom-formatting": {},
   "custom-homepage": false,
   "custom-homepage-dashboard": null,
