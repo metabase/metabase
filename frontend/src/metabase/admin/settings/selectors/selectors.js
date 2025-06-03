@@ -71,6 +71,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Updates`,
     order: 30,
     component: UpdatesSettingsPage,
+    getHidden: (settings) => settings["token-features"]?.hosting,
     settings: [],
     adminOnly: true,
   },
