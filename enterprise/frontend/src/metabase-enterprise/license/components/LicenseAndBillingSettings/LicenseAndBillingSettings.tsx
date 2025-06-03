@@ -1,17 +1,18 @@
 import dayjs from "dayjs";
+import { useCallback } from "react";
 import { jt, t } from "ttag";
 
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
-import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -53,13 +54,17 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
-const LicenseAndBillingSettings = () => {
+export const LicenseAndBillingSettings = () => {
   const { data: allSettings, isLoading: isLoadingToken } =
     useGetAdminSettingsDetailsQuery();
   const settingDetails = allSettings?.["premium-embedding-token"];
   const token = settingDetails?.value;
 
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
+
+  const sendActivatedToast = useCallback(() => {
+    sendToast({ message: t`Your license is active!` });
+  }, [sendToast]);
 
   const {
     loading: licenseLoading,
@@ -67,9 +72,7 @@ const LicenseAndBillingSettings = () => {
     tokenStatus,
     updateToken,
     isUpdating,
-  } = useLicense(
-    () => dispatch(showLicenseAcceptedToast) /* FIXME this doesnt work */,
-  );
+  } = useLicense(sendActivatedToast);
 
   const isInvalidToken =
     !!licenseError || (tokenStatus != null && !tokenStatus.valid);
@@ -167,6 +170,3 @@ function UpsellSection() {
     </Box>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LicenseAndBillingSettings;
