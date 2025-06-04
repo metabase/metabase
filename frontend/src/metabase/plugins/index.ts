@@ -656,7 +656,6 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
 };
 
 export interface AIDashboardAnalysisSidebarProps {
-  dashboard: Dashboard;
   onClose?: () => void;
   dashcardId?: DashCardId;
 }
@@ -671,19 +670,15 @@ export interface AIQuestionAnalysisSidebarProps {
 
 export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: ComponentType<any>;
-  AIDashboardAnalysisButton: ComponentType<any>;
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
-  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
   canAnalyzeQuestion: (question: Question) => boolean;
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: PluginPlaceholder,
-  AIDashboardAnalysisButton: PluginPlaceholder,
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
-  canAnalyzeDashboard: () => false,
   canAnalyzeQuestion: () => false,
 };
 
