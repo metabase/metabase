@@ -12,6 +12,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -282,8 +283,10 @@
       (assoc :options namespaced-options)
 
       (string? id-or-name)
-      (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
-                         (dissoc :field_ref))
+      (merge (or (when-let [source-col (m/find-first #(= (:name %) id-or-name) source-metadata)]
+                   (merge (dissoc source-col :field_ref)
+                          {:desired_column_alias (cond->> ((some-fn :desired_column_alias :name) source-col)
+                                                   join (lib.join.util/joined-field-desired-alias (:alias join)))}))
                  (merge
                   {:name         id-or-name
                    :display_name (humanization/name->human-readable-name id-or-name)}
@@ -292,13 +295,17 @@
                     {:ident ident}))))
 
       (integer? id-or-name)
-      (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
-               #_{:clj-kondo/ignore [:deprecated-var]}
-               (if-not parent-id
-                 (qp.store/->legacy-metadata field)
-                 (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
-                   (-> (update field :name #(str (:name parent) \. %))
-                       qp.store/->legacy-metadata)))))
+      (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                   source-field (if-not parent-id
+                                  (qp.store/->legacy-metadata field)
+                                  (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
+                                    (-> (update field :name #(str (:name parent) \. %))
+                                        qp.store/->legacy-metadata)))
+                   source-col (or (m/find-first #(= (:id %) id-or-name) source-metadata) source-field)]
+               (merge source-field
+                      (when source-col
+                        {:desired_column_alias (cond->> ((some-fn :desired_column_alias :name) source-col)
+                                                 join (lib.join.util/joined-field-desired-alias (:alias join)))}))))
 
       (:binning opts)
       (-> (assoc :binning_info (-> (:binning opts)
@@ -633,7 +640,7 @@
 (mu/defn- deduplicate-cols-names :- ColsWithUniqueNames
   [cols :- [:sequential Col]]
   (map (fn [col unique-name]
-         (assoc col :name unique-name :original_name (:name col)))
+         (assoc col :name unique-name))
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
