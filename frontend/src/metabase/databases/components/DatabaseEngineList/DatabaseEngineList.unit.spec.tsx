@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { ELEVATED_ENGINES } from "metabase/databases/constants";
+import {
+  ELEVATED_ENGINES,
+  MAX_INITIAL_ENGINES_SHOWN,
+} from "metabase/databases/constants";
 import type { Engine } from "metabase-types/api";
 import { createMockEngine } from "metabase-types/api/mocks";
 import {
@@ -62,7 +65,9 @@ describe("DatabaseEngineList", () => {
   it("should render initial list of elevated engines", () => {
     setup();
 
-    expect(screen.getAllByRole("option")).toHaveLength(6);
+    expect(screen.getAllByRole("option")).toHaveLength(
+      MAX_INITIAL_ENGINES_SHOWN,
+    );
     ELEVATED_ENGINES.forEach((engine) => {
       expect(
         screen.getByText(mockEngines[engine]["driver-name"]),
@@ -74,11 +79,15 @@ describe("DatabaseEngineList", () => {
     setup();
 
     await userEvent.click(screen.getByText("Show more"));
-    expect(screen.getAllByRole("option").length).toBeGreaterThan(6);
+    expect(screen.getAllByRole("option").length).toBeGreaterThan(
+      MAX_INITIAL_ENGINES_SHOWN,
+    );
     expect(screen.getByText("Hide")).toBeInTheDocument();
 
     await userEvent.click(screen.getByText("Hide"));
-    expect(screen.getAllByRole("option")).toHaveLength(6);
+    expect(screen.getAllByRole("option")).toHaveLength(
+      MAX_INITIAL_ENGINES_SHOWN,
+    );
     expect(screen.getByText("Show more")).toBeInTheDocument();
   });
 
@@ -134,7 +143,9 @@ describe("DatabaseEngineList", () => {
     expect(screen.getAllByRole("option")).toHaveLength(2);
 
     await userEvent.click(screen.getByText("Hide"));
-    expect(screen.getAllByRole("option")).toHaveLength(6);
+    expect(screen.getAllByRole("option")).toHaveLength(
+      MAX_INITIAL_ENGINES_SHOWN,
+    );
     expect(searchInput).not.toHaveValue();
   });
 });

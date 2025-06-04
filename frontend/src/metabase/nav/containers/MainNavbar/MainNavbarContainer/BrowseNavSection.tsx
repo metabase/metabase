@@ -22,12 +22,12 @@ import type { SelectedItem } from "../types";
 export const BrowseNavSection = ({
   nonEntityItem,
   onItemSelect,
-  onModalOpen,
+  onAddDataModalOpen,
   hasDataAccess,
 }: {
   nonEntityItem: SelectedItem;
   onItemSelect: () => void;
-  onModalOpen: () => void;
+  onAddDataModalOpen: () => void;
   hasDataAccess: boolean;
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
@@ -73,7 +73,7 @@ export const BrowseNavSection = ({
             p={0}
             onClick={() => {
               trackAddDataModalOpened("left-nav");
-              onModalOpen();
+              onAddDataModalOpen();
             }}
           >
             {t`Add`}
