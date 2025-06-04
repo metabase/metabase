@@ -380,8 +380,8 @@
         (is (= (inc (count before-joins))
                (count after-joins)))
         (testing "at the end"
-          (let [summaries? (or (seq (lib/aggregations after))
-                               (seq (lib/breakouts after)))]
+          (let [summaries? (or (seq (lib/aggregations after stage-number))
+                               (seq (lib/breakouts after stage-number)))]
             (is (=? {:lib/type   :mbql/join
                      :strategy   strategy
                      :alias      string?
@@ -453,9 +453,10 @@
   (let [{after :query :as ctx'} (run-step ctx step)]
     ;; Run the before/after tests. Throws if the tests fail.
     (try
-      (testing (str "\n\nwith before query\n" (u/pprint-to-str before)
-                    "\n\nwith after  query\n" (u/pprint-to-str after)
-                    "\n\nwith steps\n" (str/join "\n" (map pr-str (step-seq ctx))))
+      (testing (str "\n\nwith before steps\n" (str/join "\n" (map pr-str (step-seq ctx)))
+                    "\n\nwith before query\n" (u/pprint-to-str before)
+                    "\n\nwith current step\n" (pr-str step)
+                    "\n\nwith after query\n"  (u/pprint-to-str after))
         (before-and-after before after step))
       ctx'
 
