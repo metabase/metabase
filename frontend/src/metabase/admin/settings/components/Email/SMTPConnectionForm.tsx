@@ -97,6 +97,7 @@ export const SMTPConnectionForm = () => {
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
   const isHosted = useSetting("is-hosted?");
+  const isEmailConfigured = settingValues?.["email-configured?"];
   const dispatch = useDispatch();
   const initialValues = useMemo<FormValueProps>(
     () => ({
@@ -164,7 +165,9 @@ export const SMTPConnectionForm = () => {
   return (
     <Flex justify="space-between" pl="lg">
       <Stack gap="sm" w="25rem">
-        <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
+        {isEmailConfigured && (
+          <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
+        )}
         <FormProvider
           initialValues={initialValues}
           validationSchema={getFormValueSchema(settingsDetails)}
