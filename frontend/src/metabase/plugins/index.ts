@@ -34,7 +34,6 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
@@ -70,6 +69,7 @@ import type {
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import type {
   GetAuthProviders,
