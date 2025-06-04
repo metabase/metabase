@@ -52,6 +52,7 @@
    [metabase.user-key-value.api]
    [metabase.users.api]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.visualizer.api]
    [metabase.warehouse-schema.api]
    [metabase.warehouses.api]
    [metabase.xrays.api]))
@@ -88,6 +89,7 @@
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users.api/keep-me
+         metabase.visualizer.api/keep-me
          metabase.warehouses.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
@@ -180,7 +182,8 @@
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
-   "/util"                 'metabase.api.util})
+   "/util"                 'metabase.api.util
+   "/visualizer"           (+auth 'metabase.visualizer.api)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

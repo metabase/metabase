@@ -1,13 +1,19 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { skipToken, useSearchQuery } from "metabase/api";
+import { useGetVisualizerCompatibleRecentsMutation } from "metabase/api/visualizer";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, Loader } from "metabase/ui";
-import { getDataSources } from "metabase/visualizer/selectors";
+import {
+  getDataSources,
+  getVisualizationType,
+  getVisualizerComputedSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/selectors";
 import { createDataSource } from "metabase/visualizer/utils";
 import {
   addDataSource,
@@ -48,6 +54,11 @@ export function DatasetsList({
     () => new Set(dataSources.map((s) => s.id)),
     [dataSources],
   );
+
+  // Get current visualization state for compatibility filtering
+  const currentDisplay = useSelector(getVisualizationType);
+  const currentColumns = useSelector(getVisualizerDatasetColumns);
+  const currentSettings = useSelector(getVisualizerComputedSettings);
 
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
@@ -111,13 +122,28 @@ export function DatasetsList({
     },
   );
 
-  const { data: allRecents = [], isLoading: isListRecentsLoading } =
-    useListRecentsQuery(
-      { include_metadata: true },
-      {
-        refetchOnMountOrArgChange: true,
-      },
-    );
+  // Use new server-side filtering API
+  const [
+    getCompatibleRecents,
+    { data: compatibleRecentsData, isLoading: isListRecentsLoading },
+  ] = useGetVisualizerCompatibleRecentsMutation();
+
+  // Fetch compatible recents when visualization state changes
+  useEffect(() => {
+    if (!search && currentColumns) {
+      getCompatibleRecents({
+        current_display: currentDisplay,
+        current_columns: currentColumns,
+        current_settings: currentSettings || {},
+      });
+    }
+  }, [
+    currentDisplay,
+    currentColumns,
+    currentSettings,
+    search,
+    getCompatibleRecents,
+  ]);
 
   const items = useMemo(() => {
     if (search.length > 0) {
@@ -135,7 +161,9 @@ export function DatasetsList({
         .filter(isNotNull);
     }
 
-    return allRecents
+    // Use server-filtered compatible recents
+    const compatibleRecents = compatibleRecentsData?.recents ?? [];
+    return compatibleRecents
       .filter((maybeCard) =>
         ["card", "dataset", "metric"].includes(maybeCard.model),
       )
@@ -144,7 +172,7 @@ export function DatasetsList({
         display: card.display,
         result_metadata: card.result_metadata,
       }));
-  }, [searchResult, allRecents, search, dashboardId]);
+  }, [searchResult, compatibleRecentsData, search, dashboardId]);
 
   if (isListRecentsLoading || isSearchLoading) {
     return (

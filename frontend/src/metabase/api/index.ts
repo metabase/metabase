@@ -36,3 +36,4 @@ export * from "./timeline";
 export * from "./timeline-event";
 export * from "./user-key-value";
 export * from "./user";
+export * from "./visualizer";

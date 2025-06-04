@@ -34,6 +34,7 @@
                 metabase.util.formatting.numbers
                 metabase.util.formatting.time
                 metabase.util.time
+                metabase.visualizer.js
                 metabase.xrays.domain-entities.queries.util]}
 
   :test
