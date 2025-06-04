@@ -248,7 +248,6 @@
                         (= "data-editing" (namespace action-kw))  :data-editing
                         :else                                     :ad-hoc-invocation))
         spec      (action-arg-map-spec action-kw)
-        _ (def arg-maps arg-maps)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
                         :when (s/invalid? (s/conform spec arg-map))]
