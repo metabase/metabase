@@ -2,27 +2,29 @@ import { render, screen } from "__support__/ui";
 import {
   createMockCategoryColumn,
   createMockNumericColumn,
+  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { DimensionsWidget } from "./DimensionsWidget";
 
 const mockRawSeries = [
-  {
-    card: {
+  createMockSingleSeries(
+    {
       id: 1,
       name: "Test Card",
-      dataset_query: {},
       display: "pie",
     },
-    data: {
-      cols: [
-        createMockCategoryColumn({ id: 1, name: "category" }),
-        createMockCategoryColumn({ id: 2, name: "category2" }),
-        createMockNumericColumn({ id: 3, name: "metric" }),
-      ],
-      rows: [],
+    {
+      data: {
+        cols: [
+          createMockCategoryColumn({ id: 1, name: "category" }),
+          createMockCategoryColumn({ id: 2, name: "category2" }),
+          createMockNumericColumn({ id: 3, name: "metric" }),
+        ],
+        rows: [],
+      },
     },
-  },
+  ),
 ];
 
 const defaultProps = {
@@ -61,16 +63,24 @@ describe("DimensionsWidget", () => {
 
   it("should show 'Inner Ring', 'Middle Ring', and 'Outer Ring' labels for three dimensions", () => {
     const mockRawSeriesWithThreeDimensions = [
-      {
-        ...mockRawSeries[0],
-        data: {
-          ...mockRawSeries[0].data,
-          cols: [
-            ...mockRawSeries[0].data.cols,
-            createMockCategoryColumn({ id: 4, name: "category3" }),
-          ],
+      createMockSingleSeries(
+        {
+          id: 1,
+          name: "Test Card",
+          display: "pie",
         },
-      },
+        {
+          data: {
+            cols: [
+              createMockCategoryColumn({ id: 1, name: "category" }),
+              createMockCategoryColumn({ id: 2, name: "category2" }),
+              createMockCategoryColumn({ id: 4, name: "category3" }),
+              createMockNumericColumn({ id: 3, name: "metric" }),
+            ],
+            rows: [],
+          },
+        },
+      ),
     ];
 
     const settings = {
