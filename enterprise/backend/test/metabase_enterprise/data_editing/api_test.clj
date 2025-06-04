@@ -32,7 +32,8 @@
 (use-fixtures :each
   (fn [f]
     (mt/with-dynamic-fn-redefs [data-editing.api/require-authz? (constantly true)]
-      (f))))
+      (f)))
+  #'data-editing.tu/restore-db-settings-fixture)
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
@@ -224,7 +225,7 @@
                         url             (data-editing.tu/table-url @table-ref)
                         settings        {:database-enable-table-editing (boolean editing-enabled)
                                          :database-enable-actions       (boolean actions-enabled)}
-                        _               (data-editing.tu/alter-appdb-settings! merge settings)
+                        _               (data-editing.tu/alter-db-settings! merge settings)
                         user            (if superuser :crowberto :rasta)
                         req             mt/user-http-request-full-response
 
