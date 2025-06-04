@@ -2,12 +2,13 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockField } from "metabase-types/api/mocks";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
 import { PreviewSection } from "./PreviewSection";
 import type { PreviewType } from "./types";
 
 const field = createMockField();
+const table = createMockTable();
 
 function TestComponent({
   onPreviewTypeChange,
@@ -27,6 +28,7 @@ function TestComponent({
       field={field}
       fieldId={16}
       previewType={previewType}
+      table={table}
       tableId={field.table_id}
       onPreviewTypeChange={handlePreviewTypeChange}
     />
