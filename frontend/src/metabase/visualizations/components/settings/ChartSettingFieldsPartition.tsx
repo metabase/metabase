@@ -23,6 +23,10 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ColumnNameColumnSplitSetting,
   DatasetColumn,
+  NativeColumnAggregation,
+  NativeColumnSplitSetting,
+  PartitionName,
+  SplitSettingValue,
 } from "metabase-types/api";
 
 import { ColumnItem } from "./ColumnItem";
@@ -123,23 +127,29 @@ const AddBreakoutPopover = ({
   );
 };
 
-const columnMove = (columns: string[], from: number, to: number) => {
+const columnMove = (columns: SplitSettingValue[], from: number, to: number) => {
   const columnCopy = [...columns];
   columnCopy.splice(to, 0, columnCopy.splice(from, 1)[0]);
   return columnCopy;
 };
 
-const columnRemove = (columns: string[], from: number) => {
+const columnRemove = (columns: SplitSettingValue[], from: number) => {
   return splice(columns, from, 1);
 };
 
-const columnAdd = (columns: string[], to: number, column: string) => {
+const columnAdd = (
+  columns: SplitSettingValue[],
+  to: number,
+  column: SplitSettingValue,
+) => {
   return splice(columns, to, 0, column);
 };
 
 type ChartSettingsFieldPartitionProps = {
-  value: ColumnNameColumnSplitSetting;
-  onChange: (value: ColumnNameColumnSplitSetting) => void;
+  value: ColumnNameColumnSplitSetting | NativeColumnSplitSetting;
+  onChange: (
+    value: ColumnNameColumnSplitSetting | NativeColumnSplitSetting,
+  ) => void;
   onShowWidget: (
     widget: {
       id: string;
@@ -166,34 +176,83 @@ export const ChartSettingFieldsPartition = ({
   columns,
   canEditColumns,
 }: ChartSettingsFieldPartitionProps) => {
-  const updatedValue = useMemo(
-    () =>
-      _.mapObject(value || {}, (columnNames) =>
-        columnNames
-          .map((columnName) => columns.find((col) => col.name === columnName))
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
-      ),
-    [columns, value],
-  );
-
+  const isNativeQuery = question.datasetQuery()?.type === "native";
   const query = question.query();
   const datasetQuery = question.datasetQuery();
 
-  // TODO: figure out the right way to do this API call instead of on every component mount
-  const [metadataResults, setMetadataResults] = useState(null);
+  const updatedValue = useMemo(
+    () =>
+      _.mapObject(value || {}, (splitVal: SplitSettingValue[]) => {
+        if (isNativeQuery) {
+          const aggDetails = splitVal as NativeColumnAggregation[];
+          const columnNames = aggDetails.map((agg) => agg.column);
+          return columnNames.map((columnName) => {
+            const col = columns.find((c) => c.name === columnName);
+            if (!col) {
+              console.warn(`Column ${columnName} not found in columns list`);
+              return null;
+            }
+            return col;
+          });
+        }
+
+        const columnNames = splitVal as string[];
+        return columnNames
+          .map((columnName: string) =>
+            columns.find((col) => col.name === columnName),
+          )
+          .filter((col): col is RemappingHydratedDatasetColumn => col != null);
+      }),
+    [columns, value, isNativeQuery],
+  );
+
+  // TODO: figure out the right way to do this API call
+  const [baseMetadataResults, setMetadataResults] = useState(null);
   useEffect(() => {
-    MetabaseApi.result_metadata(datasetQuery)
-      .then(setMetadataResults)
+    // We have to execute the base query to get the metadata, so that we know what aggregations and breakouts are available
+    MetabaseApi.dataset(datasetQuery)
+      .then((resp) => setMetadataResults(resp.data.results_metadata.columns))
       .catch((err) => {
         console.error("Failed to fetch metadata", err);
       });
   }, [datasetQuery]);
 
-  if (!metadataResults) {
+  if (!baseMetadataResults) {
     return;
   }
 
-  const wrappedQuery = Lib.wrapAdhocNativeQuery(query, metadataResults);
+  const wrappedQuery = Lib.wrapAdhocNativeQuery(query, baseMetadataResults);
+
+  const onAddAggregation = (query: Lib.Query) => {
+    const aggs = Lib.aggregations(query, -1);
+    const aggDetails = aggs.map((agg) => {
+      const aggDisplay = Lib.displayInfo(query, -1, agg);
+      const column = Lib.aggregationColumn(query, -1, agg);
+      const bucket = column ? Lib.temporalBucket(column) : undefined;
+      const bucketName = bucket
+        ? Lib.displayInfo(query, 0, bucket)?.shortName
+        : undefined;
+      const columnName = column
+        ? Lib.displayInfo(query, -1, column).name
+        : undefined;
+
+      return {
+        name: aggDisplay.name,
+        column: columnName,
+        bucket: bucketName,
+      };
+    });
+
+    onChange({
+      ...value,
+      values: aggDetails,
+    });
+  };
+
+  const onAddBreakout = (
+    _partition: keyof ColumnNameColumnSplitSetting,
+    _column: Lib.ColumnMetadata,
+  ) => {};
 
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
@@ -212,9 +271,7 @@ export const ChartSettingFieldsPartition = ({
     }
   };
 
-  const getPartitionType = (
-    partitionName: keyof ColumnNameColumnSplitSetting,
-  ) => {
+  const getPartitionType = (partitionName: PartitionName) => {
     switch (partitionName) {
       case "rows":
       case "columns":
@@ -239,25 +296,22 @@ export const ChartSettingFieldsPartition = ({
       onChange({
         ...value,
         [sourcePartition]: columnMove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
+          value[sourcePartition as PartitionName],
           sourceIndex,
           destinationIndex,
         ),
       });
     } else if (sourcePartition !== destinationPartition) {
-      const column =
-        value[sourcePartition as keyof ColumnNameColumnSplitSetting][
-          sourceIndex
-        ];
+      const column = value[sourcePartition as PartitionName][sourceIndex];
 
       onChange({
         ...value,
         [sourcePartition]: columnRemove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
+          value[sourcePartition as PartitionName],
           sourceIndex,
         ),
         [destinationPartition]: columnAdd(
-          value[destinationPartition as keyof ColumnNameColumnSplitSetting],
+          value[destinationPartition as PartitionName],
           destinationIndex,
           column,
         ),
@@ -279,10 +333,13 @@ export const ChartSettingFieldsPartition = ({
           partitionType === "metric" ? (
             <AddAggregationPopover
               query={wrappedQuery}
-              onAddAggregation={() => {}}
+              onAddAggregation={onAddAggregation}
             />
           ) : (
-            <AddBreakoutPopover query={wrappedQuery} onAddBreakout={() => {}} />
+            <AddBreakoutPopover
+              query={wrappedQuery}
+              onAddBreakout={(col) => onAddBreakout(partitionName, col)}
+            />
           );
 
         return (
