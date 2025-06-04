@@ -4,11 +4,13 @@ import {
   useCallback,
   useEffect,
 } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
@@ -153,6 +155,19 @@ const InteractiveDashboardInner = ({
     );
   }
 
+  if (errorPage) {
+    return (
+      <StyledPublicComponentWrapper
+        className={className}
+        style={style}
+        ref={ref}
+      >
+        <SdkError
+          message={errorPage.data?.message ?? t`Something's gone wrong`}
+        />
+      </StyledPublicComponentWrapper>
+    );
+  }
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       {adhocQuestionUrl ? (

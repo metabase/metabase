@@ -1,8 +1,10 @@
 import { useEffect } from "react";
+import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
@@ -157,6 +159,20 @@ export const EditableDashboard = ({
     return (
       <StyledPublicComponentWrapper className={className} style={style}>
         <DashboardNotFoundError id={initialDashboardId} />
+      </StyledPublicComponentWrapper>
+    );
+  }
+
+  if (errorPage) {
+    return (
+      <StyledPublicComponentWrapper
+        className={className}
+        style={style}
+        ref={ref}
+      >
+        <SdkError
+          message={errorPage.data?.message ?? t`Something's gone wrong`}
+        />
       </StyledPublicComponentWrapper>
     );
   }
