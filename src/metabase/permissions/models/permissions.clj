@@ -498,9 +498,11 @@
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
-  (when (and (perms-group/is-tenant-group? group-or-id)
-             (audit/is-collection-id-audit? (u/the-id collection-or-id)))
-    (throw (ex-info (tru "Tenant Groups cannot receive any access to the audit collection.") {})))
+  (let [tenant-group? (perms-group/is-tenant-group? group-or-id)
+        {ttype :type} (collection-or-id->collection collection-or-id)]
+    (when (not= (= ttype :tenant-collectionn)
+                tenant-group?)
+      (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections and vice versa.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?
