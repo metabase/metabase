@@ -14,7 +14,6 @@
 ;;; ------------------------------------------- Content translation --------------------------------------------
 
 (api.macros/defendpoint :get "/dictionary/:token"
-  ;; TODO: This needs a unit test!
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map
                        [:token string?]]
