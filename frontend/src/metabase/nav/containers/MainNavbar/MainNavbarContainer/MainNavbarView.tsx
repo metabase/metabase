@@ -94,8 +94,10 @@ export function MainNavbarView({
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
-  const [modalOpened, { open: openModal, close: closeModal }] =
-    useDisclosure(false);
+  const [
+    addDataModalOpened,
+    { open: openAddDataModal, close: closeAddDataModal },
+  ] = useDisclosure(false);
 
   const {
     card: cardItem,
@@ -186,9 +188,9 @@ export function MainNavbarView({
               <ErrorBoundary>
                 <GettingStartedSection
                   nonEntityItem={nonEntityItem}
-                  onModalOpen={() => {
+                  onAddDataModalOpen={() => {
                     trackAddDataModalOpened("getting-started");
-                    openModal();
+                    openAddDataModal();
                   }}
                 >
                   {examplesCollection && (
@@ -252,7 +254,7 @@ export function MainNavbarView({
                 nonEntityItem={nonEntityItem}
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
-                onModalOpen={openModal}
+                onAddDataModalOpen={openAddDataModal}
               />
             </ErrorBoundary>
           </SidebarSection>
@@ -274,7 +276,7 @@ export function MainNavbarView({
         <WhatsNewNotification />
       </SidebarContentRoot>
 
-      <AddDataModal opened={modalOpened} onClose={closeModal} />
+      <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>
   );
 }

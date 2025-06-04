@@ -84,11 +84,7 @@ import type {
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
-import type {
-  GetAuthProviders,
-  PluginGroupManagersType,
-  PluginLLMAutoDescription,
-} from "./types";
+import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
@@ -282,11 +278,6 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDa
   {
     Component: undefined,
   };
-
-export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
-  isEnabled: () => false,
-  LLMSuggestQuestionInfo: PluginPlaceholder,
-};
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
