@@ -399,13 +399,18 @@
             req-body   {:name table-name
                         :columns [{:name "id", :type "auto_incrementing_int_pk"}
                                   {:name "n",  :type "int"}]
-                        :primary_key ["id"]}
-            _          (mt/user-http-request user :post 200 url req-body)
-            db         (t2/select-one :model/Database db-id)
-            table-id   (data-editing.tu/sync-new-table! db table-name)
-            create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
-        (create! [{:n 1} {:n 2}])
-        (is (= [[1 1] [2 2]] (table-rows table-id)))))))
+                        :primary_key ["id"]}]
+
+        (try
+          (let [_          (mt/user-http-request user :post 200 url req-body)
+                db         (t2/select-one :model/Database db-id)
+                table-id   (data-editing.tu/sync-new-table! db table-name)
+                create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
+            (create! [{:n 1} {:n 2}])
+            (is (= [[1 1] [2 2]] (table-rows table-id))))
+          (finally
+            (driver/drop-table! driver/*driver* (mt/id) table-name)
+            (t2/delete! :model/Table :name table-name)))))))
 
 (deftest coercion-test
   (mt/with-premium-features #{:table-data-editing}
