@@ -95,6 +95,7 @@ const configs = {
   ...getHostAppE2eConfig("vite-6-host-app-e2e"),
   ...getHostAppE2eConfig("next-15-app-router-host-app-e2e"),
   ...getHostAppE2eConfig("next-15-pages-router-host-app-e2e"),
+  ...getHostAppE2eConfig("angular-20-host-app-e2e"),
   snapshot: async () => {
     // We only ever care about a browser out of all possible user arguments,
     // when it comes to the snapshot generation.
