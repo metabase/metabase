@@ -372,12 +372,12 @@
 
 (alter-var-root #'clojure.test/test-var (constantly test-var-with-context))
 
-(methodical/defmethod t2.pipeline/compile
+(methodical/defmethod t2.pipeline/compile :after
   [#_query-type  :default
    #_model       :default
    #_built-query :default]
   [query-type model built-query]
-  (u/prog1 (next-method query-type model built-query)
+  (u/prog1 built-query
     (let [compiled-query-arg-map (into {} (map-indexed (fn [i v] [(str "compiled-query-arg-" i) v]) (rest <>)))]
       (log/with-context (merge {:query-type query-type
                                 :model model
