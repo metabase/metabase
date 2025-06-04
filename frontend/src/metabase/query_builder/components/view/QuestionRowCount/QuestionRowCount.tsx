@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import { formatNumber } from "metabase/lib/formatting";

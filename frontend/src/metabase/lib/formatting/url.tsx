@@ -1,7 +1,7 @@
 import cx from "classnames";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/env";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";

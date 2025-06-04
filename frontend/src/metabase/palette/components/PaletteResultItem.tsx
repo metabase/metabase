@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 

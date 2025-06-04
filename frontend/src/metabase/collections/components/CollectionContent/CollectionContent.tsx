@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   useBookmarkListQuery,
   useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Bookmark from "metabase/entities/bookmarks";
 import Databases from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/lib/redux";

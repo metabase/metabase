@@ -5,8 +5,8 @@ import reactAnsiStyle from "react-ansi-style";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
+import Select, { Option } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import Select, { Option } from "metabase/core/components/Select";
 import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
 

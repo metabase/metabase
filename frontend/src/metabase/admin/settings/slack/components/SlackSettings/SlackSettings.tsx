@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import Breadcrumbs from "metabase/components/Breadcrumbs";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import { Stack } from "metabase/ui";
 

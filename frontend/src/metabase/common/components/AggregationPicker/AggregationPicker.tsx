@@ -1,15 +1,15 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import AccordionList from "metabase/common/components/AccordionList";
+import Markdown from "metabase/common/components/Markdown";
 import {
   HoverParent,
   PopoverDefaultIcon,
   PopoverHoverTarget,
-} from "metabase/components/MetadataInfo/InfoIcon";
-import { Popover } from "metabase/components/MetadataInfo/Popover";
-import AccordionList from "metabase/core/components/AccordionList";
-import Markdown from "metabase/core/components/Markdown";
-import { useToggle } from "metabase/hooks/use-toggle";
+} from "metabase/common/components/MetadataInfo/InfoIcon";
+import { Popover } from "metabase/common/components/MetadataInfo/Popover";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";

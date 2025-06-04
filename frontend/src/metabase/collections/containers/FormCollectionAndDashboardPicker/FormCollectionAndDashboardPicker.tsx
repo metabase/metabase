@@ -9,6 +9,7 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
+import CollectionName from "metabase/common/components/CollectionName";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
@@ -16,12 +17,11 @@ import {
   type CollectionPickerOptions,
 } from "metabase/common/components/CollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import CollectionName from "metabase/containers/CollectionName";
-import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
-import FormField from "metabase/core/components/FormField";
+import FormField from "metabase/common/components/FormField";
+import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import Collections from "metabase/entities/collections";
 import Dashboard from "metabase/entities/dashboards";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";

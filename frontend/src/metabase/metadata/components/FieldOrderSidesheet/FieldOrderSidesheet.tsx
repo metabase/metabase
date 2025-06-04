@@ -4,12 +4,12 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   type DragEndEvent,
   SortableList,
-} from "metabase/core/components/Sortable";
+} from "metabase/common/components/Sortable";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

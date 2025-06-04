@@ -2,9 +2,9 @@ import cx from "classnames";
 import { type ComponentProps, useState } from "react";
 import { t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { Badge } from "metabase/home/components/EmbedHomepage/Badge";

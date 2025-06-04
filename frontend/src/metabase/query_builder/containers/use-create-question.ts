@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import type { ScheduleCallback } from "metabase/hooks/use-callback-effect";
+import type { ScheduleCallback } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import {
   apiCreateQuestion,

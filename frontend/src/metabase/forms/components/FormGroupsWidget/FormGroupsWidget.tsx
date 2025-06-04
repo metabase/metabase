@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
+import FormField from "metabase/common/components/FormField";
 import { useGroupListQuery } from "metabase/common/hooks";
-import FormField from "metabase/core/components/FormField";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import type { GroupId, Member } from "metabase-types/api";
 

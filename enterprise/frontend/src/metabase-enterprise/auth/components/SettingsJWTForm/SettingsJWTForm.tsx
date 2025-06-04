@@ -6,7 +6,7 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
   Form,

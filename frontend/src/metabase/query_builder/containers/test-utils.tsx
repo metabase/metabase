@@ -31,8 +31,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/containers/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
+import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";

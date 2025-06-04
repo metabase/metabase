@@ -6,6 +6,7 @@ import * as Yup from "yup";
 
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
 import { UpsellHosting } from "metabase/admin/upsells";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -16,7 +17,6 @@ import {
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
 import { useSetting, useToast } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
   Form,

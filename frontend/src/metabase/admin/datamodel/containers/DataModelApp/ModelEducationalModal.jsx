@@ -2,8 +2,8 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
+import Modal from "metabase/common/components/Modal";
+import ModalContent from "metabase/common/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { getLearnUrl } from "metabase/selectors/settings";

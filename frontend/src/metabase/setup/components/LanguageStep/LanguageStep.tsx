@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 import type { Locale } from "metabase-types/store";

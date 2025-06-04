@@ -7,11 +7,11 @@ import {
   useListDatabasesQuery,
   useListRecentsQuery,
 } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,

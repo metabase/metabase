@@ -10,8 +10,8 @@ import {
   useGetSettingsQuery,
   useUpdateLdapMutation,
 } from "metabase/api";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import {
   Form,

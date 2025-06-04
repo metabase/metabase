@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Link from "metabase/core/components/Link";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Link from "metabase/common/components/Link";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 

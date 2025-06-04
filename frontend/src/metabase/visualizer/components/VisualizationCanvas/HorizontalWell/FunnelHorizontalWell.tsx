@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useMemo } from "react";
 
-import { Sortable } from "metabase/core/components/Sortable";
+import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";

@@ -5,8 +5,8 @@ import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import Select from "metabase/core/components/Select";
+import ButtonWithStatus from "metabase/common/components/ButtonWithStatus";
+import Select from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { connect } from "metabase/lib/redux";

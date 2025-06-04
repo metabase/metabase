@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import { VirtualizedList } from "metabase/components/VirtualizedList";
-import { NoObjectError } from "metabase/components/errors/NoObjectError";
+import EmptyState from "metabase/common/components/EmptyState";
+import { VirtualizedList } from "metabase/common/components/VirtualizedList";
+import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
 import { Box, Flex, Stack } from "metabase/ui";
 import type { SearchResultId } from "metabase-types/api";

@@ -4,8 +4,8 @@ import {
   useAddSampleDatabaseMutation,
   useListDatabasesQuery,
 } from "metabase/api";
+import LoadingAndGenericErrorWrapper from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGenericErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

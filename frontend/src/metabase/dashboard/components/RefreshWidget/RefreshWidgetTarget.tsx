@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { CountdownIcon } from "metabase/components/icons/CountdownIcon";
+import { CountdownIcon } from "metabase/common/components/icons/CountdownIcon";
 import { isNotNull } from "metabase/lib/types";
 
 import { ToolbarButton } from "../../../components/ToolbarButton/ToolbarButton";
