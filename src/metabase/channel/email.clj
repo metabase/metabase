@@ -1,11 +1,10 @@
 (ns metabase.channel.email
   (:require
    [metabase.analytics.core :as analytics]
-   [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [postal.core :as postal]
@@ -21,90 +20,6 @@
 (when-not *compile-files*
   (System/setProperty "mail.mime.splitlongparameters" "false"))
 
-;;; CONFIG
-
-(defsetting email-from-address
-  (deferred-tru "The email address you want to use for the sender of emails.")
-  :encryption :no
-  :default    "notifications@metabase.com"
-  :visibility :settings-manager
-  :audit      :getter)
-
-(defsetting email-from-name
-  (deferred-tru "The name you want to use for the sender of emails.")
-  :encryption :no
-  :visibility :settings-manager
-  :audit      :getter)
-
-(defsetting bcc-enabled?
-  (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")
-  :visibility :settings-manager
-  :type       :boolean
-  :default    true)
-
-(def ^:private ReplyToAddresses
-  [:maybe [:sequential ms/Email]])
-
-(def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
-  (mr/validator ReplyToAddresses))
-
-(defsetting email-reply-to
-  (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :encryption :no
-  :type       :json
-  :visibility :settings-manager
-  :audit      :getter
-  :setter     (fn [new-value]
-                (if (validate-reply-to-addresses new-value)
-                  (setting/set-value-of-type! :json :email-reply-to new-value)
-                  (throw (ex-info "Invalid reply-to address" {:value new-value})))))
-
-(defsetting email-smtp-host
-  (deferred-tru "The address of the SMTP server that handles your emails.")
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :audit      :getter)
-
-(defsetting email-smtp-username
-  (deferred-tru "SMTP username.")
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :audit      :getter)
-
-(defsetting email-smtp-password
-  (deferred-tru "SMTP password.")
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :sensitive? true
-  :audit      :getter)
-
-(defsetting email-smtp-port
-  (deferred-tru "The port your SMTP server uses for outgoing emails.")
-  :encryption :when-encryption-key-set
-  :type       :integer
-  :visibility :settings-manager
-  :audit      :getter)
-
-(defsetting email-smtp-security
-  (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :encryption :when-encryption-key-set
-  :type       :keyword
-  :default    :none
-  :visibility :settings-manager
-  :audit      :raw-value
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
-                (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
-
-(defsetting email-max-recipients-per-second
-  (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.
-                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.")
-  :export?    true
-  :type       :integer
-  :visibility :settings-manager
-  :audit      :getter)
-
 (defn- make-email-throttler
   [rate-limit]
   (throttle/make-throttler
@@ -113,7 +28,7 @@
    :initial-delay-ms   1000
    :attempts-threshold rate-limit))
 
-(defonce ^:private email-throttler (when-let [rate-limit (email-max-recipients-per-second)]
+(defonce ^:private email-throttler (when-let [rate-limit (channel.settings/email-max-recipients-per-second)]
                                      (make-email-throttler rate-limit)))
 
 (defn check-email-throttle
@@ -150,22 +65,6 @@
   (check-email-throttle email-details)
   (postal/send-message smtp-credentials email-details))
 
-(defsetting email-configured?
-  "Check if email is enabled and that the mandatory settings are configured."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :getter     #(boolean (email-smtp-host))
-  :doc        false)
-
-(setting/defsetting surveys-enabled
-  (deferred-tru "Enable or disable surveys")
-  :type       :boolean
-  :default    true
-  :export?    false
-  :visibility :internal
-  :audit      :getter)
-
 (defn- add-ssl-settings [m ssl-setting]
   (merge
    m
@@ -177,11 +76,11 @@
      {})))
 
 (defn- smtp-settings []
-  (-> {:host (email-smtp-host)
-       :user (email-smtp-username)
-       :pass (email-smtp-password)
-       :port (email-smtp-port)}
-      (add-ssl-settings (email-smtp-security))))
+  (-> {:host (channel.settings/email-smtp-host)
+       :user (channel.settings/email-smtp-username)
+       :pass (channel.settings/email-smtp-password)
+       :port (channel.settings/email-smtp-port)}
+      (add-ssl-settings (channel.settings/email-smtp-security))))
 
 (def ^:private EmailMessage
   [:and
@@ -204,15 +103,15 @@
   the caller has its own retry logic."
   [{:keys [subject recipients message-type message bcc?] :as _email}]
   (try
-    (when-not (email-smtp-host)
+    (when-not (channel.settings/email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
     (let [to-type (if bcc? :bcc :to)]
       (send-email! (smtp-settings)
                    (merge
-                    {:from    (if-let [from-name (email-from-name)]
-                                (str from-name " <" (email-from-address) ">")
-                                (email-from-address))
+                    {:from    (if-let [from-name (channel.settings/email-from-name)]
+                                (str from-name " <" (channel.settings/email-from-address) ">")
+                                (channel.settings/email-from-address))
                      ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
                      to-type  (seq recipients)
                      :subject subject
@@ -221,7 +120,7 @@
                                 :text        message
                                 :html        [{:type    "text/html; charset=utf-8"
                                                :content message}])}
-                    (when-let [reply-to (email-reply-to)]
+                    (when-let [reply-to (channel.settings/email-reply-to)]
                       {:reply-to reply-to}))))
     (catch Throwable e
       (analytics/inc! :metabase-email/message-errors)

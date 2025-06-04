@@ -279,11 +279,30 @@ export function createTestRoles({ type, isWritable }) {
  * @param {string} obj.name - The table's real name, not its display name
  */
 export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
+  return cy.request("GET", "/api/table").then(({ body: tables }) => {
+    const table = tables.find(
+      (table) => table.db_id === databaseId && table.name === name,
+    );
+    if (!table) {
+      throw new TypeError(`Table with name ${name} cannot be found`);
+    }
+    return table.id;
+  });
+}
+
+export function getFieldId({ tableId, name }) {
   return cy
-    .request("GET", `/api/database/${databaseId}/metadata`)
-    .then(({ body }) => {
-      const table = body?.tables?.find((table) => table.name === name);
-      return table ? table.id : null;
+    .request("GET", `/api/table/${tableId}/query_metadata`)
+    .then(({ body: table }) => {
+      const fields = table.fields ?? [];
+      const field = fields.find((field) => field.name === name);
+      if (!field) {
+        throw new TypeError(`Field with name ${name} cannot be found`);
+      }
+      if (typeof field.id !== "number") {
+        throw new TypeError("Unexpected non-integer field id.");
+      }
+      return field.id;
     });
 }
 

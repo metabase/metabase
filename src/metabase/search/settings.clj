@@ -17,7 +17,7 @@
   (i18n/deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
-  :default    :in-place
+  :default    :appdb
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides
@@ -28,3 +28,12 @@
   :default    nil
   :type       :json
   :doc        false)
+
+(defsetting search-language
+  (i18n/deferred-tru "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
+  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''")
+  :visibility :internal
+  :export?    false
+  :encryption :no
+  :default    nil
+  :type       :string)

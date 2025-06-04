@@ -82,7 +82,6 @@ const setup = () => {
                 createMockColumn({
                   name: "pivot-grouping",
                   display_name: "pivot-grouping",
-                  expression_name: "pivot-grouping",
                   field_ref: ["expression", "pivot-grouping"],
                   source: "breakout",
                   base_type: "type/Integer",

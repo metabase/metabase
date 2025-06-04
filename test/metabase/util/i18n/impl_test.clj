@@ -1,7 +1,7 @@
 (ns metabase.util.i18n.impl-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.settings.models.setting]
    [metabase.system.core :as system]
    [metabase.test :as mt]

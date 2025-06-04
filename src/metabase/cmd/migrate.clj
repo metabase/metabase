@@ -1,6 +1,6 @@
 (ns metabase.cmd.migrate
   (:require
-   [metabase.db :as mdb]))
+   [metabase.app-db.core :as mdb]))
 
 (defn migrate!
   "Migrate the Metabase application DB."

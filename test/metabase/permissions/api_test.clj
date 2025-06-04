@@ -2,11 +2,11 @@
   "Tests for `/api/permissions` endpoints."
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.permissions.api :as api.permissions]
    [metabase.permissions.api-test-util :as perm-test-util]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -315,6 +315,55 @@
         (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
                                                                                (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
 
+(deftest update-perms-graph-blocked-view-data-test
+  (testing "PUT /api/permissions/graph"
+    (testing "setting view-data to blocked automatically sets download-results to no, even if requested otherwise"
+      (mt/with-temp [:model/PermissionsGroup group       {}
+                     :model/Database         {db-id :id}  {}
+                     :model/Table            {table-id :id} {:db_id db-id, :schema "PUBLIC"}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/add-user-to-group! (mt/user->id :rasta) group)
+          ;; First set both permissions to unrestricted/full
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups (u/the-id group) db-id :view-data]
+                         {"PUBLIC" {table-id :unrestricted}})
+               (assoc-in [:groups (u/the-id group) db-id :download :schemas]
+                         {"PUBLIC" {table-id :full}})))
+
+          ;; Verify initial state
+          (is (= :unrestricted
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/view-data
+                                                       db-id
+                                                       table-id)))
+          (is (= :one-million-rows
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/download-results
+                                                       db-id
+                                                       table-id)))
+          ;; Now try to set view-data to blocked while keeping download-results as full
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups (u/the-id group) db-id :view-data]
+                         {"PUBLIC" {table-id :blocked}})
+               (assoc-in [:groups (u/the-id group) db-id :download :schemas]
+                         {"PUBLIC" {table-id :full}})))
+
+          ;; Verify that download-results was automatically set to no
+          (is (= :blocked
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/view-data
+                                                       db-id
+                                                       table-id)))
+          (is (= :no
+                 (data-perms/table-permission-for-user (mt/user->id :rasta)
+                                                       :perms/download-results
+                                                       db-id
+                                                       table-id))))))))
+
 (deftest get-group-membership-test
   (testing "GET /api/permissions/membership"
     (testing "requires superuser"
@@ -388,38 +437,3 @@
 
       (testing "Delete membership successfully"
         (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))))))
-
-(let [->expected {{:new-admin? true :setting-value true} false
-                  {:new-admin? true :setting-value false} false
-                  {:new-admin? false :setting-value true} true
-                  {:new-admin? false :setting-value false} false}]
-  (deftest show-updated-permission-modal-test
-    (doseq [instance-creation-time [(t/local-date-time 2020) (t/local-date-time 2022)]
-            fifty-migration-time [(t/local-date-time 2021) (t/local-date-time 2023)]
-            modal-setting-value [true false]]
-      (testing (str "instance-creation-time: " instance-creation-time
-                    ", migration-time: " fifty-migration-time
-                    ", modal-setting-value: " modal-setting-value)
-        (mt/with-current-user (mt/user->id :crowberto)
-          (api.permissions/show-updated-permission-modal! modal-setting-value)
-          (with-redefs [api.permissions/instance-create-time (constantly instance-creation-time)
-                        api.permissions/v-fifty-migration-time (constantly fifty-migration-time)]
-            (let [expected-modal-value (get ->expected
-                                            {:new-admin? (t/after? instance-creation-time fifty-migration-time)
-                                             :setting-value modal-setting-value})]
-              (is (= expected-modal-value (api.permissions/show-updated-permission-modal)))))))))
-  (deftest show-updated-permission-banner-test
-    (doseq [instance-creation-time [(t/local-date-time 2020) (t/local-date-time 2022)]
-            fifty-migration-time [(t/local-date-time 2021) (t/local-date-time 2023)]
-            banner-setting-value [true false]]
-      (testing (str "instance-creation-time: " instance-creation-time
-                    ", migration-time: " fifty-migration-time
-                    ", banner-setting-value: " banner-setting-value)
-        (mt/with-current-user (mt/user->id :crowberto)
-          (api.permissions/show-updated-permission-banner! banner-setting-value)
-          (with-redefs [api.permissions/instance-create-time (constantly instance-creation-time)
-                        api.permissions/v-fifty-migration-time (constantly fifty-migration-time)]
-            (let [expected-banner-value (get ->expected
-                                             {:new-admin? (t/after? instance-creation-time fifty-migration-time)
-                                              :setting-value banner-setting-value})]
-              (is (= expected-banner-value (api.permissions/show-updated-permission-banner))))))))))

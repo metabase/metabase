@@ -94,11 +94,7 @@ export const getTicksOptions = (
   // If we let ECharts select ticks for quarterly data it can pick January and March which
   // will look like a duplication because both ticks will be formatted as Q1. So we need to
   // force ECharts to render monthly ticks and then select ones for Jan, Apr, Jul, Oct.
-  if (
-    !isSingleItem &&
-    largestInterval.unit === "month" &&
-    largestInterval.count === 3
-  ) {
+  if (!isSingleItem && largestInterval.unit === "quarter") {
     const effectiveTicksUnit = "month";
     canRender = (date: Dayjs) =>
       isWithinRange(date) && date.startOf("quarter").isSame(date, "month");

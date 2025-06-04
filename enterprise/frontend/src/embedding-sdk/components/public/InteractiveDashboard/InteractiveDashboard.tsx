@@ -1,4 +1,9 @@
-import { type ReactNode, useCallback, useEffect } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+} from "react";
 import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -52,7 +57,7 @@ export type InteractiveDashboardProps = {
   /**
    * Height of a question component when drilled from the dashboard to a question level.
    */
-  drillThroughQuestionHeight?: number;
+  drillThroughQuestionHeight?: CSSProperties["height"];
 
   /**
    * Props of a question component when drilled from the dashboard to a question level.
@@ -67,7 +72,6 @@ const InteractiveDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
-  withFooter = true,
   hiddenParameters = [],
   drillThroughQuestionHeight,
   plugins,
@@ -101,7 +105,6 @@ const InteractiveDashboardInner = ({
     dashboardId: initialDashboardId,
     withDownloads,
     withTitle,
-    withFooter,
     hiddenParameters,
     initialParameters,
   });
@@ -173,7 +176,7 @@ const InteractiveDashboardInner = ({
             background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
-            withFooter={displayOptions.withFooter}
+            withFooter={false}
             theme={theme}
             getClickActionMode={getClickActionMode}
             isFullscreen={isFullscreen}

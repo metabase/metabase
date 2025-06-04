@@ -2,6 +2,7 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
+import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Link from "metabase/core/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -32,6 +33,9 @@ function DashboardMoveModal({
     options: any,
   ) => void;
 }) {
+  const recentsAndSearchFilter = (item: CollectionPickerItem) =>
+    item.model === "collection" && item.id === dashboard.collection_id;
+
   return (
     <MoveModal
       title={t`Move dashboard to…`}
@@ -50,6 +54,7 @@ function DashboardMoveModal({
         });
         onClose();
       }}
+      recentAndSearchFilter={recentsAndSearchFilter}
     />
   );
 }

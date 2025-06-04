@@ -40,37 +40,61 @@
                 (get-single-task user 200)
                 (get-task-info user 200)))))))))
 
-(deftest util-tset
-  (testing "/api/util/"
+(deftest logs-permissions-test
+  (testing "GET /api/logger/logs"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
       (letfn [(get-logs [user status]
                 (testing (format "get logs with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "util/logs")))
-              (get-bug-report-detail [user status]
-                (testing (format "get bug report details with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "bug-reporting/details")))
-              (get-db-connection-info [user status]
-                (testing (format "get db connection info with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "util/diagnostic_info/connection_pool_info")))]
+                  (mt/user-http-request user :get status "logger/logs")))]
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
             (get-logs user 403)
+            (get-logs :crowberto 200)))
+        (testing "if `advanced-permissions` is enabled"
+          (mt/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `monitoring` permission"
+              (get-logs user 403))
+            (testing "allowed if user's group has `monitoring` permission"
+              (perms/grant-application-permissions! group :monitoring)
+              (get-logs user 200))))))))
+
+(deftest bug-reporting-permissions-test
+  (testing "GET /api/bug-reporting/details"
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user  [group]]
+      (letfn [(get-bug-report-detail [user status]
+                (testing (format "get bug report details with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :get status "bug-reporting/details")))]
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (mt/with-premium-features #{}
             (get-bug-report-detail user 403)
+            (get-bug-report-detail :crowberto 200)))
+        (testing "if `advanced-permissions` is enabled"
+          (mt/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `monitoring` permission"
+              (get-bug-report-detail user 403))
+            (testing "allowed if user's group has `monitoring` permission"
+              (perms/grant-application-permissions! group :monitoring)
+              (get-bug-report-detail user 200))))))))
+
+(deftest connection-pool-info-permissions-test
+  (testing "GET /api/bug-reporting/connection-pool-details"
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user  [group]]
+      (letfn [(get-db-connection-info [user status]
+                (testing (format "get db connection info with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :get status "bug-reporting/connection-pool-details")))]
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (mt/with-premium-features #{}
             (get-db-connection-info user 403)
-            (get-logs :crowberto 200)
-            (get-bug-report-detail :crowberto 200)
             (get-db-connection-info :crowberto 200)))
         (testing "if `advanced-permissions` is enabled"
           (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `monitoring` permission"
-              (get-logs user 403)
-              (get-bug-report-detail user 403)
               (get-db-connection-info user 403))
             (testing "allowed if user's group has `monitoring` permission"
               (perms/grant-application-permissions! group :monitoring)
-              (get-logs user 200)
-              (get-bug-report-detail user 200)
               (get-db-connection-info user 200))))))))
 
 (deftest anonymous-stats-permission-test

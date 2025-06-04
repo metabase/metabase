@@ -11,7 +11,7 @@
   your specs accordingly!
 
   Implementations of this method live in other namespaces. For example, the section spec for the `:users` section
-  lives in [[metabase.models.user]]."
+  lives in [[metabase.users.models.user]]."
   {:arglists '([section-name])}
   keyword)
 
@@ -24,7 +24,7 @@
   `section-config`.
 
   Implementations of this method live in other namespaces, for example the method for the `:users` section (to
-  initialize Users) lives in [[metabase.models.user]]."
+  initialize Users) lives in [[metabase.users.models.user]]."
   {:arglists '([section-name section-config])}
   (fn [section-name _section-config]
     (keyword section-name)))

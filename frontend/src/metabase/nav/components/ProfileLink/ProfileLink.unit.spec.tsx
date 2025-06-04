@@ -37,7 +37,6 @@ function setup({
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
-  dismissedOnboardingFromSidebar = false,
 }: {
   isAdmin?: boolean;
   isHosted?: boolean;
@@ -45,7 +44,6 @@ function setup({
   helpLinkSetting?: HelpLinkSetting;
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
-  dismissedOnboardingFromSidebar?: boolean;
 }) {
   const settings = mockSettings({
     "is-hosted?": isHosted,
@@ -53,7 +51,6 @@ function setup({
     "help-link": helpLinkSetting,
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
-    "dismissed-onboarding-sidebar-link": dismissedOnboardingFromSidebar,
   });
 
   const admin = createMockAdminState({
@@ -127,28 +124,18 @@ describe("ProfileLink", () => {
   });
 
   describe("'How to use Metabase' link", () => {
-    it("should render if the instance was created more than 30 days ago even if the link hasn't ever been dismissed from the sidebar", async () => {
+    it("should render if the instance was created more than 30 days ago", async () => {
       setup({
         instanceCreationDate: dayjs().subtract(42, "days").toISOString(),
-        dismissedOnboardingFromSidebar: false,
       });
 
       await openMenu();
       expect(screen.getByText("How to use Metabase")).toBeInTheDocument();
     });
 
-    it("should render on new instances if the link was dismissed from the sidebar", async () => {
+    it("should not render for new instances (younger than 30 days)", async () => {
       setup({
-        dismissedOnboardingFromSidebar: true,
-      });
-
-      await openMenu();
-      expect(screen.getByText("How to use Metabase")).toBeInTheDocument();
-    });
-
-    it("should not render on new instances if the link hasn't ever been dismissed from the sidebar", async () => {
-      setup({
-        dismissedOnboardingFromSidebar: false,
+        instanceCreationDate: dayjs().subtract(14, "days").toISOString(),
       });
 
       await openMenu();
@@ -164,7 +151,7 @@ describe("ProfileLink", () => {
         });
         await openMenu();
 
-        const link = screen.queryByRole("link", { name: /help/i });
+        const link = screen.queryByRole("menuitem", { name: /help/i });
 
         expect(link).not.toBeInTheDocument();
       });
@@ -178,7 +165,7 @@ describe("ProfileLink", () => {
         });
         await openMenu();
 
-        const link = screen.getByRole("link", { name: /help/i });
+        const link = screen.getByRole("menuitem", { name: /help/i });
 
         expect(link).toBeInTheDocument();
         expect(link).toHaveProperty("href", "https://custom.example.org/help");
@@ -194,7 +181,7 @@ describe("ProfileLink", () => {
             helpLinkSetting: "metabase",
           });
           await openMenu();
-          const link = screen.getByRole("link", { name: /help/i });
+          const link = screen.getByRole("menuitem", { name: /help/i });
 
           expect(link).toBeInTheDocument();
           const mockBugReportDetails = encodeURIComponent(
@@ -215,7 +202,7 @@ describe("ProfileLink", () => {
             helpLinkSetting: "metabase",
           });
           await openMenu();
-          const link = screen.getByRole("link", { name: /help/i });
+          const link = screen.getByRole("menuitem", { name: /help/i });
 
           expect(link).toBeInTheDocument();
           expect(link).toHaveProperty(
@@ -230,5 +217,5 @@ describe("ProfileLink", () => {
 
 const openMenu = async () => {
   await userEvent.click(screen.getByRole("img", { name: /gear/i }));
-  await screen.findByRole("dialog");
+  await screen.findByRole("menu");
 };

@@ -1,5 +1,5 @@
 (ns metabase.query-processor.card-test
-  "There are more e2e tests in [[metabase.api.card-test]]."
+  "There are more e2e tests in [[metabase.queries.api.card-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
@@ -505,3 +506,28 @@
                   qp/process-query
                   mt/rows
                   count))))))
+
+(deftest database-type->base-type-external-table-types-test
+  (doseq [[database-type exp-base-type] [["tinyint" :type/Integer]
+                                         ["smallint" :type/Integer]
+                                         ["mediumint" :type/Integer]
+                                         [:mediumint :type/Integer]
+                                         [:MEDIUMINT :type/Integer]
+                                         ["tinytext" :type/Text]
+                                         ["mediumtext" :type/Text]
+                                         ["longtext" :type/Text]
+                                         ["varchar(100)" :type/Text]
+                                         ["varchar(100)" :type/Text]
+                                         ["int(11) unsigned" :type/Integer]
+                                         ["int(10)" :type/Integer]
+                                         ["tinyint(1)" :type/Integer]
+                                         ["BIGINTEGER" :type/BigInteger]
+                                         ["double(10,20)" :type/Float]
+                                         ["float(10)" :type/Float]
+                                         ["datetime" :type/DateTime]
+                                         ["year" :type/Integer]
+                                         ;; nonsense
+                                         ["fadlsjfldskajfl" nil]]]
+    (testing (format "database-type %s" (pr-str database-type))
+      (is (= exp-base-type
+             (sql-jdbc.sync/database-type->base-type :redshift database-type))))))

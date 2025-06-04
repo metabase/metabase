@@ -3,7 +3,7 @@ import { t } from "ttag";
 export const questionShortcuts = {
   "query-builder-toggle-notebook-editor": {
     get name() {
-      return t`Toggle Notebook`;
+      return t`Switch to editor`;
     },
     shortcut: ["e"],
     shortcutGroup: "question" as const,
@@ -24,7 +24,7 @@ export const questionShortcuts = {
   },
   "query-builder-bookmark": {
     get name() {
-      return t`Bookmark Question`;
+      return t`Bookmark question`;
     },
     shortcut: ["o"],
     shortcutGroup: "question" as const,
@@ -38,7 +38,7 @@ export const questionShortcuts = {
   },
   "query-builder-data-refresh": {
     get name() {
-      return t`Refetch question data`;
+      return t`Refresh data`;
     },
     shortcut: ["r"],
     shortcutGroup: "question" as const,

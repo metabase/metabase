@@ -21,15 +21,15 @@
   "Run a blocking shell command and return the output as a trimmed string.
 
   Will throw an exception if the command returns a non-zero exit code."
-  [cmd]
-  (->> (shell {:out :string :dir project-root-directory} cmd)
+  [& cmd]
+  (->> (apply shell {:out :string :dir project-root-directory} cmd)
        :out
        str/trim-newline))
 
 (defn shl
   "Run a shell command and return the output as a vector of lines."
-  [cmd]
-  (-> cmd sh str/split-lines vec))
+  [& cmd]
+  (-> (apply sh cmd) str/split-lines vec))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Git Stuff
@@ -108,3 +108,38 @@
 (comment
   (count (updated-files "master"))
   (count (updated-files "master...")))
+
+(defn with-throbber
+  "Calls a function f and displays a throbber animation while waiting
+   for it to complete. Returns the result of calling f."
+  [message f]
+  (let [frames ["⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"]
+        delay  100
+        done?  (atom false)
+        result (atom nil)
+        err    (atom nil)]
+    (future (try
+              (loop [i 0]
+                (when (not @done?)
+                  (print (str "\r" (nth frames (mod i (count frames))) " " message))
+                  (flush)
+                  (Thread/sleep delay)
+                  (recur (inc i))))
+              (catch Exception e
+                (reset! err e)))
+            ;; Clear the throbber when done
+            (print "\r")
+            (flush))
+
+    ;; Execute the function
+    (try
+      (let [res (f)]
+        (reset! result res)
+        res)
+      (catch Exception e
+        (reset! err e)
+        (throw e))
+      (finally
+        (reset! done? true)))))
+
+(defn- without-slash [s] (str/replace s #"/$" ""))

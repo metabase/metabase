@@ -1,15 +1,21 @@
 import { useMemo } from "react";
 
-import { useGetCardQuery } from "metabase/api";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
+  getDatasets,
   getVisualizationType,
-  getVisualizerPrimaryColumn,
+  getVisualizerComputedSettings,
+  getVisualizerComputedSettingsForFlatSeries,
+  getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import type { VisualizerCardDataSource } from "metabase-types/api";
+import type {
+  Field,
+  VisualizationDisplay,
+  VisualizerDataSource,
+} from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
 
@@ -17,10 +23,13 @@ import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
 
 interface DatasetsListItemProps {
-  item: VisualizerCardDataSource;
-  onSwap?: (item: VisualizerCardDataSource) => void;
-  onToggle?: (item: VisualizerCardDataSource) => void;
-  onRemove?: (item: VisualizerCardDataSource) => void;
+  item: VisualizerDataSource & {
+    display: VisualizationDisplay | null;
+    result_metadata?: Field[];
+  };
+  onSwap?: (item: VisualizerDataSource) => void;
+  onToggle?: (item: VisualizerDataSource) => void;
+  onRemove?: (item: VisualizerDataSource) => void;
   selected: boolean;
 }
 
@@ -30,32 +39,31 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { setSwapAffordanceVisible } = useVisualizerUi();
 
   const currentDisplay = useSelector(getVisualizationType);
-  const primaryColumn = useSelector(getVisualizerPrimaryColumn);
-
-  const { data } = useGetCardQuery({ id: item.cardId });
-
-  const metadata = useMemo(
-    () => ({
-      display: data?.display,
-      fields: data?.result_metadata,
-    }),
-    [data],
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
+  const computedSettings = useSelector(
+    getVisualizerComputedSettingsForFlatSeries,
   );
+  const datasets = useSelector(getDatasets);
 
   const isCompatible = useMemo(() => {
-    const { display, fields } = metadata;
+    if (!item.display || !item.result_metadata) {
+      return false;
+    }
 
     return getIsCompatible({
       currentDataset: {
-        display: currentDisplay,
-        primaryColumn,
+        display: currentDisplay ?? null,
+        columns,
+        settings,
+        computedSettings,
       },
       targetDataset: {
-        display,
-        fields,
+        fields: item.result_metadata,
       },
+      datasets,
     });
-  }, [metadata, primaryColumn, currentDisplay]);
+  }, [item, currentDisplay, columns, settings, computedSettings, datasets]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>

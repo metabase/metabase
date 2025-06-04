@@ -1,5 +1,10 @@
 /* eslint-disable no-restricted-imports */
-import type { AnyAction, Reducer, Store } from "@reduxjs/toolkit";
+import {
+  type AnyAction,
+  type Reducer,
+  type Store,
+  combineReducers,
+} from "@reduxjs/toolkit";
 import { useContext } from "react";
 
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
@@ -8,15 +13,23 @@ import {
   useDispatch,
   useStore,
 } from "metabase/lib/redux";
-import { mainReducers } from "metabase/reducers-main";
+import { PLUGIN_REDUCERS } from "metabase/plugins";
+import * as qb from "metabase/query_builder/reducers";
+import { commonReducers } from "metabase/reducers-common";
 import { getStore } from "metabase/store";
+import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { sdk } from "./reducer";
 import type { SdkStoreState } from "./types";
 
 export const sdkReducers = {
-  ...mainReducers,
+  ...commonReducers,
+  qb: combineReducers(qb),
+  visualizer,
   sdk,
+  plugins: combineReducers({
+    metabotPlugin: PLUGIN_REDUCERS.metabotPlugin,
+  }),
 } as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>

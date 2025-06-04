@@ -4,7 +4,7 @@ export function getDefaultDisplayOptions(
   shouldShownDownloadData: boolean,
 ): EmbeddingDisplayOptions {
   return {
-    font: null,
+    font: "",
     theme: "light",
     background: true,
     bordered: true,

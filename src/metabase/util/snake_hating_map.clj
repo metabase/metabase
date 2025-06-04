@@ -6,7 +6,7 @@
   instances. After 51 we can remove this, everything should be updated by then."
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]

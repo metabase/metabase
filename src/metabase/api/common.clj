@@ -3,9 +3,9 @@
 ;; We use a custom macro called `defendpoint` for defining all endpoints. It's best illustrated with an example:
 ;;
 ;; <pre><code>
-;; (ns metabase.api.dashboard ...)
+;; (ns metabase.dashboards.api ...)
 ;;
-;; (api/defendpoint GET "/"
+;; (api/defendpoint :get "/"
 ;;  "Get `Dashboards`. With filter option `f`..."
 ;;  [f]
 ;;  {f [:maybe [:enum "all" "mine" "archived"]]}

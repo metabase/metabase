@@ -784,9 +784,10 @@ function setApplicationFontTo(font) {
   H.updateSetting("application-font", font);
 }
 
-const openSettingsMenu = () => H.appBar().icon("gear").click();
+const openSettingsMenu = () =>
+  H.appBar().findByRole("button", { name: "Settings" }).click();
 
-const helpLink = () => H.popover().findByRole("link", { name: "Help" });
+const helpLink = () => H.popover().findByRole("menuitem", { name: "Help" });
 
 const getHelpLinkCustomDestinationInput = () =>
   cy.findByPlaceholderText("Enter a URL it should go to");

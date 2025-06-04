@@ -8,7 +8,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.style :as style]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json])

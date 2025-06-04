@@ -4,7 +4,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]

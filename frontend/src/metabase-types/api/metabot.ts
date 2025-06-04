@@ -1,4 +1,11 @@
-import type { CardId, CardType, DashboardId, DatasetQuery } from ".";
+import type {
+  CardId,
+  CardType,
+  CollectionId,
+  DashboardId,
+  DatasetQuery,
+  SearchModel,
+} from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -92,6 +99,10 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
+export interface MetabotPromptSuggestions {
+  prompts: Array<{ prompt: string }>;
+}
+
 /* Metabot v3 - Type Guards */
 
 export const isMetabotMessageReaction = (
@@ -121,4 +132,24 @@ export const isMetabotMessage = (
   message: MetabotHistoryEntry,
 ): message is MetabotHistoryMessageEntry => {
   return message.role === "assistant";
+};
+
+export type MetabotId = number;
+export type MetabotName = string;
+
+export type MetabotInfo = {
+  id: MetabotId;
+  name: MetabotName;
+};
+
+export type MetabotEntity = {
+  name: string;
+  id: CollectionId;
+  model: Extract<SearchModel, "collection">;
+  collection_id: CollectionId;
+  collection_name: string;
+};
+
+export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
+  model_id: MetabotEntity["id"];
 };

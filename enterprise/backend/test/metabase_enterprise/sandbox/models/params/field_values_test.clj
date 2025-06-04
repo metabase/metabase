@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
    [metabase-enterprise.test :as met]
-   [metabase.models.params.field-values :as params.field-values]
+   [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

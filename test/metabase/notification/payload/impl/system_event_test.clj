@@ -1,6 +1,7 @@
 (ns metabase.notification.payload.impl.system-event-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -8,7 +9,6 @@
    [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (use-fixtures

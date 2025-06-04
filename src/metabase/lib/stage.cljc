@@ -150,9 +150,7 @@
             col
             {:lib/source               :source/previous-stage
              :lib/source-column-alias  source-alias
-             :lib/desired-column-alias (unique-name-fn source-alias)}
-            (when (:metabase.lib.card/force-broken-id-refs col)
-              (select-keys col [:metabase.lib.card/force-broken-id-refs])))
+             :lib/desired-column-alias (unique-name-fn source-alias)})
            ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
@@ -240,7 +238,8 @@
     (into []
           (if metric-based?
             identity
-            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)))
+            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id
+                          :fk-field-name :fk-join-alias)))
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number options)

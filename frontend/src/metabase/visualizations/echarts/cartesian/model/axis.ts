@@ -654,6 +654,16 @@ export function getYAxisFormattingOptions({
   return {};
 }
 
+const getFormatUnit = (
+  dimensionColumn: DatasetColumn,
+  dataTimeSeriesInterval: TimeSeriesInterval,
+) => {
+  if (isAbsoluteDateTimeUnit(dataTimeSeriesInterval.unit)) {
+    return dataTimeSeriesInterval.unit ?? dimensionColumn.unit;
+  }
+
+  return dimensionColumn.unit;
+};
 export function getTimeSeriesXAxisModel(
   dimensionModel: DimensionModel,
   rawSeries: RawSeries,
@@ -679,11 +689,7 @@ export function getTimeSeriesXAxisModel(
   } = timeSeriesInfo;
   const formatter = (value: RowValue, unit?: DateTimeAbsoluteUnit) => {
     const formatUnit =
-      unit ??
-      dimensionColumn.unit ??
-      (isAbsoluteDateTimeUnit(dataTimeSeriesInterval.unit)
-        ? dataTimeSeriesInterval.unit
-        : undefined);
+      unit ?? getFormatUnit(dimensionColumn, dataTimeSeriesInterval);
     const column: DatasetColumn = {
       ...dimensionColumn,
       unit: formatUnit,

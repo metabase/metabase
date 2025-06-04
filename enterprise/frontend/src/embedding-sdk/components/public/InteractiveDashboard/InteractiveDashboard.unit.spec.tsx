@@ -14,7 +14,7 @@ import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { screen, waitFor } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { Box } from "metabase/ui";
 import {
@@ -160,9 +160,7 @@ const setup = async ({
     {
       sdkProviderProps: {
         ...providerProps,
-        authConfig: createMockAuthProviderUriConfig({
-          authProviderUri: "http://TEST_URI/sso/metabase",
-        }),
+        authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
     },
@@ -278,33 +276,12 @@ describe("InteractiveDashboard", () => {
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
   });
 
-  describe("withFooter", () => {
-    it("should hide the footer when withFooter=true", async () => {
-      await setup({
-        props: {
-          withFooter: true,
-        },
-      });
+  it("does not show the footer in the dashboard", async () => {
+    await setup();
 
-      expect(screen.getByTestId("embed-frame-footer")).toBeInTheDocument();
-      expect(
-        screen.getAllByTestId("dashboard-header-row-button").length,
-      ).toBeGreaterThan(0);
-    });
-
-    it("should hide the footer when withFooter=false", async () => {
-      await setup({
-        props: {
-          withFooter: false,
-        },
-      });
-
-      expect(
-        screen.queryByTestId("embed-frame-footer"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryAllByTestId("dashboard-header-row-button").length,
-      ).toBe(0);
-    });
+    expect(screen.queryByTestId("embed-frame-footer")).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId("dashboard-header-row-button").length).toBe(
+      0,
+    );
   });
 });
