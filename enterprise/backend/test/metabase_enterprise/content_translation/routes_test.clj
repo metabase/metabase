@@ -141,4 +141,12 @@
         (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
           (with-static-embedding!
             (mt/with-premium-features #{:content-translation}
-              (client/client :get 200 (str (embedded-dictionary-url) "?locale=fr")))))))))
+              (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=fr"))]
+                (is (map? response))
+                (is (contains? response :data))
+                (let [data (:data response)]
+                  (is (= 1 (count data)))
+                  (let [translation (first data)]
+                    (is (= "fr" (:locale translation)))
+                    (is (= "Hello" (:msgid translation)))
+                    (is (= "Bonjour" (:msgstr translation)))))))))))))
