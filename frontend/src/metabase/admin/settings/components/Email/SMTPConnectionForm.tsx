@@ -116,10 +116,7 @@ export const SMTPConnectionForm = () => {
     async (formData: EmailSMTPSettings) => {
       try {
         await updateEmailSMTPSettings(formData).unwrap();
-        sendToast({
-          message: t`Email settings updated successfully!`,
-          toastColor: "success",
-        });
+        dispatch(push("/admin/settings/email"));
       } catch (error) {
         sendToast({
           icon: "warning",
@@ -130,14 +127,14 @@ export const SMTPConnectionForm = () => {
         });
       }
     },
-    [updateEmailSMTPSettings, sendToast],
+    [updateEmailSMTPSettings, sendToast, dispatch],
   );
 
   const handleSendTestEmail = useCallback(async () => {
     try {
       await sendTestEmail().unwrap();
       sendToast({
-        message: t`Email sent successfully!`,
+        message: t`Email sent!`,
         toastColor: "success",
       });
     } catch (error) {
