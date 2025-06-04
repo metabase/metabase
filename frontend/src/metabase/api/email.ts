@@ -14,7 +14,7 @@ export const settingsApi = Api.injectEndpoints({
     updateEmailSMTPSettings: builder.mutation<void, EmailSMTPSettings>({
       query: (emailSettings) => ({
         method: "PUT",
-        url: `/api/setting`,
+        url: `/api/email`,
         body: emailSettings,
       }),
       invalidatesTags: (_, error) =>
