@@ -1,6 +1,6 @@
 (ns metabase.warehouse-schema.api.field
   (:require
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -159,7 +159,7 @@
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
-        (snowplow/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
+        (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
         (quick-task/submit-task! (fn [] (sync/refingerprint-field! <>)))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
@@ -255,7 +255,7 @@
    FieldValues."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (snowplow/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
+  (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
