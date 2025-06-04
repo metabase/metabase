@@ -81,7 +81,7 @@ export const ExportSettingsWidget = ({
   }));
 
   return (
-    <Stack style={{ gap: 24 }}>
+    <Stack gap="lg">
       <SegmentedControl
         w="100%"
         data={formatOptions}
