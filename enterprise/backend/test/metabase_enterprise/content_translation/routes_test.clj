@@ -6,24 +6,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
+   [metabase-enterprise.content-translation.utils :as ct-utils]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defmacro with-clean-translations!
-  "Macro to reset the content translation table to an empty state before a test and restore it after the test runs."
-  [& body]
-  `(let [original-entities# (t2/select [:model/ContentTranslation])]
-     (try
-       (t2/delete! :model/ContentTranslation)
-       ~@body
-       (finally
-         (t2/delete! :model/ContentTranslation)
-         (when (seq original-entities#)
-           (t2/insert! :model/ContentTranslation original-entities#))))))
 
 (defn- valid-csv-content
   "Create valid CSV content for testing with the specified number of rows."
@@ -76,7 +65,7 @@
       (mt/with-premium-features #{:content-translation}
         (mt/user-http-request :rasta :get 403 "ee/content-translation/csv" {})))
     (testing "returns csv for crowberto"
-      (with-clean-translations!
+      (ct-utils/with-clean-translations!
         (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
           (mt/with-premium-features #{:content-translation}
             (let [body (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})]
@@ -96,7 +85,7 @@
                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                       {:file (valid-csv-content)})))))
     (testing "admin can upload valid file"
-      (with-clean-translations!
+      (ct-utils/with-clean-translations!
         (mt/with-premium-features #{:content-translation}
           (is (=? {:success true}
                   (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
@@ -105,9 +94,6 @@
           (is (= 3 (count-translations))))))))
 
 (deftest embedded-dictionary-test
-  ;; TODO:
-  ;; * bring back with-clean-translations and make sure there's a backtick!!)
-  ;; parallelize thusly: (deftest ^:parallel serialize-segment-test)
   (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
     (testing "requires content-translation feature"
       (with-static-embedding!
@@ -121,8 +107,10 @@
           (client/client :get 400 (embedded-dictionary-url)))))
     (testing "provides translations"
       (with-static-embedding!
-        (with-clean-translations!
-          (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
+        (ct-utils/with-clean-translations!
+          (mt/with-temp [:model/ContentTranslation
+                         {_ :id}
+                         {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
             (mt/with-premium-features #{:content-translation}
               (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=sv"))]
                 (is (map? response))
