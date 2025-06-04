@@ -7,7 +7,6 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import * as domUtils from "metabase/lib/dom";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
 import type { Database } from "metabase-types/api";
@@ -17,6 +16,7 @@ import {
   createMockDatabase,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import { createMockState } from "metabase-types/store/mocks";
 
 import NewItemMenu from "./NewItemMenu";
