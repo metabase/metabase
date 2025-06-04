@@ -272,7 +272,7 @@
                               :table.row/create
                               {:database db-id
                                :table-id (mt/id :user)
-                               :arg      {(field-id->name (mt/id :user :name))    "New User"
+                               :row      {(field-id->name (mt/id :user :name))    "New User"
                                           (field-id->name (mt/id :user :group-id)) 1}})
                 created-user-id (get-in created-user [:row (field-id->name (mt/id :user :id))])]
             (testing ":table.row/create"
@@ -293,7 +293,7 @@
                        :table.row/update
                        {:database db-id
                         :table-id (mt/id :user)
-                        :arg      {(field-id->name (mt/id :user :id))   created-user-id
+                        :row      {(field-id->name (mt/id :user :id))   created-user-id
                                    (field-id->name (mt/id :user :name)) "New Name"}}))))
             (testing ":table.row/delete"
               (is (=? {:op       :deleted
@@ -303,7 +303,7 @@
                        :table.row/delete
                        {:database db-id
                         :table-id (mt/id :user)
-                        :arg      {(field-id->name (mt/id :user :id)) created-user-id}}))))))))))
+                        :row      {(field-id->name (mt/id :user :id)) created-user-id}}))))))))))
 
 (deftest delete-row-with-children-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -327,7 +327,7 @@
                                 :table.row/create
                                 {:database (mt/id)
                                  :table-id (mt/id :user)
-                                 :arg      {(field-id->name (mt/id :user :name))    "New User"
+                                 :row      {(field-id->name (mt/id :user :name))    "New User"
                                             (field-id->name (mt/id :user :group-id)) group-id}}))
               users-of-group (fn [group-id]
                                (-> (mt/run-mbql-query user {:aggregation [:count]
@@ -352,7 +352,7 @@
                     :table.row/delete
                     {:database (mt/id)
                      :table-id (mt/id :group)
-                     :arg      {GROUP-ID created-group-id}})))
+                     :row      {GROUP-ID created-group-id}})))
 
               (testing "success if delete-children is enabled"
                 (binding [actions.core/*params* {:delete-children true}]
@@ -362,7 +362,7 @@
                            :table.row/delete
                            {:database (mt/id)
                             :table-id (mt/id :group)
-                            :arg      {GROUP-ID created-group-id}})))
+                            :row      {GROUP-ID created-group-id}})))
 
                   (testing "users are also dedeted"
                     (is (zero? (users-of-group created-group-id))))))))
@@ -375,4 +375,4 @@
                        :table.row/delete
                        {:database (mt/id)
                         :table-id (mt/id :group)
-                        :arg      {GROUP-ID created-group-id}}))))))))))
+                        :row      {GROUP-ID created-group-id}}))))))))))
