@@ -15,18 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defmacro with-clean-translations!
-  "Macro to reset the content translation table to an empty state before a test and restore it after the test runs."
-  [& body]
-  `(let [original-entities# (t2/select [:model/ContentTranslation])]
-     (try
-       (t2/delete! :model/ContentTranslation)
-       ~@body
-       (finally
-         (t2/delete! :model/ContentTranslation)
-         (when (seq original-entities#)
-           (t2/insert! :model/ContentTranslation original-entities#))))))
-
 (defn- create-temp-csv-file
   "Create a temporary CSV file with the given content for testing."
   [content]
@@ -99,31 +87,17 @@
   (testing "POST /api/ee/content-translation/upload-dictionary"
     (testing "nonadmin cannot use"
       (mt/with-premium-features #{:content-translation}
-        (let [csv-content (valid-csv-content)
-              temp-file (create-temp-csv-file csv-content)]
-          (try
-            (is (=? "You don't have permissions to do that."
-                    (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
-                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                          {:file {:filename "upload.csv"
-                                                  :tempfile temp-file}})))
-            (finally
-              (.delete temp-file))))))
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
+                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                      {:file (valid-csv-content)})))))
     (testing "admin can upload valid file"
       (mt/with-premium-features #{:content-translation}
-        (let [initial-count (count-translations)
-              csv-content (valid-csv-content)
-              valid-file (create-temp-csv-file csv-content)
-              expected-final-count (+ 3 initial-count)]
-          (try
-            (is (=? {:success true}
-                    (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
-                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                          {:file {:filename "upload.csv"
-                                                  :tempfile valid-file}})))
-            (is (= expected-final-count (count-translations)))
-            (finally
-              (.delete valid-file))))))))
+        (is (=? {:success true}
+                (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
+                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                      {:file (.getBytes (valid-csv-content))})))
+        (is (= 3 (count-translations)))))))
 
 (deftest embedded-dictionary-test
   (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
