@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -54,13 +54,11 @@ const LoginHistoryGroup = ({ items, date }) => (
 
 const formatItems = (items) =>
   items.map((item) => {
-    const parsedTimestamp = moment.parseZone(item.timestamp);
+    const parsedTimestamp = dayjs.parseZone(item.timestamp);
     return {
       ...item,
       date: parsedTimestamp.format("LL"),
-      time: `${parsedTimestamp.format("LT")} (${
-        item.timezone || parsedTimestamp.format("Z")
-      })`,
+      time: `${parsedTimestamp.format("LT")} (${item.timezone || parsedTimestamp.format("Z")})`,
     };
   });
 
