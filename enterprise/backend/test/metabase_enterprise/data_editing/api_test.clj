@@ -821,7 +821,7 @@
                                    :query-params {:dashcard-id (:id dashcard)}})
                              (select-keys [:status :body])))))))))))))
 
-(deftest unified-execute-test
+(deftest unified-execute-not-found-test
   (let [url "ee/data-editing/action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
@@ -841,7 +841,17 @@
                                         :scope     {:dashcard-id (:id dashcard)}
                                         :input     {}}))))
               (testing "no dashcard still results in 404"
-                (is (= 404 (:status (req {:action_id 999999, :input {}})))))))
+                (is (= 404 (:status (req {:action_id 999999, :input {}}))))))))))))
+
+(deftest unified-execute-test
+  (let [url "ee/data-editing/action/v2/execute"
+        req #(mt/user-http-request-full-response (:user % :crowberto) :post url
+                                                 (merge {:scope {:unknown :legacy-action} :input {}}
+                                                        (dissoc % :user-id)))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (mt/with-actions-enabled
           (mt/with-non-admin-groups-no-root-collection-perms
             (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
                                                                       :name [:text]
