@@ -12,6 +12,7 @@
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -247,28 +248,27 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
-(def #^:private valid-temporal-units
-  #{"minute" "hour" "day" "week" "month" "quarter" "year"
-    "minute-of-hour" "hour-of-day" "day-of-month" "day-of-year" "month-of-year" "quarter-of-year"
-    nil})
-
 (defmethod parse-tag :temporal-unit
-  [{:keys [name required] :as tag} params]
-  (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
-                         (when (> (count matching-params) 1)
-                           (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
-                                           {:type                qp.error-type/invalid-parameter
-                                            :template-tag        tag
-                                            :matching-parameters params})))
-                         (first matching-params))
-        nil-value?     (and matching-param
-                            (nil? (:value matching-param)))]
+  [{:keys [required] tag-name :name :as tag} params]
+  (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
+                               (when (> (count matching-params) 1)
+                                 (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
+                                                 {:type
+                                                  qp.error-type/invalid-parameter
+                                                  :template-tag        tag
+                                                  :matching-parameters params})))
+                               (first matching-params))
+        nil-value?           (and matching-param
+                                  (nil? (:value matching-param)))
+        valid-temporal-units (into #{}
+                                   (map name)
+                                   (lib/available-temporal-units))]
     (when (not (valid-temporal-units (:value matching-param)))
       (throw (ex-info (tru "Error: invalid value specified for temporal-unit parameter.")
                       {:value (:value matching-param)
                        :expected valid-temporal-units})))
     (params/map->TemporalUnit
-     {:name name
+     {:name tag-name
       :value (or (:value matching-param)
                  (when (and nil-value? (not required))
                    params/no-value)
