@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
@@ -1150,7 +1150,7 @@ describe("issue 21528", () => {
 
     cy.log("The following scenario breaks on 46");
     // Navigating to another page via JavaScript is faster than using `cy.visit("/admin/datamodel")` to load the whole page again.
-    H.appBar().icon("gear").click();
+    H.appBar().findByRole("button", { name: "Settings" }).click();
     H.popover().findByText("Admin settings").click();
     H.appBar().findByText("Table Metadata").click();
     cy.findByRole("main")
@@ -1202,8 +1202,8 @@ describe("issue 22482", () => {
     cy.findByText("months").click();
 
     const expectedRange = getFormattedRange(
-      moment().startOf("month").add(-15, "month"),
-      moment().add(-1, "month").endOf("month"),
+      dayjs().startOf("month").add(-15, "month"),
+      dayjs().add(-1, "month").endOf("month"),
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

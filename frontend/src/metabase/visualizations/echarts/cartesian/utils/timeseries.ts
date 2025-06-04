@@ -55,7 +55,7 @@ export const TIMESERIES_INTERVALS: (TimeSeriesInterval & {
   { unit: "day", count: 1, testFn: (d: Dayjs) => d.hour() }, // (13) 1 day
   { unit: "week", count: 1, testFn: (d: Dayjs) => d.day() }, // (14) 1 week
   { unit: "month", count: 1, testFn: (d: Dayjs) => d.date() }, // (15) 1 month
-  { unit: "month", count: 3, testFn: (d: Dayjs) => d.month() % 3 }, // (16) 3 months / 1 quarter
+  { unit: "quarter", count: 1, testFn: (d: Dayjs) => d.month() % 3 }, // (16) 3 months / 1 quarter
   { unit: "year", count: 1, testFn: (d: Dayjs) => d.month() }, // (17) 1 year
   { unit: "year", count: 2, testFn: (d: Dayjs) => d.year() % 2 }, // (18) 2 year
   { unit: "year", count: 10, testFn: (d: Dayjs) => d.year() % 10 }, // (19) 10 year

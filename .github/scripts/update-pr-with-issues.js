@@ -49,6 +49,55 @@ function httpsRequest(options, data = null) {
   });
 }
 
+// Makes an HTTPS request with exponential backoff retry logic
+async function httpsRequestWithBackoff(options, data = null, backoffOptions = {}) {
+  // Set default backoff options:
+  const {
+    maxRetries = 8,
+    totalDurationSeconds = 60
+  } = backoffOptions;
+
+  let retries = 0;
+  let delay = 500; // Start with a .5 second delay
+
+  // Calculate a reasonable initial delay based on total duration and max retries
+  // This helps distribute the retry attempts across the total allowed duration
+  const totalDurationMs = totalDurationSeconds * 1000;
+
+  // Track the start time
+  const startTime = Date.now();
+
+  // Ensure data is stringified if it's an object
+  const requestData = data ? (typeof data === 'string' ? data : JSON.stringify(data)) : null;
+
+  while (true) {
+    try {
+      const response = await httpsRequest(options, requestData);
+      return response; // Success: Return the data
+
+    } catch (error) {
+      retries++;
+
+      const elapsedMs = Date.now() - startTime;
+      const timeRemaining = totalDurationMs - elapsedMs;
+
+      // Stop retrying if we've hit max retries or exceeded the total duration
+      if (retries >= maxRetries || timeRemaining <= 0) {
+        console.error(`Failed after ${retries} retries (${Math.round(elapsedMs/1000)}s elapsed):`);
+        throw error;
+      }
+
+      // Calculate the next delay with exponential backoff and jitter
+      delay = Math.min(delay * 2 * (0.8 + Math.random() * 0.4), timeRemaining);
+
+      console.log(`Request failed (attempt ${retries}/${maxRetries}). Retrying in ${Math.round(delay)}ms... (${Math.round(timeRemaining/1000)}s remaining)`);
+
+      // Wait for the calculated delay before trying again
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 async function link_issues(github) {
 
   try {
@@ -98,7 +147,11 @@ async function link_issues(github) {
                 attachments {
                   nodes {url}}}}}}`});
 
-    const linearData = await httpsRequest({
+    console.log('--- Linear API query ---');
+    console.log(linearQuery);
+    console.log('----- End of query -----');
+
+    const linearData = await httpsRequestWithBackoff({
       hostname: 'api.linear.app',
       path: '/graphql',
       method: 'POST',
@@ -106,7 +159,9 @@ async function link_issues(github) {
         'Content-Type': 'application/json',
         'Authorization': linearApiKey
       }
-    }, linearQuery);
+    },
+    linearQuery,
+    { maxRetries: 8, totalDurationSeconds: 60 });
 
     console.log('Linear API response:');
     console.log(JSON.stringify(linearData) + "\n");

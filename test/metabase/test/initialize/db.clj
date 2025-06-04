@@ -1,6 +1,6 @@
 (ns metabase.test.initialize.db
   (:require
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.util :as u]
    [metabase.util.log :as log]

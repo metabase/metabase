@@ -1,7 +1,7 @@
 (ns metabase.settings.models.setting.cache-test
   (:require
    [clojure.test :refer :all]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.system.core :as system]

@@ -21,7 +21,8 @@ import type {
 
 import { SettingHeader } from "../SettingHeader";
 
-type OptionsInputType = "select" | "radio";
+type SelectInputType = "select";
+type RadioInputType = "radio";
 type TextualInputType = "text" | "number" | "password" | "textarea";
 type BooleanInputType = "boolean";
 
@@ -30,16 +31,25 @@ type InputDetails =
       inputType: TextualInputType;
       options?: never;
       placeholder?: string;
+      searchable?: never;
     }
   | {
-      inputType: OptionsInputType;
+      inputType: SelectInputType;
       options: { label: string; value: string }[];
       placeholder?: string;
+      searchable?: boolean;
+    }
+  | {
+      inputType: RadioInputType;
+      options: { label: string; value: string }[];
+      placeholder?: string;
+      searchable?: never;
     }
   | {
       inputType: BooleanInputType;
       options?: never;
       placeholder?: never;
+      searchable?: never;
     };
 
 export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
@@ -65,6 +75,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   placeholder,
   switchLabel,
   options,
+  searchable,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
   const {
@@ -104,6 +115,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
           placeholder={placeholder}
           inputType={inputType}
           switchLabel={switchLabel}
+          searchable={searchable}
         />
       )}
     </Box>
@@ -120,6 +132,7 @@ export function BasicAdminSettingInput({
   inputType,
   autoFocus,
   switchLabel,
+  searchable,
 }: {
   name: EnterpriseSettingKey;
   value: any;
@@ -128,8 +141,13 @@ export function BasicAdminSettingInput({
   options?: { label: string; value: string }[];
   placeholder?: string;
   autoFocus?: boolean;
-  inputType: TextualInputType | OptionsInputType | BooleanInputType;
   switchLabel?: React.ReactNode;
+  inputType:
+    | TextualInputType
+    | SelectInputType
+    | RadioInputType
+    | BooleanInputType;
+  searchable?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -147,10 +165,11 @@ export function BasicAdminSettingInput({
       return (
         <Select
           id={name}
-          value={localValue}
+          value={localValue === null ? "" : localValue}
           onChange={handleChange}
           data={options ?? []}
           disabled={disabled}
+          searchable={searchable}
         />
       );
     case "boolean":

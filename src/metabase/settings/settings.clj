@@ -1,6 +1,6 @@
 (ns metabase.settings.settings
   (:require
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.malli :as mu]))
 
 (mu/defn application-name-for-setting-descriptions

@@ -41,19 +41,31 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for a user database", () => {
       cy.signInAsAdmin();
-      cy.addSQLiteDatabase();
 
-      cy.visit("/");
-      cy.wait("@getXrayCandidates");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Here are some explorations of");
-      cy.findAllByRole("link").contains("sqlite");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Number With Nulls").click();
+      const dbId = 2;
 
-      cy.wait("@getXrayDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays");
+      H.restore("withSqlite");
+
+      H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
+        // we first set the semantic type of the num field to Category,
+        // else no X-rays would be computed
+        cy.request("PUT", `/api/field/${NUM}`, {
+          semantic_type: "type/Category",
+          has_field_values: "none",
+        });
+
+        cy.visit("/");
+        cy.wait("@getXrayCandidates");
+
+        cy.findByText("Here are some explorations of");
+        cy.findAllByRole("link").contains("sqlite");
+
+        cy.findByText("Number With Nulls").click();
+
+        cy.wait("@getXrayDashboard");
+
+        cy.findByText("More X-rays");
+      });
     });
 
     it("homepage should not flicker when syncing databases and showing xrays", () => {

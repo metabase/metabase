@@ -4,20 +4,12 @@
    [clojure.spec.alpha :as s]
    [medley.core :as m]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
-
-(defsetting config-from-file-sync-databases
-  "Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true, but you can disable
-  this behavior if you want to sync it manually or use SerDes to populate its data model."
-  :visibility :internal
-  :type       :boolean
-  :default    true
-  :audit      :getter)
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
@@ -88,7 +80,7 @@
         (do
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
           (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
-            (if (config-from-file-sync-databases)
+            (if (advanced-config.settings/config-from-file-sync-databases)
               (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
                 (quick-task/submit-task! (fn [] (sync-database! db))))
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))

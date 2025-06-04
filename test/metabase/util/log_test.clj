@@ -16,7 +16,7 @@
     (is (empty? (get-context)))  ; Initially context should be nil
 
     (log/with-context {:user-id 123 :action "test"}
-      (is (= {"user-id" "123" "action" "test"}
+      (is (= {"mb-user-id" "123" "mb-action" "test"}
              (get-context))
           "Context should be set inside macro"))
 
@@ -25,16 +25,16 @@
 
   (testing "with-context should handle nested contexts"
     (log/with-context {:outer "value" :empty "" :false false}
-      (is (= {"outer" "value" "empty" "" "false" "false"}
+      (is (= {"mb-outer" "value" "mb-empty" "" "mb-false" "false"}
              (get-context))
           "Outer context should be set")
 
       (log/with-context {:inner "nested"}
-        (is (= {"outer" "value" "inner" "nested" "empty" "" "false" "false"}
+        (is (= {"mb-outer" "value" "mb-inner" "nested" "mb-empty" "" "mb-false" "false"}
                (get-context))
             "Inner context should replace outer context"))
 
-      (is (= {"outer" "value" "empty" "" "false" "false"}
+      (is (= {"mb-outer" "value" "mb-empty" "" "mb-false" "false"}
              (get-context))
           "Outer context should be restored after nested macro")))
 

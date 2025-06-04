@@ -4,13 +4,15 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -114,7 +116,7 @@
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
            included? (fn [schema]
-                       (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+                       (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
        (into
         #{}
         (filter (comp included? :schema))
@@ -391,3 +393,11 @@
 (defmethod sql.qp/->integer :databricks
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

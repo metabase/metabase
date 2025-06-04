@@ -5,7 +5,7 @@ import {
 } from "metabase-types/api/mocks";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
-import { createDataSource } from "../utils";
+import { createDataSource, createVisualizerColumnReference } from "../utils";
 
 import {
   addColumnToPieChart,
@@ -14,17 +14,41 @@ import {
 } from "./pie";
 
 describe("pie", () => {
+  const dataSource = createDataSource("card", 1, "Q1");
+
   const metricColumn = createMockNumericColumn({ id: 1, name: "count" });
+  const metricColumnRef = createVisualizerColumnReference(
+    dataSource,
+    metricColumn,
+    [],
+  );
+
   const metricColumn2 = createMockNumericColumn({ id: 2, name: "sum" });
+  const metricColumn2Ref = createVisualizerColumnReference(
+    dataSource,
+    metricColumn2,
+    [],
+  );
 
   const dimensionColumn = createMockCategoryColumn({
     id: 3,
     name: "category",
   });
+  const dimensionColumnRef = createVisualizerColumnReference(
+    dataSource,
+    dimensionColumn,
+    [],
+  );
+
   const dimensionColumn2 = createMockCategoryColumn({
     id: 4,
     name: "category2",
   });
+  const dimensionColumn2Ref = createVisualizerColumnReference(
+    dataSource,
+    dimensionColumn2,
+    [],
+  );
 
   describe("addColumnToPieChart", () => {
     it("should add a metric column", () => {
@@ -35,7 +59,14 @@ describe("pie", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToPieChart(state, { ...metricColumn, name: "COLUMN_1" });
+      addColumnToPieChart(
+        state,
+        {},
+        {},
+        [metricColumn],
+        { ...metricColumn, name: "COLUMN_1" },
+        metricColumnRef,
+      );
 
       // TODO Enable when VIZ-652 is closed
       // expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -48,10 +79,11 @@ describe("pie", () => {
     });
 
     it("should not change the metric column if it's already set", () => {
+      const settings = { "pie.metric": "COLUMN_1" };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
-        settings: { "pie.metric": "COLUMN_1" },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -63,7 +95,14 @@ describe("pie", () => {
         },
       };
 
-      addColumnToPieChart(state, { ...metricColumn2, name: "COLUMN_2" });
+      addColumnToPieChart(
+        state,
+        settings,
+        {},
+        [metricColumn2],
+        { ...metricColumn2, name: "COLUMN_2" },
+        metricColumn2Ref,
+      );
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(Object.keys(state.columnValuesMapping)).toEqual(["COLUMN_1"]);
@@ -78,7 +117,14 @@ describe("pie", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToPieChart(state, { ...dimensionColumn, name: "COLUMN_1" });
+      addColumnToPieChart(
+        state,
+        {},
+        {},
+        [dimensionColumn],
+        { ...dimensionColumn, name: "COLUMN_1" },
+        dimensionColumnRef,
+      );
 
       // TODO Enable when VIZ-652 is closed
       // expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -91,10 +137,11 @@ describe("pie", () => {
     });
 
     it("should add a second dimension column", () => {
+      const settings = { "pie.dimension": ["COLUMN_1"] };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-        settings: { "pie.dimension": ["COLUMN_1"] },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -106,7 +153,14 @@ describe("pie", () => {
         },
       };
 
-      addColumnToPieChart(state, { ...dimensionColumn2, name: "COLUMN_2" });
+      addColumnToPieChart(
+        state,
+        {},
+        {},
+        [dimensionColumn2],
+        { ...dimensionColumn2, name: "COLUMN_2" },
+        dimensionColumn2Ref,
+      );
 
       // TODO Enable when VIZ-652 is closed
       // expect(state.columns.map((c) => c.name)).toEqual([
@@ -137,10 +191,11 @@ describe("pie", () => {
 
   describe("removeColumnFromPieChart", () => {
     it("should remove a metric column", () => {
+      const settings = { "pie.metric": "COLUMN_1" };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
-        settings: { "pie.metric": "COLUMN_1" },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -152,7 +207,7 @@ describe("pie", () => {
         },
       };
 
-      removeColumnFromPieChart(state, "COLUMN_1");
+      removeColumnFromPieChart(state, settings, "COLUMN_1");
 
       expect(state.columns.map((c) => c.name)).toEqual([]);
       expect(state.columnValuesMapping).toEqual({});
@@ -160,10 +215,11 @@ describe("pie", () => {
     });
 
     it("should remove a dimension column", () => {
+      const settings = { "pie.dimension": ["COLUMN_1"] };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-        settings: { "pie.dimension": ["COLUMN_1"] },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -175,7 +231,7 @@ describe("pie", () => {
         },
       };
 
-      removeColumnFromPieChart(state, "COLUMN_1");
+      removeColumnFromPieChart(state, settings, "COLUMN_1");
 
       expect(state.columns.map((c) => c.name)).toEqual([]);
       expect(state.columnValuesMapping).toEqual({});
@@ -183,10 +239,11 @@ describe("pie", () => {
     });
 
     it("should do nothing if a column isn't used", () => {
+      const settings = { "pie.dimension": ["COLUMN_1"] };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-        settings: { "pie.dimension": ["COLUMN_1"] },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -198,7 +255,7 @@ describe("pie", () => {
         },
       };
 
-      removeColumnFromPieChart(state, "COLUMN_2");
+      removeColumnFromPieChart(state, settings, "COLUMN_2");
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(Object.keys(state.columnValuesMapping)).toEqual(["COLUMN_1"]);
@@ -207,7 +264,7 @@ describe("pie", () => {
   });
 
   describe("combineWithPieChart", () => {
-    const dataSource = createDataSource("card", `entity_2`, "Q2");
+    const dataSource = createDataSource("card", 2, "Q2");
 
     const metricColumn3 = createMockNumericColumn({ id: 5, name: "avg" });
     const dimensionColumn3 = createMockCategoryColumn({
@@ -216,25 +273,22 @@ describe("pie", () => {
     });
 
     it("should set pie.metric if it's undefined and there's one metric column", () => {
+      const settings = { "pie.dimension": ["COLUMN_1"] };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-        settings: {
-          "pie.dimension": ["COLUMN_1"],
-        },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
-            {
-              sourceId: "card:entity_1",
-              name: "COLUMN_1",
-              originalName: "category",
-            },
+            { sourceId: "card:1", name: "COLUMN_1", originalName: "category" },
           ],
         },
       };
 
       combineWithPieChart(
         state,
+        settings,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -247,14 +301,10 @@ describe("pie", () => {
       ]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
-          {
-            sourceId: "card:entity_1",
-            name: "COLUMN_1",
-            originalName: "category",
-          },
+          { sourceId: "card:1", name: "COLUMN_1", originalName: "category" },
         ],
         COLUMN_2: [
-          { sourceId: "card:entity_2", name: "COLUMN_2", originalName: "sum" },
+          { sourceId: "card:2", name: "COLUMN_2", originalName: "sum" },
         ],
       });
       expect(state.settings).toEqual({
@@ -264,25 +314,22 @@ describe("pie", () => {
     });
 
     it("should not change pie.metric if it's already set", () => {
+      const settings = { "pie.metric": "COLUMN_1" };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
-        settings: {
-          "pie.metric": "COLUMN_1",
-        },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
-            {
-              sourceId: "card:entity_1",
-              name: "COLUMN_1",
-              originalName: "count",
-            },
+            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
           ],
         },
       };
 
       combineWithPieChart(
         state,
+        settings,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -295,12 +342,11 @@ describe("pie", () => {
     });
 
     it("shouldn't set pie.metric if it's undefined and there are multiple metric columns", () => {
+      const settings = { "pie.metric": "COLUMN_1" };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
-        settings: {
-          "pie.metric": "COLUMN_1",
-        },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -310,6 +356,8 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        settings,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2, metricColumn3] },
         }),
@@ -322,10 +370,11 @@ describe("pie", () => {
     });
 
     it("should set pie.dimension if it's undefined and there's one dimension column", () => {
+      const settings = { "pie.metric": "COLUMN_1" };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
-        settings: { "pie.metric": "COLUMN_1" },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -335,6 +384,8 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        settings,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn] },
         }),
@@ -356,10 +407,11 @@ describe("pie", () => {
     });
 
     it("should not set pie.dimension if it's undefined and there are multiple dimension columns", () => {
+      const settings = { "pie.metric": "COLUMN_1" };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
-        settings: { "pie.metric": "COLUMN_1" },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -369,6 +421,8 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        settings,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn2, dimensionColumn3] },
         }),
@@ -381,10 +435,11 @@ describe("pie", () => {
     });
 
     it("should not change pie.dimension if it's already set", () => {
+      const settings = { "pie.dimension": ["COLUMN_1"] };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-        settings: { "pie.dimension": ["COLUMN_1"] },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -394,6 +449,8 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        settings,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn2] },
         }),

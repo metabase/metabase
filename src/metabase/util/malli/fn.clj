@@ -5,7 +5,7 @@
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]

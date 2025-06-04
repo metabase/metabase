@@ -173,3 +173,19 @@
                    :source-query {:aggregation [[:count]]
                                   :breakout    [$tips.source.service]
                                   :source-table $$tips}}))))))))
+
+(deftest ^:parallel nested-query-2-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+    (testing "Nested fields in a nested query where the outer query needs the nested field"
+      (mt/dataset geographical-tips
+        (is (= [["FACEBOOK"   107]
+                ["FLARE"      0]
+                ["FOURSQUARE" 0]
+                ["TWITTER"    0]
+                ["YELP"       0]]
+               (mt/formatted-rows
+                [str int]
+                (mt/run-mbql-query tips
+                  {:expressions {:cap_service [:upper [:field $tips.source.service]]}
+                   :aggregation [[:count-where [:= $tips.source.service "facebook"]]]
+                   :breakout [:expression :cap_service]}))))))))

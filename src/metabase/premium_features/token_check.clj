@@ -12,7 +12,7 @@
    [diehard.circuit-breaker :as dh.cb]
    [diehard.core :as dh]
    [environ.core :refer [env]]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -67,7 +67,7 @@
 (let [f    (fn []
              {:post [(integer? %)]}
              (log/debug (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
-             (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+             (assert ((requiring-resolve 'metabase.app-db.core/db-is-set-up?)) "Metabase DB is not yet set up")
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
@@ -84,7 +84,7 @@
 (defn -active-users-count
   "Getter for the [[metabase.premium-features.settings/active-users-count]] Setting."
   []
-  (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+  (if-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
     0
     (locking-active-user-count)))
 
@@ -270,7 +270,7 @@
 
 (mu/defn- valid-token->features :- [:set ms/NonBlankString]
   [token :- TokenStr]
-  (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+  (assert ((requiring-resolve 'metabase.app-db.core/db-is-set-up?)) "Metabase DB is not yet set up")
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid

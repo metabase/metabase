@@ -32,6 +32,9 @@ export const getVisualizationColumns = (
   if (isScalarFunnel(visualizerDefinition)) {
     const [mainDataSource] = dataSources;
     const mainDataset = datasets[mainDataSource.id];
+    if (!mainDataset || !!mainDataset.error) {
+      return [];
+    }
 
     const metricColumnName = settings["funnel.metric"];
     const dimensionColumnName = settings["funnel.dimension"];
@@ -57,9 +60,6 @@ export const getVisualizationColumns = (
           );
 
           if (!datasetColumn || !dataSource) {
-            console.warn(
-              `Could not find dataset column or data source for mapping ${JSON.stringify(columnMapping)}`,
-            );
             return;
           }
 

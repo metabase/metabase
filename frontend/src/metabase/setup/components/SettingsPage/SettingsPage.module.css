@@ -1,0 +1,27 @@
+.PageHeader {
+  margin-bottom: 4rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.Decoy {
+  display: none;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.PageBody {
+  margin: 0 auto;
+  padding-inline: 1rem;
+}
+
+@media screen and (--breakpoint-min-sm) {
+  .PageBody {
+    max-width: 47rem;
+    padding-inline: 2rem;
+  }
+
+  .Decoy {
+    display: block;
+  }
+}

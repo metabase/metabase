@@ -6,14 +6,15 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.models.user :as user]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
-   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.session.settings :as session.settings]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -31,6 +32,7 @@
 
 (def ^:private login-throttlers
   {:username   (throttle/make-throttler :username)
+
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
@@ -205,17 +207,10 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(defsetting reset-token-ttl-hours
-  (deferred-tru "Number of hours a password reset is considered valid.")
-  :visibility :internal
-  :type       :integer
-  :default    48
-  :audit      :getter)
-
 (defn reset-token-ttl-ms
   "number of milliseconds a password reset is considered valid."
   []
-  (* (reset-token-ttl-hours) 60 60 1000))
+  (* (session.settings/reset-token-ttl-hours) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
@@ -304,6 +299,15 @@
         (do-login)
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
+
+(api.macros/defendpoint :post "/password-check"
+  "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:password ms/ValidPassword]]]
+  ;; if we pass the [[ms/ValidPassword]] test we're g2g
+  {:valid true})
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec

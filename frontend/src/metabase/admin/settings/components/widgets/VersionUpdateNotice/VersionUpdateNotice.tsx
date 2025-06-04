@@ -2,7 +2,7 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/settings/selectors";
-import { useGetSettingQuery } from "metabase/api";
+import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
@@ -18,9 +18,7 @@ import type {
 import S from "./VersionUpdateNotice.module.css";
 
 export function VersionUpdateNotice() {
-  const { data: versionInfo } = useGetSettingQuery("version-info") as {
-    data: VersionInfo;
-  };
+  const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSelector(getCurrentVersion);
   const updateChannel = useSetting("update-channel") ?? "latest";
   const latestVersion = versionInfo?.[updateChannel]?.version;

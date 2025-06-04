@@ -1,13 +1,13 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase.api.common :as api]
-   [metabase.api.database :as api.database]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.api :as api.database]
    [toucan2.core :as t2]))
 
 (api.macros/defendpoint :post "/mirror-database"

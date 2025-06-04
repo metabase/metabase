@@ -252,14 +252,6 @@ Maximum number of rows to render in an alert or subscription image.
 Range: 1-100. To limit the total number of rows included in the file attachment
         for an email dashboard subscription, use MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
-### `MB_BACKFILL_ENTITY_IDS_REPEAT_MS`
-
-- Type: integer
-- Default: `3000`
-- [Exported as](../installation-and-operation/serialization.md): `backfill-entity-ids-repeat-ms`.
-
-Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely.
-
 ### `MB_BCC_ENABLED`
 
 - Type: boolean

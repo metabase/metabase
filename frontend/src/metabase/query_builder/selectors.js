@@ -281,7 +281,7 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getQuestionWithParameters = createSelector(
+export const getQuestionWithoutComposing = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) => {
     if (!card || !metadata) {
@@ -292,7 +292,7 @@ export const getQuestionWithParameters = createSelector(
 );
 
 export const getQuestion = createSelector(
-  [getQuestionWithParameters, getQueryBuilderMode],
+  [getQuestionWithoutComposing, getQueryBuilderMode],
   (question, queryBuilderMode) => {
     if (!question) {
       return;
@@ -673,15 +673,10 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [
-    getQuestion,
-    getFirstQueryResult,
-    getLastRunDatasetQuery,
-    getIsShowingRawTable,
-  ],
-  (question, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+  [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
+  (card, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
     const rawSeries = createRawSeries({
-      question,
+      card,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
@@ -1078,7 +1073,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
 
 export const getSubmittableQuestion = (state, question) => {
   const rawSeries = createRawSeries({
-    question: getQuestion(state),
+    card: getCard(state),
     queryResult: getFirstQueryResult(state),
     datasetQuery: getLastRunDatasetQuery(state),
   });

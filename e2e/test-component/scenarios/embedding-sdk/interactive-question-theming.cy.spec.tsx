@@ -6,12 +6,10 @@ import Color from "color";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion } from "e2e/support/helpers";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { Box } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -85,14 +83,6 @@ describe(
           assertBackgroundColorEqual($el, buttonHoverBg),
         );
 
-        // Hover should be a less lightened version of the background color.
-        cy.get(customColumn)
-          .should("be.visible")
-          .realHover()
-          .should(($el) =>
-            assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.4)),
-          );
-
         cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
           assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.5)),
         );
@@ -122,14 +112,6 @@ describe(
         cy.get(customColumn).should(($el) =>
           assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.05)),
         );
-
-        // Hover should be an even darker version of the background color
-        cy.get(customColumn)
-          .should("be.visible")
-          .realHover()
-          .should(($el) =>
-            assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.1)),
-          );
 
         cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
           assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.04)),
@@ -241,7 +223,10 @@ export function assertBackgroundColorEqual($element: JQuery, expected: string) {
 
   // the dynamically lightened/darkened colors are off by one,
   // so we must compare with 1% tolerance.
-  expect(colorDifferencePercentage).to.be.lte(1);
+  expect(
+    colorDifferencePercentage,
+    "color difference percentage is higher than expected",
+  ).to.be.lte(1);
 }
 
 function getColorDifferencePercentage(color1: string, color2: string) {

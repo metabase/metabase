@@ -1,7 +1,7 @@
 (ns metabase.geojson.settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]

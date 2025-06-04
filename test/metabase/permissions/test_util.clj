@@ -1,6 +1,6 @@
 (ns metabase.permissions.test-util
   (:require
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]

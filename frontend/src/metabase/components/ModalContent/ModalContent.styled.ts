@@ -21,8 +21,6 @@ export const ModalContentActionIcon = styled(Icon)`
 export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
   flex-shrink: 0;
 
-  margin: -0.5rem 0 -0.5rem -0.5rem;
-
   :hover {
     color: var(--mb-color-brand);
   }

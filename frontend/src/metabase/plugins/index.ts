@@ -6,7 +6,6 @@ import React, {
   useMemo,
 } from "react";
 import { t } from "ttag";
-import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {
@@ -38,6 +37,7 @@ import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
@@ -62,7 +62,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
-  DatabaseId,
   Database as DatabaseType,
   Dataset,
   DatasetError,
@@ -76,15 +75,17 @@ import type {
   Revision,
   TableId,
   Timeline,
+  TimelineEvent,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
-
 import type {
-  GetAuthProviders,
-  PluginGroupManagersType,
-  PluginLLMAutoDescription,
-} from "./types";
+  AdminPath,
+  AdminPathKey,
+  Dispatch,
+  State,
+} from "metabase-types/store";
+
+import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
@@ -100,8 +101,6 @@ export const PLUGIN_REDUX_MIDDLEWARES = [];
 export const PLUGIN_LOGO_ICON_COMPONENTS = [];
 
 // admin nav items and routes
-export const PLUGIN_ADMIN_NAV_ITEMS = [];
-export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
@@ -210,24 +209,8 @@ export const PLUGIN_AUTH_PROVIDERS = {
 };
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
-  formFieldAttributes: [] as string[],
-  defaultableFormFieldAttributes: [] as string[],
-  formFieldsSchemas: {} as Record<string, AnySchema>,
-  UserProvisioning: (() => null) as ComponentType<{
-    settings: {
-      [setting: string]: {
-        display_name?: string | undefined;
-        description?: string | ReactNode | undefined;
-        note?: string | undefined;
-      };
-    };
-    fields: {
-      [field: string]: {
-        name: string;
-        default: boolean;
-      };
-    };
-  }>,
+  LdapUserProvisioning: PluginPlaceholder,
+  LdapGroupMembershipFilter: PluginPlaceholder,
 };
 
 // Only show the password tab in account settings if these functions all return true.
@@ -296,11 +279,6 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDa
   {
     Component: undefined,
   };
-
-export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
-  isEnabled: () => false,
-  LLMSuggestQuestionInfo: PluginPlaceholder,
-};
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
@@ -565,6 +543,11 @@ export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK = {
+  hasValidLicense: () => false,
+  SdkIframeEmbedRoute: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -628,9 +611,11 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
   areDownloadsEnabled: (_args: {
-    hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
-  }): EmbedResourceDownloadOptions => ({ pdf: true, results: true }),
+  }): EmbedResourceDownloadOptions => ({
+    pdf: true,
+    results: true,
+  }),
 };
 
 const defaultMetabotContextValue: MetabotContext = {
@@ -656,17 +641,21 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
 
 export type GenerateSqlQueryButtonProps = {
   className?: string;
-  prompt: string;
-  databaseId: DatabaseId;
+  query: Lib.Query;
+  selectedQueryText?: string;
   onGenerateQuery: (queryText: string) => void;
 };
 
 export type PluginAiSqlGeneration = {
   GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+  isEnabled: () => boolean;
+  getPlaceholderText: () => string;
 };
 
 export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
+  isEnabled: () => false,
+  getPlaceholderText: () => "",
 };
 
 export interface AIDashboardAnalysisSidebarProps {
@@ -680,6 +669,7 @@ export interface AIQuestionAnalysisSidebarProps {
   className?: string;
   onClose?: () => void;
   timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
 }
 
 export type PluginAIEntityAnalysis = {
@@ -701,7 +691,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 };
 
 export const PLUGIN_METABOT = {
-  Metabot: () => null as React.ReactElement | null,
+  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
@@ -714,6 +704,11 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  adminNavItem: [] as AdminPath[],
+  AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  MetabotAdminPage: () => `placeholder`,
+  getMetabotVisible: (_state: State) => false,
+  SearchButton: SearchButton,
 };
 
 type DashCardMenuItemGetter = (

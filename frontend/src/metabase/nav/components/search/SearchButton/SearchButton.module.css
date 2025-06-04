@@ -1,0 +1,30 @@
+.iconButton {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex-shrink: 0;
+  padding-left: 1rem;
+  padding-right: 0.25rem;
+}
+
+.searchTextButton {
+  height: 100%;
+  width: 100%;
+  padding: 0 0.5rem 0 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: bold;
+  gap: 0.25rem;
+
+  &:hover .shortcutText {
+    color: var(--mb-color-text-light);
+    transition: color 100ms ease;
+  }
+}
+
+.shortcutText {
+  color: transparent;
+  user-select: none;
+  transition: color 350ms ease;
+}

@@ -97,9 +97,9 @@
 
 (comment
 
-  (nrepl-eval "metabase.logger-test" "(do (println :!! hi) hi)" 59498)
+  (nrepl-eval "metabase.logger.core-test" "(do (println :!! hi) hi)" 59498)
 
-  (nrepl-eval "metabase.logger-test" "*ns*")
+  (nrepl-eval "metabase.logger.core-test" "*ns*")
 
   (nrepl-eval "dev.migrate" "(do (rollback! :count 1) ::rollback-done)")
   (nrepl-eval "dev.migrate" "(do (migrate! :up) ::migrate-up-done)")

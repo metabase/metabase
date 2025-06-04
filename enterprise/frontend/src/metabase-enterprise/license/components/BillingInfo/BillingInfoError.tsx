@@ -16,6 +16,7 @@ export const BillingInfoError = () => {
             <strong>{t`Need help?`}</strong>{" "}
             {t`You can ask for billing help at `}
             <strong>
+              {/* eslint-disable-next-line i18next/no-literal-string */}
               <Anchor href="mailto:billing@metabase.com">
                 billing@metabase.com
               </Anchor>
