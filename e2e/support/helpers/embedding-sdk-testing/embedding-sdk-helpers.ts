@@ -98,8 +98,8 @@ export function stubWindowOpenForSamlPopup() {
               data: {
                 type: "SAML_AUTH_COMPLETE",
 
-                // Grab a real user session token from the login cache.
-                // Without this, we get an "invalid user" error.
+                // The snapshot creator populates the cache with a real session token.
+                // Without this, we get an "invalid user" error as we need a valid session.
                 authData: {
                   id: loginCache.normal?.sessionId,
                   exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes

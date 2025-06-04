@@ -4,7 +4,7 @@ import { stubWindowOpenForSamlPopup } from "e2e/support/helpers/embedding-sdk-te
 const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > authentication", () => {
-  it("does not authenticates if no auth methods are enabled", () => {
+  it("cannot login if no auth methods are enabled", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
     cy.signOut();
 
@@ -19,7 +19,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 
-  it("authenticates and loads dashboard via JWT", () => {
+  it("can login via JWT", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
     cy.signOut();
 
@@ -30,15 +30,25 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     assertDashboardLoaded(frame);
   });
 
-  it("authenticates and loads dashboard via SAML", () => {
+  it("can login via SAML", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["saml"] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      onVisitPage() {
-        stubWindowOpenForSamlPopup();
-      },
+      onVisitPage: stubWindowOpenForSamlPopup,
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("logins via SAML when more than one auth method is configured", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
+    cy.signOut();
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      onVisitPage: stubWindowOpenForSamlPopup,
     });
 
     assertDashboardLoaded(frame);
