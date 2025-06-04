@@ -27,12 +27,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       dashboardId: ORDERS_DASHBOARD_ID,
     });
 
-    cy.wait("@getDashCardQuery");
-    frame.within(() => {
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      cy.findByText("Orders").should("be.visible");
-      H.assertTableRowsCount(2000);
-    });
+    assertDashboardLoaded(frame);
   });
 
   it("authenticates and loads dashboard via SAML", () => {
@@ -46,12 +41,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       },
     });
 
-    cy.wait("@getDashCardQuery");
-    frame.within(() => {
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      cy.findByText("Orders").should("be.visible");
-      H.assertTableRowsCount(2000);
-    });
+    assertDashboardLoaded(frame);
   });
 
   it("shows an error if we are using an API key in production", () => {
@@ -65,13 +55,15 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
         origin: "http://example.com",
-        template: "exploration",
+        dashboardId: ORDERS_DASHBOARD_ID,
         apiKey,
       });
 
       frame
         .findByText("Using an API key in production is not allowed.")
         .should("exist");
+
+      cy.findByText("Orders in a dashboard").should("not.exist");
     });
   });
 
@@ -81,9 +73,11 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
-        template: "exploration",
+        dashboardId: ORDERS_DASHBOARD_ID,
         apiKey,
       });
+
+      assertDashboardLoaded(frame);
 
       frame
         .findByText("Using an API key in production is not allowed.")
@@ -91,3 +85,12 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 });
+
+function assertDashboardLoaded(frame: Cypress.Chainable) {
+  cy.wait("@getDashCardQuery");
+  frame.within(() => {
+    cy.findByText("Orders in a dashboard").should("be.visible");
+    cy.findByText("Orders").should("be.visible");
+    H.assertTableRowsCount(2000);
+  });
+}
