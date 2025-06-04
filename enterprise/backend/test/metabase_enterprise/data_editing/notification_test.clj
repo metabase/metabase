@@ -40,9 +40,11 @@
         (notification.tu/with-system-event-notification!
           [notification {:notification-system-event {:event_name (:event_name prop)
                                                      :table_id   table-id}
-                         :notification           {:condition  [:and
-                                                               [:= [:context :table_id] table-id]
-                                                               [:= [:context :event_name] (u/qualified-name (:event_name prop))]]}
+                         :notification           {:condition  (or
+                                                               (:condition prop)
+                                                               [:and
+                                                                [:= [:context :table_id] table-id]
+                                                                [:= [:context :event_name] (u/qualified-name (:event_name prop))]])}
                          :handlers                  (all-handlers (:id chn))}]
           (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
             (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
@@ -176,6 +178,40 @@
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
+
+(deftest conditional-notification-test
+  (let [condition [:and
+                   [:= [:context :event_name] "event/row.updated"]
+                   [:= [:context :record :NAME] "Facebook"]]]
+    (testing "no notification sends if condition does not match"
+      (test-row-notification!
+       {:event_name :event/row.updated
+        :condition  condition}
+       (fn [_notification]
+         (mt/user-http-request
+          :crowberto
+          :put
+          (data-editing.tu/table-url (mt/id :categories))
+          {:rows [{:ID 1 :NAME "Twitter"}]}))
+
+       {:channel/slack (fn [msgs] (is (zero? (count msgs))))
+        :channel/email (fn [emails] (is (zero? (count emails))))
+        :channel/http  (fn [reqs] (is (zero? (count reqs))))}))
+
+    (testing "notification sends if condition matches"
+      (test-row-notification!
+       {:event_name :event/row.updated
+        :condition  condition}
+       (fn [_notification]
+         (mt/user-http-request
+          :crowberto
+          :put
+          (data-editing.tu/table-url (mt/id :categories))
+          {:rows [{:ID 1 :NAME "Facebook"}]}))
+
+       {:channel/slack (fn [msgs] (is (pos-int? (count msgs))))
+        :channel/email (fn [emails] (is (pos-int? (count emails))))
+        :channel/http  (fn [reqs] (is (pos-int? (count reqs))))}))))
 
 (deftest default-slack-notification-is-escaped
   (test-row-notification!

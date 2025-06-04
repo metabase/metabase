@@ -86,11 +86,12 @@
 (deftest evaluate-context-access-test
   (testing "context access"
     (are [expected expression context] (= expected (evaluate-expression expression context))
-      1 ["context" "user_id"] {:user_id 1}
-      "bob" ["context" "name"] {:name "bob"}
-      42 ["context" "user" "id"] {:user {:id 42}}
-      [1 2 3] ["context" "rows"] {:rows [1 2 3]}
-      nil ["context" "missing"] {})))
+      1       ["context" "user_id"]   {:user_id 1}
+      "bob"   ["context" "name"]      {:name "bob"}
+      "bob"   ["context" "name"]      {"name" "bob"}
+      42      ["context" "user" "id"] {:user {:id 42}}
+      [1 2 3] ["context" "rows"]      {:rows [1 2 3]}
+      nil     ["context" "missing"]   {})))
 
 (deftest evaluate-functions-test
   (testing "functions"
