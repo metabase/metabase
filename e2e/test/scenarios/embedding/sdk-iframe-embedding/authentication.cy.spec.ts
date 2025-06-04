@@ -1,12 +1,11 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { stubWindowOpenForSamlPopup } from "e2e/support/helpers/embedding-sdk-testing";
 
 const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > authentication", () => {
-  it("authenticates and loads dashboard via JWT SSO", () => {
-    H.prepareSdkIframeEmbedTest({
-      enabledAuthMethods: ["jwt"],
-    });
+  it("authenticates and loads dashboard via JWT", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
@@ -21,17 +20,34 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 
-  it("shows an error if we are using an API key in production", () => {
-    H.prepareSdkIframeEmbedTest({
-      enabledAuthMethods: ["api-key"],
+  it("authenticates and loads dashboard via SAML", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["saml"] });
+    cy.signOut();
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      onVisitPage() {
+        stubWindowOpenForSamlPopup();
+      },
     });
+
+    cy.wait("@getDashCardQuery");
+    frame.within(() => {
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      H.assertTableRowsCount(2000);
+    });
+  });
+
+  it("shows an error if we are using an API key in production", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
     cy.signOut();
 
     cy.log("restore the current page's domain");
     cy.visit("http://localhost:4000");
 
     cy.log("visit a test page with an origin of example.com using api keys");
-    cy.get("@apiKey").then((apiKey) => {
+    cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
         origin: "http://example.com",
         template: "exploration",
@@ -45,12 +61,10 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("does not show an error if we are using an API key in development", () => {
-    H.prepareSdkIframeEmbedTest({
-      enabledAuthMethods: ["api-key"],
-    });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
     cy.signOut();
 
-    cy.get("@apiKey").then((apiKey) => {
+    cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
         template: "exploration",
         apiKey,

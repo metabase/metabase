@@ -1,5 +1,6 @@
 import * as jose from "jose";
 
+import { loginCache } from "e2e/support/commands/user/authentication";
 import { USERS } from "e2e/support/cypress_data";
 import {
   AUTH_PROVIDER_URL,
@@ -59,5 +60,58 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   enableJwtAuth();
   cy.request("PUT", "/api/setting", {
     "enable-embedding-sdk": true,
+  });
+}
+
+const MOCK_SAML_IDP_URI = "https://example.test/saml";
+
+export function mockAuthSsoEndpointForSamlAuthProvider() {
+  cy.intercept("GET", "/auth/sso", (req) => {
+    req.reply({
+      statusCode: 200,
+      body: {
+        method: "saml",
+        url: MOCK_SAML_IDP_URI,
+        hash: "test-hash",
+      },
+    });
+  });
+}
+
+export function stubWindowOpenForSamlPopup() {
+  cy.window().then((win) => {
+    const popup = {
+      closed: false,
+      close: () => {
+        popup.closed = true;
+      },
+    };
+
+    // stub `window.open(IDP_URI, ...)` for the SAML popup
+    cy.stub(win, "open")
+      .withArgs(MOCK_SAML_IDP_URI)
+      .callsFake(() => {
+        setTimeout(() => {
+          // Simulate the SAML_AUTH_COMPLETE message
+          win.dispatchEvent(
+            new MessageEvent("message", {
+              data: {
+                type: "SAML_AUTH_COMPLETE",
+
+                // Grab a real user session token from the login cache.
+                // Without this, we get an "invalid user" error.
+                authData: {
+                  id: loginCache.normal?.sessionId,
+                  exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+                },
+              },
+              origin: "*",
+            }),
+          );
+          popup.close();
+        }, 100); // simulate async delay
+
+        return popup;
+      });
   });
 }

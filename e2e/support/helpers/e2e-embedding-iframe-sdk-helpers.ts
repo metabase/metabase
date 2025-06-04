@@ -1,10 +1,13 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
-import { createApiKey, updateSetting } from "./api";
+import { createApiKey } from "./api";
 import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
-import { mockAuthProviderAndJwtSignIn } from "./embedding-sdk-testing";
+import {
+  mockAuthProviderAndJwtSignIn,
+  mockAuthSsoEndpointForSamlAuthProvider,
+} from "./embedding-sdk-testing";
 
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
@@ -29,6 +32,8 @@ export interface BaseEmbedTestPageOptions {
     beforeEmbed?: string;
     afterEmbed?: string;
   };
+
+  onVisitPage?(): void;
 }
 
 /**
@@ -36,6 +41,7 @@ export interface BaseEmbedTestPageOptions {
  */
 export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
   origin = "",
+  onVisitPage,
   ...options
 }: T) {
   const testPageSource = getSdkIframeEmbedHtml({
@@ -53,6 +59,9 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
   }).as("dynamicPage");
 
   cy.visit(testPageUrl);
+
+  onVisitPage?.();
+
   cy.title().should("include", "Metabase Embed Test");
 
   return cy
@@ -114,6 +123,14 @@ function getSdkIframeEmbedHtml({
   `;
 }
 
+/**
+ * Prepares the testing environment for sdk iframe embedding tests.
+ *
+ * @param {boolean} withTokenFeatures - Whether to enable token features.
+ * @param {EnabledAuthMethods[]} enabledAuthMethods - The authentication methods to enable.
+ *
+ * If you are testing SAML, you must stub window.open e.g. with stubWindowOpenForSamlPopup.
+ */
 export function prepareSdkIframeEmbedTest({
   withTokenFeatures = true,
   enabledAuthMethods = ["jwt"],
@@ -150,7 +167,7 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
   }
 
   if (enabledAuthMethods.includes("saml")) {
-    updateSetting("saml-enabled", true);
+    mockAuthSsoEndpointForSamlAuthProvider();
   }
 
   if (enabledAuthMethods.includes("api-key")) {
