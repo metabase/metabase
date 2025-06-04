@@ -1,20 +1,33 @@
 (ns metabase-enterprise.content-translation.routes-test
   "Tests for content translation API endpoints."
   (:require
+   [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
 
 (set! *warn-on-reflection* true)
 
+(defmacro with-clean-translations
+  "Macro to reset the content translation table to an empty state before a test and restore it after the test runs."
+  [& body]
+  `(let [original-entities# (t2/select [:model/ContentTranslation])]
+     (try
+       (t2/delete! :model/ContentTranslation)
+       ~@body
+       (finally
+         (t2/delete! :model/ContentTranslation)
+         (when (seq original-entities#)
+           (t2/insert! :model/ContentTranslation original-entities#))))))
+
 (defn- create-temp-csv-file
   "Create a temporary CSV file with the given content for testing."
   [content]
-  (let [temp-file (File/createTempFile "content-translation-test" ".csv")]
+  (let [temp-file (File/createTempFile "upload" ".csv")]
     (spit temp-file content)
     temp-file))
 
@@ -22,7 +35,7 @@
   "Create valid CSV content for testing with the specified number of rows."
   [& {:keys [num-rows locale]
       :or {num-rows 3
-           locale "en"}}]
+           locale "de"}}]
   (str "Language,String,Translation\n"
        (str/join "\n"
                  (for [i (range num-rows)]
@@ -33,8 +46,6 @@
   []
   (count (t2/select :model/ContentTranslation)))
 
-;; TODO: Start with a working set of BE unit tests, maybe content verification. Iteratively mutate that file, making it more and more like this one, and see where and how it breaks.
-
 (deftest content-translation-api-test
   (testing "GET /api/ee/content-translation/csv"
     (testing "requires content-translation feature"
@@ -44,37 +55,43 @@
          (mt/user-http-request :crowberto :get 402 "ee/content-translation/csv" {}))))
     (testing "fails for rasta"
       (mt/with-premium-features #{:content-translation}
-        (mt/user-http-request :rasta :get 403 "ee/content-translation/csv" {}))))
-  (testing "returns csv for crowberto"
-    (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
-      (mt/with-premium-features #{:content-translation}
-        (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {}))))
-          ;; TODO: Just assert that the one translation we added is there. It's ok that the data is not isolated
-
+        (mt/user-http-request :rasta :get 403 "ee/content-translation/csv" {})))
+    (testing "returns csv for crowberto"
+      (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
+        (mt/with-premium-features #{:content-translation}
+          (let [body (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})]
+            (log/info (str "body" body))
+            (let [data (with-open [reader (java.io.StringReader. body)]
+                         (doall (csv/read-csv reader)))
+                  matches (filter #(and (= (nth % 0) "fr")
+                                        (= (nth % 1) "Hello")
+                                        (= (nth % 2) "Bonjour"))
+                                  data)]
+              (is (seq matches))))))))
   (testing "POST /api/ee/content-translation/upload-dictionary"
-    (mt/with-premium-features #{:content-translation}
-      (mt/with-empty-h2-app-db
-        (fixtures/initialize :test-users)
+    (testing "nonadmin cannot use"
+      (mt/with-premium-features #{:content-translation}
         (let [csv-content (valid-csv-content)
               temp-file (create-temp-csv-file csv-content)]
-          (testing "nonadmin cannot use"
+          (try
+            (is (=? {:message "You don't have permissions to do that."}
+                    (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
+                                          {:request-options {:content-type "multipart/form-data"}}
+                                          {"file" {:filename "upload.csv"
+                                                   :tempfile temp-file}})))
+            (finally
+              (.delete temp-file))))))
+    (testing "admin can upload valid file"
+      (mt/with-premium-features #{:content-translation}
+        (with-clean-translations
+          (let [csv-content (valid-csv-content)
+                valid-file (create-temp-csv-file csv-content)]
             (try
-              (is (=? {:message "You don't have permissions to do that."}
-                      (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
-                                            {:request-options {:content-type "multipart/form-data"}}
-                                            {"file" {:filename "upload.csv"
-                                                     :tempfile temp-file}})))
+              (is (=? {:success true}
+                      (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
+                                            {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                            {:file {:filename "upload.csv"
+                                                    :tempfile valid-file}})))
+              (is (= 3 (count-translations)))
               (finally
-                (.delete temp-file))))
-
-          (testing "admin can upload valid file"
-            (let [valid-file (create-temp-csv-file csv-content)]
-              (try
-                (is (=? {:success true}
-                        (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
-                                              {:request-options {:content-type "multipart/form-data"}}
-                                              {"file" {:filename "upload.csv"
-                                                       :tempfile valid-file}})))
-                (is (= 3 (count-translations)))
-                (finally
-                  (.delete valid-file))))))))))
+                (.delete valid-file)))))))))
