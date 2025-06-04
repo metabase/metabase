@@ -2551,3 +2551,73 @@ describe("issue 57697", () => {
       });
   });
 });
+
+describe("issue 32499", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Self-join columns can be edited independently", () => {
+    H.createQuestion(
+      {
+        name: "Model",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [
+            ["field", ORDERS.ID, { "base-type": "type/Number" }],
+            ["field", ORDERS.USER_ID, { "base-type": "type/Text" }],
+          ],
+          joins: [
+            {
+              fields: [
+                [
+                  "field",
+                  ORDERS.USER_ID,
+                  { "base-type": "type/Text", "join-alias": "Orders" },
+                ],
+              ],
+              alias: "Orders",
+              "source-table": ORDERS_ID,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", ORDERS.ID, null],
+                ["field", ORDERS.ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+    // Open metadata
+    cy.findByTestId("toolbar-button").click();
+    cy.findByTestId("edit-metadata").click();
+
+    // Make sure we can click the joined column header
+    cy.findAllByTestId("model-column-header-content")
+      .filter((_index, el) => el.textContent.trim() === "Orders → User ID")
+      .click();
+    cy.findByLabelText("Display name").should("have.value", "Orders → User ID");
+
+    // Edit the name of the User ID
+    cy.findAllByTestId("model-column-header-content")
+      .filter((_index, el) => el.textContent.trim() === "User ID")
+      .click();
+    cy.findByLabelText("Display name")
+      .should("have.value", "User ID")
+      .click()
+      .clear()
+      .type("New Name");
+
+    // Make sure it changes the main column and not the join column
+    cy.findAllByTestId("model-column-header-content")
+      .filter((_index, el) => el.textContent.trim() === "Orders → User ID")
+      .should("exist");
+    cy.findAllByTestId("model-column-header-content")
+      .filter((_index, el) => el.textContent.trim() === "New Name")
+      .should("exist");
+  });
+});
