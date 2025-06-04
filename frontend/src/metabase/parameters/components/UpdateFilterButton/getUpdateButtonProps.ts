@@ -28,9 +28,16 @@ export function getUpdateButtonProps(
   const isUnchanged = areParameterValuesIdentical(value, unsavedValue);
 
   if (required) {
+    if (isDefaultValue || isEmpty) {
+      return {
+        label: getResetLabel(),
+        isDisabled: false,
+      };
+    }
+
     return {
-      label: isDefaultValue ? getResetLabel() : getUpdateLabel(),
-      isDisabled: isEmpty || isUnchanged,
+      label: getUpdateLabel(),
+      isDisabled: isUnchanged,
     };
   }
 

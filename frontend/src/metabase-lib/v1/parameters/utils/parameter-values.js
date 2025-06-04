@@ -158,3 +158,7 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
 export function getIsMultiSelect(parameter) {
   return parameter.isMultiSelect ?? true;
 }
+
+export function hasValue(value) {
+  return Array.isArray(value) ? value.length > 0 : value != null;
+}
