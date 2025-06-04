@@ -26,11 +26,9 @@ export const SettingsCloudStoreLink = () => {
       <SettingHeader
         id="cloud-settings-header"
         title={t`Cloud settings`}
-        // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
         description={t`Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account.`}
       />
       <ButtonLink href={url}>
-        {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
         {t`Go to the Metabase Store`}
         <Icon name="external" opacity={0.6} ml="sm" />
       </ButtonLink>
