@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type {
   DatabaseId,
@@ -74,9 +73,11 @@ export const PreviewSection = ({
           databaseId={databaseId}
           fieldId={fieldId}
           /**
-           * Make sure internal component state is reset when changing fields.
+           * Make sure internal component state is reset when changing any field settings.
+           * This is because use***Filter hooks cache some parts of state internally on mount
+           * and do not account for all prop changes during their lifecycle.
            */
-          key={getRawTableFieldId(field)}
+          key={JSON.stringify(field)}
           table={table}
         />
       )}
