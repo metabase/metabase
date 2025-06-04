@@ -5,6 +5,16 @@ import type * as Lib from "metabase-lib";
 import { getClauseDefinition, isDefinedClause } from "./clause";
 import { DiagnosticError } from "./errors";
 
+const MODE_DISPLAY_NAMES: Record<Lib.ExpressionMode, () => string> = {
+  expression: () => t`expression`,
+  filter: () => t`filter`,
+  aggregation: () => t`aggregation`,
+};
+
+export function expressionModeDisplayName(expressionMode: Lib.ExpressionMode) {
+  return MODE_DISPLAY_NAMES[expressionMode]();
+}
+
 export function expressionModeSupportsClause(
   expressionMode: Lib.ExpressionMode,
   operator: string,
@@ -27,8 +37,8 @@ export function assertModeSupportsClause(
 
   const clause = getClauseDefinition(operator);
   if (clause.type === "aggregation" && expressionMode !== "aggregation") {
-    throw new DiagnosticError(
-      t`Aggregations like ${clause.displayName} are not allowed when building a custom ${expressionMode}`,
+    return new DiagnosticError(
+      t`Aggregations like ${clause.displayName} are not allowed when building a custom ${expressionModeDisplayName(expressionMode)}`,
     );
   }
 }
