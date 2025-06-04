@@ -9,18 +9,9 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- create-temp-csv-file
-  "Create a temporary CSV file with the given content for testing."
-  [content]
-  (let [temp-file (File/createTempFile "upload" ".csv")]
-    (spit temp-file content)
-    temp-file))
 
 (defn- valid-csv-content
   "Create valid CSV content for testing with the specified number of rows."
