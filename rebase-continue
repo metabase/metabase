@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-433-sso-authentication-in-embedjs-for-new-iframe-embedding"
+    }
+  ]
 }
