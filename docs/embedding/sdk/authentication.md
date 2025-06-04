@@ -71,7 +71,7 @@ Example using Next.js Pages Router:
 
 ### Handling interactive and SDK embeds with the same endpoint
 
-If you have an existing backend endpoint configured for interactive embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests. 
+If you have an existing backend endpoint configured for interactive embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests.
 
 - For SDK requests, you should return a JSON object with the JWT (`{ jwt: string }`).
 - For interactive embedding requests, you would proceed with the redirect.
@@ -120,16 +120,6 @@ You can customize how the SDK fetches the refresh token by specifying the `fetch
 
 The response should be in the form of `{ jwt: "{JWT_TOKEN}" }`
 
-## Security warning: each end-user _must_ have their own Metabase account
-
-Each end-user _must_ have their own Metabase account.
-
-The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the SDK, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they're not supposed to see.
-
-If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
-
-In addition to this, we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
-
 ## Authenticating locally with API keys
 
 > The Embedded analytics SDK only supports JWT authentication in production. Authentication with API keys is only supported for local development and evaluation purposes.
@@ -153,21 +143,21 @@ To use SAML single sign-on with the Embedded analytics SDK, you'll need to set u
 Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `authMethod` in your `MetabaseAuthConfig` to `"saml"`:
 
 ```typescript
-import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "https://your-metabase.example.com", // Required: Your Metabase instance URL
-  authMethod: "saml",
-});
-
-// Pass this configuration to MetabaseProvider
-// <MetabaseProvider authConfig={authConfig}>...</MetabaseProvider>
+{% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
 ```
 
-Using SAML authentication with the Embedded analytics SDK will typically involve redirecting people to your Identity Provider's login page or a popup window for authentication. After successful authentication, the person will be redirected back to the embedded content.
+Using SAML authentication with the Embedded analytics SDK will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
 
 Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing auth flows in your target environments.
 
 Unlike JWT authentication, you won't be able to implement a custom `fetchRequestToken` function on your backend when pairing SAML with the SDK.
 
 ## Security warning: each end-user _must_ have their own Metabase account
+
+Each end-user _must_ have their own Metabase account.
+
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the SDK, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they're not supposed to see.
+
+If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
+
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
