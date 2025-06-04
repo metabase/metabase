@@ -770,35 +770,28 @@
 
             (testing "Returns models that have actions"
               (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
-                (is (map? response))
-                (is (contains? response :models))
-                (is (= 2 (count (:models response))))
-                (let [model-ids (set (map :id (:models response)))]
-                  (is (contains? model-ids model-id-1))
-                  (is (contains? model-ids model-id-2)))
-                (let [model-1 (first (filter #(= (:id %) model-id-1) (:models response)))
-                      model-2 (first (filter #(= (:id %) model-id-2) (:models response)))]
-                  (is (= "Test Model 1" (:name model-1)))
-                  (is (= "First test model" (:description model-1)))
-                  (is (= coll-id (:collection_id model-1)))
-                  (is (= 1 (:collection_position model-1)))
-                  (is (= "Test Collection" (:collection_name model-1)))
-
-                  (is (= "Test Model 2" (:name model-2)))
-                  (is (= "Second test model" (:description model-2)))
-                  (is (nil? (:collection_id model-2)))
-                  (is (= 2 (:collection_position model-2)))
-                  (is (nil? (:collection_name model-2))))))
+                (is (=? {:models [{:id model-id-1
+                                   :name "Test Model 1"
+                                   :description "First test model"
+                                   :collection_id coll-id
+                                   :collection_position 1
+                                   :collection_name "Test Collection"}
+                                  {:id model-id-2
+                                   :name "Test Model 2"
+                                   :description "Second test model"
+                                   :collection_id nil
+                                   :collection_position 2
+                                   :collection_name nil}]}
+                        response))))
 
             (testing "Does not return models with only archived actions"
               (t2/update! :model/Action action-id-1 {:archived true})
               (t2/update! :model/Action action-id-2 {:archived true})
-              (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
-                (is (= {:models []} response))))
+              (is (=? {:models []}
+                      (mt/user-http-request :crowberto :get 200 "action/v2/model"))))
 
             (testing "Returns empty list when no models have actions"
               (t2/delete! :model/Action action-id-1)
               (t2/delete! :model/Action action-id-2)
-              (t2/delete! :model/Action archived-action-id)
-              (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
-                (is (= {:models []} response))))))))))
+              (is (=? {:models []}
+                      (mt/user-http-request :crowberto :get 200 "action/v2/model"))))))))))
