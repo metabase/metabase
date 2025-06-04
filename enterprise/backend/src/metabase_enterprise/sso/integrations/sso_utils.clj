@@ -29,7 +29,8 @@
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
    [:sso_source       [:enum :saml :jwt]]
-   [:login_attributes [:maybe :map]]])
+   [:login_attributes [:maybe :map]]
+   [:tenant_id        [:maybe ms/PositiveInt]]])
 
 (defn- maybe-throw-user-provisioning
   [user-provisioning-type]
@@ -77,8 +78,11 @@
 (defn fetch-and-update-login-attributes!
   "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
   This call is a no-op if the mentioned key values are equal."
-  [{:keys [email] :as user-from-sso}]
+  [{:keys [email tenant_id] :as user-from-sso}]
   (when-let [{:keys [id] :as user} (t2/select-one :model/User :%lower.email (u/lower-case-en email))]
+    (when (and (:tenant_id user)
+               (not= (:tenant_id user) tenant_id))
+      (throw (ex-info "Tenant ID mismatch with existing user" {:status-code 403})))
     (let [user-keys (keys user-from-sso)
           ;; remove keys with `nil` values
           user-data (into {} (filter second user-from-sso))]
