@@ -17,6 +17,10 @@ export function checkFunctionsForExpressionMode({
       return;
     }
 
+    if (node.operator === "value") {
+      return;
+    }
+
     try {
       assertModeSupportsClause(expressionMode, node.operator);
     } catch (err) {
