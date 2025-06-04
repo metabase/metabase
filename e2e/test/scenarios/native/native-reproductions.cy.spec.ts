@@ -639,7 +639,7 @@ describe("issue 57644", () => {
       });
     });
 
-    it("should open the database picker when opening the native query editor there are multiple databases (metabase#57644)", () => {
+    it("should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)", () => {
       H.popover()
         .should("be.visible")
         .and("contain", "Sample Database")
