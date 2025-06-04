@@ -415,6 +415,7 @@ interface PublicSettings {
   "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "jwt-identity-provider-uri"?: string | null;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-port": number;
@@ -528,6 +529,7 @@ export interface EnterpriseSettings extends Settings {
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
+  "jwt-identity-provider-uri"?: string | null;
   /**
    * @deprecated
    */
