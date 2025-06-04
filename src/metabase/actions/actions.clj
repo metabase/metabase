@@ -248,6 +248,7 @@
                         (= "data-editing" (namespace action-kw))  :data-editing
                         :else                                     :ad-hoc-invocation))
         spec      (action-arg-map-spec action-kw)
+        _ (def arg-maps arg-maps)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
                         :when (s/invalid? (s/conform spec arg-map))]
@@ -477,7 +478,7 @@
   :actions.args.crud.table/common)
 
 (defmethod normalize-action-arg-map :table.row/common
-  [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
+  [_action {:keys [database table-id row] :as _arg-map}]
   {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
    :table-id table-id
-   :row      (update-keys (or row row-arg) u/qualified-name)})
+   :row      (update-keys row u/qualified-name)})
