@@ -21,5 +21,8 @@ if (hasPremiumFeature("content_translation")) {
     useTranslateSeries,
     // This gets overwritten in static embedding
     contentTranslationDictionaryUrl: null,
+    setContentTranslationEndpoints: (encodedToken: string) => {
+      PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = `/api/ee/embedded-content-translation/dictionary/${encodedToken}`;
+    },
   });
 }

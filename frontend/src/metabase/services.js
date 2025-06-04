@@ -334,17 +334,13 @@ export function setPublicDashboardEndpoints(uuid) {
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
   setCardEndpoints(`${embedBase}/card/${encodedToken}`);
-  setContentTranslationEndpoints(
-    `${embedBase}/content-translation/dictionary/${encodedToken}`,
-  );
+  PLUGIN_CONTENT_TRANSLATION.setContentTranslationEndpoints(encodedToken);
 }
 
 export function setEmbedDashboardEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
   setDashboardEndpoints(`${embedBase}/dashboard/${encodedToken}`);
-  setContentTranslationEndpoints(
-    `${embedBase}/content-translation/dictionary/${encodedToken}`,
-  );
+  PLUGIN_CONTENT_TRANSLATION.setContentTranslationEndpoints(encodedToken);
 }
 
 function GET_with(url, omitKeys) {
@@ -381,12 +377,6 @@ function setDashboardEndpoints(prefix) {
     `${prefix}/params/:paramId/search/:query`,
     ["dashId"],
   );
-}
-
-function setContentTranslationEndpoints(url) {
-  if (PLUGIN_CONTENT_TRANSLATION.isEnabled) {
-    PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = url;
-  }
 }
 
 export const ActionsApi = {
