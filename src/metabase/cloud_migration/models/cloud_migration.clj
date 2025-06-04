@@ -273,13 +273,14 @@
   (read-only-mode)
 
   ;; test settings you might want to change manually
-  ;; force prod if even in dev
-  #_(migration-use-staging! false)
+  ;; local HM store api url
+  #_(cloud-migration.settings/store-api-url! "http://localhost:5010")
   ;; make sure to use a version that store supports, and a dump for that version.
-  #_(migration-dump-version! "v0.49.7")
+  #_(cloud-migration.settings/migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:
   ;;   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar dump-to-h2 dump --dump-plaintext
-  #_(migration-dump-file! "/path/to/dump.mv.db")
+  ;; you can also upload a random file you have lying around if you just want to test file splitting.
+  #_(cloud-migration.settings/migration-dump-file! "/path/to/dump.mv.db")
   ;; force migration with a smaller multipart threshold (~6mb is minimum)
   #_(def ^:private part-size 6e6)
 
