@@ -48,6 +48,7 @@ export type {
   SdkErrorComponent,
   SdkErrorComponentProps,
   SdkEventHandlersConfig,
+  SdkFunctionalComponent,
   SdkQuestionId,
   SdkQuestionTitleProps,
   SdkUserId,

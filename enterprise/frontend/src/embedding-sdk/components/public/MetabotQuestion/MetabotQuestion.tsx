@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 import { getErrorMessage } from "metabase-enterprise/metabot/constants";
 
@@ -74,4 +75,5 @@ function Disclaimer() {
   );
 }
 
-export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);
+export const MetabotQuestion: SdkFunctionalComponent =
+  withPublicComponentWrapper(MetabotQuestionInner);

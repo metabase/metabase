@@ -7,6 +7,7 @@ import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk/components/private/util/MultiStepPopover";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import type { PopoverProps } from "metabase/ui";
 
 import { ToolbarButton } from "../../util/ToolbarButton";
@@ -32,9 +33,9 @@ export type InteractiveQuestionSummarizeDropdownProps = Omit<
  * @category InteractiveQuestion
  * @param props
  */
-export const SummarizeDropdown = ({
-  ...popoverProps
-}: InteractiveQuestionSummarizeDropdownProps) => {
+export const SummarizeDropdown: SdkFunctionalComponent<
+  InteractiveQuestionSummarizeDropdownProps
+> = ({ ...popoverProps }: InteractiveQuestionSummarizeDropdownProps) => {
   const aggregationItems = useSummarizeData();
 
   const label = match(aggregationItems.length)

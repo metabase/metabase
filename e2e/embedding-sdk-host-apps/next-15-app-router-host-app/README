@@ -1,0 +1,8 @@
+# next-15-app-router-host-app
+
+For the SDK testing within the NextJS@15 + App router
+
+Additional setup:
+- in `entrypoint.sh` the `@types/react@17` is additionally injected to the SDK's `package.json` file to reproduce the `@types/react` conflict withing the SDK and the host app.
+  - because of the `@types/react@17` is installed to the local to SDK `node_modules` directory and it conflicts with the `@types/react@18` required by the host app itself.
+  - to validate proper types for all exported from SDK components, this app has a special page where all SDK components are used

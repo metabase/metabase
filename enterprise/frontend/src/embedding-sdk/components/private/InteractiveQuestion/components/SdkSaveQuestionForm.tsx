@@ -1,4 +1,5 @@
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
@@ -31,9 +32,9 @@ export type InteractiveQuestionSaveQuestionFormProps = {
  * @category InteractiveQuestion
  * @param props
  */
-export const SdkSaveQuestionForm = ({
-  onCancel,
-}: InteractiveQuestionSaveQuestionFormProps) => {
+export const SdkSaveQuestionForm: SdkFunctionalComponent<
+  InteractiveQuestionSaveQuestionFormProps
+> = ({ onCancel }: InteractiveQuestionSaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useInteractiveQuestionContext();
 

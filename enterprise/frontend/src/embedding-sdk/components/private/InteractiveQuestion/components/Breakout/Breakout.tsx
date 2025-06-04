@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { Group, Popover } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../context";
@@ -54,7 +55,7 @@ export const BreakoutInner = () => {
  * @function
  * @category InteractiveQuestion
  */
-export const Breakout = () => {
+export const Breakout: SdkFunctionalComponent = () => {
   const { question } = useInteractiveQuestionContext();
 
   if (!question) {

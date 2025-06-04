@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
 
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { DashboardBackButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import type { ActionIconProps } from "metabase/ui";
 
@@ -22,9 +23,9 @@ export type InteractiveQuestionBackButtonProps = Omit<
  * @category InteractiveQuestion
  * @param props
  */
-export const BackButton = ({
-  ...actionIconProps
-}: InteractiveQuestionBackButtonProps) => {
+export const BackButton: SdkFunctionalComponent<
+  InteractiveQuestionBackButtonProps
+> = ({ ...actionIconProps }: InteractiveQuestionBackButtonProps) => {
   const { onNavigateBack } = useInteractiveQuestionContext();
 
   if (!onNavigateBack) {

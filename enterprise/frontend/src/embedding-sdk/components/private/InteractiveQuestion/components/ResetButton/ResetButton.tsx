@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import type { ButtonProps } from "embedding-sdk/types/ui";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
 import * as Lib from "metabase-lib";
@@ -21,10 +22,9 @@ export type InteractiveQuestionResetButtonProps = ButtonProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const QuestionResetButton = ({
-  onClick,
-  ...buttonProps
-}: InteractiveQuestionResetButtonProps = {}) => {
+export const QuestionResetButton: SdkFunctionalComponent<
+  InteractiveQuestionResetButtonProps
+> = ({ onClick, ...buttonProps }: InteractiveQuestionResetButtonProps = {}) => {
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import type { IconName } from "embedding-sdk/types/ui";
 import { isNotNull } from "metabase/lib/types";
 import { Icon, Menu, type MenuProps } from "metabase/ui";
@@ -27,9 +28,9 @@ export type InteractiveQuestionChartTypeDropdownProps = MenuProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const ChartTypeDropdown = ({
-  ...menuProps
-}: InteractiveQuestionChartTypeDropdownProps) => {
+export const ChartTypeDropdown: SdkFunctionalComponent<
+  InteractiveQuestionChartTypeDropdownProps
+> = ({ ...menuProps }: InteractiveQuestionChartTypeDropdownProps) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 

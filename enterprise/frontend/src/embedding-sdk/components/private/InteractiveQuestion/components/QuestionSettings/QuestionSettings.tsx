@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import type { StackProps } from "metabase/ui";
 import {
   BaseChartSettings,
@@ -81,9 +82,9 @@ const QuestionSettingsContent = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const QuestionSettings = ({
-  ...stackProps
-}: InteractiveQuestionQuestionSettingsProps) => {
+export const QuestionSettings: SdkFunctionalComponent<
+  InteractiveQuestionQuestionSettingsProps
+> = ({ ...stackProps }: InteractiveQuestionQuestionSettingsProps) => {
   const { question, queryResults, updateQuestion } =
     useInteractiveQuestionContext();
 

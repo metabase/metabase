@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import { Group, Popover } from "metabase/ui";
 
 import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
@@ -47,7 +48,7 @@ const SummarizePopover = ({
  * @function
  * @category InteractiveQuestion
  */
-export const Summarize = () => {
+export const Summarize: SdkFunctionalComponent = () => {
   const items = useSummarizeData();
 
   return (

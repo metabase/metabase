@@ -4,22 +4,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const IGNORED_PACKAGES = [
-  "react",
-  "react-dom",
-  "@types/react",
-  "@types/react-dom",
-  "@types/react-router",
-  "@types/redux-auth-wrapper",
-  "@visx/axis",
-  "@visx/clip-path",
-  "@visx/grid",
-  "@visx/group",
-  "@visx/shape",
-  "@visx/text",
-  "formik",
-  "react-beautiful-dnd",
-];
+const IGNORED_PACKAGES = ["react", "react-dom"];
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
 function filterOuDependencies(object) {

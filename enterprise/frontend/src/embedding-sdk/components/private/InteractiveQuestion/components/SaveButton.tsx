@@ -1,6 +1,7 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import type { SdkFunctionalComponent } from "embedding-sdk/types/react";
 import type { ButtonProps } from "embedding-sdk/types/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -44,9 +45,9 @@ export const shouldShowSaveButton = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const SaveButton = ({
-  ...buttonProps
-}: InteractiveQuestionSaveButtonProps = {}) => {
+export const SaveButton: SdkFunctionalComponent<
+  InteractiveQuestionSaveButtonProps
+> = ({ ...buttonProps }: InteractiveQuestionSaveButtonProps = {}) => {
   const { question, originalQuestion } = useInteractiveQuestionContext();
 
   const isSaveButtonEnabled = shouldShowSaveButton({
