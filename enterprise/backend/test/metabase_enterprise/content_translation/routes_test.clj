@@ -1,10 +1,13 @@
 (ns metabase-enterprise.content-translation.routes-test
   "Tests for content translation API endpoints."
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -12,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmacro with-clean-translations
+(defmacro with-clean-translations!
   "Macro to reset the content translation table to an empty state before a test and restore it after the test runs."
   [& body]
   `(let [original-entities# (t2/select [:model/ContentTranslation])]
@@ -45,6 +48,31 @@
   "Count the number of translations in the database."
   []
   (count (t2/select :model/ContentTranslation)))
+
+(defn random-embedding-secret-key [] (crypto-random/hex 32))
+
+(def ^:dynamic *secret-key* nil)
+
+(defn sign [claims] (jwt/sign claims *secret-key*))
+
+(defn do-with-new-secret-key! [f]
+  (binding [*secret-key* (random-embedding-secret-key)]
+    (mt/with-temporary-setting-values [embedding-secret-key *secret-key*]
+      (f))))
+
+(defmacro with-new-secret-key! {:style/indent 0} [& body]
+  `(do-with-new-secret-key! (fn [] ~@body)))
+
+(defn token []
+  (sign {:resource {:question 1} ; The payload doesn't matter
+         :params   {}}))
+
+(defmacro with-static-embedding! {:style/indent 0} [& body]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
+     (with-new-secret-key!
+       ~@body)))
+
+(defn embedded-dictionary-url [] (str "ee/embedded-content-translation/dictionary/" (token)))
 
 (deftest content-translation-api-test
   (testing "GET /api/ee/content-translation/csv"
@@ -83,7 +111,7 @@
               (.delete temp-file))))))
     (testing "admin can upload valid file"
       (mt/with-premium-features #{:content-translation}
-        (with-clean-translations
+        (with-clean-translations!
           (let [csv-content (valid-csv-content)
                 valid-file (create-temp-csv-file csv-content)]
             (try
@@ -95,3 +123,17 @@
               (is (= 3 (count-translations)))
               (finally
                 (.delete valid-file)))))))))
+
+(deftest embedded-dictionary-test
+  (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
+    (testing "requires content-translation feature"
+      (with-static-embedding!
+        (mt/with-premium-features #{}
+          (mt/assert-has-premium-feature-error
+           "Content translation"
+           (client/client :get 200 (embedded-dictionary-url))))))
+    (testing "returns entries"
+      (with-clean-translations!
+        (with-static-embedding!
+          (mt/with-premium-features #{:content-translation}
+            (client/client :get 200 (embedded-dictionary-url))))))))
