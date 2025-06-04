@@ -50,10 +50,8 @@ export const MetabotChat = () => {
       return;
     }
     setMessage("");
-    metabot
-      .submitInput(trimmedInput)
-      .catch((err) => console.error(err))
-      .finally(() => textareaRef.current?.focus());
+    textareaRef.current?.focus();
+    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
   };
 
   const { setVisible } = metabot;

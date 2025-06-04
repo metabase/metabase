@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
@@ -28,6 +28,7 @@ import {
   Skeleton,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import {
   useDeleteMetabotEntitiesMutation,
@@ -38,6 +39,7 @@ import {
   useRefreshSuggestedMetabotPromptsMutation,
   useUpdateMetabotEntitiesMutation,
 } from "metabase-enterprise/api";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import type {
   CollectionEssentials,
   MetabotEntity,
@@ -288,34 +290,53 @@ const MetabotPromptSuggestionPane = ({
 }: {
   metabotId: MetabotId;
 }) => {
+  const dispatch = useDispatch();
+  const metabot = useMetabotAgent();
+
   const [sendToast] = useToast();
 
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
-  const pageSize = 2;
+  const pageSize = 2; // TODO: adjust page size once we have more data
   const offset = page * pageSize;
 
-  const { data, isFetching, error } = useGetSuggestedMetabotPromptsQuery({
+  const { data, isLoading, error } = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabotId,
     limit: pageSize,
     offset,
   });
-
   const [deletePrompt] = useDeleteSuggestedMetabotPromptMutation();
-
   const [refreshPrompts, { isLoading: isRefreshing }] =
     useRefreshSuggestedMetabotPromptsMutation();
 
-  const [isSlowRefresh, setIsSlowRefresh] = useState(false);
-  useEffect(() => {
-    if (isRefreshing) {
-      const timeout = setTimeout(() => {
-        setIsSlowRefresh(true);
-      }, 5 * 1000);
-      return () => clearTimeout(timeout);
-    } else {
-      setIsSlowRefresh(false);
+  const handleDeletePrompt = async (promptId: SuggestedMetabotPrompt["id"]) => {
+    const { error } = await deletePrompt({
+      metabot_id: metabotId,
+      prompt_id: promptId,
+    });
+
+    sendToast(
+      error
+        ? { message: t`Error removing prompt`, icon: "warning" }
+        : { message: t`Succesfully removed prompt`, icon: "check" },
+    );
+
+    // prevent user being on page that no longer exists
+    const newMaxPage = Math.max(
+      Math.floor((data?.total ?? 0) / pageSize) - 1,
+      0,
+    );
+    if (newMaxPage < page) {
+      setPage(newMaxPage);
     }
-  }, [isRefreshing]);
+  };
+
+  // TODO: this seems generally useful...
+  const handleRunPrompt = (prompt: string) => {
+    dispatch(push("/"));
+    metabot.resetConversation();
+    metabot.setVisible(true);
+    metabot.submitInput(prompt);
+  };
 
   const handleRefreshPrompts = async () => {
     const { error } = await refreshPrompts(metabotId);
@@ -332,15 +353,12 @@ const MetabotPromptSuggestionPane = ({
   const prompts = useMemo(() => data?.prompts ?? [], [data?.prompts]);
   const total = data?.total ?? 0;
 
+  const showSkeleton = isLoading || isRefreshing;
   const rows = useMemo(() => {
-    return isFetching
+    return showSkeleton
       ? new Array(pageSize).fill(null).map((_, id) => ({ id, isLoading: true }))
       : prompts;
-  }, [isFetching, pageSize, prompts]);
-
-  if (error) {
-    return <div>error...</div>;
-  }
+  }, [showSkeleton, pageSize, prompts]);
 
   return (
     <Box w="100%">
@@ -359,69 +377,65 @@ const MetabotPromptSuggestionPane = ({
             ? t`Refreshing prompts suggestions...`
             : t`Refresh prompts suggestions`}
         </Button>
-        {isSlowRefresh && (
-          <Text c="text-light">{t`Hang tight, this can take a while...`}</Text>
-        )}
       </Flex>
-      <Box
-        component={
-          Table<
-            | (SuggestedMetabotPrompt & { isLoading?: void })
-            | { id: number; isLoading: boolean }
-          >
-        }
-        maw="80rem"
-        cols={
-          <>
-            <col width="60%" />
-            <col width="40%" />
-            <col width="3rem" />
-          </>
-        }
-        columns={[
-          { name: "Prompt", key: "prompt", sortable: false },
-          { name: "Model or metric", key: "model", sortable: false },
-          { name: "", key: "trash", sortable: false },
-        ]}
-        rows={rows}
-        rowRenderer={(row) =>
-          row.isLoading ? (
-            <SkeletonSuggestedPromptRow key={row.id} />
-          ) : (
-            <SuggestedPromptRow
-              key={row.id}
-              row={row as SuggestedMetabotPrompt}
-              onDelete={async () => {
-                const { error } = await deletePrompt({
-                  metabot_id: metabotId,
-                  prompt_id: row.id,
-                });
-                sendToast(
-                  error
-                    ? { message: t`Failed to delete prompt`, icon: "warning" }
-                    : { message: t`Succesfully deleted prompt`, icon: "check" },
-                );
-              }}
-            />
-          )
-        }
-        emptyBody={
-          <Center my="lg" fw="bold" c="text-light">
-            {t`No prompts found.`}
-          </Center>
-        }
-      />
-      <Flex align="center" justify="flex-end" w="100%">
-        <PaginationControls
-          page={page}
-          pageSize={pageSize}
-          itemsLength={prompts.length}
-          total={total}
-          showTotal
-          onNextPage={handleNextPage}
-          onPreviousPage={handlePreviousPage}
+      <Box maw="80rem">
+        <Table<
+          | (SuggestedMetabotPrompt & { isLoading?: void })
+          | { id: number; isLoading: boolean }
+        >
+          cols={
+            <>
+              <col width="60%" />
+              <col width="40%" />
+              <col width="5.5rem" />
+            </>
+          }
+          columns={[
+            { name: "Prompt", key: "prompt", sortable: false },
+            { name: "Model or metric", key: "model", sortable: false },
+            { name: "", key: "trash", sortable: false },
+          ]}
+          rows={rows}
+          rowRenderer={(row) =>
+            row.isLoading ? (
+              <SkeletonSuggestedPromptRow key={row.id} />
+            ) : (
+              <SuggestedPromptRow
+                key={row.id}
+                row={row as SuggestedMetabotPrompt}
+                onDelete={() => handleDeletePrompt(row.id)}
+                onRunPrompt={() => {
+                  handleRunPrompt(row.prompt);
+                }}
+              />
+            )
+          }
+          emptyBody={
+            error ? (
+              <Center my="lg" fw="bold" c="danger">
+                {t`Something went wrong.`}
+              </Center>
+            ) : (
+              <Center my="lg" fw="bold" c="text-light">
+                {t`No prompts found.`}
+              </Center>
+            )
+          }
         />
-      </Flex>
+        <Flex align="center" justify="flex-end" w="100%">
+          {!showSkeleton && (
+            <PaginationControls
+              page={page}
+              pageSize={pageSize}
+              itemsLength={prompts.length}
+              total={total}
+              showTotal
+              onNextPage={handleNextPage}
+              onPreviousPage={handlePreviousPage}
+            />
+          )}
+        </Flex>
+      </Box>
     </Box>
   );
 };
@@ -443,9 +457,11 @@ const SkeletonSuggestedPromptRow = () => (
 const SuggestedPromptRow = ({
   row,
   onDelete,
+  onRunPrompt,
 }: {
   row: SuggestedMetabotPrompt;
   onDelete: () => Promise<void>;
+  onRunPrompt: () => void;
 }) => (
   <Box component="tr" mih="3.5rem">
     <Box component="td" py="1rem">
@@ -457,9 +473,18 @@ const SuggestedPromptRow = ({
       </Flex>
     </td>
     <Box component="td" h="3.5rem">
-      <ActionIcon onClick={onDelete} h="sm">
-        <Icon name="trash" size="1rem" />
-      </ActionIcon>
+      <Flex align="center" gap="sm">
+        <Tooltip label={t`Run prompt`}>
+          <ActionIcon onClick={onRunPrompt} h="sm">
+            <Icon name="sql" size="1rem" />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t`Remove prompt`}>
+          <ActionIcon onClick={onDelete} h="sm">
+            <Icon name="trash" size="1rem" />
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
     </Box>
   </Box>
 );

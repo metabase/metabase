@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
@@ -28,6 +28,10 @@ export const useMetabotAgent = () => {
     limit: 3,
     sample: true,
   });
+
+  const suggestedPrompts = useMemo(() => {
+    return suggestedPromptsReq.currentData?.prompts ?? [];
+  }, [suggestedPromptsReq.currentData?.prompts]);
 
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
@@ -80,8 +84,6 @@ export const useMetabotAgent = () => {
       ],
     ),
     isDoingScience: sendMessageReq.isLoading || isProcessing,
-    suggestedPrompts: suggestedPromptsReq.isFetching
-      ? []
-      : (suggestedPromptsReq.currentData?.prompts ?? []),
+    suggestedPrompts,
   };
 };

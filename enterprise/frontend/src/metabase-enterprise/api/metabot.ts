@@ -18,7 +18,6 @@ import type {
 import { EnterpriseApi } from "./api";
 import { idTag } from "./tags";
 
-let refreshed = false;
 let fakeSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> = {
   "1": [
     {
@@ -191,11 +190,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
           (offset ?? 0) + (limit ?? 50),
         );
 
-        const timeout =
-          refreshed && offset === 0
-            ? Math.random() * 15 * 1000
-            : Math.random() * 2 * 1000;
-        await new Promise((res) => setTimeout(res, timeout));
+        await new Promise((res) => setTimeout(res, Math.random() * 1000));
 
         return {
           data: {
@@ -234,7 +229,9 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       // }),
       queryFn: async () => {
         fakeSuggestedPrompts = structuredClone(fakeSuggestedPromptsCopy);
-        refreshed = true;
+        await new Promise((res) =>
+          setTimeout(res, Math.random() * 2000 + 3000),
+        );
         return { data: {} as any };
       },
       invalidatesTags: (_, error, metabot_id) =>
