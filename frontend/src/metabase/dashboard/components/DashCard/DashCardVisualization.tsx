@@ -12,7 +12,6 @@ import {
   isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
@@ -158,10 +157,8 @@ export function DashCardVisualization({
       : null;
   }, [dashcard.card, metadata]);
 
-  const tc = useTranslateContent();
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,
-    tc,
   );
 
   const series = useMemo(() => {
