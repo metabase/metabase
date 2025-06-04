@@ -69,26 +69,28 @@
                          ;; display names and possibly more. Bodging the display name to "Reviews Created At 2: Month"
                          ;; is still busted; that generates bad SQL. Take a closer look at this crazy query and figure
                          ;; out the right way to reference it.
-                         #_(lib/join $q (-> (lib/join-clause (lib.metadata/card mp (:id consumer-model))
-                                                             [(lib/=
-                                                               (-> (m/find-first (comp #{"Reviews → Created At: Month"} :display-name)
-                                                                                 (lib/breakoutable-columns $q))
-                                                                   (lib/with-temporal-bucket :month))
-                                                               (-> (m/find-first (comp #{"Reviews Created At: Month"} :display-name)
-                                                                                 (lib/breakoutable-columns
-                                                                                  (lib/query mp (lib.metadata/card mp (:id consumer-model)))))
-                                                                   (lib/with-temporal-bucket :month)))])
-                                            (lib/with-join-fields :all)))
-                         #_(lib/->legacy-MBQL $q))]
-          (map :display-name (lib/breakoutable-columns
-                              (lib/query mp (lib.metadata/card mp (:id consumer-model)))))
-          #_(is (= ["Reviews → Created At: Month"
-                    "Average of Rating"
-                    "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
-                    "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
-                   (->> (qp/process-query question)
-                        mt/cols
-                        (mapv :display_name)))))))))
+                         (lib/join $q (-> (lib/join-clause (lib.metadata/card mp (:id consumer-model))
+                                                           [(lib/=
+                                                             (-> (m/find-first (comp #{"Reviews → Created At: Month"} :display-name)
+                                                                               (lib/breakoutable-columns $q))
+                                                                 (lib/with-temporal-bucket :month))
+                                                             (-> (m/find-first (comp #{"Reviews → Created At: Month"} :display-name)
+                                                                               (lib/breakoutable-columns
+                                                                                (lib/query mp (lib.metadata/card mp (:id consumer-model)))))
+                                                                 (lib/with-temporal-bucket :month)))])
+                                          (lib/with-join-fields :all)))
+                         (lib/->legacy-MBQL $q))]
+
+          #_(lib/breakoutable-columns question)
+          #_(map :display-name (lib/breakoutable-columns
+                                (lib/query mp (lib.metadata/card mp (:id consumer-model)))))
+          (is (= ["Reviews → Created At: Month"
+                  "Average of Rating"
+                  "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
+                  "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
+                 (->> (qp/process-query question)
+                      mt/cols
+                      (mapv :display_name)))))))))
 
 ; SELECT
 ;   "source"."Reviews__CREATED_AT_2" AS "Reviews__CREATED_AT_2",
@@ -191,3 +193,63 @@
 ;       ON "PUBLIC"."PRODUCTS"."ID" = "Reviews"."PRODUCT_ID"
 ;     ) AS "source"
 ; LIMIT 1048575
+
+; SELECT
+;   "source"."Reviews_2__CREATED_AT" AS "Reviews_2__CREATED_AT",
+;   "source"."avg" AS "avg",
+;   "Products+Reviews Summary - Reviews → Created At: Month"."Reviews__CREATED_AT" AS "Products+Reviews Summary - Reviews → Created At: _96e636b4",
+;   "Products+Reviews Summary - Reviews → Created At: Month"."sum" AS "Products+Reviews Summary - Reviews → Created At: _c0c62c4e"
+; FROM (SELECT
+;         DATE_TRUNC('month', "source"."Reviews_2__CREATED_AT") AS "Reviews_2__CREATED_AT", -- Good
+;         AVG("source"."RATING") AS "avg"
+;       FROM (SELECT
+;              "PUBLIC"."PRODUCTS"."ID" AS "ID",
+;              "PUBLIC"."PRODUCTS"."EAN" AS "EAN",
+;              "PUBLIC"."PRODUCTS"."TITLE" AS "TITLE",
+;              "PUBLIC"."PRODUCTS"."CATEGORY" AS "CATEGORY",
+;              "PUBLIC"."PRODUCTS"."VENDOR" AS "VENDOR",
+;              "PUBLIC"."PRODUCTS"."PRICE" AS "PRICE",
+;              "PUBLIC"."PRODUCTS"."RATING" AS "RATING",
+;              "PUBLIC"."PRODUCTS"."CREATED_AT" AS "CREATED_AT",
+;              "Reviews_2"."ID" AS "Reviews_2__ID",
+;              "Reviews_2"."PRODUCT_ID" AS "Reviews_2__PRODUCT_ID",
+;              "Reviews_2"."REVIEWER" AS "Reviews_2__REVIEWER",
+;              "Reviews_2"."RATING" AS "Reviews_2__RATING",
+;              "Reviews_2"."BODY" AS "Reviews_2__BODY",
+;              "Reviews_2"."CREATED_AT" AS "Reviews_2__CREATED_AT"
+;             FROM "PUBLIC"."PRODUCTS"
+;             LEFT JOIN "PUBLIC"."REVIEWS" AS "Reviews_2"
+;             ON "PUBLIC"."PRODUCTS"."ID" = "Reviews_2"."PRODUCT_ID")            -- Good
+;       AS "source"
+;       GROUP BY DATE_TRUNC('month', "source"."Reviews_2__CREATED_AT")           -- Good
+;       ORDER BY DATE_TRUNC('month', "source"."Reviews_2__CREATED_AT") ASC)      -- Good
+; AS "source"
+; LEFT JOIN (SELECT
+;             DATE_TRUNC('month', "source"."Reviews__CREATED_AT") AS "Reviews__CREATED_AT", -- Good
+;             SUM("source"."PRICE") AS "sum"                                                -- Good
+;            FROM (SELECT
+;                   "PUBLIC"."PRODUCTS"."ID" AS "ID",
+;                   "PUBLIC"."PRODUCTS"."EAN" AS "EAN",
+;                   "PUBLIC"."PRODUCTS"."TITLE" AS "TITLE",
+;                   "PUBLIC"."PRODUCTS"."CATEGORY" AS "CATEGORY",
+;                   "PUBLIC"."PRODUCTS"."VENDOR" AS "VENDOR",
+;                   "PUBLIC"."PRODUCTS"."PRICE" AS "PRICE",
+;                   "PUBLIC"."PRODUCTS"."RATING" AS "RATING",
+;                   "PUBLIC"."PRODUCTS"."CREATED_AT" AS "CREATED_AT",
+;                   "Reviews"."ID" AS "Reviews__ID",
+;                   "Reviews"."PRODUCT_ID" AS "Reviews__PRODUCT_ID",
+;                   "Reviews"."REVIEWER" AS "Reviews__REVIEWER",
+;                   "Reviews"."RATING" AS "Reviews__RATING",
+;                   "Reviews"."BODY" AS "Reviews__BODY",
+;                   "Reviews"."CREATED_AT" AS "Reviews__CREATED_AT"               -- Okay
+;                  FROM "PUBLIC"."PRODUCTS"
+;                  LEFT JOIN "PUBLIC"."REVIEWS" AS "Reviews" ON "PUBLIC"."PRODUCTS"."ID" = "Reviews"."PRODUCT_ID")
+;            AS "source" -- Good
+;            GROUP BY DATE_TRUNC('month', "source"."Reviews__CREATED_AT")         -- Good
+;            ORDER BY DATE_TRUNC('month', "source"."Reviews__CREATED_AT") ASC)    -- Good
+; AS "Products+Reviews Summary - Reviews → Created At: Month"
+; -- LHS "source" has Reviews_2__CREATED_AT
+; -- RHS "blah blah long join" has Reviews__CREATED_AT
+; ON   DATE_TRUNC('month', "source"."Reviews__CREATED_AT")
+;    = DATE_TRUNC('month', "Products+Reviews Summary - Reviews → Created At: Month"."Reviews__CREATED_AT")
+; LIMIT 1048575 [42122-214]
