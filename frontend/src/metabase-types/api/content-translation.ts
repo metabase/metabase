@@ -13,6 +13,11 @@ export type DictionaryResponse = {
   data: RetrievedDictionaryArrayRow[];
 };
 
+export type DictionaryResponseWithHash = {
+  data: RetrievedDictionaryArrayRow[];
+  hash: string;
+};
+
 export const isDictionaryArrayRow = (
   item: unknown,
 ): item is DictionaryArrayRow => {

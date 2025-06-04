@@ -23,7 +23,7 @@
   "Upload a CSV of content translations"
   {:multipart true}
   [_route_params
-   _query-params
+   {:keys [hash], :as _query-params}
    _body
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
@@ -40,7 +40,7 @@
       (throw (ex-info (tru "No file provided") {:status-code 400})))
     (with-open [rdr (io/reader file)]
       (let [[_header & rows] (csv/read-csv rdr)]
-        (dictionary/import-translations! rows)))
+        (dictionary/import-translations! rows hash)))
     {:success true}))
 
 (api.macros/defendpoint :get "/csv"
@@ -58,6 +58,16 @@
                "Content-Disposition" "attachment; filename=\"metabase-content-translations.csv\""}
      :body (with-out-str
              (csv/write-csv *out* csv-data))}))
+
+(api.macros/defendpoint :get "/current"
+  "Get current content translation dictionary as JSON"
+  [_route-params
+   _query-params
+   _body]
+  (let [translations (ct/get-translations)
+        hash (dictionary/generate-translations-hash translations)]
+    {:data translations
+     :hash hash}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."

@@ -2,12 +2,14 @@
   "Implementation of dictionary upload and retrieval logic for content translations"
   (:require
    [clojure.string :as str]
+   [metabase.content-translation.api :as ct]
    [metabase.util.i18n :as i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private http-status-unprocessable 422)
+(def ^:private http-status-conflict 409)
 
 (defn- translation-key
   "The identity of a translation. It's locale and source string so we can identify if the same translation is present
@@ -75,19 +77,35 @@
            :translations []}
           (map-indexed vector rows)))
 
+(defn generate-translations-hash
+  "Generate a hash of current translations for race condition detection."
+  [translations]
+  (let [sorted-translations (sort-by :id translations)
+        hash-string (str/join "|" (map #(str (:id %) ":" (:locale %) ":" (:msgid %) ":" (:msgstr %)) sorted-translations))]
+    (str (hash hash-string))))
+
 (defn import-translations!
   "Insert or update rows in the content_translation table."
-  [rows]
-  (let [{:keys [translations errors]} (process-rows rows)]
-    (when (seq errors)
-      (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
-                      {:status-code http-status-unprocessable
-                       :errors errors})))
-    ;; remove bad msgstrs after error generator for line number reporting reasons
-    (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
-      (t2/with-transaction [_tx]
-        ;; Replace all existing entries
-        (t2/delete! :model/ContentTranslation)
-        ;; Insert all usable rows at once
-        (when-not (empty? usable-rows)
-          (t2/insert! :model/ContentTranslation usable-rows))))))
+  ([rows] (import-translations! rows nil))
+  ([rows expected-hash]
+   (let [{:keys [translations errors]} (process-rows rows)]
+     (when (seq errors)
+       (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
+                       {:status-code http-status-unprocessable
+                        :errors errors})))
+     ;; remove bad msgstrs after error generator for line number reporting reasons
+     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
+       (t2/with-transaction [_tx]
+         ;; Check for race condition if hash is provided
+         (when expected-hash
+           (let [current-translations (ct/get-translations)
+                 current-hash (generate-translations-hash current-translations)]
+             (when (not= expected-hash current-hash)
+               (throw (ex-info (tru "The translation data has been modified by another user. Please refresh and try again.")
+                               {:status-code http-status-conflict
+                                :errors [(tru "The translation data has been modified by another user. Please refresh and try again.")]})))))
+         ;; Replace all existing entries
+         (t2/delete! :model/ContentTranslation)
+         ;; Insert all usable rows at once
+         (when-not (empty? usable-rows)
+           (t2/insert! :model/ContentTranslation usable-rows)))))))
