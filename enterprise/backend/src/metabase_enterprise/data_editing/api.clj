@@ -215,23 +215,6 @@
   (let [action (-> (actions/select-action :id action-id :archived false) (t2/hydrate :creator) api/read-check)]
     (execute-saved-action! action inputs)))
 
-(defn- execute-dashcard-row-action-on-primitive-action!
-  "Implementation handling a sub-sub-case."
-  [action-kw scope dashcard-id pks inputs _mapping]
-  ;; TODO flatten this into a single query
-  (let [card-id   (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
-        table-id  (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
-        pk-fields (t2/select [:model/Field :id :name :semantic_type] :table_id table-id :semantic_type :type/PK)
-        _         (assert (= 1 (count pks)) "Further work needed to handle matching up database to input rows")
-        [row]     (data-editing/query-db-rows table-id pk-fields pks)
-        _         (api/check-404 row)
-        ;; TODO handle custom mapping
-        inputs    (for [input inputs]
-                    (if (:row input)
-                      (assoc input :row (merge row (:row input)))
-                      (merge row input)))]
-    (:outputs (actions/perform-action! action-kw scope inputs))))
-
 (api.macros/defendpoint :get "/tmp-action"
   "Returns all actions across all tables and models"
   [_
