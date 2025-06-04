@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -16,7 +15,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -119,13 +117,13 @@
   ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
   ;; fix #45874
   (try
-    (u/auto-retry (if config/is-prod? 2 5)
+    (u/auto-retry (if driver-api/is-prod? 2 5)
       (try
         {:tables (into #{} (describe-database-tables database))}
         (catch Throwable e
           ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
           ;; a better chance of it succeeding.
-          (when-not config/is-prod?
+          (when-not driver-api/is-prod?
             (Thread/sleep 1000))
           (throw e))))
     (catch Throwable e
@@ -453,10 +451,10 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (lib.util.match/match-one param
-                                        [:field (field-id :guard integer?) _]
-                                        (when (contains? (set &parents) :dimension)
-                                          field-id))]
+                  (when-let [field-id (driver-api/match-one param
+                                                            [:field (field-id :guard integer?) _]
+                                                            (when (contains? (set &parents) :dimension)
+                                                              field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
         user-parameters))

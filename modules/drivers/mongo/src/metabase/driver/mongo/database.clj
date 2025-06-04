@@ -25,7 +25,7 @@
 (defn- update-ssl-db-details
   [db-details]
   (-> db-details
-      (driver-api/secret-clean-secret-properties-from-details :mongo)
+      (driver-api/clean-secret-properties-from-details :mongo)
       (assoc :client-ssl-key (driver-api/secret-value-as-string :mongo db-details "client-ssl-key"))))
 
 (defn details-normalized

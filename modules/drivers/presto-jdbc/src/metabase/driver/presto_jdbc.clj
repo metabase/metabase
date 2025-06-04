@@ -19,7 +19,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -502,7 +501,7 @@
     v))
 
 (defn- get-valid-secret-file [details-map property-name]
-  (let [file (secret/value-as-file! :presto-jdbc details-map property-name)]
+  (let [file (driver-api/secret-value-as-file! :presto-jdbc details-map property-name)]
     (when-not file
       (throw (ex-info (format "Property %s should be defined" property-name)
                       {:connection-details details-map
@@ -514,10 +513,10 @@
         (cond-> {}
           (str->bool (:ssl-use-keystore details-map))
           (assoc :SSLKeyStorePath (get-valid-secret-file details-map "ssl-keystore")
-                 :SSLKeyStorePassword (secret/value-as-string :presto-jdbc details-map "ssl-keystore-password"))
+                 :SSLKeyStorePassword (driver-api/secret-value-as-string :presto-jdbc details-map "ssl-keystore-password"))
           (str->bool (:ssl-use-truststore details-map))
           (assoc :SSLTrustStorePath (get-valid-secret-file details-map "ssl-truststore")
-                 :SSLTrustStorePassword (secret/value-as-string :presto-jdbc details-map "ssl-truststore-password")))]
+                 :SSLTrustStorePassword (driver-api/secret-value-as-string :presto-jdbc details-map "ssl-truststore-password")))]
     (cond-> details-map
       (seq props)
       (update :additional-options append-additional-options props))))

@@ -8,11 +8,16 @@
   these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
   [[metabase.driver.sql-jdbc]] for more details."
   (:require
+   #_{:clj-kondo/ignore [:metabase/modules]}
+   #_{:clj-kondo/ignore [:metabase/modules]}
+   #_{:clj-kondo/ignore [:metabase/modules]}
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.driver-api.core :as driver-api]
+   [metabase.auth-provider.core :as auth-provider]
+   [metabase.classloader.core :as classloader]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -100,7 +105,7 @@
     (the-driver :baby)     ; -> Exception"
   [driver]
   {:pre [((some-fn keyword? string?) driver)]}
-  (driver-api/the-classloader)
+  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
@@ -865,7 +870,7 @@
   [_driver _query]
   (throw (ex-info (str "metabase.driver/splice-parameters-into-native-query is deprecated, bind"
                        " metabase.driver/*compile-with-inline-parameters* during query compilation instead.")
-                  {:type driver-api/driver})))
+                  {:type qp.error-type/driver})))
 
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367
@@ -995,7 +1000,7 @@
       (cond-> (assoc details :password access_token)
         expires_in (assoc :password-expiry-timestamp (+ (System/currentTimeMillis)
                                                         (* (- (parse-long expires_in)
-                                                              driver-api/azure-auth-token-renew-slack-seconds)
+                                                              auth-provider/azure-auth-token-renew-slack-seconds)
                                                            1000)))))
 
     (merge details auth-provider-response)))

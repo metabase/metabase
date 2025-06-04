@@ -21,7 +21,6 @@
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.secrets.core :as secret]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -154,8 +153,8 @@
       "JKS")))
 
 (mu/defn- handle-keystore-options [details :- ::details]
-  (let [keystore (secret/value-as-file! :oracle details "ssl-keystore")
-        password (secret/value-as-string :oracle details "ssl-keystore-password")]
+  (let [keystore (driver-api/secret-value-as-file! :oracle details "ssl-keystore")
+        password (driver-api/secret-value-as-string :oracle details "ssl-keystore-password")]
     (-> details
         (assoc :javax.net.ssl.keyStoreType (guess-keystore-type keystore password)
                :javax.net.ssl.keyStore keystore
@@ -164,8 +163,8 @@
                 :ssl-keystore-created-at :ssl-keystore-password-created-at))))
 
 (mu/defn- handle-truststore-options [details :- ::details]
-  (let [truststore (secret/value-as-file! :oracle details "ssl-truststore")
-        password (secret/value-as-string :oracle details "ssl-truststore-password")]
+  (let [truststore (driver-api/secret-value-as-file! :oracle details "ssl-truststore")
+        password (driver-api/secret-value-as-string :oracle details "ssl-truststore-password")]
     (-> details
         (assoc :javax.net.ssl.trustStoreType (guess-keystore-type truststore password)
                :javax.net.ssl.trustStore truststore

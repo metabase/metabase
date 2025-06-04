@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -217,7 +218,7 @@
             {:table-schema      (:table-schema col) ;; can be nil
              :base-type         base-type
              ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
-             :json-unfolding    json?
+             :json-unfolding    json?}
             (when database-position
               {:database-position database-position})
             (when semantic-type

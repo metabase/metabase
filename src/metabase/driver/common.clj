@@ -1,12 +1,15 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
-   [metabase.driver-api.core :as driver-api]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
 
@@ -234,7 +237,7 @@
   {:name   "cloud-ip-address-info"
    :type   :info
    :getter (fn []
-             (when-let [ips (driver-api/cloud-gateway-ips)]
+             (when-let [ips (warehouses/cloud-gateway-ips)]
                (str (deferred-tru
                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
@@ -253,8 +256,8 @@
     :check (fn []
              (and
                ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
-              (not (driver-api/is-hosted?))
-              (driver-api/enable-database-auth-providers?)))
+              (not (premium-features/is-hosted?))
+              (premium-features/enable-database-auth-providers?)))
     :default false}
    {:name "auth-provider"
     :display-name (deferred-tru "Auth provider")
@@ -355,7 +358,7 @@
   "Returns the int value for the current [[metabase.lib-be.core/start-of-week]] Setting value, which
   ranges from `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value." {:added "0.42.0"}
   []
-  (.indexOf days-of-week (or *start-of-week* (driver-api/setting-get-value-of-type :keyword :start-of-week))))
+  (.indexOf days-of-week (or *start-of-week* (setting/get-value-of-type :keyword :start-of-week))))
 
 (defn start-of-week-offset-for-day
   "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the

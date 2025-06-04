@@ -2,7 +2,9 @@
   "Internal implementation functions for [[metabase.driver]]. These functions live in a separate namespace to reduce the
   clutter in [[metabase.driver]] itself."
   (:require
-   [metabase.classloader.core :as classloader]
+   #_{:clj-kondo/ignore [:metabase/modules]}
+   #_{:clj-kondo/ignore [:metabase/modules]}
+   [metabase.classloader.impl :as classloader]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]

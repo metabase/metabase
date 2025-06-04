@@ -5,8 +5,6 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.druid.js :as druid.js]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -306,15 +304,15 @@
 
 (defn- parse-filter [filter-clause]
   ;; strip out all the filters against temporal fields. Those are handled separately, as intervals
-  (-> (lib.util.match/replace filter-clause
-        [_ [:field _ (_ :guard :temporal-unit)] & _]
-        nil)
+  (-> (driver-api/replace filter-clause
+                          [_ [:field _ (_ :guard :temporal-unit)] & _]
+                          nil)
       driver-api/simplify-compound-filter
       parse-filter*))
 
-(mu/defn- add-datetime-units* :- ::mbql.s/DateTimeValue
+(mu/defn- add-datetime-units* :- driver-api/mbql.schema.DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
-  [absolute-or-relative-datetime :- ::mbql.s/DateTimeValue
+  [absolute-or-relative-datetime :- driver-api/mbql.schema.DateTimeValue
    n                             :- number?]
   (if (driver-api/is-clause? :relative-datetime absolute-or-relative-datetime)
     (let [[_ original-n unit] absolute-or-relative-datetime]
@@ -326,26 +324,26 @@
   "Adding `n` `:default` units doesn't make sense. So if an `:absoulte-datetime` has `:default` as its unit, add `n`
   milliseconds, because that is the smallest unit Druid supports."
   [clause n]
-  (lib.util.match/replace clause
-    [:absolute-datetime t :default]
-    [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
+  (driver-api/replace clause
+                      [:absolute-datetime t :default]
+                      [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
-    _
-    (add-datetime-units* clause n)))
+                      _
+                      (add-datetime-units* clause n)))
 
 (defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
-  (lib.util.match/match-one clause
-    [:absolute-datetime t :default]
-    t
+  (driver-api/match-one clause
+                        [:absolute-datetime t :default]
+                        t
 
-    [:absolute-datetime t unit]
-    (u.date/truncate t unit)
+                        [:absolute-datetime t unit]
+                        (u.date/truncate t unit)
 
-    [:relative-datetime amount unit]
-    (u.date/truncate (u.date/add unit amount) unit)
+                        [:relative-datetime amount unit]
+                        (u.date/truncate (u.date/add unit amount) unit)
 
-    _
-    nil))
+                        _
+                        nil))
 
 (defmulti ^:private filter-clause->intervals
   "Generate query intervals as appropriate from a `filter-clause` containing a temporal `:field`. `:intervals` are
@@ -354,7 +352,7 @@
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
   (fn [filter-clause]
-    (when (lib.util.match/match-one filter-clause [:field _ (_ :guard :temporal-unit)])
+    (when (driver-api/match-one filter-clause [:field _ (_ :guard :temporal-unit)])
       (driver-api/dispatch-by-clause-name-or-class filter-clause))))
 
 (defmethod filter-clause->intervals :default
@@ -674,12 +672,12 @@
 
 (mu/defn- handle-aggregation
   [query-type
-   ag-clause :- ::mbql.s/Aggregation
+   ag-clause :- driver-api/mbql.schema.Aggregation
    druid-query]
   (let [output-name               (driver-api/aggregation-name *query* ag-clause)
-        [ag-type ag-field & args] (lib.util.match/match-one ag-clause
-                                    [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
-                                    _                             &match)]
+        [ag-type ag-field & args] (driver-api/match-one ag-clause
+                                                        [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
+                                                        _                             &match)]
     (if-not (isa? query-type ::ag-query)
       druid-query
       (let [[projections ag-clauses] (try
@@ -697,9 +695,9 @@
             (update :query (partial merge-with concat) ag-clauses))))))
 
 (defn- deduplicate-aggregation-options [expression]
-  (lib.util.match/replace expression
-    [:aggregation-options [:aggregation-options ag options-1] options-2]
-    [:aggregation-options ag (merge options-1 options-2)]))
+  (driver-api/replace expression
+                      [:aggregation-options [:aggregation-options ag options-1] options-2]
+                      [:aggregation-options ag (merge options-1 options-2)]))
 
 (def ^:private ^:dynamic *query-unique-identifier-counter*
   "Counter used for generating unique identifiers for use in the query. Bound to `(atom 0)` and incremented on each use
@@ -711,12 +709,12 @@
 
 (defn- add-expression-aggregation-output-names
   [expression]
-  (lib.util.match/replace expression
-    [:aggregation-options ag options]
-    (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
+  (driver-api/replace expression
+                      [:aggregation-options ag options]
+                      (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
 
-    [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
-    [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
+                      [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
+                      [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
 
 (defn- post-aggregator-type
   "Complex aggregators like `cardinality` and ``hyperUnique` (which we use to implement MBQL
@@ -729,31 +727,31 @@
 
 (defn- expression-post-aggregation
   [[operator & args, :as expression]]
-  (lib.util.match/match-one expression
+  (driver-api/match-one expression
     ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
-    [:aggregation-options ag _]
-    (merge (expression-post-aggregation (second expression))
-           {:name (driver-api/aggregation-name *query* expression)})
+                        [:aggregation-options ag _]
+                        (merge (expression-post-aggregation (second expression))
+                               {:name (driver-api/aggregation-name *query* expression)})
 
-    _
-    {:type   :arithmetic
-     :name   (driver-api/aggregation-name *query* expression)
-     :fn     operator
-     :fields (vec (for [arg args]
-                    (lib.util.match/match-one arg
-                      number?
-                      {:type :constant, :name (str &match), :value &match}
+                        _
+                        {:type   :arithmetic
+                         :name   (driver-api/aggregation-name *query* expression)
+                         :fn     operator
+                         :fields (vec (for [arg args]
+                                        (driver-api/match-one arg
+                                                              number?
+                                                              {:type :constant, :name (str &match), :value &match}
 
-                      [:aggregation-options ag (options :guard :name)]
-                      {:type (post-aggregator-type ag), :fieldName (:name options)}
+                                                              [:aggregation-options ag (options :guard :name)]
+                                                              {:type (post-aggregator-type ag), :fieldName (:name options)}
 
-                      #{:+ :- :/ :*}
-                      (expression-post-aggregation &match)
+                                                              #{:+ :- :/ :*}
+                                                              (expression-post-aggregation &match)
 
                       ;; we should never get here unless our code is B U S T E D
-                      _
-                      (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
-                                      {:type :bug, :input arg})))))}))
+                                                              _
+                                                              (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
+                                                                              {:type :bug, :input arg})))))}))
 
 (declare handle-aggregations)
 
@@ -792,15 +790,15 @@
   [query-type {aggregations :aggregation} druid-query]
   (reduce
    (fn [druid-query aggregation]
-     (lib.util.match/match-one aggregation
-       [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
-       (handle-expression-aggregation query-type &match druid-query)
+     (driver-api/match-one aggregation
+                           [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
+                           (handle-expression-aggregation query-type &match druid-query)
 
-       #{:+ :- :/ :*}
-       (handle-expression-aggregation query-type &match druid-query)
+                           #{:+ :- :/ :*}
+                           (handle-expression-aggregation query-type &match druid-query)
 
-       _
-       (handle-aggregation query-type &match druid-query)))
+                           _
+                           (handle-aggregation query-type &match druid-query)))
    druid-query
    aggregations))
 
@@ -950,12 +948,12 @@
 
 (defn- field-clause->name
   [field-clause]
-  (lib.util.match/match-one field-clause
-    [:field (id :guard integer?) _]
-    (:name (driver-api/field (driver-api/metadata-provider) id))
+  (driver-api/match-one field-clause
+                        [:field (id :guard integer?) _]
+                        (:name (driver-api/field (driver-api/metadata-provider) id))
 
-    [:field (field-name :guard string?) _]
-    field-name))
+                        [:field (field-name :guard string?) _]
+                        field-name))
 
 (defmethod handle-breakout ::topN
   [_ {[breakout-field] :breakout} druid-query]
@@ -998,18 +996,18 @@
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
-        ag-field          (lib.util.match/match-one ag
-                            :distinct
-                            :distinct___count
+        ag-field          (driver-api/match-one ag
+                                                :distinct
+                                                :distinct___count
 
-                            [:aggregation-options _ (options :guard :name)]
-                            (:name options)
+                                                [:aggregation-options _ (options :guard :name)]
+                                                (:name options)
 
-                            [:aggregation-options wrapped-ag _]
-                            #_:clj-kondo/ignore (recur wrapped-ag)
+                                                [:aggregation-options wrapped-ag _]
+                                                #_:clj-kondo/ignore (recur wrapped-ag)
 
-                            [(ag-type :guard keyword?) & _]
-                            ag-type)]
+                                                [(ag-type :guard keyword?) & _]
+                                                ag-type)]
     (when-not sort-by-breakout?
       (assert ag-field))
     (assoc-in druid-query [:query :metric] (match [sort-by-breakout? direction]
@@ -1030,12 +1028,12 @@
   datetime"
   [field]
   (when field
-    (lib.util.match/match-one field
-      [:field _id-or-name (_opts :guard :temporal-unit)]
-      true
+    (driver-api/match-one field
+                          [:field _id-or-name (_opts :guard :temporal-unit)]
+                          true
 
-      [:field (id :guard pos-int?) _opts]
-      (driver-api/temporal? (driver-api/field (driver-api/metadata-provider) id)))))
+                          [:field (id :guard pos-int?) _opts]
+                          (driver-api/temporal? (driver-api/field (driver-api/metadata-provider) id)))))
 
 ;; Handle order by timstamp field
 (defmethod handle-order-by ::grouped-timeseries
@@ -1169,7 +1167,7 @@
         ts?       (boolean
                    (and
                     ;; Checks whether the query is a timeseries
-                    (lib.util.match/match-one (first breakout-fields) [:field _ (_ :guard :temporal-unit)])
+                    (driver-api/match-one (first breakout-fields) [:field _ (_ :guard :temporal-unit)])
                     ;; (excludes x-of-y type breakouts)
                     (contains? timeseries-units (:unit (first breakout-fields)))
                     ;; (excludes queries with LIMIT)

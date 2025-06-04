@@ -394,8 +394,32 @@
            util}}
 
   driver-api
-  {:api #{metabase.driver-api.core}
-   :uses #{}}
+  {:api #{metabase.driver-api.core
+          metabase.driver-api.init}
+   :uses #{actions
+           appearance
+           api
+           app-db
+           auth-provider
+           classloader
+           config
+           connection-pool
+           database-routing
+           events
+           legacy-mbql
+           lib
+           lib-be
+           logger
+           models
+           premium-features
+           query-processor
+           secrets
+           settings
+           sync
+           system
+           upload
+           warehouse-schema
+           warehouses}}
 
   eid-translation
   {:api  #{metabase.eid-translation.api
