@@ -158,10 +158,7 @@ const getRefreshToken = async ({
       customGetRequestToken,
     );
   }
-  throw MetabaseError.MISSING_AUTH_METHOD({
-    method,
-    response: urlResponseJson,
-  });
+  throw MetabaseError.INVALID_AUTH_METHOD({ method });
 };
 
 export function getSdkRequestHeaders(hash?: string): Record<string, string> {

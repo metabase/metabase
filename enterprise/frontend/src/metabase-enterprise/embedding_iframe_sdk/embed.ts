@@ -4,7 +4,7 @@ import {
   openSamlLoginPopup,
   validateSessionToken,
 } from "embedding/auth-common";
-import { MISSING_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
+import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
 
 import type {
   SdkIframeEmbedMessage,
@@ -230,10 +230,9 @@ class MetabaseEmbed {
   private async _getMetabaseSessionToken() {
     const { instanceUrl } = this._settings;
 
-    const urlResponseJson = await connectToInstanceAuthSso(
-      instanceUrl,
-      this._getAuthRequestHeader(),
-    );
+    const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
+      headers: this._getAuthRequestHeader(),
+    });
 
     const { method, url: responseUrl, hash } = urlResponseJson || {};
 
@@ -253,7 +252,7 @@ class MetabaseEmbed {
       return { method, sessionToken };
     }
 
-    throw MISSING_AUTH_METHOD({ method, response: urlResponseJson });
+    throw INVALID_AUTH_METHOD({ method });
   }
 
   private _getAuthRequestHeader(hash?: string) {
