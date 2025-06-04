@@ -623,6 +623,7 @@
   (-> (assoc
        (collection/effective-children-query
         collection
+        {:cte-name :visible_collection_ids}
         (if archived?
           [:or
            [:= :archived true]
@@ -908,7 +909,8 @@
                           (update select-clause-type add-model-ranking model)))
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
-                     :permission-level (if archived? :write :read)}
+                     :permission-level (if archived? :write :read)
+                     :include-trash-collection? archived?}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
