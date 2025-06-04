@@ -94,23 +94,21 @@
           (is (= 3 (count-translations))))))))
 
 (deftest embedded-dictionary-test
-  (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
-    (testing "requires content-translation feature"
-      (with-static-embedding!
-        (mt/with-premium-features #{}
-          (mt/assert-has-premium-feature-error
-           "Content translation"
-           (client/client :get 402 (embedded-dictionary-url))))))
-    (testing "requires locale"
-      (with-static-embedding!
-        (mt/with-premium-features #{:content-translation}
-          (client/client :get 400 (embedded-dictionary-url)))))
-    (testing "provides translations"
-      (with-static-embedding!
-        (ct-utils/with-clean-translations!
-          (mt/with-temp [:model/ContentTranslation
-                         {_ :id}
-                         {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
+  (with-static-embedding!
+    (ct-utils/with-clean-translations!
+      (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
+        (testing "requires content-translation feature"
+          (mt/with-premium-features #{}
+            (mt/assert-has-premium-feature-error
+             "Content translation"
+             (client/client :get 402 (embedded-dictionary-url)))))
+        (testing "requires locale"
+          (mt/with-premium-features #{:content-translation}
+            (client/client :get 400 (embedded-dictionary-url))))
+        (testing "provides translations"
+          (mt/with-temp [:model/ContentTranslation]
+            {_ :id}
+            {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}
             (mt/with-premium-features #{:content-translation}
               (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=sv"))]
                 (is (map? response))
