@@ -187,10 +187,15 @@
                  (map-indexed (fn [idx [start end]]
                                 (let [;; look up idx in multipart-urls, which starts at :1 up to (count parts)
                                       part-id (-> idx inc str keyword)
-                                      url (multipart-urls part-id)
+                                      url (or (multipart-urls part-id)
+                                              (throw (ex-info "Missing upload part url" {:keys (keys multipart-urls)
+                                                                                         :attempted part-id})))
                                       ;; upload and get the etag from the headers
                                       resp (put-file url file on-progress :start start :end end)
-                                      etag (get-in resp [:headers "ETag"])]
+                                      etag (or (get-in resp [:headers "ETag"])
+                                               (throw (ex-info "No ETag header returned"
+                                                               {:part-id part-id
+                                                                :headers (-> resp :headers keys)})))]
                                   [part-id etag])))
                  (into {}))]
         (http/put (migration-url external_id "/multipart/complete")
