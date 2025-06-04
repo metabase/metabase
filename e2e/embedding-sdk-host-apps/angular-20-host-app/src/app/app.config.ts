@@ -1,6 +1,6 @@
 import {
   type ApplicationConfig,
-  provideZoneChangeDetection,
+  provideZonelessChangeDetection,
 } from "@angular/core";
 import { provideRouter } from "@angular/router";
 import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
@@ -8,10 +8,7 @@ import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
 import { routes } from "./app.routes";
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
-  ],
+  providers: [provideZonelessChangeDetection(), provideRouter(routes)],
 };
 
 export const metabaseProviderAuthConfig = defineMetabaseAuthConfig({

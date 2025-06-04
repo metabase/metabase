@@ -8,18 +8,14 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^20.0.0",
     "@angular/common": "^20.0.0",
     "@angular/compiler": "^20.0.0",
     "@angular/core": "^20.0.0",
-    "@angular/forms": "^20.0.0",
     "@angular/platform-browser": "^20.0.0",
-    "@angular/platform-browser-dynamic": "^20.0.0",
     "@angular/router": "^20.0.0",
     "@metabase/embedding-sdk-react": "file:../../../resources/embedding-sdk",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zone.js": "~0.15.0"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^20.0.0",
