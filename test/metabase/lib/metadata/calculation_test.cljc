@@ -579,7 +579,7 @@
                   (lib/join join1)
                   cols))))))
 
-(deftest ^:parallel implicity-join-columns
+(deftest ^:parallel implicit-join-columns
   (let [inner (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/join (meta/table-metadata :people)))
         mp    (lib.tu/metadata-provider-with-card-from-query 1 inner)
