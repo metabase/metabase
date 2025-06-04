@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -25,6 +26,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -323,20 +325,20 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (t2/select-one :model/Table :id id))]
+  (let [table (api/write-check (t2/select-one :model/Table :id id))
+        database (api/write-check (warehouses/get-database (table/database table) {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
-    (let [database (table/database table)]
-      ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-      ;; purposes of creating a new H2 database.
-      (if-let [ex (try
-                    (binding [h2/*allow-testing-h2-connections* true]
-                      (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
-                    nil
-                    (catch Throwable e
-                      (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
-                                                (:name database) (:name table)))
-                      e))]
-        (throw (ex-info (ex-message ex) {:status-code 422}))
-        (do
-          (quick-task/submit-task! #(sync/sync-table! table))
-          {:status :ok})))))
+    ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+    ;; purposes of creating a new H2 database.
+    (if-let [ex (try
+                  (binding [h2/*allow-testing-h2-connections* true]
+                    (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+                  nil
+                  (catch Throwable e
+                    (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
+                                              (:name database) (:name table)))
+                    e))]
+      (throw (ex-info (ex-message ex) {:status-code 422}))
+      (do
+        (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table)))
+        {:status :ok}))))
