@@ -62,14 +62,23 @@ const SingleSelectListField = ({
     return [...options.filter((option) => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
+  const optionsHaveSomeTranslations = useMemo(
+    () => augmentedOptions.some((option) => tc(option) !== option),
+    [augmentedOptions, tc],
+  );
+
   const sortedOptions = useMemo(
     () =>
-      augmentedOptions.toSorted((optionA, optionB) =>
-        sortByTranslation(
-          getOptionDisplayName(optionA),
-          getOptionDisplayName(optionB),
-        ),
-      ),
+      // If no options have translations, rely on the sorting that was already
+      // done in the backend
+      optionsHaveSomeTranslations
+        ? augmentedOptions.toSorted((optionA, optionB) =>
+            sortByTranslation(
+              getOptionDisplayName(optionA),
+              getOptionDisplayName(optionB),
+            ),
+          )
+        : augmentedOptions,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [augmentedOptions.length, sortByTranslation],
   );
