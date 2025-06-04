@@ -6,7 +6,7 @@ import { useTranslateContent } from "./use-translate-content";
 import {
   shouldTranslateFieldValuesOfColumn,
   translateDisplayNames,
-  useTranslateFieldValuesInHoveredObject,
+  translateFieldValuesInHoveredObject,
   useTranslateSeries,
 } from "./utils";
 
@@ -17,7 +17,7 @@ if (hasPremiumFeature("content_translation")) {
     translateDisplayNames,
     ContentTranslationConfiguration,
     shouldTranslateFieldValuesOfColumn,
-    useTranslateFieldValuesInHoveredObject,
+    translateFieldValuesInHoveredObject,
     useTranslateSeries,
     // This gets overwritten in static embedding
     contentTranslationDictionaryUrl: null,
