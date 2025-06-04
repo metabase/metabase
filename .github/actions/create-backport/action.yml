@@ -23,7 +23,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         COMMIT: ${{ inputs.backport-commit }}
       shell: bash
-      run: |
+      run: | # bash
         git config --global user.email "metabase-bot@metabase.com"
         git config --global user.name "Metabase bot"
 
@@ -55,7 +55,12 @@ runs:
           #${ORIGINAL_PULL_REQUEST_NUMBER}
           > [!IMPORTANT]
           > Manual conflict resolution is required.
-          Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking.
+          ```shell
+          ${CONFLICTS}
+          ```
+          Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking. Check the box below when done.
+
+          - [ ] Conflicts resolved
         END
           )
         else

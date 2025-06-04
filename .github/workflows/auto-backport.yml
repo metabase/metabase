@@ -4,24 +4,12 @@ on:
     types: [closed, labeled]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/github-script@v7
-      with:
-        script: | # js
-          console.log("event", '${{ toJson(github.event) }}');
-          console.log("pull_request", '${{ toJson(github.event.pull_request) }}');
-
   create-backport:
-    if: | # the PR must be closed and have a backport label
-      (github.event.pull_request.merged == true) && (
+    if: | # the PR must be merged and have a backport label
+      github.event.pull_request.merged == true && (
         contains(github.event.pull_request.labels.*.name, 'backport') ||
         contains(github.event.pull_request.labels.*.name, 'double-backport') ||
-        contains(github.event.pull_request.labels.*.name, 'triple-backport') ||
-        github.event.label.name == 'backport' ||
-        github.event.label.name == 'double-backport' ||
-        github.event.label.name == 'triple-backport'
+        contains(github.event.pull_request.labels.*.name, 'triple-backport')
       )
     runs-on: ubuntu-latest
     steps:
