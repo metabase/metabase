@@ -284,13 +284,14 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
             </Box>
           )}
 
-          {databaseId && fieldId && field && tableId && showField && (
+          {databaseId && field && fieldId && table && tableId && showField && (
             <Box flex={`1 1 ${rem(200)}`} miw={rem(300)} p="xl">
               <PreviewSection
                 databaseId={databaseId}
                 field={field}
                 fieldId={fieldId}
                 previewType={previewType}
+                table={table}
                 tableId={tableId}
                 onPreviewTypeChange={setPreviewType}
               />

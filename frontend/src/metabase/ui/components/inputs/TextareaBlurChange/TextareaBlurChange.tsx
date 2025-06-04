@@ -31,7 +31,7 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
   onChange,
   ...props
 }: TextareaBlurChangeProps<T>) {
-  const [internalValue, setInternalValue] = useState<T["value"]>();
+  const [internalValue, setInternalValue] = useState<T["value"]>("");
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => setInternalValue(value), [value]);

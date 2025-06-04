@@ -1,9 +1,16 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Card, Flex, SegmentedControl, Text } from "metabase/ui";
-import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
+import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
+import type {
+  DatabaseId,
+  Field,
+  FieldId,
+  Table,
+  TableId,
+} from "metabase-types/api";
 
+import { FilteringPreview } from "./FilteringPreview";
 import { ObjectDetailPreview } from "./ObjectDetailPreview";
 import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
@@ -14,6 +21,7 @@ interface Props {
   field: Field;
   fieldId: FieldId;
   previewType: PreviewType;
+  table: Table;
   tableId: TableId;
   onPreviewTypeChange: (value: PreviewType) => void;
 }
@@ -23,6 +31,7 @@ export const PreviewSection = ({
   field,
   fieldId,
   previewType,
+  table,
   tableId,
   onPreviewTypeChange,
 }: Props) => {
@@ -59,7 +68,19 @@ export const PreviewSection = ({
         />
       )}
 
-      {previewType === "filtering" && <Box>FILTERING</Box>}
+      {previewType === "filtering" && (
+        <FilteringPreview
+          databaseId={databaseId}
+          fieldId={fieldId}
+          /**
+           * Make sure internal component state is reset when changing any field settings.
+           * This is because use***Filter hooks cache some parts of state internally on mount
+           * and do not account for all prop changes during their lifecycle.
+           */
+          key={JSON.stringify(field)}
+          table={table}
+        />
+      )}
     </Card>
   );
 };
