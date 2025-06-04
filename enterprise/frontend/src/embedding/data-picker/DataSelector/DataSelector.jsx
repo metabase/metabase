@@ -564,7 +564,7 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  switchToStep = async (stepName, stateChange = {}, skipSteps = true) => {
+  switchToStep = async (stepName, stateChange = {}, shouldSkipSteps = true) => {
     await this.setStateWithComputedState({
       ...stateChange,
       activeStep: stepName,
@@ -572,7 +572,7 @@ export class UnconnectedDataSelector extends Component {
     if (!this.hasPreloadedStepData(stepName)) {
       await this.loadStepData(stepName);
     }
-    if (skipSteps) {
+    if (shouldSkipSteps) {
       this.skipSteps();
     }
   };
