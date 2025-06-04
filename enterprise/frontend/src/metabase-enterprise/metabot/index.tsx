@@ -75,6 +75,9 @@ if (hasPremiumFeature("metabot_v3")) {
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
+  // Export the hook for other components to use
+  PLUGIN_METABOT.useMetabotAgent = useMetabotAgent;
+
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }
 
