@@ -32,7 +32,8 @@
 (use-fixtures :each
   (fn [f]
     (mt/with-dynamic-fn-redefs [data-editing.api/require-authz? (constantly true)]
-      (f))))
+      (f)))
+  #'data-editing.tu/restore-db-settings-fixture)
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
@@ -230,7 +231,7 @@
                         url             (data-editing.tu/table-url @table-ref)
                         settings        {:database-enable-table-editing (boolean editing-enabled)
                                          :database-enable-actions       (boolean actions-enabled)}
-                        _               (data-editing.tu/alter-appdb-settings! merge settings)
+                        _               (data-editing.tu/alter-db-settings! merge settings)
                         user            (if superuser :crowberto :rasta)
                         req             mt/user-http-request-full-response
 
@@ -405,13 +406,18 @@
             req-body   {:name table-name
                         :columns [{:name "id", :type "auto_incrementing_int_pk"}
                                   {:name "n",  :type "int"}]
-                        :primary_key ["id"]}
-            _          (mt/user-http-request user :post 200 url req-body)
-            db         (t2/select-one :model/Database db-id)
-            table-id   (data-editing.tu/sync-new-table! db table-name)
-            create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
-        (create! [{:n 1} {:n 2}])
-        (is (= [[1 1] [2 2]] (table-rows table-id)))))))
+                        :primary_key ["id"]}]
+
+        (try
+          (let [_          (mt/user-http-request user :post 200 url req-body)
+                db         (t2/select-one :model/Database db-id)
+                table-id   (data-editing.tu/sync-new-table! db table-name)
+                create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
+            (create! [{:n 1} {:n 2}])
+            (is (= [[1 1] [2 2]] (table-rows table-id))))
+          (finally
+            (driver/drop-table! driver/*driver* (mt/id) table-name)
+            (t2/delete! :model/Table :name table-name)))))))
 
 (deftest coercion-test
   (mt/with-premium-features #{:table-data-editing}
@@ -1083,10 +1089,10 @@
                       (exec-url %1)
                       {:parameters %2})
 
-                    [create-card
-                     update-card
-                     delete-card]
-                    dashcards]
+                    {create-card "table.row/create"
+                     update-card "table.row/update"
+                     delete-card "table.row/delete"}
+                    (u/index-by (comp :kind :action) dashcards)]
 
                 (testing "create"
                   (testing "prefill does not crash"
