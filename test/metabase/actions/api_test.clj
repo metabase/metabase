@@ -670,3 +670,135 @@
                     :errors {:user_id "This User_id does not exist."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                          {:parameters {"id" 1 "user_id" 99999}})))))))))
+
+;; action browsing support apis
+
+(deftest v2-database-test
+  (testing "GET /api/action/v2/database"
+    (mt/with-actions-enabled
+      (mt/with-temp [:model/Database {db-id :id} {:name        "Test DB"
+                                                  :description "Test description"
+                                                  :engine      "h2"
+                                                  :settings    {:database-enable-table-editing true}}
+                     :model/Table {table-id :id} {:name "test_table" :db_id db-id}]
+        (testing "Returns databases with table editing enabled"
+          (let [response (mt/user-http-request :crowberto :get 200 "action/v2/database")]
+            (is (map? response))
+            (is (contains? response :databases))
+            (is (some #(= (:id %) db-id) (:databases response)))
+            (let [test-db (first (filter #(= (:id %) db-id) (:databases response)))]
+              (is (= "Test DB" (:name test-db)))
+              (is (= "Test description" (:description test-db)))
+              (is (nil? (:settings test-db))))))
+
+        (testing "Does not return databases without table editing enabled"
+          (t2/update! :model/Database db-id {:settings {:database-enable-table-editing false}})
+          (let [response (mt/user-http-request :crowberto :get 200 "action/v2/database")]
+            (is (not (some #(= (:id %) db-id) (:databases response))))))
+
+        (testing "Does not return databases without tables"
+          (t2/delete! :model/Table table-id)
+          (t2/update! :model/Database db-id {:settings {:database-enable-table-editing true}})
+          (let [response (mt/user-http-request :crowberto :get 200 "action/v2/database")]
+            (is (not (some #(= (:id %) db-id) (:databases response))))))))))
+
+(deftest v2-database-table-test
+  (testing "GET /api/action/v2/database/:database-id/table"
+    (mt/with-actions-enabled
+      (mt/with-temp [:model/Database {db-id :id} {:name     "Test DB"
+                                                  :engine   "h2"
+                                                  :settings {:database-enable-table-editing true}}
+                     :model/Table {table-id-1 :id} {:name         "test_table_1"
+                                                    :display_name "Test Table 1"
+                                                    :description  "First test table"
+                                                    :schema       "public"
+                                                    :db_id        db-id}
+                     :model/Table {table-id-2 :id} {:name         "test_table_2"
+                                                    :display_name "Test Table 2"
+                                                    :description  "Second test table"
+                                                    :schema       "public"
+                                                    :db_id        db-id}]
+        (testing "Returns tables for database with table editing enabled"
+          (let [response (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id))]
+            (is (map? response))
+            (is (contains? response :tables))
+            (is (= 2 (count (:tables response))))
+            (let [table-ids (set (map :id (:tables response)))]
+              (is (contains? table-ids table-id-1))
+              (is (contains? table-ids table-id-2)))
+            (let [table-1 (first (filter #(= (:id %) table-id-1) (:tables response)))]
+              (is (= "test_table_1" (:name table-1)))
+              (is (= "Test Table 1" (:display_name table-1)))
+              (is (= "First test table" (:description table-1)))
+              (is (= "public" (:schema table-1))))))
+
+        (testing "Returns empty tables list for database without table editing enabled"
+          (t2/update! :model/Database db-id {:settings {:database-enable-table-editing false}})
+          (let [response (mt/user-http-request :crowberto :get 400 (format "action/v2/database/%d/table" db-id))]
+            (is (= "Invalid Request." response))))
+
+        (testing "Returns 404 for non-existent database"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "action/v2/database/99999/table"))))))))
+
+(deftest v2-model-test
+  (testing "GET /api/action/v2/model"
+    (mt/with-actions-enabled
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}]
+        (mt/with-actions [{model-id-1 :id} {:type :model, :dataset_query (mt/mbql-query users)}
+                          {action-id-1 :action-id} {:name     "Action 1"
+                                                    :type     :implicit
+                                                    :kind     "row/create"
+                                                    :archived false}
+                          {archived-action-id :action-id} {:name     "Archived Action"
+                                                           :type     :implicit
+                                                           :kind     "row/delete"
+                                                           :archived true}]
+          (mt/with-actions [{model-id-2 :id} {:type :model, :dataset_query (mt/mbql-query venues)}
+                            {action-id-2 :action-id} {:name     "Action 2"
+                                                      :type     :implicit
+                                                      :kind     "row/update"
+                                                      :archived false}]
+           ;; Update model metadata after creation
+            (t2/update! :model/Card model-id-1 {:name                "Test Model 1"
+                                                :description         "First test model"
+                                                :collection_id       coll-id
+                                                :collection_position 1})
+            (t2/update! :model/Card model-id-2 {:name                "Test Model 2"
+                                                :description         "Second test model"
+                                                :collection_position 2})
+
+            (testing "Returns models that have actions"
+              (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
+                (is (map? response))
+                (is (contains? response :models))
+                (is (= 2 (count (:models response))))
+                (let [model-ids (set (map :id (:models response)))]
+                  (is (contains? model-ids model-id-1))
+                  (is (contains? model-ids model-id-2)))
+                (let [model-1 (first (filter #(= (:id %) model-id-1) (:models response)))
+                      model-2 (first (filter #(= (:id %) model-id-2) (:models response)))]
+                  (is (= "Test Model 1" (:name model-1)))
+                  (is (= "First test model" (:description model-1)))
+                  (is (= coll-id (:collection_id model-1)))
+                  (is (= 1 (:collection_position model-1)))
+                  (is (= "Test Collection" (:collection_name model-1)))
+
+                  (is (= "Test Model 2" (:name model-2)))
+                  (is (= "Second test model" (:description model-2)))
+                  (is (nil? (:collection_id model-2)))
+                  (is (= 2 (:collection_position model-2)))
+                  (is (nil? (:collection_name model-2))))))
+
+            (testing "Does not return models with only archived actions"
+              (t2/update! :model/Action action-id-1 {:archived true})
+              (t2/update! :model/Action action-id-2 {:archived true})
+              (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
+                (is (= {:models []} response))))
+
+            (testing "Returns empty list when no models have actions"
+              (t2/delete! :model/Action action-id-1)
+              (t2/delete! :model/Action action-id-2)
+              (t2/delete! :model/Action archived-action-id)
+              (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
+                (is (= {:models []} response))))))))))

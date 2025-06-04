@@ -90,20 +90,19 @@
     {:databases (for [db editable-databases]
                   (select-keys db [:id :name :description]))}))
 
-(def database-id 2)
-
 (api.macros/defendpoint :get "/v2/database/:database-id/table"
   "Tables which contain actions"
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ _]
   ;; tables in the database, with schema (group on frontend)
   ;; ... why on FE? because some databases don't have a notion of schema
   ;; filter everything or return error if data editing is not enabled
-  (let [editable-database? (comp boolean :database-enable-table-editing :settings)
-        enabled?           (when true #_(premium-features.settings/table-data-editing?)
-                                 (t2/select-one-fn editable-database? [:model/Database :settings] database-id))
+  (let [settings           (when true #_(premium-features.settings/table-data-editing?)
+                                 (t2/select-one-fn :settings [:model/Database :settings] #p database-id))
+        _                  (api/check-404 settings)
+        ;; This code / message could be improved.
+        _                  (api/check-400 (:database-enable-table-editing settings))
         ;; need to filter on anything else? visibility_type, sandboxes, routing, etc?
-        tables             (when enabled?
-                             (t2/select [:model/Table :id :display_name :name :description :schema] :db_id database-id))]
+        tables             (t2/select [:model/Table :id :display_name :name :description :schema] :db_id database-id)]
     {:tables tables}))
 
 (api.macros/defendpoint :get "/v2/model"
@@ -113,8 +112,9 @@
   (let [model-ids    (t2/select-fn-set :model_id [:model/Action :model_id] :archived false)
         models       (when model-ids
                        (t2/select [:model/Card :id :name :description :collection_position :collection_id] :id [:in model-ids]))
-        collections  (when (seq models)
-                       (t2/select [:model/Collection :id :name] :id [:in (into #{} (keep :collection_id) models)]))
+        coll-ids     (into #{} (keep :collection_id) models)
+        collections  (when (seq coll-ids)
+                       (t2/select [:model/Collection :id :name] :id [:in coll-ids]))
         ->collection (comp (u/index-by :id :name collections) :collection_id)]
     {:models (for [m models] (assoc m :collection_name (->collection m)))}))
 
