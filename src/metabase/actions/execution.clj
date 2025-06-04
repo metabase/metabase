@@ -219,7 +219,7 @@
                               request-parameters)]
     (actions/perform-action-with-single-input-and-output
      action-kw
-     {:table-id table-id :arg request-parameters'}
+     {:table-id table-id :row request-parameters'}
      :policy :data-editing)))
 
 (mu/defn execute-dashcard!
