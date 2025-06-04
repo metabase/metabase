@@ -207,8 +207,6 @@
                                               ::add/source-alias "DATE"}]
                                [:value nil {:base_type         :type/Date
                                             :effective_type    :type/Date
-                                            :coercion_strategy nil
-                                            :semantic_type     nil
                                             :database_type     "DATE"
                                             :name              "DATE"}]]})
               (add-alias-info
@@ -365,7 +363,6 @@
                                                                         ::add/desired-alias "Q2__P2__CATEGORY"
                                                                         ::add/position      0}]
                                             [:value 1 {:base_type         :type/Text
-                                                       :coercion_strategy nil
                                                        :database_type     "CHARACTER VARYING"
                                                        :effective_type    :type/Text
                                                        :name              "CATEGORY"
@@ -571,7 +568,6 @@
                                      [:value
                                       "Doohickey"
                                       {:base_type         :type/Text
-                                       :coercion_strategy nil
                                        :database_type     "CHARACTER VARYING"
                                        :effective_type    :type/Text
                                        :name              "CATEGORY"

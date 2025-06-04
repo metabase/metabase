@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
@@ -1015,6 +1016,7 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
+        (snowplow/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
         (quick-task/submit-task!
          (fn []
            (database-routing/with-database-routing-off
@@ -1053,6 +1055,7 @@
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
+    (snowplow/track-event! :snowplow/simple_event {:event "database_manual_scan" :target_id id})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -1080,6 +1083,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
+    (snowplow/track-event! :snowplow/simple_event {:event "database_discard_field_values" :target_id id})
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
