@@ -596,7 +596,7 @@
              (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
                (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
-                             appearance.settings/site-name (constantly "test")]
+                             public-settings/site-name (constantly "test")]
                  (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                               default-redirect-uri)]
                    ;; we get a `401`
