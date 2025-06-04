@@ -1984,7 +1984,7 @@
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
   same version of the query that we will ultimately be compiling."
-  {:changelog-test/ignore true, :arglists '([driver inner-query]), :added "0.42.0"}
+  {:changelog-test/ignore true, :arglists '([driver inner-query query-info]), :added "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -2018,18 +2018,18 @@
     nest-breakouts-in-queries-with-window-fn-aggregations))
 
 (defmethod preprocess :sql
-  [_driver inner-query]
+  [_driver inner-query query-info]
   (-> inner-query
       maybe-nest-breakouts-in-queries-with-window-fn-aggregations
-      add/add-alias-info
-      nest-query/nest-expressions))
+      (add/add-alias-info query-info)
+      (nest-query/nest-expressions query-info)))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver               :- :keyword
-   {inner-query :query} :- :map]
+   {inner-query :query, query-info :info} :- :map]
   (binding [driver/*driver* driver]
-    (let [inner-query (preprocess driver inner-query)]
+    (let [inner-query (preprocess driver inner-query query-info)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)
         (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))

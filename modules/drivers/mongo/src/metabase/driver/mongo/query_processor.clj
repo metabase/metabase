@@ -1577,13 +1577,13 @@
     (simple-mbql->native inner-query)))
 
 (defn- preprocess
-  [inner-query]
-  (add/add-alias-info inner-query))
+  [inner-query query-info]
+  (add/add-alias-info inner-query query-info))
 
 (defn mbql->native
   "Compile an MBQL query."
-  [query]
-  (let [query (update query :query preprocess)]
+  [{query-info :info, :as query}]
+  (let [query (update query :query #(preprocess % query-info))]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]

@@ -782,9 +782,9 @@
       (fix-order-bys (assoc m :limit limit/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
-  [driver inner-query]
+  [driver inner-query query-info]
   (let [parent-method (get-method sql.qp/preprocess :sql)]
-    (fix-order-bys (parent-method driver inner-query))))
+    (fix-order-bys (parent-method driver inner-query query-info))))
 
 ;; In order to support certain native queries that might return results at the end, we have to use only prepared
 ;; statements (see #9940)

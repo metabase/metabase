@@ -110,7 +110,7 @@
               (filterv used?* fields))]
       (update source :fields remove-unused))))
 
-(defn- nest-source [inner-query]
+(defn- nest-source [inner-query query-info]
   (let [filter-clause (:filter inner-query)
         keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions :expression-idents]) source
@@ -124,7 +124,7 @@
                      :type     :query
                      :query    source}))
                  (add-all-fields source)
-                 (add/add-alias-info source)
+                 (add/add-alias-info source query-info)
                  (:query source)
                  (dissoc source :limit)
                  (qp.middleware.resolve-joins/append-join-fields-to-fields source (joined-fields inner-query))
@@ -233,12 +233,12 @@
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [inner-query]
+  [inner-query query-info]
   (let [{:keys [expressions expression-idents]
-         :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions)]
+         :as inner-query}                      (m/update-existing inner-query :source-query #(nest-expressions % query-info))]
     (if-not (should-nest-expressions? inner-query)
       inner-query
-      (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
+      (let [{:keys [source-query], :as inner-query} (nest-source inner-query query-info)
             inner-query                             (rewrite-fields-and-expressions inner-query)
             source-query                            (assoc source-query
                                                            :expressions expressions
@@ -246,4 +246,4 @@
         (-> inner-query
             (dissoc :source-query :expressions :expression-idents)
             (assoc :source-query source-query)
-            add/add-alias-info)))))
+            (add/add-alias-info query-info))))))

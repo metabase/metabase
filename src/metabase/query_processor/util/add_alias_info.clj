@@ -542,7 +542,7 @@
 
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
-  [query-or-inner-query]
+  [query-or-inner-query query-info]
   (walk/postwalk
    (fn [form]
      (if (and (map? form)
