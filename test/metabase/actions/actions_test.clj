@@ -274,8 +274,8 @@
                  (:outputs
                   (actions/perform-action! :table.row/create
                                            test-scope
-                                           [{:database db-id, :table-id table-id, :arg {name-col "NEW_A"}}
-                                            {:database db-id, :table-id table-id, :arg {name-col "NEW_B"}}]))))
+                                           [{:database db-id, :table-id table-id, :row {name-col "NEW_A"}}
+                                            {:database db-id, :table-id table-id, :row {name-col "NEW_B"}}]))))
           (is (= [[76 "NEW_A"]
                   [77 "NEW_B"]]
                  (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
@@ -340,10 +340,10 @@
                                             test-scope
                                             [{:database (mt/id)
                                               :table-id table-id
-                                              :arg      {(format-field-name :id) 75}}
+                                              :row      {(format-field-name :id) 75}}
                                              {:database (mt/id)
                                               :table-id table-id
-                                              :arg      {(format-field-name :id) 74}}])))))
+                                              :row      {(format-field-name :id) 74}}])))))
           (is (= 73 (categories-row-count))))))))
 
 (deftest table-row-delete-failure-test
@@ -378,7 +378,7 @@
                                                            test-scope
                                                            [{:database (mt/id)
                                                              :table-id (mt/id :categories)
-                                                             :arg      {(format-field-name :nonid) 75}}])))
+                                                             :row      {(format-field-name :nonid) 75}}])))
             (testing "Even if all PK columns are specified"
               (is (thrown-with-msg? Exception (re-pattern (format "Rows have the wrong columns: expected #\\{%s\\}, but got #\\{%s %s\\}"
                                                                   (pr-str (name (format-field-name :id)))

@@ -757,11 +757,13 @@
         (when-not row-before
           (throw (ex-info (tru "Sorry, the row you''re trying to delete doesn''t exist")
                           {:status-code 400})))
-        (delete-row-with-children! database-id table-id row-before)
-        {:table-id table-id
-         :db-id    database-id
-         :before   row-before
-         :after    nil}))))
+        (let [table-id->deleted-children (delete-row-with-children! database-id table-id row-before)]
+
+          {:table-id         table-id
+           :db-id            database-id
+           :before           row-before
+           :after            nil
+           :deleted-children table-id->deleted-children})))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
