@@ -40,7 +40,7 @@ export const ChartSettingInput = ({
         onChangeDebounced(e.target.value);
       }}
       onBlur={() => {
-        if (inputValue !== (value || "")) {
+        if ((inputValue || "") !== (value || "")) {
           onChangeDebounced.cancel();
           onChangeRef.current(inputValue);
         }
