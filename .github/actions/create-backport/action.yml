@@ -59,7 +59,7 @@ runs:
           > Manual conflict resolution is required.
 
           \`\`\`shell
-          ${CONFLICT_LIST}
+          ${git ls-files -u}
           \`\`\`
           Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking. Check the box below when done.
 
