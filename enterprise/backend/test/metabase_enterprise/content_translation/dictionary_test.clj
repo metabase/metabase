@@ -93,14 +93,14 @@
     (is (not (#'dictionary/is-msgstr-usable nil)))))
 
 (deftest import-translations-success-test
-  (with-clean-translations!
-    (testing "Content translation feature is required"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error
-         "Content translation"
-         (dictionary/import-translations! []))))
-    (testing "Valid translations are imported when content translation feature is present"
-      (mt/with-premium-features #{:content-translation}
+  (testing "Content translation feature is required"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Content translation"
+       (dictionary/import-translations! []))))
+  (testing "Valid translations are imported when content translation feature is present"
+    (mt/with-premium-features #{:content-translation}
+      (with-clean-translations!
         (let [rows [["es" "Hello" "Hola"]
                     ["fr" "Goodbye" "Au revoir"]
                     ["de" "Thank you" "Danke"]]]
@@ -117,9 +117,10 @@
                             (= (:msgstr %) "Au revoir")) translations))
             (is (some #(and (= (:locale %) "de")
                             (= (:msgid %) "Thank you")
-                            (= (:msgstr %) "Danke")) translations))))))
-    (testing "Unusable translations are filtered out"
-      (mt/with-premium-features #{:content-translation}
+                            (= (:msgstr %) "Danke")) translations)))))))
+  (testing "Unusable translations are filtered out"
+    (mt/with-premium-features #{:content-translation}
+      (with-clean-translations!
         (let [rows [["en" "Hello" "Hola"]     ; Usable
                     ["en" "Blank" ""]         ; Unusable
                     ["en" "Whitespace" "   "] ; Unusable
@@ -139,21 +140,22 @@
 
 (deftest import-translations-error-test
   (testing "Import fails with validation errors"
-    (with-clean-translations!
-      (let [invalid-rows [["invalid-locale" "Hello" "Hola"]
-                          ["en" "Test" "Translation" "extra"]
-                          ["en" "Duplicate" "First"]
-                          ["en" "Duplicate" "Second"]]]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"The file could not be uploaded due to the following error"
-             (dictionary/import-translations! invalid-rows)))
-        (is (= 0 (count-translations)) "No translations should be imported on error"))))
+    (mt/with-premium-features #{:content-translation}
+      (with-clean-translations!
+        (let [invalid-rows [["invalid-locale" "Hello" "Hola"]
+                            ["en" "Test" "Translation" "extra"]
+                            ["en" "Duplicate" "First"]
+                            ["en" "Duplicate" "Second"]]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The file could not be uploaded due to the following error"
+               (dictionary/import-translations! invalid-rows)))
+          (is (= 0 (count-translations)) "No translations should be imported on error")))))
   (testing "Error contains multiple validation messages"
-    (with-clean-translations!
-      (let [invalid-rows [["invalid-locale" "Hello" "Hola"]
-                          ["en" "Test" "Translation" "extra"]]]
-        (with-clean-translations!
+    (mt/with-premium-features #{:content-translation}
+      (with-clean-translations!
+        (let [invalid-rows [["invalid-locale" "Hello" "Hola"]
+                            ["en" "Test" "Translation" "extra"]]]
           (try
             (dictionary/import-translations! invalid-rows)
             (is false "Should have thrown exception")
@@ -165,24 +167,25 @@
                 (is (some #(re-find #"Invalid format" %) (:errors data)))))))))))
 
 (testing "Existing translations are replaced"
-  (with-clean-translations!
-    ;; First import
-    (let [initial-rows [["it" "Hello" "Buongiorno"]
-                        ["fr" "Goodbye" "Au revoir"]]]
-      (dictionary/import-translations! initial-rows)
-      (is (= 2 (count-translations))))
+  (mt/with-premium-features #{:content-translation}
+    (with-clean-translations!
+      ;; First import
+      (let [initial-rows [["it" "Hello" "Buongiorno"]
+                          ["fr" "Goodbye" "Au revoir"]]]
+        (dictionary/import-translations! initial-rows)
+        (is (= 2 (count-translations))))
 
-    ;; Second import should replace all
-    (let [new-rows [["de" "Thank you" "Danke"]
-                    ["es" "Good morning" "Buenos días"]]]
-      (dictionary/import-translations! new-rows)
-      (is (= 2 (count-translations)))
+      ;; Second import should replace all
+      (let [new-rows [["de" "Thank you" "Danke"]
+                      ["es" "Good morning" "Buenos días"]]]
+        (dictionary/import-translations! new-rows)
+        (is (= 2 (count-translations)))
 
-      (let [translations (get-translations)]
-        (is (not (some #(= (:locale %) "fr") translations)) "Old translations should be gone")
-        (is (not (some #(= (:locale %) "it") translations)) "Old translations should be gone")
-        (is (some #(= (:locale %) "de") translations) "New translations should be present")
-        (is (some #(= (:locale %) "es") translations) "New translations should be present")))))
+        (let [translations (get-translations)]
+          (is (not (some #(= (:locale %) "fr") translations)) "Old translations should be gone")
+          (is (not (some #(= (:locale %) "it") translations)) "Old translations should be gone")
+          (is (some #(= (:locale %) "de") translations) "New translations should be present")
+          (is (some #(= (:locale %) "es") translations) "New translations should be present"))))))
 
 (deftest translation-key-test
   (testing "Translation key extracts locale and msgid"
