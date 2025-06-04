@@ -463,6 +463,35 @@
                 (group-memberships
                  (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com"))))))))))))
 
+(deftest login-as-existing-user-test
+  (testing "login as an existing user works"
+    (testing "An existing user will be reactivated upon login"
+      (with-jwt-default-setup!
+        (with-users-with-email-deleted "newuser@metabase.com"
+          ;; just create the user
+          (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :return_to default-redirect-uri
+                                                         :jwt
+                                                         (jwt/sign
+                                                          {:email      "newuser@metabase.com"
+                                                           :first_name "New"
+                                                           :last_name  "User"}
+                                                          default-jwt-secret))]
+            (is (saml-test/successful-login? response)))
+
+          ;; then log in again
+          (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :return_to default-redirect-uri
+                                                         :jwt
+                                                         (jwt/sign
+                                                          {:email      "newuser@metabase.com"
+                                                           :first_name "New"
+                                                           :last_name  "User"}
+                                                          default-jwt-secret))]
+            (is (saml-test/successful-login? response))))))))
+
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"
     (with-jwt-default-setup!

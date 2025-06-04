@@ -16,8 +16,6 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
@@ -100,11 +98,6 @@
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
-
-(t2/define-after-update :model/Dashboard
-  [dashboard]
-  ; TODO -- should this be done on `:event/dashboard-update` ?
-  (pulse/update-dashboard-subscription-pulses! dashboard))
 
 (defn- migrate-parameter [p]
   (cond-> p
