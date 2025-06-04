@@ -10,7 +10,7 @@ import type {
   Series,
 } from "metabase-types/api";
 
-import { useTranslateContent } from "./use-translate-content";
+import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
 export type TranslateContentStringFunction = <
   MsgidType = string | null | undefined,
@@ -64,7 +64,7 @@ export const translateDisplayNames = <T>(
   tc: ContentTranslationFunction,
   fieldsToTranslate = ["display_name", "displayName"],
 ): T => {
-  if (!tc.hasTranslations) {
+  if (!hasTranslations(tc)) {
     return obj;
   }
   const traverse = (o: T): T => {
@@ -94,7 +94,7 @@ export const translateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,
   tc?: ContentTranslationFunction,
 ) => {
-  if (!tc?.hasTranslations) {
+  if (!hasTranslations(tc)) {
     return obj;
   }
   return {
@@ -128,7 +128,7 @@ const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
 ) => {
-  if (!tc?.hasTranslations) {
+  if (!hasTranslations(tc)) {
     return series;
   }
   return series.map((singleSeries) => {
@@ -159,7 +159,7 @@ const translateFieldValuesInSeries = (
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
   return useMemo(() => {
-    if (!tc.hasTranslations) {
+    if (!hasTranslations(tc)) {
       return series;
     }
     const withTranslatedDisplayNames = translateDisplayNames(series, tc);

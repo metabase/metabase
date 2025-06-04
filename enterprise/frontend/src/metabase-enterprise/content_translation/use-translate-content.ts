@@ -8,17 +8,25 @@ import { useListContentTranslationsQuery } from "metabase-enterprise/api";
 
 import { translateContentString } from "./utils";
 
+export const leaveUntranslated: ContentTranslationFunction = (msgid) => msgid;
+
+/** Returns true if the content translation function is doing more than just
+ * returning the provided string untranslated */
+export const hasTranslations = (
+  tc?: ContentTranslationFunction,
+): tc is ContentTranslationFunction => !!tc && tc !== leaveUntranslated;
+
 export const useTranslateContent = (): ContentTranslationFunction => {
   const locale = useLocale();
   const dictionary = useListContentTranslations();
 
   const tc = useCallback<ContentTranslationFunction>(
     <T = string | null | undefined>(msgid: T) =>
-      translateContentString<T>(dictionary || [], locale, msgid),
+      dictionary?.length
+        ? translateContentString<T>(dictionary || [], locale, msgid)
+        : leaveUntranslated(msgid),
     [locale, dictionary],
   );
-
-  tc.hasTranslations = !!dictionary?.length;
 
   return tc;
 };
