@@ -785,8 +785,9 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       filter(textFilter.name).click();
       H.popover().within(() => {
         cy.findByText("Select all").click();
-        cy.findByText("Update filter").click();
+        cy.findByText("Set to default").click();
       });
+      H.filterWidget().eq(0).should("contain.text", "4 selections");
     });
   });
 });
