@@ -36,7 +36,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      onVisitPage: stubWindowOpenForSamlPopup,
+      onVisitPage: () => stubWindowOpenForSamlPopup(),
     });
 
     assertDashboardLoaded(frame);
@@ -48,10 +48,29 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      onVisitPage: stubWindowOpenForSamlPopup,
+      onVisitPage: () => stubWindowOpenForSamlPopup(),
     });
 
     assertDashboardLoaded(frame);
+  });
+
+  it("shows an error if the SAML login results in an invalid user", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["saml"] });
+    cy.signOut();
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      onVisitPage: () => stubWindowOpenForSamlPopup({ isUserValid: false }),
+    });
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and(
+          "contain",
+          "Failed to fetch the user, the session might be invalid.",
+        );
+    });
   });
 
   it("shows an error if we are using an API key in production", () => {

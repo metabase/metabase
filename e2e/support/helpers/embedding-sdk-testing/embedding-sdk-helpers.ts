@@ -78,7 +78,11 @@ export function mockAuthSsoEndpointForSamlAuthProvider() {
   });
 }
 
-export function stubWindowOpenForSamlPopup() {
+export function stubWindowOpenForSamlPopup({
+  isUserValid = true,
+}: {
+  isUserValid?: boolean;
+} = {}) {
   cy.window().then((win) => {
     const popup = {
       closed: false,
@@ -101,7 +105,9 @@ export function stubWindowOpenForSamlPopup() {
                 // The snapshot creator populates the cache with a real session token.
                 // Without this, we get an "invalid user" error as we need a valid session.
                 authData: {
-                  id: loginCache.normal?.sessionId,
+                  id: isUserValid
+                    ? loginCache.normal?.sessionId
+                    : "invalid-session-token",
                   exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
                 },
               },
