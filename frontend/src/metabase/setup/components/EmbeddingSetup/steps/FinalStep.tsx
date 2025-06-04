@@ -24,7 +24,7 @@ export const FinalStep = () => {
   const { createdDashboardIds } = useEmbeddingSetup();
 
   const { loading, value: dashboards } = useAsync(async () => {
-    const dashboardPromises = [1, 2, 3].map((id) =>
+    const dashboardPromises = createdDashboardIds.map((id) =>
       fetch(`/api/dashboard/${id}`).then((res) => res.json()),
     );
     return Promise.all(dashboardPromises);

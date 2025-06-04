@@ -56,6 +56,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import {
   DataConnectionStep,
+  DoneStep,
   FinalStep,
   ProcessingStep,
   TableSelectionStep,
@@ -114,6 +115,7 @@ export const getRoutes = (store) => {
         <Route path="table-selection" component={TableSelectionStep} />
         <Route path="processing" component={ProcessingStep} />
         <Route path="final" component={FinalStep} />
+        <Route path="done" component={DoneStep} />
       </Route>
 
       {/* APP */}

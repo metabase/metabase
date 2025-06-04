@@ -39,13 +39,14 @@ export const EmbeddingSetupSidebar = () => {
     ];
   }, []);
 
-  const currentStepIndex = useMemo(
-    () => steps.findIndex((step) => step.slugs.includes(pathname ?? "")),
-    [steps, pathname],
-  );
+  const currentStepIndex = useMemo(() => {
+    if (pathname === "done") {
+      return steps.length;
+    }
+    return steps.findIndex((step) => step.slugs.includes(pathname ?? ""));
+  }, [steps, pathname]);
 
-  // TODO: use real page
-  const { url: helpLink } = useDocsUrl("embedding/analytics");
+  const { url: helpLink } = useDocsUrl("embedding/interactive-embedding");
 
   return (
     <Box
