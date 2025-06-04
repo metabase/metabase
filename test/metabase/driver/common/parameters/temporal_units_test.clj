@@ -99,5 +99,6 @@
                                        :target [:variable [:template-tag "time-unit"]]
                                        :value  "foo"}])]
         (mt/with-native-query-testing-context query
-          (is (thrown? clojure.lang.ExceptionInfo
-                       (run-sample-query query))))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"invalid value specified for temporal-unit parameter"
+                                (run-sample-query query))))))))
