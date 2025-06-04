@@ -88,30 +88,31 @@ export const shouldTranslateFieldValuesOfColumn = (col: DatasetColumn) =>
     col?.semantic_type || "",
   );
 
-export const translateFieldValuesInHoveredObject = (
+export const useTranslateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,
   tc?: ContentTranslationFunction,
 ) => {
-  if (!tc?.hasTranslations) {
-    console.error("no translations");
-    return obj;
-  }
-  return {
-    ...obj,
-    data: obj?.data?.map((row) => {
-      const { value, col } = row;
+  return useMemo(() => {
+    if (!tc?.hasTranslations) {
+      return obj;
+    }
+    return {
+      ...obj,
+      data: obj?.data?.map((row) => {
+        const { value, col } = row;
 
-      return {
-        ...row,
-        value:
-          col &&
-          shouldTranslateFieldValuesOfColumn(col) &&
-          typeof value === "string"
-            ? tc(value)
-            : value,
-      };
-    }),
-  };
+        return {
+          ...row,
+          value:
+            col &&
+            shouldTranslateFieldValuesOfColumn(col) &&
+            typeof value === "string"
+              ? tc(value)
+              : value,
+        };
+      }),
+    };
+  }, [obj, tc]);
 };
 
 const translateFieldValuesInSeries = (
