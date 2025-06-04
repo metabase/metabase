@@ -30,14 +30,14 @@ import type {
 import { type ReduxProps, connector } from "./context.redux";
 
 export type DashboardContextErrorState = {
-  error: Error | null;
+  error: unknown | null;
 };
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams?: Query;
   onLoad?: (dashboard: Dashboard) => void;
-  onError?: (error: Error) => void;
+  onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
@@ -126,7 +126,7 @@ const DashboardContextProviderInner = ({
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
   const dispatch = useDispatch();
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<unknown | null>(null);
   const previousIsLoading = usePrevious(isLoading);
   const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
 
@@ -139,7 +139,7 @@ const DashboardContextProviderInner = ({
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
   const handleError = useCallback(
-    (error: Error) => {
+    (error: unknown) => {
       onError?.(error);
       setError(error);
     },
@@ -157,12 +157,11 @@ const DashboardContextProviderInner = ({
             status: 404,
             message: "Not found",
             name: "Not found",
-          } as Error);
-          setDashboardId(id);
+          });
         }
         setDashboardId(id);
       } catch (e) {
-        handleError(e as Error);
+        handleError(e);
       }
 
       return;
@@ -187,10 +186,10 @@ const DashboardContextProviderInner = ({
         })
           .then((result) => {
             if (isFailedFetchDashboardResult(result)) {
-              handleError(result.payload as Error);
+              handleError(result.payload);
             }
           })
-          .catch((err) => handleError(err as Error));
+          .catch((err) => handleError(err));
       }
     },
     [
@@ -218,7 +217,7 @@ const DashboardContextProviderInner = ({
         fetchDashboardCardData();
       }
     } catch (e) {
-      handleError?.(e as Error);
+      handleError?.(e);
     }
   }, [
     fetchDashboardCardData,
@@ -298,8 +297,8 @@ const DashboardContextProviderInner = ({
         onError,
 
         navigateToNewCardFromDashboard,
-        isLoading: isLoading && !error,
-        isLoadingWithoutCards: isLoadingWithoutCards && !error,
+        isLoading,
+        isLoadingWithoutCards,
         error,
 
         isFullscreen,
