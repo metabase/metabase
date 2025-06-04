@@ -172,7 +172,9 @@
           (map (juxt :schema :table))
           set))))
 
-(defn- have-selected-privilege? [driver database schema table]
+(defn have-select-privilege?
+  "Wrapper over [[sql-jdbc.sync.interface/have-select-privilege?]] accepting a database instead of a Connection"
+  [driver database schema table]
   (sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^Connection conn]
@@ -198,10 +200,10 @@
         ;; TODO FIXME What the hecc!!! We should NOT be hardcoding driver-specific hacks in functions like this!!!!
         (if (#{[:postgres "FOREIGN TABLE"]}
              [driver ttype])
-          (have-selected-privilege? driver database schema table)
+          (have-select-privilege? driver database schema table)
           (contains? schema+table-with-select-privileges [schema table]))))
     (fn [{schema :schema table :name}]
-      (have-selected-privilege? driver database schema table))))
+      (have-select-privilege? driver database schema table))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch

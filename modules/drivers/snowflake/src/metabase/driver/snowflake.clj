@@ -596,7 +596,7 @@
                                  (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
                                                                                               exclusion-patterns
                                                                                               schema)
-                                 (sql-jdbc.sync/have-select-privilege? driver database schema table-name)))]
+                                 (sql-jdbc.describe-database/have-select-privilege? driver database schema table-name)))]
         ;; you know what, if we really wanted to make this efficient we would do
         ;;
         ;;    SHOW SCHEMAS IN DATABASE <db>
