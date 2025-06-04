@@ -27,10 +27,10 @@ import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettings
 import { LicenseSettingsPage } from "../components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
 import { MapsSettingsPage } from "../components/SettingsPages/MapsSettingsPage";
+import { NotificationSettingsPage } from "../components/SettingsPages/NotificationSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
 import { getAdminSettingDefinitions } from "./typed-selectors";
@@ -91,7 +91,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   notifications: {
     name: t`Notification channels`,
     order: 51,
-    component: NotificationSettings,
+    component: NotificationSettingsPage,
     settings: [],
   },
   authentication: {
