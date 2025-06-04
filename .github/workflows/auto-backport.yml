@@ -1,4 +1,5 @@
 name: Auto-backport
+run-name: Auto Backport ${{ github.event.pull_request.title }}
 on:
   pull_request:
     types: [closed, labeled]
