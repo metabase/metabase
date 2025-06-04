@@ -108,6 +108,7 @@ export type SuggestedMetabotPrompt = {
   prompt: string;
   model: "metric" | "model";
   model_id: CardId;
+  model_name: string;
   created_at: string;
   updated_at: string;
 };
