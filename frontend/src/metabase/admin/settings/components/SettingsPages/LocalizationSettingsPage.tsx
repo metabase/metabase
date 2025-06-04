@@ -1,7 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -10,6 +13,8 @@ import { FormattingWidget } from "../widgets/FormattingWidget";
 export function LocalizationSettingsPage() {
   const availableLocales = useSetting("available-locales");
   const availableTimezones = useSetting("available-timezones");
+  const applicationName = useSelector(getApplicationName);
+
   return (
     <Box w="36rem" p="0 2rem 2rem 1rem">
       <Stack gap="xl">
@@ -20,6 +25,12 @@ export function LocalizationSettingsPage() {
             ([code, label]) => ({ label, value: code }),
           )}
           inputType="select"
+          description={
+            <Stack gap="md">
+              {t`The default language for all users across the ${applicationName} UI, system emails, subscriptions, and alerts. Each user can override this from their own account settings.`}
+              <CommunityLocalizationNotice isAdminView />
+            </Stack>
+          }
         />
         <AdminSettingInput
           name="report-timezone"
