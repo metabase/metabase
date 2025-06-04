@@ -741,11 +741,8 @@ export const PLUGIN_CONTENT_TRANSLATION = {
     _tc: ContentTranslationFunction,
   ) => obj,
   shouldTranslateFieldValuesOfColumn: (_col: DatasetColumn) => false,
-  translateFieldValuesInHoveredObject: (
-    obj: HoveredObject | null,
-    _tc?: ContentTranslationFunction,
-  ) => obj,
-  useTranslateSeries: (obj: Series, _tc: ContentTranslationFunction) => obj,
+  useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
+  useTranslateSeries: (obj: Series) => obj,
   contentTranslationDictionaryUrl: null as string | null,
 };
 
