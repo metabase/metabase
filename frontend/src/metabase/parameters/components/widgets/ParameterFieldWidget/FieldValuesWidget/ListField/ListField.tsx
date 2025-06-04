@@ -7,7 +7,7 @@ import EmptyState from "metabase/components/EmptyState";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { delay } from "metabase/lib/delay";
 import { Checkbox, Flex, Text } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";

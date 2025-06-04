@@ -12,7 +12,7 @@ import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import Toaster from "metabase/components/Toaster";
-import { UndoListOverlay } from "metabase/containers/UndoListing";
+import { UndoListOverlay } from "metabase/common/components/UndoListing";
 import LegacySelect, { Option } from "metabase/core/components/Select";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {

@@ -8,7 +8,7 @@ import { useInvalidateTarget } from "metabase/admin/performance/hooks/useInvalid
 import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPending";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { Form, FormProvider } from "metabase/forms";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
 import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { Group, Icon, Loader, Text } from "metabase/ui";

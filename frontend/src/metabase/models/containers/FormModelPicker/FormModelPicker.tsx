@@ -9,7 +9,7 @@ import {
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import FormField from "metabase/core/components/FormField";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Button, Icon } from "metabase/ui";
 
 export interface FormModelPickerProps extends HTMLAttributes<HTMLDivElement> {

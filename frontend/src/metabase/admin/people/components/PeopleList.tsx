@@ -13,7 +13,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { PaginationControls } from "metabase/components/PaginationControls";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";

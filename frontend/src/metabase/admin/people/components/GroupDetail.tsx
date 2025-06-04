@@ -6,9 +6,8 @@ import {
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import Alert from "metabase/components/Alert";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -21,6 +20,7 @@ import { addUndo } from "metabase/redux/undo";
 import { Box } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
+import { GroupDetailAlert } from "./GroupDetailAlert";
 import { GroupMembersTable } from "./GroupMembersTable";
 
 interface GroupDetailProps {
@@ -139,7 +139,7 @@ export const GroupDetail = ({
         onMembershipRemove={handleRemove}
         onMembershipUpdate={handleChange}
       />
-      <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
+      <GroupDetailAlert message={alertMessage} onClose={() => setAlertMessage(null)} />
       {modalContent}
     </AdminPaneLayout>
   );

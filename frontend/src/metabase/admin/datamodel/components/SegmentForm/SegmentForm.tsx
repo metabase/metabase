@@ -8,7 +8,7 @@ import {
   getSegmentQuery,
   getSegmentQueryDefinition,
 } from "metabase/admin/datamodel/utils/segments";
-import { FieldSet } from "metabase/components/FieldSet";
+import { FieldSet } from "metabase/common/components/FieldSet";
 import Button from "metabase/core/components/Button/Button";
 import { useSelector } from "metabase/lib/redux";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";

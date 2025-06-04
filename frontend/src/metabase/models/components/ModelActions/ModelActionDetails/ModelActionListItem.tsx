@@ -5,7 +5,7 @@ import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteMod
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Link from "metabase/core/components/Link";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Icon } from "metabase/ui";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 

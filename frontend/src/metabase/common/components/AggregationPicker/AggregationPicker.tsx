@@ -9,7 +9,7 @@ import {
 import { Popover } from "metabase/components/MetadataInfo/Popover";
 import AccordionList from "metabase/core/components/AccordionList";
 import Markdown from "metabase/core/components/Markdown";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";

@@ -6,7 +6,7 @@ import { Tree } from "metabase/components/tree";
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { IconName } from "metabase/ui";
 

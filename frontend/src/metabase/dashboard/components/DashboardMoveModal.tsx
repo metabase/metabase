@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
 import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
-import { MoveModal } from "metabase/containers/MoveModal";
+import { MoveModal } from "metabase/common/components/MoveModal";
 import Link from "metabase/core/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";

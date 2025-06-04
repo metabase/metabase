@@ -7,9 +7,9 @@ import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
-import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
+import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { isSmallScreen, isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";

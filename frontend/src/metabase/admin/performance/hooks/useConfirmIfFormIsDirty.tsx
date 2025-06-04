@@ -3,7 +3,7 @@ import type { InjectedRouter, Route } from "react-router";
 import { t } from "ttag";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";
 

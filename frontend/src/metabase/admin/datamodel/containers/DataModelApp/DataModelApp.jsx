@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { connect } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 

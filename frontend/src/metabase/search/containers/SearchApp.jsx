@@ -10,7 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { PaginationControls } from "metabase/components/PaginationControls";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";
-import { usePagination } from "metabase/hooks/use-pagination";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {

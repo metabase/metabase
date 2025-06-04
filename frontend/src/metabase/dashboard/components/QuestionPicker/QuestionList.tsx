@@ -16,7 +16,7 @@ import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
 import { isEmbeddingSdk } from "metabase/env";
-import { usePagination } from "metabase/hooks/use-pagination";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";

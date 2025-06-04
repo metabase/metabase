@@ -11,7 +11,7 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/components/ErrorPages";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";

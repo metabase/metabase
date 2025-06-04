@@ -7,7 +7,7 @@ import { isTrashedCollection } from "metabase/collections/utils";
 import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import { BulkActionBar } from "metabase/components/BulkActionBar";
 import Modal from "metabase/components/Modal";
-import { BulkMoveModal } from "metabase/containers/MoveModal";
+import { BulkMoveModal } from "metabase/common/components/MoveModal";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";

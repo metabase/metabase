@@ -4,7 +4,7 @@ import { Fragment } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import NumericInput from "metabase/components/NumericInput";
+import NumericInput from "./NumericInput";
 import Button from "metabase/core/components/Button";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
 import CS from "metabase/css/core/index.css";

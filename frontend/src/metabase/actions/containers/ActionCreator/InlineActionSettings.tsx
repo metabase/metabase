@@ -8,7 +8,7 @@ import Button from "metabase/core/components/Button";
 import FormField from "metabase/core/components/FormField";
 import TextArea from "metabase/core/components/TextArea";
 import Actions from "metabase/entities/actions/actions";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

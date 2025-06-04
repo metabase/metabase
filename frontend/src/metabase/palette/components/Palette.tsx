@@ -3,7 +3,7 @@ import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
 import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
-import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
+import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";

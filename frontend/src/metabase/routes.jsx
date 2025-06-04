@@ -22,9 +22,9 @@ import { TrashCollectionLanding } from "metabase/collections/components/TrashCol
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/components/MoveQuestionsIntoDashboardsModal";
-import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
-import { UnsubscribePage } from "metabase/containers/Unsubscribe";
-import { UserCollectionList } from "metabase/containers/UserCollectionList";
+import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
+import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";

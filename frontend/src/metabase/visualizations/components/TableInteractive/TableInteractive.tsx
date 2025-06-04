@@ -39,7 +39,7 @@ import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import {
   memoize,
   useMemoizedCallback,
-} from "metabase/hooks/use-memoized-callback";
+} from "metabase/common/hooks/use-memoized-callback";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";

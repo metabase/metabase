@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
+import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";

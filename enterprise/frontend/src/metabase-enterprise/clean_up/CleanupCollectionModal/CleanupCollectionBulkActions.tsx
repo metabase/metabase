@@ -6,7 +6,7 @@ import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
-import { UndoListOverlay } from "metabase/containers/UndoListing";
+import { UndoListOverlay } from "metabase/cometabase/common/components/UndoListing
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 

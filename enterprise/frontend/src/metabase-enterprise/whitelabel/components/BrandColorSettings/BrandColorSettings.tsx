@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ColorPicker from "metabase/core/components/ColorPicker";
-import { useCurrentRef } from "metabase/hooks/use-current-ref";
+import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { color } from "metabase/lib/colors";
 
 import {

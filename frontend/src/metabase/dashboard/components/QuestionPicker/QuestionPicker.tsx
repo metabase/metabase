@@ -11,7 +11,7 @@ import Input from "metabase/core/components/Input";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { isEmbeddingSdk } from "metabase/env";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";

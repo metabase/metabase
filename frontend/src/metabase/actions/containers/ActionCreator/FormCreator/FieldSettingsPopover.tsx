@@ -7,7 +7,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import type {
   FieldSettings,
   FieldType,

@@ -8,7 +8,7 @@ import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {

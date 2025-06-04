@@ -6,7 +6,7 @@ import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
-import { usePagination } from "metabase/hooks/use-pagination";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";

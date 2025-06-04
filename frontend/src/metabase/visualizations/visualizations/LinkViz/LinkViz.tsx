@@ -5,7 +5,7 @@ import _ from "underscore";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getUrlTarget } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";

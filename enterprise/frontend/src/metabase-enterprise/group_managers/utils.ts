@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { ConfirmationState } from "metabase/hooks/use-confirmation";
+import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";
 import type { Member, Membership } from "metabase-types/api";
 import type { User } from "metabase-types/api/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";

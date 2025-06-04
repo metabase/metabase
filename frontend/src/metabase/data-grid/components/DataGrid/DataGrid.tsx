@@ -21,7 +21,7 @@ import {
 import { isVirtualRow } from "metabase/data-grid/guards";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import { Footer } from "../Footer/Footer";

@@ -7,7 +7,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Switch } from "metabase/ui";

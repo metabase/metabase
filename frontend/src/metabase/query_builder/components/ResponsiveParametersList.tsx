@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Parameter, ParameterId } from "metabase-types/api";

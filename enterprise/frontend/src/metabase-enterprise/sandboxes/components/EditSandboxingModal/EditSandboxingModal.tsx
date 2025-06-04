@@ -15,7 +15,7 @@ import QuestionLoader from "metabase/containers/QuestionLoader";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
 import { Button, Center, Icon, Loader } from "metabase/ui";

@@ -14,7 +14,7 @@ import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { connect } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";

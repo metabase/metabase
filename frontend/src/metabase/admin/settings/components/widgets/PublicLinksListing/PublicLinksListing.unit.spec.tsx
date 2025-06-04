@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import * as Urls from "metabase/lib/urls";
 import type { GetPublicCard } from "metabase-types/api";
 

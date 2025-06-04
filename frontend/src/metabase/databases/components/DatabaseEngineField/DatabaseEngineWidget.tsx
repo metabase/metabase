@@ -5,7 +5,7 @@ import { jt, t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Input from "metabase/core/components/Input";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 import type { EngineOption } from "../../types";
 import { getEngineLogo } from "../../utils/engine";

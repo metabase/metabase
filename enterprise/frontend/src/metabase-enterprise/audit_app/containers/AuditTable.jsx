@@ -8,7 +8,7 @@ import _ from "underscore";
 
 import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
-import { usePagination } from "metabase/hooks/use-pagination";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";

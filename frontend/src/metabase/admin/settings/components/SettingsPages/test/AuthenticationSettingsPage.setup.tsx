@@ -5,7 +5,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { ApiKey, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,
