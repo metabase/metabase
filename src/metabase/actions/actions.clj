@@ -16,6 +16,7 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
@@ -477,7 +478,9 @@
   :actions.args.crud.table/common)
 
 (defmethod normalize-action-arg-map :table.row/common
-  [_action {:keys [database table-id row] :as _arg-map}]
+  [_action {:keys [database table-id row] row-arg :arg :as _arg-map}]
+  (when (seq row-arg)
+    (log/warn ":arg is deprecated, use :row instead"))
   {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
    :table-id table-id
-   :row      (update-keys row u/qualified-name)})
+   :row      (update-keys (or row row-arg) u/qualified-name)})
