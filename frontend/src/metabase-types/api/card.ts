@@ -168,16 +168,17 @@ export type ColumnFormattingSetting =
   | ColumnSingleFormattingSetting
   | ColumnRangeFormattingSetting;
 
-export type NativeColumnAggregation = {
+export type NativeColumnSplit = {
   name: string;
   column?: string;
   bucket?: string;
+  binning?: string;
 };
 
 export type NativeColumnSplitSetting = {
   rows: string[];
   columns: string[];
-  values: NativeColumnAggregation[];
+  values: NativeColumnSplit[];
 };
 
 export type ColumnNameColumnSplitSetting = {
@@ -186,7 +187,7 @@ export type ColumnNameColumnSplitSetting = {
   values: string[];
 };
 
-export type SplitSettingValue = string | NativeColumnAggregation;
+export type SplitSettingValue = string | NativeColumnSplit;
 
 export type PartitionName = "rows" | "columns" | "values";
 
