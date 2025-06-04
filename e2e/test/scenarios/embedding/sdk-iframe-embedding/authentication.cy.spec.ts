@@ -4,6 +4,21 @@ import { stubWindowOpenForSamlPopup } from "e2e/support/helpers/embedding-sdk-te
 const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > authentication", () => {
+  it("does not authenticates if no auth methods are enabled", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+    cy.signOut();
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+    });
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and("contain", "Backend returned an error when refreshing the token.");
+    });
+  });
+
   it("authenticates and loads dashboard via JWT", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
     cy.signOut();
