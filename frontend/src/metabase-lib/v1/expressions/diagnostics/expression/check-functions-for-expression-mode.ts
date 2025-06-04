@@ -1,9 +1,7 @@
 import * as Lib from "metabase-lib";
 
-import { ExpressionError } from "../../errors";
-import { assertModeSupportsClause } from "../../mode";
+import { checkExpressionModeSupportsClause } from "../../mode";
 import { visit } from "../../visitor";
-import { error } from "../utils";
 
 export function checkFunctionsForExpressionMode({
   expressionParts,
@@ -21,13 +19,12 @@ export function checkFunctionsForExpressionMode({
       return;
     }
 
-    try {
-      assertModeSupportsClause(expressionMode, node.operator);
-    } catch (err) {
-      if (err instanceof ExpressionError) {
-        error(node, err.message);
-      }
-      throw err;
+    const error = checkExpressionModeSupportsClause(
+      expressionMode,
+      node.operator,
+    );
+    if (error !== null) {
+      throw error;
     }
   });
 }

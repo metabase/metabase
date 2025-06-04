@@ -19,15 +19,11 @@ export function expressionModeSupportsClause(
   expressionMode: Lib.ExpressionMode,
   operator: string,
 ) {
-  try {
-    assertModeSupportsClause(expressionMode, operator);
-    return true;
-  } catch {
-    return false;
-  }
+  const error = checkExpressionModeSupportsClause(expressionMode, operator);
+  return error === null;
 }
 
-export function assertModeSupportsClause(
+export function checkExpressionModeSupportsClause(
   expressionMode: Lib.ExpressionMode,
   operator: string,
 ) {
@@ -41,4 +37,6 @@ export function assertModeSupportsClause(
       t`Aggregations like ${clause.displayName} are not allowed when building a custom ${expressionModeDisplayName(expressionMode)}`,
     );
   }
+
+  return null;
 }
