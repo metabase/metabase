@@ -286,8 +286,6 @@
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
-(log/info "hello from api.common namespace")
-
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.
 
@@ -295,7 +293,6 @@
   [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (log/info "hello from check superuser")
      (if-let [e (try
                   (check-superuser)
                   nil
