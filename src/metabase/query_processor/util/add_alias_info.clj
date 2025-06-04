@@ -72,7 +72,7 @@
 (defn- make-unique-alias-fn
   "Creates a function with the signature
 
-    (unique-alias position original-alias)
+    (unique-alias style position original-alias)
 
   To return a uniquified version of `original-alias`. Memoized by `position`, so duplicate calls will result in the
   same unique alias."
@@ -217,6 +217,10 @@
   (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
                       (when (#{:expression :field} tag)
                         (= desired-alias field-name)))
+                    all-exports)
+      (m/find-first (fn [[tag _id-or-name {::keys [original-desired-alias], :as _opts} :as _ref]]
+                      (when (#{:expression :field} tag)
+                        (= original-desired-alias field-name)))
                     all-exports)
       ;; Expressions by exact name.
       (m/find-first (fn [[_ expression-name :as _expression-clause]]
@@ -408,19 +412,21 @@
     :else                   field-name))
 
 (defmulti ^:private clause-alias-info
-  {:arglists '([inner-query unique-alias-fn clause])}
-  (fn [_ _ [clause-type]]
+  {:arglists '([inner-query query-info unique-alias-fn clause])}
+  (fn [_ _ _ [clause-type]]
     clause-type))
 
 (defmethod clause-alias-info :field
-  [inner-query unique-alias-fn field-clause]
-  (let [expensive-info (expensive-field-info inner-query field-clause)]
+  [inner-query {:alias/keys [escaped->original], :as _query-info} unique-alias-fn field-clause]
+  (let [expensive-info (expensive-field-info inner-query field-clause)
+        original-field-clause (mbql.u/update-field-options field-clause update :join-alias #(get escaped->original % %))]
     (merge {::source-table (field-source-table-alias inner-query field-clause)
             ::source-alias (field-source-alias inner-query field-clause expensive-info)}
            (when-let [nfc-path (:nfc-path expensive-info)]
              {::nfc-path nfc-path})
            (when-let [position (clause->position inner-query field-clause)]
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
+              ::original-desired-alias (field-desired-alias inner-query original-field-clause expensive-info)
               ::position      position}))))
 
 (defmulti ^:private aggregation-name
@@ -447,7 +453,7 @@
   (:name opts))
 
 (defmethod clause-alias-info :aggregation
-  [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index _opts :as ag-ref-clause]]
+  [{aggregations :aggregation, :as inner-query} _query-info unique-alias-fn [_ index _opts :as ag-ref-clause]]
   (let [position (clause->position inner-query ag-ref-clause)]
     ;; an aggregation is ALWAYS returned, so it HAS to have a `position`. If it does not, the aggregation reference
     ;; is busted.
@@ -461,7 +467,7 @@
        ::position      position})))
 
 (defmethod clause-alias-info :expression
-  [inner-query unique-alias-fn [_ expression-name :as expression-ref-clause]]
+  [inner-query _query-info unique-alias-fn [_ expression-name :as expression-ref-clause]]
   (when-let [position (clause->position inner-query expression-ref-clause)]
     {::desired-alias (unique-alias-fn position expression-name)
      ::position      position}))
@@ -501,7 +507,7 @@
                                            (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
                             aggregations)))))
 
-(defn- add-alias-info* [inner-query]
+(defn- add-alias-info* [inner-query query-info]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
     (-> (lib.util.match/replace inner-query
@@ -511,7 +517,7 @@
           &match
 
           #{:field :aggregation :expression}
-          (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
+          (mbql.u/update-field-options &match merge (clause-alias-info inner-query query-info unique-alias-fn &match)))
         (add-info-to-aggregation-definitions unique-alias-fn))))
 
 (defn add-alias-info
@@ -548,6 +554,6 @@
      (if (and (map? form)
               ((some-fn :source-query :source-table) form)
               (not (:strategy form)))
-       (vary-meta (add-alias-info* form) assoc ::transformed true)
+       (vary-meta (add-alias-info* form query-info) assoc ::transformed true)
        form))
    query-or-inner-query))
