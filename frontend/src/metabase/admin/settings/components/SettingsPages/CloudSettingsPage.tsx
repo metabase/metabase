@@ -3,9 +3,10 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { ButtonLink } from "metabase/core/components/ExternalLink";
 import { getStoreUrl } from "metabase/selectors/settings";
-import { Box, Icon, Text } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
+import { SettingHeader } from "../SettingHeader";
 
 export function CloudSettingsPage() {
   const isHosted = useHasTokenFeature("hosting");
@@ -22,8 +23,12 @@ export const SettingsCloudStoreLink = () => {
 
   return (
     <Box maw="30rem">
-      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-      <Text mb="sm">{t`Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account.`}</Text>
+      <SettingHeader
+        id="cloud-settings-header"
+        title={t`Cloud settings`}
+        // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+        description={t`Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account.`}
+      />
       <ButtonLink href={url}>
         {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
         {t`Go to the Metabase Store`}
