@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
-import ModalContent from "metabase/components/ModalContent";
+import ModalContent from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";

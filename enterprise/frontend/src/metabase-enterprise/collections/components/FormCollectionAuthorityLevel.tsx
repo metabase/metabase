@@ -3,8 +3,8 @@ import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
 import FormField from "metabase/common/components/FormField";
+import { SegmentedControl } from "metabase/common/components/SegmentedControl";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { SegmentedControl } from "metabase/components/SegmentedControl";
 
 import { OFFICIAL_COLLECTION, REGULAR_COLLECTION } from "../constants";
 

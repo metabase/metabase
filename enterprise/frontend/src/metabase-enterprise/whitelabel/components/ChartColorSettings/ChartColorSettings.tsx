@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ColorPicker from "metabase/common/components/ColorPicker";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { color } from "metabase/lib/colors";
 import { Button } from "metabase/ui";
 

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import Button from "metabase/common/components/Button";
-import EmptyState from "metabase/components/EmptyState";
+import EmptyState from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";

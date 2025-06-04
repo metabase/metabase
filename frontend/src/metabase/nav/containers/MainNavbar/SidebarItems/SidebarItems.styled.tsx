@@ -6,7 +6,7 @@ import type { ComponentProps } from "react";
 import { forwardRef } from "react";
 
 import Link from "metabase/common/components/Link";
-import { TreeNode } from "metabase/components/tree/TreeNode";
+import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import { alpha, color, darken } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";

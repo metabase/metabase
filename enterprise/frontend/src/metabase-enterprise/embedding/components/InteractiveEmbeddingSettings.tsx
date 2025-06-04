@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Box, Button, Stack } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";

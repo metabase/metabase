@@ -4,10 +4,10 @@ import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
 import Input from "metabase/common/components/Input";
+import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Radio from "metabase/common/components/Radio";
 import Toggle from "metabase/common/components/Toggle";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import type {
   FieldSettings,
   FieldType,

@@ -4,7 +4,7 @@ import { c, t } from "ttag";
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
+import { getPlaceholder } from "metabase/common/components/SaveQuestionForm/util";
 import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,

@@ -5,8 +5,8 @@ import _ from "underscore";
 import SchedulePicker, {
   type ScheduleChangeProp,
 } from "metabase/common/components/SchedulePicker";
+import SendTestPulse from "metabase/common/components/SendTestPulse";
 import Toggle from "metabase/common/components/Toggle";
-import SendTestPulse from "metabase/components/SendTestPulse";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
