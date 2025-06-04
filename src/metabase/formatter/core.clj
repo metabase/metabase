@@ -21,7 +21,6 @@
   coerce-bignum-to-int
   create-formatter
   format-geographic-coordinates
-  format-number
   graphing-column-row-fns
   make-temporal-str-formatter
   map->NumericWrapper
@@ -31,3 +30,6 @@
   temporal-string?]
  [metabase.formatter.numbers
   format-number])
+
+#_{:clj-kondo/ignore [:missing-docstring]}
+(p/import-def metabase.formatter.impl/format-number format-number-and-wrap)
