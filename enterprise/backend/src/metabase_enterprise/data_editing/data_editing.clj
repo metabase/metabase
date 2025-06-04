@@ -50,7 +50,7 @@
 (defn query-db-rows
   "Return the current representation of the given rows that we would return to the frontend, indexed by their pks."
   [table-id pk-fields rows]
-  (assert (seq pk-fields) "Table must have at least on primary key column")
+  (assert (seq pk-fields) "Table must have at least one primary key column")
   ;; TODO pass in the db-id from above rather
   (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
         row-pks (seq (map (partial get-row-pks pk-fields) rows))]
