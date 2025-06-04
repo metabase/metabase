@@ -11877,6 +11877,30 @@ databaseChangeLog:
             onDelete: CASCADE
 
 
+
+  - changeSet:
+      id: v55.2025-06-04T09:04:47
+      author: johnswanson
+      comment: tenant collection
+      rollback:
+        - sql:
+            sql: |
+              DELETE
+              FROM permissions
+              WHERE permissions.object IN (
+                SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'tenant-collection'
+              );
+              DELETE FROM collection WHERE type = 'tenant-collection';
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO collection (name, slug, entity_id, type) VALUES ('Tenant Collection', 'tenant-collection', 'tenanttenanttenantten', 'tenant');
+              INSERT INTO permissions (object, group_id, collection_id, perm_type, perm_value)
+              SELECT CONCAT('/collection/', c.id, '/read/'), pg.id, c.id, 'perms/collection-access', 'read'
+              FROM collection c
+              CROSS JOIN permissions_group pg
+              WHERE c.type = 'tenant' AND pg.name != 'Administrators' AND pg.is_tenant_group;
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
