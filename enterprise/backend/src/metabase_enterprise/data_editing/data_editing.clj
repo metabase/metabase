@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
+   [metabase-enterprise.data-editing.models.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -123,14 +124,16 @@
     ;; TODO fix tests that execute actions without a user scope
     (when user-id
       (when-not (some (comp #{:data-editing/undo :data-editing/redo} first) invocation-stack)
-        ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
+        (undo/track-change!
          user-id
          scope
          (u/for-map [[table-id diffs] (group-by :table-id diffs)]
-           [table-id (u/for-map [{:keys [before after] :as diff} diffs
+           [table-id (u/for-map [{:keys [before after deleted-children] :as diff} diffs
                                  :when (or before after)
                                  :let [{:keys [pk before after]} (diff->pk-diff diff)]]
-                       [pk [before after]])]))))
+                       [pk {:raw_before before
+                            :raw_after  after
+                            :undoable   (empty? deleted-children)}])]))))
     ;; table notification system events
     (doseq [[event payloads] (->> diffs
                                   (group-by row-update-event)
