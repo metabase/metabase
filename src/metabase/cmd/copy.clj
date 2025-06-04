@@ -11,6 +11,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.models.init]
+   [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.jvm :as u.jvm]
@@ -404,10 +405,8 @@
    source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    target-db-type     :- [:enum :h2 :postgres :mysql]
    target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
-  ;;
-  ;; TODO -- THIS IS NOT A TEST!! WHAT ARE THESE COMMENTS TALKING ABOUT!
-  (doseq [ns-symb #_{:clj-kondo/ignore [:deprecated-var]} u.jvm/metabase-namespace-symbols]
+  ;; make sure all model namespaces are loaded
+  (doseq [ns-symb (vals models.resolution/model->namespace)]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
