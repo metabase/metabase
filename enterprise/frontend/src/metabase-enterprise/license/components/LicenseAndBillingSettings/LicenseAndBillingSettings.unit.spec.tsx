@@ -20,7 +20,7 @@ import {
 
 import { getBillingInfoId } from "../BillingInfo/utils";
 
-import LicenseAndBillingSettings from "./LicenseAndBillingSettings";
+import { LicenseAndBillingSettings } from "./LicenseAndBillingSettings";
 
 const setup = async ({
   token = "token",
