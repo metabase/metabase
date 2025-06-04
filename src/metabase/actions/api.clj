@@ -97,7 +97,7 @@
   ;; ... why on FE? because some databases don't have a notion of schema
   ;; filter everything or return error if data editing is not enabled
   (let [settings           (when true #_(premium-features.settings/table-data-editing?)
-                                 (t2/select-one-fn :settings [:model/Database :settings] #p database-id))
+                                 (t2/select-one-fn :settings [:model/Database :settings] database-id))
         _                  (api/check-404 settings)
         ;; This code / message could be improved.
         _                  (api/check-400 (:database-enable-table-editing settings))
