@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.types.core-test :as mty]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -201,3 +202,10 @@
       (are [x] (not (#'fingerprinters/valid-serialized-json? x))
         "bob"
         "[bob]"))))
+
+(deftest ^:parallel fingerprinters-support-all-coercions-test
+  (testing "fingerprinters support all defined coercions"
+    (is
+     (every? (fn [c] (some #(isa? c %) @#'fingerprinters/supported-coercions))
+             (disj (descendants :Coercion/*)
+                   ::mty/Coerce-BigInteger-To-Instant ::mty/Coerce-Int-To-Str)))))
