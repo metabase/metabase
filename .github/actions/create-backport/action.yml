@@ -1,4 +1,4 @@
-name: Create Backport PR
+name: Create Backport
 
 inputs:
   target-version: # major version number like 34 or 86
