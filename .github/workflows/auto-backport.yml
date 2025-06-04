@@ -32,7 +32,7 @@ jobs:
             const labels = [
               ...${{ toJson(github.event.pull_request.labels) }},
               { name:"${{ github.event.label.name }}" }
-            ];gst
+            ];
 
             const backportLabelNames = labels.filter(label => label.name.includes('backport')).map(label => label.name);
 
