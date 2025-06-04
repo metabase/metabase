@@ -104,7 +104,7 @@ export function getPivotOptions(question: Question) {
     return {
       native_pivot_cols: nativeSetting.rows ?? [],
       native_pivot_rows: nativeSetting.columns ?? [],
-      native_pivot_values: nativeSetting.values ?? [],
+      native_pivot_measures: nativeSetting.values ?? [],
       show_row_totals: showRowTotals,
       show_column_totals: showColumnTotals,
     };

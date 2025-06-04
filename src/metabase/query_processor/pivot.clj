@@ -617,6 +617,103 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
+(defn- original-cols
+  [query]
+  (or (-> (qp.store/with-metadata-provider (:database query)
+            (lib/query (qp.store/metadata-provider) query))
+          lib/returned-columns
+          seq)
+      (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+        (-> (qp/process-query (dissoc query :info))
+            :data
+            :cols))))
+
+(defn- add-breakouts
+  [query breakout-cols]
+  (reduce lib/breakout query breakout-cols))
+
+(defn- add-aggregations
+  [query aggregations]
+  (reduce lib/aggregate query aggregations))
+
+(defn- find-col-by-name
+  [cols name]
+  (u/seek #(= (:name %) name) cols))
+
+(defn- generate-breakouts
+  "Generates the breakout columns to add to the query, for a given split setting (row or column)"
+  [query cols split-setting]
+  (reduce
+   (fn [breakouts {:keys [name binning]}]
+     (let [col                (find-col-by-name cols name)
+           binning-strategy   (keyword (:strategy binning))
+           available-binnings (lib/available-binning-strategies query 0 col)
+           available-temporal-buckets (lib/available-temporal-buckets query 0 col)
+           binning-setting   (u/seek (fn [{:keys [mbql]}]
+                                       (and (= binning-strategy (:strategy mbql))
+                                            (or (not= binning-strategy :num-bins)
+                                                (= (:numBins binning) (:num-bins mbql)))))
+                                     available-binnings)
+           bucketing-setting (u/seek (fn [available-bucket]
+                                       (= (keyword binning)
+                                          (keyword (:unit available-bucket))))
+                                     available-temporal-buckets)]
+       (conj breakouts
+             (cond
+               binning-setting
+               (lib/with-binning col binning-setting)
+
+               bucketing-setting
+               (lib/with-temporal-bucket col bucketing-setting)
+
+               :else col))))
+   []
+   split-setting))
+
+(defn- generate-aggregations
+  "Generates the aggregation clauses to add to the query, based on the split setting for the pivot table values."
+  [query cols value-split-setting]
+  (let [available-operators (lib/available-aggregation-operators query)]
+    (reduce
+     (fn [aggregations {:keys [name column]}]
+       (let [col (find-col-by-name cols (:name column))
+             op  (u/seek (fn [op] (= (:short op) (keyword name)))
+                         available-operators)]
+         (conj aggregations
+               (lib/aggregation-clause op col))))
+     []
+     value-split-setting)))
+
+(defn- nest-native-pivot-query
+  [base-query pivot-opts]
+  (def base-query base-query)
+  (def pivot-opts pivot-opts)
+  (let [base-cols         (original-cols base-query)
+        rows              (:native-pivot-rows pivot-opts)
+        _ (def base-cols base-cols)
+        columns           (:native-pivot-cols pivot-opts)
+        measures          (:native-pivot-measures pivot-opts)
+        query             (-> (lib/query (qp.store/metadata-provider) base-query)
+                              (lib/wrap-adhoc-native-query base-cols))
+        _ (def query query)
+        breakoutable-cols (lib/breakoutable-columns query)
+        row-breakouts     (generate-breakouts query breakoutable-cols rows)
+        col-breakouts     (generate-breakouts query breakoutable-cols columns)
+        aggregations      (generate-aggregations query breakoutable-cols measures)]
+    (def rows rows)
+    (def columns columns)
+    (def measures measures)
+    (def query query)
+    (def breakoutable-cols breakoutable-cols)
+    (def row-breakouts row-breakouts)
+    (def col-breakouts col-breakouts)
+    (def aggregations aggregations)
+
+    (-> query
+        (add-breakouts row-breakouts)
+        (add-breakouts col-breakouts)
+        (add-aggregations aggregations))))
+
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
@@ -633,7 +730,19 @@
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
-                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+                                (not-empty (select-keys query
+                                                        [:pivot-rows
+                                                         :pivot-cols
+                                                         :pivot-measures
+                                                         :native-pivot-rows
+                                                         :native-pivot-cols
+                                                         :native-pivot-measures
+                                                         :show-row-totals
+                                                         :show-column-totals])))
+             ;; TODO: better way to detect native queries here?
+             query             (if (:native-pivot-rows pivot-opts)
+                                 (nest-native-pivot-query query pivot-opts)
+                                 query)
              query             (-> query
                                    (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)

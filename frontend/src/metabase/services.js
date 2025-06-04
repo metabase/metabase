@@ -43,7 +43,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
         pivot_cols,
         native_pivot_rows,
         native_pivot_cols,
-        native_pivot_values,
+        native_pivot_measures,
         show_row_totals,
         show_column_totals,
       } = getPivotOptions(question);
@@ -54,7 +54,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
           pivot_cols,
           native_pivot_rows,
           native_pivot_cols,
-          native_pivot_values,
+          native_pivot_measures,
           show_row_totals,
           show_column_totals,
         },
