@@ -4,7 +4,7 @@ import type { InjectedRouter, Route } from "react-router";
 import { goBack, push, replace } from "react-router-redux";
 import { match } from "ts-pattern";
 
-import useBeforeUnload from "metabase/hooks/use-before-unload";
+import useBeforeUnload from "metabase/common/hooks/use-before-unload";
 import { useDispatch } from "metabase/lib/redux";
 
 interface UseConfirmLeaveModalInput {

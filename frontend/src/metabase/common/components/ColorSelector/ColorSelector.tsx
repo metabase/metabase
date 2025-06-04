@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { HTMLAttributes } from "react";
 
-import type { PillSize } from "metabase/core/components/ColorPill";
-import { ColorPill } from "metabase/core/components/ColorPill";
+import type { PillSize } from "metabase/common/components/ColorPill";
+import { ColorPill } from "metabase/common/components/ColorPill";
 import { Center, Popover } from "metabase/ui";
 
 import ColorSelectorPopover from "./ColorSelectorPopover";

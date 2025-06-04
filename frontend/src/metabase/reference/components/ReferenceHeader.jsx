@@ -4,8 +4,8 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import L from "metabase/components/List/List.module.css";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";

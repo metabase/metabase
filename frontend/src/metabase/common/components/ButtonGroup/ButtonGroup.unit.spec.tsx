@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 
 import ButtonGroup from "./ButtonGroup";
 

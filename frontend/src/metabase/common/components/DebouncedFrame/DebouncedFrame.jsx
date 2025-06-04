@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component, forwardRef } from "react";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/components/ExplicitSize";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 
 const DEBOUNCE_PERIOD = 300;

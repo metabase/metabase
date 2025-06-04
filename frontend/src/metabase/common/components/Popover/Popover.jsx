@@ -4,7 +4,7 @@ import { Children, Component, cloneElement } from "react";
 import ReactDOM from "react-dom";
 import Tether from "tether";
 
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import OnClickOutsideWrapper from "metabase/common/components/OnClickOutsideWrapper";
 import CS from "metabase/css/core/index.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";

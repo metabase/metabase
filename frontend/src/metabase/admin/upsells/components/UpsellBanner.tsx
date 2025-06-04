@@ -1,6 +1,6 @@
 import { useMount } from "react-use";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { Box, Flex, Text, Title } from "metabase/ui";
 
 import { UpsellGem } from "./UpsellGem";

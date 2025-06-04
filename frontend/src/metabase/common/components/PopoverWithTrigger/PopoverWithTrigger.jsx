@@ -1,5 +1,5 @@
-import Popover from "metabase/components/Popover";
-import Triggerable from "metabase/components/Triggerable";
+import Popover from "metabase/common/components/Popover";
+import Triggerable from "metabase/common/components/Triggerable";
 
 /**
  * @deprecated prefer Popover from "metabase/ui" + useState instead

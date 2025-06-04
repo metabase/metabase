@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 
 const FONT_SIZE_VARIANTS = {
   small: "0.875em",

@@ -4,7 +4,7 @@ import type { WithRouterProps } from "react-router/lib/withRouter";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { useDispatch } from "metabase/lib/redux";

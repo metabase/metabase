@@ -1,7 +1,7 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useMemo } from "react";
 
-import { Sortable, SortableList } from "metabase/core/components/Sortable";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import type {
   ColumnFormattingSetting,
   DatasetColumn,

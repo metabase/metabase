@@ -2,7 +2,7 @@ import type { HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import type { ColorState } from "react-color";
 
-import ColorInput from "metabase/core/components/ColorInput";
+import ColorInput from "metabase/common/components/ColorInput";
 
 import { ContentContainer } from "./ColorPicker.styled";
 import ColorPickerControls from "./ColorPickerControls";

@@ -2,10 +2,10 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
-import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
-import Card from "metabase/components/Card";
-import EntityItem from "metabase/components/EntityItem";
-import { Grid } from "metabase/components/Grid";
+import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
+import Card from "metabase/common/components/Card";
+import EntityItem from "metabase/common/components/EntityItem";
+import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";

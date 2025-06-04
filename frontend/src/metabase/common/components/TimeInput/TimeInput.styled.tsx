@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import NumericInput from "metabase/core/components/NumericInput";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import NumericInput from "metabase/common/components/NumericInput";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 

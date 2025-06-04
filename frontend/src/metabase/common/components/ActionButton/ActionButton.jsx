@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { cancelable } from "metabase/lib/promise";

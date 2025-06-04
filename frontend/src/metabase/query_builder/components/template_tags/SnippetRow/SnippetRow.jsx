@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
 import Snippets from "metabase/entities/snippets";
 import { Flex, Icon } from "metabase/ui";

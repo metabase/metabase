@@ -4,8 +4,8 @@ import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
+import Button, { type ButtonProps } from "metabase/common/components/Button";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import Button, { type ButtonProps } from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 

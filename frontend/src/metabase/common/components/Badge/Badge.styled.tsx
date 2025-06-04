@@ -4,9 +4,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
+import type { LinkProps } from "metabase/common/components/Link";
+import Link from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import type { LinkProps } from "metabase/core/components/Link";
-import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 

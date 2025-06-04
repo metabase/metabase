@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button, { type ButtonProps } from "metabase/core/components/Button";
+import Button, { type ButtonProps } from "metabase/common/components/Button";
 
 export const NavBar = styled.div`
   display: flex;

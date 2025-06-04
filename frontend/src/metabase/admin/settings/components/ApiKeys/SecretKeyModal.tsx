@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { CopyTextInput } from "metabase/components/CopyTextInput";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import CS from "metabase/css/core/index.css";
 import { Button, Flex, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";

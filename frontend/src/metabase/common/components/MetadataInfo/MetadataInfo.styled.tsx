@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import _LoadingSpinner from "metabase/components/LoadingSpinner";
+import _LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";

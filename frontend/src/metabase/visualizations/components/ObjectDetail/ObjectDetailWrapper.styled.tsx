@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Modal from "metabase/components/Modal";
+import Modal from "metabase/common/components/Modal";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
 
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";

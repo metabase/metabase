@@ -1,8 +1,8 @@
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
-import ColorInput from "metabase/core/components/ColorInput";
-import { ColorPill } from "metabase/core/components/ColorPill";
+import ColorInput from "metabase/common/components/ColorInput";
+import { ColorPill } from "metabase/common/components/ColorPill";
 import { Group } from "metabase/ui";
 
 export interface ColorPickerTriggerProps

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { InputProps } from "metabase/core/components/Input";
+import type { InputProps } from "metabase/common/components/Input";
 import { Button, Flex, TextInput } from "metabase/ui";
 
 export interface LicenseInputProps {

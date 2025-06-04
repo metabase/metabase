@@ -20,7 +20,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+import ControlledPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { lighten } from "metabase/lib/colors";
 
 import type { TabContextType } from "../Tab";

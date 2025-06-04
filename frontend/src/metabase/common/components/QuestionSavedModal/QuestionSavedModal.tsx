@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
+import ModalContent from "metabase/common/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 

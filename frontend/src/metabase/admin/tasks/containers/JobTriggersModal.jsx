@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetTasksInfoQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/components/ModalContent";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import ModalContent from "metabase/common/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";

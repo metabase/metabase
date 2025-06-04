@@ -2,7 +2,7 @@ import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
-import { setup } from "metabase/components/Schedule/test-utils";
+import { setup } from "metabase/common/components/Schedule/test-utils";
 
 const getInputValues = () => {
   const inputs = screen.getAllByRole("textbox");

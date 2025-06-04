@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import Card from "metabase/components/Card";
+import Card from "metabase/common/components/Card";
 import { Box, Icon } from "metabase/ui";
 
 import TabHintToastS from "./TabHintToast.module.css";

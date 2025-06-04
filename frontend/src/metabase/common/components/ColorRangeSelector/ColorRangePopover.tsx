@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
-import { ColorPill } from "metabase/core/components/ColorPill";
+import { ColorPill } from "metabase/common/components/ColorPill";
 import { Divider, Group, Stack, type StackProps } from "metabase/ui";
 
 import ColorRangeToggle from "./ColorRangeToggle";

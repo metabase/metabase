@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ConfirmModal } from "metabase/components/ConfirmModal/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 
 interface Props {
   onConfirm?: () => void;

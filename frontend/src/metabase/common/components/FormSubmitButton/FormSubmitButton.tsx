@@ -2,8 +2,8 @@ import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import type { ButtonProps } from "metabase/core/components/Button";
-import Button from "metabase/core/components/Button";
+import type { ButtonProps } from "metabase/common/components/Button";
+import Button from "metabase/common/components/Button";
 import type { FormStatus } from "metabase/forms";
 import { useFormSubmitButton } from "metabase/forms";
 

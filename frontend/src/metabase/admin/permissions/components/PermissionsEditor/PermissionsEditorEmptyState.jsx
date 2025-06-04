@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import EmptyState from "metabase/components/EmptyState";
+import EmptyState from "metabase/common/components/EmptyState";
 
 import { EmptyStateRoot } from "./PermissionsEditorEmptyState.styled";
 

@@ -1,7 +1,7 @@
 import cx from "classnames";
 
-import type { PillSize } from "metabase/core/components/ColorPill";
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import type { PillSize } from "metabase/common/components/ColorPill";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import type { AccentColorOptions } from "metabase/lib/colors/types";

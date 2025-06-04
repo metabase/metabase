@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 
 import { UpsellPermissions } from "metabase/admin/upsells";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box } from "metabase/ui";
 
 import { PermissionsEditorRoot } from "./PermissionsEditor.styled";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import AutocompleteInput from "metabase/core/components/AutocompleteInput";
+import AutocompleteInput from "metabase/common/components/AutocompleteInput";
 
 interface ChartSettingLinkUrlInputProps {
   value: string | undefined | null;

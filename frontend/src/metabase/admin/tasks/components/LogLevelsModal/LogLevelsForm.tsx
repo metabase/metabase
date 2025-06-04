@@ -2,7 +2,7 @@ import { useField } from "formik";
 import { useEffect, useId } from "react";
 import { t } from "ttag";
 
-import { CodeEditor } from "metabase/components/CodeEditor";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Form, FormErrorMessage, FormSubmitButton } from "metabase/forms";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { LoggerPreset } from "metabase-types/api";

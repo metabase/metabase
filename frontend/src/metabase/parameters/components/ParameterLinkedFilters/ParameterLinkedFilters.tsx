@@ -3,9 +3,9 @@ import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import { skipToken, useGetFieldQuery, useGetTableQuery } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Switch } from "metabase/ui";

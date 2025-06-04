@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner/LoadingSpinner";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner/LoadingSpinner";
 
 export const SmallSpinner = styled(LoadingSpinner)`
   display: flex;

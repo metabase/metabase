@@ -4,8 +4,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { Link, type LinkProps } from "react-router";
 
+import { focusOutlineStyle } from "metabase/common/style/input";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { focusOutlineStyle } from "metabase/core/style/input";
 
 type LinkVariantProp = { variant?: "default" | "brand" | "brandBold" };
 

@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import {

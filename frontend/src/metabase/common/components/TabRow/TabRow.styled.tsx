@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import BaseTabList from "metabase/core/components/TabList";
+import BaseTabList from "metabase/common/components/TabList";
 import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 

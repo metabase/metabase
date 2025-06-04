@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { useSetting } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Box, Stack } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";

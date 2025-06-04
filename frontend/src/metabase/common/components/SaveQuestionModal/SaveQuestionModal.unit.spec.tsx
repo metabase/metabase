@@ -18,7 +18,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as qbSelectors from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";

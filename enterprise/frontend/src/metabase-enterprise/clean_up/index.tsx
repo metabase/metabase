@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserHasSeen } from "metabase/components/UserHasSeen/UserHasSeen";
-import { ForwardRefLink } from "metabase/core/components/Link";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";

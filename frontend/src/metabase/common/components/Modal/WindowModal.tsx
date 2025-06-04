@@ -3,13 +3,13 @@ import type { CSSProperties } from "react";
 import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 
-import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
+import { MaybeOnClickOutsideWrapper } from "metabase/common/components/Modal/MaybeOnClickOutsideWrapper";
 import type {
   BaseModalProps,
   ModalSize,
-} from "metabase/components/Modal/utils";
-import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
-import SandboxedPortal from "metabase/components/SandboxedPortal";
+} from "metabase/common/components/Modal/utils";
+import { getModalContent, modalSizes } from "metabase/common/components/Modal/utils";
+import SandboxedPortal from "metabase/common/components/SandboxedPortal";
 import ModalS from "metabase/css/components/modal.module.css";
 import CS from "metabase/css/core/index.css";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";

@@ -3,7 +3,7 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { TextButton } from "metabase/common/components/Button.styled";
-import DateTime from "metabase/components/DateTime";
+import DateTime from "metabase/common/components/DateTime";
 import { connect } from "metabase/lib/redux";
 import type { NamedUser } from "metabase/lib/user";
 import { getFullName } from "metabase/lib/user";

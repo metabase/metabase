@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";

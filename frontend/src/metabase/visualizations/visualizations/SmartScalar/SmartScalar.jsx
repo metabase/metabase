@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { jt, t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getIsNightMode } from "metabase/dashboard/selectors";
 import { color, lighten } from "metabase/lib/colors";

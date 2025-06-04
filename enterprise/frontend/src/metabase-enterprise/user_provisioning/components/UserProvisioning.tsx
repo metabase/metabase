@@ -8,9 +8,9 @@ import {
   useGetSettingsQuery,
   useUpdateSettingMutation,
 } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { NotFound } from "metabase/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   Button,
   Divider,

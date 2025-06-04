@@ -4,8 +4,8 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ModalContent from "metabase/components/ModalContent";
-import CheckBox from "metabase/core/components/CheckBox";
+import CheckBox from "metabase/common/components/CheckBox";
+import ModalContent from "metabase/common/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 

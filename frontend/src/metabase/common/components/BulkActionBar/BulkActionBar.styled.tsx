@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Card from "metabase/components/Card";
+import Card from "metabase/common/components/Card";
 import { alpha, color } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { space } from "metabase/styled-components/theme";

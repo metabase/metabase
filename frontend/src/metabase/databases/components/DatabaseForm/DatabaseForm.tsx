@@ -2,12 +2,12 @@ import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import { FormFooter } from "metabase/common/components/FormFooter";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { useDocsUrl } from "metabase/common/hooks";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import { FormFooter } from "metabase/core/components/FormFooter";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { Flex } from "metabase/ui";

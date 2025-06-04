@@ -1,6 +1,6 @@
 import { parseStringValue } from "./utils";
 
-describe("metabase/components/TokenField/utils", () => {
+describe("metabase/common/components/TokenField/utils", () => {
   describe("parseStringValue", () => {
     it("should return null for falsy and whitespace values", () => {
       expect(parseStringValue("")).toBeNull();

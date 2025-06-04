@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 
-import { DragDropContext } from "metabase/core/components/DragDropContext";
+import { DragDropContext } from "metabase/common/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
 import { moveElement } from "metabase/lib/arrays";
 

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import type { DragEndEvent } from "metabase/core/components/Sortable";
+import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { Box } from "metabase/ui";
 import type {
   DatasetColumn,

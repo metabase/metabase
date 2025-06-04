@@ -1,5 +1,5 @@
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import Button from "metabase/common/components/Button";
+import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Text, isValidIconName } from "metabase/ui";

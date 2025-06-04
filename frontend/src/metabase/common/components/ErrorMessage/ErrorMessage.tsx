@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { NoDataError } from "metabase/components/errors/NoDataError";
+import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 

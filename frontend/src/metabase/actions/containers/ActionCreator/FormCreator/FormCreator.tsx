@@ -8,7 +8,7 @@ import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DragDropContext } from "metabase/core/components/DragDropContext";
+import { DragDropContext } from "metabase/common/components/DragDropContext";
 import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
@@ -132,7 +132,7 @@ export function FormCreator({
       <SidebarContent>
         <FormContainer>
           {onClose && (
-            /* We want to avoid absolute positioning, so we use margin with z-index since 
+            /* We want to avoid absolute positioning, so we use margin with z-index since
                it's covered by the next element with padding */
             <Flex
               justify="flex-end"

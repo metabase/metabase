@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { ErrorBox } from "metabase/components/ErrorDetails";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
+import { ErrorBox } from "metabase/common/components/ErrorDetails";
+import Modal from "metabase/common/components/Modal";
+import ModalContent from "metabase/common/components/ModalContent";
 import { Text } from "metabase/ui";
 
 // OSS Component, do not use directly, use through PLUGIN_UPLOAD_MANAGEMENT

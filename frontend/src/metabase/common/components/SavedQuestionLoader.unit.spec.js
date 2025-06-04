@@ -6,7 +6,7 @@ import {
   setupUnauthorizedSchemaEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
+import SavedQuestionLoader from "metabase/common/components/SavedQuestionLoader";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,

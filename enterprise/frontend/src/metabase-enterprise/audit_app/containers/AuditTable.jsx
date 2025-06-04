@@ -6,9 +6,9 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { PaginationControls } from "metabase/components/PaginationControls";
-import CS from "metabase/css/core/index.css";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";

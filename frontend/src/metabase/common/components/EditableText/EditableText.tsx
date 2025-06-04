@@ -10,7 +10,7 @@ import type {
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
-import Markdown from "metabase/core/components/Markdown";
+import Markdown from "metabase/common/components/Markdown";
 import { Box } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";

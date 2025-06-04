@@ -1,7 +1,7 @@
 import type React from "react";
 
-import CS from "metabase/css/core/index.css";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import CS from "metabase/css/core/index.css";
 import {
   Paper,
   type PaperProps,

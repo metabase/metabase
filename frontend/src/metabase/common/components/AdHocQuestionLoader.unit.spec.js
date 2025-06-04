@@ -1,6 +1,6 @@
 import { render } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { AdHocQuestionLoader } from "metabase/containers/AdHocQuestionLoader";
+import { AdHocQuestionLoader } from "metabase/common/components/AdHocQuestionLoader";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 

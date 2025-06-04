@@ -2,8 +2,8 @@
 import { t } from "ttag";
 
 import { useCancelCloudMigrationMutation } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";

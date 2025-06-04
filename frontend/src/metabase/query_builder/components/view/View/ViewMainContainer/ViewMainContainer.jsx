@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import DebouncedFrame from "metabase/components/DebouncedFrame";
+import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";

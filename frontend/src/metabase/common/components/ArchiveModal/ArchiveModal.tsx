@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
-import ModalContent from "metabase/components/ModalContent";
+import ModalContent from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 import { Button, FocusTrap, Group } from "metabase/ui";
 

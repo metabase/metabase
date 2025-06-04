@@ -3,7 +3,7 @@ import type * as React from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
+import Radio from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";

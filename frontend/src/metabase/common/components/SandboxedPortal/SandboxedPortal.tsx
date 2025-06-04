@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom";
 
-import EventSandbox from "metabase/components/EventSandbox";
+import EventSandbox from "metabase/common/components/EventSandbox";
 
 import type { EventSandboxProps } from "../EventSandbox/EventSandbox";
 

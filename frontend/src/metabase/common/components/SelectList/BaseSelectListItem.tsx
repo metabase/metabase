@@ -5,7 +5,7 @@ import type {
   SyntheticEvent,
 } from "react";
 
-import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
+import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 
 import { BaseItemRoot } from "./SelectListItem.styled";
 

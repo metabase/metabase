@@ -10,9 +10,9 @@ import type {
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
 import { isTrashedCollection } from "metabase/collections/utils";
-import { BaseItemsTableBody } from "metabase/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
-import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultItemRenderer";
-import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
+import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
+import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
+import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,

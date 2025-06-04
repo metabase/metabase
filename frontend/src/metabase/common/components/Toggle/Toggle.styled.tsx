@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { focusOutlineStyle } from "metabase/core/style/input";
+import { focusOutlineStyle } from "metabase/common/style/input";
 import { color } from "metabase/lib/colors";
 
 interface ToggleRootProps {

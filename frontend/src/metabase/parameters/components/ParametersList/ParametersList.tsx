@@ -5,8 +5,8 @@ import { useCallback, useMemo } from "react";
 import type {
   DragEndEvent,
   RenderItemProps,
-} from "metabase/core/components/Sortable";
-import { SortableList } from "metabase/core/components/Sortable";
+} from "metabase/common/components/Sortable";
+import { SortableList } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";

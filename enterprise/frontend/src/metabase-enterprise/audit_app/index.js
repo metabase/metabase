@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/core/components/Link";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,

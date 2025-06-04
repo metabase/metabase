@@ -1,12 +1,12 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import Link from "metabase/common/components/Link";
 import {
   TableColumn,
   hideResponsively,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import Link from "metabase/core/components/Link";
 import { breakpoints } from "metabase/ui/theme";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`

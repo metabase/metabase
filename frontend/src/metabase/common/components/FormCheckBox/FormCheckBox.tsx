@@ -2,9 +2,9 @@ import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
-import type { CheckBoxProps } from "metabase/core/components/CheckBox";
-import CheckBox from "metabase/core/components/CheckBox";
-import FormField from "metabase/core/components/FormField";
+import type { CheckBoxProps } from "metabase/common/components/CheckBox";
+import CheckBox from "metabase/common/components/CheckBox";
+import FormField from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 export interface FormCheckBoxProps

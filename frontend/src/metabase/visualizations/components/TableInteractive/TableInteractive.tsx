@@ -17,9 +17,13 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import {
+  memoize,
+  useMemoizedCallback,
+} from "metabase/common/hooks/use-memoized-callback";
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
@@ -36,10 +40,6 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import {
-  memoize,
-  useMemoizedCallback,
-} from "metabase/common/hooks/use-memoized-callback";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";

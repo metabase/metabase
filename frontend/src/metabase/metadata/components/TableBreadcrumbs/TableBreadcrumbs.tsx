@@ -5,7 +5,7 @@ import {
   useGetTableQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 

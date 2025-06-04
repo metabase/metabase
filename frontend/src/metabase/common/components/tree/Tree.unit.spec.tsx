@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "__support__/ui";
-import { Tree } from "metabase/components/tree";
+import { Tree } from "metabase/common/components/tree";
 
 const data = [
   {

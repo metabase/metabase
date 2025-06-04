@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import Tooltip from "metabase/common/components/Tooltip";
 import { Icon } from "metabase/ui";
 
 import S from "./DashboardCopyModalShallowCheckboxLabel.module.css";

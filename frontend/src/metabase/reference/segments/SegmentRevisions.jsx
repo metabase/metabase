@@ -5,9 +5,9 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import Revision from "metabase/admin/datamodel/components/revisions/Revision";
-import EmptyState from "metabase/components/EmptyState";
-import S from "metabase/components/List/List.module.css";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import EmptyState from "metabase/common/components/EmptyState";
+import S from "metabase/common/components/List/List.module.css";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";

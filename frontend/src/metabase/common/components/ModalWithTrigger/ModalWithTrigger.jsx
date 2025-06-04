@@ -1,5 +1,5 @@
-import Modal from "metabase/components/Modal";
-import Triggerable from "metabase/components/Triggerable";
+import Modal from "metabase/common/components/Modal";
+import Triggerable from "metabase/common/components/Triggerable";
 
 /**
  * @deprecated use Modal + useState

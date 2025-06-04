@@ -4,11 +4,11 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
+import FormField from "metabase/common/components/FormField";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
-import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Button, Icon } from "metabase/ui";
 

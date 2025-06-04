@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import Alert from "metabase/core/components/Alert";
+import Alert from "metabase/common/components/Alert";
 import { getStoreUrl } from "metabase/selectors/settings";
 import { Anchor, Box, Text } from "metabase/ui";
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";

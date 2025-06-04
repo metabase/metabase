@@ -9,8 +9,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import Markdown from "metabase/common/components/Markdown";
 import EmptyState from "metabase/components/EmptyState";
-import Markdown from "metabase/core/components/Markdown";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";

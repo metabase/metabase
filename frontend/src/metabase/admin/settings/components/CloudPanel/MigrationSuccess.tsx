@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
