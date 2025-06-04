@@ -326,7 +326,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [table (api/write-check (t2/select-one :model/Table :id id))
-        database (api/write-check (warehouses/get-database (table/database table) {:exclude-uneditable-details? true}))]
+        database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.

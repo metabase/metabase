@@ -1269,9 +1269,11 @@
   (testing "Can we trigger a metadata sync for a table?"
     (let [sync-called? (promise)
           timeout (* 10 60)]
-      (mt/with-temp [:model/Table table]
-        (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
-          (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table)))))
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+          (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
       (testing "sync called?"
         (is (true?
              (deref sync-called? timeout :sync-never-called)))))))
