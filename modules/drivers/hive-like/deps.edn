@@ -3,6 +3,7 @@
 
  :deps
  {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.0.1"}
+  ;; The dependencies below are just to resolve security warnings
   org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}
   org.apache.commons/commons-configuration2 {:mvn/version "2.12.0"}
   org.apache.zookeeper/zookeeper {:mvn/version "3.9.3"}
