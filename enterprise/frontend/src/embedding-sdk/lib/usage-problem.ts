@@ -21,7 +21,7 @@ export const USAGE_PROBLEM_MESSAGES = {
   API_KEYS_WITH_LICENSE: `The embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.`,
   SSO_WITHOUT_LICENSE: `Usage without a valid license for this feature is only allowed for evaluation purposes, using API keys and only on localhost. Attempting to use this in other ways is in breach of our usage policy.`,
   JWT_PROVIDER_URI_DEPRECATED: `The jwtProviderUri and authProviderUri config properties have been removed. Configure your authProviderUri within your instance settings.`,
-  JWT_PROVIDER_URI_NOT_SET: `The JWT Provider URI is not set. Please set it in the instance settings.`,
+  JWT_AUTH_CONFIG_NOT_VALID: `The JWT Provider URI is not set. Please set it in the instance settings. Alternatively, you can set a fetchRequestToken function in the embedding SDK config.`,
 
   // This message only works on localhost at the moment, as we cannot detect if embedding is disabled due to CORS restrictions on /api/session/properties.
   EMBEDDING_SDK_NOT_ENABLED: `The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK.`,
@@ -46,7 +46,7 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   API_KEYS_WITH_LICENSE: SDK_AUTH_DOCS_URL,
   SSO_WITHOUT_LICENSE: METABASE_UPGRADE_URL,
   JWT_PROVIDER_URI_DEPRECATED: SDK_AUTH_DOCS_URL,
-  JWT_PROVIDER_URI_NOT_SET: SDK_AUTH_DOCS_URL,
+  JWT_AUTH_CONFIG_NOT_VALID: SDK_AUTH_DOCS_URL,
   EMBEDDING_SDK_NOT_ENABLED: SDK_INTRODUCTION_DOCS_URL,
   DEVELOPMENT_MODE_CLOUD_INSTANCE: METABASE_UPGRADE_URL,
 } as const;
@@ -79,7 +79,6 @@ export function getSdkUsageProblem(
    * 2: (isSSO: true, hasTokenFeature: false) -> PROBLEMS.SSO_WITHOUT_LICENSE
    * 3: (isApiKey: true, hasTokenFeature: false) -> PROBLEMS.API_KEYS_WITHOUT_LICENSE
    */
-
   return (
     match({
       hasTokenFeature,
@@ -92,9 +91,6 @@ export function getSdkUsageProblem(
     })
       .with({ isDevelopmentMode: true }, () =>
         toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
-      )
-      .with({ isJwtProviderUriSet: true }, () =>
-        toError("JWT_PROVIDER_URI_NOT_SET"),
       )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
