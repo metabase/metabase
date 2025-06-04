@@ -35,7 +35,7 @@ export const SettingsPage = (): JSX.Element => {
   const steps = useSelector(getSteps);
   const isEmbeddingUseCase = useSelector(getIsEmbeddingUseCase);
   const SELECT_WIDTH = "10rem";
-  const tooltipText = getLocalizationNoticeText("Metabase");
+  const tooltipText = getLocalizationNoticeText({ mentionMetabase: true });
   const TOOLTIP_WIDTH = 220;
 
   const label = (

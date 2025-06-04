@@ -46,11 +46,11 @@ describe("CommunityLocalizationNotice", () => {
     expect(screen.getByText(/you can \./i)).toBeInTheDocument();
   });
 
-  it("should render notice and not link when white labeling is enabled", () => {
+  it("should render generic notice and skip link link when white labeling is enabled", () => {
     setup({ isAdminView: false, isWhiteLabeling: true });
     expect(
       screen.getByText(
-        "Some translations are created by the Basemeta community, and might not be perfect.",
+        "Some translations are created by the community, and might not be perfect.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/you can \./i)).not.toBeInTheDocument();
