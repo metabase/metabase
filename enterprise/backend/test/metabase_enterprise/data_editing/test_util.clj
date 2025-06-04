@@ -42,14 +42,30 @@
   [token]
   (format "ee/data-editing-public/webhook/%s/data" token))
 
-(defn alter-appdb-settings! [f & args]
+(def ^:private ^:dynamic *initial-db-settings* nil)
+
+(defn restore-db-settings-fixture [f]
+  (binding [*initial-db-settings* {}]
+    (try
+      (f)
+      (finally
+        (when *initial-db-settings*
+          (doseq [[id settings] *initial-db-settings*]
+            (t2/update! :model/Database id {:settings settings})))))))
+
+(defn alter-db-settings! [f & args]
   (let [id           (mt/id)
         settings     (t2/select-one-fn :settings :model/Database id)
+        ;; save initial settings so the restore-appdb-settings-fixture can restore them
+        _            (when-some [db-settings *initial-db-settings*]
+                       (set! *initial-db-settings* (if (contains? db-settings id)
+                                                     db-settings
+                                                     (assoc db-settings id settings))))
         new-settings (apply f settings args)]
     (t2/update! :model/Database id {:settings new-settings})))
 
 (defn toggle-data-editing-enabled! [on-or-off]
-  (alter-appdb-settings! assoc :database-enable-table-editing (boolean on-or-off)))
+  (alter-db-settings! assoc :database-enable-table-editing (boolean on-or-off)))
 
 (defn open-test-table!
   "Sets up an anonymous table in the test db (mt/id). Return a box that can be deref'd for the table-id.
