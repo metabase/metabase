@@ -461,7 +461,7 @@
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
 ;;; [[perform-action!]] with
 ;;;
-;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
+;;;    {:database <database-id>, :table-id <table-id>, :row <request-body>}
 ;;;
 ;;; and we transform this to
 ;;;
