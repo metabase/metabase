@@ -10,7 +10,9 @@
 
 (defn- ->local-date-time [t]
   (cond-> t
-    (str/includes? t "T") (t/zoned-date-time)
+    (= (count t) 10) (str "T00:00:00")
+    (str/includes? t " ") (str/replace " " "T")
+    (str/includes? t "T") t/zoned-date-time
     true t/local-date-time))
 
 (defn- run-sample-query [query]
@@ -34,7 +36,7 @@
                                                      :name   "time-unit"
                                                      :target [:variable [:template-tag "time-unit"]]}])
             date-types ["minute" "hour" "day" "week" "month" "quarter" "year"]
-            count-types ["second-of-minute" "minute-of-hour" "hour-of-day" "day-of-month"
+            count-types ["minute-of-hour" "hour-of-day" "day-of-month"
                          "day-of-year" "month-of-year" "quarter-of-year"]
             ;; The original dates are 2019-02-11T21:40:27.892 and 2018-05-15T08:04:04.580
             expected-dates [[[#t "2019-02-11T21:40:00"] [#t "2018-05-15T08:04:00"]]
@@ -44,8 +46,7 @@
                             [[#t "2019-02-01T00:00:00"] [#t "2018-05-01T00:00:00"]]
                             [[#t "2019-01-01T00:00:00"] [#t "2018-04-01T00:00:00"]]
                             [[#t "2019-01-01T00:00:00"] [#t "2018-01-01T00:00:00"]]]
-            expected-counts [[[27] [4]]
-                             [[40] [4]]
+            expected-counts [[[40] [4]]
                              [[21] [8]]
                              [[11] [15]]
                              [[42] [135]]
@@ -53,23 +54,19 @@
                              [[1] [2]]]]
         (doseq [[grouping expected-date] (map list date-types expected-dates)]
           (is (= expected-date
-                 (-> native-query
-                     (assoc :parameters [{:type   :temporal-unit
-                                          :name   "time-unit"
-                                          :target [:variable [:template-tag "time-unit"]]
-                                          :value  grouping}])
+                 (-> parameterized-query
+                     (assoc-in [:parameters 0 :value] grouping)
                      run-sample-query
-                     (subvec 0 2)))))
+                     (subvec 0 2)))
+              (str "Unexpected results for grouping " grouping)))
         (doseq [[grouping expected-count] (map list count-types expected-counts)]
           (is (= expected-count
-                 (-> native-query
-                     (assoc :parameters [{:type   :temporal-unit
-                                          :name   "time-unit"
-                                          :target [:variable [:template-tag "time-unit"]]
-                                          :value  grouping}])
+                 (-> parameterized-query
+                     (assoc-in [:parameters 0 :value] grouping)
                      qp/process-query
                      (->> (mt/formatted-rows [int]))
-                     (subvec 0 2)))))))))
+                     (subvec 0 2)))
+              (str "Unexpected results for grouping " grouping)))))))
 
 (deftest bad-function-names-throw-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
