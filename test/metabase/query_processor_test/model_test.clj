@@ -62,7 +62,7 @@
                          (lib/->legacy-MBQL $q))]
           (is (= ["Reviews → Created At: Month"
                   "Average of Rating"
-                  "Products+Reviews Summary - Reviews → Created At: Month → Created At"
+                  "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
                   "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
                  (->> (qp/process-query question)
                       mt/cols

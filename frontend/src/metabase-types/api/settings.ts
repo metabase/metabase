@@ -227,7 +227,6 @@ export const tokenFeatures = [
   "embedding_sdk",
   "embedding_iframe_sdk",
   "hosting",
-  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "scim",
@@ -299,6 +298,16 @@ export interface UploadsSettings {
   table_prefix: string | null;
 }
 
+export type CustomGeoJSONMap = {
+  name: string;
+  url: string;
+  region_key: string;
+  region_name: string;
+  builtin?: boolean;
+};
+
+export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
+
 interface InstanceSettings {
   "admin-email": string;
   "email-from-name": string | null;
@@ -342,6 +351,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
@@ -397,6 +407,7 @@ interface PublicSettings {
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-geojson": CustomGeoJSONSetting;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
@@ -417,6 +428,7 @@ interface PublicSettings {
   "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "jwt-identity-provider-uri"?: string | null;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-host": string | null;
@@ -542,6 +554,7 @@ export interface EnterpriseSettings extends Settings {
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
+  "jwt-identity-provider-uri"?: string | null;
   /**
    * @deprecated
    */

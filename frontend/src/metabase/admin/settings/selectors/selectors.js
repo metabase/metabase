@@ -9,7 +9,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -17,20 +16,20 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { CloudPanel } from "../components/CloudPanel";
 import {
   EmbeddingSdkSettings,
-  EmbeddingSettings,
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import { SettingsLdapForm } from "../components/SettingsLdapForm";
-import SettingsLicense from "../components/SettingsLicense";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
+import { EmbeddingSettingsPage } from "../components/SettingsPages/EmbeddingSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { LicenseSettingsPage } from "../components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
+import { MapsSettingsPage } from "../components/SettingsPages/MapsSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
@@ -176,28 +175,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   maps: {
     name: t`Maps`,
     order: 70,
-    settings: [
-      {
-        key: "map-tile-server-url",
-        display_name: t`Map tile server URL`,
-        description: (
-          <>
-            <div>
-              {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
-            </div>
-            <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
-          </>
-        ),
-        type: "string",
-      },
-      {
-        key: "custom-geojson",
-        display_name: t`Custom Maps`,
-        description: t`Add your own GeoJSON files to enable different region map visualizations`,
-        widget: CustomGeoJSONWidget,
-        noHeader: true,
-      },
-    ],
+    component: MapsSettingsPage,
+    settings: [],
   },
   localization: {
     name: t`Localization`,
@@ -222,7 +201,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
-    component: EmbeddingSettings,
+    component: EmbeddingSettingsPage,
     settings: [],
   },
   "embedding-in-other-applications/standalone": {
@@ -245,33 +224,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   license: {
     name: t`License`,
     order: 110,
-    component: SettingsLicense,
+    component: LicenseSettingsPage,
     settings: [],
-  },
-  llm: {
-    name: t`AI Features`,
-    getHidden: (settings) =>
-      !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
-    order: 131,
-    settings: [
-      {
-        key: "ee-ai-features-enabled",
-        display_name: t`AI features enabled`,
-        description: (
-          <>
-            <div>{t`Enable AI features.`}</div>
-            <div>{t`You must supply an API key before AI features can be enabled.`}</div>
-          </>
-        ),
-        type: "boolean",
-      },
-      {
-        key: "ee-openai-api-key",
-        display_name: t`EE OpenAI API Key`,
-        description: t`API key used for Enterprise AI features`,
-        type: "string",
-      },
-    ],
   },
   appearance: {
     // OSS Version

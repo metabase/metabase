@@ -609,9 +609,9 @@
            {:tables (into #{}
                           (comp (filter (fn [{schema :schema table-name :name}]
                                           (and (not (contains? excluded-schemas schema))
-                                               (driver.s/include-schema? inclusion-patterns
-                                                                         exclusion-patterns
-                                                                         schema)
+                                               (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
+                                                                                                            exclusion-patterns
+                                                                                                            schema)
                                                (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
                                 (map #(dissoc % :type)))
                           ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current
@@ -767,7 +767,7 @@
     (and ((get-method driver/can-connect? :sql-jdbc) driver details)
          (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
            ;; jdbc/query is used to see if we throw, we want to ignore the results
-           (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
+           (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE \"%s\";" db))
            true))))
 
 (defmethod driver/normalize-db-details :snowflake

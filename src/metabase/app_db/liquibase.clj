@@ -446,7 +446,7 @@
               (.setFailOnError change-set fail-on-error?))))))))
 
 (def ^:private legacy-migrations-file "migrations/000_legacy_migrations.yaml")
-(def ^:private update-migrations-file "migrations/001_update_migrations.yaml")
+(def ^:private update001-migrations-file "migrations/001_update_migrations.yaml")
 
 (mu/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
@@ -464,18 +464,19 @@
     (when-not (fresh-install? conn (.getDatabase ^Liquibase liquibase))
       ;; Skip mutating the table if the filenames are already correct. It assumes we have never moved the boundary
       ;; between the two files, i.e. that update-migrations still start from v45.
-      (when-not (= #{legacy-migrations-file update-migrations-file}
-                   (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
-                        (jdbc/query conn-spec)
-                        (into #{} (map :filename))))
+      (when (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
+                 (jdbc/query conn-spec)
+                 (into #{} (map :filename))
+                 (filter #(or (= % legacy-migrations-file)
+                              (str/ends-with? % "update_migrations.yaml"))))
         (log/info "Updating liquibase table to reflect consolidated changeset filenames")
         (with-scope-locked liquibase
           (jdbc/execute!
            conn-spec
-           [(format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)
-            "v00.00-000" update-migrations-file
+           [(format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? WHEN ID < ? THEN ? ELSE FILENAME END" liquibase-table-name)
+            "v00.00-000" update001-migrations-file
             "v45.00-001" legacy-migrations-file
-            update-migrations-file]))))))
+            "v56.0000-00-00T00:00:00" update001-migrations-file]))))))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
@@ -555,7 +556,7 @@
        (if (empty? ids-to-drop)
          (log/info "No changesets to roll back")
          (do
-           (AbstractRollbackCommandStep/doRollback lb-db update-migrations-file nil changelog-iterator (.getChangeLogParameters liquibase) changelog nil nil)
+           (AbstractRollbackCommandStep/doRollback lb-db changelog-file nil changelog-iterator (.getChangeLogParameters liquibase) changelog nil nil)
            (let [remaining-query (-> (sql.helpers/select :id)
                                      (sql.helpers/from (keyword (changelog-table-name liquibase)))
                                      (sql.helpers/where [:in :id ids-to-drop]))
