@@ -155,6 +155,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
                 field={field}
                 fieldId={fieldId}
                 previewType={previewType}
+                table={table}
                 tableId={tableId}
                 onPreviewTypeChange={setPreviewType}
               />

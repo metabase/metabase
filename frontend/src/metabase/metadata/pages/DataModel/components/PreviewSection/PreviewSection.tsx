@@ -2,7 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
-import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  Field,
+  FieldId,
+  Table,
+  TableId,
+} from "metabase-types/api";
 
 import { FilteringPreview } from "./FilteringPreview";
 import { ObjectDetailPreview } from "./ObjectDetailPreview";
@@ -15,6 +21,7 @@ interface Props {
   field: Field;
   fieldId: FieldId;
   previewType: PreviewType;
+  table: Table;
   tableId: TableId;
   onPreviewTypeChange: (value: PreviewType) => void;
 }
@@ -24,6 +31,7 @@ export const PreviewSection = ({
   field,
   fieldId,
   previewType,
+  table,
   tableId,
   onPreviewTypeChange,
 }: Props) => {
@@ -63,9 +71,8 @@ export const PreviewSection = ({
       {previewType === "filtering" && (
         <FilteringPreview
           databaseId={databaseId}
-          field={field}
           fieldId={fieldId}
-          tableId={tableId}
+          table={table}
         />
       )}
     </Card>
