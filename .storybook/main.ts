@@ -1,4 +1,3 @@
-import path from "path";
 import type { StorybookConfig } from "@storybook/react-webpack5";
 const appConfig = require("../webpack.config");
 const webpack = require("webpack");
@@ -8,8 +7,6 @@ const mainAppStories = [
   "../frontend/**/*.mdx",
   "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
 ];
-
-const SRC_PATH = path.resolve(__dirname, "..") + "/frontend/src/metabase";
 
 const config: StorybookConfig = {
   stories: mainAppStories,
@@ -31,7 +28,7 @@ const config: StorybookConfig = {
     reactDocgen: "react-docgen-typescript",
   },
 
-  webpackFinal: (config) => {
+  webpackFinal: config => {
     return {
       ...config,
       resolve: {
@@ -39,7 +36,6 @@ const config: StorybookConfig = {
         alias: {
           ...config.resolve?.alias,
           ...appConfig.resolve.alias,
-          "sdk-ee-plugins": SRC_PATH + "/lib/noop",
         },
         extensions: appConfig.resolve.extensions,
       },
@@ -59,10 +55,10 @@ const config: StorybookConfig = {
         ...config.module,
         rules: [
           ...(config.module?.rules ?? []).filter(
-            (rule) => !isCSSRule(rule) && !isSvgRule(rule),
+            rule => !isCSSRule(rule) && !isSvgRule(rule),
           ),
           ...appConfig.module.rules.filter(
-            (rule) => isCSSRule(rule) || isSvgRule(rule),
+            rule => isCSSRule(rule) || isSvgRule(rule),
           ),
         ],
       },
@@ -71,5 +67,5 @@ const config: StorybookConfig = {
 };
 export default config;
 
-const isCSSRule = (rule) => rule.test?.toString() === "/\\.css$/";
-const isSvgRule = (rule) => rule.test?.test(".svg");
+const isCSSRule = rule => rule.test?.toString() === "/\\.css$/";
+const isSvgRule = rule => rule.test?.test(".svg");
