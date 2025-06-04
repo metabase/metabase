@@ -698,6 +698,13 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  useMetabotAgent: undefined as
+    | (() => {
+        visible: boolean;
+        setVisible: (visible: boolean) => void;
+        submitInput: (input: string) => void;
+      })
+    | undefined,
   adminNavItem: [] as AdminPath[],
   AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null as React.ReactElement | null,

@@ -1,14 +1,23 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { useDispatch } from "metabase/lib/redux";
-import { onOpenAIQuestionAnalysisSidebar } from "metabase/query_builder/actions";
+import { PLUGIN_METABOT } from "metabase/plugins";
 
 export const AIQuestionAnalysisButton = () => {
-  const dispatch = useDispatch();
+  // Try to use Metabot if available (enterprise), fallback to null (OSS)
+  const metabotAgent = PLUGIN_METABOT.useMetabotAgent?.();
 
   const handleClick = () => {
-    dispatch(onOpenAIQuestionAnalysisSidebar());
+    if (metabotAgent) {
+      // Enterprise: Open Metabot and send "Analyze this chart" message
+      metabotAgent.setVisible(true);
+      metabotAgent.submitInput("Analyze this chart");
+
+      // Focus the chat input after a brief delay (similar to command palette implementation)
+      setTimeout(() => {
+        document.getElementById("metabot-chat-input")?.focus();
+      }, 100);
+    }
   };
 
   const tooltipLabel = t`Explain this chart`;
