@@ -372,7 +372,8 @@
   drop-stage
   drop-empty-stages
   ensure-filter-stage
-  has-clauses?]
+  has-clauses?
+  wrap-adhoc-native-query]
  [lib.swap
   swap-clauses]
  [lib.temporal-bucket

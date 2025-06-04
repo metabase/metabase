@@ -2585,7 +2585,5 @@
 (defn ^:export wrap-adhoc-native-query
   "Wraps an unsaved native query in an MBQL query, given its result metadata."
   [a-query the-metadata]
-  (let [cached-metadata (into [] (map #(legacy-column->metadata a-query -1 %) the-metadata))]
-    (-> a-query
-        (lib.util/update-query-stage -1 assoc :metabase.lib.stage/cached-metadata cached-metadata)
-        lib.stage/append-stage)))
+  (let [cljs-metadata (into [] (map #(legacy-column->metadata a-query -1 %) the-metadata))]
+    (lib.stage/wrap-adhoc-native-query a-query cljs-metadata)))
