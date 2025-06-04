@@ -1083,10 +1083,10 @@
                       (exec-url %1)
                       {:parameters %2})
 
-                    [create-card
-                     update-card
-                     delete-card]
-                    dashcards]
+                    {create-card "table.row/create"
+                     update-card "table.row/update"
+                     delete-card "table.row/delete"}
+                    (u/index-by (comp :kind :action) dashcards)]
 
                 (testing "create"
                   (testing "prefill does not crash"
