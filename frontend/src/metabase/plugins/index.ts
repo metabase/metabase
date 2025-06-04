@@ -724,6 +724,7 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
 
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
+  setContentTranslationEndpoints: (_encodedToken: string) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: <
     T = string | null | undefined,
