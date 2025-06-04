@@ -4,19 +4,25 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement)))
+   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private cluster-lock-timeout-seconds 1)
 
-(defn- is-canceled-statement?
+(defn- retryable?
   [^Throwable e]
-  (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e))
+  ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
+  ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
+  ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
+  (or (instance? SQLIntegrityConstraintViolationException e)
+      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
+      (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
   {:max-attempts 5
@@ -24,7 +30,7 @@
    :randomization-factor 0.1
    :initial-interval-millis 1000
    :max-interval-millis 1000
-   :retry-on-exception-pred is-canceled-statement?})
+   :retry-on-exception-pred retryable?})
 
 (defn prepare-statement
   "Create a prepared statement to query cache"
@@ -51,6 +57,7 @@
         (t2/query-one {:insert-into [:metabase_cluster_lock]
                        :columns [:lock_name]
                        :values [[lock-name-str]]})))
+    (log/debug "Obtained cluster lock")
     (thunk)))
 
 (mu/defn do-with-cluster-lock
@@ -59,12 +66,12 @@
   Call `thunk` after first synchronizing with the metabase cluster by taking a lock in the appdb."
   [opts :- [:or :keyword
             [:map
-             [:lock-name                     :keyword]
-             [:timeout-seconds   {:optional true} :int]
-             [:retry-config      {:optional true} [:ref ::retry/retry-overrides]]]]
+             [:lock-name                        :keyword]
+             [:timeout-seconds {:optional true} :int]
+             [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]]
    thunk :- ifn?]
   (cond
-    (= (mdb.connection/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking
+    (= (mdb.connection/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking the lock
     (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
     :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
                 lock-name-str (str (namespace lock-name) "/" (name lock-name))
@@ -74,7 +81,7 @@
             (try
               (retrier do-with-cluster-lock**)
               (catch Throwable e
-                (if (is-canceled-statement? e)
+                (if (retryable? e)
                   (throw (ex-info "Failed to run statement with cluster lock"
                                   {:retries (:max-attempts config)}
                                   e))
