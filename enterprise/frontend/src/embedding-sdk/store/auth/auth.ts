@@ -9,7 +9,6 @@ import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
-import type { MetabaseAuthMethod } from "embedding-sdk/types";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -187,7 +186,7 @@ const sessionSchema = Yup.object({
 
 async function connectToInstanceAuthSso(
   url: string,
-  authMethod?: MetabaseAuthMethod,
+  authMethod?: MetabaseAuthConfig["authMethod"],
 ) {
   if (authMethod && authMethod !== "jwt" && authMethod !== "saml") {
     throw MetabaseError.INVALID_AUTH_METHOD({

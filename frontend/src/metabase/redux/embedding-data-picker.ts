@@ -2,11 +2,15 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import {
-  DEFAULT_EMBEDDING_ENTITY_TYPES,
-  type EmbeddingEntityType,
-} from "metabase/embedding-sdk/store";
-import type { EmbeddingDataPickerState } from "metabase-types/store/embedding-data-picker";
+import type {
+  EmbeddingDataPickerState,
+  EmbeddingEntityType,
+} from "metabase-types/store/embedding-data-picker";
+
+export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
+  "model",
+  "table",
+];
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
   entityTypes: DEFAULT_EMBEDDING_ENTITY_TYPES,
@@ -38,9 +42,10 @@ const embeddingDataPickerSlice = createSlice({
 function normalizeEntityTypes(
   entityTypes: EmbeddingEntityType[],
 ): EmbeddingEntityType[] {
-  const ALLOWED_ENTITY_TYPES: EmbeddingDataPickerState["entityTypes"] = [
+  const ALLOWED_ENTITY_TYPES: EmbeddingEntityType[] = [
     "model",
     "table",
+    "question",
   ];
 
   const filteredEntityTypes = entityTypes.filter((type) =>

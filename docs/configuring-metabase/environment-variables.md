@@ -71,6 +71,13 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
+### `MB_AI_PROXY_BASE_URL`
+
+- Type: string
+- Default: `http://localhost:8000`
+
+URL for the a AI Proxy service.
+
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
@@ -120,7 +127,7 @@ Middleware that enforces validation of the client via the request header X-Metab
         If the header is available, then it's validated against MB_API_KEY.
         When it matches, the request continues; otherwise it's blocked with a 403 Forbidden response.
         MB_API_KEY is used only for /notify endpoints and isn't the same as Metabase API keys
-        used for authenticating other API requests. MP_API_KEY can be an arbitrary string.
+        used for authenticating other API requests. MB_API_KEY can be an arbitrary string.
 
 ### `MB_APPLICATION_COLORS`
 
@@ -290,8 +297,8 @@ Identify when new versions of Metabase are available.
 - Type: boolean
 - Default: `true`
 
-Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true, but you can disable
-  this behavior if you want to sync it manually or use SerDes to populate its data model.
+Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true,
+  but you can disable this behavior if you want to sync it manually or use SerDes to populate its data model.
 
 ### `MB_CUSTOM_FORMATTING`
 
@@ -345,8 +352,8 @@ Consider metabase.driver/can-connect? / can-connect-with-details? to have failed
   successfully connect after this many milliseconds. By default, this is 10 seconds.
 
 Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
-        In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
-        as the connections via tunnels have more overhead than connections without.
+  In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the
+  connections via tunnels have more overhead than connections without.
 
 ### `MB_DB_QUERY_TIMEOUT_MINUTES`
 
@@ -671,7 +678,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `https://www.metabase.com/help-premium`
+- Default: `https://www.metabase.com/help/premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -694,9 +701,11 @@ Maximum size of the c3p0 connection pool.
 
 Change this to a higher value if you notice that regular usage consumes all or close to all connections.
 
-When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
+  When all connections are in use then Metabase will be slower to return results for queries, since it would have to
+  wait for an available connection before processing the next query in the queue.
 
-For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
+  For setting the maximum,
+  see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
 
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
@@ -1082,6 +1091,15 @@ Options for displaying the illustration when there are no results after searchin
 
 The custom illustration for when there are no results after searching.
 
+### `MB_NON_TABLE_CHART_GENERATED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `non-table-chart-generated`.
+- [Configuration file name](./config-file.md): `non-table-chart-generated`
+
+Whether a non-table chart has already been generated. Required for analytics to track instance activation journey.
+
 ### `MB_NOT_BEHIND_PROXY`
 
 - Type: boolean
@@ -1100,6 +1118,13 @@ By default "Site Url" is used in notification links, but can be overridden.
 
 The base URL where dashboard notitification links will point to instead of the Metabase base URL.
         Only applicable for users who utilize interactive embedding and subscriptions.
+
+### `MB_NOTIFICATION_SYSTEM_EVENT_THREAD_POOL_SIZE`
+
+- Type: integer
+- Default: `5`
+
+The size of the thread pool used to send system event notifications.
 
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
@@ -1408,12 +1433,27 @@ don't have one.
 
 Is SCIM currently enabled?
 
+### `MB_SDK_ENCRYPTION_VALIDATION_KEY`
+
+- Type: string
+- Default: `null`
+
+Used for encrypting and checking whether SDK requests are signed.
+
 ### `MB_SEARCH_ENGINE`
 
 - Type: keyword
 - Default: `:in-place`
 
 Which engine to use when performing search. Supported values are :in-place and :appdb.
+
+### `MB_SEARCH_LANGUAGE`
+
+- Type: string
+- Default: `null`
+
+When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
+  Value must be a valid configured langauge option in your database such as 'english' or 'simple'.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
@@ -1727,6 +1767,16 @@ Upload settings.
 - Default: `null`
 
 Prefix for upload table names.
+
+### `MB_USE_TENANTS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `use-tenants`
+
+Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.
 
 ### `MB_USER_VISIBILITY`
 

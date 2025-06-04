@@ -13,7 +13,7 @@ describe("useInitData - specifying authentication methods", () => {
   ] as const)(
     "can use %s as the preferred auth method",
     async (authMethod, setupMockEndpoints) => {
-      setupMockEndpoints({ isPreferredAuthMethod: true });
+      setupMockEndpoints();
       setup({ authMethod });
 
       expect(await screen.findByTestId("test-component")).toHaveAttribute(
