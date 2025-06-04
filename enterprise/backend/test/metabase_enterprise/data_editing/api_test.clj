@@ -1118,7 +1118,59 @@
                          (->> (table-rows @test-table)
                               (sort-by first)))))))))))))
 
-(deftest tmp-modal-test
+(deftest tmp-modal-saved-action-test
+  (let [req
+        #(mt/user-http-request-full-response
+          (:user % :crowberto)
+          :post
+          "ee/data-editing/tmp-modal"
+          (select-keys % [:action_id
+                          :scope
+                          :input]))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (testing "saved actions"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Table         table    {}
+                           :model/Card          model    {:type         :model
+                                                          :table_id     (:id table)}
+                           :model/Action        action   {:type         :query
+                                                          :name "Do cool thing"
+                                                          :model_id     (:id model)
+                                                          :parameters   [{:id "a"
+                                                                          :name "A"
+                                                                          :type "number/="}
+                                                                         {:id "b"
+                                                                          :name "B"
+                                                                          :type "date/single"}
+                                                                         {:id "c"
+                                                                          :name "C"
+                                                                          :type "string/="}
+                                                                         {:id "d"
+                                                                          :name "D"
+                                                                          :type "string/="}]}]
+              (let [{:keys [status, body]} (req {:scope {:model-id (:id model)
+                                                         :table-id (:id table)}
+                                                 :action_id (:id action)})]
+                (is (= 200 status))
+                (is (= "Do cool thing" (:title body)))
+                (is (= [{:id "a"
+                         :display_name "A"
+                         :type "type/Number"}
+                        {:id "b"
+                         :display_name "B"
+                         :type "type/Date"}
+                        {:id "c"
+                         :display_name "C"
+                         :type "type/Text"}
+                        {:id "d"
+                         :display_name "D"
+                         :type "type/Text"}]
+                       (->> (:parameters body)
+                            (map #(select-keys % [:id :display_name :type])))))))))))))
+
+(deftest tmp-modal-table-action-test
   (let [list-req
         #(mt/user-http-request-full-response
           (:user % :crowberto)
@@ -1141,45 +1193,6 @@
                                                                   :timestamp [:timestamp]
                                                                   :date      [:date]}
                                                                  {:primary-key [:id]})]
-          (testing "saved actions"
-            (mt/with-non-admin-groups-no-root-collection-perms
-              (mt/with-temp [:model/Table         table    {}
-                             :model/Card          model    {:type         :model
-                                                            :table_id     (:id table)}
-                             :model/Action        action   {:type         :query
-                                                            :name "Do cool thing"
-                                                            :model_id     (:id model)
-                                                            :parameters   [{:id "a"
-                                                                            :name "A"
-                                                                            :type "number/="}
-                                                                           {:id "b"
-                                                                            :name "B"
-                                                                            :type "date/single"}
-                                                                           {:id "c"
-                                                                            :name "C"
-                                                                            :type "string/="}
-                                                                           {:id "d"
-                                                                            :name "D"
-                                                                            :type "string/="}]}]
-                (let [{:keys [status, body]} (req {:scope {:model-id (:id model)
-                                                           :table-id (:id table)}
-                                                   :action_id (:id action)})]
-                  (is (= 200 status))
-                  (is (= "Do cool thing" (:title body)))
-                  (is (= [{:id "a"
-                           :display_name "A"
-                           :type "type/Number"}
-                          {:id "b"
-                           :display_name "B"
-                           :type "type/Date"}
-                          {:id "c"
-                           :display_name "C"
-                           :type "type/Text"}
-                          {:id "d"
-                           :display_name "D"
-                           :type "type/Text"}]
-                         (->> (:parameters body)
-                              (map #(select-keys % [:id :display_name :type])))))))))
 
           (testing "table actions"
             (let [{list-body :body} (list-req {})
@@ -1242,10 +1255,30 @@
                               (map #(select-keys % [:id :display_name :type])))))))))
 
           (mt/with-temp
-            [:model/Dashboard dashboard {}
-             :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
-                                            :visualization_settings {:table_id @test-table}}]
-            (testing "table actions (old picker shim)"
+            [:model/Dashboard dashboard
+             {}
+             :model/DashboardCard dashcard
+             {:dashboard_id (:id dashboard)
+              :visualization_settings
+              {:table_id @test-table
+               :editableTable.enabledActions
+               [{:id "table.row/create"
+                 :parameterMappings [{:parameterId "int"
+                                      :sourceType  "const"
+                                      :value       42}
+                                     {:parameterId "text"
+                                      :sourceType  "row-data"
+                                      :sourceValueTarget "text"
+                                      :visibility  "readonly"}
+                                     {:parameterId "timestamp"
+                                      :visibility  "hidden"}]}]}}]
+
+            ;; insert a row for the row action
+            (mt/user-http-request :crowberto :post 200
+                                  (data-editing.tu/table-url @test-table)
+                                  {:rows [{:text "a very important string"}]})
+
+            (testing "table actions on a dashcard"
               (let [create-id "table.row/create"
                     update-id "table.row/update"
                     delete-id "table.row/delete"]
@@ -1253,9 +1286,20 @@
                                              ["dashcard scope" {:dashcard-id (:id dashcard)}]]]
                   (testing testing-msg
                     (testing "create"
-                      (let [{:keys [status]} (req {:scope scope
-                                                   :action_id create-id})]
-                        (is (= 200 status))))
+                      (let [{:keys [status
+                                    body]} (req {:scope     scope
+                                                 :action_id create-id
+                                                 :input     {:id 1}})]
+                        (is (= 200 status))
+                        (when (:dashcard-id scope)
+                          (is (= [{:id "text" :readonly true  :value "a very important string"}
+                                  {:id "int"  :readonly false}
+                                 ;; note that timestamp is now hidden
+                                  {:id "date" :readonly false}]
+                                 (map #(select-keys % [:id
+                                                       :readonly
+                                                       :value])
+                                      (:parameters body)))))))
 
                     (testing "update"
                       (let [{:keys [status]} (req {:scope scope
@@ -1266,6 +1310,8 @@
                       (let [{:keys [status]} (req {:scope scope
                                                    :action_id delete-id})]
                         (is (= 200 status))))))))))))))
+
+(deftest tmp-modal-test)
 
 ;; Taken from metabase-enterprise.data-editing.api-test.
 ;; When we deprecate that API, we should move all the sibling tests here as well.
