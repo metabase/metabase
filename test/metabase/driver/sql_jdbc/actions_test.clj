@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]
+   [metabase.actions.core :as actions.core]
    [metabase.actions.error :as actions.error]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
@@ -255,7 +256,6 @@
          (is (= {:message "Other tables rely on this row so it cannot be deleted."
                  :errors {}
                  :type        actions.error/violate-foreign-key-constraint
-                 :children   {(mt/id :user) 2}
                  :status-code 400}
                 (perform-action-ex-data :model.row/delete (mt/$ids {:database db-id
                                                                     :query    {:filter [:= $group.id 1]
@@ -304,3 +304,75 @@
                        {:database db-id
                         :table-id (mt/id :user)
                         :arg      {(field-id->name (mt/id :user :id)) created-user-id}}))))))))))
+
+(deftest delete-row-with-children-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/dataset action-error-handling
+      (mt/with-actions-enabled
+        (let [GROUP-ID       (field-id->name (mt/id :group :id))
+              GROUP-NAME     (field-id->name (mt/id :group :name))
+              GROUP-RANK     (field-id->name (mt/id :group :ranking))
+              new-group      (fn []
+                               (-> (actions/perform-action-with-single-input-and-output
+                                    :table.row/create
+                                    {:database (mt/id)
+                                     :table-id (mt/id :group)
+                                     :arg      {GROUP-NAME "New Group"
+                                                GROUP-RANK 46}})
+                                   :row
+                                   (get GROUP-ID)))
+
+              new-user       (fn [group-id]
+                               (actions/perform-action-with-single-input-and-output
+                                :table.row/create
+                                {:database (mt/id)
+                                 :table-id (mt/id :user)
+                                 :arg      {(field-id->name (mt/id :user :name))    "New User"
+                                            (field-id->name (mt/id :user :group-id)) group-id}}))
+              users-of-group (fn [group-id]
+                               (-> (mt/run-mbql-query user {:aggregation [:count]
+                                                            :filter      [:= $user.group-id group-id]})
+                                   mt/rows
+                                   first
+                                   first))]
+
+          (testing "group with user requires delete-children"
+            (let [created-group-id (new-group)]
+              ;; create 2 users
+              (new-user created-group-id)
+              (new-user created-group-id)
+
+              (testing "sanity check that we have the users"
+                (is (= 2 (users-of-group created-group-id))))
+
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Rows have children"
+                   (actions/perform-action-with-single-input-and-output
+                    :table.row/delete
+                    {:database (mt/id)
+                     :table-id (mt/id :group)
+                     :arg      {GROUP-ID created-group-id}})))
+
+              (testing "success if delete-children is enabled"
+                (binding [actions.core/*params* {:delete-children true}]
+                  (is (=? {:op :deleted
+                           :row {GROUP-ID created-group-id}}
+                          (actions/perform-action-with-single-input-and-output
+                           :table.row/delete
+                           {:database (mt/id)
+                            :table-id (mt/id :group)
+                            :arg      {GROUP-ID created-group-id}})))
+
+                  (testing "users are also dedeted"
+                    (is (zero? (users-of-group created-group-id))))))))
+
+          (testing "group without user can be deleted without delete-children option"
+            (let [created-group-id (new-group)]
+              (is (=? {:op  :deleted
+                       :row {GROUP-ID created-group-id}}
+                      (actions/perform-action-with-single-input-and-output
+                       :table.row/delete
+                       {:database (mt/id)
+                        :table-id (mt/id :group)
+                        :arg      {GROUP-ID created-group-id}}))))))))))

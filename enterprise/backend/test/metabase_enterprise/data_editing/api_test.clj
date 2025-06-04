@@ -200,16 +200,7 @@
                     2 98}
                    (children-count))))
           (testing "delete without delete-children param will return errors with children count"
-            (is (=? {:errors [{:index     0
-                               :type      "metabase.actions.error/violate-foreign-key-constraint"
-                               :message  "Other tables rely on this row so it cannot be deleted."
-                               :errors   {}
-                               :children {(mt/id :orders) 93}}
-                              {:index    1
-                               :type     "metabase.actions.error/violate-foreign-key-constraint"
-                               :message  "Other tables rely on this row so it cannot be deleted."
-                               :errors   {}
-                               :children {(mt/id :orders) 98}}]}
+            (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :orders) 191}}}
                     (mt/user-http-request :crowberto :post 400 execute-v2-url
                                           body))))
 
@@ -888,31 +879,32 @@
                                                             :card_id        (:id model)
                                                             :visualization_settings
                                                             {:editableTable.enabledActions
-                                                             [{:actual_id #_:id "dashcard:unknown:abcdef"
-                                                               :id #_:action_id (:id action)
-                                                               :type            "row-action"
-                                                               :enabled         true}
-                                                              {:actual_id #_:id   "dashcard:unknown:fedcba"
-                                                               :id #_:action_id   "table.row/update"
-                                                               :type              "row-action"
+                                                             [{:id         "dashcard:unknown:abcdef"
+                                                               :actionId   (:id action)
+                                                               :actionType "data-grid/row-action"
+                                                               :enabled    true}
+                                                              {:id                "dashcard:unknown:fedcba"
+                                                               :actionId          "table.row/update"
+                                                               :actionType        "data-grid/row-action"
                                                                :parameterMappings {:table-id @test-table
                                                                                    :row      "::root"}
                                                                :enabled           true}
-                                                              {:actual_id #_:id "dashcard:unknown:xyzabc"
-                                                               :id #_:action_id (#'actions/encoded-action-id :table.row/update @test-table)
-                                                               :type            "row-action"
-                                                               :enabled         true}]}}]
+                                                              {:id         "dashcard:unknown:xyzabc"
+                                                               :actionId   (#'actions/encoded-action-id :table.row/update @test-table)
+                                                               :actionType "data-grid/row-action"
+                                                               :enabled    true}]}}]
                 (testing "no access to the model"
                   (is (= 403 (:status (req {:user      :rasta
                                             :action_id (:id action)
                                             :scope     {:dashcard-id (:id dashcard)}
-                                            :input     {:id 1 :status "approved"}})))))
+                                            :input     {:id 1}
+                                            :params    {:status "approved"}})))))
                 (testing "non-row action modifying a row"
                   (testing "underlying row does not exist, action not executed"
                     (is (= 400 (:status (req {:action_id (:id action)
                                               :scope     {:dashcard-id (:id dashcard)}
-                                              :input     {:id     1
-                                                          :status "approved"}})))))
+                                              :input     {:id 1}
+                                              :params    {:status "approved"}})))))
                   (testing "underlying row exists, action executed"
                     (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                           {:rows [{:name "Widgets", :status "waiting"}]})
@@ -920,16 +912,16 @@
                             :body   {:outputs [{:rows-updated 1}]}}
                            (-> (req {:action_id (:id action)
                                      :scope     {:dashcard-id (:id dashcard)}
-                                     :input     {:id     1
-                                                 :status "approved"}})
+                                     :input     {:id 1}
+                                     :params    {:status "approved"}})
                                (select-keys [:status :body]))))))
                 (testing "dashcard row action modifying a row - implicit action"
                   (let [action-id "dashcard:unknown:abcdef"]
                     (testing "underlying row does not exist, action not executed"
                       (is (= 404 (:status (req {:action_id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id     2
-                                                            :status "approved"}})))))
+                                                :input     {:id 2}
+                                                :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
                       (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                             {:rows [{:name "Sprockets", :status "waiting"}]})
@@ -937,16 +929,16 @@
                               :body   {:outputs [{:rows-updated 1}]}}
                              (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id     2
-                                                   :status "approved"}})
+                                       :input     {:id 2}
+                                       :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))
                 (testing "dashcard row action modifying a row - primitive action"
                   (let [action-id "dashcard:unknown:fedcba"]
                     (testing "underlying row does not exist, action not executed"
                       (is (= 404 (:status (req {:action_id action-id
                                                 :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id     3
-                                                            :status "approved"}})))))
+                                                :input     {:id 3}
+                                                :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
                       (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
                                             {:rows [{:name "Braai tongs", :status "waiting"}]})
@@ -956,8 +948,8 @@
                                                   :row      {:id 3, :name "Braai tongs", :status "approved"}}]}}
                              (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id     3
-                                                   :status "approved"}})
+                                       :input     {:id 3}
+                                       :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))
                 (testing "dashcard row action modifying a row - encoded action"
                   (let [action-id "dashcard:unknown:xyzabc"]
@@ -975,8 +967,8 @@
                                                   :row      {:id 4, :name "Salad spinners", :status "approved"}}]}}
                              (-> (req {:action_id action-id
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id     4
-                                                   :status "approved"}})
+                                       :input     {:id 4}
+                                       :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))))))))))
 
 (deftest list-and-add-to-dashcard-test
@@ -1205,7 +1197,33 @@
                            :display_name "ID"
                            :type "type/BigInteger"}]
                          (->> (:parameters body)
-                              (map #(select-keys % [:id :display_name :type]))))))))))))))
+                              (map #(select-keys % [:id :display_name :type])))))))))
+
+          (mt/with-temp
+            [:model/Dashboard dashboard {}
+             :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
+                                            :visualization_settings {:table_id @test-table}}]
+            (testing "table actions (old picker shim)"
+              (let [create-id "table.row/create"
+                    update-id "table.row/update"
+                    delete-id "table.row/delete"]
+                (doseq [[testing-msg scope] [["table scope" {:table-id @test-table}]
+                                             ["dashcard scope" {:dashcard-id (:id dashcard)}]]]
+                  (testing testing-msg
+                    (testing "create"
+                      (let [{:keys [status]} (req {:scope scope
+                                                   :action_id create-id})]
+                        (is (= 200 status))))
+
+                    (testing "update"
+                      (let [{:keys [status]} (req {:scope scope
+                                                   :action_id update-id})]
+                        (is (= 200 status))))
+
+                    (testing "delete"
+                      (let [{:keys [status]} (req {:scope scope
+                                                   :action_id delete-id})]
+                        (is (= 200 status))))))))))))))
 
 ;; Taken from metabase-enterprise.data-editing.api-test.
 ;; When we deprecate that API, we should move all the sibling tests here as well.

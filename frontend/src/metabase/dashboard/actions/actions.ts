@@ -53,13 +53,13 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
-  const executeAction =
+  const executeDashcardAction =
     getDashboardType(dashboard.id) === "public"
       ? PublicApi.executeDashcardAction
       : ActionsApi.executeDashcardAction;
 
   try {
-    const result = await executeAction({
+    const result = await executeDashcardAction({
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
       modelId: dashcard.card_id,
