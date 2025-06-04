@@ -10,8 +10,8 @@ jobs:
     - uses: actions/github-script@v7
       with:
         script: | # js
-          console.log("event", '${{ github.event }}');
-          console.log("pull_request", '${{ github.event.pull_request }}');
+          console.log("event", '${{ toJson(github.event) }}');
+          console.log("pull_request", '${{ toJson(github.event.pull_request) }}');
 
   create-backport:
     if: | # the PR must be closed and have a backport label
