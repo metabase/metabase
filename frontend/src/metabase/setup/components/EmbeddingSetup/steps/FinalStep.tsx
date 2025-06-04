@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import { CodeSnippet } from "metabase/components/CodeSnippet";
 import {
   Box,
@@ -19,10 +20,11 @@ import type { Dashboard } from "metabase-types/api";
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
 export const FinalStep = () => {
+  const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
   const { createdDashboardIds } = useEmbeddingSetup();
 
   const { loading, value: dashboards } = useAsync(async () => {
-    const dashboardPromises = createdDashboardIds.map((id) =>
+    const dashboardPromises = [1, 2, 3].map((id) =>
       fetch(`/api/dashboard/${id}`).then((res) => res.json()),
     );
     return Promise.all(dashboardPromises);
@@ -40,7 +42,7 @@ export const FinalStep = () => {
     );
   }
 
-  if (!dashboards) {
+  if (!dashboards || dashboards.length === 0) {
     return (
       <Center h="500px">
         <Text>{t`No dashboards found`}</Text>
@@ -57,8 +59,8 @@ export const FinalStep = () => {
             {t`Copy the code into your application. You can also pick this up later.`}
           </Text>
         </Stack>
-        {/* TODO() DOCS URL */}
-        <a href={""} target="_blank" rel="noreferrer">
+
+        <a href={docsUrl} target="_blank" rel="noreferrer">
           <Text c="brand">{t`Documentation`}</Text>
         </a>
       </Group>
@@ -86,19 +88,15 @@ export const FinalStep = () => {
         ))}
       </Tabs>
 
-      <Title order={2}>{t`How'd it go?`}</Title>
-      <Button component={Link} to="/" size="lg" variant="filled" w="100%">
-        {t`I see my dashboard in my app`}
-      </Button>
-      <Button
-        component={Link}
-        to="https://metabase.com/docs/latest/embedding/embedding-guide"
-        size="lg"
-        variant="outline"
-        w="100%"
-      >
-        {t`I'm hitting issues`}
-      </Button>
+      <Group justify="space-between" mt="xl">
+        <Button component={Link} to="/" variant="subtle">
+          {t`I'll do this later`}
+        </Button>
+
+        <Button component={Link} to="/setup/embedding/done" variant="filled">
+          {t`I see Metabase`}
+        </Button>
+      </Group>
     </Stack>
   );
 };
