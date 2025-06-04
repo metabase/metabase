@@ -247,6 +247,11 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
+(def #^:private valid-temporal-units
+  #{"minute" "hour" "day" "week" "month" "quarter" "year"
+    "minute-of-hour" "hour-of-day" "day-of-month" "day-of-year" "month-of-year" "quarter-of-year"
+    nil})
+
 (defmethod parse-tag :temporal-unit
   [{:keys [name required] :as tag} params]
   (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
@@ -258,6 +263,10 @@
                          (first matching-params))
         nil-value?     (and matching-param
                             (nil? (:value matching-param)))]
+    (when (not (valid-temporal-units (:value matching-param)))
+      (throw (ex-info (tru "Error: invalid value specified for temporal-unit parameter.")
+                      {:value (:value matching-param)
+                       :expected valid-temporal-units})))
     (params/map->TemporalUnit
      {:name name
       :value (or (:value matching-param)

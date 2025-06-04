@@ -55,7 +55,7 @@
   (if (and (params/TemporalUnit? v) (string? k) (string? column))
     (let [{:keys [replacement-snippet prepared-statement-args]}
           (sql.params.substitution/time-grouping->replacement-snippet-info driver/*driver* column v)]
-      [(str sql replacement-snippet) (concat args prepared-statement-args args) missing])
+      [(str sql replacement-snippet) (concat args prepared-statement-args) missing])
     [sql args (conj missing k)]))
 
 (defn- substitute-function-param [param->value [sql args missing] {[k] :args :keys [function-name] :as param}]
