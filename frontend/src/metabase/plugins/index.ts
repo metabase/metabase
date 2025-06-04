@@ -34,7 +34,6 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
@@ -84,6 +83,7 @@ import type {
   Dispatch,
   State,
 } from "metabase-types/store";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
