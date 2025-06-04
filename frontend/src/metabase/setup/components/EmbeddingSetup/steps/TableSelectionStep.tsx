@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { databaseApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import {
   Box,
@@ -17,71 +18,56 @@ import type { Table } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
-const MAX_RETRIES = 10;
-const RETRY_DELAY = 30000; // 30 seconds
+const MAX_RETRIES = 30;
+const RETRY_DELAY = 1000;
 
 export const TableSelectionStep = () => {
   const [tables, setTables] = useState<Table[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const dispatch = useDispatch();
   const { database, selectedTables, setSelectedTables, setProcessingStatus } =
     useEmbeddingSetup();
 
+  const getDatabaseTables = useCallback(async () => {
+    const data = await dispatch(
+      databaseApi.endpoints.getDatabaseMetadata.initiate(
+        {
+          id: database!.id!,
+        },
+        {
+          forceRefetch: true,
+        },
+      ),
+    ).unwrap();
+    if (!data || !data.tables || data.tables.length === 0) {
+      throw new Error("No tables found");
+    }
+    return data.tables as Table[];
+  }, [database, dispatch]);
+
   const fetchTables = useCallback(async () => {
-    if (!database?.id) {
-      setError("No database selected");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/database/${database.id}/metadata`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch tables");
-      }
-      const data = await response.json();
-
-      // Check if we have tables in the response
-      const tables = data.tables || [];
-      if (tables.length === 0) {
-        if (retryCount < MAX_RETRIES) {
-          setRetryCount((prev) => prev + 1);
-          return;
-        } else {
-          throw new Error("No tables found after multiple attempts");
-        }
-      }
-
-      setTables(tables);
-      setLoading(false);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-      setLoading(false);
-    }
-  }, [database?.id, retryCount]);
+    setLoading(true);
+    const tables = await retry({
+      fn: getDatabaseTables,
+      maxTries: MAX_RETRIES,
+      retryDelay: RETRY_DELAY,
+      onRetry: ({ retryCount }) => {
+        setRetryCount(retryCount);
+      },
+      onMaxTries: () => {
+        setError(t`Failed to fetch tables after ${MAX_RETRIES} attempts`);
+      },
+    });
+    setLoading(false);
+    setTables(tables || []);
+  }, [getDatabaseTables]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    const startFetching = async () => {
-      await fetchTables();
-      if (loading && retryCount < MAX_RETRIES) {
-        timeoutId = setTimeout(startFetching, RETRY_DELAY);
-      }
-    };
-
-    startFetching();
-
-    // Cleanup timeout on unmount or when dependencies change
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [database?.id, retryCount, fetchTables, loading]);
+    // initial loading
+    fetchTables();
+  }, [fetchTables]);
 
   const handleManualRefresh = () => {
     setRetryCount(0);
@@ -108,7 +94,7 @@ export const TableSelectionStep = () => {
         <Stack gap="md" mt="md">
           <Text>
             {retryCount > 0
-              ? t`Waiting for tables to be available... (Attempt ${retryCount} of ${MAX_RETRIES})`
+              ? t`Waiting for tables to be available... (Attempt ${retryCount + 1} of ${MAX_RETRIES})`
               : t`Loading tables...`}
           </Text>
           {retryCount > 0 && (
@@ -116,9 +102,6 @@ export const TableSelectionStep = () => {
               {t`This may take a few minutes as we wait for the database to sync.`}
             </Text>
           )}
-          <Button variant="outline" onClick={handleManualRefresh} mt="md">
-            {t`Refresh Now`}
-          </Button>
         </Stack>
       </Box>
     );
@@ -177,4 +160,38 @@ export const TableSelectionStep = () => {
       </Group>
     </Box>
   );
+};
+
+// Simple helper to retry if `fn` throws
+// We can't easily use RTK built in helpers because we need to retry when we don't find the tables
+const retry = async <T,>({
+  fn,
+  maxTries,
+  retryDelay,
+  onRetry,
+  onMaxTries,
+}: {
+  fn: () => Promise<T>;
+  maxTries: number;
+  retryDelay: number;
+  onRetry: ({
+    error,
+    retryCount,
+    maxTries,
+  }: {
+    error: any;
+    retryCount: number;
+    maxTries: number;
+  }) => void;
+  onMaxTries: () => void;
+}) => {
+  for (let i = 0; i < maxTries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      onRetry?.({ error, retryCount: i, maxTries });
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    }
+  }
+  onMaxTries?.();
 };
