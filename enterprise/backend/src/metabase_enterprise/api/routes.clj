@@ -79,7 +79,7 @@
    "/content-translation"        (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
-   "/embed/content-translation"  (premium-handler metabase-enterprise.embed.content-translation.api/routes :content-translation)
+   "/embedded-content-translation"  (premium-handler metabase-enterprise.embed.content-translation.api/routes :content-translation)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
