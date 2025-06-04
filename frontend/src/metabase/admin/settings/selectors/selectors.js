@@ -16,13 +16,13 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { CloudPanel } from "../components/CloudPanel";
 import {
   EmbeddingSdkSettings,
-  EmbeddingSettings,
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import { SettingsLdapForm } from "../components/SettingsLdapForm";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
+import { EmbeddingSettingsPage } from "../components/SettingsPages/EmbeddingSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "../components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
@@ -201,7 +201,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
-    component: EmbeddingSettings,
+    component: EmbeddingSettingsPage,
     settings: [],
   },
   "embedding-in-other-applications/standalone": {

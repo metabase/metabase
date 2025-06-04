@@ -57,6 +57,7 @@ export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   title?: string;
   description?: React.ReactNode;
   hidden?: boolean;
+  disabled?: boolean;
   switchLabel?: React.ReactNode;
 } & InputDetails &
   BoxProps;
@@ -75,6 +76,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   placeholder,
   switchLabel,
   options,
+  disabled,
   searchable,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
@@ -116,6 +118,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
           inputType={inputType}
           switchLabel={switchLabel}
           searchable={searchable}
+          disabled={disabled}
         />
       )}
     </Box>

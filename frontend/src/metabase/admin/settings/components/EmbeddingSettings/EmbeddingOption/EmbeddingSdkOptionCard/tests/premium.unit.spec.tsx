@@ -10,8 +10,8 @@ const setup = (opts: Omit<SetupOpts, "hasEnterprisePlugins"> = {}) =>
   });
 
 describe("EnterpriseSdkOptionCard (EE with token)", () => {
-  it("should show 'Configure' button", () => {
-    setup();
+  it("should show 'Configure' button", async () => {
+    await setup();
 
     expect(screen.getByText("Configure")).toBeInTheDocument();
   });
