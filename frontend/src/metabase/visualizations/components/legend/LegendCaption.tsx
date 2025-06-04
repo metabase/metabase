@@ -88,8 +88,8 @@ export const LegendCaption = ({
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
       )}
-      href={href}
-      onClick={onSelectTitle}
+      href={hasTitleMenuItems ? undefined : href}
+      onClick={hasTitleMenuItems ? undefined : onSelectTitle}
       onFocus={handleFocus}
       onMouseEnter={handleMouseEnter}
     >
