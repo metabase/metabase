@@ -73,7 +73,6 @@ export function PieChart(props: VisualizationProps) {
     () => getPieChartFormatters(chartModel, settings),
     [chartModel, settings],
   );
-
   const option = useMemo(
     () => ({
       ...getPieChartOption(
