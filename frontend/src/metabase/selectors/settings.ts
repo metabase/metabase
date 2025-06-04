@@ -45,7 +45,7 @@ export const getLearnUrl = (path = "") => {
   return `https://www.metabase.com/learn/${path}`;
 };
 
-export const getCrowdinUrl = () => "https://crowdin.com/project/metabase-i18n";
+export const CROWDIN_URL = "https://crowdin.com/project/metabase-i18n";
 
 export type UtmProps = {
   utm_source?: string;

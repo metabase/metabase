@@ -2,9 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import Button from "metabase/core/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { CommunityLocalizationNotice } from "metabase/localization";
 import { Stack } from "metabase/ui";
 import type { Locale } from "metabase-types/store";
 

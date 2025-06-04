@@ -2,7 +2,7 @@ import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
-import { getCrowdinUrl } from "metabase/selectors/settings";
+import { CROWDIN_URL } from "metabase/selectors/settings";
 import {
   getIsWhiteLabeling,
   getShowMetabaseLinks,
@@ -30,7 +30,7 @@ export function CommunityLocalizationNotice({
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
   const translatedLink = (
     <ExternalLink
-      href={getCrowdinUrl()}
+      href={CROWDIN_URL}
       key="crowdin-link"
     >{t`contribute to translations here`}</ExternalLink>
   );
