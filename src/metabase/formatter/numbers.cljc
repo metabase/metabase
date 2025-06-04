@@ -1,8 +1,8 @@
-(ns metabase.util.formatting.numbers
+(ns metabase.formatter.numbers
   (:require
-   [metabase.util :as u]
-   [metabase.util.formatting.internal.numbers :as internal]
-   [metabase.util.formatting.internal.numbers-core :as core]))
+   [metabase.formatter.internal.numbers :as internal]
+   [metabase.formatter.internal.numbers-core :as core]
+   [metabase.util :as u]))
 
 (declare format-number)
 

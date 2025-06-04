@@ -1,6 +1,7 @@
 (ns metabase.lib.fe-util
   (:require
    [inflections.core :as inflections]
+   [metabase.formatter.core :as formatter]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
@@ -26,7 +27,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
-   [metabase.util.formatting.date :as fmt.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
@@ -83,8 +83,8 @@
   (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
         interval (u.time/to-range (u.time/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
         formatter (if (contains? expandable-time-units temporal-unit)
-                    fmt.date/datetime->iso-string
-                    fmt.date/date->iso-string)]
+                    formatter/datetime->iso-string
+                    formatter/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
 (defn- column-metadata-from-ref

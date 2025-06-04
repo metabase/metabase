@@ -1,4 +1,4 @@
-(ns metabase.util.formatting.constants)
+(ns metabase.formatter.constants)
 
 (defn abbreviated?
   "Months and weekdays should be abbreviated for `compact` output."
@@ -15,7 +15,7 @@
 
 (def known-date-styles
   "A map of string patterns for dates, to functions from options to the data structures consumed by
-  [[metabase.util.formatting.internal.date-builder]].
+  [[metabase.formatter.internal.date-builder]].
 
   Prefer passing the data structure directly, or use `:date_style`."
   {"M/D/YYYY"           [:month-d "/" :day-of-month-d "/" :year]
@@ -27,7 +27,7 @@
 
 (def known-time-styles
   "A table of string patterns for dates to the data structures consumed by
-  [[metabase.util.formatting.internal.date-builder]].
+  [[metabase.formatter.internal.date-builder]].
 
   Don't rely on these - prefer passing the data structure directly, or use `:date_style`."
   {"h:mm A" [:hour-12-d  ":" :minute-dd " " :am-pm]
@@ -36,7 +36,7 @@
 
 (def known-datetime-styles
   "A table of string patterns for datetimes to the data structures consumed by
-  [[metabase.util.formatting.internal.date-builder]].
+  [[metabase.formatter.date-builder]].
 
   Don't rely on these - prefer passing the data structure directly, or use `:date_style`."
   {"M/D/YYYY, h:mm A" {:date-format (get known-date-styles "M/D/YYYY")

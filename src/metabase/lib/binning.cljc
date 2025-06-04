@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.formatter.core :as formatter]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -12,7 +13,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.formatting.numbers :as fmt.num]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -126,7 +126,7 @@
                           (and (map? x) (= :metadata/column (:lib/type x))) :semantic-type)]
       (case strategy
         :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
-        :bin-width (str (fmt.num/format-number bin-width {})
+        :bin-width (str (formatter/format-number bin-width {})
                         (when (isa? semantic-type :type/Coordinate)
                           "°"))
         :default   (i18n/tru "Auto binned")))))

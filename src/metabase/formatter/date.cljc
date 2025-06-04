@@ -1,7 +1,7 @@
-(ns metabase.util.formatting.date
+(ns metabase.formatter.date
   "Formatting for dates, times, and ranges."
   (:require
-   [metabase.util.formatting.internal.date-formatters :as formatters]
+   [metabase.formatter.internal.date-formatters :as formatters]
    [metabase.util.time :as u.time]))
 
 (defn date->iso-string
