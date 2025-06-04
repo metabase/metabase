@@ -102,11 +102,11 @@
         (let [csv-content (valid-csv-content)
               temp-file (create-temp-csv-file csv-content)]
           (try
-            (is (=? {:message "You don't have permissions to do that."}
+            (is (=? "You don't have permissions to do that."
                     (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
                                           {:request-options {:content-type "multipart/form-data"}}
-                                          {"file" {:filename "upload.csv"
-                                                   :tempfile temp-file}})))
+                                          {:file {:filename "upload.csv"
+                                                  :tempfile temp-file}})))
             (finally
               (.delete temp-file))))))
     (testing "admin can upload valid file"
