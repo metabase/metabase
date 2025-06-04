@@ -66,7 +66,7 @@
         (mt/user-http-request :rasta :get 403 "ee/content-translation/csv" {})))
     (testing "returns csv for crowberto"
       (ct-utils/with-clean-translations!
-        (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
+        (mt/with-temp [:model/ContentTranslation _ {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
           (mt/with-premium-features #{:content-translation}
             (let [body (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})]
               (log/info (str "body" body))
@@ -106,9 +106,7 @@
           (mt/with-premium-features #{:content-translation}
             (client/client :get 400 (embedded-dictionary-url))))
         (testing "provides translations"
-          (mt/with-temp [:model/ContentTranslation]
-            {_ :id}
-            {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}
+          (mt/with-temp [:model/ContentTranslation _ {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
             (mt/with-premium-features #{:content-translation}
               (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=sv"))]
                 (is (map? response))
