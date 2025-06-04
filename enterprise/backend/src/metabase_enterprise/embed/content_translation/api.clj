@@ -6,7 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
    [metabase.embedding.jwt :as embedding.jwt]
-   [metabase.util.i18n :refer [tru deferred-tru]]))
+   [metabase.util.i18n :refer [tru deferred-tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,6 +19,7 @@
   [{:keys [token]} :- [:map
                        [:token string?]]
    {:keys [locale]}]
+  (log/info "hit embed ct endpoint")
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale
