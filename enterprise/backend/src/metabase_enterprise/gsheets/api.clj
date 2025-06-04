@@ -281,13 +281,13 @@
           (= "active" status)
           (assoc (setting->response saved-setting)
                  :status "active"
-                 :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
-                 :next_sync_at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15))))
+                 :last_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)))
+                 :next_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15)))))
 
           (or (= "syncing" status) (= "initializing" status))
           (assoc (setting->response saved-setting)
                  :status "syncing"
-                 :last_sync_at (if (nil? last-sync-at) nil (.getEpochSecond ^Instant (t/instant last-sync-at)))
+                 :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
                  :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
           ;; other statuses are listed as "errors" to the frontend
@@ -297,7 +297,7 @@
                           :error_message (or status-reason
                                              (when (= error "not-found") "Unable to sync Google Drive: file does not exist or permissions are not set up correctly.")
                                              cannot-check-message)
-                          :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                          :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
                           :hm/response (loggable-response hm-response))
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
             (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))
