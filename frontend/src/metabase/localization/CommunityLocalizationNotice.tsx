@@ -12,11 +12,13 @@ export function getLocalizationNoticeText(applicationName: string) {
   return t`Some translations are created by the ${applicationName} community, and might not be perfect.`;
 }
 
+export interface CommunityLocalizationNoticeProps {
+  isAdminView: boolean;
+}
+
 export function CommunityLocalizationNotice({
   isAdminView = false,
-}: {
-  isAdminView: boolean;
-}) {
+}: CommunityLocalizationNoticeProps) {
   const applicationName = useSelector(getApplicationName);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const translatedLink = (
