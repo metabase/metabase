@@ -88,13 +88,27 @@ function getFieldRefPivotOptions(
 
 export function getPivotOptions(question: Question) {
   const query = question.query();
+  const isNative = Lib.queryDisplayInfo(question.query()).isNative;
   const stageIndex = -1;
   const setting: PivotTableColumnSplitSetting =
     question.setting("pivot_table.column_split") ?? {};
+  const nativeSetting: PivotTableColumnSplitSetting =
+    question.setting("pivot_table.native_column_split") ?? {};
 
   // Extract totals settings
   const showRowTotals = question.setting("pivot.show_row_totals") ?? true;
   const showColumnTotals = question.setting("pivot.show_column_totals") ?? true;
+
+  if (isNative) {
+    // TODO: make this more robust by filtering out invalid breakouts/columns in case the query changed
+    return {
+      native_pivot_cols: nativeSetting.rows ?? [],
+      native_pivot_rows: nativeSetting.columns ?? [],
+      native_pivot_values: nativeSetting.values ?? [],
+      show_row_totals: showRowTotals,
+      show_column_totals: showColumnTotals,
+    };
+  }
 
   const pivotSplitOptions = isColumnNameColumnSplitSetting(setting)
     ? getColumnNamePivotOptions(query, stageIndex, setting)
