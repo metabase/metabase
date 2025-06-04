@@ -41,13 +41,25 @@ export function buildHiddenParametersSlugSet(
 export function getVisibleParameters(
   parameters: UiParameter[],
   hiddenParameterSlugs?: string | null,
+  dashcardId?: number,
 ) {
   const hiddenParametersSlugSet =
     buildHiddenParametersSlugSet(hiddenParameterSlugs);
 
-  return parameters.filter(
-    (p) => !hiddenParametersSlugSet.has(p.slug) && !p.hidden,
-  );
+  return parameters
+    .filter((p) => {
+      if (p.dashcardId) {
+        return true;
+      }
+      return !hiddenParametersSlugSet.has(p.slug) && !p.hidden;
+    })
+    .filter((param) => {
+      if (dashcardId) {
+        return param.dashcardId === dashcardId;
+      } else {
+        return !param.dashcardId;
+      }
+    });
 }
 
 export function getParameterWidgetTitle(parameter: UiParameter) {

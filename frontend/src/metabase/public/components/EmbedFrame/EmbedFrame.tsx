@@ -142,6 +142,7 @@ export const EmbedFrame = ({
 
   const finalName = titled ? name : null;
 
+  // TODO Test
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
   const visibleParameters = hasParameters
     ? getVisibleParameters(parameters, hideParameters)

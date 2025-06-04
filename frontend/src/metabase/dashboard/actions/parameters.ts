@@ -128,31 +128,42 @@ export const setEditingParameter =
     }
   };
 
+interface AddParameterPayload {
+  option: ParameterMappingOptions;
+  dashcardId?: DashCardId;
+}
+
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  (option: ParameterMappingOptions) => (dispatch, getState) => {
-    let newId: undefined | ParameterId = undefined;
+  ({ option, dashcardId }: AddParameterPayload) =>
+    (dispatch, getState) => {
+      let newId: undefined | ParameterId = undefined;
 
-    updateParameters(dispatch, getState, (parameters) => {
-      const parameter = createParameter(option, parameters);
-      newId = parameter.id;
-      return [...parameters, parameter];
-    });
+      updateParameters(dispatch, getState, (parameters) => {
+        const parameter = createParameter(
+          option,
+          parameters,
+          dashcardId, // TODO Remove
+        );
+        newId = parameter.id;
+        return [...parameters, parameter];
+      });
 
-    if (newId) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId: newId,
-          },
-        }),
-      );
-    }
-  },
+      if (newId) {
+        dispatch(
+          setSidebar({
+            name: SIDEBAR_NAME.editParameter,
+            props: {
+              parameterId: newId,
+            },
+          }),
+        );
+      }
+    },
 );
 
+// TODO Update for dashcard inline parameters
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
@@ -196,7 +207,19 @@ export const setParameterMapping = createThunkAction(
 
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (target !== null && isQuestionDashCard(dashcard)) {
+      const parameter = getParameters(getState()).find(
+        (p) => p.id === parameterId,
+      );
+
+      // TODO Rework
+      // TODO Figure out how to test
+      const isDashcardInlineParameter = !!parameter?.dashcardId;
+
+      if (
+        target !== null &&
+        isQuestionDashCard(dashcard) &&
+        !isDashcardInlineParameter
+      ) {
         const selectedTabId = getSelectedTabId(getState());
 
         dispatch(

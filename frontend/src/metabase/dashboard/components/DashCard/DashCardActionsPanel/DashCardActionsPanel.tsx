@@ -4,12 +4,14 @@ import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
+import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
 import {
   isHeadingDashCard,
   isLinkDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
@@ -20,6 +22,7 @@ import type {
   DashCardId,
   Dashboard,
   DashboardCard,
+  ParameterMappingOptions,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -55,6 +58,7 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
+  onAddParameter: (option: ParameterMappingOptions) => void;
   onEditVisualization?: () => void;
 }
 
@@ -75,6 +79,7 @@ function DashCardActionsPanelInner({
   onLeftEdge,
   onMouseDown,
   className,
+  onAddParameter,
   onEditVisualization,
 }: Props) {
   const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
@@ -83,6 +88,8 @@ function DashCardActionsPanelInner({
   const buttons = [];
 
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
+
+  const dispatch = useDispatch();
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -135,13 +142,14 @@ function DashCardActionsPanelInner({
 
   if (dashcard && isHeadingDashCard(dashcard)) {
     buttons.push(
-      <DashCardActionButton
-        key="filter"
-        tooltip={t`Add a filter`}
-        aria-label={t`Add a filter`}
-      >
-        <DashCardActionButton.Icon name="filter" />
-      </DashCardActionButton>,
+      <AddFilterParameterMenu key="add-filter" onSelectOption={onAddParameter}>
+        <DashCardActionButton
+          tooltip={t`Add a filter`}
+          aria-label={t`Add a filter`}
+        >
+          <DashCardActionButton.Icon name="filter" />
+        </DashCardActionButton>
+      </AddFilterParameterMenu>,
     );
   }
 

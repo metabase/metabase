@@ -13,6 +13,7 @@ import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import {
   getDashCardById,
   getDashboard,
+  getDashboardHeaderParameters,
   getParameters,
   getQuestions,
   getSelectedTabId,
@@ -126,8 +127,16 @@ export function showAutoWireToastNewCard({
     }
 
     const questions = getQuestions(getState());
-    const parameters = getParameters(getState());
     const selectedTabId = getSelectedTabId(getState());
+
+    // TODO Test:
+    // 1. Create a dashboard with a heading dc and count/category question
+    // 2. Add a category filter to heading and connect it to the question
+    // 3. Add another question with a category field
+    // 4. Assert there's no toast
+
+    // Inline dashcard parameters should not be used for auto-wiring
+    const parameters = getDashboardHeaderParameters(getState());
 
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,

@@ -24,6 +24,7 @@ export const ParametersList = ({
   parameters,
   question,
   dashboard,
+  dashcard,
   editingParameter,
 
   isFullscreen,
@@ -42,9 +43,10 @@ export const ParametersList = ({
     activationConstraint: { distance: 15 },
   });
 
+  // TODO Test
   const visibleValuePopulatedParameters = useMemo(
-    () => getVisibleParameters(parameters, hideParameters),
-    [parameters, hideParameters],
+    () => getVisibleParameters(parameters, hideParameters, dashcard?.id),
+    [dashcard, parameters, hideParameters],
   );
 
   const handleSortEnd = useCallback(

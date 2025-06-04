@@ -10,21 +10,24 @@ import {
   getIsEditing,
   getIsNightMode,
   getTabHiddenParameterSlugs,
-  getValuePopulatedParameters,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { DashboardCard, Parameter } from "metabase-types/api";
 
 import { ParametersList } from "../../../parameters/components/ParametersList";
 
 interface DashboardParameterListProps {
+  parameters: Array<Parameter & { value: unknown }>;
+  dashcard?: DashboardCard; // TODO Remove
   isFullscreen: boolean;
 }
 
 export function DashboardParameterList({
+  parameters,
+  dashcard,
   isFullscreen,
 }: DashboardParameterListProps) {
   const dashboard = useSelector(getDashboardComplete);
-  const parameters = useSelector(getValuePopulatedParameters);
   const editingParameter = useSelector(getEditingParameter);
   const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
   const isEditing = useSelector(getIsEditing);
@@ -38,6 +41,7 @@ export function DashboardParameterList({
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}
       dashboard={dashboard}
+      dashcard={dashcard}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}

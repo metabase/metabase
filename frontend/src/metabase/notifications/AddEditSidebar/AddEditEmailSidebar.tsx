@@ -63,7 +63,7 @@ export const AddEditEmailSidebar = ({
   channel,
   channelSpec,
   users,
-  parameters,
+  parameters, // TODO Test with heading parameters
   hiddenParameters,
   dashboard,
 

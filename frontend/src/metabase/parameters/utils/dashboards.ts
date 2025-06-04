@@ -37,6 +37,7 @@ type ExtendedMapping = DashboardParameterMapping & {
 export function createParameter(
   option: ParameterMappingOptions,
   parameters: Parameter[] = [],
+  dashcardId?: number, // TODO Remove
 ): Parameter {
   let name = option.combinedName || option.name;
   let nameIndex = 0;
@@ -51,6 +52,7 @@ export function createParameter(
     id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
+    dashcardId,
   };
 
   return setParameterName(parameter, name);

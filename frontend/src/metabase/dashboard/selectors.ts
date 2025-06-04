@@ -259,6 +259,12 @@ export const getHasUnappliedParameterValues = createSelector(
   },
 );
 
+export const getEffectiveParameterValues = createSelector(
+  [getParameterValues, getDraftParameterValues, getIsAutoApplyFilters],
+  (values, draftValues, isAutoApplyFilters) =>
+    isAutoApplyFilters ? values : draftValues,
+);
+
 const getIsParameterValuesEmpty = createSelector(
   [getParameterValues],
   (parameterValues) => {
@@ -410,19 +416,37 @@ export const getParameters = createSelector(
   },
 );
 
-export const getValuePopulatedParameters = createSelector(
+export const getDashboardHeaderParameters = createSelector(
+  [getParameters],
+  (parameters) => parameters.filter((parameter) => !parameter.dashcardId),
+);
+
+export const getDashboardHeaderValuePopulatedParameters = createSelector(
+  [getDashboardHeaderParameters, getEffectiveParameterValues],
+  (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
+);
+
+export const getDashCardInlineValuePopulatedParameters = createSelector(
   [
     getParameters,
-    getParameterValues,
-    getDraftParameterValues,
-    getIsAutoApplyFilters,
+    getEffectiveParameterValues,
+    (_, dashcardId: number) => dashcardId,
   ],
-  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+  (parameters, parameterValues, dashcardId) => {
+    const dashcardParameters = parameters.filter(
+      (parameter) => parameter.dashcardId === dashcardId,
+    );
     return _getValuePopulatedParameters({
-      parameters,
-      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+      parameters: dashcardParameters,
+      values: parameterValues,
     });
   },
+);
+
+// TODO See if we need it anywhere after milestone 1
+export const getValuePopulatedParameters = createSelector(
+  [getParameters, getEffectiveParameterValues],
+  (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
 );
 
 export const getMissingRequiredParameters = createSelector(
@@ -651,6 +675,7 @@ export const getHasModelActionsEnabled = createSelector(
   },
 );
 
+// TODO Rework
 export const getVisibleValuePopulatedParameters = createSelector(
   [getValuePopulatedParameters, getHiddenParameterSlugs],
   getVisibleParameters,

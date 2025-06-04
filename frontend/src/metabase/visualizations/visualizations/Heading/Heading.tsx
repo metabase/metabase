@@ -2,16 +2,17 @@ import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getParameterValues } from "metabase/dashboard/selectors";
+import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
+import {
+  getDashCardInlineValuePopulatedParameters,
+  getParameterValues,
+} from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
+import { Flex } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
-import type {
-  Dashboard,
-  QuestionDashboardCard,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { VisualizationProps } from "metabase/visualizations/types";
 
 import {
   HeadingContainer,
@@ -20,22 +21,19 @@ import {
   TextInput,
 } from "./Heading.styled";
 
-interface HeadingProps {
-  isEditing: boolean;
-  onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: QuestionDashboardCard;
-  settings: VisualizationSettings;
-  dashboard: Dashboard;
-}
-
 export function Heading({
+  dashboard,
+  dashcard,
   settings,
   isEditing,
+  isFullscreen,
   onUpdateVisualizationSettings,
-  dashcard,
-  dashboard,
-}: HeadingProps) {
+}: VisualizationProps) {
+  const inlineParameters = useSelector((state) =>
+    getDashCardInlineValuePopulatedParameters(state, dashcard?.id),
+  );
   const parameterValues = useSelector(getParameterValues);
+
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
@@ -74,13 +72,22 @@ export function Heading({
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <HeadingContent
-            data-testid="editing-dashboard-heading-preview"
-            isEditing={isEditing}
-            onMouseDown={preventDragging}
-          >
-            {hasContent ? settings.text : placeholder}
-          </HeadingContent>
+          <Flex align="center" justify="space-between">
+            <HeadingContent
+              data-testid="editing-dashboard-heading-preview"
+              isEditing={isEditing}
+              onMouseDown={preventDragging}
+            >
+              {hasContent ? settings.text : placeholder}
+            </HeadingContent>
+            {inlineParameters.length > 0 && (
+              <DashboardParameterList
+                parameters={inlineParameters}
+                dashcard={dashcard}
+                isFullscreen={isFullscreen}
+              />
+            )}
+          </Flex>
         ) : (
           <TextInput
             name="heading"
@@ -108,6 +115,13 @@ export function Heading({
       <HeadingContent data-testid="saved-dashboard-heading-content">
         {content}
       </HeadingContent>
+      {inlineParameters.length > 0 && (
+        <DashboardParameterList
+          parameters={inlineParameters}
+          dashcard={dashcard}
+          isFullscreen={isFullscreen}
+        />
+      )}
     </HeadingContainer>
   );
 }

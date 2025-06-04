@@ -44,7 +44,7 @@ const mapStateToProps = (state: State) => {
   return {
     dashboard: getDashboardComplete(state),
     slowCards: getSlowCards(state),
-    parameters: getParameters(state),
+    parameters: getParameters(state), // TODO Test with heading parameters
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),

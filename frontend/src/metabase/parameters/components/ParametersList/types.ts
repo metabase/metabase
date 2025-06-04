@@ -4,7 +4,12 @@ import type {
   EmbedHideParametersControls,
 } from "metabase/dashboard/types";
 import type Question from "metabase-lib/v1/Question";
-import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
+import type {
+  Dashboard,
+  Parameter,
+  ParameterId,
+  VirtualDashboardCard,
+} from "metabase-types/api";
 
 export type ParametersListProps = {
   parameters: Parameter[];
@@ -14,6 +19,7 @@ export type ParametersListProps = {
 
     question: Question;
     dashboard: Dashboard | null;
+    dashcard?: VirtualDashboardCard | null; // Only heading cards can have parameters
     editingParameter: Parameter | null | undefined;
 
     isEditing: boolean;

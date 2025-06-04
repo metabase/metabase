@@ -67,9 +67,9 @@ export const TextInput = styled.input`
 
 export const HeadingContainer = styled.div`
   display: flex;
-  flex-direction: column;
   height: 100%;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
   overflow: hidden;
   padding-left: 0.75rem;
   width: 100%;

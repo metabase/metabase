@@ -25,6 +25,7 @@ import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
 const mapStateToProps = (state, props) => {
   return {
+    // TODO Test with heading parameters
     parameters: getParameters(state, props),
   };
 };
