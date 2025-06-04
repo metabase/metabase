@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers :row-lock))
 
 ;; HELPER FNS
 
