@@ -88,7 +88,7 @@ export const shouldTranslateFieldValuesOfColumn = (col: DatasetColumn) =>
     col?.semantic_type || "",
   );
 
-export const useTranslateFieldValuesInHoveredObject = (
+export const translateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,
   tc?: ContentTranslationFunction,
 ) => {
