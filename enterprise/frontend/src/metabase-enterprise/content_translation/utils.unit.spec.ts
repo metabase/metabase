@@ -1,4 +1,3 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 
@@ -110,13 +109,14 @@ describe("content translation utils", () => {
   });
 
   describe("translateDisplayNames", () => {
-    const mockTc = jest.fn(
-      ((str: string) => `translated_${str}`) as ContentTranslationFunction,
-    );
+    const tc = (str: string | null | unknown) => `translated_${str}`;
+    tc.hasTranslations = true;
+    const mockTc = jest.fn();
 
     beforeEach(() => {
       mockTc.mockClear();
-      mockTc.mockImplementation((str: string) => `translated_${str}`);
+      mockTc.mockImplementation(tc);
+      (mockTc as any).hasTranslations = true;
     });
 
     it("should translate display_name fields in simple objects", () => {
@@ -265,13 +265,14 @@ describe("content translation utils", () => {
   });
 
   describe("translateFieldValuesInHoveredObject", () => {
-    const mockTc = jest.fn(
-      ((str: string) => `translated_${str}`) as ContentTranslationFunction,
-    );
+    const tc = (str: string | null | unknown) => `translated_${str}`;
+    tc.hasTranslations = true;
+    const mockTc = jest.fn();
 
     beforeEach(() => {
       mockTc.mockClear();
-      mockTc.mockImplementation((str: string) => `translated_${str}`);
+      mockTc.mockImplementation(tc);
+      (mockTc as any).hasTranslations = true;
     });
 
     it("should return object with null data when passed null", () => {

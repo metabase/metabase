@@ -93,6 +93,7 @@ export const translateFieldValuesInHoveredObject = (
   tc?: ContentTranslationFunction,
 ) => {
   if (!tc?.hasTranslations) {
+    console.error("no translations");
     return obj;
   }
   return {
