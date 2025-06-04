@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useUpdateSettingsMutation } from "metabase/api";
 import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
 
 export const EmbeddingSdkLegaleseModal = ({ opened, onClose }: ModalProps) => {
   const [loading, setLoading] = useState(false);
-  const { updateSettings } = useAdminSetting("show-sdk-embed-terms");
+  const [updateSettings] = useUpdateSettingsMutation();
 
   const onAccept = async () => {
     setLoading(true);

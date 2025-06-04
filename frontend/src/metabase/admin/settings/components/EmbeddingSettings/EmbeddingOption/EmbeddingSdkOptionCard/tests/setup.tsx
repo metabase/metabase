@@ -71,6 +71,8 @@ export async function setup({
   setupUpdateSettingsEndpoint();
 
   renderWithProviders(<EmbeddingSdkOptionCard />, { storeInitialState: state });
+
+  // wait until both settings api endpoints (properties and setting) are called
   await waitFor(async () => {
     const gets = await findRequests("GET");
     expect(gets).toHaveLength(2);

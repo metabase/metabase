@@ -33,13 +33,10 @@ export function EmbeddingToggle({
     );
   }
   const isEnabled = Boolean(value);
+  const isEmbeddingToggle = settingKey === "enable-embedding-sdk";
 
   const handleChange = (newValue: boolean) => {
-    if (
-      showSdkEmbedTerms &&
-      settingKey === "enable-embedding-sdk" &&
-      newValue
-    ) {
+    if (showSdkEmbedTerms && isEmbeddingToggle && newValue) {
       openLegaleseModal();
       return;
     }
@@ -65,10 +62,12 @@ export function EmbeddingToggle({
           handleChange(event.currentTarget.checked);
         }}
       />
-      <EmbeddingSdkLegaleseModal
-        opened={isLegaleseModalOpen}
-        onClose={closeLegaleseModal}
-      />
+      {isEmbeddingToggle && (
+        <EmbeddingSdkLegaleseModal
+          opened={isLegaleseModalOpen}
+          onClose={closeLegaleseModal}
+        />
+      )}
     </>
   );
 }
