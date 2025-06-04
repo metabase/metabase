@@ -288,12 +288,13 @@ export class UnconnectedDataSelector extends Component {
 
   getCardType() {
     const { selectedDataBucketId, savedEntityType } = this.state;
-    switch (true) {
-      case selectedDataBucketId === DATA_BUCKET.MODELS ||
-        savedEntityType === "model":
-        return "model";
-      default:
-        return "question";
+    if (
+      selectedDataBucketId === DATA_BUCKET.MODELS ||
+      savedEntityType === "model"
+    ) {
+      return "model";
+    } else {
+      return "question";
     }
   }
 
