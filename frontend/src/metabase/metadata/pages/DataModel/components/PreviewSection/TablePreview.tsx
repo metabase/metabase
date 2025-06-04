@@ -66,7 +66,10 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     },
   };
 
-  const { data, ...rest } = useGetAdhocQueryQuery(datasetQuery);
+  const { data, refetch, ...rest } = useGetAdhocQueryQuery({
+    ...datasetQuery,
+    _refetchDeps: field,
+  });
 
   const base = { ...rest, error: undefined, rawSeries: undefined };
 
