@@ -104,25 +104,26 @@
           (try
             (is (=? "You don't have permissions to do that."
                     (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
-                                          {:request-options {:content-type "multipart/form-data"}}
+                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                           {:file {:filename "upload.csv"
                                                   :tempfile temp-file}})))
             (finally
               (.delete temp-file))))))
     (testing "admin can upload valid file"
       (mt/with-premium-features #{:content-translation}
-        (with-clean-translations!
-          (let [csv-content (valid-csv-content)
-                valid-file (create-temp-csv-file csv-content)]
-            (try
-              (is (=? {:success true}
-                      (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
-                                            {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                            {:file {:filename "upload.csv"
-                                                    :tempfile valid-file}})))
-              (is (= 3 (count-translations)))
-              (finally
-                (.delete valid-file)))))))))
+        (let [initial-count (count-translations)
+              csv-content (valid-csv-content)
+              valid-file (create-temp-csv-file csv-content)
+              expected-final-count (+ 3 initial-count)]
+          (try
+            (is (=? {:success true}
+                    (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
+                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                          {:file {:filename "upload.csv"
+                                                  :tempfile valid-file}})))
+            (is (= expected-final-count (count-translations)))
+            (finally
+              (.delete valid-file))))))))
 
 (deftest embedded-dictionary-test
   (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
@@ -137,16 +138,16 @@
         (mt/with-premium-features #{:content-translation}
           (client/client :get 400 (embedded-dictionary-url)))))
     (testing "provides entries"
-      (with-clean-translations!
-        (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
-          (with-static-embedding!
-            (mt/with-premium-features #{:content-translation}
-              (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=fr"))]
-                (is (map? response))
-                (is (contains? response :data))
-                (let [data (:data response)]
-                  (is (= 1 (count data)))
-                  (let [translation (first data)]
-                    (is (= "fr" (:locale translation)))
-                    (is (= "Hello" (:msgid translation)))
-                    (is (= "Bonjour" (:msgstr translation)))))))))))))
+      (with-static-embedding!
+        (t2/delete! :model/ContentTranslation :locale "sv")
+        (t2/insert! :model/ContentTranslation {:locale "sv" :msgid "the msgid" :msgstr "the msgstr"})
+        (mt/with-premium-features #{:content-translation}
+          (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=sv"))]
+            (is (map? response))
+            (is (contains? response :data))
+            (let [data (:data response)
+                  translation (first data)]
+              (is (= 1 (count data)))
+              (is (= "sv" (:locale translation)))
+              (is (= "the msgid" (:msgid translation)))
+              (is (= "the msgstr" (:msgstr translation))))))))))
