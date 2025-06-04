@@ -39,22 +39,22 @@ function getQueryWithCardDataSource() {
 }
 
 describe("getColumnGroupIcon", () => {
-  const stageIndex = 0;
-
   it.each([
     {
       query: getQueryWithTableDataSource(),
+      stageIndex: 0,
       expectedGroupNames: ["Orders", "Product", "User"],
       expectedGroupIcons: ["table", "connections", "connections"],
     },
     {
       query: getQueryWithCardDataSource(),
+      stageIndex: 0,
       expectedGroupNames: ["Card", "Product", "User"],
       expectedGroupIcons: ["table2", "connections", "connections"],
     },
   ])(
     "should use correct icons for columns groups",
-    ({ query, expectedGroupNames, expectedGroupIcons }) => {
+    ({ query, stageIndex, expectedGroupNames, expectedGroupIcons }) => {
       const columns = Lib.filterableColumns(query, stageIndex);
       const groups = Lib.groupColumns(columns);
       const groupsInfo = groups.map((group) =>
