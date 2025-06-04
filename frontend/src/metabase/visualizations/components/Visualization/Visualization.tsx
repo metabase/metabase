@@ -643,7 +643,7 @@ class Visualization extends PureComponent<
     const { series, hovered: untranslatedHoveredObject, clicked } = this.state;
 
     let hovered =
-      PLUGIN_CONTENT_TRANSLATION.useTranslateFieldValuesInHoveredObject(
+      PLUGIN_CONTENT_TRANSLATION.translateFieldValuesInHoveredObject(
         untranslatedHoveredObject,
         tc,
       );
