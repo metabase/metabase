@@ -31,7 +31,7 @@ const InputBlurChange = (props: InputBlurChangeProps) => {
   } = props;
   const [internalValue, setInternalValue] = useState<HTMLInputValue>(value);
   const inputRef = useRef<HTMLInputElement>(null);
-
+  // ok
   useLayoutEffect(() => {
     setInternalValue(value);
   }, [value]);
