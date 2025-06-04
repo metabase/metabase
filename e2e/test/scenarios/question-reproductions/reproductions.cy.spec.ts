@@ -516,3 +516,42 @@ describe("issue 46845", () => {
     H.assertQueryBuilderRowCount(1);
   });
 });
+
+describe("issue 58829", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to use join native models when SQL column names do not match the names of the mapped fields (metabase#58829)", () => {
+    cy.log("create a native model mapped columns");
+    H.createNativeQuestion(
+      {
+        name: "M1",
+        type: "model",
+        native: {
+          query: "SELECT 1 AS ID, 2 AS _USER_ID",
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openQuestionActions("Edit metadata");
+    H.openColumnOptions("ID");
+    H.mapColumnTo({ table: "Orders", column: "ID" });
+    H.openColumnOptions("_USER_ID");
+    H.mapColumnTo({ table: "Orders", column: "User ID" });
+    H.saveMetadataChanges();
+
+    cy.log("verify it can be joined");
+    H.openProductsTable({ mode: "notebook" });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("M1").click();
+    });
+    H.popover().findByText("ID").click();
+    H.popover().findByText("ID").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(200);
+  });
+});
