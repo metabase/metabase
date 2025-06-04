@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-editing.undo
+(ns metabase-enterprise.data-editing.models.undo
   (:require
    [clojure.walk :as walk]
    [metabase.actions.core :as actions]
@@ -91,7 +91,7 @@
 
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
-  [user-id scope table-id->row-pk->old-new-values]
+  [user-id scope table-id->row-pk->values]
   (let [scope (serialize-scope scope)]
     (t2/with-transaction [_conn]
       (let [seq-name       "undo_batch_num"
@@ -99,15 +99,16 @@
         (t2/update! :sequences {:name seq-name} {:next_val (inc next-batch-num)})
         (t2/insert!
          :model/Undo
-         (for [[table-id table-updates] table-id->row-pk->old-new-values
-               [row-pk [old new]] table-updates]
-           {:batch_num  next-batch-num
-            :table_id   table-id
-            :user_id    user-id
-            :row_pk     row-pk
-            :scope      scope
-            :raw_before old
-            :raw_after  new}))))
+         (for [[table-id table-updates] table-id->row-pk->values
+               [row-pk values] table-updates]
+           (merge {:batch_num  next-batch-num
+                   :table_id   table-id
+                   :user_id    user-id
+                   :row_pk     row-pk
+                   :scope      scope
+                   ;; default value, can be override in values
+                   :undoable   true}
+                  values)))))
 
     ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
     (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]
@@ -215,6 +216,12 @@
                                         {:error   :undo/none
                                          :user-id user-id
                                          :scope   scope}))
+      (some (comp false? :undoable) batch)
+      (throw (ex-info "Batch contains changes that are not undoable"
+                      {:error     :undo/cannot-undo
+                       :user-id   user-id
+                       :scope     scope
+                       :batch-num (:batch_num (first batch))}))
       (conflict? undo? batch) (throw (ex-info "Blocked by other changes"
                                               ;; It would be nice if we gave the batch_num for the first conflict.
                                               {:error   :undo/conflict
@@ -229,7 +236,9 @@
                 :let [rows (batch->rows undo? sub-batch)]
                 [delta row] (map vector sub-batch rows)
                 :let [category ((if undo? invert identity) (categorize delta))]]
-            {:op (category->op category), :table-id table-id, :row row})))))
+            {:op       (category->op category)
+             :table-id table-id
+             :row      row})))))
 
 (defn undo!
   "Rollback the given user's last change to the given table."
