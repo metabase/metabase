@@ -2,10 +2,10 @@
  ["src" "resources"]
 
  :deps
-  {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.0.1"}
-   com.google.guava/guava {:mvn/version "32.0.0-jre"}
-   org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}
-   org.apache.commons/commons-configuration2 {:mvn/version "2.12.0"}
-   org.apache.zookeeper/zookeeper {:mvn/version "3.9.3"}
-   io.netty/netty-common {:mvn/version "4.2.1.Final"}
-   io.netty/netty-handler {:mvn/version "4.2.1.Final"}}}
+ {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.0.1"}
+  com.google.guava/guava {:mvn/version "32.0.0-jre"}
+  org.apache.hadoop.thirdparty/hadoop-shaded-guava {:mvn/version "1.4.0"}
+  org.apache.commons/commons-configuration2 {:mvn/version "2.12.0"}
+  org.apache.zookeeper/zookeeper {:mvn/version "3.9.3"}
+  io.netty/netty-common {:mvn/version "4.2.1.Final"}
+  io.netty/netty-handler {:mvn/version "4.2.1.Final"}}}
