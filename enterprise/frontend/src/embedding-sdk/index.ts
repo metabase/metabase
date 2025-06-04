@@ -61,4 +61,4 @@ export type {
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
 
-export type { EmbeddingEntityType } from "metabase/embedding-sdk/store.ts";
+export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
