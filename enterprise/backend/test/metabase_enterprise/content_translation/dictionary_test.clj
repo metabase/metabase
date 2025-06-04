@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmacro with-clean-translations
+(defmacro with-clean-translations!
   "Macro to reset the content translation table to an empty state before a test and restore it after the test runs."
   [& body]
   (let [original-entities# (t2/select [:model/ContentTranslation])]
@@ -93,8 +93,7 @@
     (is (not (#'dictionary/is-msgstr-usable nil)))))
 
 (deftest import-translations-success-test
-  (with-clean-translations
-    ;; I'm not sure why this is failing
+  (with-clean-translations!
     (testing "Content translation feature is required"
       (mt/with-premium-features #{}
         (mt/assert-has-premium-feature-error
@@ -125,8 +124,8 @@
                     ["en" "Blank" ""]         ; Unusable
                     ["en" "Whitespace" "   "] ; Unusable
                     ["en" "Commas" ",,,"]     ; Unusable
-                    ["fr" "Good" "Bien"]]     ; Usable
-              ]
+                    ["fr" "Good" "Bien"]]]     ; Usable
+
           (dictionary/import-translations! rows)
 
           (is (= 2 (count-translations)) "Only usable translations should be imported")
@@ -140,7 +139,7 @@
 
 (deftest import-translations-error-test
   (testing "Import fails with validation errors"
-    (with-clean-translations
+    (with-clean-translations!
       (let [invalid-rows [["invalid-locale" "Hello" "Hola"]
                           ["en" "Test" "Translation" "extra"]
                           ["en" "Duplicate" "First"]
@@ -151,10 +150,10 @@
              (dictionary/import-translations! invalid-rows)))
         (is (= 0 (count-translations)) "No translations should be imported on error"))))
   (testing "Error contains multiple validation messages"
-    (with-clean-translations
+    (with-clean-translations!
       (let [invalid-rows [["invalid-locale" "Hello" "Hola"]
                           ["en" "Test" "Translation" "extra"]]]
-        (with-clean-translations
+        (with-clean-translations!
           (try
             (dictionary/import-translations! invalid-rows)
             (is false "Should have thrown exception")
@@ -166,7 +165,7 @@
                 (is (some #(re-find #"Invalid format" %) (:errors data)))))))))))
 
 (testing "Existing translations are replaced"
-  (with-clean-translations
+  (with-clean-translations!
     ;; First import
     (let [initial-rows [["it" "Hello" "Buongiorno"]
                         ["fr" "Goodbye" "Au revoir"]]]
