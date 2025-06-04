@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
@@ -170,7 +171,12 @@
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
-          (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
+          (let [desired-alias (or
+                               (:lib/desired-column-alias col)
+                               (:lib/source-column-alias col)
+                               (when (and (:source-alias col) (:original-name col))
+                                 (lib.join.util/joined-field-desired-alias (:source-alias col) (:original-name col)))
+                               (:name col))]
             (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL

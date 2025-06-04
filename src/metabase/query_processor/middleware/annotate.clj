@@ -633,7 +633,7 @@
 (mu/defn- deduplicate-cols-names :- ColsWithUniqueNames
   [cols :- [:sequential Col]]
   (map (fn [col unique-name]
-         (assoc col :name unique-name))
+         (assoc col :name unique-name :original_name (:name col)))
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
