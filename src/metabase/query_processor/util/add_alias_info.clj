@@ -72,7 +72,7 @@
 (defn- make-unique-alias-fn
   "Creates a function with the signature
 
-    (unique-alias style position original-alias)
+    (unique-alias position original-alias)
 
   To return a uniquified version of `original-alias`. Memoized by `position`, so duplicate calls will result in the
   same unique alias."
