@@ -1,8 +1,28 @@
 (ns metabase.parameters.custom-values-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.cluster-lock :as app-db.cluster-lock]
    [metabase.parameters.custom-values :as custom-values]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
+
+;; Create the lock before these fixtures run. On mysql and mariadb attempting to concurrently create
+;; this lock inside an extremely nested transaction can fail rolling back the rest of the transaction
+;; Outside of the test environment this is fine because we can retry just the transaction the cluster
+;; lock is used in
+(use-fixtures :once
+  (fixtures/initialize :db)
+  (fn [f]
+    (let [lock-name-str (str (namespace app-db.cluster-lock/card-statistics-lock)
+                             "/" (name app-db.cluster-lock/card-statistics-lock))]
+      ;; Create cluster lock row before running tests
+      (t2/query-one {:insert-into [:metabase_cluster_lock] :columns [:lock_name] :values [[lock-name-str]]})
+      (try
+        (f)
+        (finally
+          ;; Clean up cluster lock after tests
+          (t2/query-one {:delete-from [:metabase_cluster_lock] :where [:= :lock_name lock-name-str]}))))))
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
 

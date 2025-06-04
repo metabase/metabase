@@ -9,7 +9,7 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException SQLException)))
+   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException)))
 
 (set! *warn-on-reflection* true)
 
@@ -20,8 +20,8 @@
   ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
   ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
   ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
-  (or (instance? SQLException e)
-      (instance? SQLException (ex-cause e))
+  (or (instance? SQLIntegrityConstraintViolationException e)
+      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
@@ -57,7 +57,7 @@
         (t2/query-one {:insert-into [:metabase_cluster_lock]
                        :columns [:lock_name]
                        :values [[lock-name-str]]})))
-    (log/info "Obtained cluster lock")
+    (log/debug "Obtained cluster lock")
     (thunk)))
 
 (mu/defn do-with-cluster-lock
@@ -66,12 +66,12 @@
   Call `thunk` after first synchronizing with the metabase cluster by taking a lock in the appdb."
   [opts :- [:or :keyword
             [:map
-             [:lock-name                     :keyword]
-             [:timeout-seconds   {:optional true} :int]
-             [:retry-config      {:optional true} [:ref ::retry/retry-overrides]]]]
+             [:lock-name                        :keyword]
+             [:timeout-seconds {:optional true} :int]
+             [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]]
    thunk :- ifn?]
   (cond
-    (= (mdb.connection/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking
+    (= (mdb.connection/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking the lock
     (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
     :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
                 lock-name-str (str (namespace lock-name) "/" (name lock-name))
