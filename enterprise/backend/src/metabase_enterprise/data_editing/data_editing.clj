@@ -128,13 +128,12 @@
          user-id
          scope
          (u/for-map [[table-id diffs] (group-by :table-id diffs)]
-           [table-id (u/for-map [{:keys [before after undoable] :as diff} diffs
+           [table-id (u/for-map [{:keys [before after deleted-children] :as diff} diffs
                                  :when (or before after)
                                  :let [{:keys [pk before after]} (diff->pk-diff diff)]]
                        [pk {:raw_before before
                             :raw_after  after
-                            ;; default is true
-                            :undoable   (if (nil? undoable) true undoable)}])]))))
+                            :undoable   (empty? deleted-children)}])]))))
     ;; table notification system events
     (doseq [[event payloads] (->> diffs
                                   (group-by row-update-event)
@@ -150,6 +149,7 @@
                                         :args       {:table_id  table-id
                                                      :db_id     db-id
                                                      :timestamp (t/zoned-date-time (t/zone-id "UTC"))}}))))))
+
 (defn- invalidate-field-values! [table-id rows]
   ;; Be conservative with respect to case sensitivity, invalidate every field when there is ambiguity.
   (let [ln->values  (u/group-by first second (for [row rows [k v] row] [(u/lower-case-en (name k)) v]))

@@ -106,6 +106,7 @@
                    :user_id    user-id
                    :row_pk     row-pk
                    :scope      scope
+                   ;; default value, can be override in values
                    :undoable   true}
                   values)))))
 

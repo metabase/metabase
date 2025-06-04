@@ -411,8 +411,11 @@
             (is (not (next-batch-num :redo user-id test-scope)))
 
             ;; Try to undo - should fail because the latest batch has undoable: false
-            (is (= "Your change cannot be undo"
-                   (undo-via-api! user-id test-scope)))
+            (let [before-batch-num (next-batch-num :undo user-id test-scope)]
+              (is (= "Your previous change cannot be undone"
+                     (undo-via-api! user-id test-scope)))
+              (testing "batchnum is unchanged"
+                (is (= before-batch-num (next-batch-num :undo user-id test-scope)))))
 
             ;; Table should remain unchanged
             (is (= [[1 "Undoable change"]] (table-rows table-id)))))))))

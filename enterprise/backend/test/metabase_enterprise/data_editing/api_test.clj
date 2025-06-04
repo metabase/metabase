@@ -220,7 +220,7 @@
                                           (assoc body :params {:delete-children true}))))
             (is (empty? (children-count)))
             (testing "the change is not undoable"
-              (is (= "Your change cannot be undone"
+              (is (= "Your previous change cannot be undone"
                      (mt/user-http-request :crowberto :post 405 execute-v2-url
                                            {:action_id "data-editing/undo"
                                             :scope     {:table-id (mt/id :products)}
