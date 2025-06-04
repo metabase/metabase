@@ -12,6 +12,7 @@ clojure -M:doc:ee config-template
 
 The template lists example `database`, `user`, and `settings` sections for the [config file](./config-file.md).
 
+
 ```yaml
 # A config file template for Metabase.
 # You'll need to update (or remove) the `users` and `databases` sections.
@@ -26,48 +27,49 @@ The template lists example `database`, `user`, and `settings` sections for the [
 version: 1
 config:
   users:
-    - first_name: First
-      last_name: Person
-      password: metabot1
-      email: first@example.com
-    - first_name: Normal
-      last_name: Person
-      password: metabot1
-      email: normal@example.com
-    - first_name: Admin
-      last_name: Person
-      password: metabot1
-      is_superuser: true
-      email: admin@example.com
+  - first_name: First
+    last_name: Person
+    password: metabot1
+    email: first@example.com
+  - first_name: Normal
+    last_name: Person
+    password: metabot1
+    email: normal@example.com
+  - first_name: Admin
+    last_name: Person
+    password: metabot1
+    is_superuser: true
+    email: admin@example.com
   databases:
-    - name: Sample PostgreSQL
-      engine: postgres
-      details:
-        host: postgres-data
-        port: 5432
-        user: metabase
-        password: metasample123
-        dbname: sample
-    - name: Sample MySQL
-      engine: mysql
-      details:
-        host: mysql-data
-        port: 3306
-        user: metabase
-        password: metasample123
-        dbname: sample
+  - name: Sample PostgreSQL
+    engine: postgres
+    details:
+      host: postgres-data
+      port: 5432
+      user: metabase
+      password: metasample123
+      dbname: sample
+  - name: Sample MySQL
+    engine: mysql
+    details:
+      host: mysql-data
+      port: 3306
+      user: metabase
+      password: metasample123
+      dbname: sample
   api-keys:
-    - name: Admin API key
-      group: admin
-      creator: first@example.com
-      key: mb_firsttestapikey123
-    - name: All Users API key
-      group: all-users
-      creator: first@example.com
-      key: mb_secondtestapikey456
+  - name: Admin API key
+    group: admin
+    creator: first@example.com
+    key: mb_firsttestapikey123
+  - name: All Users API key
+    group: all-users
+    creator: first@example.com
+    key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
+    ai-proxy-base-url: http://localhost:8000
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -101,7 +103,6 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    backfill-entity-ids-repeat-ms: 3000
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
@@ -147,7 +148,7 @@ config:
     gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help-premium
+    help-link-custom-destination: https://www.metabase.com/help/premium
     humanization-strategy: simple
     jdbc-data-warehouse-max-connection-pool-size: 15
     jwt-attribute-email: email
@@ -160,7 +161,7 @@ config:
     jwt-identity-provider-uri: null
     jwt-shared-secret: null
     jwt-user-provisioning-enabled: true
-    landing-page: ""
+    landing-page: ''
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
@@ -191,8 +192,10 @@ config:
     no-data-illustration-custom: null
     no-object-illustration: default
     no-object-illustration-custom: null
+    non-table-chart-generated: false
     not-behind-proxy: false
     notification-link-base-url: null
+    notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
@@ -226,7 +229,9 @@ config:
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
     scim-enabled: null
+    sdk-encryption-validation-key: null
     search-engine: in-place
+    search-language: null
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
@@ -256,5 +261,6 @@ config:
     unaggregated-query-row-limit: null
     update-channel: latest
     uploads-settings: null
+    use-tenants: false
     user-visibility: all
 ```
