@@ -1,4 +1,6 @@
-import { Box, Code } from "metabase/ui";
+import { Code, Group, Icon } from "metabase/ui";
+
+import { CopyButton } from "./CopyButton";
 
 interface CodeSnippetProps {
   code: string;
@@ -7,16 +9,20 @@ interface CodeSnippetProps {
 
 export const CodeSnippet = ({ code }: CodeSnippetProps) => {
   return (
-    <Box
+    <Group
       p="md"
+      bd="1px solid border"
+      bg="bg-light"
+      w="100%"
       style={{
-        backgroundColor: "var(--mb-color-bg-light)",
-        borderRadius: "4px",
-        overflow: "auto",
-        width: "100%",
+        borderRadius: 8,
       }}
     >
-      <Code block>{code}</Code>
-    </Box>
+      <Icon name="chevronright" size={16} />
+      <Code block flex={1}>
+        {code}
+      </Code>
+      <CopyButton value={code} />
+    </Group>
   );
 };
