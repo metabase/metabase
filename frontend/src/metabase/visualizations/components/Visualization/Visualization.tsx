@@ -737,6 +737,10 @@ class Visualization extends PureComponent<
     const canSelectTitle =
       this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
 
+    const [{ card }] = rawSeries;
+    const isNative = card.dataset_query.type === "native";
+    const isNativeView = isNative && queryBuilderMode === "view";
+
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -791,6 +795,7 @@ class Visualization extends PureComponent<
               chartType={visualization?.identifier}
               isSummarizeSidebarOpen={isShowingSummarySidebar}
               onEditSummary={isDashboard ? undefined : onEditSummary}
+              isNativeView={isNativeView}
             />
           ) : (
             series && (
