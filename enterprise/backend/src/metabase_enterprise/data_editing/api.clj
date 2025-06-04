@@ -519,10 +519,8 @@
                         :when (and (not (:hidden viz-field))
                                    (not= "hidden" (:visibility param-mapping)))]
                     (u/remove-nils
-                      ;; todo dropdown options
                      {:id (:id param)
                       :display_name (or (:display-name param) (:name param))
-                      :mapping param-mapping
                       :type (case (:type param)
                               :string/=    :type/Text
                               :number/=    :type/Number
@@ -535,6 +533,7 @@
                                            :param-type (:type param)
                                            :scope scope
                                            :unified unified}))))
+                      :value_options (:valueOptions viz-field)
                       :optional (and (not (:required param)) (not (:required viz-field)))
                       :nullable true ; is there a way to know this?
                       :readonly (= "readonly" (:visibility param-mapping))
@@ -568,6 +567,8 @@
                      {:id (:name field)
                       :display_name (:display_name field)
                       :type (:base_type field)
+                      :field_id (:id field)
+                      :fk_target_field_id (:fk_target_field_id field)
                       :optional (not required)
                       :nullable (:database_is_nullable field)
                       :readonly (= "readonly" (:visibility param-mapping))
