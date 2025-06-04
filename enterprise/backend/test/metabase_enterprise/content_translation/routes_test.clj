@@ -131,9 +131,14 @@
         (mt/with-premium-features #{}
           (mt/assert-has-premium-feature-error
            "Content translation"
-           (client/client :get 200 (embedded-dictionary-url))))))
-    (testing "returns entries"
+           (client/client :get 402 (embedded-dictionary-url))))))
+    (testing "requires locale"
+      (with-static-embedding!
+        (mt/with-premium-features #{:content-translation}
+          (client/client :get 400 (embedded-dictionary-url)))))
+    (testing "provides entries"
       (with-clean-translations!
-        (with-static-embedding!
-          (mt/with-premium-features #{:content-translation}
-            (client/client :get 200 (embedded-dictionary-url))))))))
+        (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
+          (with-static-embedding!
+            (mt/with-premium-features #{:content-translation}
+              (client/client :get 200 (str (embedded-dictionary-url) "?locale=fr")))))))))
