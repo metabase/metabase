@@ -189,11 +189,11 @@
                   "categories" ["Pizza" "Liquor Store"],
                   "phone" "415-969-7474",
                   "id" "7b9c7dc3-d8f1-498d-843a-e62360449892"}]]
-               (mt/formatted-rows [str cheshire.core/parse-string]
-                                  (mt/run-mbql-query tips
-                                    {:fields   [$tips.venue.name $tips.venue]
-                                     :order-by [[:asc $id]]
-                                     :limit    10}))))))))
+               (mt/rows
+                (mt/run-mbql-query tips
+                  {:fields   [$tips.venue.name $tips.venue]
+                   :order-by [[:asc $id]]
+                   :limit    10}))))))))
 
 (deftest ^:parallel order-by-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
