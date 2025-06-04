@@ -359,7 +359,6 @@
 
 (defmethod notification.send/should-queue-notification? :notification/system-event
   [notification-info]
-  (def notification-info notification-info)
   (if-let [condition (not-empty (:condition notification-info))]
     (->> (event-info->condition-context (get-in notification-info [:payload :event_name]) (:event_info notification-info))
          (notification.condition/evaluate-expression condition))
@@ -370,8 +369,3 @@
   [notification]
   (binding [*sample-table-id* (get-in notification [:payload :table_id])]
     (mu/generate-example (notification.payload/notification-payload-schema notification))))
-
-(if-let [condition (not-empty (:condition notification-info))]
-  (->> (event-info->condition-context (get-in notification-info [:payload :event_name]) (:event_info notification-info))
-       (notification.condition/evaluate-expression condition))
-  true)
