@@ -183,8 +183,8 @@
   :advanced-permissions)
 
 (define-premium-feature ^{:added "0.56.0"} enable-content-translation?
-  "Should we enable translation of user-generate content, like question names?"
-  :content-verification)
+  "Should we enable translation of user-generated content, like question names?"
+  :content-translation)
 
 (define-premium-feature ^{:added "0.41.0"} enable-content-verification?
   "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
