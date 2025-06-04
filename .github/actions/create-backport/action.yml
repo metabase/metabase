@@ -35,6 +35,8 @@ runs:
         git checkout -b ${BACKPORT_BRANCH}
         git cherry-pick ${COMMIT} || true
 
+        CONFLICT_LIST=$(git ls-files -u)
+
         CONFLICTS=$(git ls-files -u | wc -l)
         if [ "$CONFLICTS" -gt 0 ]; then
           git cherry-pick --abort
@@ -57,7 +59,7 @@ runs:
           > Manual conflict resolution is required.
 
           \`\`\`shell
-          ${git ls-files -u}
+          ${CONFLICT_LIST}
           \`\`\`
           Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking. Check the box below when done.
 
