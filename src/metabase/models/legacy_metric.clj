@@ -37,12 +37,11 @@
   {:definition mi/transform-legacy-metric-segment-definition})
 
 (t2/define-before-update :model/LegacyMetric
-  [{:keys [id], :as metric}]
-  (u/prog1 (t2/changes metric)
+  [metric]
+  (u/prog1 metric
     ;; throw an Exception if someone tries to update creator_id
-    (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/LegacyMetric :id id))
-        (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
+    (when (contains? (t2/changes <>) :creator_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric."))))))
 
 (t2/define-before-delete :model/LegacyMetric
   [{:keys [id] :as _metric}]

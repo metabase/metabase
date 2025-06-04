@@ -95,7 +95,7 @@
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
       (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
-  (u/prog1 (t2/changes notification)
+  (u/prog1 notification
     (assert-valid-parameters notification)
     (collection/check-collection-namespace :model/Pulse (:collection_id notification))))
 
