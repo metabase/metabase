@@ -13,6 +13,18 @@
 
 (set! *warn-on-reflection* true)
 
+(defmacro with-clean-translations!
+  "Macro to reset the content translation table to an empty state before a test and restore it after the test runs."
+  [& body]
+  `(let [original-entities# (t2/select [:model/ContentTranslation])]
+     (try
+       (t2/delete! :model/ContentTranslation)
+       ~@body
+       (finally
+         (t2/delete! :model/ContentTranslation)
+         (when (seq original-entities#)
+           (t2/insert! :model/ContentTranslation original-entities#))))))
+
 (defn- valid-csv-content
   "Create valid CSV content for testing with the specified number of rows."
   [& {:keys [num-rows locale]
@@ -55,7 +67,7 @@
 
 (deftest content-translation-api-test
   (testing "GET /api/ee/content-translation/csv"
-    (testing "requires content-translation feature"
+    (testing "fails without content-translation feature"
       (mt/with-premium-features #{}
         (mt/assert-has-premium-feature-error
          "Content translation"
@@ -64,17 +76,18 @@
       (mt/with-premium-features #{:content-translation}
         (mt/user-http-request :rasta :get 403 "ee/content-translation/csv" {})))
     (testing "returns csv for crowberto"
-      (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
-        (mt/with-premium-features #{:content-translation}
-          (let [body (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})]
-            (log/info (str "body" body))
-            (let [data (with-open [reader (java.io.StringReader. body)]
-                         (doall (csv/read-csv reader)))
-                  matches (filter #(and (= (nth % 0) "fr")
-                                        (= (nth % 1) "Hello")
-                                        (= (nth % 2) "Bonjour"))
-                                  data)]
-              (is (seq matches))))))))
+      (with-clean-translations!
+        (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
+          (mt/with-premium-features #{:content-translation}
+            (let [body (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})]
+              (log/info (str "body" body))
+              (let [data (with-open [reader (java.io.StringReader. body)]
+                           (doall (csv/read-csv reader)))
+                    matches (filter #(and (= (nth % 0) "fr")
+                                          (= (nth % 1) "Hello")
+                                          (= (nth % 2) "Bonjour"))
+                                    data)]
+                (is (seq matches)))))))))
   (testing "POST /api/ee/content-translation/upload-dictionary"
     (testing "nonadmin cannot use"
       (mt/with-premium-features #{:content-translation}
@@ -83,14 +96,18 @@
                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                       {:file (valid-csv-content)})))))
     (testing "admin can upload valid file"
-      (mt/with-premium-features #{:content-translation}
-        (is (=? {:success true}
-                (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
-                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                      {:file (.getBytes (valid-csv-content))})))
-        (is (= 3 (count-translations)))))))
+      (with-clean-translations!
+        (mt/with-premium-features #{:content-translation}
+          (is (=? {:success true}
+                  (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
+                                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                        {:file (.getBytes (valid-csv-content))})))
+          (is (= 3 (count-translations))))))))
 
 (deftest embedded-dictionary-test
+  ;; TODO:
+  ;; * bring back with-clean-translations and make sure there's a backtick!!)
+  ;; parallelize thusly: (deftest ^:parallel serialize-segment-test)
   (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
     (testing "requires content-translation feature"
       (with-static-embedding!
@@ -102,17 +119,17 @@
       (with-static-embedding!
         (mt/with-premium-features #{:content-translation}
           (client/client :get 400 (embedded-dictionary-url)))))
-    (testing "provides entries"
+    (testing "provides translations"
       (with-static-embedding!
-        (t2/delete! :model/ContentTranslation :locale "sv")
-        (t2/insert! :model/ContentTranslation {:locale "sv" :msgid "the msgid" :msgstr "the msgstr"})
-        (mt/with-premium-features #{:content-translation}
-          (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=sv"))]
-            (is (map? response))
-            (is (contains? response :data))
-            (let [data (:data response)
-                  translation (first data)]
-              (is (= 1 (count data)))
-              (is (= "sv" (:locale translation)))
-              (is (= "the msgid" (:msgid translation)))
-              (is (= "the msgstr" (:msgstr translation))))))))))
+        (with-clean-translations!
+          (mt/with-temp [:model/ContentTranslation {_ :id} {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
+            (mt/with-premium-features #{:content-translation}
+              (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=sv"))]
+                (is (map? response))
+                (is (contains? response :data))
+                (let [data (:data response)
+                      translation (first data)]
+                  (is (= 1 (count data)))
+                  (is (= "sv" (:locale translation)))
+                  (is (= "blueberry" (:msgid translation)))
+                  (is (= "blåbär" (:msgstr translation))))))))))))
