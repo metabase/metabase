@@ -1,6 +1,9 @@
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import { getDashboardCard } from "./e2e-dashboard-helpers";
+import {
+  getDashboardCard,
+  showDashboardCardActions,
+} from "./e2e-dashboard-helpers";
 import { modal, sidebar } from "./e2e-ui-elements-helpers";
 
 export function clickVisualizeAnotherWay(name: string) {
@@ -10,7 +13,11 @@ export function clickVisualizeAnotherWay(name: string) {
       .findByLabelText("Visualize another way")
       .click({ force: true });
   });
-  cy.findByTestId("visualization-canvas-loader").should("not.exist");
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
 export function dataImporter() {
@@ -234,11 +241,16 @@ export function chartLegendItem(name: string) {
 }
 
 export function showDashcardVisualizerModal(index = 0) {
-  return getDashboardCard(index)
-    .realHover()
-    .within(() => {
-      cy.findByLabelText("Edit visualization").click({ force: true });
-    });
+  showDashboardCardActions(index);
+
+  getDashboardCard(index)
+    .findByLabelText("Edit visualization")
+    .click({ force: true });
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
 export function showDashcardVisualizerModalSettings(index = 0) {
