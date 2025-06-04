@@ -1,0 +1,9 @@
+# Compiled output
+/dist
+
+# Node
+/node_modules
+yarn-error.log
+
+# Miscellaneous
+.angular

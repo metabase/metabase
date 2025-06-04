@@ -33,7 +33,6 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
@@ -83,6 +82,7 @@ import type {
   Dispatch,
   State,
 } from "metabase-types/store";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
@@ -656,7 +656,6 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
 };
 
 export interface AIDashboardAnalysisSidebarProps {
-  dashboard: Dashboard;
   onClose?: () => void;
   dashcardId?: DashCardId;
 }
@@ -671,19 +670,15 @@ export interface AIQuestionAnalysisSidebarProps {
 
 export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: ComponentType<any>;
-  AIDashboardAnalysisButton: ComponentType<any>;
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
-  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
   canAnalyzeQuestion: (question: Question) => boolean;
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: PluginPlaceholder,
-  AIDashboardAnalysisButton: PluginPlaceholder,
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
-  canAnalyzeDashboard: () => false,
   canAnalyzeQuestion: () => false,
 };
 

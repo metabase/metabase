@@ -1263,7 +1263,8 @@
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
-   :uses #{analyze
+   :uses #{analytics
+           analyze
            api
            app-db
            audit-app
