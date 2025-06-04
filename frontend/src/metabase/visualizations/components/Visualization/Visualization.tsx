@@ -19,12 +19,10 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   getIsShowingRawTable,
   getUiControls,
@@ -620,7 +618,6 @@ class Visualization extends PureComponent<
       style,
       tableHeaderHeight,
       timelineEvents,
-      tc,
       token,
       totalNumGridCols,
       uuid,
@@ -640,16 +637,11 @@ class Visualization extends PureComponent<
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
-    const { series, hovered: untranslatedHoveredObject, clicked } = this.state;
-
-    let hovered =
-      PLUGIN_CONTENT_TRANSLATION.translateFieldValuesInHoveredObject(
-        untranslatedHoveredObject,
-        tc,
-      );
+    let { series, hovered, clicked } = this.state;
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
+
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -941,8 +933,7 @@ export default _.compose(
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(
     function VisualizationForwardRef(props, ref) {
-      const tc = useTranslateContent();
-      return <VisualizationMemoized {...props} forwardedRef={ref} tc={tc} />;
+      return <VisualizationMemoized {...props} forwardedRef={ref} />;
     },
   ),
 ) as ComponentType<VisualizationOwnProps>;

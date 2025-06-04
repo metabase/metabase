@@ -10,6 +10,8 @@ import type {
   Series,
 } from "metabase-types/api";
 
+import { useTranslateContent } from "./use-translate-content";
+
 export type TranslateContentStringFunction = <
   MsgidType = string | null | undefined,
 >(
@@ -92,26 +94,33 @@ export const translateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,
   tc?: ContentTranslationFunction,
 ) => {
-  return useMemo(() => {
-    if (!tc?.hasTranslations) {
-      return obj;
-    }
-    return {
-      ...obj,
-      data: obj?.data?.map((row) => {
-        const { value, col } = row;
+  if (!tc?.hasTranslations) {
+    return obj;
+  }
+  return {
+    ...obj,
+    data: obj?.data?.map((row) => {
+      const { value, col } = row;
 
-        return {
-          ...row,
-          value:
-            col &&
-            shouldTranslateFieldValuesOfColumn(col) &&
-            typeof value === "string"
-              ? tc(value)
-              : value,
-        };
-      }),
-    };
+      return {
+        ...row,
+        value:
+          col &&
+          shouldTranslateFieldValuesOfColumn(col) &&
+          typeof value === "string"
+            ? tc(value)
+            : value,
+      };
+    }),
+  };
+};
+
+export const useTranslateFieldValuesInHoveredObject = (
+  obj: HoveredObject | null,
+) => {
+  const tc = useTranslateContent();
+  return useMemo(() => {
+    return translateFieldValuesInHoveredObject(obj, tc);
   }, [obj, tc]);
 };
 
@@ -147,10 +156,8 @@ const translateFieldValuesInSeries = (
   });
 };
 
-export const useTranslateSeries = (
-  series: Series,
-  tc: ContentTranslationFunction,
-) => {
+export const useTranslateSeries = (series: Series) => {
+  const tc = useTranslateContent();
   return useMemo(() => {
     if (!tc.hasTranslations) {
       return series;
