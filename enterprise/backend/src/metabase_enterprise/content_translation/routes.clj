@@ -50,14 +50,19 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+  (log/info 1)
   (let [file (get-in multipart-params ["file" :tempfile])]
+    (log/info 2)
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size)
       (throw (ex-info (tru "The dictionary should be less than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
                       {:status-code http-status-content-too-large})))
+    (log/info 3)
     (when-not (instance? java.io.File file)
       (throw (ex-info (tru "No file provided") {:status-code 400})))
+    (log/info 4)
     (with-open [rdr (io/reader file)]
       (let [[_header & rows] (csv/read-csv rdr)]
+        (log/info 5)
         (dictionary/import-translations! rows)))
     {:success true}))
 
