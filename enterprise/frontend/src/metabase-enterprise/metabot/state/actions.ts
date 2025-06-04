@@ -6,6 +6,7 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import {
   EnterpriseApi,
   METABOT_TAG,
+  idTag,
   metabotAgent,
   metabotApi,
 } from "metabase-enterprise/api";
@@ -138,6 +139,11 @@ export const resetConversation = createAsyncThunk(
       EnterpriseApi.internalActions.removeMutationResult({
         fixedCacheKey: METABOT_TAG,
       }),
+    );
+    dispatch(
+      EnterpriseApi.util.invalidateTags([
+        idTag("metabot-prompt-suggestions", 1),
+      ]),
     );
 
     dispatch(clearMessages());

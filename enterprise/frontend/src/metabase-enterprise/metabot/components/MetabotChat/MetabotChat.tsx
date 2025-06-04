@@ -1,8 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { c, jt, t } from "ttag";
-import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -39,11 +38,7 @@ export const MetabotChat = () => {
   useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
 
   const hasMessages = metabot.messages.length > 0;
-  const suggestedPrompts = useMemo(() => {
-    const prompts = metabot.suggestedPrompts.data?.prompts ?? [];
-    return _.shuffle(prompts).slice(0, 3);
-  }, [metabot.suggestedPrompts]);
-  const hasSuggestions = suggestedPrompts.length > 0;
+  const hasSuggestions = metabot.suggestedPrompts.length > 0;
 
   const handleSubmitInput = (input: string) => {
     if (metabot.isDoingScience) {
@@ -111,7 +106,7 @@ export const MetabotChat = () => {
           ref={messagesRef}
         >
           {/* empty state with no suggested prompts */}
-          {!hasMessages && !hasSuggestions && (
+          {!hasMessages && (
             <Flex
               h="100%"
               gap="md"
@@ -128,9 +123,9 @@ export const MetabotChat = () => {
               />
               <Text
                 c="text-light"
-                maw="18rem"
+                maw="12rem"
                 ta="center"
-              >{t`I can tell you about what you’re looking at, or help you explore your models and metrics.`}</Text>
+              >{t`I can help you explore your metrics and models.`}</Text>
             </Flex>
           )}
 
@@ -138,9 +133,7 @@ export const MetabotChat = () => {
           {!hasMessages && hasSuggestions && (
             <Stack gap="sm" data-testid="metabot-prompt-suggestions">
               <>
-                <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
-                {metabot.suggestedPrompts.isLoading && <Loader />}
-                {suggestedPrompts.map(({ prompt }, index) => (
+                {metabot.suggestedPrompts.map(({ prompt }, index) => (
                   <Box key={index}>
                     <Button
                       fz="sm"

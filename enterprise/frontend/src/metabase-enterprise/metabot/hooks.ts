@@ -25,6 +25,8 @@ export const useMetabotAgent = () => {
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: 1, // TODO: fix
+    limit: 3,
+    sample: true,
   });
 
   // TODO: create an enterprise useSelector
@@ -78,6 +80,8 @@ export const useMetabotAgent = () => {
       ],
     ),
     isDoingScience: sendMessageReq.isLoading || isProcessing,
-    suggestedPrompts: suggestedPromptsReq,
+    suggestedPrompts: suggestedPromptsReq.isFetching
+      ? []
+      : (suggestedPromptsReq.currentData?.prompts ?? []),
   };
 };

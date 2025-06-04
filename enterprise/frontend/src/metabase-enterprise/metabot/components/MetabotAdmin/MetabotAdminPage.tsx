@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
@@ -22,9 +22,10 @@ import {
   Box,
   Button,
   Center,
-  Checkbox,
   Flex,
   Icon,
+  Loader,
+  Skeleton,
   Stack,
   Text,
 } from "metabase/ui";
@@ -34,8 +35,8 @@ import {
   useGetSuggestedMetabotPromptsQuery,
   useListMetabotsEntitiesQuery,
   useListMetabotsQuery,
+  useRefreshSuggestedMetabotPromptsMutation,
   useUpdateMetabotEntitiesMutation,
-  useUpdateSuggestedMetabotPromptMutation,
 } from "metabase-enterprise/api";
 import type {
   CollectionEssentials,
@@ -52,6 +53,11 @@ export function MetabotAdminPage() {
   const metabotName =
     data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
   const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
+
+  const { data: entityList } = useListMetabotsEntitiesQuery(
+    metabotId ? { id: metabotId } : skipToken,
+  );
+  const hasEntities = (entityList?.items?.length ?? 0) > 0;
 
   if (isLoading || !data) {
     return (
@@ -87,7 +93,9 @@ export function MetabotAdminPage() {
                 metabotId={metabotId}
                 metabotName={metabotName}
               />
-              <MetabotPromptSuggestionPane metabotId={metabotId} />
+              {hasEntities && (
+                <MetabotPromptSuggestionPane metabotId={metabotId} />
+              )}
             </>
           )}
         </Stack>
@@ -280,83 +288,123 @@ const MetabotPromptSuggestionPane = ({
 }: {
   metabotId: MetabotId;
 }) => {
-  const pageSize = 6;
-  const { handleNextPage, handlePreviousPage, page } = usePagination();
-  const offset = page * pageSize;
-
-  const { data, isLoading, error } = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabotId,
-    limit: pageSize,
-    include_disabled: true,
-    offset,
-  });
-  const [updatePrompt] = useUpdateSuggestedMetabotPromptMutation();
-  const [deletePrompt] = useDeleteSuggestedMetabotPromptMutation();
-  // const [refreshPrompts] = useRefreshSuggestedMetabotPromptsMutation();
-
   const [sendToast] = useToast();
 
-  const prompts = data?.prompts ?? [];
+  const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
+  const pageSize = 2;
+  const offset = page * pageSize;
+
+  const { data, isFetching, error } = useGetSuggestedMetabotPromptsQuery({
+    metabot_id: metabotId,
+    limit: pageSize,
+    offset,
+  });
+
+  const [deletePrompt] = useDeleteSuggestedMetabotPromptMutation();
+
+  const [refreshPrompts, { isLoading: isRefreshing }] =
+    useRefreshSuggestedMetabotPromptsMutation();
+
+  const [isSlowRefresh, setIsSlowRefresh] = useState(false);
+  useEffect(() => {
+    if (isRefreshing) {
+      const timeout = setTimeout(() => {
+        setIsSlowRefresh(true);
+      }, 5 * 1000);
+      return () => clearTimeout(timeout);
+    } else {
+      setIsSlowRefresh(false);
+    }
+  }, [isRefreshing]);
+
+  const handleRefreshPrompts = async () => {
+    const { error } = await refreshPrompts(metabotId);
+    if (error) {
+      sendToast({
+        message: t`Error refreshing prompts`,
+        icon: "warning",
+      });
+    } else {
+      setPage(0);
+    }
+  };
+
+  const prompts = useMemo(() => data?.prompts ?? [], [data?.prompts]);
   const total = data?.total ?? 0;
 
-  if (isLoading) {
-    return <div>loading...</div>;
-  }
+  const rows = useMemo(() => {
+    return isFetching
+      ? new Array(pageSize).fill(null).map((_, id) => ({ id, isLoading: true }))
+      : prompts;
+  }, [isFetching, pageSize, prompts]);
+
   if (error) {
     return <div>error...</div>;
   }
 
   return (
-    <Stack w="100%">
-      <SettingHeader id="prompt-suggestions" title={t`Prompt suggestions`} />
-      <Table<SuggestedMetabotPrompt>
+    <Box w="100%">
+      <SettingHeader
+        id="prompt-suggestions"
+        title={t`Prompt suggestions`}
+        description={t`When users open a new Metabot chat, we’ll randomly show them a few suggested prompts based on the models and metrics in the collection you chose.`}
+      />
+      <Flex gap="md" align="center">
+        <Button
+          disabled={isRefreshing}
+          leftSection={isRefreshing && <Loader size="xs" />}
+          onClick={handleRefreshPrompts}
+        >
+          {isRefreshing
+            ? t`Refreshing prompts suggestions...`
+            : t`Refresh prompts suggestions`}
+        </Button>
+        {isSlowRefresh && (
+          <Text c="text-light">{t`Hang tight, this can take a while...`}</Text>
+        )}
+      </Flex>
+      <Box
+        component={
+          Table<
+            | (SuggestedMetabotPrompt & { isLoading?: void })
+            | { id: number; isLoading: boolean }
+          >
+        }
+        maw="80rem"
+        cols={
+          <>
+            <col width="60%" />
+            <col width="40%" />
+            <col width="3rem" />
+          </>
+        }
         columns={[
           { name: "Prompt", key: "prompt", sortable: false },
           { name: "Model or metric", key: "model", sortable: false },
           { name: "", key: "trash", sortable: false },
         ]}
-        rows={prompts}
-        rowRenderer={(row) => (
-          <SuggestedPromptRow
-            row={row}
-            onToggleEnabled={async (enabled) => {
-              // TODO: success / failure handling
-              const { error } = await updatePrompt({
-                metabot_id: metabotId,
-                prompt_id: row.id,
-                enabled,
-              });
-              if (error) {
-                sendToast({
-                  message: enabled
-                    ? t`Failed to enable prompt`
-                    : t`Failed to disabled prompt`,
-                  icon: "warning",
+        rows={rows}
+        rowRenderer={(row) =>
+          row.isLoading ? (
+            <SkeletonSuggestedPromptRow key={row.id} />
+          ) : (
+            <SuggestedPromptRow
+              key={row.id}
+              row={row as SuggestedMetabotPrompt}
+              onDelete={async () => {
+                const { error } = await deletePrompt({
+                  metabot_id: metabotId,
+                  prompt_id: row.id,
                 });
-              } else {
-                sendToast({
-                  message: enabled
-                    ? t`Succesfully enabled prompt`
-                    : t`Succesfully disabled prompt`,
-                  icon: "check",
-                });
-              }
-            }}
-            onDelete={async () => {
-              // TODO: success / failure handling
-              const { error } = await deletePrompt({
-                metabot_id: metabotId,
-                prompt_id: row.id,
-              });
-              sendToast({
-                message: error
-                  ? t`Failed to delete prompt`
-                  : t`Succesfully deleted prompt`,
-                icon: error ? "warning" : "check",
-              });
-            }}
-          />
-        )}
+                sendToast(
+                  error
+                    ? { message: t`Failed to delete prompt`, icon: "warning" }
+                    : { message: t`Succesfully deleted prompt`, icon: "check" },
+                );
+              }}
+            />
+          )
+        }
         emptyBody={
           <Center my="lg" fw="bold" c="text-light">
             {t`No prompts found.`}
@@ -374,38 +422,44 @@ const MetabotPromptSuggestionPane = ({
           onPreviousPage={handlePreviousPage}
         />
       </Flex>
-    </Stack>
+    </Box>
   );
 };
 
+const SkeletonSuggestedPromptRow = () => (
+  <Box component="tr" h="3.5rem">
+    <td>
+      <Skeleton h="1rem" natural />
+    </td>
+    <td>
+      <Skeleton h="1rem" natural />
+    </td>
+    <Flex h="3.5rem" component="td" align="center" justify="flex-end">
+      <Skeleton w="1.25rem" h="1rem" mr=".25rem" />
+    </Flex>
+  </Box>
+);
+
 const SuggestedPromptRow = ({
   row,
-  onToggleEnabled,
   onDelete,
 }: {
   row: SuggestedMetabotPrompt;
-  onToggleEnabled: (enabled: boolean) => Promise<void>;
   onDelete: () => Promise<void>;
-}) => {
-  return (
-    <tr>
-      <td>
-        <Flex gap="sm">
-          <Checkbox
-            checked={row.enabled}
-            onChange={(e) => onToggleEnabled(e.target.checked)}
-          />
-          {row.prompt}
-        </Flex>
-      </td>
-      <td>
-        {row.model} {row.model_id}
-      </td>
-      <td>
-        <ActionIcon onClick={onDelete} h="sm">
-          <Icon name="trash" size="1rem" />
-        </ActionIcon>
-      </td>
-    </tr>
-  );
-};
+}) => (
+  <Box component="tr" mih="3.5rem">
+    <Box component="td" py="1rem">
+      <Flex gap="sm">{row.prompt}</Flex>
+    </Box>
+    <td>
+      <Flex align="center" gap="sm">
+        <Icon name={row.model} c="text-medium" /> {row.model_id}
+      </Flex>
+    </td>
+    <Box component="td" h="3.5rem">
+      <ActionIcon onClick={onDelete} h="sm">
+        <Icon name="trash" size="1rem" />
+      </ActionIcon>
+    </Box>
+  </Box>
+);
