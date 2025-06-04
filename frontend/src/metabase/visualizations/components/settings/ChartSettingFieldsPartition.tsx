@@ -23,7 +23,7 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ColumnNameColumnSplitSetting,
   DatasetColumn,
-  NativeColumnAggregation,
+  NativeColumnSplit,
   NativeColumnSplitSetting,
   PartitionName,
   SplitSettingValue,
@@ -184,7 +184,7 @@ export const ChartSettingFieldsPartition = ({
     () =>
       _.mapObject(value || {}, (splitVal: SplitSettingValue[]) => {
         if (isNativeQuery) {
-          const aggDetails = splitVal as NativeColumnAggregation[];
+          const aggDetails = splitVal as NativeColumnSplit[];
           const columnNames = aggDetails.map((agg) => agg.column);
           return columnNames.map((columnName) => {
             const col = columns.find((c) => c.name === columnName);
@@ -250,9 +250,32 @@ export const ChartSettingFieldsPartition = ({
   };
 
   const onAddBreakout = (
-    _partition: keyof ColumnNameColumnSplitSetting,
-    _column: Lib.ColumnMetadata,
-  ) => {};
+    partition: "rows" | "columns",
+    column: Lib.ColumnMetadata,
+  ) => {
+    const columnName = Lib.displayInfo(query, -1, column).name;
+    const bucket = Lib.temporalBucket(column);
+    const bucketName = bucket
+      ? Lib.displayInfo(query, 0, bucket)?.shortName
+      : undefined;
+    const binning = Lib.binning(column);
+    const binningName = binning
+      ? Lib.displayInfo(query, 0, binning)?.shortName
+      : undefined;
+
+    onChange({
+      ...value,
+      [partition]: columnAdd(
+        value[partition] || [],
+        value[partition]?.length ?? 0,
+        {
+          name: columnName,
+          bucket: bucketName,
+          binning: binningName,
+        },
+      ),
+    });
+  };
 
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
@@ -338,7 +361,9 @@ export const ChartSettingFieldsPartition = ({
           ) : (
             <AddBreakoutPopover
               query={wrappedQuery}
-              onAddBreakout={(col) => onAddBreakout(partitionName, col)}
+              onAddBreakout={(col) =>
+                onAddBreakout(partitionName as "rows" | "columns", col)
+              }
             />
           );
 
@@ -351,20 +376,25 @@ export const ChartSettingFieldsPartition = ({
             <Droppable
               droppableId={partitionName}
               type={partitionType}
-              renderClone={(provided, _snapshot, rubric) => (
-                <Box
-                  ref={provided.innerRef}
-                  {...provided.draggableProps}
-                  {...provided.dragHandleProps}
-                  mb="0.5rem"
-                >
-                  <Column
-                    onEditFormatting={handleEditFormatting}
-                    column={updatedColumns[rubric.source.index]}
-                    title={getColumnTitle(updatedColumns[rubric.source.index])}
-                  />
-                </Box>
-              )}
+              renderClone={(provided, _snapshot, rubric) => {
+                const column = updatedColumns[rubric.source.index];
+                return (
+                  <Box
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    mb="0.5rem"
+                  >
+                    {column && (
+                      <Column
+                        onEditFormatting={handleEditFormatting}
+                        column={column}
+                        title={getColumnTitle(column)}
+                      />
+                    )}
+                  </Box>
+                );
+              }}
             >
               {(provided, snapshot) => (
                 <Box
@@ -390,29 +420,33 @@ export const ChartSettingFieldsPartition = ({
                       {emptyColumnMessage}
                     </Box>
                   ) : (
-                    updatedColumns.map((col, index) => (
-                      <Draggable
-                        key={`draggable-${col.name}`}
-                        draggableId={`draggable-${col.name}`}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <Box
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={CS.mb1}
+                    updatedColumns.map((col, index) => {
+                      return (
+                        col && (
+                          <Draggable
+                            key={`draggable-${col.name}`}
+                            draggableId={`draggable-${col.name}`}
+                            index={index}
                           >
-                            <Column
-                              key={`${partitionName}-${col.name}`}
-                              column={col}
-                              onEditFormatting={handleEditFormatting}
-                              title={getColumnTitle(col)}
-                            />
-                          </Box>
-                        )}
-                      </Draggable>
-                    ))
+                            {(provided) => (
+                              <Box
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={CS.mb1}
+                              >
+                                <Column
+                                  key={`${partitionName}-${col.name}`}
+                                  column={col}
+                                  onEditFormatting={handleEditFormatting}
+                                  title={getColumnTitle(col)}
+                                />
+                              </Box>
+                            )}
+                          </Draggable>
+                        )
+                      );
+                    })
                   )}
                   {provided.placeholder}
                 </Box>
