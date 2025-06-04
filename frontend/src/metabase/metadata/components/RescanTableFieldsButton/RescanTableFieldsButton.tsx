@@ -12,7 +12,7 @@ interface Props {
 
 export const RescanTableFieldsButton = ({ tableId }: Props) => {
   const [rescanTableFieldValues] = useRescanTableFieldValuesMutation();
-  const [started, setStarted] = useTemporaryState(false);
+  const [started, setStarted] = useTemporaryState(false, 2000);
   const [sendToast] = useToast();
 
   const handleClick = async () => {
