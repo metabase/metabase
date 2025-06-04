@@ -33,10 +33,7 @@ import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPa
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
-import {
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-} from "./typed-selectors";
+import { getAdminSettingDefinitions } from "./typed-selectors";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -83,52 +80,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   "email/smtp": {
     component: SMTPConnectionForm,
-    settings: [
-      {
-        key: "email-smtp-host",
-        display_name: t`SMTP Host`,
-        placeholder: "smtp.yourservice.com",
-        type: "string",
-        required: true,
-        autoFocus: true,
-      },
-      {
-        key: "email-smtp-port",
-        display_name: t`SMTP Port`,
-        placeholder: "587",
-        type: "number",
-        required: true,
-        validations: [["integer", t`That's not a valid port number`]],
-      },
-      {
-        key: "email-smtp-security",
-        display_name: t`SMTP Security`,
-        description: null,
-        type: "radio",
-        options: [
-          { value: "none", name: "None" },
-          { value: "ssl", name: "SSL" },
-          { value: "tls", name: "TLS" },
-          { value: "starttls", name: "STARTTLS" },
-        ],
-        defaultValue: "none",
-      },
-      {
-        key: "email-smtp-username",
-        display_name: t`SMTP Username`,
-        description: null,
-        placeholder: "nicetoseeyou",
-        type: "string",
-      },
-      {
-        key: "email-smtp-password",
-        display_name: t`SMTP Password`,
-        description: null,
-        placeholder: "Shhh...",
-        type: "password",
-        getHidden: () => MetabaseSettings.isHosted(),
-      },
-    ],
+    settings: [],
   },
   "notifications/slack": {
     name: "Slack",
@@ -269,16 +221,7 @@ export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
-export const getSettings = createSelector(
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-  (settings, warnings) =>
-    settings.map((setting) =>
-      warnings[setting.key]
-        ? { ...setting, warning: warnings[setting.key] }
-        : setting,
-    ),
-);
+export const getSettings = getAdminSettingDefinitions;
 
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from
