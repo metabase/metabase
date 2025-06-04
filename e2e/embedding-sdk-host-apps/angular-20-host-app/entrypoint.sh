@@ -3,13 +3,12 @@ set -e
 
 rm -rf dist
 
-npm ci --install-links
+yarn install --frozen-lockfile
 # To fail for audit warnings and prevent triggering warnings on the Github
-npm audit --audit-level=low
+yarn audit --level low
 
 if [ "$WATCH" = "true" ]; then
-  npx vite --host
+  yarn watch --port $CLIENT_PORT
 else
-  npx vite build
-  npx vite preview --host
+  yarn preview --port $CLIENT_PORT
 fi
