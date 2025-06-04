@@ -341,6 +341,10 @@ export function assertDashboardCardTitle(index: number, title: string) {
     .should("have.text", title);
 }
 
+export function clickOnCardTitle(index: number) {
+  getDashboardCard(index).findByTestId("legend-caption-title").click();
+}
+
 export const dashboardHeader = () => {
   return cy.findByTestId("dashboard-header");
 };
