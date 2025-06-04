@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
