@@ -16,6 +16,14 @@ const BASE_SETUP_CONFIG = {
 };
 
 export const HOST_APP_SETUP_CONFIGS = {
+  "create-react-app-5-host-app-e2e": {
+    ...BASE_SETUP_CONFIG,
+    appName: "create-react-app-5-host-app",
+    env: {
+      ...BASE_ENV,
+      REACT_APP_MB_PORT: BASE_ENV.MB_PORT,
+    },
+  },
   "vite-6-host-app-e2e": {
     ...BASE_SETUP_CONFIG,
     appName: "vite-6-host-app",

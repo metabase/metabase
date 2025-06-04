@@ -92,6 +92,7 @@ const configs = {
   ...getSampleAppE2eConfig("metabase-nodejs-react-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("metabase-nextjs-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("shoppy-e2e"),
+  ...getHostAppE2eConfig("create-react-app-5-host-app-e2e"),
   ...getHostAppE2eConfig("vite-6-host-app-e2e"),
   ...getHostAppE2eConfig("next-15-app-router-host-app-e2e"),
   ...getHostAppE2eConfig("next-15-pages-router-host-app-e2e"),
