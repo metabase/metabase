@@ -1,133 +1,90 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { CodeSnippet } from "metabase/components/CodeSnippet";
-import { Box, Button, Group, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Group,
+  Loader,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
 export const FinalStep = () => {
-  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
-  const [currentDashboardIndex, setCurrentDashboardIndex] = useState(0);
-  const { sandboxingColumn, createdDashboardIds } = useEmbeddingSetup();
+  const { createdDashboardIds } = useEmbeddingSetup();
 
-  useEffect(() => {
-    const fetchDashboards = async () => {
-      try {
-        const dashboardPromises = createdDashboardIds.map((id) =>
-          fetch(`/api/dashboard/${id}`).then((res) => res.json()),
-        );
-        const dashboardData = await Promise.all(dashboardPromises);
-        setDashboards(dashboardData);
-      } catch (err) {
-        console.error("Error fetching dashboards:", err);
-      }
-    };
-
-    if (createdDashboardIds.length > 0) {
-      fetchDashboards();
-    }
+  const { loading, value: dashboards } = useAsync(async () => {
+    const dashboardPromises = createdDashboardIds.map((id) =>
+      fetch(`/api/dashboard/${id}`).then((res) => res.json()),
+    );
+    return Promise.all(dashboardPromises);
   }, [createdDashboardIds]);
-
-  const currentDashboard = dashboards[currentDashboardIndex];
 
   const getEmbedCode = (dashboard: Dashboard) => {
     return `<iframe src="${window.location.origin}/embed/dashboard/${dashboard.id}" />`;
   };
 
+  if (loading) {
+    return (
+      <Center h="500px">
+        <Loader size="lg" />
+      </Center>
+    );
+  }
+
+  if (!dashboards) {
+    return (
+      <Center h="500px">
+        <Text>{t`No dashboards found`}</Text>
+      </Center>
+    );
+  }
+
   return (
     <Stack gap="xl">
-      <Stack gap="md">
-        <Title
-          order={2}
-        >{t`Now, let's add these dashboards to your application.`}</Title>
-        <Text size="lg">
-          {t`Here are your embedded dashboards and the code you'll need to add to your application.`}
-        </Text>
-      </Stack>
+      <Group justify="space-between">
+        <Stack gap="md">
+          <Title order={2}>{t`Add to your app`}</Title>
+          <Text size="md">
+            {t`Copy the code into your application. You can also pick this up later.`}
+          </Text>
+        </Stack>
+        {/* TODO() DOCS URL */}
+        <a href={""} target="_blank" rel="noreferrer">
+          <Text c="brand">{t`Documentation`}</Text>
+        </a>
+      </Group>
 
-      <Group>
-        {dashboards.length > 0 && (
-          <Box>
-            <Title order={3} mb="md">{t`Preview`}</Title>
-            <Box
-              h={400}
-              w="800px"
-              style={{ border: "1px solid #ddd", borderRadius: "4px" }}
-            >
+      <Tabs defaultValue={dashboards[0].id.toString()}>
+        <Tabs.List>
+          {dashboards.map((dashboard) => (
+            <Tabs.Tab key={dashboard.id} value={dashboard.id.toString()}>
+              {dashboard.name}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+        {dashboards.map((dashboard) => (
+          <Tabs.Panel key={dashboard.id} value={dashboard.id.toString()}>
+            <Box my="md">
               <iframe
-                src={`${window.location.origin}/embed/dashboard/${currentDashboard.id}`}
-                style={{ width: "100%", height: "100%", border: "none" }}
-                title={currentDashboard.name}
+                src={`${window.location.origin}/embed/dashboard/${dashboard.id}`}
+                style={{ width: "100%", height: "600px", border: "none" }}
+                title={dashboard.name}
               />
             </Box>
-            <Box
-              mt="md"
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Button
-                variant="subtle"
-                onClick={() =>
-                  setCurrentDashboardIndex((prev) =>
-                    prev > 0 ? prev - 1 : dashboards.length - 1,
-                  )
-                }
-                disabled={dashboards.length <= 1}
-              >
-                {t`Previous`}
-              </Button>
-              <Text>{t`Dashboard ${currentDashboardIndex + 1} of ${dashboards.length}`}</Text>
-              <Button
-                variant="subtle"
-                onClick={() =>
-                  setCurrentDashboardIndex((prev) =>
-                    prev < dashboards.length - 1 ? prev + 1 : 0,
-                  )
-                }
-                disabled={dashboards.length <= 1}
-              >
-                {t`Next`}
-              </Button>
-            </Box>
-          </Box>
-        )}
 
-        {currentDashboard && (
-          <>
-            <Title
-              order={3}
-              mb="md"
-            >{t`Code snippet for ${currentDashboard.name}`}</Title>
-            <CodeSnippet
-              code={getEmbedCode(currentDashboard)}
-              language="html"
-            />
-          </>
-        )}
-
-        {sandboxingColumn && (
-          <Box>
-            <Title order={3} mb="md">{t`Sandboxing column detected`}</Title>
-            <Text>
-              {t`We detected a potential column for data sandboxing: ${sandboxingColumn.name}. You can use this to restrict data access for different users.`}
-            </Text>
-            <Button
-              component={Link}
-              to="/admin/permissions"
-              variant="filled"
-              mt="md"
-            >
-              {t`Configure Permissions`}
-            </Button>
-          </Box>
-        )}
-      </Group>
+            <CodeSnippet code={getEmbedCode(dashboard)} language="html" />
+          </Tabs.Panel>
+        ))}
+      </Tabs>
 
       <Title order={2}>{t`How'd it go?`}</Title>
       <Button component={Link} to="/" size="lg" variant="filled" w="100%">
