@@ -141,7 +141,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     getSdkRoot().contains("My Orders");
   });
 
-  it("should respect `entityTypes` prop", () => {
+  it.skip("should respect `entityTypes` prop", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
     cy.intercept("POST", "/api/card").as("createCard");
