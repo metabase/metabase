@@ -18,20 +18,22 @@
 (defn- ->deps-edn-alias [db version] (c/green ":db/" (name db) "-" (name version)))
 
 (defn- fetch-supported-versions [db-info database]
-  (let [now (java.time.LocalDate/now)
-        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
-        _ (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
-        supported (->> all-versions
-                       (mapv (fn [m]
-                               (-> m
-                                   (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
-                                   (update :eol #(and % (-> % java.time.LocalDate/parse))))))
-                       (filter (fn [{:keys [^java.time.LocalDate eol]}]
-                                 (and eol (.isAfter eol now))))
-                       (sort-by :releaseDate)
-                       vec)]
-    (u/debug "supported: \n" (with-out-str (t/table supported)))
-    supported))
+  (if (= database :clickhouse)
+    "23.3"
+    (let [now (java.time.LocalDate/now)
+          all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
+          _ (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
+          supported (->> all-versions
+                         (mapv (fn [m]
+                                 (-> m
+                                     (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
+                                     (update :eol #(and % (-> % java.time.LocalDate/parse))))))
+                         (filter (fn [{:keys [^java.time.LocalDate eol]}]
+                                   (and eol (.isAfter eol now))))
+                         (sort-by :releaseDate)
+                         vec)]
+      (u/debug "supported: \n" (with-out-str (t/table supported)))
+      supported)))
 
 (defn- fetch-oldest-supported-version [db-info database]
   (let [versions (fetch-supported-versions db-info database)
@@ -96,6 +98,15 @@
    "-p" (str port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])
+
+(defmethod docker-cmd :clickhouse
+  [_db container-name resolved-version port]
+  ["docker" "compose"
+   "-f" "modules/drivers/clickhouse/docker-compose.yml"
+   "up" "-d"
+   (if (= resolved-version "latest")
+     "clickhouse"
+     "clickhouse_older_version")])
 
 (defn- start-db!
   [database version resolved-version port]
