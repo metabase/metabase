@@ -148,7 +148,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
             </LoadingAndErrorWrapper>
           </Box>
 
-          {field && (
+          {field && table && (
             <Box flex={`1 1 ${rem(200)}`} miw={0} p="xl">
               <PreviewSection
                 databaseId={databaseId}

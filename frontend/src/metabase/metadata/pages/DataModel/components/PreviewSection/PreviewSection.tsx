@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type {
   DatabaseId,
@@ -72,6 +73,10 @@ export const PreviewSection = ({
         <FilteringPreview
           databaseId={databaseId}
           fieldId={fieldId}
+          /**
+           * Make sure internal component state is reset when changing fields.
+           */
+          key={getRawTableFieldId(field)}
           table={table}
         />
       )}
