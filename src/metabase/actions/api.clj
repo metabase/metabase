@@ -10,6 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.validation :as validation]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
@@ -77,33 +78,70 @@
                                             (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
-(api.macros/defendpoint :get "/v2/"
-  "TODO describe new picker"
-  [_route-params
-   {:keys [model-id table-id] :- [:map
-                                  [:model-id {:optional true} ms/PositiveInt]
-                                  [:table-id {:optional true} ms/PositiveInt]]}
-   _body-params]
-  ;API should not return the list of tables in OSS instances, since for now we are keeping table actions feature not available on OSS
+(api.macros/defendpoint :get "/v2/database"
+  "Databases which contain actions"
+  [_ _ _]
+  ;; TODO could optimize this into a single reducible query
+  (let [non-empty-dbs      (t2/select-fn-set :db_id [:model/Table :db_id])
+        databases          (when non-empty-dbs
+                             (t2/select [:model/Database :id :name :description :settings] :id [:in non-empty-dbs]))
+        editable-database? (comp boolean :database-enable-table-editing :settings)
+        editable-databases (filter editable-database? databases)]
+    {:databases (for [db editable-databases]
+                  (select-keys db [:id :name :description]))}))
+
+(def database-id 2)
+
+(api.macros/defendpoint :get "/v2/database/:database-id/table"
+  "Tables which contain actions"
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ _]
+  ;; tables in the database, with schema (group on frontend)
+  ;; ... why on FE? because some databases don't have a notion of schema
+  ;; filter everything or return error if data editing is not enabled
+  (let [editable-database? (comp boolean :database-enable-table-editing :settings)
+        enabled?           (when true #_(premium-features.settings/table-data-editing?)
+                                 (t2/select-one-fn editable-database? [:model/Database :settings] database-id))
+        ;; need to filter on anything else? visibility_type, sandboxes, routing, etc?
+        tables             (when enabled?
+                             (t2/select [:model/Table :id :display_name :name :description :schema] :db_id database-id))]
+    {:tables tables}))
+
+(api.macros/defendpoint :get "/v2/model"
+  "Models which contain actions"
+  [_ _ _]
+  ;; TODO should do distinct in the database (really just do one query even, with the join)
+  (let [model-ids    (t2/select-fn-set :model_id [:model/Action :model_id] :archived false)
+        models       (when model-ids
+                       (t2/select [:model/Card :id :name :description :collection_position :collection_id] :id [:in model-ids]))
+        collections  (when (seq models)
+                       (t2/select [:model/Collection :id :name] :id [:in (into #{} (keep :collection_id) models)]))
+        ->collection (comp (u/index-by :id :name collections) :collection_id)]
+    {:models (for [m models] (assoc m :collection_name (->collection m)))}))
+
+#_(api.macros/defendpoint :get "/v2/"
+    "TODO describe new picker"
+    [_route-params
+     {:keys [model-id table-id]} :- [:map
+                                     [:model-id {:optional true} ms/PositiveInt]
+                                     [:table-id {:optional true} ms/PositiveInt]]
+     _body-params]
+  ;; TODO no table actions for OSS instances
   ;Do not return models without actions
-  ;Do not return DBs that don't have data editing enabled
   ;When listing the models we also want to display information about the collection they are saved to
   ;Search - aside from the list of tables and models should also return information about the db/schema the table belongs to or the collection_name for models (no collection hierarchy needed for models, just the collection name they are saved to).
 
-  {:models  [{:id 2
-              :name "blah"
-              :collection {:id nil
-                           :name "blah"}}]
-   :tables  []
-   :actions [{:id 2
-              :parameters [{:display-name "Name",
-                            :id "name",
-                            :is-auto-increment false,
-                            :required false,
-                            :target ("variable" ("template-tag" "name")),
-                            :type "type/Text"}]}]}
-
-  nil)
+    {:models  [{:id 2
+                :name "blah"
+                :collection {:id nil
+                             :name "blah"}}]
+     :tables  []
+     :actions [{:id 2
+                #_#_:parameters [{:display-name "Name",
+                                  :id "name",
+                                  :is-auto-increment false,
+                                  :required false,
+                                  :target ("variable" ("template-tag" "name")),
+                                  :type "type/Text"}]}]})
 
 (api.macros/defendpoint :get "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
