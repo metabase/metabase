@@ -141,7 +141,7 @@
   query."
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
   (let [expression-definition        (mbql.u/expression-with-name query expression-name)
-        {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
+        {base-type :base_type}       {:base_type :type/*} #_(some-> expression-definition annotate/infer-expression-type) ; NOCOMMIT
         {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
                                        source-opts)

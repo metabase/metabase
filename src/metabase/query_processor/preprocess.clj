@@ -11,7 +11,6 @@
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
-   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
    [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
    [metabase.query-processor.middleware.binning :as binning]
@@ -47,7 +46,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.query-processor.middleware.annotate :as annotate]))
 
 ;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
@@ -184,7 +184,8 @@
      query
      middleware)))
 
-(defn- restore-join-aliases [preprocessed-query]
+(mu/defn- restore-join-aliases :- :map
+  [preprocessed-query :- :map]
   (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
     (escape-join-aliases/restore-aliases preprocessed-query replacement)))
 
@@ -200,7 +201,8 @@
                         {:type qp.error-type/qp})))
       ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
       ;; check where this is used.
-      (->> (annotate/merged-column-info preprocessed nil)
+      (->> (annotate/expected-cols
+            (lib/query (qp.store/metadata-provider) preprocessed))
            ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
            ;; directly we can stop stripping these out
            (mapv (fn [col]
