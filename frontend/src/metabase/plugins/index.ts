@@ -86,8 +86,8 @@ import type {
 import type {
   AdminPath,
   AdminPathKey,
-  State,
   Dispatch as ReduxDispatch,
+  State,
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
