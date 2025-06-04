@@ -12,6 +12,7 @@
   (cond-> t
     (= (count t) 10) (str "T00:00:00")
     (str/includes? t " ") (str/replace " " "T")
+    (str/includes? t "T") t/zoned-date-time
     true t/local-date-time))
 
 (defn- run-sample-query [query]
