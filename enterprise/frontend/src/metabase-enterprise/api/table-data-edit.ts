@@ -30,10 +30,10 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableUpdateRowsResponse,
       TableUpdateRowsRequest
     >({
-      query: ({ rows, scope }) => ({
+      query: ({ inputs, params, scope }) => ({
         method: "POST",
         url: `/api/ee/data-editing/action/v2/execute-bulk`,
-        body: { inputs: rows, scope, action_id: "data-grid.row/update" },
+        body: { inputs, params, scope, action_id: "data-grid.row/update" },
       }),
     }),
     deleteTableRows: builder.mutation<
@@ -90,11 +90,12 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableExecuteActionResponse,
       TableExecuteActionRequest
     >({
-      query: ({ actionId, parameters }) => ({
+      query: ({ actionId, input, params }) => ({
         method: "POST",
         url: `/api/ee/data-editing/action/v2/execute`,
         body: {
-          input: parameters,
+          input,
+          params,
           // Here we pass a dummy table id, because the BE doesn't allow scope to be optional,
           // but it's not actually used for this case.
           scope: { "table-id": 1 },

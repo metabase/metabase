@@ -19,7 +19,6 @@ import type {
 } from "metabase-types/api";
 
 import type {
-  RowCellsWithPkValue,
   RowPkValue,
   TableEditingScope,
   UpdateCellValueHandlerParams,
@@ -102,7 +101,8 @@ export const useTableCRUD = ({
 
       try {
         const response = await updateTableRows({
-          rows: [updatedRowWithPk],
+          inputs: [pkRecord],
+          params: updatedData,
           scope,
         });
 
@@ -160,19 +160,13 @@ export const useTableCRUD = ({
         return false;
       }
 
-      const updatedRows: RowCellsWithPkValue[] = [];
-
-      for (const rowIndex of rowIndices) {
-        const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
-
-        updatedRows.push({
-          ...updatedData,
-          ...pkRecord,
-        });
-      }
+      const inputs = rowIndices.map((rowIndex) =>
+        getRowPkKeyValue(datasetData, rowIndex),
+      );
 
       const response = await updateTableRows({
-        rows: updatedRows,
+        inputs,
+        params: updatedData,
         scope,
       });
 
