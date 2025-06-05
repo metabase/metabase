@@ -19,6 +19,7 @@ import { generateScopedCssClassName } from "./frontend/build/embedding-sdk/utils
 import { getCssModulesInjectCode } from "./frontend/build/embedding-sdk/utils/get-css-modules-inject-code.mjs";
 import { getExternalsConfig } from "./frontend/build/embedding-sdk/utils/get-externals-config.mjs";
 import { getPackageJsonContent } from "./frontend/build/embedding-sdk/utils/get-package-json-content.mjs";
+import { removeRequireCall } from "./frontend/build/embedding-sdk/utils/remove_require_call.mjs";
 import { setupBanners } from "./frontend/build/embedding-sdk/utils/setup-banners.mjs";
 
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -240,6 +241,10 @@ await build({
   onSuccess: async () => {
     // Cleanup index.css file, styles are injected into .js file
     fs.rmSync(path.join(BUILD_PATH, "index.css"));
+
+    await removeRequireCall({
+      buildPath: BUILD_PATH,
+    });
 
     const cssModulesInjectCode = await getCssModulesInjectCode();
     await setupBanners({
