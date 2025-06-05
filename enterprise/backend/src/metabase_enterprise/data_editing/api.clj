@@ -171,24 +171,6 @@
   (let [include-cols [:token :table_id :creator_id]]
     {:tokens (t2/select (into [:table_webhook_token] include-cols) :table_id table-id)}))
 
-(api.macros/defendpoint :get "/row-action/:action-id"
-  "Like /api/action but specialises the parameter requirements for a dashcard context where selected rows
-  maybe provided values for e.g primary key values.
-  Parameter names that intersect with the tables fields will be omitted from the parameter list.
-  Later when evaluated as a row action using /row-action/:action-id/execute, you will also be able to omit these parameters."
-  [{:keys [action-id]}   :- [:map [:action-id   :string]]
-   {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]]
-  (let [action      (-> (actions/select-action :id (parse-long action-id) :archived false)
-                        (t2/hydrate :creator)
-                        api/read-check)
-        ;; TODO flatten this into a single query
-        card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
-        table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
-        fields      (t2/select [:model/Field :name] :table_id table-id)
-        field-names (set (map :name fields))
-        include?    #(not (contains? field-names (:slug %)))]
-    (update action :parameters #(some->> % (filterv include?)))))
-
 (defn- input->parameters
   "We support either named or id based parameters for invoking legacy actions. This converts keys to ids, if necessary."
   [parameters input]
@@ -202,16 +184,12 @@
                :parameters  parameters}))
       (update-keys input (comp slug-or-id->id name)))))
 
-(defn- execute-saved-action!
-  "Implementation handling a sub-sub-case."
-  [action inputs]
+(defn- execute-saved-action! [action inputs]
   (doall
    (for [input inputs]
      (actions/execute-action! action (input->parameters (:parameters action) input)))))
 
-(defn- execute-dashcard-row-action-on-saved-action!
-  "Implementation handling a sub-sub-case."
-  [action-id inputs]
+(defn- execute-saved-action-from-id! [action-id inputs]
   (let [action (-> (actions/select-action :id action-id :archived false) (t2/hydrate :creator) api/read-check)]
     (execute-saved-action! action inputs)))
 
@@ -270,7 +248,7 @@
    [:map {:closed true}
     [:dashboard-action ms/PositiveInt]]
    [:map {:closed true}
-    [:row-action ::unified-action.base]
+    [:inner-action ::unified-action.base]
     ;; TODO type our mappings
     [:mapping [:maybe :map]]
     [:param-map :map]
@@ -308,10 +286,10 @@
                          (case action-type
                            ("data-grid/built-in"
                             "data-grid/row-action")
-                           {:row-action  unified
-                            :mapping     mapping
-                            :param-map   param-map
-                            :dashcard-id dashcard-id}))
+                           {:inner-action unified
+                            :mapping      mapping
+                            :param-map    param-map
+                            :dashcard-id  dashcard-id}))
                        (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
                          ;; Dashboard buttons can only be invoked from dashboards
                          ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
@@ -331,9 +309,8 @@
     "::key"  ::key}
    mapping))
 
-(defn- augment-params [{:keys [dashcard-id param-map row-action] :as _action} input params]
-  (let [row (delay (let [_ (api/check-500 row-action)       ; maybe we can skip this sanity-check
-                         {:keys [table-id]} (actions/cached-value
+(defn- augment-params [{:keys [dashcard-id param-map] :as _action} input params]
+  (let [row (delay (let [{:keys [table-id]} (actions/cached-value
                                              [:dashcard-viz dashcard-id]
                                              #(t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))]
                      (if-not table-id
@@ -385,12 +362,16 @@
              x))
          mapping)))))
 
-(defn- execute!* [action-id scope params inputs]
-  (let [scope      (actions/hydrate-scope scope)
-        unified    (fetch-unified-action scope action-id)
-        inputs     (->> inputs
-                        (apply-mapping unified params)
-                        (apply-mapping (:row-action unified) nil))]
+(defn- apply-mapping-nested [{:keys [inner-action] :as outer-action} params inputs-before]
+  (let [inputs-after (apply-mapping outer-action params inputs-before)]
+    (if inner-action
+      (recur inner-action nil inputs-after)
+      inputs-after)))
+
+(defn- execute!* [action-id scope params raw-inputs]
+  (let [scope   (actions/hydrate-scope scope)
+        unified (fetch-unified-action scope action-id)
+        inputs  (apply-mapping-nested unified params raw-inputs)]
     (cond
       (:action-id unified)
       (let [action (api/read-check (actions/select-action :id (:action-id unified) :archived false))]
@@ -405,14 +386,14 @@
         [(actions/execute-dashcard! (:dashboard-id scope)
                                     (:dashboard-action unified)
                                     (walk/stringify-keys (first inputs)))])
-      (:row-action unified)
+      (:inner-action unified)
       ;; use flat namespace for now, probably want to separate form inputs from pks
-      (let [row-action  (:row-action unified)
-            saved-id    (:action-id row-action)
-            action-kw   (:action-kw row-action)]
+      (let [inner     (:inner-action unified)
+            saved-id  (:action-id inner)
+            action-kw (:action-kw inner)]
         (cond
           saved-id
-          (execute-dashcard-row-action-on-saved-action! saved-id inputs)
+          (execute-saved-action-from-id! saved-id inputs)
           action-kw
           (:outputs (actions/perform-action! action-kw scope inputs))))
       :else
@@ -481,7 +462,7 @@
           (let [{:keys [dashcard-id]} scope
                 {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
             (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-            {:row-action    {:action-kw (keyword action_id)
+            {:inner-action  {:action-kw (keyword action_id)
                              :mapping   {:table-id (:table_id visualization_settings)
                                          :row      ::root}}
              :param-mapping (->> visualization_settings
@@ -504,7 +485,7 @@
 
         describe-saved-action
         (fn [& {:keys [action-id
-                       row-action-mapping
+                       param-mapping
                        row-delay]}]
           (let [action              (-> (actions/select-action :id action-id
                                                                :archived false
@@ -513,7 +494,7 @@
                                         api/read-check
                                         api/check-404)
                 param-id->viz-field (-> action :visualization_settings (:fields {}))
-                param-id->mapping   (u/index-by :parameterId row-action-mapping)]
+                param-id->mapping   (u/index-by :parameterId param-mapping)]
 
             {:title (:name action)
              :parameters
@@ -550,11 +531,11 @@
         describe-table-action
         (fn [& {:keys [action-kw
                        table-id
-                       row-action-mapping
+                       param-mapping
                        row-delay]}]
           (let [table-id            table-id
                 table               (api/read-check (t2/select-one :model/Table :id table-id :active true))
-                field-name->mapping (u/index-by :parameterId row-action-mapping)]
+                field-name->mapping (u/index-by :parameterId param-mapping)]
             {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
              :parameters
              (->> (for [field (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
@@ -590,22 +571,22 @@
       ;; table action
       (:action-kw unified)
       (describe-table-action
-       {:action-kw          (:action-kw unified)
+       {:action-kw     (:action-kw unified)
         ;; todo this should come from applying the (arbitrarily nested) mappings to the input
         ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
-        :table-id           (or (:table-id (:mapping (:row-action unified)))
-                                (:table-id (:mapping unified))
-                                (:table-id input))
-        :row-action-mapping (:param-mapping unified)})
+        :table-id      (or (:table-id (:mapping (:inner-action unified)))
+                           (:table-id (:mapping unified))
+                           (:table-id input))
+        :param-mapping (:param-mapping unified)})
 
-      (:row-action unified)
-      (let [row-action  (:row-action unified)
+      (:inner-action unified)
+      (let [inner       (:inner-action unified)
             mapping     (:param-mapping unified)
             dashcard-id (:dashcard-id unified)
-            saved-id    (:action-id row-action)
-            action-kw   (:action-kw row-action)
+            saved-id    (:action-id inner)
+            action-kw   (:action-kw inner)
             table-id    (or (:table-id mapping)
-                            (:table-id (:mapping row-action))
+                            (:table-id (:mapping inner))
                             (:table-id input)
                             (:table-id scope))
             _           (when-not table-id
@@ -623,13 +604,13 @@
           saved-id
           (describe-saved-action :action-id saved-id
                                  :row-action-dashcard-id dashcard-id
-                                 :row-action-mapping mapping
+                                 :param-mapping mapping
                                  :row-delay row-delay)
 
           action-kw
           (describe-table-action :action-kw action-kw
                                  :table-id table-id
-                                 :row-action-mapping mapping
+                                 :param-mapping mapping
                                  :row-delay row-delay)
 
           :else (ex-info "Not a supported row action" {:status-code 500, :scope scope, :unified unified})))

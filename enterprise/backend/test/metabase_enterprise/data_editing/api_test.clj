@@ -680,73 +680,6 @@
           (update! [{:id 1, :n "e"}])
           (is (= ["a" "c" "d" "e"] (expect-field-values ["a" "c" "d" "e"]))))))))
 
-(deftest get-row-action-test
-  (let [url #(format "ee/data-editing/row-action/%s" %)
-        action-api #(mt/user-http-request :crowberto :get 200 (format "action/%s" %))]
-    (mt/with-premium-features #{:table-data-editing}
-      (mt/test-drivers #{:h2 :postgres}
-        (testing "no dashcard"
-          (mt/with-temp [:model/Card   model  {:type     :model}
-                         :model/Action action {:type     :query
-                                               :name     "test_action"
-                                               :model_id (:id model)}]
-            (testing "not specified"
-              (is (= 400 (:status (mt/user-http-request-full-response :crowberto :get (url (:id action)))))))
-            (testing "specified but does not exist"
-              (is (= 404 (:status (mt/user-http-request-full-response :crowberto :get (url (:id action)) :dashcard-id 9999999)))))))
-        (testing "no action"
-          (mt/with-temp [:model/Dashboard     dash     {}
-                         :model/DashboardCard dashcard {:dashboard_id (:id dash)}]
-            (is (= 404 (:status (mt/user-http-request-full-response :crowberto :get (url 99999999) :dashcard-id (:id dashcard)))))
-            (testing "no dashcard still results in 400"
-              (is (= 400 (:status (mt/user-http-request-full-response :crowberto :get (url 9999999))))))))
-        (testing "everything exists, no params defined"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp [:model/Table         table    {}
-                           :model/Card          model    {:type         :model
-                                                          :table_id     (:id table)}
-                           :model/Action        action   {:type         :query
-                                                          :name         "test_action"
-                                                          :model_id     (:id model)}
-                           :model/Dashboard     dash     {}
-                           :model/DashboardCard dashcard {:dashboard_id (:id dash)
-                                                          :card_id      (:id model)}]
-              (testing "no access"
-                (is (= 403 (:status (mt/user-http-request-full-response :rasta :get (url (:id action)) :dashcard-id (:id dashcard))))))
-              (testing "action access"
-                (is (= {:status 200
-                        :body (action-api (:id action))}
-                       (-> (mt/user-http-request-full-response :crowberto :get (url (:id action)) :dashcard-id (:id dashcard))
-                           (select-keys [:status
-                                         :body]))))))))
-        (testing "parameters defined"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp [:model/Table         table    {}
-                           :model/Field         _a       {:table_id     (:id table)
-                                                          :name         "a"}
-                           :model/Field         _b       {:table_id     (:id table)
-                                                          :name         "b"}
-                           :model/Field         _c       {:table_id     (:id table)
-                                                          :name         "c"}
-                           :model/Card          model    {:type         :model
-                                                          :table_id     (:id table)}
-                           :model/Action        action   {:type         :query
-                                                          :name         "test_action"
-                                                          :model_id     (:id model)
-                                                          :parameters   [{:slug "a"}
-                                                                         {:slug "e"}
-                                                                         {:slug "c"}
-                                                                         {:slug "d"}]}
-                           :model/Dashboard     dash     {}
-                           :model/DashboardCard dashcard {:dashboard_id (:id dash)
-                                                          :card_id      (:id model)}]
-              (let [{:keys [status, body]} (mt/user-http-request-full-response :crowberto :get (url (:id action)) :dashcard-id (:id dashcard))]
-                (is (= 200 status))
-                (is (= ["e" "d"]
-                       (->> body
-                            :parameters
-                            (map :slug))))))))))))
-
 (deftest unified-execute-not-found-test
   (let [url "ee/data-editing/action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
@@ -1219,18 +1152,10 @@
                       {:keys [status body]} (req {:scope scope
                                                   :action_id create-id})]
                   (is (= 200 status))
-                  (is (= [{:id "text"
-                           :display_name "Text"
-                           :type "type/Text"}
-                          {:id "int"
-                           :display_name "Int"
-                           :type "type/Integer"}
-                          {:id "timestamp"
-                           :display_name "Timestamp"
-                           :type "type/DateTime"}
-                          {:id "date"
-                           :display_name "Date"
-                           :type "type/Date"}]
+                  (is (= [{:id "text"      :display_name "Text"      :type "type/Text"}
+                          {:id "int"       :display_name "Int"       :type "type/Integer"}
+                          {:id "timestamp" :display_name "Timestamp" :type "type/DateTime"}
+                          {:id "date"      :display_name "Date"      :type "type/Date"}]
                          (->> (:parameters body)
                               (map #(select-keys % [:id :display_name :type])))))))
               (testing "update"
@@ -1238,21 +1163,11 @@
                       {:keys [status body]} (req {:scope scope
                                                   :action_id update-id})]
                   (is (= 200 status))
-                  (is (= [{:id "id"
-                           :display_name "ID"
-                           :type "type/BigInteger"}
-                          {:id "text"
-                           :display_name "Text"
-                           :type "type/Text"}
-                          {:id "int"
-                           :display_name "Int"
-                           :type "type/Integer"}
-                          {:id "timestamp"
-                           :display_name "Timestamp"
-                           :type "type/DateTime"}
-                          {:id "date"
-                           :display_name "Date"
-                           :type "type/Date"}]
+                  (is (= [{:id "id"        :display_name "ID"        :type "type/BigInteger"}
+                          {:id "text"      :display_name "Text"      :type "type/Text"}
+                          {:id "int"       :display_name "Int"       :type "type/Integer"}
+                          {:id "timestamp" :display_name "Timestamp" :type "type/DateTime"}
+                          {:id "date"      :display_name "Date"      :type "type/Date"}]
                          (->> (:parameters body)
                               (map #(select-keys % [:id :display_name :type])))))))
               (testing "delete"
@@ -1267,23 +1182,21 @@
                               (map #(select-keys % [:id :display_name :type])))))))))
 
           (mt/with-temp
-            [:model/Dashboard dashboard
-             {}
-             :model/DashboardCard dashcard
-             {:dashboard_id (:id dashboard)
-              :visualization_settings
-              {:table_id @test-table
-               :editableTable.enabledActions
-               [{:id "table.row/create"
-                 :parameterMappings [{:parameterId "int"
-                                      :sourceType  "const"
-                                      :value       42}
-                                     {:parameterId "text"
-                                      :sourceType  "row-data"
-                                      :sourceValueTarget "text"
-                                      :visibility  "readonly"}
-                                     {:parameterId "timestamp"
-                                      :visibility  "hidden"}]}]}}]
+            [:model/Dashboard     dashboard {}
+             :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                             :visualization_settings
+                                             {:table_id @test-table
+                                              :editableTable.enabledActions
+                                              [{:id                "table.row/create"
+                                                :parameterMappings [{:parameterId "int"
+                                                                     :sourceType  "const"
+                                                                     :value       42}
+                                                                    {:parameterId       "text"
+                                                                     :sourceType        "row-data"
+                                                                     :sourceValueTarget "text"
+                                                                     :visibility        "readonly"}
+                                                                    {:parameterId "timestamp"
+                                                                     :visibility  "hidden"}]}]}}]
 
             ;; insert a row for the row action
             (mt/user-http-request :crowberto :post 200
@@ -1307,16 +1220,10 @@
                         input           {:table-id @test-table}]
                     (testing "create"
                       (is (=? {:status 200
-                               :body   {:parameters
-                                        (if (:dashcard-id scope)
-                                          [{:id "text" :readonly true :value "a very important string"}
-                                           {:id "int" :readonly false}
-                                           ;; note that timestamp is now hidden
-                                           {:id "date" :readonly false}]
-                                          [{:id "text" :readonly false}
-                                           {:id "int" :readonly false}
-                                           {:id "timestamp" :readonly false}
-                                           {:id "date" :readonly false}])}}
+                               :body   {:parameters [{:id "text" :readonly false}
+                                                     {:id "int" :readonly false}
+                                                     {:id "timestamp" :readonly false}
+                                                     {:id "date" :readonly false}]}}
                               (req {:action_id create-id
                                     :scope     scope
                                     :input     (assoc input :id 1)}))))
