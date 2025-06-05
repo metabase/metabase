@@ -59,12 +59,27 @@
           (with-redefs [driver.u/supports? (constantly false)]
             (let [query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
-      (testing "pre-existing json fields are still marked as `:type/Text`"
+      (testing "serialized json stored in text columns is treated as text (potentially large, OOM risk)"
         (let [table (mi/instance :model/Table {:id 1234})
               fields [(mi/instance :model/Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
           (with-redefs [driver.u/supports? (constantly true)]
             (let [query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
-              (is (empty? (get-in query [:query :expressions]))))))))))
+              (is (seq (get-in query [:query :expressions])))))))
+      (testing "substring is not called upon type/Text derivates"
+        (doseq [base-type (filter #(not (or (isa? % :Semantic/*)
+                                            (isa? % :Relation/*)))
+                                  (descendants :type/Text))]
+          (let [table (mi/instance :model/Table {:id 1234})
+                fields [(mi/instance :model/Field {:id 4321, :base_type base-type})]]
+            (with-redefs [driver.u/supports? (constantly true)]
+              (let [query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
+                (is (empty? (get-in query [:query :expressions]))))))))
+      (testing "primary check is on effective_type"
+        (with-redefs [driver.u/supports? (constantly true)]
+          (let [table (mi/instance :model/Table {:id 1234})
+                fields [(mi/instance :model/Field {:id 4321, :base_type :type/Number :effective_type :type/Text})]
+                query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
+            (is (seq (get-in query [:query :expressions])))))))))
 
 (deftest mbql-on-table-requires-filter-will-include-the-filter-test
   (mt/with-temp
@@ -85,14 +100,3 @@
                   (table-rows-sample/table-rows-sample table [] (constantly conj))))
           (is (=? {:filter [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]}
                   @query)))))))
-
-(deftest ^:parallel text-field?-test
-  (testing "recognizes fields suitable for fingerprinting"
-    (doseq [field [{:base_type :type/Text}
-                   {:base_type :type/Text :semantic_type :type/State}
-                   {:base_type :type/Text :semantic_type :type/URL}]]
-      (is (#'table-rows-sample/text-field? field)))
-    (doseq [field [{:base_type :type/JSON} ; json fields in pg
-                   {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
-                   {:base_type :type/Text :semantic_type :type/XML}]]
-      (is (not (#'table-rows-sample/text-field? field))))))
