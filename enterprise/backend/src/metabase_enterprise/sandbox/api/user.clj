@@ -33,7 +33,7 @@
   "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
   existing Users and returns those. "
   []
-  (into #{}
+  (into #{"{{tenant_slug}}"}
         (comp
          (mapcat keys)
          (distinct)
