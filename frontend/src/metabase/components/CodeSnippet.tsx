@@ -1,16 +1,17 @@
-import { Code, Group, Icon } from "metabase/ui";
+import { highlight } from "metabase/query_builder/components/expressions/HighlightExpression/utils";
+import { Code, Group } from "metabase/ui";
 
 import { CopyButton } from "./CopyButton";
 
 interface CodeSnippetProps {
   code: string;
-  language?: string;
 }
 
 export const CodeSnippet = ({ code }: CodeSnippetProps) => {
   return (
     <Group
-      p="md"
+      px="lg"
+      py="md"
       bd="1px solid border"
       bg="bg-light"
       w="100%"
@@ -18,10 +19,7 @@ export const CodeSnippet = ({ code }: CodeSnippetProps) => {
         borderRadius: 8,
       }}
     >
-      <Icon name="chevronright" size={16} />
-      <Code block flex={1}>
-        {code}
-      </Code>
+      <Code flex={1} dangerouslySetInnerHTML={{ __html: highlight(code) }} />
       <CopyButton value={code} />
     </Group>
   );
