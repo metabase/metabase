@@ -235,3 +235,84 @@
                              :type      type
                              :action_id id})
     (actions.execution/execute-action! action (update-keys parameters name))))
+
+;; new picker
+
+(api.macros/defendpoint :get "/v2/database"
+  "Databases which contain actions"
+  [_ _ _]
+  ;; TODO optimize into a single reducible query, and support pagination
+  (let [non-empty-dbs      (t2/select-fn-set :db_id [:model/Table :db_id])
+        databases          (when non-empty-dbs
+                             (t2/select [:model/Database :id :name :description :settings]
+                                        :id [:in non-empty-dbs]
+                                        :order-by :name))
+        editable-database? (comp boolean :database-enable-table-editing :settings)
+        editable-databases (filter editable-database? databases)]
+    {:databases (for [db editable-databases]
+                  (select-keys db [:id :name :description]))}))
+
+(api.macros/defendpoint :get "/v2/database/:database-id/table"
+  "Tables which contain actions"
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ _]
+  (let [database           (api/check-404 (t2/select-one :model/Database :id database-id))
+        _                  (when-not (get-in database [:settings :database-enable-table-editing])
+                             (throw (ex-info "Table editing is not enabled for this database"
+                                             {:status-code 400})))
+        tables             (t2/select [:model/Table :id :display_name :name :description :schema]
+                                      :db_id database-id
+                                      {:order-by :name})]
+    {:tables tables}))
+
+(api.macros/defendpoint :get "/v2/model"
+  "Models which contain actions"
+  [_ _ _]
+  ;; TODO optimize into a single reducible query, and support pagination
+  (let [model-ids    (t2/select-fn-set :model_id [:model/Action :model_id] :archived false)
+        models       (when model-ids
+                       (t2/select [:model/Card :id :name :description :collection_position :collection_id]
+                                  :id [:in model-ids]
+                                  {:order-by :name}))
+        coll-ids     (into #{} (keep :collection_id) models)
+        collections  (when (seq coll-ids)
+                       (t2/select [:model/Collection :id :name] :id [:in coll-ids]))
+        ->collection (comp (u/index-by :id :name collections) :collection_id)]
+    {:models (for [m models] (assoc m :collection_name (->collection m)))}))
+
+(api.macros/defendpoint :get "/v2/"
+  "Returns actions with id and name only. Requires either model-id or table-id parameter."
+  [_route-params
+   {:keys [model-id table-id]} :- [:map
+                                   [:model-id {:optional true} ms/PositiveInt]
+                                   [:table-id {:optional true} ms/PositiveInt]]
+   _body-params]
+  (when-not (or model-id table-id)
+    (throw (ex-info "Either model-id or table-id parameter is required"
+                    {:status-code 400})))
+  (when (and model-id table-id)
+    (throw (ex-info "Cannot specify both model-id and table-id parameters"
+                    {:status-code 400})))
+  (cond
+    model-id
+    (do (api/read-check :model/Card model-id)
+        {:actions (t2/select [:model/Action :id :name :description]
+                             :model_id model-id
+                             :archived false
+                             {:order-by :id})})
+
+    table-id
+    (let [table    (api/read-check :model/Table table-id)
+          database (t2/select-one :model/Database :id (:db_id table))
+          _        (when-not (get-in database [:settings :database-enable-table-editing])
+                     (throw (ex-info "Table editing is not enabled for this database"
+                                     {:status-code 400})))
+          ;; Fields are used to calculate the parameters.
+          ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
+          ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
+          fields   nil
+          actions  (for [op [:table.row/create :table.row/update :table.row/delete]
+                         :let [action (action/table-primitive-action table fields op)]]
+                     {:id          (:id action)
+                      :name        (:name action)
+                      :description (get-in action [:visualization_settings :description] "")})]
+      {:actions actions})))
