@@ -802,28 +802,27 @@
             (let [nested-query (lib/query
                                 (qp.store/metadata-provider)
                                 (mt/nest-query base-query level))]
-              (testing (format "\nQuery = %s" (u/pprint-to-str nested-query))
-                (is (= (lib.tu.macros/$ids venues
-                         [(field :id          $id)
-                          (field :name        $name)
-                          (field :category-id $category-id)
-                          (field :latitude    $latitude)
-                          (field :longitude   $longitude)
-                          (field :price       $price)
-                          {:name      "ID_2"
-                           :id        %categories.id
-                           :ident     (lib/explicitly-joined-ident (meta/ident :categories :id) join-ident)
-                           :field_ref (if (zero? level)
-                                        &c.categories.id
-                                        [:field "c__ID" {:base-type :type/BigInteger}])}
-                          {:name      "NAME_2"
-                           :id        %categories.name
-                           :ident     (lib/explicitly-joined-ident (meta/ident :categories :name) join-ident)
-                           :field_ref (if (zero? level)
-                                        &c.categories.name
-                                        [:field "c__NAME" {:base-type :type/Text}])}])
-                       (map #(select-keys % [:name :id :field_ref :ident])
-                            (:cols (add-column-info nested-query {:cols []})))))))))))))
+              (is (= (lib.tu.macros/$ids venues
+                       [(field :id          $id)
+                        (field :name        $name)
+                        (field :category-id $category-id)
+                        (field :latitude    $latitude)
+                        (field :longitude   $longitude)
+                        (field :price       $price)
+                        {:name      "ID_2"
+                         :id        %categories.id
+                         :ident     (lib/explicitly-joined-ident (meta/ident :categories :id) join-ident)
+                         :field_ref (if (zero? level)
+                                      &c.categories.id
+                                      [:field "c__ID" {:base-type :type/BigInteger}])}
+                        {:name      "NAME_2"
+                         :id        %categories.name
+                         :ident     (lib/explicitly-joined-ident (meta/ident :categories :name) join-ident)
+                         :field_ref (if (zero? level)
+                                      &c.categories.name
+                                      [:field "c__NAME" {:base-type :type/Text}])}])
+                     (map #(select-keys % [:name :id :field_ref :ident])
+                          (:cols (add-column-info nested-query {:cols []}))))))))))))
 
 (deftest ^:parallel mbql-cols-nested-queries-test-2
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
@@ -916,16 +915,18 @@
                                                 :alias        "Q"}]
                                 :limit        1})))
                 field-ids  #{%orders.discount %products.title %people.source}]
-            (testing (str "\nQuery =\n" (u/pprint-to-str base-query))
-              (is (= [{:display_name "Discount"
-                       :field_ref    [:field %orders.discount nil]}
-                      {:display_name "Products → Title"
-                       :field_ref    [:field %products.title nil]}
-                      {:display_name "Q → Source"
-                       :field_ref    [:field %people.source {:join-alias "Q"}]}]
-                     (->> (:cols (add-column-info base-query {:cols []}))
-                          (filter #(field-ids (:id %)))
-                          (map #(select-keys % [:display_name :field_ref]))))))))))))
+            (is (= [{:display_name "Discount"
+                     :field_ref    [:field %orders.discount nil]}
+                    {:display_name "Products → Title"
+                     ;; this field comes from a join in the source card (previous stage) and thus SHOULD NOT include the
+                     ;; join alias. TODO -- shouldn't we be referring to it by name and not ID? I think we're using ID
+                     ;; for broken/legacy purposes -- Cam
+                     :field_ref    [:field %products.title nil]}
+                    {:display_name "Q → Source"
+                     :field_ref    [:field %people.source {:join-alias "Q"}]}]
+                   (->> (:cols (add-column-info base-query {:cols []}))
+                        (filter #(field-ids (:id %)))
+                        (map #(select-keys % [:display_name :field_ref])))))))))))
 
 (deftest ^:parallel col-info-for-joined-fields-from-card-test
   (testing "Has the correct display names for joined fields from cards (#14787)"
@@ -970,28 +971,27 @@
 (deftest ^:parallel preserve-original-join-alias-e2e-test
   (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-      (mt/dataset test-data
-        (let [join-alias "Products with a very long name - Product ID with a very long name"
-              results    (mt/run-mbql-query orders
-                           {:joins  [{:source-table $$products
-                                      :condition    [:= $product_id [:field %products.id {:join-alias join-alias}]]
-                                      :alias        join-alias
-                                      :fields       [[:field %products.title {:join-alias join-alias}]]}]
-                            :fields [$orders.id
-                                     [:field %products.title {:join-alias join-alias}]]
-                            :limit  4})]
-          (doseq [[location metadata] {"data.cols"                     (mt/cols results)
-                                       "data.results_metadata.columns" (get-in results [:data :results_metadata :columns])}]
-            (testing location
-              (is (=? (mt/$ids
-                        [{:display_name "ID"
-                          :field_ref    $orders.id}
-                         (merge
-                          {:display_name (str join-alias " → Title")
-                           :field_ref    [:field %products.title {:join-alias join-alias}]}
-                          ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
-                          (when (= location "data.cols")
-                            {:source_alias join-alias}))])
-                      (map
-                       #(select-keys % [:display_name :field_ref :source_alias])
-                       metadata))))))))))
+      (let [join-alias "Products with a very long name - Product ID with a very long name"
+            results    (mt/run-mbql-query orders
+                         {:joins  [{:source-table $$products
+                                    :condition    [:= $product_id [:field %products.id {:join-alias join-alias}]]
+                                    :alias        join-alias
+                                    :fields       [[:field %products.title {:join-alias join-alias}]]}]
+                          :fields [$orders.id
+                                   [:field %products.title {:join-alias join-alias}]]
+                          :limit  4})]
+        (doseq [[location metadata] {"data.cols"                     (mt/cols results)
+                                     "data.results_metadata.columns" (get-in results [:data :results_metadata :columns])}]
+          (testing location
+            (is (=? (mt/$ids
+                      [{:display_name "ID"
+                        :field_ref    $orders.id}
+                       (merge
+                        {:display_name (str join-alias " → Title")
+                         :field_ref    [:field %products.title {:join-alias join-alias}]}
+                        ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
+                        (when (= location "data.cols")
+                          {:source_alias join-alias}))])
+                    (map
+                     #(select-keys % [:display_name :field_ref :source_alias])
+                     metadata)))))))))
