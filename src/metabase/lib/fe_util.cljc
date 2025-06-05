@@ -69,7 +69,7 @@
                            (:temporal-unit (lib.options/options maybe-clause-arg)))
                 (u.time/timestamp-coercible? other-arg))))
 
-(defn- expand-temporal-expression
+(mu/defn- expand-temporal-expression
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
 
    Current filter picker implementation is unable to handle expression parts of expressions of a form
@@ -79,13 +79,16 @@
    To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more
    info on the issue see the comment [https://github.com/metabase/metabase/issues/12496#issuecomment-1629317661].
    This functionality is backend approach to \"smaller solution\"."
-  [[_operator options column-arg dt-arg :as _expression-clause]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   [_operator clause-options column-arg dt-arg :as _expression-clause]]
   (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
-        interval (u.time/to-range (u.time/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
-        formatter (if (contains? expandable-time-units temporal-unit)
-                    fmt.date/datetime->iso-string
-                    fmt.date/date->iso-string)]
-    (into [:between options column-arg] (map formatter) interval)))
+        start-of-week (lib.metadata/setting metadata-providerable :start-of-week)
+        util-options  {:start-of-week start-of-week}
+        interval      (u.time/to-range (u.time/coerce-to-timestamp dt-arg util-options) (assoc util-options :unit temporal-unit :n 1))
+        formatter     (if (contains? expandable-time-units temporal-unit)
+                        fmt.date/datetime->iso-string
+                        fmt.date/date->iso-string)]
+    (into [:between clause-options column-arg] (map #(formatter % util-options)) interval)))
 
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
@@ -134,8 +137,8 @@
 (defmethod expression-parts-method :=
   [query stage-number clause]
   ((get-method expression-parts-method :default)
-   query stage-number (cond-> clause
-                        (expandable-temporal-expression? clause) expand-temporal-expression)))
+   query stage-number (cond->> clause
+                        (expandable-temporal-expression? clause) (expand-temporal-expression query))))
 
 (defmethod expression-parts-method :field
   [query stage-number field-ref]
@@ -510,20 +513,22 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number (lib.temporal-bucket/with-temporal-bucket % nil))
-        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
+        start-of-week (lib.metadata/setting query :start-of-week)]
     (lib.util.match/match-one filter-clause
       ;; exactly 1 argument
       [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) (arg :guard string?)]
-      (let [date? (u.time/matches-date? arg)
-            arg   (u.time/coerce-to-timestamp arg)]
+      (let [date?         (u.time/matches-date? arg)
+            start-of-week (lib.metadata/setting query :start-of-week)
+            arg           (u.time/coerce-to-timestamp arg {:start-of-week start-of-week})]
         (when (u.time/valid? arg)
           {:operator op, :column (ref->col col-ref), :values [arg], :with-time? (not date?)}))
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
       (let [date? (or (u.time/matches-date? start) (u.time/matches-date? end))
-            start (u.time/coerce-to-timestamp start)
-            end   (u.time/coerce-to-timestamp end)]
+            start (u.time/coerce-to-timestamp start {:start-of-week start-of-week})
+            end   (u.time/coerce-to-timestamp end {:start-of-week start-of-week})]
         (when (and (u.time/valid? start) (u.time/valid? end))
           {:operator op, :column (ref->col col-ref), :values [start end], :with-time? (not date?)}))
 
@@ -732,7 +737,9 @@
 
    Falls back to the full filter display-name"
   [query stage-number filter-clause]
-  (let [->temporal-name #(u.time/format-unit % nil)
+  (let [start-of-week   (lib.metadata/setting query :start-of-week)
+        format-options  {:start-of-week start-of-week}
+        ->temporal-name #(u.time/format-unit % nil {:start-of-week start-of-week})
         temporal? #(lib.util/original-isa? % :type/Temporal)
         unit-is (fn [unit-or-units]
                   (let [units (set (u/one-or-many unit-or-units))]
@@ -746,28 +753,28 @@
                 :get-quarter :quarter-of-year}]
     (lib.util.match/match-one filter-clause
       [(_ :guard #{:= :in}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
-      (inflections/plural (u.time/format-unit b :day-of-week-iso))
+      (inflections/plural (u.time/format-unit b :day-of-week-iso format-options))
 
       [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
-      (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso)))
+      (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso format-options)))
 
       [(_ :guard #{:= :in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
-      (u.time/format-unit b (->unit f))
+      (u.time/format-unit b (->unit f) format-options)
 
       [(_ :guard #{:!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
-      (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
+      (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f) format-options))
 
       [(_ :guard #{:= :in}) _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
-      (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
+      (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil (assoc format-options :include-current true))
 
       [:during _ (x :guard temporal?) (y :guard string?) unit]
-      (u.time/format-relative-date-range y 1 unit -1 unit {})
+      (u.time/format-relative-date-range y 1 unit -1 unit format-options)
 
       [(_ :guard #{:= :in}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
-      (lib.temporal-bucket/describe-temporal-pair x y)
+      (lib.temporal-bucket/describe-temporal-pair query x y)
 
       [(_ :guard #{:!= :not-in}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
-      (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair x y))
+      (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair query x y))
 
       [:< _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "Before {0}" (->temporal-name y))
@@ -776,7 +783,7 @@
       (i18n/tru "After {0}" (->temporal-name y))
 
       [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
-      (u.time/format-diff y z)
+      (u.time/format-diff y z format-options)
 
       [:is-null & _]
       (i18n/tru "Is Empty")

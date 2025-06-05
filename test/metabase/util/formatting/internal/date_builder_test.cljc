@@ -5,10 +5,10 @@
    [metabase.util.time :as u.time]))
 
 ;; This tests the underlying string formatter, not the public interface.
-(deftest string-formatting-test
+(deftest ^:parallel string-formatting-test
   (testing "string formatting"
     (testing "works for keywords and vectors"
-      (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))
+      (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t {:start-of-week :sunday})))
         "2022"                "2022-06-08T09:06:19Z" [:year]
         "202206"              "2022-06-08T09:06:19Z" [:year :month-dd]
         "20226"               "2022-06-08T09:06:19Z" [:year :month-d]
@@ -28,10 +28,12 @@
         "7:06:19"             "2022-06-08T19:06:19Z" [:hour-12-d  ":" :minute-dd ":" :second-dd]
         "9:06:19"             "2022-06-08T09:06:19Z" [:hour-24-d  ":" :minute-dd ":" :second-dd]
         "7:06 PM"             "2022-06-08T19:06:19Z" [:hour-12-d  ":" :minute-dd " " :am-pm]
-        "6m19s"               "2022-06-08T19:06:19Z" [:minute-d "m" :second-dd "s"]))
+        "6m19s"               "2022-06-08T19:06:19Z" [:minute-d "m" :second-dd "s"]))))
 
+(deftest ^:parallel string-formatting-test-2
+  (testing "string formatting"
     (testing "works for strings in Clojure vectors"
-      (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))
+      (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t {:start-of-week :sunday})))
         "2022"                "2022-06-08T09:06:19Z" [":year"]
         "202206"              "2022-06-08T09:06:19Z" [":year" ":month-dd"]
         "20226"               "2022-06-08T09:06:19Z" [":year" ":month-d"]
@@ -51,11 +53,13 @@
         "7:06:19"             "2022-06-08T19:06:19Z" [":hour-12-d"  ":" ":minute-dd" ":" ":second-dd"]
         "9:06:19"             "2022-06-08T09:06:19Z" [":hour-24-d"  ":" ":minute-dd" ":" ":second-dd"]
         "7:06 PM"             "2022-06-08T19:06:19Z" [":hour-12-d"  ":" ":minute-dd" " " ":am-pm"]
-        "6m19s"               "2022-06-08T19:06:19Z" [":minute-d"   "m" ":second-dd" "s"]))
+        "6m19s"               "2022-06-08T19:06:19Z" [":minute-d"   "m" ":second-dd" "s"]))))
 
-    #?(:cljs
+#?(:cljs
+   (deftest ^:parallel string-formatting-test-3
+     (testing "string formatting"
        (testing "works for strings in JS arrays"
-         (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))
+         (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t {:start-of-week :sunday})))
            "2022"                "2022-06-08T09:06:19Z" #js [":year"]
            "202206"              "2022-06-08T09:06:19Z" #js [":year" ":month-dd"]
            "20226"               "2022-06-08T09:06:19Z" #js [":year" ":month-d"]

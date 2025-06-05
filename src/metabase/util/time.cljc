@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.time.impl :as internal]
    [metabase.util.time.impl-common :as common]))
@@ -39,39 +40,37 @@
   local-date-time
   local-time])
 
-(defn- prep-options [options]
-  (merge internal/default-options (u/normalize-map options)))
-
-(defn ^:export timestamp-coercible?
+(defn timestamp-coercible?
   "Check whether value is coercible to timestamp. Condition resembles [[coerce-to-timestamp]]."
   [value]
   (or (internal/datetime? value)
       (string? value)
       (number? value)))
 
-(defn ^:export coerce-to-timestamp
+(mu/defn coerce-to-timestamp
   "Parses a timestamp value into a date object. This can be a straightforward Unix timestamp or ISO format string.
   But the `:unit` field can be used to alter the parsing to, for example, treat the input number as a day-of-week or
   day-of-month number.
   Returns Moments in JS and OffsetDateTimes in Java for coercible values, otherwise nil."
-  ([value] (coerce-to-timestamp value {}))
-  ([value options]
-   (when (timestamp-coercible? value)
-     (let [options (prep-options options)
-           base (cond
-                  ;; Just return an already-parsed value. (Moment in CLJS, DateTime classes in CLJ.)
-                  (internal/datetime? value)                        (internal/normalize value)
-                  ;; If there's a timezone offset, or Z for Zulu/UTC time, parse it directly.
-                  (and (string? value)
-                       (re-matches #".*(Z|[+-]\d\d:?\d\d)$" value)) (internal/parse-with-zone value)
-                  ;; Then we fall back to two multimethods for coercing strings and number to timestamps per the :unit.
-                  (string? value)                                   (common/string->timestamp value options)
-                  (number? value)                                   (common/number->timestamp value options))]
-       (if (:local options)
-         (internal/localize base)
-         base)))))
+  [value
+   options :- [:map
+               [:start-of-week [:maybe :keyword]]]]
+  (when (timestamp-coercible? value)
+    (let [options (u/normalize-map options)
+          base (cond
+                 ;; Just return an already-parsed value. (Moment in CLJS, DateTime classes in CLJ.)
+                 (internal/datetime? value)                        (internal/normalize value)
+                 ;; If there's a timezone offset, or Z for Zulu/UTC time, parse it directly.
+                 (and (string? value)
+                      (re-matches #".*(Z|[+-]\d\d:?\d\d)$" value)) (internal/parse-with-zone value)
+                 ;; Then we fall back to two multimethods for coercing strings and number to timestamps per the :unit.
+                 (string? value)                                   (common/string->timestamp value options)
+                 (number? value)                                   (common/number->timestamp value options))]
+      (if (:local options)
+        (internal/localize base)
+        base))))
 
-(defn ^:export coerce-to-time
+(defn coerce-to-time
   "Parses a standalone time, or the time portion of a timestamp.
   Accepts a platform time value (eg. Moment, OffsetTime, LocalTime) or a string."
   [value]
@@ -81,16 +80,16 @@
     :else           (throw (ex-info "Unknown input to coerce-to-time; expecting a string"
                                     {:value value}))))
 
-(defn format-unit
+(mu/defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
   If unit is nil, formats the full date/time.
 
   If `locale` is provided, that locale will be used for localizing the formatter. In CLJ this should be a `Locale`. Not
   supported in CLJS since we have to rely on the browser's locale."
-  ([temporal-value unit]
-   (internal/format-unit temporal-value unit))
-  ([temporal-value unit locale]
-   (internal/format-unit temporal-value unit locale)))
+  [temporal-value
+   unit    :- [:maybe :keyword]
+   options :- ::common/format-options]
+  (internal/format-unit temporal-value unit options))
 
 (defn parse-unit
   "Parses a string given the unit of time to parse by."
@@ -99,24 +98,26 @@
   ([str unit locale]
    (internal/parse-unit str unit locale)))
 
-(defn format-diff
+(mu/defn format-diff
   "Formats a time difference between two temporal values.
    Drops redundant information."
-  [temporal-value-1 temporal-value-2]
-  (internal/format-diff temporal-value-1 temporal-value-2))
+  [temporal-value-1
+   temporal-value-2
+   options :- ::common/format-options]
+  (internal/format-diff temporal-value-1 temporal-value-2 options))
 
-(defn format-relative-date-range
+(mu/defn format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
-  ([n unit]
-   (format-relative-date-range n unit nil nil nil))
-  ([n unit offset-n offset-unit]
-   (format-relative-date-range n unit offset-n offset-unit nil))
+  ;; ([n unit]
+  ;;  (format-relative-date-range n unit nil nil nil))
+  ;; ([n unit offset-n offset-unit]
+  ;;  (format-relative-date-range n unit offset-n offset-unit nil))
   ([n unit offset-n offset-unit options]
    (internal/format-relative-date-range n unit offset-n offset-unit options))
-  ([t n unit offset-n offset-unit options]
-   (internal/format-relative-date-range (coerce-to-timestamp t) n unit offset-n offset-unit options)))
+  ([t n unit offset-n offset-unit options :- ::common/format-options]
+   (internal/format-relative-date-range (coerce-to-timestamp t options) n unit offset-n offset-unit options)))
 
 (defn yyyyMMddhhmmss->parts
   "Generate parts vector for `yyyy-MM-ddThh:mm:ss` format `date-str`. Trailing parts, if not present in the string,

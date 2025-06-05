@@ -10,6 +10,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -64,8 +65,10 @@
 
 (defmethod lib.metadata.calculation/display-name-method ::varargs
   [query stage-number expr style]
-  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
-        ->temporal-name lib.temporal-bucket/describe-temporal-pair
+  (let [start-of-week   (lib.metadata/setting query :start-of-week)
+        format-options  {:start-of-week start-of-week}
+        ->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->temporal-name (partial lib.temporal-bucket/describe-temporal-pair query)
         numeric? #(clojure.core/and (lib.util/original-isa? % :type/Number)
                                     (lib.util/clause? %)
                                     (-> (lib.metadata.calculation/metadata query stage-number %)
@@ -93,18 +96,18 @@
                 :get-year :year-of-era}]
     (lib.util.match/match-one expr
       [(_ :guard #{:= :in}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
-      (i18n/tru "{0} is at {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
+      (i18n/tru "{0} is at {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day format-options))
 
       [(_ :guard #{:!= :not-in}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
-      (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
+      (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day format-options))
 
       [(_ :guard #{:= :in}) _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
-      (i18n/tru "{0} is on {1}" (->display-name a) (u.time/format-unit b :day-of-week-iso))
+      (i18n/tru "{0} is on {1}" (->display-name a) (u.time/format-unit b :day-of-week-iso format-options))
 
       [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
       (i18n/tru "{0} excludes {1}"
                 (->unbucketed-display-name a)
-                (inflections/plural (u.time/format-unit b :day-of-week-iso)))
+                (inflections/plural (u.time/format-unit b :day-of-week-iso format-options)))
 
       [(_ :guard #{:= :in}) _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
       (i18n/tru "{0} is one of {1} {2} selections"
@@ -119,16 +122,16 @@
                 (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
       [(_ :guard #{:= :in}) _ [(f :guard #{:get-month :get-quarter :get-year}) _ (a :guard temporal?)] (b :guard int?)]
-      (i18n/tru "{0} is in {1}" (->unbucketed-display-name a) (u.time/format-unit b (->unit f)))
+      (i18n/tru "{0} is in {1}" (->unbucketed-display-name a) (u.time/format-unit b (->unit f) format-options))
 
       [(_ :guard #{:!= :not-in}) _ [:get-month _ (a :guard temporal?)] (b :guard int?)]
-      (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (u.time/format-unit b :month-of-year))
+      (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (u.time/format-unit b :month-of-year format-options))
 
       [(_ :guard #{:!= :not-in}) _ [:get-quarter _ (a :guard temporal?)] (b :guard int?)]
-      (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (u.time/format-unit b :quarter-of-year))
+      (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (u.time/format-unit b :quarter-of-year format-options))
 
       [(_ :guard #{:!= :not-in}) _ [:get-year _ (a :guard temporal?)] (b :guard int?)]
-      (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (u.time/format-unit b :year))
+      (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (u.time/format-unit b :year format-options))
 
       [(_ :guard #{:= :in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
       (i18n/tru "{0} is one of {1} {2} selections"
@@ -146,7 +149,9 @@
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
       [(_ :guard #{:= :in}) _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
-      (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (u.time/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
+      (i18n/tru "{0} is {1}"
+                (->unbucketed-display-name a)
+                (u.time/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil (assoc format-options :include-current true)))
 
       [(_ :guard #{:= :in}) _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
@@ -237,8 +242,10 @@
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
-  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
-        ->temporal-name #(u.time/format-unit % nil)
+  (let [start-of-week   (lib.metadata/setting query :start-of-week)
+        format-options  {:start-of-week start-of-week}
+        ->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->temporal-name #(u.time/format-unit % nil format-options)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (lib.util.match/match-one expr
       [:< _ (x :guard temporal?) (y :guard string?)]
@@ -261,7 +268,9 @@
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
-  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+  (let [start-of-week   (lib.metadata/setting query :start-of-week)
+        format-options  {:start-of-week start-of-week}
+        ->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)]
@@ -269,7 +278,7 @@
       [:between _ x (y :guard string?) (z :guard string?)]
       (i18n/tru "{0} is {1}"
                 (->unbucketed-display-name x)
-                (u.time/format-diff y z))
+                (u.time/format-diff y z format-options))
 
       [:between _
        [:+ _ x [:interval _ n unit]]
@@ -297,10 +306,12 @@
 
 (defmethod lib.metadata.calculation/display-name-method :during
   [query stage-number [_tag _opts expr value unit] style]
-  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)]
+  (let [start-of-week   (lib.metadata/setting query :start-of-week)
+        format-options  {:start-of-week start-of-week}
+        ->display-name #(lib.metadata.calculation/display-name query stage-number % style)]
     (i18n/tru "{0} is {1}"
               (->display-name expr)
-              (u.time/format-relative-date-range value 1 unit -1 unit {}))))
+              (u.time/format-relative-date-range value 1 unit -1 unit format-options))))
 
 (defmethod lib.metadata.calculation/display-name-method :inside
   [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
