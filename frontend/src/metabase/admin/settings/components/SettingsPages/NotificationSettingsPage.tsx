@@ -16,12 +16,12 @@ import {
 } from "metabase/ui";
 import type { NotificationChannel } from "metabase-types/api";
 
-import { CreateWebhookModal } from "./CreateWebhookModal";
-import { EditWebhookModal } from "./EditWebhookModal";
+import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
+import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
 
 type NotificationModals = null | "create" | "edit";
 
-export const NotificationSettings = () => {
+export const NotificationSettingsPage = () => {
   const [webhookModal, setWebhookModal] = useState<NotificationModals>(null);
   const [currentChannel, setCurrentChannel] = useState<NotificationChannel>();
 
