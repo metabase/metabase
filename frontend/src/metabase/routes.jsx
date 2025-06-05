@@ -102,11 +102,15 @@ export const getRoutes = (store) => {
       <Route
         path="/setup/embedding"
         component={EmbeddingSetupWrapper}
-        onEnter={(nextState) => {
+        onEnter={async (nextState, replace, done) => {
+          await store.dispatch(loadCurrentUser());
           trackPageView(nextState.location.pathname);
+          done();
         }}
         onChange={(prevState, nextState) => {
-          trackPageView(nextState.location.pathname);
+          if (nextState.location.pathname !== prevState.location.pathname) {
+            trackPageView(nextState.location.pathname);
+          }
         }}
         disableCommandPalette
       >
