@@ -36,7 +36,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
   }
 
   //console.log("TSP currentDataset: ", JSON.stringify(currentDataset, null, 2));
-  console.log("TSP targetDataset: ", targetDataset);
+  //console.log("TSP targetDataset: ", targetDataset);
   //console.log("TSP datasets: ", JSON.stringify(datasets, null, 2));
 
   const columnSettingMapping = groupColumnsBySuitableVizSettings(
