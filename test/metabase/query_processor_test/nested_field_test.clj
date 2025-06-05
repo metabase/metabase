@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.nested-field-test
   "Tests for nested field access."
   (:require
-   [cheshire.core]
    [clojure.test :refer :all]
    [metabase.test :as mt]))
 
