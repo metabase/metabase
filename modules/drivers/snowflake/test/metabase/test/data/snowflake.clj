@@ -271,3 +271,82 @@
       (jdbc/execute! spec
                      [(format "DROP ROLE IF EXISTS %s;" role-name)]
                      {:transaction? false}))))
+
+(comment
+  (require '[toucan2.core :as t2])
+
+  (let [details (:details (t2/select-one :model/Database :id 3422))
+        spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/with-db-connection [conn spec]
+      (with-open [stmt (.createStatement (:connection conn))]
+        (let [sql "SELECT * FROM \"v3_sample-dataset\".\"PUBLIC\".\"people\" LIMIT 2;"
+              rs (.executeQuery stmt sql)
+              results (doall (jdbc/result-set-seq rs))  ; Force realization
+              query-id (.getQueryID stmt)]
+          {:query-id query-id
+           :results results}))))
+
+  (let [details (:details (t2/select-one :model/Database :id 3422))
+        spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/with-db-connection [conn spec]
+      (with-open [stmt (.createStatement (:connection conn))]
+        (let [sql "SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_ATTRIBUTION_HISTORY
+                   where query_id = '01bcca62-0002-f26b-0001-50c20485a72a'
+                   limit 10;"
+              rs (.executeQuery stmt sql)
+              results (doall (jdbc/result-set-seq rs))  ; Force realization
+              query-id (.getQueryID stmt)]
+          {:query-id query-id
+           :results results}))))
+
+  (let [details (:details (t2/select-one :model/Database :id 3422))
+        spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/with-db-connection [conn spec]
+      (with-open [stmt (.createStatement (:connection conn))]
+        (let [sql "SELECT query_id, query_text, user_name, role_name, warehouse_name, execution_status,
+                   start_time, end_time, total_elapsed_time, compilation_time, execution_time, queued_provisioning_time,
+                   credits_used_cloud_services
+                   FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+                   where start_time < CURRENT_TIMESTAMP() - INTERVAL '24 HOURS'
+                   and start_time > CURRENT_TIMESTAMP() - INTERVAL '48 HOURS'
+                   and execution_status = 'SUCCESS'
+                   and total_elapsed_time > 100
+                   and query_type = 'SELECT'
+                   order by total_elapsed_time desc
+                   limit 3;"
+              rs (.executeQuery stmt sql)
+              results (doall (jdbc/result-set-seq rs))  ; Force realization
+              query-id (.getQueryID stmt)]
+          {:query-id query-id
+           :results results}))))
+
+  (let [details (:details (t2/select-one :model/Database :id 3422))
+        spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/with-db-connection [conn spec]
+      (with-open [stmt (.createStatement (:connection conn))]
+        (let [sql "SELECT
+                   qah.query_id,
+                   (qah.credits_attributed_compute + coalesce(qah.credits_used_query_acceleration, 0)) as total_credits,
+                   qh.total_elapsed_time, qh.start_time, qh.end_time, qh.credits_used_cloud_services,
+                   qh.query_text, qah.warehouse_name, qah.user_name,
+                   qah.credits_attributed_compute, qah.credits_used_query_acceleration,
+                   qah.query_hash, qah.query_parameterized_hash,
+                   qh.user_name, qh.role_name, qh.warehouse_name, qh.execution_status,
+                   qh.compilation_time, qh.execution_time, qh.queued_provisioning_time,
+                   qh.query_id
+                   FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh
+                   inner join SNOWFLAKE.ACCOUNT_USAGE.QUERY_ATTRIBUTION_HISTORY qah
+                   on qh.query_id = qah.query_id
+                   where qh.start_time < CURRENT_TIMESTAMP() - INTERVAL '24 HOURS'
+                   and qh.start_time > CURRENT_TIMESTAMP() - INTERVAL '48 HOURS'
+                   and qh.execution_status = 'SUCCESS' and qh.query_type = 'SELECT'
+                   and qh.total_elapsed_time > 100
+                   order by (credits_attributed_compute + coalesce(credits_used_query_acceleration, 0)) desc
+                   limit 1;"
+              rs (.executeQuery stmt sql)
+              results (doall (jdbc/result-set-seq rs))  ; Force realization
+              query-id (.getQueryID stmt)]
+          {:query-id query-id
+           :results results})))))
+
+

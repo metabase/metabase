@@ -43,7 +43,7 @@
     (log/warn "Cannot save QueryExecution, missing :context")
     (do
       ;; TODO: modify the app db so that we can insert byte related fields
-      (tap> {:query-execution (dissoc query-execution :json_query :estimated-bytes :bytes-processed :bytes-billed)})
+      (tap> {:query-execution query-execution})
       (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query :estimated-bytes :bytes-processed :bytes-billed)))))
 
 (defn- save-execution-metadata!
