@@ -79,7 +79,11 @@ export const FinalStep = () => {
         </a>
       </Group>
 
-      <Tabs defaultValue={tabs[0].url}>
+      <Tabs
+        defaultValue={tabs[0].url}
+        // TODO: keepMounted={true} would keep them "in memory" but it also loads them all at the same time,
+        // slowing down the load of the first
+      >
         <Tabs.List>
           {tabs.map((tab) => (
             <Tabs.Tab key={tab.url} value={tab.url}>
