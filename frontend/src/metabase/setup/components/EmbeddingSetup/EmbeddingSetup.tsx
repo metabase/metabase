@@ -65,9 +65,10 @@ export const EmbeddingSetup = ({ children }: EmbeddingSetupProps) => {
     setProcessingStatus("Setting up embedding...");
     await dispatch(
       setupEmbeddingSettings({
+        // TODO: check which settings we actually need for this iteration
         "embedding-homepage": "visible",
         "enable-embedding": true,
-        "setup-license-active-at-setup": false,
+        "setup-license-active-at-setup": false, // is this new setup only available on enterprise?
         "setup-embedding-autoenabled": true,
         "jwt-enabled": true,
         "jwt-group-sync": true,

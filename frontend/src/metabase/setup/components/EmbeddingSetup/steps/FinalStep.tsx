@@ -89,10 +89,27 @@ export const FinalStep = () => {
         </Tabs.List>
         {tabs.map((tab) => (
           <Tabs.Panel key={tab.url} value={tab.url}>
-            <Box my="md">
+            {/* This shows a loader while the iframe is loading, it's ugly as it's a different loader than the one inside the iframe,
+            but some times the iframe takes a second or two to "start" and in that time there's just a big white space in the page */}
+            <Box my="md" style={{ position: "relative" }}>
+              <Center
+                w="100%"
+                style={{
+                  position: "absolute",
+                }}
+                mt="xl"
+              >
+                <Loader />
+              </Center>
               <iframe
                 src={tab.url}
-                style={{ width: "100%", height: "600px", border: "none" }}
+                style={{
+                  width: "100%",
+                  height: "600px",
+                  border: "none",
+                  zIndex: 2,
+                  position: "relative",
+                }}
                 title={tab.title}
               />
             </Box>
