@@ -184,6 +184,12 @@ jobs:
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+        env:
+          # This is a temporary workaround, until the test "should respect `entityTypes` prop" in
+          # e2e/test-component/scenarios/embedding-sdk/create-question.cy.spec.tsx has a MODEL_COUNT of 1
+          # and make a new release of the SDK. Since this workflow relies on the tests on the commit the
+          # latest SDK version is built from.
+          MB_SEARCH_ENGINE: in-place
 
       - name: Make app db snapshot
         run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
