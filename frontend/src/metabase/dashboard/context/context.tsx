@@ -12,7 +12,6 @@ import { isEqual, isObject, noop } from "underscore";
 
 import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { useDispatch } from "metabase/lib/redux";
-import { getTabHiddenParameterSlugs } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -27,6 +26,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "../types";
+import { getTabHiddenParameterSlugs } from "../utils/parameters";
 
 import { type ReduxProps, connector } from "./context.redux";
 

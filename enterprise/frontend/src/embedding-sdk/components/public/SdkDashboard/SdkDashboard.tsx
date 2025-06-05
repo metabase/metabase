@@ -11,6 +11,7 @@ import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/In
 import { useSdkDashboardParams } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-types";
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
   DashboardContextProvider,
@@ -47,7 +48,7 @@ const SdkDashboardInner = ({
   > &
   Pick<InteractiveDashboardProps, "drillThroughQuestionProps"> &
   Pick<InteractiveDashboardContextType, "plugins" | "dashboardActions">) => {
-  const { isEditing } = useDashboardContext();
+  const { isEditing, downloadsEnabled } = useDashboardContext();
   if (adhocQuestionUrl) {
     return (
       <InteractiveAdHocQuestion
@@ -65,7 +66,14 @@ const SdkDashboardInner = ({
       plugins={plugins}
       onEditQuestion={onEditQuestion}
       dashboardActions={
-        isEditing ? DASHBOARD_EDITING_ACTIONS : dashboardActions
+        isEditing
+          ? DASHBOARD_EDITING_ACTIONS
+          : [
+              ...(dashboardActions ?? []),
+              downloadsEnabled.pdf
+                ? DASHBOARD_ACTION.DOWNLOAD_DASHBOARD_PDF
+                : null,
+            ]
       }
     >
       <Dashboard />

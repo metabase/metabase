@@ -83,6 +83,7 @@ export const useSdkDashboardParams = ({
         cardTitled: withCardTitle,
         hideDownloadButton,
         hideParameters: hiddenParameters?.join(",") ?? null,
+        downloadsEnabled: { pdf: withDownloads, results: withDownloads },
       },
       isNotNull,
     ),
