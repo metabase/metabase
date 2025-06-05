@@ -8,6 +8,7 @@ on:
     paths:
       - '**/deps.edn'
       - '**/package.json'
+      - '!e2e/embedding-sdk-host-apps/**/package.json'
       - '.github/workflows/snyk.yml'
       - '.github/scripts/write-poms.sh'
   schedule:
