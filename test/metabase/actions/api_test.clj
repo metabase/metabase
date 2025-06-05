@@ -676,51 +676,68 @@
 (deftest v2-database-test
   (testing "GET /api/action/v2/database"
     (mt/with-actions-enabled
-      (mt/with-temp [:model/Database {db-id :id} {:name        "Test DB"
-                                                  :description "Test description"
-                                                  :engine      "h2"
-                                                  :settings    {:database-enable-table-editing true}}
-                     :model/Table {table-id :id} {:name "test_table" :db_id db-id}]
-        (testing "Returns databases with table editing enabled"
-          (is (=? {:databases [{:id db-id :name "Test DB" :description "Test description"}]}
-                  (mt/user-http-request :crowberto :get 200 "action/v2/database"))))
+      (testing "Returns databases with table editing enabled"
+        (mt/with-temp [:model/Database {db-id :id} {:name        "Versace Mansion"
+                                                    :description "Luxury fashion database"
+                                                    :engine      "h2"
+                                                    :settings    {:database-enable-table-editing true}}
+                       :model/Table {table-id :id} {:name "runway_table" :db_id db-id}]
+          (is (some #(= % {:id db-id :name "Versace Mansion" :description "Luxury fashion database"})
+                    (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))
 
-        (testing "Excludes databases without table editing enabled"
-          (t2/update! :model/Database db-id {:settings {:database-enable-table-editing false}})
-          (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))
+      (testing "Excludes databases without table editing enabled"
+        (mt/with-temp [:model/Database {db-id :id} {:name        "Prada Outlet"
+                                                    :description "Disabled fashion database"
+                                                    :engine      "h2"
+                                                    :settings    {:database-enable-table-editing false}}
+                       :model/Table {table-id :id} {:name "disabled_table" :db_id db-id}]
+          (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database")))))))
 
-        (testing "Excludes databases without tables"
-          (t2/delete! :model/Table table-id)
-          (t2/update! :model/Database db-id {:settings {:database-enable-table-editing true}})
+      (testing "Excludes databases without tables"
+        (mt/with-temp [:model/Database {db-id :id} {:name        "Gucci Warehouse"
+                                                    :description "Empty fashion database"
+                                                    :engine      "h2"
+                                                    :settings    {:database-enable-table-editing true}}]
           (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))))))
 
 (deftest v2-database-table-test
   (testing "GET /api/action/v2/database/:database-id/table"
     (mt/with-actions-enabled
-      (mt/with-temp [:model/Database {db-id :id} {:name     "Test DB"
-                                                  :engine   "h2"
-                                                  :settings {:database-enable-table-editing true}}
-                     :model/Table {table-id-1 :id} {:name         "test_table_1"
-                                                    :display_name "Test Table 1"
-                                                    :description  "First test table"
+      (mt/with-temp [:model/Database {db-id-1 :id} {:name     "Chanel Atelier"
+                                                    :engine   "h2"
+                                                    :settings {:database-enable-table-editing true}}
+                     :model/Database {db-id-2 :id} {:name     "Armani Casa"
+                                                    :engine   "h2"
+                                                    :settings {:database-enable-table-editing true}}
+                     :model/Table {table-id-1 :id} {:name         "oak_dining_table"
+                                                    :display_name "Oak Dining Table"
+                                                    :description  "Elegant oak dining furniture"
                                                     :schema       "public"
-                                                    :db_id        db-id}
-                     :model/Table {table-id-2 :id} {:name         "test_table_2"
-                                                    :display_name "Test Table 2"
-                                                    :description  "Second test table"
+                                                    :db_id        db-id-1}
+                     :model/Table {table-id-2 :id} {:name         "mahogany_coffee_table"
+                                                    :display_name "Mahogany Coffee Table"
+                                                    :description  "Luxurious mahogany coffee table"
                                                     :schema       "public"
-                                                    :db_id        db-id}]
-        (testing "Returns tables when table editing enabled"
-          (is (=? {:tables [{:id table-id-1 :name "test_table_1" :display_name "Test Table 1"
-                             :description "First test table" :schema "public"}
-                            {:id table-id-2 :name "test_table_2" :display_name "Test Table 2"
-                             :description "Second test table" :schema "public"}]}
-                  (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id)))))
+                                                    :db_id        db-id-1}
+                     :model/Table {table-id-3 :id} {:name         "leather_sofa_table"
+                                                    :display_name "Leather Sofa Table"
+                                                    :description  "Premium leather side table"
+                                                    :schema       "public"
+                                                    :db_id        db-id-2}]
+        (testing "Returns only tables from the specified database"
+          (is (=? {:tables [{:id table-id-1 :name "oak_dining_table" :display_name "Oak Dining Table"
+                             :description "Elegant oak dining furniture" :schema "public"}
+                            {:id table-id-2 :name "mahogany_coffee_table" :display_name "Mahogany Coffee Table"
+                             :description "Luxurious mahogany coffee table" :schema "public"}]}
+                  (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id-1))))
+          (testing "Does not include tables from other databases"
+            (let [tables (:tables (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id-1)))]
+              (is (not (some #(= (:id %) table-id-3) tables))))))
 
         (testing "Returns 400 when table editing disabled"
-          (t2/update! :model/Database db-id {:settings {:database-enable-table-editing false}})
-          (is (= "Invalid Request."
-                 (mt/user-http-request :crowberto :get 400 (format "action/v2/database/%d/table" db-id)))))
+          (t2/update! :model/Database db-id-1 {:settings {:database-enable-table-editing false}})
+          (is (= "Table editing is not enabled for this database"
+                 (mt/user-http-request :crowberto :get 400 (format "action/v2/database/%d/table" db-id-1)))))
 
         (testing "Returns 404 for non-existent database"
           (is (= "Not found."
@@ -729,41 +746,41 @@
 (deftest v2-model-test
   (testing "GET /api/action/v2/model"
     (mt/with-actions-enabled
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Elite Agency"}]
         (mt/with-actions [{model-id-1 :id} {:type :model, :dataset_query (mt/mbql-query users)}
-                          {action-id-1 :action-id} {:name     "Action 1"
+                          {action-id-1 :action-id} {:name     "Cindy Crawford Pose"
                                                     :type     :implicit
                                                     :kind     "row/create"
                                                     :archived false}
-                          {archived-action-id :action-id} {:name     "Archived Action"
+                          {archived-action-id :action-id} {:name     "Retired Supermodel"
                                                            :type     :implicit
                                                            :kind     "row/delete"
                                                            :archived true}]
           (mt/with-actions [{model-id-2 :id} {:type :model, :dataset_query (mt/mbql-query venues)}
-                            {action-id-2 :action-id} {:name     "Action 2"
+                            {action-id-2 :action-id} {:name     "Tyra Banks Strut"
                                                       :type     :implicit
                                                       :kind     "row/update"
                                                       :archived false}]
            ;; Update model metadata after creation, to work around limitations in with-actions
-            (t2/update! :model/Card model-id-1 {:name                "Test Model 1"
-                                                :description         "First test model"
+            (t2/update! :model/Card model-id-1 {:name                "Gisele Bundchen"
+                                                :description         "Brazilian supermodel extraordinaire"
                                                 :collection_id       coll-id
                                                 :collection_position 1})
-            (t2/update! :model/Card model-id-2 {:name                "Test Model 2"
-                                                :description         "Second test model"
+            (t2/update! :model/Card model-id-2 {:name                "Heidi Klum"
+                                                :description         "German-American model and TV personality"
                                                 :collection_position 2})
 
             (testing "Returns models that have actions"
               (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
                 (is (=? {:models [{:id                  model-id-1
-                                   :name                "Test Model 1"
-                                   :description         "First test model"
+                                   :name                "Gisele Bundchen"
+                                   :description         "Brazilian supermodel extraordinaire"
                                    :collection_id       coll-id
                                    :collection_position 1
-                                   :collection_name     "Test Collection"}
+                                   :collection_name     "Elite Agency"}
                                   {:id                  model-id-2
-                                   :name                "Test Model 2"
-                                   :description         "Second test model"
+                                   :name                "Heidi Klum"
+                                   :description         "German-American model and TV personality"
                                    :collection_id       nil
                                    :collection_position 2
                                    :collection_name     nil}]}
