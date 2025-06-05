@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-442-tests-for-sso-authentication-for-new-iframe-embedding",
     "hash": "c29b41367bf3723b53c2622fba1023f5b459eb54"
+  },
+  "upstream": {
+    "branch": "emb-450-ability-to-select-auth-method-in-new-iframe-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 59033,
+        "gqlID": "PR_kwDOAczgH86ZLOKG"
+      }
+    }
   }
 }
