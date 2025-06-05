@@ -786,50 +786,68 @@
     (mt/with-actions-enabled
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-actions-test-data-tables #{"users"}
-          (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query users)}
-                            action-1 {:name              "Get example"
-                                      :type              :http
-                                      :model_id          card-id
-                                      :template          {:method "GET"
-                                                          :url "https://example.com/{{x}}"}
-                                      :parameters        [{:id "x" :type "text"}]
-                                      :response_handle   ".body"
-                                      :error_handle      ".status >= 400"}
-                            action-2 {:name                   "Query example"
-                                      :type                   :query
-                                      :model_id               card-id
-                                      :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
-                                                                      :type name)
-                                      :database_id            (mt/id)
-                                      :parameters             [{:id "x" :type "number"}]
-                                      :visualization_settings {:position "top"}}
-                            archived {:name                   "Archived example"
-                                      :type                   :query
-                                      :model_id               card-id
-                                      :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
-                                                                      :type name)
-                                      :database_id            (mt/id)
-                                      :parameters             [{:id "x" :type "number"}]
-                                      :visualization_settings {:position "top"}
-                                      :archived               true}]
-            (testing "Returns actions with id and name only"
-              (is (=? {:actions [{:id   (:action-id action-1)
-                                  :name "Get example"}
-                                 {:id   (:action-id action-2)
-                                  :name "Query example"}]}
-                      (mt/user-http-request :crowberto :get 200 "action/v2/"))))
+          (mt/with-actions [{model-id :id} {:type :model :dataset_query (mt/mbql-query users)}
+                            action-id-1 {:name            "Strike a Pose"
+                                         :type            :http
+                                         :model_id        model-id
+                                         :template        {:method "GET"
+                                                           :url    "https://example.com/{{x}}"}
+                                         :parameters      [{:id "x" :type "text"}]
+                                         :response_handle ".body"
+                                         :error_handle    ".status >= 400"}
+                            action-id-2 {:name          "Walk the Catwalk"
+                                         :type          :query
+                                         :model_id      model-id
+                                         :dataset_query (mt/mbql-query venues)}
+                            retired-action {:name                   "Retired from Runway"
+                                            :type                   :query
+                                            :model_id               model-id
+                                            :dataset_query          (mt/mbql-query users)
+                                            :archived               true}]
+            (testing "Requires either model-id or table-id parameter"
+              (is (= "Either model-id or table-id parameter is required"
+                     (mt/user-http-request :crowberto :get 400 "action/v2/"))))
+
+            (testing "Cannot specify both model-id and table-id"
+              (is (= "Cannot specify both model-id and table-id parameters"
+                     (mt/user-http-request :crowberto :get 400 (str "action/v2/?model-id=" model-id "&table-id=1")))))
 
             (testing "Filters by model-id"
-              (is (=? {:actions [{:id   (:action-id action-1)
-                                  :name "Get example"}
-                                 {:id   (:action-id action-2)
-                                  :name "Query example"}]}
-                      (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" card-id)))))
+              (mt/with-actions [{other-model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                                {action-id-4 :action-id} {:name     "Vogue Cover Shoot"
+                                                          :type     :http
+                                                          :model_id other-model-id
+                                                          :template {:method "GET"
+                                                                     :url    "https://vogue.com"}}]
+                (is (=? {:actions [{:id (:action-id action-id-1), :name "Strike a Pose"}
+                                   {:id (:action-id action-id-2), :name "Walk the Catwalk"}]}
+                        (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" model-id))))
+                (testing "Returns actions for other model"
+                  (is (=? {:actions [{:id   action-id-4
+                                      :name "Vogue Cover Shoot"}]}
+                          (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" other-model-id)))))))
 
-            (testing "Returns empty list for non-existent model"
-              (is (=? {:actions []}
-                      (mt/user-http-request :crowberto :get 200 "action/v2/?model-id=99999"))))
+            (testing "Returns 404 for non-existent model"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :get 404 "action/v2/?model-id=99999"))))
+
+            (testing "Supports table-id parameter"
+              (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing true}}
+                (mt/with-temp [:model/Table {table-id :id} {:name "dining_table" :db_id (mt/id)}
+                               :model/Table {other-table-id :id} {:name "coffee_table" :db_id (mt/id)}]
+                  (let [resp (mt/user-http-request :crowberto :get 200 (str "action/v2/?table-id=" table-id))]
+                    (testing "Returns table actions for first table"
+                      (is (=? {:actions [{:id neg-int? :name "create"}
+                                         {:id neg-int? :name "update"}
+                                         {:id neg-int? :name "delete"}]}
+                              resp)))
+                    (testing "Returns different action IDs for the different tables"
+                      (let [actions-1 (:actions resp)
+                            actions-2 (:actions (mt/user-http-request :crowberto :get 200 (str "action/v2/?table-id=" other-table-id)))]
+                        (is (seq actions-2))
+                        (is (empty? (set/intersection (into #{} (map :id) actions-1)
+                                                      (into #{} (map :id) actions-2))))))))))
 
             (testing "Requires permission on model"
               (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (str "action/v2/?model-id=" card-id)))))))))))
+                     (mt/user-http-request :rasta :get 403 (str "action/v2/?model-id=" model-id)))))))))))

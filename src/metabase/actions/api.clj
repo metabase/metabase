@@ -81,7 +81,6 @@
 (api.macros/defendpoint :get "/v2/database"
   "Databases which contain actions"
   [_ _ _]
-  ;; TODO could optimize this into a single reducible query
   (let [non-empty-dbs      (t2/select-fn-set :db_id [:model/Table :db_id])
         databases          (when non-empty-dbs
                              (t2/select [:model/Database :id :name :description :settings] :id [:in non-empty-dbs]))
@@ -93,22 +92,16 @@
 (api.macros/defendpoint :get "/v2/database/:database-id/table"
   "Tables which contain actions"
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ _]
-  ;; tables in the database, with schema (group on frontend)
-  ;; ... why on FE? because some databases don't have a notion of schema
-  ;; filter everything or return error if data editing is not enabled
-  (let [settings           (when (premium-features.settings/table-data-editing?)
-                             (t2/select-one-fn :settings [:model/Database :settings] database-id))
-        _                  (api/check-404 settings)
-        ;; This code / message could be improved.
-        _                  (api/check-400 (:database-enable-table-editing settings))
-        ;; need to filter on anything else? visibility_type, sandboxes, routing, etc?
+  (let [database           (api/check-404 (t2/select-one :model/Database :id database-id))
+        _                  (when-not (get-in database [:settings :database-enable-table-editing])
+                             (throw (ex-info "Table editing is not enabled for this database"
+                                             {:status-code 400})))
         tables             (t2/select [:model/Table :id :display_name :name :description :schema] :db_id database-id)]
     {:tables tables}))
 
 (api.macros/defendpoint :get "/v2/model"
   "Models which contain actions"
   [_ _ _]
-  ;; TODO should do distinct in the database (really just do one query even, with the join)
   (let [model-ids    (t2/select-fn-set :model_id [:model/Action :model_id] :archived false)
         models       (when model-ids
                        (t2/select [:model/Card :id :name :description :collection_position :collection_id] :id [:in model-ids]))
@@ -119,28 +112,37 @@
     {:models (for [m models] (assoc m :collection_name (->collection m)))}))
 
 (api.macros/defendpoint :get "/v2/"
-  "Returns actions with id and name only. Optionally filtered by model-id."
+  "Returns actions with id and name only. Requires either model-id or table-id parameter."
   [_route-params
-   {:keys [model-id]} :- [:map
-                          [:model-id {:optional true} ms/PositiveInt]]
+   {:keys [model-id table-id]} :- [:map
+                                   [:model-id {:optional true} ms/PositiveInt]
+                                   [:table-id {:optional true} ms/PositiveInt]]
    _body-params]
-  (let [models (if model-id
-                 (try
-                   [(api/read-check :model/Card model-id)]
-                   (catch clojure.lang.ExceptionInfo e
-                     (if (= 404 (:status-code (ex-data e)))
-                       []
-                       (throw e))))
-                 (t2/select :model/Card {:where
-                                         [:and
-                                          [:= :type "model"]
-                                          [:= :archived false]
-                                          (collection/visible-collection-filter-clause)]}))]
-    {:actions (if (seq models)
-                (t2/select [:model/Action :id :name]
-                           :model_id [:in (map :id models)]
-                           :archived false)
-                [])}))
+  (when-not (or model-id table-id)
+    (throw (ex-info "Either model-id or table-id parameter is required"
+                    {:status-code 400})))
+  (when (and model-id table-id)
+    (throw (ex-info "Cannot specify both model-id and table-id parameters"
+                    {:status-code 400})))
+  (cond
+    model-id
+    (do (api/read-check :model/Card model-id)
+        {:actions (t2/select [:model/Action :id :name :description]
+                             :model_id model-id
+                             :archived false)})
+
+    table-id
+    (let [table    (api/read-check :model/Table table-id)
+          database (t2/select-one :model/Database :id (:db_id table))
+          _        (when-not (get-in database [:settings :database-enable-table-editing])
+                     (throw (ex-info "Table editing is not enabled for this database"
+                                     {:status-code 400})))
+          fields   (t2/select :model/Field :table_id table-id)
+          actions  (for [op [:table.row/create :table.row/update :table.row/delete]
+                         :let [action (action/table-primitive-action table fields op)]]
+                     {:id   (:id action)
+                      :name (:name action)})]
+      {:actions actions})))
 
 (api.macros/defendpoint :get "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
