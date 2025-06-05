@@ -1,3 +1,4 @@
+import { setupSaml } from "e2e/test/scenarios/admin-2/sso/shared/helpers";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
