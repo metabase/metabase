@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { useAsync } from "react-use";
 import { t } from "ttag";
@@ -15,7 +16,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
@@ -30,9 +30,23 @@ export const FinalStep = () => {
     return Promise.all(dashboardPromises);
   }, [createdDashboardIds]);
 
-  const getEmbedCode = (dashboard: Dashboard) => {
-    return `<iframe src="${window.location.origin}/embed/dashboard/${dashboard.id}" />`;
+  const getEmbedCode = (url: string) => {
+    return `<iframe src="${url}" />`;
   };
+
+  const tabs = useMemo(
+    () => [
+      ...(dashboards ?? []).map((dashboard) => ({
+        title: dashboard.name,
+        url: `${window.location.origin}/embed/dashboard/${dashboard.id}`,
+      })),
+      {
+        title: t`Query Builder`,
+        url: `${window.location.origin}/question/new`,
+      },
+    ],
+    [dashboards],
+  );
 
   if (loading) {
     return (
@@ -65,25 +79,25 @@ export const FinalStep = () => {
         </a>
       </Group>
 
-      <Tabs defaultValue={dashboards[0].id.toString()}>
+      <Tabs defaultValue={tabs[0].url}>
         <Tabs.List>
-          {dashboards.map((dashboard) => (
-            <Tabs.Tab key={dashboard.id} value={dashboard.id.toString()}>
-              {dashboard.name}
+          {tabs.map((tab) => (
+            <Tabs.Tab key={tab.url} value={tab.url}>
+              {tab.title}
             </Tabs.Tab>
           ))}
         </Tabs.List>
-        {dashboards.map((dashboard) => (
-          <Tabs.Panel key={dashboard.id} value={dashboard.id.toString()}>
+        {tabs.map((tab) => (
+          <Tabs.Panel key={tab.url} value={tab.url}>
             <Box my="md">
               <iframe
-                src={`${window.location.origin}/embed/dashboard/${dashboard.id}`}
+                src={tab.url}
                 style={{ width: "100%", height: "600px", border: "none" }}
-                title={dashboard.name}
+                title={tab.title}
               />
             </Box>
 
-            <CodeSnippet code={getEmbedCode(dashboard)} />
+            <CodeSnippet code={getEmbedCode(tab.url)} />
           </Tabs.Panel>
         ))}
       </Tabs>
