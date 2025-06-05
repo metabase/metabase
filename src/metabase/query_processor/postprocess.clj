@@ -1,5 +1,6 @@
 (ns metabase.query-processor.postprocess
   (:require
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -17,9 +18,8 @@
    [metabase.query-processor.middleware.results-metadata :as results-metadata]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.util :as u]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -51,6 +51,7 @@
   Where `rff` has the form
 
     (f metadata) -> rf"
+  #_{:clj-kondo/ignore [:deprecated-var]}
   [(ensure-legacy #'format-rows/format-rows)
    (ensure-legacy #'results-metadata/record-and-return-metadata!)
    (ensure-legacy #'limit/limit-result-rows)

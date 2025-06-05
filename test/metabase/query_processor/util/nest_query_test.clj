@@ -552,7 +552,7 @@
                                                         ::add/source-alias        "PRICE"
                                                         ::add/desired-alias       "PRICE"
                                                         ::add/position            0}]
-                                        [:field "test" {:base-type          :type/Float
+                                        [:field "test" {:base-type          :type/Integer
                                                         ::add/source-table  ::add/source
                                                         ::add/source-alias  "test"
                                                         ::add/desired-alias "test"

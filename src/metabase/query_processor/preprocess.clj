@@ -11,6 +11,7 @@
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
+   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
    [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
    [metabase.query-processor.middleware.binning :as binning]
@@ -46,8 +47,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.query-processor.middleware.annotate :as annotate]))
+   [metabase.util.malli :as mu]))
 
 ;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the

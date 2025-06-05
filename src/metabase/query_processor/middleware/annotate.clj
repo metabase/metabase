@@ -8,11 +8,12 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
@@ -22,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.lib.join :as lib.join]
    [potemkin :as p]))
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
@@ -77,11 +79,26 @@
 
 (mu/defn- restore-original-join-aliases :- ::lib.schema/query
   [query :- ::lib.schema/query]
-  (reduce
-   (fn [query [escaped-alias original-alias]]
-     (lib.join/rename-join query (u/qualified-name escaped-alias) original-alias))
-   query
-   (get-in query [:info :alias/escaped->original])))
+  (binding [lib.join/*truncate-and-uniqify-join-names* false]
+    (let [escaped->original (get-in query [:info :alias/escaped->original])]
+      (if (empty? escaped->original)
+        query
+        (lib.walk/walk-stages
+         query
+         (mu/fn [query  :- ::lib.schema/query
+                 path   :- ::lib.walk/path
+                 _stage :- :map]
+           (let [joins  (lib.walk/apply-f-for-stage-at-path lib/joins query path)
+                 query' (reduce
+                         (mu/fn [query :- ::lib.schema/query
+                                 join  :- ::lib.schema.join/join]
+                           (if-let [original (get escaped->original (lib/current-join-alias join))]
+                             (lib.walk/apply-f-for-stage-at-path lib/rename-join query path join original)
+                             query))
+                         query
+                         joins)]
+             ;; return updated stage.
+             (get-in query' path))))))))
 
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata from MLv2. We'll generally prefer the values
@@ -132,16 +149,16 @@
 (mu/defn- source->legacy-source :- ::legacy-source
   [source :- ::lib.schema.metadata/column-source]
   (case source
-   :source/card                :fields
-   :source/native              :native
-   :source/previous-stage      :fields
-   :source/table-defaults      :fields
-   :source/fields              :fields
-   :source/aggregations        :aggregation
-   :source/breakouts           :fields
-   :source/joins               :fields
-   :source/expressions         :fields
-   :source/implicitly-joinable :fields))
+    :source/card                :fields
+    :source/native              :native
+    :source/previous-stage      :fields
+    :source/table-defaults      :fields
+    :source/fields              :fields
+    :source/aggregations        :aggregation
+    :source/breakouts           :fields
+    :source/joins               :fields
+    :source/expressions         :fields
+    :source/implicitly-joinable :fields))
 
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
@@ -192,7 +209,7 @@
 (mu/defn- legacy-field-ref :- [:maybe ::legacy-field-ref]
   [col :- ::col]
   (when (= (:lib/type col) :metadata/column)
-    (-> col lib/ref lib.convert/->legacy-MBQL fe-friendly-expression-ref)))
+    (-> col lib/ref lib/->legacy-MBQL fe-friendly-expression-ref)))
 
 (mu/defn- add-legacy-field-refs :- ::cols
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
@@ -212,7 +229,6 @@
   "Needed for legacy FE viz settings purposes for the time being. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- ::cols]
-  (println "(map :name cols):" (map :name cols)) ; NOCOMMIT
   (map (fn [col unique-name]
          (assoc col :name unique-name))
        cols

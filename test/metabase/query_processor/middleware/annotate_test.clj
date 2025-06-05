@@ -989,6 +989,40 @@
                     cols)
                 "cols has wrong display name")))))))
 
+;;; TODO -- more tests that make sure queries work with additional stages or nested joins
+(deftest ^:parallel restore-original-join-aliases-test
+  (let [query (-> (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query orders
+                     {:joins  [{:source-table $$products
+                                :condition    [:= $product-id [:field %products.id {:join-alias "*ESCAPED*"}]]
+                                :alias        "*ESCAPED*"
+                                :fields       [[:field %products.title {:join-alias "*ESCAPED*"}]]}]
+                      :fields [$orders.id
+                               [:field %products.title {:join-alias "*ESCAPED*"}]]
+                      :limit  4}))
+                  (assoc-in [:info :alias/escaped->original "*ESCAPED*"] "*ORIGINAL*"))]
+    (is (=? {:stages [{:joins [{:alias "*ESCAPED*"
+                                :fields [[:field {:join-alias "*ESCAPED*"} pos-int?]]
+                                :conditions [[:=
+                                              {}
+                                              [:field {} pos-int?]
+                                              [:field {:join-alias "*ESCAPED*"} pos-int?]]]}]
+                       :fields [[:field {} pos-int?]
+                                [:field {:join-alias "*ESCAPED*"} pos-int?]]}]
+             :info {:alias/escaped->original {"*ESCAPED*" "*ORIGINAL*"}}}
+            query))
+    (is (=? {:stages [{:joins [{:alias "*ORIGINAL*"
+                                :fields [[:field {:join-alias "*ORIGINAL*"} pos-int?]]
+                                :conditions [[:=
+                                              {}
+                                              [:field {} pos-int?]
+                                              [:field {:join-alias "*ORIGINAL*"} pos-int?]]]}]
+                       :fields [[:field {} pos-int?]
+                                [:field {:join-alias "*ORIGINAL*"} pos-int?]]}]
+             :info {:alias/escaped->original {"*ESCAPED*" "*ORIGINAL*"}}}
+            (#'annotate/restore-original-join-aliases query)))))
+
 (deftest ^:parallel preserve-original-join-alias-e2e-test
   (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join)

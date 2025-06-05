@@ -30,7 +30,6 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -505,6 +504,10 @@
           ;; we leave alone the condition otherwise
           :else &match)))))
 
+(def ^:dynamic *truncate-and-uniqify-join-names*
+  "Whether to truncate and uniqify join names when adding new joins to the query."
+  true)
+
 (defn- generate-unique-name [base-name taken-names]
   (let [generator (lib.util/unique-name-generator)]
     (run! generator taken-names)
@@ -521,7 +524,9 @@
          cond-fields (lib.util.match/match (:conditions a-join) :field)
          home-col    (select-home-column home-cols cond-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
-       (generate-unique-name s (keep :alias (:joins stage)))))))
+       (if *truncate-and-uniqify-join-names*
+         (generate-unique-name s (keep :alias (:joins stage)))
+         s)))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a
@@ -1073,38 +1078,6 @@
        (cond-> join-condition
          sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
          sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
-
-(mu/defn rename-join :- ::lib.schema/query
-  "Rename all joins with `old-alias` in a query to `new-alias`. Does not currently different between multiple join
-  with the same name appearing in multiple locations. Surgically updates only things that are actual join aliases and
-  not other occurrences of the string.
-
-  This is meant to use to reverse the join renaming done
-  by [[metabase.query-processor.middleware.escape-join-aliases]]."
-  [query     :- ::lib.schema/query
-   old-alias :- ::lib.schema.join/alias
-   new-alias :- ::lib.schema.join/alias]
-  (lib.walk/walk
-   query
-   (letfn [(update-field-refs [x]
-             (lib.util.match/replace x
-               [:field (opts :guard #(= (:join-alias %) old-alias)) id-or-name]
-               [:field (assoc opts :join-alias new-alias) id-or-name]))]
-     (fn [_query path-type _path stage-or-join]
-       (case path-type
-         :lib.walk/join
-         (let [join stage-or-join]
-           (-> join
-               (update :alias (fn [current-alias]
-                                (if (= current-alias old-alias)
-                                  new-alias
-                                  current-alias)))
-               (update :fields update-field-refs)
-               (update :conditions update-field-refs)))
-
-         :lib.walk/stage
-         (let [stage stage-or-join]
-           (update-field-refs stage)))))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :joins
   [query stage-number _key]

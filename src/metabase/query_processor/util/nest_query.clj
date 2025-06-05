@@ -10,9 +10,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -136,12 +137,16 @@
         (assoc :source-query source)
         (cond-> keep-filter? (dissoc :filter)))))
 
+(defn- infer-expression-type [expression]
+  (when expression
+    (lib.schema.expression/type-of-method (lib.convert/->pMBQL expression))))
+
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
   (let [expression-definition        (mbql.u/expression-with-name query expression-name)
-        {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
+        base-type                    (infer-expression-type expression-definition)
         {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
                                        source-opts)

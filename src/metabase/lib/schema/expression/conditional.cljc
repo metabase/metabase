@@ -58,8 +58,6 @@
     [:default [:? [:schema [:ref ::expression/expression]]]])
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs _default]]
-    ;; Following logic for picking a type is taken from
-    ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
     (some
      (fn [[_pred expr]]
        (if-some [t (expression/type-of expr)]

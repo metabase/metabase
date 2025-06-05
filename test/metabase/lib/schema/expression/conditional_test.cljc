@@ -27,8 +27,7 @@
 
 (deftest ^:parallel case-type-of-test
   (testing "In MLv2, case expression's type is the first non-nil type of its values, same approach as in qp"
-    ;; In qp: `annotate/infer-expression-type`
-    ;; In MLv2: `expression/type-of-method :case`
+    ;; In QP and MLv2: `expression/type-of-method :case`
     (are [expr expected] (= expected
                             (expression/type-of expr))
 
