@@ -17,7 +17,6 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
