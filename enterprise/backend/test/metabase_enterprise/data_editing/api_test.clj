@@ -1152,18 +1152,10 @@
                       {:keys [status body]} (req {:scope scope
                                                   :action_id create-id})]
                   (is (= 200 status))
-                  (is (= [{:id "text"
-                           :display_name "Text"
-                           :type "type/Text"}
-                          {:id "int"
-                           :display_name "Int"
-                           :type "type/Integer"}
-                          {:id "timestamp"
-                           :display_name "Timestamp"
-                           :type "type/DateTime"}
-                          {:id "date"
-                           :display_name "Date"
-                           :type "type/Date"}]
+                  (is (= [{:id "text"      :display_name "Text"      :type "type/Text"}
+                          {:id "int"       :display_name "Int"       :type "type/Integer"}
+                          {:id "timestamp" :display_name "Timestamp" :type "type/DateTime"}
+                          {:id "date"      :display_name "Date"      :type "type/Date"}]
                          (->> (:parameters body)
                               (map #(select-keys % [:id :display_name :type])))))))
               (testing "update"
@@ -1171,21 +1163,11 @@
                       {:keys [status body]} (req {:scope scope
                                                   :action_id update-id})]
                   (is (= 200 status))
-                  (is (= [{:id "id"
-                           :display_name "ID"
-                           :type "type/BigInteger"}
-                          {:id "text"
-                           :display_name "Text"
-                           :type "type/Text"}
-                          {:id "int"
-                           :display_name "Int"
-                           :type "type/Integer"}
-                          {:id "timestamp"
-                           :display_name "Timestamp"
-                           :type "type/DateTime"}
-                          {:id "date"
-                           :display_name "Date"
-                           :type "type/Date"}]
+                  (is (= [{:id "id"        :display_name "ID"        :type "type/BigInteger"}
+                          {:id "text"      :display_name "Text"      :type "type/Text"}
+                          {:id "int"       :display_name "Int"       :type "type/Integer"}
+                          {:id "timestamp" :display_name "Timestamp" :type "type/DateTime"}
+                          {:id "date"      :display_name "Date"      :type "type/Date"}]
                          (->> (:parameters body)
                               (map #(select-keys % [:id :display_name :type])))))))
               (testing "delete"
@@ -1200,23 +1182,21 @@
                               (map #(select-keys % [:id :display_name :type])))))))))
 
           (mt/with-temp
-            [:model/Dashboard dashboard
-             {}
-             :model/DashboardCard dashcard
-             {:dashboard_id (:id dashboard)
-              :visualization_settings
-              {:table_id @test-table
-               :editableTable.enabledActions
-               [{:id "table.row/create"
-                 :parameterMappings [{:parameterId "int"
-                                      :sourceType  "const"
-                                      :value       42}
-                                     {:parameterId "text"
-                                      :sourceType  "row-data"
-                                      :sourceValueTarget "text"
-                                      :visibility  "readonly"}
-                                     {:parameterId "timestamp"
-                                      :visibility  "hidden"}]}]}}]
+            [:model/Dashboard     dashboard {}
+             :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                             :visualization_settings
+                                             {:table_id @test-table
+                                              :editableTable.enabledActions
+                                              [{:id                "table.row/create"
+                                                :parameterMappings [{:parameterId "int"
+                                                                     :sourceType  "const"
+                                                                     :value       42}
+                                                                    {:parameterId       "text"
+                                                                     :sourceType        "row-data"
+                                                                     :sourceValueTarget "text"
+                                                                     :visibility        "readonly"}
+                                                                    {:parameterId "timestamp"
+                                                                     :visibility  "hidden"}]}]}}]
 
             ;; insert a row for the row action
             (mt/user-http-request :crowberto :post 200
@@ -1240,16 +1220,10 @@
                         input           {:table-id @test-table}]
                     (testing "create"
                       (is (=? {:status 200
-                               :body   {:parameters
-                                        (if (:dashcard-id scope)
-                                          [{:id "text" :readonly true :value "a very important string"}
-                                           {:id "int" :readonly false}
-                                           ;; note that timestamp is now hidden
-                                           {:id "date" :readonly false}]
-                                          [{:id "text" :readonly false}
-                                           {:id "int" :readonly false}
-                                           {:id "timestamp" :readonly false}
-                                           {:id "date" :readonly false}])}}
+                               :body   {:parameters [{:id "text" :readonly false}
+                                                     {:id "int" :readonly false}
+                                                     {:id "timestamp" :readonly false}
+                                                     {:id "date" :readonly false}]}}
                               (req {:action_id create-id
                                     :scope     scope
                                     :input     (assoc input :id 1)}))))
