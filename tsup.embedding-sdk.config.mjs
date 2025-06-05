@@ -106,7 +106,7 @@ await build({
   watch: isDevMode
     ? ["./enterprise/frontend/src/embedding-sdk", "./frontend/src"]
     : false,
-  metafile: true,
+  metafile: false,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
   ...getExternalsConfig({ externals }),
