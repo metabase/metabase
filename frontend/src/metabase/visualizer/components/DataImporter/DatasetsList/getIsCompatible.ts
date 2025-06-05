@@ -35,11 +35,18 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     return false;
   }
 
+  //console.log("TSP currentDataset: ", JSON.stringify(currentDataset, null, 2));
+  console.log("TSP targetDataset: ", targetDataset);
+  //console.log("TSP datasets: ", JSON.stringify(datasets, null, 2));
+
   const columnSettingMapping = groupColumnsBySuitableVizSettings(
     currentDataset,
     computedSettings,
     datasets,
     fields,
   );
+
+  //console.log("TSP isCompatible?: ", Object.keys(columnSettingMapping).length > 0);
+
   return Object.keys(columnSettingMapping).length > 0;
 }
