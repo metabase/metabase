@@ -1,5 +1,4 @@
 import { useDeferredValue, useEffect, useState } from "react";
-import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -18,7 +17,62 @@ export function TablePicker({
   onChange: (path: TreePath) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const deferredQuery = useDeferredValue(query);
+  const { tree: searchTree } = useSearch(deferredQuery);
+  const searchItems = flatten(searchTree);
+
+  // search results need their own keypress handling logic
+  // because we want to keep the focus on the search input
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (deferredQuery === "") {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+
+      setSelectedIndex((selectedIndex) => {
+        const nextTableIndex = searchItems.findIndex(
+          (item, index) => item.type === "table" && index > selectedIndex,
+        );
+        if (nextTableIndex >= 0) {
+          return nextTableIndex;
+        }
+        const firstTableIndex = searchItems.findIndex(
+          (item) => item.type === "table",
+        );
+        return firstTableIndex;
+      });
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+
+      setSelectedIndex((selectedIndex) => {
+        const previousTableIndex = searchItems.findLastIndex(
+          (item, index) => item.type === "table" && index < selectedIndex,
+        );
+        if (previousTableIndex >= 0) {
+          return previousTableIndex;
+        }
+        const lastTableIndex = searchItems.findLastIndex(
+          (item) => item.type === "table",
+        );
+        return lastTableIndex;
+      });
+    }
+
+    if (event.key === "Enter") {
+      const item = searchItems[selectedIndex];
+
+      if (item?.value) {
+        event.preventDefault();
+
+        onChange(item.value);
+      }
+    }
+  };
 
   return (
     <Stack mih={rem(200)}>
@@ -28,13 +82,20 @@ export function TablePicker({
           placeholder={t`Search tables`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={handleKeyDown}
         />
       </Box>
 
       {deferredQuery === "" ? (
         <Tree value={value} onChange={onChange} />
       ) : (
-        <Search query={deferredQuery} path={value} onChange={onChange} />
+        <Search
+          query={deferredQuery}
+          path={value}
+          selectedIndex={selectedIndex}
+          onChange={onChange}
+          onSelectedIndexChange={setSelectedIndex}
+        />
       )}
     </Stack>
   );
@@ -95,58 +156,21 @@ function Tree({
 function Search({
   query,
   path,
+  selectedIndex,
   onChange,
+  onSelectedIndexChange,
 }: {
   query: string;
   path: TreePath;
+  selectedIndex: number;
   onChange: (path: TreePath) => void;
+  onSelectedIndexChange: (index: number) => void;
 }) {
   const debouncedQuery = useDebouncedValue(query, 300);
   const { tree, isLoading } = useSearch(debouncedQuery);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const items = flatten(tree);
   const isEmpty = !isLoading && items.length === 0;
-
-  // search results need their own keypress handling logic
-  // because we want to keep the focus on the search input
-  useKeyPressEvent("ArrowDown", (event) => {
-    setSelectedIndex((selectedIndex) => {
-      const nextTableIndex = items.findIndex(
-        (item, index) => item.type === "table" && index > selectedIndex,
-      );
-      if (nextTableIndex >= 0) {
-        return nextTableIndex;
-      }
-      const firstTableIndex = items.findIndex((item) => item.type === "table");
-      return firstTableIndex;
-    });
-    event.preventDefault();
-  });
-
-  useKeyPressEvent("ArrowUp", (event) => {
-    setSelectedIndex((selectedIndex) => {
-      const previousTableIndex = items.findLastIndex(
-        (item, index) => item.type === "table" && index < selectedIndex,
-      );
-      if (previousTableIndex >= 0) {
-        return previousTableIndex;
-      }
-      const lastTableIndex = items.findLastIndex(
-        (item) => item.type === "table",
-      );
-      return lastTableIndex;
-    });
-    event.preventDefault();
-  });
-
-  useKeyPressEvent("Enter", (event) => {
-    const item = items[selectedIndex];
-    if (item.value) {
-      onChange?.(item.value);
-      event.preventDefault();
-    }
-  });
 
   if (isEmpty) {
     return <EmptyState title={t`No results.`} />;
@@ -158,7 +182,7 @@ function Search({
       path={path}
       onItemClick={onChange}
       selectedIndex={selectedIndex}
-      onSelectedIndexChange={setSelectedIndex}
+      onSelectedIndexChange={onSelectedIndexChange}
     />
   );
 }
