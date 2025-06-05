@@ -14,7 +14,6 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
