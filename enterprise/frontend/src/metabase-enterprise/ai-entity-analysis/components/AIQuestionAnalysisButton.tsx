@@ -9,7 +9,8 @@ export const AIQuestionAnalysisButton = () => {
 
   const handleClick = () => {
     if (metabotAgent) {
-      // Enterprise: Open Metabot and send "Analyze this chart" message
+      // Enterprise: Clear chat, open Metabot and send "Analyze this chart" message
+      metabotAgent.resetConversation();
       metabotAgent.setVisible(true);
       metabotAgent.submitInput("Analyze this chart");
 

@@ -43,14 +43,18 @@ export const useRegisterQueryBuilderMetabotContext = () => {
     }
 
     const baseContext = question.isSaved()
-      ? { type: question.type(), id: question.id() }
+      ? {
+          type: question.type(),
+          id: question.id(),
+          query: question.datasetQuery(),
+        }
       : { type: "adhoc" as const, query: question.datasetQuery() };
 
     // Only include chart_config if we have an image
     const contextWithImage = chartImageRef.current
       ? {
           ...baseContext,
-          chart_config: { image_base_64: chartImageRef.current },
+          chart_configs: [{ image_base_64: chartImageRef.current }],
         }
       : baseContext;
 
