@@ -219,6 +219,7 @@
                            (mapv (fn [column]
                                    (-> column
                                        (update-keys u/->kebab-case-en)
+                                       (set/rename-keys {:desired-column-alias :lib/desired-column-alias})
                                        (assoc :lib/type :metadata/column)))
                                  columns)))
         (assoc :lib/type :metadata/results))))
