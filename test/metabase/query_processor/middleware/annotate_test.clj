@@ -167,7 +167,6 @@
                                    :strategy     :left-join}]}})
                {:columns [:name]}))))))
 
-;; TODO: This test doesn't map neatly onto idents. If the field is bucketed then it should be a breakout.
 (deftest ^:parallel col-info-for-field-with-temporal-unit-test
   (lib.tu.macros/$ids venues
     (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
@@ -188,9 +187,6 @@
                 :base_type    :type/Number
                 :display_name "Price: Month"
                 :unit         :month
-                ;; TODO: No :ident here! This case doesn't really map to how the idents work - you
-                ;; can't have a string-based field ref without a source query or earlier stage.
-                ;; That case is handled by other tests below.
                 :source       :fields
                 :field_ref    !month.*price/Number}]
               (column-info
@@ -264,7 +260,7 @@
                :nfc_path          nil
                :parent_id         1
                :visibility_type   :normal
-               ;; TODO -- not sure about this display name, seems like it's including parent twice
+               ;; TODO -- not sure about this display name, seems like it's including parent twice -- Cam
                :display_name      "Grandparent: Grandparent: Parent"
                :base_type         :type/Text}
               (-> (add-column-info query {:cols [{}]})
@@ -286,7 +282,7 @@
                :parent_id         2
                :id                3
                :visibility_type   :normal
-               ;; TODO -- not sure about this display name, seems like it's including parent twice
+               ;; TODO -- not sure about this display name, seems like it's including parent twice -- Cam
                :display_name      "Grandparent: Parent: Grandparent: Parent: Child"
                :base_type         :type/Text}
               (-> (add-column-info query {:cols [{}]})
@@ -986,12 +982,8 @@
             (is (=? (mt/$ids
                       [{:display_name "ID"
                         :field_ref    $orders.id}
-                       (merge
-                        {:display_name (str join-alias " → Title")
-                         :field_ref    [:field %products.title {:join-alias join-alias}]}
-                        ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
-                        (when (= location "data.cols")
-                          {:source_alias join-alias}))])
+                       {:display_name (str join-alias " → Title")
+                        :field_ref    [:field %products.title {:join-alias join-alias}]}])
                     (map
                      #(select-keys % [:display_name :field_ref :source_alias])
                      metadata)))))))))

@@ -22,7 +22,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.lib.walk :as lib.walk]
-   [metabase.lib.schema.join :as lib.schema.join]))
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.join.util :as lib.join.util]))
 
 (mr/def ::legacy-source
   [:enum :aggregation :fields :breakout :native])
