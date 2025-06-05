@@ -1,4 +1,3 @@
-const { H } = cy;
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -14,13 +13,13 @@ import {
   modal,
   popover,
 } from "e2e/support/helpers";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
+
+const { H } = cy;
 
 describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
@@ -147,7 +146,12 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     mockAuthProviderAndJwtSignIn();
     cy.intercept("POST", "/api/card").as("createCard");
 
-    const MODEL_COUNT = 14;
+    /**
+     * We have changed the default MB_SEARCH_ENGINE from "in-place" to "appdb", and it affects the results here.
+     * Previously, when the engine was "in-place", we'll get models from the "Usage Analytics" collection as well,
+     * so the number was different.
+     */
+    const MODEL_COUNT = 1;
     const TABLE_COUNT = 4;
 
     cy.log('1. `entityTypes` = ["table"]');

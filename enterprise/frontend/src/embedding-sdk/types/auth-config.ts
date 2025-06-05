@@ -5,19 +5,40 @@ import type { MetabaseFetchRequestTokenFn } from "embedding-sdk";
  */
 type BaseMetabaseAuthConfig = {
   metabaseInstanceUrl: string;
+};
+
+/**
+ * @category MetabaseProvider
+ */
+export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
+  /**
+   * Which authentication method to use.
+   * If both SAML and JWT are enabled at the same time,
+   * it defaults to SAML unless the authMethod is specified.
+   */
+  authMethod?: "jwt";
 
   /**
    * Specifies a function to fetch the refresh token.
    * The refresh token should be in the format of {@link UserBackendJwtResponse}
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
+
+  apiKey?: never;
 };
 
 /**
  * @category MetabaseProvider
  */
-export type MetabaseAuthConfigWithSSO = BaseMetabaseAuthConfig & {
+export type MetabaseAuthConfigWithSaml = BaseMetabaseAuthConfig & {
+  /**
+   * Which authentication method to use.
+   * If both SAML and JWT are enabled at the same time,
+   * it defaults to SAML unless the authMethod is specified.
+   */
+  authMethod?: "saml";
   apiKey?: never;
+  fetchRequestToken?: never;
 };
 
 /**
@@ -25,11 +46,19 @@ export type MetabaseAuthConfigWithSSO = BaseMetabaseAuthConfig & {
  */
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
+  authMethod?: never;
+  fetchRequestToken?: never;
 };
 
 /**
  * @category MetabaseProvider
  */
 export type MetabaseAuthConfig =
-  | MetabaseAuthConfigWithSSO
-  | MetabaseAuthConfigWithApiKey;
+  | MetabaseAuthConfigWithApiKey
+  | MetabaseAuthConfigWithJwt
+  | MetabaseAuthConfigWithSaml;
+
+export type MetabaseAuthMethod = Exclude<
+  MetabaseAuthConfig["authMethod"],
+  undefined
+>;

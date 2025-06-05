@@ -227,14 +227,8 @@
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^java.sql.Connection conn]
-     (let [[inclusion-patterns
-            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
-       (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
+  (let [[inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
+    (sql-jdbc.sync/filtered-syncable-schemas driver database inclusion-patterns exclusion-patterns)))
 
 (defmethod driver/set-role! :sql-jdbc
   [driver conn role]

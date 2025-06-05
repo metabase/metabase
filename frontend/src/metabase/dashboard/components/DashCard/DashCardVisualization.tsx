@@ -235,9 +235,16 @@ export function DashCardVisualization({
     if (
       display &&
       isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+      shouldSplitVisualizerSeries(columnValuesMapping)
     ) {
-      return splitVisualizerSeries(series, columnValuesMapping);
+      const dataSourceNameMap = Object.fromEntries(
+        dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
+      );
+      return splitVisualizerSeries(
+        series,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
     }
 
     return series;
@@ -341,10 +348,8 @@ export function DashCardVisualization({
 
   const titleMenuItems = useMemo(
     () =>
-      isVisualizerDashboardCard(dashcard) && rawSeries ? (
-        <>
-          <Menu.Label>{t`Questions in this card`}</Menu.Label>
-          {rawSeries.map((series, index) => (
+      isVisualizerDashboardCard(dashcard) && rawSeries
+        ? rawSeries.map((series, index) => (
             <Menu.Item
               key={index}
               onClick={() => {
@@ -353,9 +358,8 @@ export function DashCardVisualization({
             >
               {series.card.name}
             </Menu.Item>
-          ))}
-        </>
-      ) : undefined,
+          ))
+        : undefined,
     [dashcard, rawSeries, onOpenQuestion],
   );
 
