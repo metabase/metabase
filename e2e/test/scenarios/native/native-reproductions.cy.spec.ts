@@ -583,3 +583,67 @@ describe("issue 57441", () => {
     H.modal().findByText("Create your new snippet").should("be.visible");
   });
 });
+
+describe("issue 56905", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.startNewNativeQuestion();
+  });
+
+  it("It should be possible to run the native query when a parameter value input is focused (metabase#56905)", () => {
+    H.NativeEditor.type("select {{ foo }}");
+    cy.findByPlaceholderText("Foo").type("foobar", { delay: 0 });
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("foobar")
+      .should("be.visible");
+  });
+});
+
+describe("issue 57644", () => {
+  describe("with only one database", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+      cy.findByTestId("native-query-top-bar")
+        .findByText("Select a database")
+        .should("be.visible");
+
+      // The popover should not be visible, we give it a timeout here because the
+      // popover disappears immediately and we don't want that to make the test pass.
+      cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
+    });
+  });
+
+  describe("with multiple databases", () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)", () => {
+      H.popover()
+        .should("be.visible")
+        .and("contain", "Sample Database")
+        .and("contain", "QA Postgres12");
+    });
+  });
+});
