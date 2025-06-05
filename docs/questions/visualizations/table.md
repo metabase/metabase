@@ -2,11 +2,30 @@
 title: Tables
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/table
+  - /learn/basics/visualizing-data/table
+  - /learn/visualization/table
+  - /learn/metabase-basics/querying-and-dashboards/visualization/table
 ---
 
 # Tables
 
-The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/table).
+Tables are data's natural habitat, with their columns and rows corresponding to the fields and records of relational databases. They may not be as "visual" as a [bar chart](/learn/metabase-basics/querying-and-dashboards/visualization/bar-charts) or a [map](/docs/latest/questions/visualizations/map), but they're often what you need when you're working with a lot of fields. The table visualization in Metabase comes packed with features---some automatic, and some you can customize for yourself.
+
+## Table visualization basics
+
+When you first visualize your data as a table, there's already a lot going on. Let's go through the features that come with it out of the box.
+
+### Column actions
+
+The options Metabase presents for each column differ depending on the type of data. For example, if you click on the heading of a numeric column, Metabase will present a set of options, like `Distribution`, `Sum`, `Average`, and so on. If you clicked on a date column, you'd get a different set of options, as it wouldn't make much sense to take the average date, for example.
+
+From the line chart, you can continue to [drill through the data](/learn/metabase-basics/querying-and-dashboards/questions/drill-through), like zooming in the data in a section of the chart, or by clicking on a point to view those records as a table.
+
+Similarly, if you click on a value in one of the columns, Metabase will present a menu that gives you some options depending on the type of data in that column. For instance, by clicking on a value in a numeric column, Metabase will present options to filter the data in relation to that value: greater than, less than, and so on.
+
+### Detail views
+
+To make records easier to read, you can click on an [entity key](/glossary/entity-key) column (either a primary or foreign key) to bring up a detail view. For example, clicking on an order `ID` will bring up details from that order.
 
 ## Rearranging, adding, and removing columns
 
@@ -23,6 +42,12 @@ Admins (and people in groups with access to table metadata) can hide columns acr
 > **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder. 
 
 To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
+
+## Custom columns
+
+Let's say you want to include a column that lists the unit price of the product ordered, which we'd calculate by dividing the `Subtotal` by the `Quantity` orders. Open up the **Query Builder**, and select the **Custom Column** option. Enter the calculation in the **Field Formula** input box, and then give it a name.
+
+To learn more about what you can do with field formulas, check out our article on [custom expressions](/docs/latest/questions/query-builder/expressions) in the **Query Builder**.
 
 ## Add row numbers to a table
 
@@ -271,6 +296,10 @@ When you add a table to dashboard, the table will be scrollable by default. You 
 
 ![Paginate table results on dashboard card](../images/paginate-table-on-dashboard-card.png)
 
+## Foreign key remapping
+
+Here's one last cool feature, though it requires an admin to change some settings in the Data Model section. Foreign keys are useful, but they're generally not meaningful for (human) readers. Instead of displaying a foreign key as a number, say a product ID, it'd be nice to display the values as the product's `Title`. Metabase can substitute foreign keys with values from the foreign table that are associated with that entity key. What this means is that instead of showing the `Product_ID` value, you can set it up so that people will instead see the product `Title`, like "Lightweight Wool Computer." Your Metabase admins can set this up in the **Admin Panel** in the **Data Model tab**. In this case, we'll select the `Orders` table, and change the foreign key from the `Products` table to instead display in the Order table as the `Product → Title`.
+
 ### Pivoted tables
 
 > This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.
@@ -278,3 +307,11 @@ When you add a table to dashboard, the table will be scrollable by default. You 
 If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
 ![Pivot table](../images/pivot.png)
+
+## Adding tables to dashboards
+
+When you add a table to a dashboard, you can add [custom destinations](../../dashboards/interactive.md#custom-destinations) to individual columns, wire up filter widgets, and more. To see an example of a table used in a dashboard, check out our article on [building a record lookup tool with Metabase](/learn/metabase-basics/querying-and-dashboards/dashboards/build-a-record-lookup-tool).
+
+## Table export options
+
+See [Exporting results](../exporting-results.md).
