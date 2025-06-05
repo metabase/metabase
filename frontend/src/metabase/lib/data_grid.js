@@ -19,13 +19,23 @@ export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  if (!settings[COLUMN_SPLIT_SETTING]) {
+  if (
+    !(settings[COLUMN_SPLIT_SETTING] || settings[NATIVE_COLUMN_SPLIT_SETTING])
+  ) {
     return null;
   }
-  const columnSplit = migratePivotColumnSplitSetting(
-    settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
-    data.cols,
-  );
+
+  let columnSplit;
+  if (settings[NATIVE_COLUMN_SPLIT_SETTING]) {
+    columnSplit = _.mapObject(settings[NATIVE_COLUMN_SPLIT_SETTING], (value) =>
+      value.map((col) => col.name),
+    );
+  } else {
+    columnSplit = migratePivotColumnSplitSetting(
+      settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+      data.cols,
+    );
+  }
 
   const columns = Pivot.columns_without_pivot_group(data.cols);
 
