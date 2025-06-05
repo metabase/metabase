@@ -589,9 +589,13 @@
       ;; table action
       (:action-kw unified)
       (describe-table-action
-       :action-kw (:action-kw unified)
-       :table-id (or (:table-id input) (:table-id (:mapping unified)))
-       :row-action-mapping (:param-mapping unified))
+       {:action-kw          (:action-kw unified)
+        ;; todo this should come from applying the (arbitrarily nested) mappings to the input
+        ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
+        :table-id           (or (:table-id (:mapping (:row-action unified)))
+                                (:table-id (:mapping unified))
+                                (:table-id input))
+        :row-action-mapping (:param-mapping unified)})
 
       (:row-action unified)
       (let [row-action  (:row-action unified)
