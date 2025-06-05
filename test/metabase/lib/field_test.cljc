@@ -1662,7 +1662,11 @@
                  :name            "12345"
                  :display-name    "Unknown Field"}
                 (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
-                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
+                                                   [:field {:lib/uuid (str (random-uuid))} 12345]))))))
+  (testing "Should resolve joined fields correctly"
+    (let [query (lib.tu/query-with-self-join)]
+      (doseq [column (lib/visible-columns query)]
+        (= column (lib.metadata.calculation/metadata query -1 (lib/ref column)))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
