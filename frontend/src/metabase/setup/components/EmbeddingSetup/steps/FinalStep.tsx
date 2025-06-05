@@ -83,13 +83,13 @@ export const FinalStep = () => {
               />
             </Box>
 
-            <CodeSnippet code={getEmbedCode(dashboard)} language="html" />
+            <CodeSnippet code={getEmbedCode(dashboard)} />
           </Tabs.Panel>
         ))}
       </Tabs>
 
       <Group justify="space-between" mt="xl">
-        <Button component={Link} to="/" variant="subtle">
+        <Button component={Link} to="/" variant="subtle" color="text-primary">
           {t`I'll do this later`}
         </Button>
 
