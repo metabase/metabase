@@ -189,7 +189,7 @@
    :- [:map
        [:q                            {:optional true} [:maybe ms/NonBlankString]]
        [:limit                        {:default 10} ms/PositiveInt]
-       [:models                       {:default ["card" "dataset" "metric"]} 
+       [:models                       {:default ["card" "dataset" "metric"]}
         [:vector [:enum "card" "dataset" "metric"]]]
        [:include_dashboard_questions  {:default true} :boolean]
        [:include_metadata            {:default true} :boolean]
@@ -212,20 +212,21 @@
                      :search-string                q
                      :include-dashboard-questions? include_dashboard_questions
                      :include-metadata?            include_metadata})]
-    
+
     ;; Run search
     (let [search-results (search/search search-ctx)
           {:keys [data]} search-results]
-      
-      (log/info "Search returned" (count data) "results")
-      (log/info "Filtering with visualization context:" visualization_context)
-      
+
+      (log/info " ~$~$~$~ Search returned" (count data) "results")
+
       ;; Apply visualization compatibility filtering if context provided
       (if visualization_context
-        (let [filtered-data (filter #(item-compatible? % visualization_context) data)
-              filtered-count (count filtered-data)]
-          (log/info "Filtered to" filtered-count "compatible items")
-          (assoc search-results :data filtered-data))
+        (do
+          (log/info "Filtering with visualization context:" visualization_context)
+          (let [filtered-data (filter #(item-compatible? % visualization_context) data)
+                filtered-count (count filtered-data)]
+            (log/info "Filtered to" filtered-count "compatible items")
+            (assoc search-results :data filtered-data)))
         search-results))))
 
 (api.macros/defendpoint :get "/"

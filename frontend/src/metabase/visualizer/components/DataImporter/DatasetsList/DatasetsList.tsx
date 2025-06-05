@@ -132,13 +132,14 @@ export function DatasetsList({
     },
   );
 
-  const { data: allRecents = [], isLoading: isListRecentsLoading } =
-    useListRecentsQuery(
-      { include_metadata: true },
-      {
-        refetchOnMountOrArgChange: true,
-      },
-    );
+  // Commented out - now using visualization-compatible endpoint instead
+  // const { data: allRecents = [], isLoading: isListRecentsLoading } =
+  //   useListRecentsQuery(
+  //     { include_metadata: true },
+  //     {
+  //       refetchOnMountOrArgChange: true,
+  //     },
+  //   );
     
   // Test call to the new visualization-compatible endpoint
   useEffect(() => {
@@ -205,9 +206,9 @@ export function DatasetsList({
         display: card.display,
         result_metadata: card.result_metadata,
       }));
-  }, [searchResult, allRecents, visualizationSearchResult, search, dashboardId]);
+  }, [searchResult, visualizationSearchResult, search, dashboardId]);
 
-  if (isListRecentsLoading || isSearchLoading || isVisualizationSearchLoading) {
+  if (isSearchLoading || isVisualizationSearchLoading) {
     return (
       <Flex
         gap="xs"
@@ -235,18 +236,25 @@ export function DatasetsList({
     );
   }
 
+  const renderStartTime = performance.now();
+  
+  const renderedItems = items.map((item, index) => (
+    <DatasetsListItem
+      key={index}
+      item={item}
+      onSwap={handleSwapDataSources}
+      onToggle={handleAddDataSource}
+      onRemove={handleRemoveDataSource}
+      selected={dataSourceIds.has(item.id)}
+    />
+  ));
+  
+  const renderTime = performance.now() - renderStartTime;
+  console.log(`DatasetsList compatibility checks: ${renderTime.toFixed(2)}ms for ${items.length} items (${(renderTime / items.length).toFixed(2)}ms avg per item)`);
+
   return (
     <Flex gap="xs" direction="column" data-testid="datasets-list">
-      {items.map((item, index) => (
-        <DatasetsListItem
-          key={index}
-          item={item}
-          onSwap={handleSwapDataSources}
-          onToggle={handleAddDataSource}
-          onRemove={handleRemoveDataSource}
-          selected={dataSourceIds.has(item.id)}
-        />
-      ))}
+      {renderedItems}
     </Flex>
   );
 }
