@@ -13,6 +13,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -470,3 +471,51 @@
                                           GROUP-NAME "Batch New"
                                           GROUP-RANK 301}}
                               second-result)))))))))))))
+
+(deftest create-or-update-error-handling-test
+  (testing "table.row/create-or-update action"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.tu/with-actions-temp-db action-error-handling
+        (mt/with-actions-enabled
+          (let [db-id          (mt/id)
+                USER-NAME       (field-id->name (mt/id :user :name))
+                USER-GROUP-ID  (field-id->name (mt/id :user :group-id))]
+
+            (testing "concurrent creation that result in more than 1 row throw an error and rollback"
+              (let [original-row-create!* @#'sql-jdbc.actions/row-create!*
+                    error-thrown? (atom false)]
+                (try
+                  (with-redefs [sql-jdbc.actions/row-create!* (fn [& args]
+                                                                (last (for [_ (range 2)]
+                                                                        (apply original-row-create!* args))))]
+
+                    (actions/perform-action-with-single-input-and-output
+                     :table.row/create-or-update
+                     {:database db-id
+                      :table-id (mt/id :user)
+                      :row      {USER-NAME     "New User"
+                                 USER-GROUP-ID 1}
+                      :row-key  {USER-NAME "New User"}}))
+                  (catch Throwable e
+                    (reset! error-thrown? true)
+                    (is (= (str "unintentionally created 2 duplicate rows for key: table user with name = \"new user\". "
+                                "this suggests a concurrent modification. we recommend adding a uniqueness constraint to the table.")
+                           (-> e ex-data :errors first :error u/lower-case-en)))))
+                (is (true? @error-thrown?))))
+
+            (testing "Update more than 1 row"
+              (let [error-thrown? (atom false)]
+                (try
+                  (actions/perform-action-with-single-input-and-output
+                   :table.row/create-or-update
+                   {:database db-id
+                    :table-id (mt/id :user)
+                    :row      {USER-NAME "New User"}
+                    :row-key  {USER-GROUP-ID 1}})
+                  (catch Throwable e
+                    (reset! error-thrown? true)
+                    (is (= (str "found 2 duplicate rows in table user with group-id = 1. unsure which row to update. "
+                                "only use this action with key combinations which are meant to be unique. "
+                                "we recommend adding a uniqueness constraint to the table.")
+                           (-> e ex-data :errors first :error u/lower-case-en)))))
+                (is (true? @error-thrown?))))))))))

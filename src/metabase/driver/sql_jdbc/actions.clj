@@ -891,13 +891,14 @@
           formatted-row-key (delay (str/join
                                     ", "
                                     (for [[k v] row-key]
-                                      (format "%s = %s" (u/qualified-name k) v))))]
+                                      (format "%s = %s" (u/qualified-name k) (pr-str v)))))]
       (cond
         (zero? before-count)
         (u/prog1 (assoc (row-create!* action database (row-create-input-fn database table-id row)) :op :created)
           (let [after-count (count-existing)]
             (when (> after-count 1)
-              (throw (ex-info (tru "Unintentionally created {0} duplicate rows for key: table {1} with {2}. This suggests a race condition or concurrent modification. Consider adding a unique constraint to ensure uniqueness"
+              (throw (ex-info (tru (str "Unintentionally created {0} duplicate rows for key: table {1} with {2}. "
+                                        "This suggests a concurrent modification. We recommend adding a uniqueness constraint to the table.")
                                    after-count
                                    table-name
                                    @formatted-row-key)
@@ -915,7 +916,9 @@
                :op :updated)
 
         (> before-count 1)
-        (throw (ex-info (tru "Found {0} duplicate rows in table {1} with {2}. Expected exactly 1 row to update. Consider adding a unique constraint to ensure uniqueness."
+        (throw (ex-info (tru (str "Found {0} duplicate rows in table {1} with {2}. Unsure which row to update. "
+                                  "Only use this action with key combinations which are meant to be unique. "
+                                  "We recommend adding a uniqueness constraint to the table.")
                              before-count
                              table-name
                              @formatted-row-key)
@@ -945,7 +948,7 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs (mapv (fn [{:keys [table-id after op] :as x}]
+     :outputs (mapv (fn [{:keys [table-id after op]}]
                       {:table-id table-id
                        :op       op
                        :row      after})
