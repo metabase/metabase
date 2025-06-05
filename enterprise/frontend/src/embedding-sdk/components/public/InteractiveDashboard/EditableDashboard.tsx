@@ -9,11 +9,18 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
  */
 export type EditableDashboardProps = SdkDashboardProps;
 
+/**
+ * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
+ *
+ * @function
+ * @category InteractiveDashboard
+ * @param props
+ */
 export const EditableDashboard = ({
   drillThroughQuestionProps,
   plugins,
   ...sdkDashboardProps
-}: SdkDashboardProps) => {
+}: EditableDashboardProps) => {
   const dashboardActions = SDK_DASHBOARD_VIEW_ACTIONS;
 
   return (
