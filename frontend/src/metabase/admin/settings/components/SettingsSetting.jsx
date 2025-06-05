@@ -135,7 +135,7 @@ export const SetByEnvVar = ({ setting }) => {
 };
 
 export const SetByEnvVarWrapper = ({ setting, children }) => {
-  if (setting.is_env_setting) {
+  if (setting?.is_env_setting) {
     return (
       <Box mb="lg">
         <SettingHeader
