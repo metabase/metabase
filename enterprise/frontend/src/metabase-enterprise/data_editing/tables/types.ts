@@ -33,7 +33,8 @@ export type TableInsertRowsResponse = {
 };
 
 export type TableUpdateRowsRequest = {
-  rows: RowCellsWithPkValue[];
+  inputs: RowCellsWithPkValue[];
+  params: Record<DatasetColumn["name"], RowValue>;
   scope?: TableEditingScope;
 };
 
@@ -80,7 +81,8 @@ export type TableUndoRedoResponse = {
 
 export type TableExecuteActionRequest = {
   actionId: WritebackActionId;
-  parameters: ParametersForActionExecution;
+  input: ParametersForActionExecution;
+  params: ParametersForActionExecution;
 };
 
 export type TableExecuteActionResponse = {
