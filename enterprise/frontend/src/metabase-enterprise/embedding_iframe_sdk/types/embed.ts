@@ -6,6 +6,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk";
 import type { MetabaseError } from "embedding-sdk/errors";
+import type { MetabaseAuthMethod } from "embedding-sdk/types";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import type { CollectionId } from "metabase-types/api";
 
@@ -23,7 +24,7 @@ export type SdkIframeEmbedMessage =
   | {
       type: "metabase.embed.submitSessionToken";
       data: {
-        authMethod: SdkIframeAuthMethod;
+        authMethod: MetabaseAuthMethod;
         sessionToken: MetabaseEmbeddingSessionToken;
       };
     }
@@ -33,8 +34,6 @@ export type SdkIframeEmbedMessage =
         error: MetabaseError<string, unknown>;
       };
     };
-
-type SdkIframeAuthMethod = "saml" | "jwt";
 
 // --- Embed Option Interfaces ---
 
@@ -112,7 +111,7 @@ type SdkIframeEmbedBaseSettings = {
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
-
+  authMethod?: MetabaseAuthMethod;
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 };
