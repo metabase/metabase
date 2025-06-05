@@ -55,7 +55,12 @@ export function ContentManager({ settings }: ViewContentProps) {
       <Stack h="100%">
         <NavBar />
 
-        <InteractiveQuestion questionId="new" height="100%" withDownloads />
+        <InteractiveQuestion
+          questionId="new"
+          height="100%"
+          withDownloads
+          isSaveEnabled={!isReadOnly}
+        />
       </Stack>
     ))
     .with({ type: "create-dashboard" }, () => (
@@ -105,28 +110,33 @@ export function ContentManager({ settings }: ViewContentProps) {
       <Stack h="100%">
         <NavBar />
 
-        <InteractiveQuestion questionId={id} height="100%" withDownloads />
+        <InteractiveQuestion
+          questionId={id}
+          height="100%"
+          withDownloads
+          isSaveEnabled={!isReadOnly}
+        />
       </Stack>
     ))
     .otherwise(() => (
       <Stack px="lg" py="xl" maw="60rem" mx="auto">
-        {!isReadOnly && (
-          <Group justify="flex-end" align="center" gap="sm">
-            <Button
-              justify="center"
-              onClick={() => setCurrentView({ type: "exploration" })}
-            >
-              {t`New Exploration`}
-            </Button>
+        <Group justify="flex-end" align="center" gap="sm">
+          <Button
+            justify="center"
+            onClick={() => setCurrentView({ type: "exploration" })}
+          >
+            {t`New Exploration`}
+          </Button>
 
+          {!isReadOnly && (
             <Button
               justify="center"
               onClick={() => setCurrentView({ type: "create-dashboard" })}
             >
               {t`New Dashboard`}
             </Button>
-          </Group>
-        )}
+          )}
+        </Group>
 
         <CollectionBrowser
           collectionId={settings.initialCollection}
