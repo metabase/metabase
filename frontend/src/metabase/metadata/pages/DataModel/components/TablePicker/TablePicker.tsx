@@ -19,8 +19,9 @@ export function TablePicker({
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const deferredQuery = useDeferredValue(query);
-  const { tree: searchTree } = useSearch(deferredQuery);
-  const searchItems = useMemo(() => flatten(searchTree), [searchTree]);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const { isLoading, tree } = useSearch(debouncedQuery);
+  const searchItems = useMemo(() => flatten(tree), [tree]);
 
   // search results need their own keypress handling logic
   // because we want to keep the focus on the search input
@@ -90,8 +91,8 @@ export function TablePicker({
         <Tree value={value} onChange={onChange} />
       ) : (
         <Search
+          isLoading={isLoading}
           items={searchItems}
-          query={deferredQuery}
           path={value}
           selectedIndex={selectedIndex}
           onChange={onChange}
@@ -155,23 +156,20 @@ function Tree({
 }
 
 function Search({
+  isLoading,
   items,
-  query,
   path,
   selectedIndex,
   onChange,
   onSelectedIndexChange,
 }: {
+  isLoading: boolean;
   items: FlatItem[];
-  query: string;
   path: TreePath;
   selectedIndex: number;
   onChange: (path: TreePath) => void;
   onSelectedIndexChange: (index: number) => void;
 }) {
-  const debouncedQuery = useDebouncedValue(query, 300);
-  const { isLoading } = useSearch(debouncedQuery);
-
   const isEmpty = !isLoading && items.length === 0;
 
   if (isEmpty) {
