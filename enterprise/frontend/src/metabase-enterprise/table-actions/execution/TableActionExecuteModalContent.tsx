@@ -59,14 +59,10 @@ export const TableActionExecuteModalContent = ({
 
   const handleSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {
-      const fullParameters = {
-        ...initialValues,
-        ...parameters,
-      };
-
       const result = await executeAction({
         actionId: actionId as number,
-        parameters: fullParameters,
+        input: initialValues,
+        params: parameters,
       });
       if (!result.error) {
         const message = getActionExecutionMessage(
