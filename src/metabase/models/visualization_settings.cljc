@@ -139,10 +139,10 @@
   (let [parsed (mc/parse db-column-ref-vec-schema column-ref-vec)]
     (if (= parsed ::mc/invalid)
       (throw (ex-info "Invalid input" (mr/explain db-column-ref-vec-schema column-ref-vec)))
-      (let [[m parts] parsed]
+      (let [{m :key, parts :value} parsed]
         (case m
           :field
-          (let [[_ [_ [_ [id-or-str v] [_ field-md]]]] parsed]
+          (let [[_ [_ {id-or-str :key, v :value} {field-md :value}]] parts]
             (cond-> (case id-or-str
                       :field-id {::field-id v}
                       :field-str {::field-str v})
@@ -150,7 +150,7 @@
           :column-name
           {::column-name (nth parts 1)}
           :expression
-          (let [[_expression [_ref [_expression column-name]]] parsed]
+          (let [[_ref [_expression column-name]] parts]
             {::column-name column-name}))))))
 
 (mu/defn parse-db-column-ref :- column-ref-schema
@@ -176,11 +176,11 @@
   (let [parsed (mc/parse db-column-ref-schema column-ref)]
     (if (= parsed ::mc/invalid)
       (throw (ex-info "Invalid input" (mr/explain db-column-ref-schema column-ref)))
-      (let [[k v]    parsed
-            ref->vec (case k
-                       :string?  (comp vec parse-json-string)
-                       :keyword? (comp vec parse-json-string keyname)
-                       :vector?  identity)]
+      (let [{k :key, v :value} parsed
+            ref->vec           (case k
+                                 :string?  (comp vec parse-json-string)
+                                 :keyword? (comp vec parse-json-string keyname)
+                                 :vector?  identity)]
         (db->norm-column-ref (ref->vec v))))))
 
 ;;; ------------------------------------------------ Builder fns ------------------------------------------------

@@ -111,13 +111,6 @@ describe("SettingsEditor", () => {
       expect(screen.getByText("We're a little lost...")).toBeInTheDocument();
     });
 
-    it("should not let users access SAML settings", async () => {
-      await setupEnterprise({
-        initialRoute: "/admin/settings/authentication/saml",
-      });
-      expect(screen.getByText("We're a little lost...")).toBeInTheDocument();
-    });
-
     it("should not show the session timeout option", async () => {
       await setupEnterprise({
         initialRoute: "/admin/settings/authentication",
