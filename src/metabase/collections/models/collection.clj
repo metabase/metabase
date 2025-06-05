@@ -596,22 +596,15 @@
                                            :from   [[:collection :c]]
                                            :where [:exists {:select [1]
                                                             :from [[:permissions :p]]
+                                                            :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
                                                             :where [:and
+                                                                    [:= :pgm.user_id [:inline current-user-id]]
                                                                     [:= :c.id :p.collection_id]
                                                                     [:= :p.perm_type (h2x/literal "perms/collection-access")]
                                                                     [:or
                                                                      [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                      (when (= :read (:permission-level visibility-config))
-                                                                       [:= :p.perm_value (h2x/literal "read")])]
-                                                                    [:exists {:select [1]
-                                                                              :from [[:permissions_group :pg]]
-                                                                              :where [:and
-                                                                                      [:= :pg.id :p.group_id]
-                                                                                      [:exists {:select [1]
-                                                                                                :from [[:permissions_group_membership :pgm]]
-                                                                                                :where [:and
-                                                                                                        [:= :pgm.group_id :pg.id]
-                                                                                                        [:= :pgm.user_id [:inline current-user-id]]]}]]}]]}]}
+                                                                       [:= :p.perm_value (h2x/literal "read")])]]}]}
                                           {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
                                            :where  [:= :type (h2x/literal "trash")]}
