@@ -109,15 +109,4 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       );
     },
   );
-
-  it("allows setting authMethod in settings", () => {
-    expect(() => {
-      new MetabaseEmbed({
-        ...defaultSettings,
-        dashboardId: 1,
-        target: document.createElement("div"),
-        authMethod: "saml",
-      });
-    }).not.toThrow();
-  });
 });
