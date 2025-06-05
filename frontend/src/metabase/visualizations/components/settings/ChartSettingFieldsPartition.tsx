@@ -185,11 +185,10 @@ export const ChartSettingFieldsPartition = ({
       _.mapObject(value || {}, (splitVal: SplitSettingValue[]) => {
         if (isNativeQuery) {
           const aggDetails = splitVal as NativeColumnSplit[];
-          const columnNames = aggDetails.map((agg) => agg.column);
-          return columnNames.map((columnName) => {
-            const col = columns.find((c) => c.name === columnName);
+          return aggDetails.map(({ name, _column }) => {
+            const col = columns.find((c) => c.name === name);
             if (!col) {
-              console.warn(`Column ${columnName} not found in columns list`);
+              console.warn(`Column ${name} not found in columns list`);
               return null;
             }
             return col;
