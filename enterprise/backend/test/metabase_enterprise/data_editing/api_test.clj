@@ -1296,13 +1296,10 @@
                     delete-id "table.row/delete"]
 
                 (testing "without a table-id"
-                  (let [scope           {:dashboard-id (:dashboard_id dashcard)}]
-                    (testing "create"
-                      (is (=? {:status 400} (req {:action_id create-id, :scope scope}))))
-                    (testing "update"
-                      (is (=? {:status 400} (req {:action_id update-id, :scope scope}))))
-                    (testing "delete"
-                      (is (=? {:status 400} (req {:action_id update-id, :scope scope}))))))
+                  (let [scope {:dashboard-id (:dashboard_id dashcard)}]
+                    (doseq [action-id [create-id update-id delete-id]]
+                      (testing action-id
+                        (is (=? {:status 400} (req {:action_id action-id, :scope scope})))))))
 
                 (testing "using a partially constructed :input"
                   (let [unrelated-table Long/MAX_VALUE
