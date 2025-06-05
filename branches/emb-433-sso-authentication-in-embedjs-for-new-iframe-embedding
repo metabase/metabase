@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-431-extract-jwt-saml-auth-functions-to-an-isolated-shared-module",
-    "hash": "e6afa64e52d0cf6ff4318d047f7fdc672f38d2a7"
+    "hash": "243ce89997bee24c03f30a880332cfec55568d9d"
   },
   "upstream": {
     "branch": "emb-433-sso-authentication-in-embedjs-for-new-iframe-embedding"
