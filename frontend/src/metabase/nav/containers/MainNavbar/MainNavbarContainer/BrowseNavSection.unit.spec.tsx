@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import * as domUtils from "metabase/lib/dom";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseNavSection } from "./BrowseNavSection";

@@ -107,6 +107,7 @@ export function Editor(props: EditorProps) {
         stageIndex={stageIndex}
         metadata={metadata}
         reportTimezone={reportTimezone}
+        expressionMode={expressionMode}
         {...props}
       />
     ),

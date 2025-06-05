@@ -349,10 +349,8 @@ export function DashCardVisualization({
 
   const titleMenuItems = useMemo(
     () =>
-      isVisualizerDashboardCard(dashcard) && rawSeries ? (
-        <>
-          <Menu.Label>{t`Questions in this card`}</Menu.Label>
-          {rawSeries.map((series, index) => (
+      isVisualizerDashboardCard(dashcard) && rawSeries
+        ? rawSeries.map((series, index) => (
             <Menu.Item
               key={index}
               onClick={() => {
@@ -361,9 +359,8 @@ export function DashCardVisualization({
             >
               {series.card.name}
             </Menu.Item>
-          ))}
-        </>
-      ) : undefined,
+          ))
+        : undefined,
     [dashcard, rawSeries, onOpenQuestion],
   );
 
