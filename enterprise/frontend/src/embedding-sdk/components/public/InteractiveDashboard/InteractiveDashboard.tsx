@@ -47,7 +47,7 @@ const InteractiveDashboardInner = ({
 }: PropsWithChildren<EditableDashboardProps> &
   Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
   const dashboardActions: InteractiveDashboardContextType["dashboardActions"] =
-    [null];
+    [];
   return (
     <SdkDashboard {...sdkDashboardProps} dashboardActions={dashboardActions} />
   );

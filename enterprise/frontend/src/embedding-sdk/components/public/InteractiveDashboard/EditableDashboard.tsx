@@ -16,8 +16,14 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import { SDK_DASHBOARD_VIEW_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { DashboardContextProvider } from "metabase/dashboard/context";
+import {
+  DASHBOARD_EDITING_ACTIONS,
+  SDK_DASHBOARD_VIEW_ACTIONS,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import {
+  DashboardContextProvider,
+  useDashboardContext,
+} from "metabase/dashboard/context";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { setErrorPage } from "metabase/redux/app";
@@ -27,11 +33,49 @@ import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/Em
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
+import type { InteractiveDashboardProps } from "./InteractiveDashboard";
 import {
   type InteractiveDashboardContextType,
   InteractiveDashboardProvider,
 } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
+
+export const DashboardContent = ({
+  adhocQuestionUrl,
+  onNavigateBackToDashboard,
+  drillThroughQuestionProps,
+  plugins,
+  onEditQuestion,
+  dashboardActions,
+}: Pick<
+  ReturnType<typeof useCommonDashboardParams>,
+  "onNavigateBackToDashboard" | "adhocQuestionUrl" | "onEditQuestion"
+> &
+  Pick<InteractiveDashboardProps, "drillThroughQuestionProps"> &
+  Pick<InteractiveDashboardContextType, "plugins" | "dashboardActions">) => {
+  const { isEditing } = useDashboardContext();
+  if (adhocQuestionUrl) {
+    return (
+      <InteractiveAdHocQuestion
+        questionPath={adhocQuestionUrl}
+        onNavigateBack={onNavigateBackToDashboard}
+        {...drillThroughQuestionProps}
+      />
+    );
+  }
+
+  return (
+    <InteractiveDashboardProvider
+      plugins={plugins}
+      onEditQuestion={onEditQuestion}
+      dashboardActions={
+        isEditing ? DASHBOARD_EDITING_ACTIONS : dashboardActions
+      }
+    >
+      <Dashboard />
+    </InteractiveDashboardProvider>
+  );
+};
 
 /**
  * @interface
@@ -180,21 +224,14 @@ export const SdkDashboard = ({
           })
         }
       >
-        {adhocQuestionUrl ? (
-          <InteractiveAdHocQuestion
-            questionPath={adhocQuestionUrl}
-            onNavigateBack={onNavigateBackToDashboard}
-            {...drillThroughQuestionProps}
-          />
-        ) : (
-          <InteractiveDashboardProvider
-            plugins={plugins}
-            onEditQuestion={onEditQuestion}
-            dashboardActions={dashboardActions}
-          >
-            <Dashboard />
-          </InteractiveDashboardProvider>
-        )}
+        <DashboardContent
+          adhocQuestionUrl={adhocQuestionUrl}
+          onNavigateBackToDashboard={onNavigateBackToDashboard}
+          drillThroughQuestionProps={drillThroughQuestionProps}
+          plugins={plugins}
+          onEditQuestion={onEditQuestion}
+          dashboardActions={dashboardActions}
+        />
       </DashboardContextProvider>
     </StyledPublicComponentWrapper>
   );
