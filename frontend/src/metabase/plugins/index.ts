@@ -706,6 +706,7 @@ export const PLUGIN_METABOT = {
         visible: boolean;
         setVisible: (visible: boolean) => void;
         submitInput: (input: string) => void;
+        resetConversation: () => void;
       })
     | undefined,
   adminNavItem: [] as AdminPath[],
