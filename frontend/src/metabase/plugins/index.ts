@@ -33,13 +33,15 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
-import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import {
+  NotFoundPlaceholder,
+  PluginPlaceholder,
+} from "metabase/plugins/components/PluginPlaceholder";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
@@ -84,6 +86,7 @@ import type {
   Dispatch,
   State,
 } from "metabase-types/store";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
@@ -120,6 +123,7 @@ export const PLUGIN_ADMIN_TROUBLESHOOTING = {
 
 export const PLUGIN_ADMIN_SETTINGS = {
   InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
+  LicenseAndBillingSettings: PluginPlaceholder,
 };
 
 // functions that update the sections
@@ -204,7 +208,9 @@ export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 export const PLUGIN_AUTH_PROVIDERS = {
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder,
-  UserProvisioningSettings: PluginPlaceholder,
+  UserProvisioningSettings: NotFoundPlaceholder,
+  SettingsSAMLForm: NotFoundPlaceholder,
+  SettingsJWTForm: NotFoundPlaceholder,
   providers: [] as GetAuthProviders[],
 };
 
@@ -659,7 +665,6 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
 };
 
 export interface AIDashboardAnalysisSidebarProps {
-  dashboard: Dashboard;
   onClose?: () => void;
   dashcardId?: DashCardId;
 }
@@ -674,19 +679,15 @@ export interface AIQuestionAnalysisSidebarProps {
 
 export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: ComponentType<any>;
-  AIDashboardAnalysisButton: ComponentType<any>;
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
-  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
   canAnalyzeQuestion: (question: Question) => boolean;
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: PluginPlaceholder,
-  AIDashboardAnalysisButton: PluginPlaceholder,
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
-  canAnalyzeDashboard: () => false,
   canAnalyzeQuestion: () => false,
 };
 

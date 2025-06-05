@@ -1,4 +1,5 @@
 const { H } = cy;
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
@@ -553,5 +554,57 @@ describe("issue 58829", () => {
     H.popover().findByText("ID").click();
     H.visualize();
     H.assertQueryBuilderRowCount(200);
+  });
+});
+
+describe("54205", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+
+    cy.signInAsAdmin();
+
+    H.queryWritableDB("DROP TABLE IF EXISTS products");
+    H.queryWritableDB(
+      "CREATE TABLE IF NOT EXISTS products (id INT PRIMARY KEY, category VARCHAR, name VARCHAR)",
+    );
+    H.queryWritableDB(
+      "INSERT INTO products (id, category, name) VALUES (1, 'A', 'Foo, Bar'), (2, 'B', 'Foo, Baz')",
+    );
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "products" });
+  });
+
+  it("should be able to select a comma separated value", () => {
+    H.getTableId({
+      name: "products",
+    }).then((tableId) => {
+      H.getFieldId({
+        tableId,
+        name: "name",
+      }).then((fieldId) => {
+        cy.request("PUT", `/api/field/${fieldId}`, {
+          has_field_values: "search",
+        });
+      });
+
+      H.createQuestion(
+        {
+          database: WRITABLE_DB_ID,
+          name: "Q 54205",
+          query: {
+            "source-table": tableId,
+          },
+        },
+        { wrapId: true, visitQuestion: true },
+      );
+    });
+
+    cy.findByTestId("query-visualization-root").contains("Name").click();
+
+    H.popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByPlaceholderText("Search by Name").type("Foo");
+      cy.findByRole("option", { name: "Foo, Bar" }).click();
+      cy.findByRole("list").should("have.text", "Foo, Bar");
+    });
   });
 });
