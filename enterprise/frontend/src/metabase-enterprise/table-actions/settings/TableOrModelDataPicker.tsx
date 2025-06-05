@@ -59,7 +59,7 @@ export const TableOrModelDataPicker = ({
       {
         id: "tables-tab",
         displayName: t`Tables`,
-        models: [/*"table" as const,*/ "action" as const],
+        models: ["action" as const],
         folderModels: [],
         icon: "table",
         render: ({ onItemSelect }) => {
@@ -81,7 +81,7 @@ export const TableOrModelDataPicker = ({
       computedTabs.push({
         id: "models-tab",
         displayName: t`Models`,
-        models: [/*"dataset" as const,*/ "action" as const],
+        models: ["action" as const],
         folderModels: [],
         icon: "model",
         render: ({ onItemSelect }) => {
@@ -109,14 +109,8 @@ export const TableOrModelDataPicker = ({
         return;
       }
 
-      // if (isModelItem(item)) {
-      //   console.log("isModelItem", item);
-      // }
-      //
-      // if (isTableItem(item)) {
-      //   console.log("isTableItem", item);
-      //   setTableActionPath([item.database_id, item.table_schema, item.id]);
-      // }
+      // TODO: we can add tables and models to search results and react here on such item select,
+      //  but, there is no way to switch to needed tab from here.
 
       onChange(undefined);
     },

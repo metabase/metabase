@@ -202,6 +202,8 @@ export const TableActionPicker = ({
         onPathChange(newPath);
       }
 
+      setTableId(undefined);
+
       if (folder.model === "table") {
         setTableId(folder.id);
         onItemSelect(folder);
