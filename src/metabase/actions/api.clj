@@ -96,8 +96,8 @@
   ;; tables in the database, with schema (group on frontend)
   ;; ... why on FE? because some databases don't have a notion of schema
   ;; filter everything or return error if data editing is not enabled
-  (let [settings           (when true #_(premium-features.settings/table-data-editing?)
-                                 (t2/select-one-fn :settings [:model/Database :settings] database-id))
+  (let [settings           (when (premium-features.settings/table-data-editing?)
+                             (t2/select-one-fn :settings [:model/Database :settings] database-id))
         _                  (api/check-404 settings)
         ;; This code / message could be improved.
         _                  (api/check-400 (:database-enable-table-editing settings))
@@ -118,30 +118,29 @@
         ->collection (comp (u/index-by :id :name collections) :collection_id)]
     {:models (for [m models] (assoc m :collection_name (->collection m)))}))
 
-#_(api.macros/defendpoint :get "/v2/"
-    "TODO describe new picker"
-    [_route-params
-     {:keys [model-id table-id]} :- [:map
-                                     [:model-id {:optional true} ms/PositiveInt]
-                                     [:table-id {:optional true} ms/PositiveInt]]
-     _body-params]
-  ;; TODO no table actions for OSS instances
-  ;Do not return models without actions
-  ;When listing the models we also want to display information about the collection they are saved to
-  ;Search - aside from the list of tables and models should also return information about the db/schema the table belongs to or the collection_name for models (no collection hierarchy needed for models, just the collection name they are saved to).
-
-    {:models  [{:id 2
-                :name "blah"
-                :collection {:id nil
-                             :name "blah"}}]
-     :tables  []
-     :actions [{:id 2
-                #_#_:parameters [{:display-name "Name",
-                                  :id "name",
-                                  :is-auto-increment false,
-                                  :required false,
-                                  :target ("variable" ("template-tag" "name")),
-                                  :type "type/Text"}]}]})
+(api.macros/defendpoint :get "/v2/"
+  "Returns actions with id and name only. Optionally filtered by model-id."
+  [_route-params
+   {:keys [model-id]} :- [:map
+                          [:model-id {:optional true} ms/PositiveInt]]
+   _body-params]
+  (let [models (if model-id
+                 (try
+                   [(api/read-check :model/Card model-id)]
+                   (catch clojure.lang.ExceptionInfo e
+                     (if (= 404 (:status-code (ex-data e)))
+                       []
+                       (throw e))))
+                 (t2/select :model/Card {:where
+                                         [:and
+                                          [:= :type "model"]
+                                          [:= :archived false]
+                                          (collection/visible-collection-filter-clause)]}))]
+    {:actions (if (seq models)
+                (t2/select [:model/Action :id :name]
+                           :model_id [:in (map :id models)]
+                           :archived false)
+                [])}))
 
 (api.macros/defendpoint :get "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."

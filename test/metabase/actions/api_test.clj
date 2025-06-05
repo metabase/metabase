@@ -682,25 +682,17 @@
                                                   :settings    {:database-enable-table-editing true}}
                      :model/Table {table-id :id} {:name "test_table" :db_id db-id}]
         (testing "Returns databases with table editing enabled"
-          (let [response (mt/user-http-request :crowberto :get 200 "action/v2/database")]
-            (is (map? response))
-            (is (contains? response :databases))
-            (is (some #(= (:id %) db-id) (:databases response)))
-            (let [test-db (first (filter #(= (:id %) db-id) (:databases response)))]
-              (is (= "Test DB" (:name test-db)))
-              (is (= "Test description" (:description test-db)))
-              (is (nil? (:settings test-db))))))
+          (is (=? {:databases [{:id db-id :name "Test DB" :description "Test description"}]}
+                  (mt/user-http-request :crowberto :get 200 "action/v2/database"))))
 
-        (testing "Does not return databases without table editing enabled"
+        (testing "Excludes databases without table editing enabled"
           (t2/update! :model/Database db-id {:settings {:database-enable-table-editing false}})
-          (let [response (mt/user-http-request :crowberto :get 200 "action/v2/database")]
-            (is (not (some #(= (:id %) db-id) (:databases response))))))
+          (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))
 
-        (testing "Does not return databases without tables"
+        (testing "Excludes databases without tables"
           (t2/delete! :model/Table table-id)
           (t2/update! :model/Database db-id {:settings {:database-enable-table-editing true}})
-          (let [response (mt/user-http-request :crowberto :get 200 "action/v2/database")]
-            (is (not (some #(= (:id %) db-id) (:databases response))))))))))
+          (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))))))
 
 (deftest v2-database-table-test
   (testing "GET /api/action/v2/database/:database-id/table"
@@ -718,24 +710,17 @@
                                                     :description  "Second test table"
                                                     :schema       "public"
                                                     :db_id        db-id}]
-        (testing "Returns tables for database with table editing enabled"
-          (let [response (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id))]
-            (is (map? response))
-            (is (contains? response :tables))
-            (is (= 2 (count (:tables response))))
-            (let [table-ids (set (map :id (:tables response)))]
-              (is (contains? table-ids table-id-1))
-              (is (contains? table-ids table-id-2)))
-            (let [table-1 (first (filter #(= (:id %) table-id-1) (:tables response)))]
-              (is (= "test_table_1" (:name table-1)))
-              (is (= "Test Table 1" (:display_name table-1)))
-              (is (= "First test table" (:description table-1)))
-              (is (= "public" (:schema table-1))))))
+        (testing "Returns tables when table editing enabled"
+          (is (=? {:tables [{:id table-id-1 :name "test_table_1" :display_name "Test Table 1"
+                             :description "First test table" :schema "public"}
+                            {:id table-id-2 :name "test_table_2" :display_name "Test Table 2"
+                             :description "Second test table" :schema "public"}]}
+                  (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id)))))
 
-        (testing "Returns empty tables list for database without table editing enabled"
+        (testing "Returns 400 when table editing disabled"
           (t2/update! :model/Database db-id {:settings {:database-enable-table-editing false}})
-          (let [response (mt/user-http-request :crowberto :get 400 (format "action/v2/database/%d/table" db-id))]
-            (is (= "Invalid Request." response))))
+          (is (= "Invalid Request."
+                 (mt/user-http-request :crowberto :get 400 (format "action/v2/database/%d/table" db-id)))))
 
         (testing "Returns 404 for non-existent database"
           (is (= "Not found."
@@ -795,3 +780,56 @@
               (t2/delete! :model/Action action-id-2)
               (is (=? {:models []}
                       (mt/user-http-request :crowberto :get 200 "action/v2/model"))))))))))
+
+(deftest v2-actions-test
+  (testing "GET /api/action/v2/"
+    (mt/with-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-actions-test-data-tables #{"users"}
+          (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query users)}
+                            action-1 {:name              "Get example"
+                                      :type              :http
+                                      :model_id          card-id
+                                      :template          {:method "GET"
+                                                          :url "https://example.com/{{x}}"}
+                                      :parameters        [{:id "x" :type "text"}]
+                                      :response_handle   ".body"
+                                      :error_handle      ".status >= 400"}
+                            action-2 {:name                   "Query example"
+                                      :type                   :query
+                                      :model_id               card-id
+                                      :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                      :type name)
+                                      :database_id            (mt/id)
+                                      :parameters             [{:id "x" :type "number"}]
+                                      :visualization_settings {:position "top"}}
+                            archived {:name                   "Archived example"
+                                      :type                   :query
+                                      :model_id               card-id
+                                      :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                      :type name)
+                                      :database_id            (mt/id)
+                                      :parameters             [{:id "x" :type "number"}]
+                                      :visualization_settings {:position "top"}
+                                      :archived               true}]
+            (testing "Returns actions with id and name only"
+              (is (=? {:actions [{:id   (:action-id action-1)
+                                  :name "Get example"}
+                                 {:id   (:action-id action-2)
+                                  :name "Query example"}]}
+                      (mt/user-http-request :crowberto :get 200 "action/v2/"))))
+
+            (testing "Filters by model-id"
+              (is (=? {:actions [{:id   (:action-id action-1)
+                                  :name "Get example"}
+                                 {:id   (:action-id action-2)
+                                  :name "Query example"}]}
+                      (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" card-id)))))
+
+            (testing "Returns empty list for non-existent model"
+              (is (=? {:actions []}
+                      (mt/user-http-request :crowberto :get 200 "action/v2/?model-id=99999"))))
+
+            (testing "Requires permission on model"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (str "action/v2/?model-id=" card-id)))))))))))
