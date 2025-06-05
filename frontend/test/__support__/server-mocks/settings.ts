@@ -37,6 +37,12 @@ export function setupUpdateSettingEndpoint(
   );
 }
 
+export function setupUpdateSettingsEndpoint(
+  { status }: { status?: number } = { status: 204 },
+) {
+  fetchMock.put("path:/api/setting", { status }, { overwriteRoutes: true });
+}
+
 export function setupScimEndpoints(
   payload: MaskedScimApiKey | UnmaskedScimApiKey,
 ) {
