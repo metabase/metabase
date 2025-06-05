@@ -18,13 +18,10 @@ import { extractRemappedColumns } from "metabase/visualizations";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 
-import { BuiltInTableAction } from "../types";
-
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
-import { ActionCreateRowFormModal } from "./modals/ActionCreateRowFormModal";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
@@ -35,7 +32,6 @@ import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-c
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
-import { useActionFormDescription } from "./use-table-action-form-description";
 import { useTableCRUD } from "./use-table-crud";
 import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableSorting } from "./use-table-sorting";
@@ -96,6 +92,7 @@ export const EditTableDataContainer = ({
   const {
     state: modalState,
     openEditRowModal,
+    openCreateRowModal,
     closeModal,
   } = useTableEditingModalControllerWithObjectId({
     currentObjectId: objectIdParam,
@@ -154,16 +151,6 @@ export const EditTableDataContainer = ({
       scope: editingScope,
       stateUpdateStrategy,
     });
-
-  const [
-    isCreateRowModalOpen,
-    { open: openCreateRowModal, close: closeCreateRowModal },
-  ] = useDisclosure(false);
-
-  const { data: createRowFormDescription } = useActionFormDescription({
-    actionId: BuiltInTableAction.Create,
-    scope: editingScope,
-  });
 
   const {
     isDeleteBulkRequested,
@@ -292,13 +279,6 @@ export const EditTableDataContainer = ({
         fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
         hasDeleteAction
-      />
-      <ActionCreateRowFormModal
-        description={createRowFormDescription}
-        opened={isCreateRowModalOpen}
-        onClose={closeCreateRowModal}
-        isInserting={isInserting}
-        onRowCreate={handleRowCreate}
       />
       <EditBulkRowsModal
         opened={isBulkEditingRequested}
