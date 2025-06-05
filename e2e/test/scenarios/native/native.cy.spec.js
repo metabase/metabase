@@ -442,10 +442,9 @@ describe("scenarios > question > native", () => {
           },
         };
 
-        H.createNativeQuestion(questionWithDefaultValue, {
-          wrapId: true,
-          idAlias: "q1",
-        }).then((questionId) => H.visitQuestion(questionId));
+        H.createNativeQuestion(questionWithDefaultValue).then((questionId) =>
+          H.visitQuestion(questionId),
+        );
 
         cy.findByTestId("visualization-root")
           .should("contain", "January 1, 2022")
@@ -480,10 +479,9 @@ describe("scenarios > question > native", () => {
           },
         };
 
-        H.createNativeQuestion(questionWithDefaultValue, {
-          wrapId: true,
-          idAlias: "q1",
-        }).then((questionId) => H.visitQuestion(questionId));
+        H.createNativeQuestion(questionWithDefaultValue).then((questionId) =>
+          H.visitQuestion(questionId),
+        );
 
         cy.findByTestId("query-visualization-root").should(
           "not.contain",
