@@ -370,6 +370,32 @@
                :column     {:operators text-ops}}
               (colfilter fk))))))
 
+(deftest ^:parallel applies-column-filter-test-structured
+  (testing "applying column-filter to structured JSON columns"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type :header
+      :query-type :unaggregated
+      :query-table "PRODUCTS"
+      :column-name "VENDOR"
+      :drill-type :drill-thru/column-filter
+      :expected {:type :drill-thru/column-filter
+                 :initial-op {:short :=}
+                 :column {:lib/type :metadata/column
+                          :name "VENDOR"}}
+      :drill-args ["contains" "Acme"]
+      :custom-query (fn [_base-query]
+                      (-> (lib.tu/merged-mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [{:id (meta/id :products :vendor)
+                                      :semantic-type :type/SerializedJSON}]})
+                          (lib/query (meta/table-metadata :products))))
+      :expected-query {:stages
+                       [{:filters
+                         [[:contains {}
+                           [:field {}
+                            (lib.drill-thru.tu/field-key= (meta/id :products :vendor) "VENDOR")]
+                           "Acme"]]}]}})))
+
 ;; TODO: Bring back this test. It doesn't work in CLJ due to the inconsistencies noted in #38558.
 #_(deftest ^:parallel leaky-model-ref-test
     (testing "input `:column-ref` must be used for the drill, in case a model leaks metadata like `:join-alias` (#38034)"
