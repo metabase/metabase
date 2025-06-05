@@ -108,21 +108,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
-    cy.intercept("GET", "/auth/sso").as("authSso");
+    cy.intercept("GET", "/auth/sso?preferred_method=jwt").as("authSso");
 
-    // Enable SAML to test the authMethod fallback logic.
-    cy.request("PUT", "/api/setting", {
-      "saml-enabled": true,
-      "saml-identity-provider-uri": "https://example.test",
-      "saml-identity-provider-issuer": "https://example.test/issuer",
-    });
-
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      authMethod: "saml",
+      authMethod: "jwt",
     });
 
     cy.wait("@authSso").its("response.body.method").should("eq", "jwt");
@@ -130,17 +123,23 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
-    mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
+    cy.intercept("GET", "/auth/sso?preferred_method=saml").as("authSso");
+
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
       authMethod: "saml",
-      onVisitPage: () => stubWindowOpenForSamlPopup(),
     });
 
-    assertDashboardLoaded(frame);
+    cy.log("must fail to login via SAML as the SAML endpoint does not exist");
+    cy.wait("@authSso").its("response.statusCode").should("eq", 500);
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and("contain", "Backend returned an error when refreshing the token.");
+    });
   });
 });
 
