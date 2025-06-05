@@ -109,7 +109,15 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
     cy.intercept("GET", "/auth/sso").as("authSso");
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
+
+    // Enable SAML to test the authMethod fallback logic.
+    cy.request("PUT", "/api/setting", {
+      "saml-enabled": true,
+      "saml-identity-provider-uri": "https://example.test",
+      "saml-identity-provider-issuer": "https://example.test/issuer",
+    });
+
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
@@ -123,7 +131,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
