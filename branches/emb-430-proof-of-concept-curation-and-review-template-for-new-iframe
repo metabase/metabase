@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "ad608ccc914809305c68b6a0bd00bee3ea30da59"
+  },
+  "upstream": {
+    "branch": "emb-430-proof-of-concept-curation-and-review-template-for-new-iframe"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 59039,
+        "gqlID": "PR_kwDOAczgH86ZMrSq"
+      }
+    }
   }
 }
