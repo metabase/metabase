@@ -1,6 +1,9 @@
 import type { PropsWithChildren, ReactNode } from "react";
 
-import type { SdkDashboardDisplayProps } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import type {
+  SdkDashboardDisplayProps,
+  useSdkDashboardParams,
+} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { DashboardContextProps } from "metabase/dashboard/context";
@@ -41,6 +44,13 @@ export type SdkDashboardProps = PropsWithChildren<
     DashboardEventHandlersProps
 >;
 
-export type SdkDashboardInternalProps = SdkDashboardProps &
+export type SdkDashboardInternalProps = Omit<
+  SdkDashboardProps,
+  "dashboardId" | "className" | "style"
+> &
   Pick<InteractiveDashboardContextType, "dashboardActions"> &
-  Pick<DashboardContextProps, "getClickActionMode">;
+  Pick<DashboardContextProps, "getClickActionMode"> &
+  ReturnType<typeof useSdkDashboardParams> & {
+    initialDashboardId: SdkDashboardProps["dashboardId"];
+    dashboardId: Nullable<SdkDashboardProps["dashboardId"]>;
+  };
