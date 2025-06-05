@@ -11735,8 +11735,6 @@ databaseChangeLog:
                     nullable: true
                     unique: true
 
-
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

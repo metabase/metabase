@@ -34,11 +34,9 @@ export function LocalizationSettingsPage() {
             </Stack>
           }
         />
-        {PLUGIN_CONTENT_TRANSLATION.isEnabled && (
-          <ErrorBoundary>
-            <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
-          </ErrorBoundary>
-        )}
+        <ErrorBoundary>
+          <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+        </ErrorBoundary>
         <AdminSettingInput
           name="report-timezone"
           searchable

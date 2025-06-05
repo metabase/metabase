@@ -22,12 +22,8 @@ import {
   OptionContainer,
   OptionsList,
 } from "./ListField.styled";
-import {
-  type ListFieldProps,
-  type Option,
-  getOptionDisplayName,
-} from "./types";
-import { optionMatchesFilter } from "./utils";
+import type { ListFieldProps, Option } from "./types";
+import { getOptionDisplayName, optionMatchesFilter } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
