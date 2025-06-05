@@ -14,10 +14,6 @@
 
   - Column header
 
-  Requirements:
-
-  - Column not `type/Structured`
-
   Query transformation:
 
   - None/identity. The FE will show the FilterPicker and not call `drillThru` for this drill.
