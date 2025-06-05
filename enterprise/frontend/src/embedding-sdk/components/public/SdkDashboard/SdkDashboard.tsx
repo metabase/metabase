@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -49,6 +49,16 @@ const SdkDashboardInner = ({
   Pick<InteractiveDashboardProps, "drillThroughQuestionProps"> &
   Pick<InteractiveDashboardContextType, "plugins" | "dashboardActions">) => {
   const { isEditing, downloadsEnabled } = useDashboardContext();
+
+  const actions = useMemo(() => {
+    const actions =
+      (isEditing ? DASHBOARD_EDITING_ACTIONS : dashboardActions) ?? [];
+    if (downloadsEnabled.pdf) {
+      actions.push(DASHBOARD_ACTION.DOWNLOAD_DASHBOARD_PDF);
+    }
+    return actions;
+  }, [dashboardActions, downloadsEnabled.pdf, isEditing]);
+
   if (adhocQuestionUrl) {
     return (
       <InteractiveAdHocQuestion
@@ -65,16 +75,7 @@ const SdkDashboardInner = ({
     <InteractiveDashboardProvider
       plugins={plugins}
       onEditQuestion={onEditQuestion}
-      dashboardActions={
-        isEditing
-          ? DASHBOARD_EDITING_ACTIONS
-          : [
-              ...(dashboardActions ?? []),
-              downloadsEnabled.pdf
-                ? DASHBOARD_ACTION.DOWNLOAD_DASHBOARD_PDF
-                : null,
-            ]
-      }
+      dashboardActions={actions}
     >
       <Dashboard />
     </InteractiveDashboardProvider>
