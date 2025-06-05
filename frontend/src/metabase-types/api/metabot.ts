@@ -63,11 +63,49 @@ export type MetabotRedirectReaction = {
 
 export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 
+export type MetabotColumnInfo = {
+  name: string;
+  type?:
+    | "number"
+    | "string"
+    | "date"
+    | "datetime"
+    | "time"
+    | "boolean"
+    | "null";
+};
+
+export type MetabotSeriesConfig = {
+  x: MetabotColumnInfo;
+  y?: MetabotColumnInfo;
+  x_values?: Array<any>;
+  y_values?: Array<any>;
+  display_name: string;
+  chart_type: string;
+  stacked?: boolean;
+};
+
+export type MetabotChartConfig = {
+  image_base_64?: string;
+  title?: string | null;
+  description?: string | null;
+  data?: Array<{
+    columns: Array<MetabotColumnInfo>;
+    rows: Array<Array<string | number>>;
+  }>;
+  series?: Record<string, MetabotSeriesConfig>;
+  timeline_events?: Array<{
+    name: string;
+    description?: string;
+    timestamp: Date;
+  }>;
+};
+
 export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
   query: DatasetQuery;
-  chart_configs?: Array<{ image_base_64: string }>;
+  chart_configs?: Array<MetabotChartConfig>;
 };
 
 export type MetabotDashboardInfo = {
@@ -78,7 +116,7 @@ export type MetabotDashboardInfo = {
 export type MetabotAdhocQueryInfo = {
   type: "adhoc";
   query: DatasetQuery;
-  chart_configs?: Array<{ image_base_64: string }>;
+  chart_configs?: Array<MetabotChartConfig>;
 };
 
 export type MetabotEntityInfo =
