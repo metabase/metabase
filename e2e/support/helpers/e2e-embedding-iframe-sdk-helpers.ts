@@ -125,9 +125,6 @@ function getSdkIframeEmbedHtml({
  *
  * @param {boolean} withTokenFeatures - Whether to enable token features.
  * @param {EnabledAuthMethods[]} enabledAuthMethods - The authentication methods to enable.
- *
- * For SAML testing, stub window.open with stubWindowOpenForSamlPopup,
- * and mock the /auth/sso endpoint in your tests.
  */
 export function prepareSdkIframeEmbedTest({
   withTokenFeatures = true,
@@ -156,20 +153,12 @@ export function prepareSdkIframeEmbedTest({
   setupMockAuthProviders(enabledAuthMethods);
 }
 
-type EnabledAuthMethods = "jwt" | "saml" | "api-key";
+type EnabledAuthMethods = "jwt" | "api-key";
 
 function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
   if (enabledAuthMethods.includes("jwt")) {
     enableJwtAuth();
     mockAuthProviderAndJwtSignIn();
-  }
-
-  if (enabledAuthMethods.includes("saml")) {
-    cy.request("PUT", "/api/setting", {
-      "saml-enabled": true,
-      "saml-identity-provider-uri": "https://example.test",
-      "saml-identity-provider-issuer": "https://example.test/issuer",
-    });
   }
 
   if (enabledAuthMethods.includes("api-key")) {

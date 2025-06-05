@@ -35,7 +35,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("can login via SAML", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["saml"] });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
@@ -48,7 +48,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("shows an error if the SAML login results in an invalid user", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["saml"] });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
     cy.signOut();
 
     const frame = H.loadSdkIframeEmbedTestPage({
