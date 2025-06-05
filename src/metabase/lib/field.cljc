@@ -33,15 +33,15 @@
    [metabase.util.time :as u.time]))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
-  "Whether we're in a recursive call to [[resolve-column-ref]] or not. Prevent infinite recursion (#32063)"
+  "Whether we're in a recursive call to [[resolve-field-clause]] or not. Prevent infinite recursion (#32063)"
   false)
 
-(mu/defn- resolve-column-ref :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- resolve-field-clause :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column-ref   :- :mbql.clause/field]
+   field-clause :- :mbql.clause/field]
   (when-not *recursive-column-resolution-by-name*
     (binding [*recursive-column-resolution-by-name* true]
       (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
@@ -59,9 +59,9 @@
                                                 (pos-int? previous-stage-number))
                                         (lib.metadata.calculation/visible-columns query stage-number stage))
                                       (log/warnf "Cannot resolve column %s: stage has no metadata"
-                                                 (pr-str column-ref)))]
+                                                 (pr-str field-clause)))]
         (when-let [column (and (seq stage-columns)
-                               (lib.equality/find-matching-column column-ref stage-columns))]
+                               (lib.equality/find-matching-column field-clause stage-columns))]
           (cond-> column
             previous-stage-number (-> (dissoc :table-id
                                               ::binning ::temporal-unit)
@@ -74,7 +74,7 @@
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                                              :- ::lib.schema/query
    stage-number                                                       :- :int
-   [_field {:keys [join-alias], :as opts} id-or-name, :as column-ref] :- :mbql.clause/field]
+   [_field {:keys [join-alias], :as opts} id-or-name, :as field-clause] :- :mbql.clause/field]
   (let [metadata (merge
                   (when-let [base-type (:base-type opts)]
                     {:base-type base-type})
@@ -111,7 +111,7 @@
                   (if (integer? id-or-name)
                     (or (lib.equality/resolve-field-id query stage-number id-or-name)
                         {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
-                    (or (resolve-column-ref query stage-number column-ref)
+                    (or (resolve-field-clause query stage-number field-clause)
                         {:lib/type :metadata/column, :name (str id-or-name)})))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
