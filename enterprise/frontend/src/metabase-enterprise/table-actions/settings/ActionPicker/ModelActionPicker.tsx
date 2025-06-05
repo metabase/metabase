@@ -8,7 +8,11 @@ import {
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useListModelsQuery } from "metabase/api";
+import {
+  skipToken,
+  useListActionsV2Query,
+  useListModelsWithActionsQuery,
+} from "metabase/api";
 import type {
   ActionItem,
   ModelActionPickerFolderItem,
@@ -23,12 +27,10 @@ import {
 } from "metabase/common/components/EntityPicker";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
-import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   CardId,
   CollectionId,
   DataGridWritebackActionId,
-  WritebackAction,
 } from "metabase-types/api";
 
 import { ActionList } from "./ActionList";
@@ -75,7 +77,7 @@ export const ModelActionPicker = ({
     data: modelsResponse,
     error: errorModels,
     isFetching: isLoadingModels,
-  } = useListModelsQuery();
+  } = useListModelsWithActionsQuery();
 
   const allModels = isLoadingModels ? undefined : modelsResponse?.models;
 
@@ -109,19 +111,14 @@ export const ModelActionPicker = ({
     });
   }, [allModels, collectionId]);
 
-  // TODO: load by table
   const {
-    data: allActions,
+    data: actionsResponse,
     error: errorActions,
     isFetching: isLoadingActions,
-  } = useGetActionsQuery(isNotNull(modelId) ? undefined : skipToken);
-  const actions = useMemo(
-    () =>
-      allActions?.filter((action) => {
-        return (action as WritebackAction).model_id === modelId;
-      }) || [],
-    [allActions, modelId],
+  } = useListActionsV2Query(
+    isNotNull(modelId) ? { "model-id": modelId } : skipToken,
   );
+  const actions = isLoadingActions ? undefined : actionsResponse?.actions;
 
   const selectedCollectionItem = useMemo(
     () => getCollectionItem(collections, collectionId),

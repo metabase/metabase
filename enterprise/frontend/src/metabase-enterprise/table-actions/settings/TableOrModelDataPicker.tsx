@@ -59,7 +59,7 @@ export const TableOrModelDataPicker = ({
       {
         id: "tables-tab",
         displayName: t`Tables`,
-        models: ["action" as const],
+        models: [/*"table" as const,*/ "action" as const],
         folderModels: [],
         icon: "table",
         render: ({ onItemSelect }) => {
@@ -81,7 +81,7 @@ export const TableOrModelDataPicker = ({
       computedTabs.push({
         id: "models-tab",
         displayName: t`Models`,
-        models: ["action" as const],
+        models: [/*"dataset" as const,*/ "action" as const],
         folderModels: [],
         icon: "model",
         render: ({ onItemSelect }) => {
@@ -104,12 +104,21 @@ export const TableOrModelDataPicker = ({
 
   const handleItemSelect = useCallback(
     (item: TableActionPickerItem | ModelActionPickerItem) => {
-      if (!isActionItem(item)) {
-        onChange(undefined);
+      if (isActionItem(item)) {
+        onChange(item);
         return;
       }
 
-      onChange(item);
+      // if (isModelItem(item)) {
+      //   console.log("isModelItem", item);
+      // }
+      //
+      // if (isTableItem(item)) {
+      //   console.log("isTableItem", item);
+      //   setTableActionPath([item.database_id, item.table_schema, item.id]);
+      // }
+
+      onChange(undefined);
     },
     [onChange],
   );

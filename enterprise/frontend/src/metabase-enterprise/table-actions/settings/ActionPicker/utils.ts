@@ -7,13 +7,18 @@ import type {
   SchemaItem,
   TableActionPickerItem,
   TableItem,
+  TablePickerValue,
 } from "metabase/common/components/DataPicker";
 import type {
-  ActionV2ListModelItem,
   CardId,
   CollectionId,
   DataGridWritebackAction,
   DataGridWritebackActionId,
+  DatabaseId,
+  DatabaseWithActionsItem,
+  ModelWithActionsItem,
+  TableId,
+  TableWithActionsItem,
 } from "metabase-types/api";
 
 import type { CollectionListItem } from "./types";
@@ -55,7 +60,7 @@ export const isActionItem = (
 };
 
 export const getModelItem = (
-  modelItems: ActionV2ListModelItem[] | undefined,
+  modelItems: ModelWithActionsItem[] | undefined,
   modelId: CardId | undefined,
 ): ModelItem | null => {
   if (typeof modelId === "undefined") {
@@ -80,4 +85,44 @@ export const getCollectionItem = (
   const name = item?.name ?? "";
 
   return { model: "collection", id: collectionId, name };
+};
+
+export const isModelItem = (
+  value: TableActionPickerItem | ModelActionPickerItem | undefined,
+): value is ModelItem => {
+  return value?.model === "dataset";
+};
+
+export const isTableItem = (
+  value: TableActionPickerItem | ModelActionPickerItem | undefined,
+): value is TablePickerValue => {
+  return value?.model === "table";
+};
+
+export const getDbItem = (
+  databases: DatabaseWithActionsItem[] | undefined,
+  dbId: DatabaseId | undefined,
+): DatabaseItem | null => {
+  if (typeof dbId === "undefined") {
+    return null;
+  }
+
+  const database = databases?.find((db) => db.id === dbId);
+  const name = database?.name ?? "";
+
+  return { model: "database", id: dbId, name };
+};
+
+export const getTableItem = (
+  tables: TableWithActionsItem[] | undefined,
+  tableId: TableId | undefined,
+): TableItem | null => {
+  if (typeof tableId === "undefined") {
+    return null;
+  }
+
+  const table = tables?.find((table) => table.id === tableId);
+  const name = table?.name ?? "";
+
+  return { model: "table", id: tableId, name };
 };

@@ -10,11 +10,7 @@ import type {
   TableUpdateRowsRequest,
   TableUpdateRowsResponse,
 } from "metabase-enterprise/data_editing/tables/types";
-import {
-  type DataGridWritebackAction,
-  TableAction,
-  WritebackAction,
-} from "metabase-types/api/actions";
+import type { DataGridWritebackAction } from "metabase-types/api/actions";
 
 import { EnterpriseApi } from "./api";
 

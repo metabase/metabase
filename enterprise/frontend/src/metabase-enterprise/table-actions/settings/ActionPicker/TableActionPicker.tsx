@@ -9,10 +9,11 @@ import { useLatest } from "react-use";
 
 import {
   skipToken,
-  useListDatabaseSchemaTablesQuery,
-  useListDatabaseSchemasQuery,
-  useListDatabasesQuery,
+  useListActionsV2Query,
+  useListDatabaseTablesWithActionsQuery,
+  useListDatabasesWithActionsQuery,
 } from "metabase/api";
+import { getSchemaItem } from "metabase/common/components/DataPicker";
 import { DatabaseList } from "metabase/common/components/DataPicker/components/DatabaseList";
 import { SchemaList } from "metabase/common/components/DataPicker/components/SchemaList";
 import { TableList } from "metabase/common/components/DataPicker/components/TableList";
@@ -23,25 +24,25 @@ import type {
   TableActionPickerStatePath,
   TableActionPickerValue,
 } from "metabase/common/components/DataPicker/types";
-import {
-  getDbItem,
-  getSchemaItem,
-  getTableItem,
-} from "metabase/common/components/DataPicker/utils";
 import { AutoScrollBox } from "metabase/common/components/EntityPicker";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
-import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   DataGridWritebackActionId,
+  Database,
   DatabaseId,
   SchemaName,
-  TableAction,
+  Table,
   TableId,
 } from "metabase-types/api";
 
 import { ActionList } from "./ActionList";
-import { generateTableActionKey, getActionItem } from "./utils";
+import {
+  generateTableActionKey,
+  getActionItem,
+  getDbItem,
+  getTableItem,
+} from "./utils";
 
 const isTableFolder = () => true;
 
@@ -78,39 +79,48 @@ export const TableActionPicker = ({
     data: databasesResponse,
     error: errorDatabases,
     isFetching: isLoadingDatabases,
-  } = useListDatabasesQuery({ saved: false });
+  } = useListDatabasesWithActionsQuery();
 
-  const databases = isLoadingDatabases ? undefined : databasesResponse?.data;
-
-  const {
-    data: schemas,
-    error: errorSchemas,
-    isFetching: isLoadingSchemas,
-  } = useListDatabaseSchemasQuery(isNotNull(dbId) ? { id: dbId } : skipToken);
+  const databases = isLoadingDatabases
+    ? undefined
+    : databasesResponse?.databases;
 
   const {
-    data: tables,
+    data: tablesResponse,
     error: errorTables,
     isFetching: isLoadingTables,
-  } = useListDatabaseSchemaTablesQuery(
-    isNotNull(dbId) && isNotNull(schemaName)
-      ? { id: dbId, schema: schemaName }
-      : skipToken,
+  } = useListDatabaseTablesWithActionsQuery(
+    isNotNull(dbId) ? { id: dbId } : skipToken,
   );
 
-  // TODO: load by table
+  const allTables = isLoadingDatabases ? undefined : tablesResponse?.tables;
+
+  const schemas = useMemo(() => {
+    const addedItemsSet = new Set<string>();
+
+    allTables?.forEach(({ schema }) => {
+      if (!addedItemsSet.has(schema)) {
+        addedItemsSet.add(schema);
+      }
+    });
+
+    return Array.from(addedItemsSet);
+  }, [allTables]);
+
+  const tables = useMemo(() => {
+    return allTables?.filter(({ schema: itemSchemaName }) => {
+      return itemSchemaName === schemaName;
+    });
+  }, [allTables, schemaName]);
+
   const {
-    data: allActions,
+    data: actionsResponse,
     error: errorActions,
     isFetching: isLoadingActions,
-  } = useGetActionsQuery(isNotNull(tableId) ? undefined : skipToken);
-  const actions = useMemo(
-    () =>
-      allActions?.filter((action) => {
-        return (action as TableAction).table_id === tableId;
-      }) || [],
-    [allActions, tableId],
+  } = useListActionsV2Query(
+    isNotNull(tableId) ? { "table-id": tableId } : skipToken,
   );
+  const actions = isLoadingActions ? undefined : actionsResponse?.actions;
 
   const selectedDbItem = useMemo(
     () => getDbItem(databases, dbId),
@@ -239,7 +249,7 @@ export const TableActionPicker = ({
 
   useEffect(
     function ensureSchemaSelected() {
-      const hasSchemas = !isLoadingSchemas && schemas && schemas.length > 0;
+      const hasSchemas = !isLoadingTables && schemas && schemas.length > 0;
 
       if (hasSchemas && !selectedSchemaItem) {
         const firstSchema = schemas[0];
@@ -258,7 +268,7 @@ export const TableActionPicker = ({
     [
       dbId,
       selectedDbItem,
-      isLoadingSchemas,
+      isLoadingTables,
       schemas,
       handleFolderSelectRef,
       selectedSchemaItem,
@@ -302,7 +312,7 @@ export const TableActionPicker = ({
     >
       <Flex h="100%" w="fit-content">
         <DatabaseList
-          databases={databases}
+          databases={databases as Database[] | undefined}
           error={errorDatabases}
           isCurrentLevel={
             schemaName == null || (schemas?.length === 1 && !tableId)
@@ -316,10 +326,10 @@ export const TableActionPicker = ({
           <SchemaList
             dbId={dbId}
             dbName={selectedDbItem?.name}
-            error={errorSchemas}
+            error={errorTables}
             isCurrentLevel={!tableId}
-            isLoading={isLoadingSchemas}
-            schemas={isLoadingSchemas ? undefined : schemas}
+            isLoading={isLoadingTables}
+            schemas={isLoadingTables ? undefined : schemas}
             selectedItem={selectedSchemaItem}
             onClick={handleFolderSelect}
           />
@@ -331,7 +341,9 @@ export const TableActionPicker = ({
             isCurrentLevel={!actionId}
             isLoading={isLoadingTables}
             selectedItem={selectedTableItem}
-            tables={isLoadingTables ? undefined : tables}
+            tables={
+              isLoadingTables ? undefined : (tables as Table[] | undefined)
+            }
             isFolder={isTableFolder}
             onClick={handleFolderSelect}
           />

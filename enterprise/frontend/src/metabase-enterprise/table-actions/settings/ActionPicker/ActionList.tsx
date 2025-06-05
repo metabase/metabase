@@ -35,7 +35,7 @@ export const ActionList = ({
 
   return (
     <ListBox data-testid="item-picker-level-3">
-      {!items || items.length === 0 ? (
+      {items?.length === 0 ? (
         <Box p="2rem" ta="center" c="text-medium">
           <div>{t`There are no actions for this model`}</div>
         </Box>

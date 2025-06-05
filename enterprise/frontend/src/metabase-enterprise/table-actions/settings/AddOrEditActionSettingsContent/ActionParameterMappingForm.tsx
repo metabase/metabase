@@ -16,7 +16,6 @@ import type {
   DataGridWritebackAction,
   RowActionFieldSettings,
   TableActionDisplaySettings,
-  WritebackParameter,
 } from "metabase-types/api";
 
 import { ActionParameterSettingsItem } from "./ActionParameterSettingsItem";
@@ -40,7 +39,9 @@ export const ActionParameterMappingForm = ({
   tableColumns,
   onSubmit,
 }: ActionParameterMappingProps) => {
-  const [actionName, setActionName] = useState<string | undefined>(action.name);
+  const [actionName, setActionName] = useState<string | undefined>(
+    actionSettings?.name || action.name,
+  );
 
   const hasParameters = !!action.parameters?.length;
 
