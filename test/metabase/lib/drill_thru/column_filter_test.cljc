@@ -8,8 +8,7 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -369,6 +368,40 @@
                :initial-op {:short :=}
                :column     {:operators text-ops}}
               (colfilter fk))))))
+
+(deftest ^:parallel structured-column-operators-test
+  (testing "different structured column types get appropriate operators"
+    (let [provider (lib.tu/merged-mock-metadata-provider
+                    meta/metadata-provider
+                    {:fields [{:id            (meta/id :products :vendor)
+                               :semantic-type :type/SerializedJSON} ; text-based JSON (base type = text)
+                              {:id             (meta/id :products :category)
+                               :base-type      :type/JSON ; native JSON type
+                               :effective-type :type/JSON
+                               :semantic-type  :type/JSON}]})
+          query (lib/query provider (meta/table-metadata :products))
+          columns (lib/returned-columns query)
+
+          serialized-json-col (m/find-first #(= (:name %) "VENDOR") columns)
+          native-json-col (m/find-first #(= (:name %) "CATEGORY") columns)
+
+          get-drill-operators (fn [column]
+                                (let [context {:column     column
+                                               :column-ref (lib/ref column)
+                                               :value      nil}
+                                      drill (->> (lib/available-drill-thrus query -1 context)
+                                                 (m/find-first #(= (:type %) :drill-thru/column-filter)))]
+                                  (when drill
+                                    (->> (:column drill)
+                                         :operators
+                                         (mapv :short)))))]
+      (testing "SerializedJSON (string-based) gets full text operators"
+        (is (= #{:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with}
+               (set (get-drill-operators serialized-json-col)))))
+
+      (testing "native JSON gets only default operators"
+        (is (= [:is-null :not-null]
+               (get-drill-operators native-json-col)))))))
 
 (deftest ^:parallel applies-column-filter-test-structured
   (testing "applying column-filter to structured JSON columns"
