@@ -911,7 +911,7 @@
                               :field_ref     (if (zero? level)
                                                &Products.ean
                                                [:field "Products__EAN" {:base-type :type/Text}])})
-                           (ean-metadata (add-column-info nested-query {:cols (repeat 15 {})}))))))))))))))
+                           (ean-metadata (add-column-info nested-query {:cols []}))))))))))))))
 
 (deftest ^:parallel col-info-for-fields-from-card-test
   (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side (#14787)"

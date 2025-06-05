@@ -120,10 +120,22 @@
   the order supposed by MLv2). "
   [initial-cols :- ::cols
    lib-cols     :- ::cols]
-  (let [num-cols (max (count initial-cols) (count lib-cols))]
-    (mapv (fn [i]
-            (merge-col (nth initial-cols i) (nth lib-cols i)))
-          (range num-cols))))
+  (cond
+    (= (count initial-cols) (count lib-cols))
+    (mapv merge-col initial-cols lib-cols)
+
+    (empty? initial-cols)
+    lib-cols
+
+    (empty? lib-cols)
+    initial-cols
+
+    :else
+    (throw (ex-info (format (str "column number mismatch between initial metadata columns returned by driver (%d) and"
+                                 " those expected by MLv2 (%d). Did the driver return the wrong number of columns?")
+                            (count initial-cols)
+                            (count lib-cols))
+                    {:initial-cols initial-cols, :lib-cols lib-cols, :type qp.error-type/driver}))))
 
 (mu/defn- source->legacy-source :- ::legacy-source
   [source :- ::lib.schema.metadata/column-source]
