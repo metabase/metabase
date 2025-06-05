@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
+import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./utils";

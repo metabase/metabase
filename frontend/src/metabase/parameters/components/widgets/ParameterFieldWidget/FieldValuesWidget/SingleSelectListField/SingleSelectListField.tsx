@@ -16,8 +16,7 @@ import { delay } from "metabase/lib/delay";
 import { Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
-import { getOptionDisplayName } from "../ListField/types";
-import { optionMatchesFilter } from "../ListField/utils";
+import { getOptionDisplayName, optionMatchesFilter } from "../ListField/utils";
 
 import {
   EmptyStateContainer,

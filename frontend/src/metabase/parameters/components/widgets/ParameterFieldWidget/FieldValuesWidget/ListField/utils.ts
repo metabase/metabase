@@ -1,6 +1,8 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { FieldValue } from "metabase-types/api";
 
+import type { Option } from "./types";
+
 /**
  * Returns true when the option matches the filter. If the option has an
  * available content translation, the filter is tested against this translation
@@ -29,3 +31,5 @@ export function optionMatchesFilter(
  * diacritics from a string */
 export const removeDiacritics = (value: string) =>
   value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+export const getOptionDisplayName = (option: Option) => String(option.at(-1));

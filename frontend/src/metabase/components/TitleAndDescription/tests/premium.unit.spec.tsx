@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
+import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./utils";
@@ -20,14 +20,14 @@ describe("TitleAndDescription component", () => {
       setup();
       expect(
         await screen.findByRole("heading", {
-          name: "translated_Sample Heading",
+          name: "mock translation of Sample Heading",
         }),
       ).toBeInTheDocument();
 
       await userEvent.hover(screen.getByLabelText("info icon"));
       expect(
         await screen.findByRole("tooltip", {
-          name: "translated_Sample Description",
+          name: "mock translation of Sample Description",
         }),
       ).toBeInTheDocument();
       expect(getContentTranslatorSpy()).toHaveBeenCalled();

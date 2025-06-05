@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 
-import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
+import { setupTranslateContentStringSpy } from "__support__/content-translation";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 

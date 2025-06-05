@@ -1,5 +1,5 @@
+import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
@@ -82,7 +82,7 @@ describe("Parameter Widget", () => {
       });
       await waitFor(async () => {
         expect(await screen.findByTestId("field-set-legend")).toHaveTextContent(
-          "translated_Text contains",
+          "mock translation of Text contains",
         );
       });
       expect(getContentTranslatorSpy()).toHaveBeenCalled();

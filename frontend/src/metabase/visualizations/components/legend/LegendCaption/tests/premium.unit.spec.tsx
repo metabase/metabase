@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 
-import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
+import { setupTranslateContentStringSpy } from "__support__/content-translation";
 
 import { setup } from "./setup";
 
@@ -17,7 +17,7 @@ describe("LegendCaption (EE with token)", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
-        "translated_Hello World",
+        "mock translation of Hello World",
       );
     });
 

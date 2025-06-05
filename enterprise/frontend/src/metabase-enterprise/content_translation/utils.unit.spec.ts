@@ -109,7 +109,7 @@ describe("content translation utils", () => {
   });
 
   describe("translateDisplayNames", () => {
-    const tc = (str: string | null | unknown) => `translated_${str}`;
+    const tc = (str: string | null | unknown) => `mock translation of ${str}`;
     const mockTc = jest.fn();
 
     beforeEach(() => {
@@ -122,7 +122,7 @@ describe("content translation utils", () => {
       const result = translateDisplayNames(input, mockTc);
 
       expect(result).toEqual({
-        display_name: "translated_Test Name",
+        display_name: "mock translation of Test Name",
         other_field: "unchanged",
       });
       expect(mockTc).toHaveBeenCalledWith("Test Name");
@@ -133,8 +133,8 @@ describe("content translation utils", () => {
       const result = translateDisplayNames(input, mockTc, ["title", "name"]);
 
       expect(result).toEqual({
-        title: "translated_Test Title",
-        name: "translated_Test Name",
+        title: "mock translation of Test Title",
+        name: "mock translation of Test Name",
       });
       expect(mockTc).toHaveBeenCalledWith("Test Title");
       expect(mockTc).toHaveBeenCalledWith("Test Name");
@@ -148,8 +148,8 @@ describe("content translation utils", () => {
       const result = translateDisplayNames(input, mockTc);
 
       expect(result).toEqual([
-        { display_name: "translated_First", id: 1 },
-        { display_name: "translated_Second", id: 2 },
+        { display_name: "mock translation of First", id: 1 },
+        { display_name: "mock translation of Second", id: 2 },
       ]);
       expect(mockTc).toHaveBeenCalledWith("First");
       expect(mockTc).toHaveBeenCalledWith("Second");
@@ -166,9 +166,9 @@ describe("content translation utils", () => {
       const result = translateDisplayNames(input, mockTc);
 
       expect(result).toEqual({
-        display_name: "translated_Parent",
+        display_name: "mock translation of Parent",
         child: {
-          display_name: "translated_Child",
+          display_name: "mock translation of Child",
           value: 42,
         },
       });
@@ -195,16 +195,16 @@ describe("content translation utils", () => {
       const result = translateDisplayNames(input, mockTc);
 
       expect(result).toEqual({
-        display_name: "translated_Root",
+        display_name: "mock translation of Root",
         items: [
           {
-            display_name: "translated_Item 1",
+            display_name: "mock translation of Item 1",
             metadata: {
-              display_name: "translated_Meta 1",
+              display_name: "mock translation of Meta 1",
             },
           },
           {
-            display_name: "translated_Item 2",
+            display_name: "mock translation of Item 2",
             tags: ["tag1", "tag2"],
           },
         ],
@@ -249,8 +249,8 @@ describe("content translation utils", () => {
 
       expect(input.display_name).toBe("Original");
       expect(input.nested.display_name).toBe("Nested");
-      expect(result.display_name).toBe("translated_Original");
-      expect(result.nested.display_name).toBe("translated_Nested");
+      expect(result.display_name).toBe("mock translation of Original");
+      expect(result.nested.display_name).toBe("mock translation of Nested");
       expect(result).not.toBe(input);
       expect(result.nested).not.toBe(input.nested);
     });
@@ -263,7 +263,7 @@ describe("content translation utils", () => {
   });
 
   describe("translateFieldValuesInHoveredObject", () => {
-    const tc = (str: string | null | unknown) => `translated_${str}`;
+    const tc = (str: string | null | unknown) => `mock translation of ${str}`;
     const mockTc = jest.fn();
 
     beforeEach(() => {
@@ -301,8 +301,8 @@ describe("content translation utils", () => {
       const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
-        { col: categoryCol, value: "translated_Red", key: "test1" },
-        { col: categoryCol, value: "translated_Blue", key: "test2" },
+        { col: categoryCol, value: "mock translation of Red", key: "test1" },
+        { col: categoryCol, value: "mock translation of Blue", key: "test2" },
       ]);
       expect(mockTc).toHaveBeenCalledWith("Red");
       expect(mockTc).toHaveBeenCalledWith("Blue");
@@ -325,8 +325,8 @@ describe("content translation utils", () => {
       const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
-        { col: countryCol, value: "translated_Vietnam", key: "test1" },
-        { col: countryCol, value: "translated_Rwanda", key: "test2" },
+        { col: countryCol, value: "mock translation of Vietnam", key: "test1" },
+        { col: countryCol, value: "mock translation of Rwanda", key: "test2" },
       ]);
       expect(mockTc).toHaveBeenCalledWith("Vietnam");
       expect(mockTc).toHaveBeenCalledWith("Rwanda");
@@ -406,7 +406,9 @@ describe("content translation utils", () => {
         index: 5,
         seriesIndex: 2,
         value: "some value",
-        data: [{ col: categoryCol, value: "translated_Red", key: "test1" }],
+        data: [
+          { col: categoryCol, value: "mock translation of Red", key: "test1" },
+        ],
       });
       expect(mockTc).toHaveBeenCalledWith("Red");
     });
@@ -436,9 +438,9 @@ describe("content translation utils", () => {
       const result = translateFieldValuesInHoveredObject(obj, mockTc);
 
       expect(result?.data).toEqual([
-        { col: categoryCol, value: "translated_Red", key: "test1" },
+        { col: categoryCol, value: "mock translation of Red", key: "test1" },
         { col: numberCol, value: "100", key: "test2" },
-        { col: categoryCol, value: "translated_Blue", key: "test3" },
+        { col: categoryCol, value: "mock translation of Blue", key: "test3" },
       ]);
       expect(mockTc).toHaveBeenCalledWith("Red");
       expect(mockTc).toHaveBeenCalledWith("Blue");

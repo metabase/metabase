@@ -37,7 +37,6 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
     successLabel,
     failedLabel,
   });
-
   const submitColor = getSubmitButtonColor(status, { color });
 
   return (

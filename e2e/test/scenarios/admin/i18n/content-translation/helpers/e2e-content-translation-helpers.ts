@@ -2,7 +2,7 @@ import { parse } from "csv-parse/browser/esm/sync";
 
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import type { DictionaryArray, DictionaryResponse } from "metabase-types/api";
-import { isDictionaryArray } from "metabase-types/api";
+import { isDictionaryArray } from "metabase-types/guards/content-translation";
 
 export const getCSVWithHeaderRow = (dictionary: DictionaryArray) => {
   const header = ["Language", "String", "Translation"];

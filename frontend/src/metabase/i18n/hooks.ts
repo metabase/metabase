@@ -1,6 +1,5 @@
 // To keep the components that require content translation tidier, they can
 // invoke these facades, which delegate to the plugin implementation
-//
 import { useCallback } from "react";
 
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
