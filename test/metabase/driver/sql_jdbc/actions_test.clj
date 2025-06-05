@@ -311,26 +311,28 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/dataset action-error-handling
       (mt/with-actions-enabled
-        (let [group-id       (field-id->name (mt/id :group :id))
-              group-name     (field-id->name (mt/id :group :name))
-              group-rank     (field-id->name (mt/id :group :ranking))
+        (let [group-id-col   (field-id->name (mt/id :group :id))
+              group-name-col (field-id->name (mt/id :group :name))
+              group-rank-col (field-id->name (mt/id :group :ranking))
+              user-name-col  (field-id->name (mt/id :user :name))
+              user-group-id-col (field-id->name (mt/id :user :group-id))
               new-group      (fn []
                                (-> (actions/perform-action-with-single-input-and-output
                                     :table.row/create
                                     {:database (mt/id)
                                      :table-id (mt/id :group)
-                                     :arg      {group-name "New Group"
-                                                group-rank 46}})
+                                     :arg      {group-name-col "New Group"
+                                                group-rank-col 46}})
                                    :row
-                                   (get group-id)))
+                                   (get group-id-col)))
 
               new-user       (fn [group-id]
                                (actions/perform-action-with-single-input-and-output
                                 :table.row/create
                                 {:database (mt/id)
                                  :table-id (mt/id :user)
-                                 :row      {(field-id->name (mt/id :user :name))    "New User"
-                                            (field-id->name (mt/id :user :group-id)) group-id}}))
+                                 :row      {user-name-col     "New User"
+                                            user-group-id-col group-id}}))
               users-of-group (fn [group-id]
                                (-> (mt/run-mbql-query user {:aggregation [:count]
                                                             :filter      [:= $user.group-id group-id]})
@@ -354,17 +356,17 @@
                     :table.row/delete
                     {:database (mt/id)
                      :table-id (mt/id :group)
-                     :row      {group-id created-group-id}})))
+                     :row      {group-id-col created-group-id}})))
 
               (testing "success if delete-children is enabled"
                 (binding [actions.core/*params* {:delete-children true}]
                   (is (=? {:op :deleted
-                           :row {group-id created-group-id}}
+                           :row {group-id-col created-group-id}}
                           (actions/perform-action-with-single-input-and-output
                            :table.row/delete
                            {:database (mt/id)
                             :table-id (mt/id :group)
-                            :row      {group-id created-group-id}})))
+                            :row      {group-id-col created-group-id}})))
 
                   (testing "users are also dedeted"
                     (is (zero? (users-of-group created-group-id))))))))
@@ -372,12 +374,12 @@
           (testing "group without user can be deleted without delete-children option"
             (let [created-group-id (new-group)]
               (is (=? {:op  :deleted
-                       :row {group-id created-group-id}}
+                       :row {group-id-col created-group-id}}
                       (actions/perform-action-with-single-input-and-output
                        :table.row/delete
                        {:database (mt/id)
                         :table-id (mt/id :group)
-                        :row      {group-id created-group-id}}))))))))))
+                        :row      {group-id-col created-group-id}}))))))))))
 
 (deftest create-or-update-action-test
   (testing "table.row/create-or-update action"
@@ -385,39 +387,39 @@
       (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
           (let [db-id          (mt/id)
-                group-id       (field-id->name (mt/id :group :id))
-                group-name     (field-id->name (mt/id :group :name))
-                group-rank     (field-id->name (mt/id :group :ranking))]
+                group-id-col   (field-id->name (mt/id :group :id))
+                group-name-col (field-id->name (mt/id :group :name))
+                group-rank-col (field-id->name (mt/id :group :ranking))]
 
             (testing "creates new row when key doesn't exist"
               (let [result (actions/perform-action-with-single-input-and-output
                             :table.row/create-or-update
                             {:database db-id
                              :table-id (mt/id :group)
-                             :row      {group-name "New Group"
-                                        group-rank 100}
-                             :row-key  {group-rank 100}})]
+                             :row      {group-name-col "New Group"
+                                        group-rank-col 100}
+                             :row-key  {group-rank-col 100}})]
                 (is (=? {:op       :created
                          :table-id (mt/id :group)
-                         :row      {group-id   (mt/malli=? int?)
-                                    group-name "New Group"
-                                    group-rank 100}}
+                         :row      {group-id-col   (mt/malli=? int?)
+                                    group-name-col "New Group"
+                                    group-rank-col 100}}
                         result))
 
                 (testing "then updates the same row when key exists"
-                  (let [created-id (get-in result [:row group-id])
+                  (let [created-id (get-in result [:row group-id-col])
                         update-result (actions/perform-action-with-single-input-and-output
                                        :table.row/create-or-update
                                        {:database db-id
                                         :table-id (mt/id :group)
-                                        :row      {group-name "Updated Group"
-                                                   group-rank 100}
-                                        :row-key  {group-rank 100}})]
+                                        :row      {group-name-col "Updated Group"
+                                                   group-rank-col 100}
+                                        :row-key  {group-rank-col 100}})]
                     (is (=? {:op       :updated
                              :table-id (mt/id :group)
-                             :row      {group-id   created-id
-                                        group-name "Updated Group"
-                                        group-rank 100}}
+                             :row      {group-id-col   created-id
+                                        group-name-col "Updated Group"
+                                        group-rank-col 100}}
                             update-result))))))))))))
 
 (deftest create-or-update-batch-operations-test
@@ -425,33 +427,33 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
-          (let [db-id      (mt/id)
-                group-id   (field-id->name (mt/id :group :id))
-                group-name (field-id->name (mt/id :group :name))
-                group-rank (field-id->name (mt/id :group :ranking))]
+          (let [db-id          (mt/id)
+                group-id-col   (field-id->name (mt/id :group :id))
+                group-name-col (field-id->name (mt/id :group :name))
+                group-rank-col (field-id->name (mt/id :group :ranking))]
             (testing "batch operations"
               (testing "mixed create and update operations"
                 (let [initial-group (actions/perform-action-with-single-input-and-output
                                      :table.row/create
                                      {:database db-id
                                       :table-id (mt/id :group)
-                                      :arg      {group-name "Batch Test"
-                                                 group-rank 300}})
-                      initial-id (get-in initial-group [:row group-id])
+                                      :arg      {group-name-col "Batch Test"
+                                                 group-rank-col 300}})
+                      initial-id (get-in initial-group [:row group-id-col])
 
                       batch-result (actions/perform-action!
                                     :table.row/create-or-update
                                     {:unknown :legacy-action}
                                     [{:database db-id
                                       :table-id (mt/id :group)
-                                      :row      {group-name "Batch Test Updated"
-                                                 group-rank 300}
-                                      :row-key {group-rank 300}}      ; Should update existing
+                                      :row      {group-name-col "Batch Test Updated"
+                                                 group-rank-col 300}
+                                      :row-key {group-rank-col 300}}      ; Should update existing
                                      {:database db-id
                                       :table-id (mt/id :group)
-                                      :row      {group-name "Batch New"
-                                                 group-rank 301}
-                                      :row-key  {group-rank 301}}])]   ; Should create new
+                                      :row      {group-name-col "Batch New"
+                                                 group-rank-col 301}
+                                      :row-key  {group-rank-col 301}}])]   ; Should create new
 
                   (is (= 2 (count (:outputs batch-result))))
 
@@ -459,17 +461,17 @@
                     (testing "first operation is update"
                       (is (=? {:op       :updated
                                :table-id (mt/id :group)
-                               :row      {group-id   initial-id
-                                          group-name "Batch Test Updated"
-                                          group-rank 300}}
+                               :row      {group-id-col   initial-id
+                                          group-name-col "Batch Test Updated"
+                                          group-rank-col 300}}
                               first-result)))
 
                     (testing "second operation is create"
                       (is (=? {:op       :created
                                :table-id (mt/id :group)
-                               :row      {group-id   (mt/malli=? int?)
-                                          group-name "Batch New"
-                                          group-rank 301}}
+                               :row      {group-id-col   (mt/malli=? int?)
+                                          group-name-col "Batch New"
+                                          group-rank-col 301}}
                               second-result)))))))))))))
 
 (deftest create-or-update-error-handling-test
@@ -477,9 +479,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
-          (let [db-id          (mt/id)
-                user-name       (field-id->name (mt/id :user :name))
-                user-group-id  (field-id->name (mt/id :user :group-id))]
+          (let [db-id             (mt/id)
+                user-name-col     (field-id->name (mt/id :user :name))
+                user-group-id-col (field-id->name (mt/id :user :group-id))]
 
             (testing "concurrent creation that result in more than 1 row throw an error and rollback"
               (let [original-row-create!* @#'sql-jdbc.actions/row-create!*
@@ -493,9 +495,9 @@
                      :table.row/create-or-update
                      {:database db-id
                       :table-id (mt/id :user)
-                      :row      {user-name     "New User"
-                                 user-group-id 1}
-                      :row-key  {user-name "New User"}}))
+                      :row      {user-name-col     "New User"
+                                 user-group-id-col 1}
+                      :row-key  {user-name-col "New User"}}))
                   (catch Throwable e
                     (reset! error-thrown? true)
                     (is (= (str "unintentionally created 2 duplicate rows for key: table user with name = \"new user\". "
@@ -510,8 +512,8 @@
                    :table.row/create-or-update
                    {:database db-id
                     :table-id (mt/id :user)
-                    :row      {user-name "New User"}
-                    :row-key  {user-group-id 1}})
+                    :row      {user-name-col "New User"}
+                    :row-key  {user-group-id-col 1}})
                   (catch Throwable e
                     (reset! error-thrown? true)
                     (is (= (str "found 2 duplicate rows in table user with group-id = 1. unsure which row to update. "
