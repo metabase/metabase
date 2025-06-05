@@ -414,6 +414,82 @@ describe("scenarios > question > native", () => {
         H.rightSidebar().should("contain", "Enter a default value…");
       });
 
+      it("should handle time grouping in optional clause", () => {
+        const questionWithDefaultValue = {
+          name: "Saved question with time grouping",
+          native: {
+            query: `
+              SELECT
+                ID [[,{{mb.time_grouping("unit", "CREATED_AT")}} as unit]]
+              FROM
+                PEOPLE
+              WHERE
+                1 = 1 [[AND ID = {{x}}]]
+              ORDER BY
+                ID
+              LIMIT
+                10
+            `,
+            "template-tags": {
+              unit: {
+                type: "temporal-unit",
+                name: "unit",
+                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                "display-name": "Unit",
+                default: "year",
+              },
+            },
+          },
+        };
+
+        H.createNativeQuestion(questionWithDefaultValue, {
+          visitQuestion: true,
+        });
+
+        cy.findByTestId("visualization-root")
+          .should("contain", "January 1, 2022")
+          .should("contain", "January 1, 2023");
+      });
+
+      it("should handle time grouping in optional clause without default value", () => {
+        const questionWithDefaultValue = {
+          name: "Saved question with time grouping",
+          native: {
+            query: `
+              SELECT
+                ID [[,{{mb.time_grouping("unit", "CREATED_AT")}} as unit]]
+              FROM
+                PEOPLE
+              WHERE
+                1 = 1 [[AND ID = {{x}}]]
+              ORDER BY
+                ID
+              LIMIT
+                10
+            `,
+            "template-tags": {
+              unit: {
+                type: "temporal-unit",
+                name: "unit",
+                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                "display-name": "Unit",
+              },
+            },
+          },
+        };
+
+        H.createNativeQuestion(questionWithDefaultValue, {
+          visitQuestion: true,
+        });
+
+        // it should change in the future: when time grouping is marked as optional via [[]]
+        // a column is not included into the resulted dataset
+        // it is included currently
+        cy.findByTestId("query-visualization-root")
+          .should("contain", "October 7, 2023, 1:34 AM")
+          .should("contain", "UNIT");
+      });
+
       describe("validation", () => {
         it("should show validation error when query is invalid", () => {
           const question = {
