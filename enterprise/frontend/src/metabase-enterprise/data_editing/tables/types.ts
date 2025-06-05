@@ -86,3 +86,37 @@ export type TableExecuteActionRequest = {
 export type TableExecuteActionResponse = {
   "rows-affected": number;
 };
+
+export enum PrimitiveTableAction {
+  Create = "table.row/create",
+  Update = "table.row/update",
+  Delete = "table.row/delete",
+}
+
+export type DescribeActionFormRequest = {
+  action_id: PrimitiveTableAction | number;
+  scope: TableEditingScope;
+  input?: Record<string, unknown>;
+};
+
+export enum ActionFormParameterType {
+  Text = "type/Text",
+  Number = "type/Number",
+  Date = "type/Date",
+  DateTime = "type/DateTime",
+  Integer = "type/Integer",
+  BigInteger = "type/BigInteger",
+}
+
+export type ActionFormParameter = {
+  id: string;
+  display_name: string;
+  type: ActionFormParameterType;
+  optional?: boolean;
+  nullable?: boolean;
+};
+
+export type DescribeActionFormResponse = {
+  title: string;
+  parameters: ActionFormParameter[];
+};

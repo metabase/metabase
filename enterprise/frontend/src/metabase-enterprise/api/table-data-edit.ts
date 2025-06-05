@@ -1,4 +1,6 @@
 import type {
+  DescribeActionFormRequest,
+  DescribeActionFormResponse,
   TableDeleteRowsRequest,
   TableDeleteRowsResponse,
   TableExecuteActionRequest,
@@ -107,6 +109,16 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         return response?.outputs?.[0];
       },
     }),
+    describeActionForm: builder.mutation<
+      DescribeActionFormResponse,
+      DescribeActionFormRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/ee/data-editing/tmp-modal`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -118,4 +130,5 @@ export const {
   useTableRedoMutation,
   useGetActionsQuery,
   useExecuteActionMutation,
+  useDescribeActionFormMutation,
 } = tableDataEditApi;
