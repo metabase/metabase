@@ -1472,7 +1472,7 @@
   [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
   (let [honeysql-ags (vec (for [ag   aggregations
                                 :let [ag-expr  (->honeysql driver ag)
-                                      ag-name  "WOW" #_(annotate/aggregation-name inner-query ag) ; NOCOMMIT
+                                      ag-name  (annotate/aggregation-name inner-query ag)
                                       ag-alias (->honeysql driver (h2x/identifier
                                                                    :field-alias
                                                                    (driver/escape-alias driver ag-name)))]]

@@ -5,8 +5,7 @@
    [metabase.query-processor.middleware.annotate :as annotate]))
 
 (defn- ag-name [inner-query ag-clause]
-  ;; NOCOMMIT
-  (driver/escape-alias driver/*driver* "WOW" #_(annotate/aggregation-name inner-query ag-clause)))
+  (driver/escape-alias driver/*driver* (annotate/aggregation-name inner-query ag-clause)))
 
 (defn- pre-alias-and-uniquify [inner-query aggregations]
   (mapv

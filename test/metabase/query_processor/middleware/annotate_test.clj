@@ -72,20 +72,45 @@
 (deftest ^:parallel native-column-info-test-4
   (testing "native column info"
     (testing "should disambiguate duplicate names"
-      (is (=? [{:name         "a"
-                :display_name "a"
-                :base_type    :type/Integer
-                :source       :native
-                :field_ref    [:field "a" {:base-type :type/Integer}]}
-               {:name         "a_2"
-                :display_name "a"
-                :base_type    :type/Integer
-                :source       :native
-                :field_ref    [:field "a_2" {:base-type :type/Integer}]}]
-              (column-info
-               (lib/query meta/metadata-provider {:type :native})
-               {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
-                :rows [[1 nil]]}))))))
+      (doseq [rows [[]
+                    [[1 nil]]]]
+        ;; should work with and without rows
+        (testing (format "\nrows = %s" (pr-str rows))
+          (is (=? [{:name         "a"
+                    :display_name "a"
+                    :base_type    :type/Integer
+                    :source       :native
+                    :field_ref    [:field "a" {:base-type :type/Integer}]}
+                   {:name         "a_2"
+                    :display_name "a"
+                    :base_type    :type/Integer
+                    :source       :native
+                    :field_ref    [:field "a_2" {:base-type :type/Integer}]}]
+                  (column-info
+                   (lib/query meta/metadata-provider {:type :native})
+                   {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
+                    :rows rows}))))))))
+
+(deftest ^:parallel native-column-type-inferrence-test
+  (testing "native column info should be able to infer types from rows if not provided by driver initial metadata"
+    (doseq [[expected-base-type rows] {:type/*       []
+                                       :type/Integer [[1 nil]]}]
+      ;; should work with and without rows
+      (testing (format "\nrows = %s" (pr-str rows))
+        (is (=? [{:name         "a"
+                  :display_name "a"
+                  :base_type    expected-base-type
+                  :source       :native
+                  :field_ref    [:field "a" {:base-type expected-base-type}]}
+                 {:name         "a_2"
+                  :display_name "a"
+                  :base_type    :type/*
+                  :source       :native
+                  :field_ref    [:field "a_2" {:base-type :type/*}]}]
+                (column-info
+                 (lib/query meta/metadata-provider {:type :native})
+                 {:cols [{:name "a"} {:name "a"}]
+                  :rows rows})))))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing {:base-type "make sure columns are comming back the way we'd expect for :field clauses"}

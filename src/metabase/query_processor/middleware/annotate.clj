@@ -1,29 +1,45 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require
-   [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.join :as lib.join]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.join :as lib.join]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.humanization :as humanization]
    [metabase.query-processor.debug :as qp.debug]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.lib.walk :as lib.walk]
-   [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.lib.join.util :as lib.join.util]))
+   [potemkin :as p]))
+
+(comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
+
+;;; this is only for convenience for drivers that used to use stuff in annotate directly -- we can remove it once we
+;;; convert drivers to MLv2
+(p/import-vars
+ [metabase.query-processor.middleware.annotate.legacy-helper-fns
+  aggregation-name
+  infer-expression-type
+  merged-column-info])
 
 (mr/def ::legacy-source
   [:enum :aggregation :fields :breakout :native])
@@ -47,6 +63,20 @@
   [query :- ::lib.schema/query]
   (get-in query [:stages 0 :lib/type]))
 
+(defmulti expected-cols
+  "Return metadata for columns returned by a pMBQL `query`.
+
+  `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
+  name and base type). If provided these are merged with the columns the query is expected to return.
+
+  Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
+  {:arglists '([query] [query initial-cols])}
+  (fn
+    ([query]
+     (first-stage-type query))
+    ([query _initial-cols]
+     (first-stage-type query))))
+
 (defmulti add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   {:arglists '([query rff])}
@@ -62,48 +92,38 @@
    (get-in query [:info :alias/escaped->original])))
 
 (mu/defn- merge-col :- ::col
-  "Merge a map from `:cols` returned by the driver with the column metadata determined by the logic above."
+  "Merge a map from `:cols` returned by the driver with the column metadata from MLv2. We'll generally prefer the values
+  from the driver to values calculated by MLv2."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  ;; 1. Prefer our `:name` if it's something different that what's returned by the driver
-  ;;    (e.g. for named aggregations)
-  ;; 2. Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
-  ;; 3. Then, prefer any non-nil keys returned by the driver
-  ;; 4. Finally, merge in any of our other keys
-  (let [driver-col         (update-keys driver-col u/->kebab-case-en)
-        non-nil-driver-col (m/filter-vals some? driver-col)
-        our-base-type      (when (= (:base-type driver-col) :type/*)
-                             (u/select-non-nil-keys lib-col [:base-type]))
-        ;; whatever type comes back from the query is by definition the effective type, fallback to our effective
-        ;; type, fallback to the base_type
-        effective-type     (when-let [db-base (or (:base-type driver-col)
-                                                  (:effective-type lib-col)
-                                                  (:base-type lib-col))]
-                             {:effective-type db-base})
-        our-name           (u/select-non-nil-keys lib-col [:name])]
+  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
     (merge lib-col
-           non-nil-driver-col
-           our-base-type
-           our-name
-           effective-type)))
-
-(defn- mapv-all [f & colls]
-  (loop [result [], colls colls]
-    (let [result' (conj result (apply f (map first colls)))
-          colls'  (map rest colls)]
-      (if (some seq colls')
-        (recur result' colls')
-        result'))))
+           (m/filter-vals some? driver-col)
+           ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
+           (when (#{nil :type/*} (:base-type driver-col))
+             (when-let [lib-base-type (:base-type lib-col)]
+               {:base-type lib-base-type}))
+           ;; Prefer our `:name` if it's something different that what's returned by the driver (e.g. for named
+           ;; aggregations)
+           (when-let [lib-name (:name lib-col)]
+             {:name lib-name})
+           ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
+           ;; type calculated by MLv2
+           {:effective-type (or (:base-type driver-col)
+                                (:effective-type lib-col)
+                                (:base-type lib-col))})))
 
 (mu/defn- merge-cols :- ::cols
-  "Merge our column metadata (`:cols`) derived from logic above with the column metadata returned by the driver. We'll
-  prefer the values in theirs to ours. This is important for wacky drivers like GA that use things like native
-  metrics, which we have no information about.
+  "Merge our column metadata (`:cols`) from MLv2 with the `initial-cols` metadata returned by the driver.
 
-  It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order."
+  It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order (matching
+  the order supposed by MLv2). "
   [initial-cols :- ::cols
    lib-cols     :- ::cols]
-  (mapv-all merge-col initial-cols lib-cols))
+  (let [num-cols (max (count initial-cols) (count lib-cols))]
+    (mapv (fn [i]
+            (merge-col (nth initial-cols i) (nth lib-cols i)))
+          (range num-cols))))
 
 (mu/defn- source->legacy-source :- ::legacy-source
   [source :- ::lib.schema.metadata/column-source]
@@ -124,13 +144,18 @@
                                  ::col
                                  [:map
                                   [:source ::legacy-source]]]]
+  "Add `:source` to result columns. Needed for legacy FE code. See
+  https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- ::cols]
   (mapv (fn [col]
           (assoc col :source (source->legacy-source (:lib/source col))))
         cols))
 
-;;; TODO -- move into mainline lib metadata calculation -- Cam
 (mu/defn- add-converted-timezone :- ::cols
+  "Add `:converted-timezone` to columns that are from `:convert-timezone` expressions (or expressions wrapping them) --
+  this is used by [[metabase.query-processor.middleware.format-rows/format-rows-xform]].
+
+  TODO -- we should move this into mainline lib metadata calculation -- Cam"
   [query :- ::lib.schema/query
    cols  :- ::cols]
   (mapv (fn [col]
@@ -162,6 +187,7 @@
 
 (mu/defn- legacy-field-ref :- [:maybe ::legacy-field-ref]
   [col :- ::col]
+  (println "(pr-str col):" (pr-str col)) ; NOCOMMIT
   (when (= (:lib/type col) :metadata/column)
     (-> col lib/ref lib.convert/->legacy-MBQL fe-friendly-expression-ref)))
 
@@ -183,6 +209,7 @@
   "Needed for legacy FE viz settings purposes for the time being. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- ::cols]
+  (println "(map :name cols):" (map :name cols)) ; NOCOMMIT
   (map (fn [col unique-name]
          (assoc col :name unique-name))
        cols
@@ -206,6 +233,8 @@
       (deduplicate-names cols))))
 
 (mu/defn- col->legacy-metadata :- ::col
+  "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love
+  in QP results metadata (`data.cols`)."
   [col :- ::col]
   (letfn [(add-unit [col]
             (merge
@@ -236,16 +265,14 @@
   [cols :- ::cols]
   (mapv col->legacy-metadata cols))
 
-(mu/defn expected-cols
-  "Return metadata for columns returned by a pMBQL `query`. Note this only really works correctly for pMBQL queries or
-  native queries that include source metadata."
+(mu/defmethod expected-cols :mbql.stage/mbql
   ([query]
    (expected-cols query []))
 
-  ([query :- ::lib.schema/query
-    cols  :- ::cols]
+  ([query         :- ::lib.schema/query
+    initial-cols  :- ::cols]
    (let [query' (restore-original-join-aliases query)]
-     (->> cols
+     (->> initial-cols
           (add-extra-metadata query')
           cols->legacy-metadata))))
 
@@ -264,9 +291,9 @@
 ;;;;
 
 (mu/defn base-type-inferer :- ::qp.schema/rf
-  "Native queries don't have the type information from the original `Field` objects used in the query.
-  If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
-  of rows and infer the base type based on the classes of the values"
+  "Native queries don't have the type information from the original `Field` objects used in the query. If the driver
+  returned a base type more specific than :type/*, use that; otherwise look at the sample of rows and infer the base
+  type based on the classes of the values"
   [{:keys [cols]} :- :map]
   (apply analyze/col-wise
          (for [{driver-base-type :base_type} cols]
@@ -275,6 +302,9 @@
              (analyze/constant-fingerprinter driver-base-type)))))
 
 (mu/defn- infer-base-type-xform :- ::qp.schema/rf
+  "Add an xform to `rf` that will update the final results metadata with `base_type` and an updated `field_ref` based on
+  the a sample of values in result rows. This is only needed for drivers that don't return base type in initial metadata
+  -- I think Mongo is the only driver where this is the case."
   [metadata :- ::metadata
    rf       :- ::qp.schema/rf]
   (qp.reducible/combine-additional-reducing-fns
@@ -289,23 +319,38 @@
              (map? result)
              (assoc-in [:data :cols] cols')))))))
 
+(mu/defn- add-model-metadata
+  "Merge in `:metadata/model-metadata`. I believe this should be `snake_case` which means this needs to happen AFTER
+  `cols` are converted to `snake_case`."
+  [query :- ::lib.schema/query
+   cols  :- ::cols]
+  (let [model-metadata (get-in query [:info :metadata/model-metadata])]
+    (cond-> cols
+      (seq model-metadata)
+      (qp.util/combine-metadata model-metadata))))
+
+(mu/defmethod expected-cols :mbql.stage/native
+  ([query]
+   (expected-cols query []))
+
+  ([query        :- ::lib.schema/query
+    initial-cols :- ::cols]
+   (as-> initial-cols cols
+     (for [col cols]
+       (merge {:lib/type     :metadata/column
+               :lib/source   :source/native
+               :display-name (:name col)
+               :base-type    (or ((some-fn :base-type :base_type) col)
+                                 :type/*)}
+              col))
+     (add-extra-metadata query cols)
+     (cols->legacy-metadata cols)
+     (add-model-metadata query cols))))
+
 (mu/defmethod add-column-info :mbql.stage/native :- ::qp.schema/rff
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
   (fn add-column-info-native-rff [initial-metadata]
-    (let [model-metadata (get-in query [:info :metadata/model-metadata])
-          metadata'      (update initial-metadata :cols (fn [cols]
-                                                          (as-> cols cols
-                                                            (for [col cols]
-                                                              (merge {:lib/source   :source/native
-                                                                      :display-name (:name col)}
-                                                                     col))
-                                                            (add-extra-metadata query cols)
-                                                            (cond-> cols
-                                                              ;; annotate-native-cols ensures that column refs are
-                                                              ;; present which we need to match metadata
-                                                              (seq model-metadata)
-                                                              (qp.util/combine-metadata model-metadata))
-                                                            (cols->legacy-metadata cols))))]
+    (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
       (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
       (infer-base-type-xform metadata' (rff metadata')))))
