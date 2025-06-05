@@ -115,7 +115,7 @@ export const StaticDashboardInner = ({
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
-        withFooter={displayOptions.withFooter}
+        withFooter={false}
         getClickActionMode={({ question }) =>
           getEmbeddingMode({ question, queryMode: StaticQuestionSdkMode })
         }
