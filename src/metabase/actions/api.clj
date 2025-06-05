@@ -241,6 +241,7 @@
 (api.macros/defendpoint :get "/v2/database"
   "Databases which contain actions"
   [_ _ _]
+  ;; TODO optimize into a single reducible query, and support pagination
   (let [non-empty-dbs      (t2/select-fn-set :db_id [:model/Table :db_id])
         databases          (when non-empty-dbs
                              (t2/select [:model/Database :id :name :description :settings] :id [:in non-empty-dbs]))
@@ -262,6 +263,7 @@
 (api.macros/defendpoint :get "/v2/model"
   "Models which contain actions"
   [_ _ _]
+  ;; TODO optimize into a single reducible query, and support pagination
   (let [model-ids    (t2/select-fn-set :model_id [:model/Action :model_id] :archived false)
         models       (when model-ids
                        (t2/select [:model/Card :id :name :description :collection_position :collection_id] :id [:in model-ids]))
@@ -297,7 +299,10 @@
           _        (when-not (get-in database [:settings :database-enable-table-editing])
                      (throw (ex-info "Table editing is not enabled for this database"
                                      {:status-code 400})))
-          fields   (t2/select :model/Field :table_id table-id)
+          ;; Fields are used to calculate the parameters.
+          ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
+          ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
+          fields   nil
           actions  (for [op [:table.row/create :table.row/update :table.row/delete]
                          :let [action (action/table-primitive-action table fields op)]]
                      {:id          (:id action)
