@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { push, replace } from "react-router-redux";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { PaginationControls } from "metabase/components/PaginationControls";
+import { ForwardRefLink } from "metabase/core/components/Link";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { useDispatch } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -24,90 +23,18 @@ import {
   useGetSuggestedMetabotPromptsQuery,
   useRefreshSuggestedMetabotPromptsMutation,
 } from "metabase-enterprise/api";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import * as Urls from "metabase-enterprise/urls";
 import type { MetabotId, SuggestedMetabotPrompt } from "metabase-types/api";
-
-import type { MetabotAdminPageProps } from "./MetabotAdminPage";
-
-function usePaginationParamSync({
-  paramName,
-  disabled,
-  page,
-  setPage,
-  pageSize,
-  totalItems,
-  location,
-}: {
-  paramName: string;
-  disabled: boolean;
-  page: number;
-  setPage: (page: number) => void;
-  pageSize: number;
-  totalItems: number;
-  location: MetabotAdminPageProps["location"];
-}) {
-  const dispatch = useDispatch();
-
-  const setUrlToPage = useCallback(
-    (page: number, method: "push" | "replace") => {
-      // TODO: construct url from Url utils
-      const url = new URL(
-        location.pathname + location.search,
-        window.location.origin,
-      );
-      url.searchParams.delete(paramName);
-      if (page && page > 0) {
-        url.searchParams.set(paramName, String(page + 1));
-      }
-      const urlUpdateFn = method === "replace" ? replace : push;
-      dispatch(urlUpdateFn(url));
-    },
-    [location, paramName, dispatch],
-  );
-
-  useEffect(
-    function syncCurrentPageToUrl() {
-      setUrlToPage(page, "push");
-    },
-    [page, setUrlToPage],
-  );
-
-  useEffect(
-    function preventInvalidPage() {
-      if (disabled) {
-        return;
-      }
-      const newMaxPage = Math.max(
-        Math.ceil((totalItems ?? 0) / pageSize) - 1,
-        0,
-      );
-      if (newMaxPage < page) {
-        setPage(newMaxPage);
-        setUrlToPage(newMaxPage, "replace");
-      }
-    },
-    [totalItems, disabled, page, pageSize, setPage, setUrlToPage],
-  );
-}
 
 export const MetabotPromptSuggestionPane = ({
   metabotId,
-  location,
 }: {
   metabotId: MetabotId;
-  location: MetabotAdminPageProps["location"];
 }) => {
-  const dispatch = useDispatch();
-  const metabot = useMetabotAgent();
-
   const [sendToast] = useToast();
 
-  const urlParams = new URLSearchParams(location.search);
-  const initialPage = parseInt(urlParams.get("page") ?? "1", 10) - 1;
-
-  const { handleNextPage, handlePreviousPage, page, setPage } =
-    usePagination(initialPage);
-  const pageSize = 2; // TODO: adjust page size once we have more data
+  const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
+  const pageSize = 3;
   const offset = page * pageSize;
 
   const { data, isLoading, error } = useGetSuggestedMetabotPromptsQuery({
@@ -118,16 +45,6 @@ export const MetabotPromptSuggestionPane = ({
   const [deletePrompt] = useDeleteSuggestedMetabotPromptMutation();
   const [refreshPrompts, { isLoading: isRefreshing }] =
     useRefreshSuggestedMetabotPromptsMutation();
-
-  usePaginationParamSync({
-    paramName: "page",
-    disabled: isLoading,
-    page,
-    setPage,
-    pageSize,
-    totalItems: data?.total ?? 0,
-    location,
-  });
 
   const handleDeletePrompt = async (promptId: SuggestedMetabotPrompt["id"]) => {
     const { error } = await deletePrompt({
@@ -140,13 +57,14 @@ export const MetabotPromptSuggestionPane = ({
         ? { message: t`Error removing prompt`, icon: "warning" }
         : { message: t`Succesfully removed prompt`, icon: "check" },
     );
-  };
 
-  const handleRunPrompt = (prompt: string) => {
-    dispatch(push("/"));
-    metabot.resetConversation();
-    metabot.setVisible(true);
-    metabot.submitInput(prompt);
+    const newMaxPage = Math.max(
+      Math.ceil(((data?.total ?? 0) - 1) / pageSize) - 1,
+      0,
+    );
+    if (newMaxPage < page) {
+      setPage(newMaxPage);
+    }
   };
 
   const handleRefreshPrompts = async () => {
@@ -217,9 +135,6 @@ export const MetabotPromptSuggestionPane = ({
                 key={row.id}
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
-                onRunPrompt={() => {
-                  handleRunPrompt(row.prompt);
-                }}
               />
             )
           }
@@ -270,11 +185,9 @@ const SkeletonSuggestedPromptRow = () => (
 const SuggestedPromptRow = ({
   row,
   onDelete,
-  onRunPrompt,
 }: {
   row: SuggestedMetabotPrompt;
   onDelete: () => Promise<void>;
-  onRunPrompt: () => void;
 }) => (
   <Box component="tr" mih="3.5rem">
     <Box component="td" py="1rem">
@@ -288,7 +201,12 @@ const SuggestedPromptRow = ({
     <Box component="td" h="3.5rem">
       <Flex align="center" gap="sm">
         <Tooltip label={t`Run prompt`}>
-          <ActionIcon onClick={onRunPrompt} h="sm">
+          <ActionIcon
+            component={ForwardRefLink}
+            to={Urls.newMetabotConversation({ prompt: row.prompt })}
+            target="_blank"
+            h="sm"
+          >
             <Icon name="sql" size="1rem" />
           </ActionIcon>
         </Tooltip>

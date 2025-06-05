@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
-import type { RouteComponentProps } from "react-router";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
@@ -31,9 +30,7 @@ import type {
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
-export type MetabotAdminPageProps = RouteComponentProps<void, void>;
-
-export function MetabotAdminPage({ location }: MetabotAdminPageProps) {
+export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
   const { data, isLoading, error } = useListMetabotsQuery();
   const metabotName =
@@ -80,10 +77,7 @@ export function MetabotAdminPage({ location }: MetabotAdminPageProps) {
                 metabotName={metabotName}
               />
               {hasEntities && (
-                <MetabotPromptSuggestionPane
-                  metabotId={metabotId}
-                  location={location}
-                />
+                <MetabotPromptSuggestionPane metabotId={metabotId} />
               )}
             </>
           )}
