@@ -180,9 +180,17 @@
            common-name)
       (assoc :common_name common-name))))
 
+(defn- add-tenant-attribute
+  [{:keys [tenant_id] :as user}]
+  (cond-> user
+    tenant_id (assoc-in [:login_attributes "{{tenant_slug}}"]
+                        (t2/select-one-fn :slug :model/Tenant :id tenant_id))))
+
 (t2/define-after-select :model/User
   [user]
-  (add-common-name user))
+  (-> user
+      add-common-name
+      add-tenant-attribute))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
