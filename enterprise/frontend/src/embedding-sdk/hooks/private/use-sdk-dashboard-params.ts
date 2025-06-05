@@ -63,6 +63,7 @@ export const useSdkDashboardParams = ({
   dashboardId: initialDashboardId,
   withDownloads,
   withTitle,
+  withCardTitle,
   hiddenParameters,
   initialParameters = {},
 }: SdkDashboardDisplayProps) => {
@@ -79,6 +80,7 @@ export const useSdkDashboardParams = ({
     ...pick(
       {
         titled: withTitle,
+        cardTitled: withCardTitle,
         hideDownloadButton,
         hideParameters: hiddenParameters?.join(",") ?? null,
       },

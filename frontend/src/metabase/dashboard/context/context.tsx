@@ -12,6 +12,7 @@ import { isEqual, isObject, noop } from "underscore";
 
 import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { useDispatch } from "metabase/lib/redux";
+import { getTabHiddenParameterSlugs } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -95,7 +96,7 @@ const DashboardContextProviderInner = ({
   font = null,
   theme = "light",
   setTheme = noop,
-  hideParameters = null,
+  hideParameters: hide_parameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
   reportAutoScrolledToDashcard = noop,
@@ -111,6 +112,7 @@ const DashboardContextProviderInner = ({
   parameterValues,
   isLoading,
   isLoadingWithoutCards,
+  parameters,
 
   // redux actions
   addCardToDashboard,
@@ -287,6 +289,16 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
+  const hiddenParameterSlugs = getTabHiddenParameterSlugs({
+    parameters,
+    dashboard,
+    selectedTabId,
+  });
+
+  const hideParameters = [hide_parameters, hiddenParameterSlugs]
+    .filter(Boolean)
+    .join(",");
+
   return (
     <DashboardContext.Provider
       value={{
@@ -329,6 +341,7 @@ const DashboardContextProviderInner = ({
         selectedTabId,
         isEditing,
         isNavigatingBackToDashboard,
+        parameters,
         parameterValues,
 
         // redux actions

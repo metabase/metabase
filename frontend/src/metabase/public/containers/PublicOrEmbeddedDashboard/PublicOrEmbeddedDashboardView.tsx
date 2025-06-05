@@ -203,7 +203,7 @@ export function PublicOrEmbeddedDashboardView() {
   );
 }
 
-function getTabHiddenParameterSlugs({
+export function getTabHiddenParameterSlugs({
   parameters,
   dashboard,
   selectedTabId,
