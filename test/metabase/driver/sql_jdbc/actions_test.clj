@@ -6,6 +6,7 @@
    [metabase.actions.actions :as actions]
    [metabase.actions.core :as actions.core]
    [metabase.actions.error :as actions.error]
+   [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -183,7 +184,7 @@
    (fn [{:keys [db-id group-name group-ranking]}]
      (testing "incorrect type"
        (testing "when creating"
-         (is (= {:message     "Some of your values aren't of the correct type for the database."
+         (is (= {:message     "Some of your values aren’t of the correct type for the database."
                  :type        actions.error/incorrect-value-type
                  :status-code 400
                  :errors      (if (driver/database-supports?
@@ -203,7 +204,7 @@
    (fn [{:keys [db-id group-ranking]}]
      (testing "incorrect type"
        (testing "when updating"
-         (is (= {:message     "Some of your values aren't of the correct type for the database."
+         (is (= {:message     "Some of your values aren’t of the correct type for the database."
                  :type        actions.error/incorrect-value-type
                  :status-code 400
                  :errors      (if (driver/database-supports?
@@ -380,7 +381,7 @@
 (deftest create-or-update-action-test
   (testing "table.row/create-or-update action"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (mt/dataset action-error-handling
+      (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
           (let [db-id          (mt/id)
                 GROUP-ID       (field-id->name (mt/id :group :id))
@@ -392,9 +393,9 @@
                             :table.row/create-or-update
                             {:database db-id
                              :table-id (mt/id :group)
-                             :arg      {:row {GROUP-NAME "New Group"
-                                              GROUP-RANK 100}
-                                        :key {GROUP-RANK 100}}})]
+                             :row      {GROUP-NAME "New Group"
+                                        GROUP-RANK 100}
+                             :row-key  {GROUP-RANK 100}})]
                 (is (=? {:op       :created
                          :table-id (mt/id :group)
                          :row      {GROUP-ID   (mt/malli=? int?)
@@ -408,9 +409,9 @@
                                        :table.row/create-or-update
                                        {:database db-id
                                         :table-id (mt/id :group)
-                                        :arg      {:row {GROUP-NAME "Updated Group"
-                                                         GROUP-RANK 100}
-                                                   :key {GROUP-RANK 100}}})]
+                                        :row      {GROUP-NAME "Updated Group"
+                                                   GROUP-RANK 100}
+                                        :row-key  {GROUP-RANK 100}})]
                     (is (=? {:op       :updated
                              :table-id (mt/id :group)
                              :row      {GROUP-ID   created-id
@@ -421,17 +422,15 @@
 (deftest create-or-update-batch-operations-test
   (testing "create-or-update batch operations"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (mt/dataset action-error-handling
+      (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
-          (let [db-id          (mt/id)
-                GROUP-ID       (field-id->name (mt/id :group :id))
-                GROUP-NAME     (field-id->name (mt/id :group :name))
-                GROUP-RANK     (field-id->name (mt/id :group :ranking))]
-
+          (let [db-id      (mt/id)
+                GROUP-ID   (field-id->name (mt/id :group :id))
+                GROUP-NAME (field-id->name (mt/id :group :name))
+                GROUP-RANK (field-id->name (mt/id :group :ranking))]
             (testing "batch operations"
               (testing "mixed create and update operations"
-                (let [;; First create a group to update later
-                      initial-group (actions/perform-action-with-single-input-and-output
+                (let [initial-group (actions/perform-action-with-single-input-and-output
                                      :table.row/create
                                      {:database db-id
                                       :table-id (mt/id :group)
@@ -439,20 +438,19 @@
                                                  GROUP-RANK 300}})
                       initial-id (get-in initial-group [:row GROUP-ID])
 
-                      ;; Now do batch create-or-update
                       batch-result (actions/perform-action!
                                     :table.row/create-or-update
-                                    {}
+                                    {:unknown :legacy-action}
                                     [{:database db-id
                                       :table-id (mt/id :group)
-                                      :arg      {:row {GROUP-NAME "Batch Test Updated"
-                                                       GROUP-RANK 300}
-                                                 :key {GROUP-RANK 300}}}      ; Should update existing
+                                      :row      {GROUP-NAME "Batch Test Updated"
+                                                 GROUP-RANK 300}
+                                      :row-key {GROUP-RANK 300}}      ; Should update existing
                                      {:database db-id
                                       :table-id (mt/id :group)
-                                      :arg      {:row {GROUP-NAME "Batch New"
-                                                       GROUP-RANK 301}
-                                                 :key {GROUP-RANK 301}}}])]   ; Should create new
+                                      :row      {GROUP-NAME "Batch New"
+                                                 GROUP-RANK 301}
+                                      :row-key  {GROUP-RANK 301}}])]   ; Should create new
 
                   (is (= 2 (count (:outputs batch-result))))
 

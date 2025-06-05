@@ -358,14 +358,14 @@
        :outputs [{:rows-deleted (count diffs)}]})))
 
 (defn- row-update!* [action database {:keys [update-row] :as query}]
-  (let [driver       (:engine database)
-        source-table (get-in query [:query :source-table])
+  (let [driver               (:engine database)
+        source-table         (get-in query [:query :source-table])
         {:keys [from where]} (mbql-query->raw-hsql driver query)
-        update-hsql  (-> {:update (first from)
-                          :set    (cast-values driver update-row (u/the-id database) source-table)
-                          :where  where}
-                         (prepare-query driver action))
-        sql-args     (sql.qp/format-honeysql driver update-hsql)]
+        update-hsql          (-> {:update (first from)
+                                  :set    (cast-values driver update-row (u/the-id database) source-table)
+                                  :where  where}
+                                 (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn (u/the-id database)]
       (let [table-id     (-> query :query :source-table)
             row-before   (->> (prepare-query {:select [:*] :from from :where where} driver action)
@@ -568,6 +568,14 @@
             (lib.metadata.protocols/fields
              (qp.store/metadata-provider)
              table-id)))))
+
+(mu/defn- field-names->field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
+  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
+  [table-id    :- ::lib.schema.id/table
+   field-names :- [:sequential :string]]
+  (actions/cached-value
+   [::field-names->field-name->id table-id]
+   #(t2/select-fn->fn :name :id [:model/Field :id :name] :table_id table-id :name [:in field-names])))
 
 (mu/defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
@@ -834,8 +842,6 @@
   (let [db-id            (:id database)
         pk-name->id      (table-id->pk-field-name->id db-id table-id)
         pk-names         (set (keys pk-name->id))
-        _                (check-row-has-all-pk-columns row pk-names)
-        _                (check-row-has-some-non-pk-columns row pk-names)
         pk-column->value (select-keys row pk-names)]
     {:database   db-id
      :type       :query
@@ -850,6 +856,13 @@
          {:inputs     inputs
           :row-action :model.row/update
           :row-fn     row-update!*
+          :validate-fn (fn [database table-id rows]
+                         (let [db-id            (:id database)
+                               pk-name->id      (table-id->pk-field-name->id db-id table-id)
+                               pk-names         (set (keys pk-name->id))]
+                           (doseq [row rows]
+                             (check-row-has-all-pk-columns row pk-names)
+                             (check-row-has-some-non-pk-columns row pk-names))))
           :input-fn   update-input-fn})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) updating rows.")
@@ -863,13 +876,52 @@
                        :row      after})
                     results)}))
 
-(comment
-  (actions/perform-action!*
-   :table.row/create-or-update
-   context
-   [{:table-id 1,
-     :row {"STATE" "XY", "ID" 133703}
-     :key {"ID" 133703}}]))
+(defn- create-or-update!*
+  [action database {:keys [table-id row row-key]}]
+  (with-jdbc-transaction [conn (u/the-id database)]
+    (let [driver    (:engine database)
+          table-name        (:name (actions/cached-table (:id database) table-id))
+          hsql              (prepare-query {:select [:%count.*]
+                                            :from   [(keyword table-name)]
+                                            :where  (into [:and] (for [[k v] row-key] [:= (keyword k) v]))}
+                                           driver action)
+          count-existing    (fn []
+                              (-> (query-rows driver conn hsql) first vals first))
+          before-count      (count-existing)
+          formatted-row-key (delay (str/join
+                                    ", "
+                                    (for [[k v] row-key]
+                                      (format "%s = %s" (u/qualified-name k) v))))]
+      (cond
+        (zero? before-count)
+        (u/prog1 (assoc (row-create!* action database (row-create-input-fn database table-id row)) :op :created)
+          (let [after-count (count-existing)]
+            (when (> after-count 1)
+              (throw (ex-info (tru "Unintentionally created {0} duplicate rows for key: table {1} with {2}. This suggests a race condition or concurrent modification. Consider adding a unique constraint to ensure uniqueness"
+                                   after-count
+                                   table-name
+                                   @formatted-row-key)
+                              {:row-key    row-key
+                               :rows-count after-count
+                               :table-id   table-id})))))
+
+        (= 1 before-count)
+        (assoc (row-update!* action database {:database   (u/the-id database)
+                                              :type       :query
+                                              :query      {:source-table table-id
+                                                           :filter       (row->mbql-filter-clause
+                                                                          (field-names->field-name->id table-id (keys row-key)) row-key)}
+                                              :update-row row})
+               :op :updated)
+
+        (> before-count 1)
+        (throw (ex-info (tru "Found {0} duplicate rows in table {1} with {2}. Expected exactly 1 row to update. Consider adding a unique constraint to ensure uniqueness."
+                             before-count
+                             table-name
+                             @formatted-row-key)
+                        {:row-key          row-key
+                         :duplicates-count before-count
+                         :table-id         table-id}))))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create-or-update]
   [action context inputs :- [:sequential ::table-row-input]]
@@ -884,16 +936,7 @@
                           {:driver   driver
                            :database database
                            :action   action
-                           :proc     (fn [_action _db {:keys [table-id row key]}]
-                                       (with-jdbc-transaction [conn (u/the-id database)]
-                                         (let [hsql          (prepare-query {:select [:%count.*]
-                                                                             :from   [(t2/select-one-fn (comp keyword :name) :model/Table table-id)]
-                                                                             :where  (into [:and] (for [[k v] key] [:= (keyword k) v]))}
-                                                                            driver action)
-                                               existing-rows (-> (query-rows driver conn hsql) first vals first)]
-                                           (if (pos-int? existing-rows)
-                                             (assoc (row-update!* action database (update-input-fn database table-id row)) :op :updated)
-                                             (assoc (row-create!* action database (row-create-input-fn database table-id row)) :op :created)))))
+                           :proc     create-or-update!*
                            :rows     inputs
                            :xform    identity})]
     (when (seq errors)
@@ -902,7 +945,7 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs (mapv (fn [{:keys [table-id after op]}]
+     :outputs (mapv (fn [{:keys [table-id after op] :as x}]
                       {:table-id table-id
                        :op       op
                        :row      after})
