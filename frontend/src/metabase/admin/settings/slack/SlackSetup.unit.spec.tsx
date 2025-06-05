@@ -108,7 +108,7 @@ describe("SlackSetup", () => {
     );
     await userEvent.type(channelInput, "new-bot-channel");
 
-    const submitButton = screen.getByRole("button", { name: "Submit" });
+    const submitButton = screen.getByRole("button", { name: "Save changes" });
     expect(submitButton).toBeEnabled();
     await userEvent.click(submitButton);
 
