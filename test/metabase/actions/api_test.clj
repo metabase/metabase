@@ -744,7 +744,7 @@
                                                       :type     :implicit
                                                       :kind     "row/update"
                                                       :archived false}]
-           ;; Update model metadata after creation
+           ;; Update model metadata after creation, to work around limitations in with-actions
             (t2/update! :model/Card model-id-1 {:name                "Test Model 1"
                                                 :description         "First test model"
                                                 :collection_id       coll-id
@@ -755,18 +755,18 @@
 
             (testing "Returns models that have actions"
               (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
-                (is (=? {:models [{:id model-id-1
-                                   :name "Test Model 1"
-                                   :description "First test model"
-                                   :collection_id coll-id
+                (is (=? {:models [{:id                  model-id-1
+                                   :name                "Test Model 1"
+                                   :description         "First test model"
+                                   :collection_id       coll-id
                                    :collection_position 1
-                                   :collection_name "Test Collection"}
-                                  {:id model-id-2
-                                   :name "Test Model 2"
-                                   :description "Second test model"
-                                   :collection_id nil
+                                   :collection_name     "Test Collection"}
+                                  {:id                  model-id-2
+                                   :name                "Test Model 2"
+                                   :description         "Second test model"
+                                   :collection_id       nil
                                    :collection_position 2
-                                   :collection_name nil}]}
+                                   :collection_name     nil}]}
                         response))))
 
             (testing "Does not return models with only archived actions"
@@ -788,6 +788,7 @@
         (mt/with-actions-test-data-tables #{"users"}
           (mt/with-actions [{model-id :id} {:type :model :dataset_query (mt/mbql-query users)}
                             action-id-1 {:name            "Strike a Pose"
+                                         :description     "A dummy HTTP action"
                                          :type            :http
                                          :model_id        model-id
                                          :template        {:method "GET"
@@ -799,11 +800,11 @@
                                          :type          :query
                                          :model_id      model-id
                                          :dataset_query (mt/mbql-query venues)}
-                            retired-action {:name                   "Retired from Runway"
-                                            :type                   :query
-                                            :model_id               model-id
-                                            :dataset_query          (mt/mbql-query users)
-                                            :archived               true}]
+                            retired-action {:name          "Retired from Runway"
+                                            :type          :query
+                                            :model_id      model-id
+                                            :dataset_query (mt/mbql-query users)
+                                            :archived      true}]
             (testing "Requires either model-id or table-id parameter"
               (is (= "Either model-id or table-id parameter is required"
                      (mt/user-http-request :crowberto :get 400 "action/v2/"))))
@@ -814,17 +815,19 @@
 
             (testing "Filters by model-id"
               (mt/with-actions [{other-model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
-                                {action-id-4 :action-id} {:name     "Vogue Cover Shoot"
-                                                          :type     :http
-                                                          :model_id other-model-id
-                                                          :template {:method "GET"
-                                                                     :url    "https://vogue.com"}}]
-                (is (=? {:actions [{:id (:action-id action-id-1), :name "Strike a Pose"}
-                                   {:id (:action-id action-id-2), :name "Walk the Catwalk"}]}
+                                {action-id-4 :action-id} {:name        "Vogue Cover Shoot"
+                                                          :description "Photo shoot for fashion magazine"
+                                                          :type        :http
+                                                          :model_id    other-model-id
+                                                          :template    {:method "GET"
+                                                                        :url    "https://vogue.com"}}]
+                (is (=? {:actions [{:id (:action-id action-id-1), :name "Strike a Pose", :description "A dummy HTTP action"}
+                                   {:id (:action-id action-id-2), :name "Walk the Catwalk", :description nil}]}
                         (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" model-id))))
                 (testing "Returns actions for other model"
-                  (is (=? {:actions [{:id   action-id-4
-                                      :name "Vogue Cover Shoot"}]}
+                  (is (=? {:actions [{:id          action-id-4
+                                      :name        "Vogue Cover Shoot"
+                                      :description "Photo shoot for fashion magazine"}]}
                           (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" other-model-id)))))))
 
             (testing "Returns 404 for non-existent model"
@@ -836,10 +839,10 @@
                 (mt/with-temp [:model/Table {table-id :id} {:name "dining_table" :db_id (mt/id)}
                                :model/Table {other-table-id :id} {:name "coffee_table" :db_id (mt/id)}]
                   (let [resp (mt/user-http-request :crowberto :get 200 (str "action/v2/?table-id=" table-id))]
-                    (testing "Returns table actions for first table"
-                      (is (=? {:actions [{:id neg-int? :name "create"}
-                                         {:id neg-int? :name "update"}
-                                         {:id neg-int? :name "delete"}]}
+                    (testing "Returns table actions with id, name, and description"
+                      (is (=? {:actions [{:id neg-int? :name "create" :description string?}
+                                         {:id neg-int? :name "update" :description string?}
+                                         {:id neg-int? :name "delete" :description string?}]}
                               resp)))
                     (testing "Returns different action IDs for the different tables"
                       (let [actions-1 (:actions resp)

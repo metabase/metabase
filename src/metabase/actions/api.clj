@@ -10,7 +10,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.validation :as validation]
-   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
@@ -140,8 +139,9 @@
           fields   (t2/select :model/Field :table_id table-id)
           actions  (for [op [:table.row/create :table.row/update :table.row/delete]
                          :let [action (action/table-primitive-action table fields op)]]
-                     {:id   (:id action)
-                      :name (:name action)})]
+                     {:id          (:id action)
+                      :name        (:name action)
+                      :description (get-in action [:visualization_settings :description] "")})]
       {:actions actions})))
 
 (api.macros/defendpoint :get "/public"
