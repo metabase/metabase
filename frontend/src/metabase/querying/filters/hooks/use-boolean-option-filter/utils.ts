@@ -24,7 +24,7 @@ export function getOptionByType(optionType: OptionType) {
 export function getOptionType(
   query: Lib.Query,
   stageIndex: number,
-  filterClause?: Lib.FilterClause,
+  filterClause?: Lib.Filterable,
 ): OptionType {
   if (!filterClause) {
     return "true";
