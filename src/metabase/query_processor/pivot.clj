@@ -17,6 +17,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -676,7 +677,7 @@
   (let [available-operators (lib/available-aggregation-operators query)]
     (reduce
      (fn [aggregations {:keys [name column]}]
-       (let [col (find-col-by-name cols (:name column))
+       (let [col (find-col-by-name cols column)
              op  (u/seek (fn [op] (= (:short op) (keyword name)))
                          available-operators)]
          (conj aggregations
@@ -686,29 +687,17 @@
 
 (defn- nest-native-pivot-query
   [base-query pivot-opts]
-  (def base-query base-query)
-  (def pivot-opts pivot-opts)
-  (let [base-cols         (original-cols base-query)
+  (let [result-metadata   (qp.metadata/result-metadata base-query)
         rows              (:native-pivot-rows pivot-opts)
-        _ (def base-cols base-cols)
         columns           (:native-pivot-cols pivot-opts)
         measures          (:native-pivot-measures pivot-opts)
         query             (-> (lib/query (qp.store/metadata-provider) base-query)
-                              (lib/wrap-adhoc-native-query base-cols))
-        _ (def query query)
+                              (lib.util/update-query-stage -1 assoc :lib/stage-metadata {:columns result-metadata})
+                              (lib/append-stage))
         breakoutable-cols (lib/breakoutable-columns query)
         row-breakouts     (generate-breakouts query breakoutable-cols rows)
         col-breakouts     (generate-breakouts query breakoutable-cols columns)
         aggregations      (generate-aggregations query breakoutable-cols measures)]
-    (def rows rows)
-    (def columns columns)
-    (def measures measures)
-    (def query query)
-    (def breakoutable-cols breakoutable-cols)
-    (def row-breakouts row-breakouts)
-    (def col-breakouts col-breakouts)
-    (def aggregations aggregations)
-
     (-> query
         (add-breakouts row-breakouts)
         (add-breakouts col-breakouts)
