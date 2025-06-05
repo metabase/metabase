@@ -2589,24 +2589,24 @@ describe("issue 32499", () => {
 
     H.openQuestionActions("Edit metadata");
 
-    // Make sure we can click the joined column header and edit the name
-    H.tableHeaderClick("Orders → User ID");
-    cy.findByLabelText("Display name")
-      .should("have.value", "Orders → User ID")
-      .click()
-      .clear()
-      .type("JOIN COLUMN");
+    const columns = [
+      { original: "Orders → User ID", modified: "JOIN COLUMN" },
+      { original: "User ID", modified: "ORIGINAL COLUMN" },
+    ];
 
-    // Edit the name of the User ID
-    H.tableHeaderClick("User ID");
-    cy.findByLabelText("Display name")
-      .should("have.value", "User ID")
-      .click()
-      .clear()
-      .type("ORIGINAL COLUMN");
+    // we can click the headers and modify their names
+    for (const { original, modified } of columns) {
+      H.tableHeaderClick(original);
+      cy.findByLabelText("Display name")
+        .should("have.value", original)
+        .click()
+        .clear()
+        .type(modified);
+    }
 
-    // make sure both columns worked
-    H.tableHeaderColumn("ORIGIN COLUMN").should("exist");
-    H.tableHeaderColumn("JOIN COLUMN").should("exist");
+    // the modified names are now in the headers
+    for (const { modified } of columns) {
+      H.tableHeaderColumn(modified).should("exist");
+    }
   });
 });
