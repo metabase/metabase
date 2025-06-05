@@ -80,10 +80,6 @@ export function stringFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): StringFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
-
   return ML.string_filter_parts(query, stageIndex, filterClause);
 }
 
@@ -100,9 +96,6 @@ export function numberFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): NumberFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
   return ML.number_filter_parts(query, stageIndex, filterClause);
 }
 
@@ -120,9 +113,6 @@ export function coordinateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): CoordinateFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
   return ML.coordinate_filter_parts(query, stageIndex, filterClause);
 }
 
@@ -139,9 +129,6 @@ export function booleanFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): BooleanFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
   return ML.boolean_filter_parts(query, stageIndex, filterClause);
 }
 
@@ -164,9 +151,6 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): SpecificDateFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
   const filterParts = ML.specific_date_filter_parts(
     query,
     stageIndex,
@@ -206,9 +190,6 @@ export function relativeDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): RelativeDateFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
   return ML.relative_date_filter_parts(query, stageIndex, filterClause);
 }
 
@@ -226,9 +207,6 @@ export function excludeDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): ExcludeDateFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
   return ML.exclude_date_filter_parts(query, stageIndex, filterClause);
 }
 
@@ -249,10 +227,6 @@ export function timeFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): TimeFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
-
   const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
   if (!filterParts) {
     return null;
@@ -275,9 +249,6 @@ export function defaultFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): DefaultFilterParts | null {
-  if (isSegmentMetadata(filterClause)) {
-    return null;
-  }
   return ML.default_filter_parts(query, stageIndex, filterClause);
 }
 
