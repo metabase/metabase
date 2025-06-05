@@ -133,16 +133,15 @@
                   "display_name should include the display name of the FK field (for IMPLICIT JOINS)")
       (is (=? [{:display_name "Category → Name"
                 :source       :fields
-                :field_ref    $category-id->categories.name
-                :fk_field_id  %category-id}]
+                :field_ref    [:field (meta/id :categories :name) {:join-alias "Category"}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
                 {:type  :query
                  :query {:source-table (meta/id :venues)
-                         :fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                         :fields [&Category.categories.name]
                          ;; This is a hand-rolled implicit join clause.
-                         :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                         :joins  [{:alias        "Category"
                                    :source-table $$venues
                                    :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                    :strategy     :left-join
@@ -200,7 +199,6 @@
                                                  :fields       [[:field "price" {:base-type :type/Number, :temporal-unit :month}]]}})
                {:columns [:price]}))))))
 
-;; TODO: Not practical to add idents to this one - it needs to properly be a breakout.
 (deftest ^:parallel col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning_info`"
     (is (=? [{:name         "price"
@@ -896,7 +894,7 @@
                            (ean-metadata (add-column-info nested-query {:cols (repeat 15 {})}))))))))))))))
 
 (deftest ^:parallel col-info-for-fields-from-card-test
-  (testing "#14787"
+  (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side (#14787)"
     (let [card-1-query (lib.tu.macros/mbql-query orders
                          {:joins [{:fields       :all
                                    :source-table $$products
@@ -906,19 +904,19 @@
                                         meta/metadata-provider
                                         [card-1-query
                                          (lib.tu.macros/mbql-query people)])
-        (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
-          (lib.tu.macros/$ids nil
-            (let [base-query (lib/query
-                              (qp.store/metadata-provider)
-                              (qp.preprocess/preprocess
-                               (lib.tu.macros/mbql-query nil
-                                 {:source-table "card__1"
-                                  :joins        [{:fields       :all
-                                                  :source-table "card__2"
-                                                  :condition    [:= $orders.user-id &Products.products.id]
-                                                  :alias        "Q"}]
-                                  :limit        1})))
-                  fields     #{%orders.discount %products.title %people.source}]
+        (lib.tu.macros/$ids nil
+          (let [base-query (lib/query
+                            (qp.store/metadata-provider)
+                            (qp.preprocess/preprocess
+                             (lib.tu.macros/mbql-query nil
+                               {:source-table "card__1"
+                                :joins        [{:fields       :all
+                                                :source-table "card__2"
+                                                :condition    [:= $orders.user-id &Products.products.id]
+                                                :alias        "Q"}]
+                                :limit        1})))
+                field-ids  #{%orders.discount %products.title %people.source}]
+            (testing (str "\nQuery =\n" (u/pprint-to-str base-query))
               (is (= [{:display_name "Discount"
                        :field_ref    [:field %orders.discount nil]}
                       {:display_name "Products → Title"
@@ -926,7 +924,7 @@
                       {:display_name "Q → Source"
                        :field_ref    [:field %people.source {:join-alias "Q"}]}]
                      (->> (:cols (add-column-info base-query {:cols []}))
-                          (filter #(fields (:id %)))
+                          (filter #(field-ids (:id %)))
                           (map #(select-keys % [:display_name :field_ref]))))))))))))
 
 (deftest ^:parallel col-info-for-joined-fields-from-card-test

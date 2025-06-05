@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.debug :as qp.debug]
@@ -19,7 +20,9 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.walk :as lib.walk]
+   [metabase.lib.schema.join :as lib.schema.join]))
 
 (mr/def ::legacy-source
   [:enum :aggregation :fields :breakout :native])
@@ -49,6 +52,13 @@
   (fn [query _rff]
     (first-stage-type query)))
 
+(mu/defn- restore-original-join-aliases :- ::lib.schema/query
+  [query :- ::lib.schema/query]
+  (reduce
+   (fn [query [escaped-alias original-alias]]
+     (lib.join/rename-join query (u/qualified-name escaped-alias) original-alias))
+   query
+   (get-in query [:info :alias/escaped->original])))
 
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata determined by the logic above."
@@ -118,8 +128,8 @@
           (assoc col :source (source->legacy-source (:lib/source col))))
         cols))
 
-
-(mu/defn add-converted-timezone :- ::cols
+;;; TODO -- move into mainline lib metadata calculation -- Cam
+(mu/defn- add-converted-timezone :- ::cols
   [query :- ::lib.schema/query
    cols  :- ::cols]
   (mapv (fn [col]
@@ -155,6 +165,8 @@
     (-> col lib/ref lib.convert/->legacy-MBQL fe-friendly-expression-ref)))
 
 (mu/defn- add-legacy-field-refs :- ::cols
+  "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
+  https://metaboat.slack.com/archives/C0645JP1W81/p1749064632710409?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [query :- ::lib.schema/query
    cols  :- ::cols]
   (lib.convert/do-with-aggregation-list
@@ -167,25 +179,19 @@
            cols))))
 
 (mu/defn- deduplicate-names :- ::cols
+  "Needed for legacy FE viz settings purposes for the time being. See
+  https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- ::cols]
   (map (fn [col unique-name]
          (assoc col :name unique-name))
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
-(mu/defn- cols->legacy-metadata :- ::cols
-  [cols :- ::cols]
-  (letfn [(map->snake_case [m]
-            (merge
-             (update-keys m u/->snake_case_en)
-             (when-let [temporal-unit (:metabase.lib.field/temporal-unit m)]
-               {:unit temporal-unit})
-             (when-let [binning-info (:metabase.lib.field/binning m)]
-               {:binning_info (-> (update-keys binning-info u/->snake_case_en)
-                                  (set/rename-keys {:strategy :binning_strategy}))})))]
-    (mapv map->snake_case cols)))
+(mu/defn- add-extra-metadata :- ::cols
+  "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata.
 
-(mu/defn- annotate-cols :- ::cols
+  TODO -- we should probably move all this stuff into lib so it comes back there as well! That's a tech debt problem tho
+  I guess. -- Cam"
   [query :- ::lib.schema/query
    cols  :- ::cols]
   (let [lib-metadata (binding [lib.metadata.calculation/*display-name-style* :long]
@@ -198,15 +204,49 @@
       (add-legacy-field-refs query cols)
       (deduplicate-names cols))))
 
+(mu/defn- col->legacy-metadata :- ::col
+  [col :- ::col]
+  (letfn [(add-unit [col]
+            (merge
+             (when-let [temporal-unit (:metabase.lib.field/temporal-unit col)]
+               {:unit temporal-unit})
+             col))
+          (add-binning-info [col]
+            (merge
+             (when-let [binning-info (:metabase.lib.field/binning col)]
+               {:binning-info (merge
+                               (when-let [strategy (:strategy binning-info)]
+                                 {:binning-strategy strategy})
+                               binning-info)})
+             col))
+          (->snake_case [col]
+            (as-> col col
+              (update-keys col u/->snake_case_en)
+              (m/update-existing col :binning_info update-keys u/->snake_case_en)))]
+    (-> col
+        add-unit
+        add-binning-info
+        ->snake_case)))
+
+(mu/defn- cols->legacy-metadata :- ::cols
+  "Convert MLv2-style `kebab-case` metadata to legacy QP metadata results `snake_case`-style metadata. Keys are slightly
+  different as well. This is mostly for backwards compatibility with old FE code. See this thread
+  https://metaboat.slack.com/archives/C0645JP1W81/p1749077302448169?thread_ts=1748958872.704799&cid=C0645JP1W81"
+  [cols :- ::cols]
+  (mapv col->legacy-metadata cols))
+
 (mu/defn expected-cols
+  "Return metadata for columns returned by a pMBQL `query`. Note this only really works correctly for pMBQL queries or
+  native queries that include source metadata."
   ([query]
    (expected-cols query []))
 
   ([query :- ::lib.schema/query
     cols  :- ::cols]
-   (->> cols
-        (annotate-cols query)
-        cols->legacy-metadata)))
+   (let [query' (restore-original-join-aliases query)]
+     (->> cols
+          (add-extra-metadata query')
+          cols->legacy-metadata))))
 
 (mu/defmethod add-column-info :mbql.stage/mbql :- ::qp.schema/rff
   [query :- ::lib.schema/query
@@ -259,7 +299,7 @@
                                                               (merge {:lib/source   :source/native
                                                                       :display-name (:name col)}
                                                                      col))
-                                                            (annotate-cols query cols)
+                                                            (add-extra-metadata query cols)
                                                             (cond-> cols
                                                               ;; annotate-native-cols ensures that column refs are
                                                               ;; present which we need to match metadata
