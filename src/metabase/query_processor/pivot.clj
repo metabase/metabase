@@ -674,7 +674,7 @@
   "Generates the breakout columns to add to the query, for a given split setting (row or column)"
   [query cols split-setting]
   (reduce
-   (fn [breakouts {:keys [name binning]}]
+   (fn [breakouts {:keys [name binning bucket]}]
      (let [col                (find-col-by-name cols name)
            binning-strategy   (keyword (:strategy binning))
            available-temporal-buckets (lib/available-temporal-buckets query 0 col)
@@ -682,7 +682,7 @@
                                 {:strategy binning-strategy
                                  :num-bins (:numbins binning)})
            bucketing-setting (u/seek (fn [available-bucket]
-                                       (= (keyword binning)
+                                       (= (keyword bucket)
                                           (keyword (:unit available-bucket))))
                                      available-temporal-buckets)]
        (conj breakouts
