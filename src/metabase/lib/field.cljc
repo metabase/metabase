@@ -72,8 +72,8 @@
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
-  [query                                                              :- ::lib.schema/query
-   stage-number                                                       :- :int
+  [query                                                                :- ::lib.schema/query
+   stage-number                                                         :- :int
    [_field {:keys [join-alias], :as opts} id-or-name, :as field-clause] :- :mbql.clause/field]
   (let [metadata (merge
                   (when-let [base-type (:base-type opts)]
