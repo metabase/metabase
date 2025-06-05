@@ -5,14 +5,12 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
-   [metabase.auth-provider.core :as auth-provider]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -50,7 +48,6 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
-   [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -67,23 +64,19 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  actions/cached-value
+ actions/incorrect-value-type
  actions/perform-action!*
+ actions/violate-foreign-key-constraint
  actions/violate-not-null-constraint
  actions/violate-unique-constraint
- actions/violate-foreign-key-constraint
- actions/incorrect-value-type
  add/add-alias-info
  add/field-reference-mlv2
  annotate/aggregation-name
  annotate/base-type-inferer
  annotate/merged-column-info
- api/*current-user* ; very questionable
- auth-provider/azure-auth-token-renew-slack-seconds
- auth-provider/fetch-auth
+ api/*current-user*
+ appearance/site-name
  classloader/the-classloader
- classloader/require
- config/config-bool
- config/is-dev?
  config/is-prod?
  config/is-test?
  config/local-process-uuid
@@ -92,14 +85,13 @@
  config/mb-version-info
  config/run-mode
  connection-pool/connection-pool-spec
- connection-pool/map->properties
  connection-pool/destroy-connection-pool!
+ connection-pool/map->properties
  database-routing/check-allowed-access!
  events/publish-event!
  lib-be/start-of-week
  lib.field/json-field?
  lib.metadata.jvm/instance->metadata
- lib.metadata/card
  lib.metadata/database
  lib.metadata/field
  lib.metadata/fields
@@ -110,18 +102,14 @@
  lib.util.match/match
  lib.util.match/match-one
  lib.util.match/replace
+ lib.util/truncate-alias
  lib/->legacy-MBQL
  lib/query-from-legacy-inner-query
  limit/absolute-max-results
  limit/determine-query-max-rows
- limit/disable-max-results
  logger/level-enabled?
- mbql.s/Field
- mbql.s/Filter
  mbql.s/Join
  mbql.s/MBQLQuery
- mbql.s/Parameter
- mbql.s/TemplateTag
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
@@ -137,18 +125,13 @@
  mbql.u/simplify-compound-filter
  mbql.u/unique-name-generator
  mbql.u/update-field-options
- mbql.u/with-temporal-unit
- mbql.u/wrap-field-id-if-needed
  mdb/clob->str
  mdb/data-source
  mdb/make-subname
  mdb/query-canceled-exception?
  mdb/spec
- mdb/unique-identifier
  mi/instance-of?
  nest-query/nest-expressions
- premium-features/defenterprise
- premium-features/enable-database-auth-providers?
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>
@@ -182,24 +165,17 @@
  qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.writeback/execute-write-sql!
  qp/process-query
- qp.persistence/persisted-info-native-query
- qp.persistence/can-substitute?
+ schema.metadata-queries/add-required-filters-if-needed
  secrets/clean-secret-properties-from-details
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting
  sync-util/name-for-logging
  system/site-uuid
- upload/current-database
- schema.metadata-queries/add-required-filters-if-needed
- warehouses/cloud-gateway-ips ; only in driver.common
- appearance/site-name
- lib.util/truncate-alias)
+ upload/current-database)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
 (do
-  (p/import-fn helpers/distinct mbql-distinct)
-  (p/import-fn helpers/non-empty mbql-non-empty)
   (p/import-fn setting/get-value-of-type setting-get-value-of-type)
   (p/import-fn secrets/value-as-string secret-value-as-string)
   (p/import-fn secrets/value-as-file! secret-value-as-file!)
@@ -208,10 +184,6 @@
 (def schema.common.non-blank-string
   "::lib.schema.common/non-blank-string"
   ::lib.schema.common/non-blank-string)
-
-(def schema.common.base-type
-  "::lib.schema.common/base-type"
-  ::lib.schema.common/base-type)
 
 (def schema.metadata.column
   "::lib.schema.metadata/column"
@@ -232,10 +204,6 @@
 (def schema.id.field
   "::lib.schema.id/field"
   ::lib.schema.id/field)
-
-(def schema.id.card
-  "::lib.schema.id/card"
-  ::lib.schema.id/card)
 
 (def schema.actions.row
   "::lib.schema.actions/row"
