@@ -1,15 +1,19 @@
 (ns metabase.driver.common.table-rows-sample
-  (:require ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
- ;; so we need to go in and update the sync code as well.
- ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
- ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (:require
    [metabase.driver :as driver]
-   [metabase.driver-api.core :as driver-api]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as helpers]
+   [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [metabase.util.malli :as mu] ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
+   [metabase.util.malli :as mu]
+   ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
+   ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
+   ;; so we need to go in and update the sync code as well.
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -28,7 +32,7 @@
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} (driver-api/mbql-distinct (driver-api/mbql-non-empty [:sequential driver-api/mbql.schema.OrderBy]))]
+    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential ::mbql.s/OrderBy]))]
     [:rff             {:optional true} fn?]]])
 
 (defn- text-field?
@@ -68,7 +72,7 @@
                    (assoc :order-by order-by)
 
                    true
-                   driver-api/add-required-filters-if-needed)
+                   schema.metadata-queries/add-required-filters-if-needed)
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
@@ -89,7 +93,7 @@
     rff    :- fn?
     opts   :- TableRowsSampleOptions]
    (let [query (table-rows-sample-query table fields opts)]
-     (driver-api/process-query query rff))))
+     (qp/process-query query rff))))
 
 (defmethod driver/table-rows-sample :default
   [_driver table fields rff opts]

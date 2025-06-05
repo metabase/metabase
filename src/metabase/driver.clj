@@ -1,16 +1,14 @@
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.driver
   "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
-  introspecting their schemas and processing and running MBQL queries. Drivers must implement some or all of the
-  multimethods defined below, and register themselves with a call to [[metabase.driver/register!]].
+   introspecting their schemas and processing and running MBQL queries. Drivers must implement some or all of the
+   multimethods defined below, and register themselves with a call to [[metabase.driver/register!]].
 
-  SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
-  these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
-  [[metabase.driver.sql-jdbc]] for more details."
+   SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
+   these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
+   [[metabase.driver.sql-jdbc]] for more details."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
-   #_{:clj-kondo/ignore [:metabase/modules]}
-   #_{:clj-kondo/ignore [:metabase/modules]}
-   #_{:clj-kondo/ignore [:metabase/modules]}
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.auth-provider.core :as auth-provider]
@@ -870,7 +868,7 @@
   [_driver _query]
   (throw (ex-info (str "metabase.driver/splice-parameters-into-native-query is deprecated, bind"
                        " metabase.driver/*compile-with-inline-parameters* during query compilation instead.")
-                  {:type qp.error-type/driver})))
+                  {:type ::qp.error-type/driver})))
 
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367

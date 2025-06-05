@@ -6,8 +6,9 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.test.driver-test-api.core :as driver-test-api]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -59,7 +60,7 @@
                              "create view if not exists v_src as select id, strftime('%s', time) as time from src;"
                              "insert into src values(1, '2020-03-01 12:20:35');"]]
             (jdbc/execute! spec [statement]))
-          (driver-test-api/sync-database! database)
+          (sync/sync-database! database)
           (is (= [{:name "src"
                    :fields [{:name      "id"
                              :base_type :type/Integer}
@@ -91,7 +92,7 @@
                               GROUP BY symbol
                               ORDER by dt;"]]
             (jdbc/execute! spec [statement]))
-          (driver-test-api/sync-database! database)
+          (sync/sync-database! database)
           (is (= [{:name "groupby_test"
                    :fields [{:name      "id"
                              :base_type :type/Integer}
@@ -127,7 +128,7 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver details)
                          [stmt]))
         (mt/with-temp [:model/Database db {:engine driver :details (assoc details :dbname db-name)}]
-          (driver-test-api/sync-database! db)
+          (sync/sync-database! db)
           (mt/with-db db
             (testing "timestamp columns"
               (testing "database should be synced"
@@ -166,7 +167,7 @@
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
       (mt/with-temp [:model/Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
-        (driver-test-api/sync-database! db)
+        (sync/sync-database! db)
         ;; In SQLite, you can actually store any value in any date/timestamp column,
         ;; let's test only values we'd reasonably run into.
         ;; Caveat: TIMESTAMP stored as string doesn't get parsed and is returned as-is by the driver,
@@ -240,14 +241,14 @@
         (testing "Attach the sample dataset as an FDW called fdw_test"
           (testing "Detach it if it already exists from a previous test run"
             (u/ignore-exceptions
-              (driver-test-api/process-query (mt/native-query {:query "DETACH DATABASE fdw_test;"}))))
+              (qp/process-query (mt/native-query {:query "DETACH DATABASE fdw_test;"}))))
           (testing "Attempting to attach it should fail"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"SQL error or missing database \(too many attached databases - max 0\)"
-                 (driver-test-api/process-query (mt/native-query {:query (format "ATTACH DATABASE 'file:%s' as fdw_test;" path)}))))))
+                 (qp/process-query (mt/native-query {:query (format "ATTACH DATABASE 'file:%s' as fdw_test;" path)}))))))
         (testing "Attempt to query the FDW -- shouldn't work"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"SQL error or missing database \(no such table: fdw_test\.products\)"
-               (driver-test-api/process-query (mt/native-query {:query "SELECT count(*) FROM fdw_test.products;"})))))))))
+               (qp/process-query (mt/native-query {:query "SELECT count(*) FROM fdw_test.products;"})))))))))
