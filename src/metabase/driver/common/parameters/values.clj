@@ -258,14 +258,15 @@
                                                   :template-tag        tag
                                                   :matching-parameters params})))
                                (first matching-params))
+        param-value          (:value matching-param)
         nil-value?           (and matching-param
-                                  (nil? (:value matching-param)))
+                                  (nil? param-value))
         valid-temporal-units (into #{}
                                    (map name)
                                    (lib/available-temporal-units))]
-    (when (not (valid-temporal-units (:value matching-param)))
+    (when-not (or (nil? param-value) (valid-temporal-units param-value))
       (throw (ex-info (tru "Error: invalid value specified for temporal-unit parameter.")
-                      {:value (:value matching-param)
+                      {:value param-value
                        :expected valid-temporal-units})))
     (params/map->TemporalUnit
      {:name tag-name
