@@ -681,7 +681,7 @@
                                                     :description "Luxury fashion database"
                                                     :engine      "h2"
                                                     :settings    {:database-enable-table-editing true}}
-                       :model/Table {table-id :id} {:name "runway_table" :db_id db-id}]
+                       :model/Table _ {:name "runway_table" :db_id db-id}]
           (is (some #(= % {:id db-id :name "Versace Mansion" :description "Luxury fashion database"})
                     (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))
 
@@ -690,7 +690,7 @@
                                                     :description "Disabled fashion database"
                                                     :engine      "h2"
                                                     :settings    {:database-enable-table-editing false}}
-                       :model/Table {table-id :id} {:name "disabled_table" :db_id db-id}]
+                       :model/Table _ {:name "disabled_table" :db_id db-id}]
           (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database")))))))
 
       (testing "Excludes databases without tables"
@@ -752,10 +752,10 @@
                                                     :type     :implicit
                                                     :kind     "row/create"
                                                     :archived false}
-                          {archived-action-id :action-id} {:name     "Retired Supermodel"
-                                                           :type     :implicit
-                                                           :kind     "row/delete"
-                                                           :archived true}]
+                          _                        {:name     "Retired Supermodel"
+                                                    :type     :implicit
+                                                    :kind     "row/delete"
+                                                    :archived true}]
           (mt/with-actions [{model-id-2 :id} {:type :model, :dataset_query (mt/mbql-query venues)}
                             {action-id-2 :action-id} {:name     "Tyra Banks Strut"
                                                       :type     :implicit
@@ -817,11 +817,11 @@
                                          :type          :query
                                          :model_id      model-id
                                          :dataset_query (mt/mbql-query venues)}
-                            retired-action {:name          "Retired from Runway"
-                                            :type          :query
-                                            :model_id      model-id
-                                            :dataset_query (mt/mbql-query users)
-                                            :archived      true}]
+                            _           {:name          "Retired from Runway"
+                                         :type          :query
+                                         :model_id      model-id
+                                         :dataset_query (mt/mbql-query users)
+                                         :archived      true}]
             (testing "Requires either model-id or table-id parameter"
               (is (= "Either model-id or table-id parameter is required"
                      (mt/user-http-request :crowberto :get 400 "action/v2/"))))
