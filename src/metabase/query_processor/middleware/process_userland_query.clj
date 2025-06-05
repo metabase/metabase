@@ -44,7 +44,7 @@
     (do
       ;; TODO: modify the app db so that we can insert byte related fields
       (tap> {:query-execution query-execution})
-      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query :estimated-bytes :bytes-processed :bytes-billed)))))
+      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query :data-scanned-bytes :estimated-bytes :bytes-processed :bytes-billed)))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."

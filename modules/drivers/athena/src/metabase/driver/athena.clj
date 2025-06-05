@@ -14,16 +14,28 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DatabaseMetaData Date ResultSet Time Timestamp Types)
+   (java.sql Connection DatabaseMetaData Date ResultSet Time Timestamp Types SQLFeatureNotSupportedException)
    (java.time OffsetDateTime ZonedDateTime)
-   [java.util UUID]))
+   [java.util UUID]
+   (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
+   (software.amazon.awssdk.regions Region)
+   (software.amazon.awssdk.services.athena AthenaClient)
+   (software.amazon.awssdk.services.athena.model GetQueryExecutionRequest)))
 
 (set! *warn-on-reflection* true)
 
@@ -513,8 +525,92 @@
   (binding [driver/*compile-with-inline-parameters* true]
     ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
 
+(defn database-details->client
+  [{:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
+  (let [credentials (AwsBasicCredentials/create access_key secret_key)]
+    (-> (AthenaClient/builder)
+        (.region (Region/of region))
+        (.credentialsProvider (StaticCredentialsProvider/create credentials))
+        (.build))))
+
+(defn get-query-execution-id
+  [stmt]
+  (let [athena-stmt (.unwrap stmt java.sql.Statement)]
+    (.getQueryExecutionId athena-stmt)))
+
+(defn get-query-stats
+  "Get query statistics using AWS SDK"
+  [query-execution-id details]
+  (tap> {:athena-details details})
+  (let [athena-client (database-details->client details)
+        request (-> (GetQueryExecutionRequest/builder)
+                    (.queryExecutionId query-execution-id)
+                    (.build))
+        response (.getQueryExecution athena-client request)
+        stats (-> response .queryExecution .statistics)
+        bytes-scanned (.dataScannedInBytes stats)]
+    {:amount bytes-scanned
+     :unit :bytes
+     :cents-per-unit 0.0000000005
+     :total-cents (* 0.0000000005 bytes-scanned)}))
+
 (defmethod driver/execute-reducible-query :athena
   [driver query context respond]
   (assert (empty? (get-in query [:native :params]))
           "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
+  (execute-reducible-query driver query context respond))
+
+;; Copied from sql-jdbc.execute with some slight variations
+(defn execute-reducible-query
+  "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
+  {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
+  ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
+   {:pre [(string? sql) (seq sql)]}
+   (let [database (lib.metadata/database (qp.store/metadata-provider))
+         sql      (if (get-in database [:details :include-user-id-and-hash] true)
+                    (->> (qp.util/query->remark driver outer-query)
+                         (sql-jdbc.execute/inject-remark driver sql))
+                    sql)
+         max-rows (limit/determine-query-max-rows outer-query)]
+     (execute-reducible-query driver database sql params max-rows context respond)))
+
+  ([driver database sql params max-rows _context respond]
+   (sql-jdbc.execute/do-with-connection-with-options
+    driver
+    database
+    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver database)}
+    (fn [^Connection conn]
+      (with-open [stmt          (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params qp.pipeline/*canceled-chan*)
+                  ^ResultSet rs (try
+                                  (let [st (doto stmt (.setMaxRows max-rows))]
+                                    (sql-jdbc.execute/execute-statement! driver st sql))
+                                  (catch Throwable e
+                                    (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                    {:driver driver
+                                                     :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                     :params params
+                                                     :type   qp.error-type/invalid-query}
+                                                    e))))]
+        (let [rsmeta           (.getMetaData rs)
+              query-execution-id (get-query-execution-id stmt)
+              stats (get-query-stats query-execution-id
+                                     (:details database))
+              results-metadata {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
+                                :cost stats}]
+          (try (respond results-metadata (let [row-thunk (sql-jdbc.execute/row-thunk driver rs rsmeta)]
+                                           (qp.reducible/reducible-rows row-thunk qp.pipeline/*canceled-chan*)))
+               ;; Following cancels the statment on the dbms side.
+               ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
+               ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+               ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
+               ;; It also handles situation where query is canceled through [[qp.pipeline/*canceled-chan*]] (#41448).
+               (finally
+                 ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
+                 ;;       It should be removed afterwards!
+                 (when-not (= :vertica driver)
+                   (try (.cancel stmt)
+                        (catch SQLFeatureNotSupportedException _
+                          (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                                     (name driver)))
+                        (catch Throwable _
+                          (log/warn "Statement cancelation failed."))))))))))))
