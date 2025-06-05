@@ -140,55 +140,55 @@
       (mt/dataset geographical-tips
         ;; Return the first 10 tips with just tip.venue.name
         (is (= [["Lucky's Gluten-Free Café"
-                 {"name" "Lucky's Gluten-Free Café",
-                  "categories" ["Gluten-Free" "Café"],
-                  "phone" "415-740-2328",
-                  "id" "379af987-ad40-4a93-88a6-0233e1c14649"}]
+                 {:name "Lucky's Gluten-Free Café",
+                  :categories ["Gluten-Free" "Café"],
+                  :phone "415-740-2328",
+                  :id "379af987-ad40-4a93-88a6-0233e1c14649"}]
                 ["Joe's Homestyle Eatery"
-                 {"name" "Joe's Homestyle Eatery",
-                  "categories" ["Homestyle" "Eatery"],
-                  "phone" "415-950-1337",
-                  "id" "5cc18489-dfaf-417b-900f-5d1d61b961e8"}]
+                 {:name "Joe's Homestyle Eatery",
+                  :categories ["Homestyle" "Eatery"],
+                  :phone "415-950-1337",
+                  :id "5cc18489-dfaf-417b-900f-5d1d61b961e8"}]
                 ["Lower Pac Heights Cage-Free Coffee House"
-                 {"name" "Lower Pac Heights Cage-Free Coffee House",
-                  "categories" ["Cage-Free" "Coffee House"],
-                  "phone" "415-697-9309",
-                  "id" "02b1f618-41a0-406b-96dd-1a017f630b81"}]
+                 {:name "Lower Pac Heights Cage-Free Coffee House",
+                  :categories ["Cage-Free" "Coffee House"],
+                  :phone "415-697-9309",
+                  :id "02b1f618-41a0-406b-96dd-1a017f630b81"}]
                 ["Oakland European Liquor Store"
-                 {"name" "Oakland European Liquor Store",
-                  "categories" ["European" "Liquor Store"],
-                  "phone" "415-559-1516",
-                  "id" "e342e7b7-e82d-475d-a822-b2df9c84850d"}]
+                 {:name "Oakland European Liquor Store",
+                  :categories ["European" "Liquor Store"],
+                  :phone "415-559-1516",
+                  :id "e342e7b7-e82d-475d-a822-b2df9c84850d"}]
                 ["Tenderloin Gormet Restaurant"
-                 {"name" "Tenderloin Gormet Restaurant",
-                  "categories" ["Gormet" "Restaurant"],
-                  "phone" "415-127-4197",
-                  "id" "54a9eac8-d80d-4af8-b6d7-34651a60e59c"}]
+                 {:name "Tenderloin Gormet Restaurant",
+                  :categories ["Gormet" "Restaurant"],
+                  :phone "415-127-4197",
+                  :id "54a9eac8-d80d-4af8-b6d7-34651a60e59c"}]
                 ["Marina Modern Sushi"
-                 {"name" "Marina Modern Sushi",
-                  "categories" ["Modern" "Sushi"],
-                  "phone" "415-393-7672",
-                  "id" "21807c63-ca4c-4468-9844-d0c2620fbdfc"}]
+                 {:name "Marina Modern Sushi",
+                  :categories ["Modern" "Sushi"],
+                  :phone "415-393-7672",
+                  :id "21807c63-ca4c-4468-9844-d0c2620fbdfc"}]
                 ["Sunset Homestyle Grill"
-                 {"name" "Sunset Homestyle Grill",
-                  "categories" ["Homestyle" "Grill"],
-                  "phone" "415-356-7052",
-                  "id" "c57673cd-f2d0-4bbc-aed0-6c166d7cf2c3"}]
+                 {:name "Sunset Homestyle Grill",
+                  :categories ["Homestyle" "Grill"],
+                  :phone "415-356-7052",
+                  :id "c57673cd-f2d0-4bbc-aed0-6c166d7cf2c3"}]
                 ["Kyle's Low-Carb Grill"
-                 {"name" "Kyle's Low-Carb Grill",
-                  "categories" ["Low-Carb" "Grill"],
-                  "phone" "415-992-8278",
-                  "id" "b27f50c6-55eb-48b0-9fee-17a6ef5243bd"}]
+                 {:name "Kyle's Low-Carb Grill",
+                  :categories ["Low-Carb" "Grill"],
+                  :phone "415-992-8278",
+                  :id "b27f50c6-55eb-48b0-9fee-17a6ef5243bd"}]
                 ["Mission Homestyle Churros"
-                 {"name" "Mission Homestyle Churros",
-                  "categories" ["Homestyle" "Churros"],
-                  "phone" "415-343-4489",
-                  "id" "21d903d3-8bdb-4b7d-b288-6063ad48af44"}]
+                 {:name "Mission Homestyle Churros",
+                  :categories ["Homestyle" "Churros"],
+                  :phone "415-343-4489",
+                  :id "21d903d3-8bdb-4b7d-b288-6063ad48af44"}]
                 ["Sameer's Pizza Liquor Store"
-                 {"name" "Sameer's Pizza Liquor Store",
-                  "categories" ["Pizza" "Liquor Store"],
-                  "phone" "415-969-7474",
-                  "id" "7b9c7dc3-d8f1-498d-843a-e62360449892"}]]
+                 {:name "Sameer's Pizza Liquor Store",
+                  :categories ["Pizza" "Liquor Store"],
+                  :phone "415-969-7474",
+                  :id "7b9c7dc3-d8f1-498d-843a-e62360449892"}]]
                (mt/rows
                 (mt/run-mbql-query tips
                   {:fields   [$tips.venue.name $tips.venue]

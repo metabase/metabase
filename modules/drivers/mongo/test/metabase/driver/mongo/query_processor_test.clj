@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.query-processor-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -13,9 +12,7 @@
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
