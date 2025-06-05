@@ -68,8 +68,9 @@
        (fn [[_tag _opts pred-expr-pairs default]]
          (let [expressions (into (map second pred-expr-pairs) (filter some?) [default])
                expression-types (map expression/type-of expressions)
-               same-types? (apply = expression-types)]
-           same-types?))]]])
+               [first-type & other-types] expression-types
+               common-ancestors (map #(types/most-specific-common-ancestor first-type %) other-types)]
+           (every? #(not= :type/* %) common-ancestors)))]]])
 
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs _default]]
