@@ -32,10 +32,6 @@ export function TablePicker({
   // search results need their own keypress handling logic
   // because we want to keep the focus on the search input
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (deferredQuery === "") {
-      return;
-    }
-
     if (event.key === "ArrowDown") {
       event.preventDefault();
 
