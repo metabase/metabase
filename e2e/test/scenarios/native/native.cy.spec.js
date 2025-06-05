@@ -451,8 +451,7 @@ describe("scenarios > question > native", () => {
           .should("contain", "January 1, 2023");
       });
 
-      // TODO: test is broken, unskip once optional usage of time grouping is supported
-      it.skip("should handle time grouping in optional clause without default value", () => {
+      it("should handle time grouping in optional clause without default value", () => {
         const questionWithDefaultValue = {
           name: "Saved question with time grouping",
           native: {
@@ -483,10 +482,12 @@ describe("scenarios > question > native", () => {
           visitQuestion: true,
         });
 
-        cy.findByTestId("query-visualization-root").should(
-          "not.contain",
-          "Error: invalid value specified for temporal-unit parameter.",
-        );
+        // it should change in the future: when time grouping is marked as optional via [[]]
+        // a column is not included into the resulted dataset
+        // it is included currently
+        cy.findByTestId("query-visualization-root")
+          .should("contain", "October 7, 2023, 1:34 AM")
+          .should("contain", "UNIT");
       });
 
       describe("validation", () => {
