@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -6,7 +6,7 @@ import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";
 import S from "./TablePicker.module.css";
-import type { TreePath } from "./types";
+import type { FlatItem, TreePath } from "./types";
 import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
 export function TablePicker({
@@ -20,7 +20,7 @@ export function TablePicker({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const deferredQuery = useDeferredValue(query);
   const { tree: searchTree } = useSearch(deferredQuery);
-  const searchItems = flatten(searchTree);
+  const searchItems = useMemo(() => flatten(searchTree), [searchTree]);
 
   // search results need their own keypress handling logic
   // because we want to keep the focus on the search input
@@ -90,6 +90,7 @@ export function TablePicker({
         <Tree value={value} onChange={onChange} />
       ) : (
         <Search
+          items={searchItems}
           query={deferredQuery}
           path={value}
           selectedIndex={selectedIndex}
@@ -154,12 +155,14 @@ function Tree({
 }
 
 function Search({
+  items,
   query,
   path,
   selectedIndex,
   onChange,
   onSelectedIndexChange,
 }: {
+  items: FlatItem[];
   query: string;
   path: TreePath;
   selectedIndex: number;
@@ -167,9 +170,8 @@ function Search({
   onSelectedIndexChange: (index: number) => void;
 }) {
   const debouncedQuery = useDebouncedValue(query, 300);
-  const { tree, isLoading } = useSearch(debouncedQuery);
+  const { isLoading } = useSearch(debouncedQuery);
 
-  const items = flatten(tree);
   const isEmpty = !isLoading && items.length === 0;
 
   if (isEmpty) {
