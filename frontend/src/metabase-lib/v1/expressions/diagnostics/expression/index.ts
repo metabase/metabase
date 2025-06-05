@@ -5,6 +5,7 @@ import { checkArgCount } from "./check-arg-count";
 import { checkArgValidators } from "./check-arg-validators";
 import { checkCaseOrIfArgCount } from "./check-case-or-if-arg-count";
 import { checkComparisonOperatorArgs } from "./check-comparison-operator-args";
+import { checkFunctionsForExpressionMode } from "./check-functions-for-expression-mode";
 import { checkKnownFunctions } from "./check-known-functions";
 import { checkLibDiagnostics } from "./check-lib-diagnostics";
 import { checkSupportedFunctions } from "./check-supported-functions";
@@ -12,6 +13,7 @@ import { checkSupportedFunctions } from "./check-supported-functions";
 const expressionChecks = [
   checkKnownFunctions,
   checkSupportedFunctions,
+  checkFunctionsForExpressionMode,
   checkArgValidators,
   checkArgCount,
   checkComparisonOperatorArgs,

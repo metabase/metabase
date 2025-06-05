@@ -9,11 +9,11 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_AUTH_PROVIDERS,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { CloudPanel } from "../components/CloudPanel";
 import {
   EmbeddingSdkSettings,
   StaticEmbeddingSettings,
@@ -21,22 +21,20 @@ import {
 import { SettingsLdapForm } from "../components/SettingsLdapForm";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
+import { CloudSettingsPage } from "../components/SettingsPages/CloudSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { EmbeddingSettingsPage } from "../components/SettingsPages/EmbeddingSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "../components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
 import { MapsSettingsPage } from "../components/SettingsPages/MapsSettingsPage";
+import { NotificationSettingsPage } from "../components/SettingsPages/NotificationSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
-import {
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-} from "./typed-selectors";
+import { getAdminSettingDefinitions } from "./typed-selectors";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -71,6 +69,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Updates`,
     order: 30,
     component: UpdatesSettingsPage,
+    getHidden: (settings) => settings["token-features"]?.hosting,
     settings: [],
     adminOnly: true,
   },
@@ -82,52 +81,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   "email/smtp": {
     component: SMTPConnectionForm,
-    settings: [
-      {
-        key: "email-smtp-host",
-        display_name: t`SMTP Host`,
-        placeholder: "smtp.yourservice.com",
-        type: "string",
-        required: true,
-        autoFocus: true,
-      },
-      {
-        key: "email-smtp-port",
-        display_name: t`SMTP Port`,
-        placeholder: "587",
-        type: "number",
-        required: true,
-        validations: [["integer", t`That's not a valid port number`]],
-      },
-      {
-        key: "email-smtp-security",
-        display_name: t`SMTP Security`,
-        description: null,
-        type: "radio",
-        options: [
-          { value: "none", name: "None" },
-          { value: "ssl", name: "SSL" },
-          { value: "tls", name: "TLS" },
-          { value: "starttls", name: "STARTTLS" },
-        ],
-        defaultValue: "none",
-      },
-      {
-        key: "email-smtp-username",
-        display_name: t`SMTP Username`,
-        description: null,
-        placeholder: "nicetoseeyou",
-        type: "string",
-      },
-      {
-        key: "email-smtp-password",
-        display_name: t`SMTP Password`,
-        description: null,
-        placeholder: "Shhh...",
-        type: "password",
-        getHidden: () => MetabaseSettings.isHosted(),
-      },
-    ],
+    settings: [],
   },
   "notifications/slack": {
     name: "Slack",
@@ -138,7 +92,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   notifications: {
     name: t`Notification channels`,
     order: 51,
-    component: NotificationSettings,
+    component: NotificationSettingsPage,
     settings: [],
   },
   authentication: {
@@ -170,6 +124,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "authentication/ldap": {
     component: SettingsLdapForm,
     order: 64,
+    settings: [],
+  },
+  "authentication/saml": {
+    component: () => <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />,
+    order: 65,
+    settings: [],
+  },
+  "authentication/jwt": {
+    component: () => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />,
+    order: 66,
     settings: [],
   },
   maps: {
@@ -256,11 +220,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: (settings) =>
-      settings["token-features"]?.hosting === true ||
-      settings["airgap-enabled"],
+    getHidden: (settings) => settings["airgap-enabled"],
     order: 140,
-    component: CloudPanel,
+    component: CloudSettingsPage,
     settings: [],
     isUpsell: true,
   },
@@ -270,16 +232,7 @@ export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
-export const getSettings = createSelector(
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-  (settings, warnings) =>
-    settings.map((setting) =>
-      warnings[setting.key]
-        ? { ...setting, warning: warnings[setting.key] }
-        : setting,
-    ),
-);
+export const getSettings = getAdminSettingDefinitions;
 
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from

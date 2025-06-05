@@ -78,7 +78,7 @@
                                                    [(u/qualified-name k) (fix-json-schema v)]))
                                             properties))))
 
-        (= (:type schema) :array)
+        (and (= (:type schema) :array) (:items schema))
         (update schema :items (fn [items]
                                 ;; apparently `:tuple` creates multiple `:items` entries... I don't think this is
                                 ;; correct. I think we're supposed to use `:prefixItems` instead. See
@@ -86,6 +86,9 @@
                                 (if (sequential? items)
                                   (mapv fix-json-schema items)
                                   (fix-json-schema items))))
+
+        (and (= (:type schema) :array) (false? (:items schema)))
+        (dissoc schema :items)
 
         :else
         schema))

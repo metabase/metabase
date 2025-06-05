@@ -4,9 +4,9 @@ import _ from "underscore";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
-import type { SettingKey, UserSettings } from "metabase-types/api";
+import type { EnterpriseSettingKey, UserSettings } from "metabase-types/api";
 
-export const useSetting = <SettingName extends SettingKey>(
+export const useSetting = <SettingName extends EnterpriseSettingKey>(
   settingName: SettingName,
 ) => {
   return useSelector((state) => getSetting(state, settingName));

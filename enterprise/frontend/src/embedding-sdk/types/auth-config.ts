@@ -57,3 +57,8 @@ export type MetabaseAuthConfig =
   | MetabaseAuthConfigWithApiKey
   | MetabaseAuthConfigWithJwt
   | MetabaseAuthConfigWithSaml;
+
+export type MetabaseAuthMethod = Exclude<
+  MetabaseAuthConfig["authMethod"],
+  undefined
+>;
