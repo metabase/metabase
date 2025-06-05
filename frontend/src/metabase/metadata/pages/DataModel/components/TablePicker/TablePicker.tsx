@@ -20,7 +20,7 @@ export function TablePicker({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const deferredQuery = useDeferredValue(query);
   const debouncedQuery = useDebouncedValue(deferredQuery, 300);
-  const { isLoading, tree } = useSearch(debouncedQuery);
+  const { isLoading, tree } = useSearch(debouncedQuery || deferredQuery);
   const searchItems = useMemo(() => flatten(tree), [tree]);
 
   // search results need their own keypress handling logic
