@@ -2056,3 +2056,32 @@ describe("Issue 58230", () => {
     H.popover().button("Done").should("be.enabled");
   });
 });
+
+describe("issue 57674", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  const args = ['"foo"', "10", "42.5", "[Created At]", "true"];
+  const combinations = [];
+  for (let i = 0; i < args.length; i++) {
+    for (let j = 0; j < args.length; j++) {
+      const a = args[i];
+      const b = args[j];
+      if (a !== b) {
+        combinations.push([a, b]);
+      }
+    }
+  }
+
+  for (const [a, b] of combinations) {
+    it(`should show an error when using a case or if expression with mismatched types (${a} vs. ${b}) (metabase#57674)`, () => {
+      H.getNotebookStep("data").button("Custom column").click();
+      H.CustomExpressionEditor.type(`case([Total] > 100, ${a}, ${b})`).blur();
+
+      H.popover().findByText("Types are incompatible.").should("be.visible");
+    });
+  }
+});
