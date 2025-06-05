@@ -254,6 +254,9 @@ export const ChartSettingFieldsPartition = ({
     column: Lib.ColumnMetadata,
   ) => {
     const columnName = Lib.displayInfo(query, -1, column).name;
+
+    // Lib.columnKey
+
     const bucket = Lib.temporalBucket(column);
     const bucketName = bucket
       ? Lib.displayInfo(query, 0, bucket)?.shortName
