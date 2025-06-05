@@ -79,7 +79,7 @@ export const SlackStatus = () => {
           opened={isOpened}
           onClose={handleClose}
           title={t`Are you sure you want to delete your Slack App?`}
-          message={jt`Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up. Are you sure you want to delete your Slack App integration?`}
+          message={t`Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up. Are you sure you want to delete your Slack App integration?`}
           confirmButtonText={t`Delete`}
           onConfirm={handleDelete}
         />

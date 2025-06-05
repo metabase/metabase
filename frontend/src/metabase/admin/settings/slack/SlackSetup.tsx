@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { useGetSlackManifestQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ButtonLink } from "metabase/core/components/ExternalLink";
+import Markdown from "metabase/core/components/Markdown";
 import { Box, Divider, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { SlackBadge } from "./SlackBadge";
@@ -20,11 +21,9 @@ export const SlackSetup = () => {
         title={t`1. Click the button below and create your Slack App`}
       >
         <Text>
-          {jt`First, ${(
-            <strong key="click-button">{t`click the button below to create your Slack App`}</strong>
-          )} using the Metabase configuration. Once created, click “${(
-            <strong key="install-app">{t`Install to workspace`}</strong>
-          )}” to authorize it.`}
+          <Markdown>
+            {t`First, **click the button below to create your Slack App** using the Metabase configuration. Once created, click "**Install to workspace**" to authorize it.`}
+          </Markdown>
         </Text>
         <SlackAppsLink />
       </SetupSection>
@@ -32,11 +31,9 @@ export const SlackSetup = () => {
         title={t`2. Activate the OAuth Token and create a new slack channel`}
       >
         <Text mb="md">
-          {jt`Click on "${(
-            <strong key="click">{t`OAuth and Permissions`}</strong>
-          )}" in the sidebar, copy the “${(
-            <strong key="token">{t`Bot User OAuth Token`}</strong>
-          )}” and paste it here.`}
+          <Markdown>
+            {t`Click on "**OAuth and Permissions**" in the sidebar, copy the "**Bot User OAuth Token**" and paste it here.`}
+          </Markdown>
         </Text>
         <SlackSetupForm />
       </SetupSection>
@@ -57,9 +54,9 @@ const SetupHeader = ({
       {isBot ? (
         <Text>
           <SlackBadge isBot={isBot} isValid={isValid} />{" "}
-          {jt`We recommend you ${(
-            <strong key="apps">{t`upgrade to Slack Apps`}</strong>
-          )}, see the instructions below:`}
+          <Markdown>
+            {t`We recommend you **upgrade to Slack Apps** see the instructions below:`}
+          </Markdown>
         </Text>
       ) : (
         <Text c="text-medium">

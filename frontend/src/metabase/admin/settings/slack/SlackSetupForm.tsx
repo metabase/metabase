@@ -63,7 +63,7 @@ export const SlackSetupForm = ({
             />
           )}
           <Box>
-            <FormSubmitButton title={t`Save changes`} />
+            <FormSubmitButton label={t`Save changes`} />
             <FormErrorMessage />
           </Box>
         </Stack>

@@ -55,7 +55,7 @@ describe("SlackSetup", () => {
     await setup({ bugReporting: false, botToken: true });
     expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
     expect(
-      await screen.findByText("upgrade to Slack Apps"),
+      await screen.findByText(/upgrade to Slack Apps/),
     ).toBeInTheDocument();
   });
 

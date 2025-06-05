@@ -17,7 +17,7 @@ export const SlackBadge = ({
 
   return (
     <Center>
-      <Box className={S.StatusBadge} c={color} />
+      <Box className={S.StatusBadge} bg={color} />
       <Text fw="bold" c={color}>
         {getMessage(isBot, isValid)}
       </Text>
