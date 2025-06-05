@@ -6,7 +6,6 @@ import {
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
-import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { getInitialStateForMultipleSeries } from "./get-initial-state-for-multiple-series";
 
@@ -17,7 +16,6 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
   it("should handle multiple series cartesian charts", () => {
     const firstCard = createMockCard({
       id: 1,
-      entity_id: createMockEntityId(),
       name: "First Series",
       display: "line",
       visualization_settings: {
@@ -28,7 +26,6 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
 
     const secondCard = createMockCard({
       id: 2,
-      entity_id: createMockEntityId(),
       name: "Second Series",
       display: "line",
       visualization_settings: {
@@ -66,28 +63,28 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
         {
           name: "COLUMN_1",
           originalName: "Date",
-          sourceId: `card:${firstCard.entity_id}`,
+          sourceId: "card:1",
         },
       ],
       COLUMN_2: [
         {
           name: "COLUMN_2",
           originalName: "Revenue",
-          sourceId: `card:${firstCard.entity_id}`,
+          sourceId: "card:1",
         },
       ],
       COLUMN_3: [
         {
           name: "COLUMN_3",
           originalName: "Date",
-          sourceId: `card:${secondCard.entity_id}`,
+          sourceId: "card:2",
         },
       ],
       COLUMN_4: [
         {
           name: "COLUMN_4",
           originalName: "Profit",
-          sourceId: `card:${secondCard.entity_id}`,
+          sourceId: "card:2",
         },
       ],
     });

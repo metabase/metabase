@@ -3,39 +3,38 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { GoogleAuthForm } from "metabase/admin/settings/auth/components/GoogleAuthForm";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_LLM_AUTODESCRIPTION,
+  PLUGIN_AUTH_PROVIDERS,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { CloudPanel } from "../components/CloudPanel";
 import {
   EmbeddingSdkSettings,
-  EmbeddingSettings,
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
-import SettingsLicense from "../components/SettingsLicense";
+import { SettingsLdapForm } from "../components/SettingsLdapForm";
 import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
+import { CloudSettingsPage } from "../components/SettingsPages/CloudSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
+import { EmbeddingSettingsPage } from "../components/SettingsPages/EmbeddingSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { LicenseSettingsPage } from "../components/SettingsPages/LicenseSettingsPage";
+import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
+import { MapsSettingsPage } from "../components/SettingsPages/MapsSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
-import FormattingWidget from "../components/widgets/FormattingWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
-import {
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-} from "./typed-selectors";
+import { getAdminSettingDefinitions } from "./typed-selectors";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -70,6 +69,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Updates`,
     order: 30,
     component: UpdatesSettingsPage,
+    getHidden: (settings) => settings["token-features"]?.hosting,
     settings: [],
     adminOnly: true,
   },
@@ -81,52 +81,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   "email/smtp": {
     component: SMTPConnectionForm,
-    settings: [
-      {
-        key: "email-smtp-host",
-        display_name: t`SMTP Host`,
-        placeholder: "smtp.yourservice.com",
-        type: "string",
-        required: true,
-        autoFocus: true,
-      },
-      {
-        key: "email-smtp-port",
-        display_name: t`SMTP Port`,
-        placeholder: "587",
-        type: "number",
-        required: true,
-        validations: [["integer", t`That's not a valid port number`]],
-      },
-      {
-        key: "email-smtp-security",
-        display_name: t`SMTP Security`,
-        description: null,
-        type: "radio",
-        options: [
-          { value: "none", name: "None" },
-          { value: "ssl", name: "SSL" },
-          { value: "tls", name: "TLS" },
-          { value: "starttls", name: "STARTTLS" },
-        ],
-        defaultValue: "none",
-      },
-      {
-        key: "email-smtp-username",
-        display_name: t`SMTP Username`,
-        description: null,
-        placeholder: "nicetoseeyou",
-        type: "string",
-      },
-      {
-        key: "email-smtp-password",
-        display_name: t`SMTP Password`,
-        description: null,
-        placeholder: "Shhh...",
-        type: "password",
-        getHidden: () => MetabaseSettings.isHosted(),
-      },
-    ],
+    settings: [],
   },
   "notifications/slack": {
     name: "Slack",
@@ -161,91 +116,32 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
     adminOnly: true,
   },
+  "authentication/google": {
+    component: GoogleAuthForm,
+    order: 63,
+    settings: [],
+  },
+  "authentication/ldap": {
+    component: SettingsLdapForm,
+    order: 64,
+    settings: [],
+  },
+  "authentication/saml": {
+    component: () => <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />,
+    order: 65,
+    settings: [],
+  },
   maps: {
     name: t`Maps`,
     order: 70,
-    settings: [
-      {
-        key: "map-tile-server-url",
-        display_name: t`Map tile server URL`,
-        description: (
-          <>
-            <div>
-              {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
-            </div>
-            <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
-          </>
-        ),
-        type: "string",
-      },
-      {
-        key: "custom-geojson",
-        display_name: t`Custom Maps`,
-        description: t`Add your own GeoJSON files to enable different region map visualizations`,
-        widget: CustomGeoJSONWidget,
-        noHeader: true,
-      },
-    ],
+    component: MapsSettingsPage,
+    settings: [],
   },
   localization: {
     name: t`Localization`,
     order: 80,
-    settings: [
-      {
-        display_name: t`Instance language`,
-        key: "site-locale",
-        type: "select",
-        options: _.sortBy(
-          MetabaseSettings.get("available-locales") || [],
-          ([code, name]) => name,
-        ).map(([code, name]) => ({ name, value: code })),
-        defaultValue: "en",
-        onChanged: (oldLocale, newLocale) => {
-          if (oldLocale !== newLocale) {
-            window.location.reload();
-          }
-        },
-      },
-      {
-        key: "report-timezone",
-        display_name: t`Report Timezone`,
-        type: "select",
-        options: [
-          { name: t`Database Default`, value: "" },
-          ...(MetabaseSettings.get("available-timezones") || []),
-        ],
-        description: (
-          <>
-            <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
-            <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
-          </>
-        ),
-        allowValueCollection: true,
-        searchProp: "name",
-        defaultValue: "",
-      },
-      {
-        key: "start-of-week",
-        display_name: t`First day of the week`,
-        type: "select",
-        options: [
-          { value: "sunday", name: t`Sunday` },
-          { value: "monday", name: t`Monday` },
-          { value: "tuesday", name: t`Tuesday` },
-          { value: "wednesday", name: t`Wednesday` },
-          { value: "thursday", name: t`Thursday` },
-          { value: "friday", name: t`Friday` },
-          { value: "saturday", name: t`Saturday` },
-        ],
-        defaultValue: "sunday",
-      },
-      {
-        display_name: t`Localization options`,
-        description: "",
-        key: "custom-formatting",
-        widget: FormattingWidget,
-      },
-    ],
+    component: LocalizationSettingsPage,
+    settings: [],
   },
   uploads: {
     name: t`Uploads`,
@@ -264,7 +160,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
-    component: EmbeddingSettings,
+    component: EmbeddingSettingsPage,
     settings: [],
   },
   "embedding-in-other-applications/standalone": {
@@ -287,33 +183,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   license: {
     name: t`License`,
     order: 110,
-    component: SettingsLicense,
+    component: LicenseSettingsPage,
     settings: [],
-  },
-  llm: {
-    name: t`AI Features`,
-    getHidden: (settings) =>
-      !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
-    order: 131,
-    settings: [
-      {
-        key: "ee-ai-features-enabled",
-        display_name: t`AI features enabled`,
-        description: (
-          <>
-            <div>{t`Enable AI features.`}</div>
-            <div>{t`You must supply an API key before AI features can be enabled.`}</div>
-          </>
-        ),
-        type: "boolean",
-      },
-      {
-        key: "ee-openai-api-key",
-        display_name: t`EE OpenAI API Key`,
-        description: t`API key used for Enterprise AI features`,
-        type: "string",
-      },
-    ],
   },
   appearance: {
     // OSS Version
@@ -344,11 +215,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: (settings) =>
-      settings["token-features"]?.hosting === true ||
-      settings["airgap-enabled"],
+    getHidden: (settings) => settings["airgap-enabled"],
     order: 140,
-    component: CloudPanel,
+    component: CloudSettingsPage,
     settings: [],
     isUpsell: true,
   },
@@ -358,16 +227,7 @@ export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
-export const getSettings = createSelector(
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-  (settings, warnings) =>
-    settings.map((setting) =>
-      warnings[setting.key]
-        ? { ...setting, warning: warnings[setting.key] }
-        : setting,
-    ),
-);
+export const getSettings = getAdminSettingDefinitions;
 
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from

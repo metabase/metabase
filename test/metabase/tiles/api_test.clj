@@ -146,8 +146,9 @@
                                                (encoded-lat-field-ref)
                                                (encoded-lon-field-ref))
                    :parameters (json/encode [{:id "_STATE_"
-                                              :value ["CA"]}])))))))
+                                              :value ["CA"]}]))))))))
 
+(deftest parameterized-dashcard-test-2
   (testing "Parameterized native dashcard"
     (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:parameters [{:name "State"
                                                                           :id "_STATE_"

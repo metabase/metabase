@@ -365,7 +365,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalName = "Sum of Total";
       const customName = "Custom";
 
-      H.cartesianChartCircle().first().realHover();
+      H.cartesianChartCircle().first().trigger("mousemove");
       H.assertEChartsTooltip({
         header: "2022",
         rows: [{ name: originalName, value: "42,156.87" }],
@@ -379,7 +379,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       H.saveDashcardVisualizerModalSettings();
       H.saveDashboard();
 
-      H.cartesianChartCircle().first().realHover();
+      H.cartesianChartCircle().first().trigger("mousemove");
       H.assertEChartsTooltip({
         header: "2022",
         rows: [{ name: customName, value: "42,156.87" }],
@@ -391,7 +391,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
   });
 
-  describe.skip("> single series question on dashboard with added series", () => {
+  describe("> single series question on dashboard with added series", () => {
     beforeEach(() => {
       setup({
         question: SUM_OF_TOTAL,
@@ -427,12 +427,15 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ],
       });
 
-      openDashCardVisualizationOptions();
-
-      updateColumnTitle("Q1", updatedOriginalSeriesName);
-      updateColumnTitle("Q2", updatedAddedSeriesName);
-
-      saveDashCardVisualizationOptions();
+      H.editDashboard();
+      H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+      H.modal().within(() => {
+        cy.button("Settings").click();
+        updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
+        updateColumnTitle(addedSeriesName, updatedAddedSeriesName);
+        cy.button("Save").click();
+      });
+      H.saveDashboard();
 
       showTooltipForCircleInSeries("#88BF4D");
       H.assertEChartsTooltip({
@@ -480,7 +483,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const customAvgSeriesName = "Custom 1";
       const customCumSumSeriesName = "Custom 2";
 
-      H.cartesianChartCircle().first().realHover();
+      H.cartesianChartCircle().first().trigger("mousemove");
       H.assertEChartsTooltip({
         header: "2022",
         rows: [
@@ -506,7 +509,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       H.saveDashcardVisualizerModalSettings();
       H.saveDashboard();
 
-      H.cartesianChartCircle().first().realHover();
+      H.cartesianChartCircle().first().trigger("mousemove");
       // TODO also check the colors
       // TODO: VIZ-671/converting-a-multi-series-line-chart-swaps-the-series-colors
       H.assertEChartsTooltip({
@@ -546,7 +549,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     H.cartesianChartCircleWithColor("#A989C5")
       .first()
       .as("firstCircle")
-      .realHover();
+      .trigger("mousemove");
 
     // Ensure the tooltip is visible
     H.assertEChartsTooltip({ header: "2022" });
@@ -578,7 +581,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     H.cartesianChartCircleWithColor("#A989C5")
       .first()
       .as("firstCircle")
-      .realHover();
+      .trigger("mousemove");
 
     // Ensure the tooltip is visible
     H.assertEChartsTooltip({ header: "2022" });
@@ -598,7 +601,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
     });
 
-    // TODO: this card should be converted properly, right now it isn't
+    // TODO: Fix series have different colors in visualizer because of different
+    // column names in original dashcard and visualizer ("avg" becomes "COLUMN_2" and the color has is different)
     it.skip("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       // Checking the second datum since the first circle of one series is covered with a circle from the other series
       const circleIndex = 1;
@@ -709,7 +713,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalName = "Sum of Total";
       const updatedName = "Custom";
 
-      H.chartPathWithFillColor("#88BF4D").first().realHover();
+      H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
       H.assertEChartsTooltip({
         header: "2022",
         rows: [
@@ -729,7 +733,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       H.saveDashcardVisualizerModalSettings();
       H.saveDashboard();
 
-      H.chartPathWithFillColor("#88BF4D").first().realHover();
+      H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
       H.assertEChartsTooltip({
         header: "2022",
         rows: [
@@ -757,8 +761,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
     });
 
-    // TODO: this card should be converted properly, right now it isn't
-    it.skip("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalSeriesColor = "#88BF4D";
       const addedSeriesColor = "#A989C5";
       const originalSeriesName = "Q1";
@@ -1124,7 +1127,7 @@ function setupDashboard(
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
   H.echartsTriggerBlur();
   // eslint-disable-next-line no-unsafe-element-filtering
-  H.cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
+  H.cartesianChartCircleWithColor(seriesColor).eq(index).trigger("mousemove");
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
@@ -1139,20 +1142,10 @@ function testTooltipExcludesText(text) {
   });
 }
 
-function openDashCardVisualizationOptions() {
-  cy.icon("pencil").click();
-  cy.findByTestId("dashcard").realHover();
-  cy.icon("palette").click();
-}
-
 function updateColumnTitle(originalText, updatedText) {
-  cy.findByDisplayValue(originalText).clear().type(updatedText).blur();
-}
-
-function saveDashCardVisualizationOptions() {
-  H.modal().within(() => {
-    cy.findByText("Done").click();
-  });
-
-  H.saveDashboard();
+  cy.findByTestId("chartsettings-list-container")
+    .findByDisplayValue(originalText)
+    .clear()
+    .type(updatedText)
+    .blur();
 }

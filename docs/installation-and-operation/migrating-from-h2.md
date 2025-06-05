@@ -25,7 +25,7 @@ The migration process is a one-off process. You can execute the migration script
 
 One important thing here is that the version of Metabase you use during the migration process must be the same. Meaning, the Metabase you use to run the migration command must be the same one that was last used to create or update H2 file, which must be the same version you'll be using in production. Only _after_ completing the migration should you consider upgrading.
 
-You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](https://www.metabase.com/cloud/docs/migrate/guide.html).
+You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
 ## Supported databases for storing your Metabase application data
 

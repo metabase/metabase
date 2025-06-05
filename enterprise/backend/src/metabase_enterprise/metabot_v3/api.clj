@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase-enterprise.metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
@@ -11,6 +12,7 @@
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.util.handlers :as handlers]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -57,6 +59,17 @@
          :conversation_id conversation_id)
     (metabot-v3.context/log :llm.log/be->fe)))
 
+(api.macros/defendpoint :get "/v2/prompt-suggestions"
+  "Get a set of suggested LLM prompts for the current user."
+  [_route-params
+   _query-params
+   _body]
+  (metabot-v3.context/log {:api :get-prompts} :llm.log/fe->be)
+  {:prompts []})
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (handlers/routes
+   (api.macros/ns-handler *ns* +auth)
+   (handlers/route-map-handler
+    {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes})))

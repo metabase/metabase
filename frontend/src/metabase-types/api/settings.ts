@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
 export interface FormattingSettings {
@@ -172,6 +173,7 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
+  "embedding-iframe-sdk",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -179,6 +181,7 @@ const tokenStatusFeatures = [
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
+  "refresh-token-features",
   "sandboxes",
   "scim",
   "serialization",
@@ -222,8 +225,8 @@ export const tokenFeatures = [
   "content_verification",
   "embedding",
   "embedding_sdk",
+  "embedding_iframe_sdk",
   "hosting",
-  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "scim",
@@ -295,6 +298,16 @@ export interface UploadsSettings {
   table_prefix: string | null;
 }
 
+export type CustomGeoJSONMap = {
+  name: string;
+  url: string;
+  region_key: string;
+  region_name: string;
+  builtin?: boolean;
+};
+
+export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
+
 interface InstanceSettings {
   "admin-email": string;
   "email-from-name": string | null;
@@ -338,6 +351,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
@@ -348,9 +362,6 @@ interface AdminSettings {
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
   "premium-embedding-token": string | null;
-  "saml-configured"?: boolean;
-  "saml-enabled"?: boolean;
-  "saml-identity-provider-uri": string | null;
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -388,10 +399,12 @@ interface PublicSettings {
   "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-geojson": CustomGeoJSONSetting;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
@@ -412,10 +425,24 @@ interface PublicSettings {
   "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "jwt-identity-provider-uri"?: string | null;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-host": string | null;
   "ldap-port": number;
-  "ldap-group-membership-filter": string;
+  "ldap-security": "none" | "ssl" | "starttls" | null;
+  "ldap-bind-dn": string | null;
+  "ldap-password": string | null;
+  "ldap-user-base": string | null;
+  "ldap-user-filter": string | null;
+  "ldap-attribute-email": string | null;
+  "ldap-attribute-firstname": string | null;
+  "ldap-attribute-lastname": string | null;
+  "ldap-group-sync": boolean;
+  "ldap-group-base": string | null;
+  "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
+  "ldap-group-membership-filter"?: string;
+  "ldap-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
@@ -423,6 +450,7 @@ interface PublicSettings {
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "persisted-model-refresh-cron-schedule": string;
+  "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
   "session-cookies": boolean | null;
@@ -444,10 +472,10 @@ interface PublicSettings {
 }
 
 export type UserSettings = {
+  "dismissed-excel-pivot-exports-banner"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
-  "dismissed-onboarding-sidebar-link"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
@@ -518,11 +546,26 @@ export interface EnterpriseSettings extends Settings {
   "ee-ai-features-enabled"?: boolean;
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
-  "saml-user-provisioning-enabled?"?: boolean;
   "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
+  "saml-enabled": boolean;
+  "saml-configured": boolean;
+  "saml-user-provisioning-enabled?": boolean;
+  "saml-identity-provider-uri": string | null;
+  "saml-identity-provider-issuer": string | null;
+  "saml-identity-provider-certificate": string | null;
+  "saml-application-name": string | null;
+  "saml-keystore-path": string | null;
+  "saml-keystore-password": string | null;
+  "saml-keystore-alias": string | null;
+  "saml-attribute-email": string | null;
+  "saml-attribute-firstname": string | null;
+  "saml-attribute-lastname": string | null;
+  "saml-attribute-group": string | null;
+  "saml-group-sync": boolean | null;
+  "saml-group-mappings": Record<string, GroupId[]> | null;
   /**
    * @deprecated
    */

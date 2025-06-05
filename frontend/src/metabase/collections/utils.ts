@@ -73,6 +73,10 @@ export function isInstanceAnalyticsCustomCollection(
   );
 }
 
+export function isExamplesCollection(collection: Collection): boolean {
+  return !!collection.is_sample && collection.name === "Examples";
+}
+
 // Replace the name for the current user's collection
 // @Question - should we just update the API to do this?
 function preparePersonalCollection(c: Collection): Collection {

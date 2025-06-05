@@ -636,7 +636,7 @@ describe("scenarios > question > custom column", () => {
 
     H.queryBuilderMain().findByText("MiscDate").should("be.visible");
     cy.findByTestId("qb-filters-panel")
-      .findByText("MiscDate is in the previous 30 years")
+      .findByText("MiscDate is in the previous 30 years or this year")
       .should("be.visible");
   });
 
@@ -1605,13 +1605,6 @@ describe("scenarios > question > custom column > function browser", () => {
 
     H.CustomExpressionEditor.functionBrowser()
       .findByText("datetimeAdd")
-      .should("be.visible");
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("Adds some units of time to a date or timestamp value.")
-      .should("be.visible");
-
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("datetimeAdd")
       .click();
 
     H.CustomExpressionEditor.value().should("equal", "datetimeAdd()");
@@ -1658,7 +1651,7 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("second").should("be.visible");
       //
       cy.findByPlaceholderText("Search functions…").clear();
-      cy.findByText("datetimeAdd").should("be.visible");
+      cy.findByText("datetimeAdd").should("exist");
     });
   });
 

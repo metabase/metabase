@@ -6,16 +6,11 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
-import { Switch } from "metabase/ui";
+import { Switch, Title } from "metabase/ui";
 
 import { getIsStepActive, getUserEmail } from "../../selectors";
 
-import {
-  StepBody,
-  StepFooter,
-  StepRoot,
-  StepTitle,
-} from "./CompletedStep.styled";
+import { StepBody, StepFooter, StepRoot } from "./CompletedStep.styled";
 
 export const CompletedStep = (): JSX.Element | null => {
   const [checkboxValue, setCheckboxValue] = useState(false);
@@ -47,7 +42,7 @@ export const CompletedStep = (): JSX.Element | null => {
 
   return (
     <StepRoot>
-      <StepTitle>{t`You're all set up!`}</StepTitle>
+      <Title order={2}>{t`You're all set up!`}</Title>
       <StepBody>
         <Switch
           checked={checkboxValue}

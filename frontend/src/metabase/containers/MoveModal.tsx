@@ -26,6 +26,7 @@ interface BaseMoveModalProps {
   onClose: () => void;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
+  recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
 }
 
 type MoveModalProps =
@@ -39,20 +40,24 @@ type MoveModalProps =
     });
 
 const makeRecentFilter = (
-  disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
+  disableFns: (((item: CollectionPickerItem) => boolean) | undefined)[],
 ) => {
   return (recentItems: RecentItem[]) =>
-    recentItems.filter(
-      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
+    recentItems.filter((result) =>
+      disableFns
+        .map((disableFn) => !disableFn?.(result as CollectionPickerItem))
+        .every((val) => val === true),
     );
 };
 
 const makeSearchResultFilter = (
-  disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
+  disableFns: (((item: CollectionPickerItem) => boolean) | undefined)[],
 ) => {
   return (searchResults: SearchResult[]) =>
-    searchResults.filter(
-      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
+    searchResults.filter((result) =>
+      disableFns
+        .map((disableFn) => !disableFn?.(result as CollectionPickerItem))
+        .every((val) => val === true),
     );
 };
 
@@ -63,6 +68,7 @@ export const MoveModal = ({
   initialCollectionId,
   movingCollectionId,
   canMoveToDashboard,
+  recentAndSearchFilter,
 }: MoveModalProps) => {
   // if we are moving a collection, we can't move it into itself or any of its children
   const shouldDisableItem = movingCollectionId
@@ -75,11 +81,17 @@ export const MoveModal = ({
         )
     : undefined;
 
-  const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
+  const searchResultFilter = makeSearchResultFilter([
+    shouldDisableItem,
+    recentAndSearchFilter,
+  ]);
 
-  const recentFilter = makeRecentFilter((item) => {
-    return Boolean(!item.can_write || shouldDisableItem?.(item));
-  });
+  const recentFilter = makeRecentFilter([
+    (item) => {
+      return Boolean(!item.can_write || shouldDisableItem?.(item));
+    },
+    recentAndSearchFilter,
+  ]);
 
   const handleMove = useCallback(
     (destination: CollectionPickerValueItem) => {
@@ -146,6 +158,7 @@ interface BulkMoveModalProps {
   onMove: OnMoveWithOneItem<MoveDestination>;
   selectedItems: CollectionItem[];
   initialCollectionId: CollectionId;
+  recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
 }
 
 export const BulkMoveModal = ({
@@ -153,6 +166,7 @@ export const BulkMoveModal = ({
   onMove,
   selectedItems,
   initialCollectionId,
+  recentAndSearchFilter,
 }: BulkMoveModalProps) => {
   const movingCollectionIds = selectedItems
     .filter((item: CollectionItem) => isItemCollection(item))
@@ -172,8 +186,14 @@ export const BulkMoveModal = ({
       }
     : undefined;
 
-  const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
-  const recentFilter = makeRecentFilter(shouldDisableItem);
+  const searchResultFilter = makeSearchResultFilter([
+    shouldDisableItem,
+    recentAndSearchFilter,
+  ]);
+  const recentFilter = makeRecentFilter([
+    shouldDisableItem,
+    recentAndSearchFilter,
+  ]);
 
   const title =
     selectedItems.length > 1

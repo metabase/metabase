@@ -1,7 +1,7 @@
 import {
   LEVEL_ONE_TYPES as cljs_LEVEL_ONE_TYPES,
   TYPE as cljs_TYPE,
-} from "cljs/metabase.types";
+} from "cljs/metabase.types.core";
 
 export const LEVEL_ONE_TYPES: string[] = cljs_LEVEL_ONE_TYPES;
 

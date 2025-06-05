@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [mb.hawk.init]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.notification.core :as notification]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -117,6 +117,11 @@
 (define-initialization :notifications
   (initialize-if-needed! :db)
   (notification/seed-notification!))
+
+(define-initialization :row-lock
+  (initialize-if-needed! :db)
+  (classloader/require 'metabase.test.initialize.row-lock)
+  ((resolve 'metabase.test.initialize.row-lock/init!)))
 
 (defn- all-components
   "Set of all components/initialization steps that are defined."

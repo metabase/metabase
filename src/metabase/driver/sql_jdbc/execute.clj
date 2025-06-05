@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
@@ -26,7 +27,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -34,8 +34,7 @@
    [metabase.util.performance :as perf]
    [potemkin :as p])
   (:import
-   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException
-             Statement Types)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (javax.sql DataSource)))
 
@@ -468,13 +467,6 @@
       (set-parameter driver stmt (inc i) param))
     params)))
 
-(defsetting sql-jdbc-fetch-size
-  "Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
-  in memory."
-  :default 500
-  :type :integer
-  :visibility :internal)
-
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn
@@ -489,7 +481,7 @@
           (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
       (try
         (when (zero? (.getFetchSize stmt))
-          (.setFetchSize stmt (sql-jdbc-fetch-size)))
+          (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e "Error setting prepared statement fetch size to fetch-size")))
       (set-parameters! driver stmt params)
@@ -516,7 +508,7 @@
           (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
       (try
         (when (zero? (.getFetchSize stmt))
-          (.setFetchSize stmt (sql-jdbc-fetch-size)))
+          (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e "Error setting statement fetch size to fetch-size")))
       stmt

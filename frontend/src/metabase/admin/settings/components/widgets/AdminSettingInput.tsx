@@ -17,11 +17,14 @@ import {
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
+  SettingDefinition,
+  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 
-type OptionsInputType = "select" | "radio";
+type SelectInputType = "select";
+type RadioInputType = "radio";
 type TextualInputType = "text" | "number" | "password" | "textarea";
 type BooleanInputType = "boolean";
 
@@ -30,16 +33,25 @@ type InputDetails =
       inputType: TextualInputType;
       options?: never;
       placeholder?: string;
+      searchable?: never;
     }
   | {
-      inputType: OptionsInputType;
+      inputType: SelectInputType;
       options: { label: string; value: string }[];
       placeholder?: string;
+      searchable?: boolean;
+    }
+  | {
+      inputType: RadioInputType;
+      options: { label: string; value: string }[];
+      placeholder?: string;
+      searchable?: never;
     }
   | {
       inputType: BooleanInputType;
       options?: never;
       placeholder?: never;
+      searchable?: never;
     };
 
 export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
@@ -47,6 +59,7 @@ export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   title?: string;
   description?: React.ReactNode;
   hidden?: boolean;
+  disabled?: boolean;
   switchLabel?: React.ReactNode;
 } & InputDetails &
   BoxProps;
@@ -65,6 +78,8 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   placeholder,
   switchLabel,
   options,
+  disabled,
+  searchable,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
   const {
@@ -104,6 +119,8 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
           placeholder={placeholder}
           inputType={inputType}
           switchLabel={switchLabel}
+          searchable={searchable}
+          disabled={disabled}
         />
       )}
     </Box>
@@ -120,6 +137,7 @@ export function BasicAdminSettingInput({
   inputType,
   autoFocus,
   switchLabel,
+  searchable,
 }: {
   name: EnterpriseSettingKey;
   value: any;
@@ -128,8 +146,13 @@ export function BasicAdminSettingInput({
   options?: { label: string; value: string }[];
   placeholder?: string;
   autoFocus?: boolean;
-  inputType: TextualInputType | OptionsInputType | BooleanInputType;
   switchLabel?: React.ReactNode;
+  inputType:
+    | TextualInputType
+    | SelectInputType
+    | RadioInputType
+    | BooleanInputType;
+  searchable?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -147,10 +170,11 @@ export function BasicAdminSettingInput({
       return (
         <Select
           id={name}
-          value={localValue}
+          value={localValue === null ? "" : localValue}
           onChange={handleChange}
           data={options ?? []}
           disabled={disabled}
+          searchable={searchable}
         />
       );
     case "boolean":
@@ -243,3 +267,33 @@ export const SetByEnvVar = ({ varName }: { varName: string }) => {
     </Box>
   );
 };
+
+type SetByEnvVarWrapperProps<S extends EnterpriseSettingKey> = {
+  settingKey: S;
+  settingDetails: SettingDefinition<S> | undefined;
+  children: React.ReactNode;
+};
+
+export function SetByEnvVarWrapper<SettingName extends SettingKey>({
+  settingKey,
+  settingDetails,
+  children,
+}: SetByEnvVarWrapperProps<SettingName>) {
+  if (
+    settingDetails &&
+    settingDetails.is_env_setting &&
+    settingDetails.env_name
+  ) {
+    return (
+      <Box mb="lg">
+        <SettingHeader
+          id={settingKey}
+          title={settingDetails.display_name}
+          description={settingDetails.description}
+        />
+        <SetByEnvVar varName={settingDetails.env_name} />
+      </Box>
+    );
+  }
+  return children;
+}

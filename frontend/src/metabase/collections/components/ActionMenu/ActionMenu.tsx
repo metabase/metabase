@@ -140,7 +140,6 @@ function ActionMenu({
 
     dispatch(
       addUndo({
-        icon: "check",
         message: t`${item.name} has been restored.`,
         actionLabel: t`View`, // could be collection or dashboard
         action: () => dispatch(push(redirect)),

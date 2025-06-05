@@ -2,7 +2,7 @@
   (:require
    [clojure.data.csv]
    [medley.core :as m]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.settings :as qp.settings]
@@ -133,14 +133,12 @@
                                                       (formatter (streaming.common/format-value r)))
                                                     @ordered-formatters ordered-row)
                                          (m/remove-nth pivot-grouping-index))]
-                  (write-csv writer [formatted-row])
-                  (.flush writer)))
+                  (write-csv writer [formatted-row])))
               ;; All other results: write directly to the CSV
               (let [formatted-row (perf/mapv (fn [formatter r]
                                                (formatter (streaming.common/format-value r)))
                                              @ordered-formatters ordered-row)]
-                (write-csv writer [formatted-row])
-                (.flush writer))))))
+                (write-csv writer [formatted-row]))))))
 
       (finish! [_ _]
         (when (and (contains? @pivot-data :data) enable-pivoted-exports?)

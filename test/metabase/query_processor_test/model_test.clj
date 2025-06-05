@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
@@ -62,7 +62,7 @@
                          (lib/->legacy-MBQL $q))]
           (is (= ["Reviews → Created At: Month"
                   "Average of Rating"
-                  "Products+Reviews Summary - Reviews → Created At: Month → Created At"
+                  "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
                   "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
                  (->> (qp/process-query question)
                       mt/cols

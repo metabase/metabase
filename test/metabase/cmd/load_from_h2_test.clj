@@ -1,14 +1,14 @@
 (ns metabase.cmd.load-from-h2-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.setup :as mdb.setup]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.test-util :as cmd.test-util]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.liquibase :as liquibase]
-   [metabase.db.setup :as mdb.setup]
-   [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.search.core :as search]

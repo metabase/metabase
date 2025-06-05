@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.request.settings :as request.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -177,11 +177,3 @@
           (catch Throwable e
             (log/error e "Error geocoding IP addresses" {:url url})
             nil))))))
-
-(def response-unauthentic
-  "Generic `401 (Unauthenticated)` Ring response map."
-  {:status 401, :body "Unauthenticated"})
-
-(def response-forbidden
-  "Generic `403 (Forbidden)` Ring response map."
-  {:status 403, :body "Forbidden"})

@@ -19,7 +19,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     );
   });
 
-  it("should show empty sidebar when no data source is selected", () => {
+  it("should not an show empty sidebar when no data source is selected", () => {
+    H.setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.findByLabelText("View SQL").click();
@@ -27,18 +28,13 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.findByTestId("app-bar").findByLabelText("New").click();
     H.popover().findByTextEnsureVisible("Question").click();
-    cy.wait("@nativeDataset");
     cy.findByTestId("data-step-cell").should(
       "have.text",
       "Pick your starting data",
     );
     H.entityPickerModal().button("Close").click();
 
-    cy.findByTestId("native-query-preview-sidebar").within(() => {
-      cy.findByText("SQL for this question").should("exist");
-      H.NativeEditor.get().should("not.exist");
-      cy.button("Convert this question to SQL").should("be.disabled");
-    });
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
   it("smoke test: should show the preview sidebar, update it, persist it and close it", () => {

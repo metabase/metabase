@@ -1259,6 +1259,76 @@ describe("issue 49304", () => {
   });
 });
 
+describe("issue 49305", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be able to use a custom column in sort for a nested query (metabase#49305)", () => {
+    const ccName = "CC Title";
+
+    // This bug does not reproduce if the base question is created via H.createQuestion or H.visitQuestionAdhoc, so create it manually in the UI.
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModalTab("Tables").click();
+    H.entityPickerModalItem(2, "Products").click();
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: 'concat("49305 ", [Title])',
+      name: ccName,
+      allowFastSet: true,
+    });
+    H.popover().button("Done").click();
+    H.saveQuestion(
+      "49305 Base question",
+      { wrapId: true },
+      { tab: "Browse", path: ["Our analytics"], select: true },
+    );
+
+    cy.get("@questionId").then((id) => {
+      const nestedQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [["count"]],
+            breakout: [["field", ccName, { "base-type": "type/Text" }]],
+            limit: 2,
+          },
+          type: "query",
+        },
+      };
+
+      H.visitQuestionAdhoc(nestedQuestion, { mode: "notebook" });
+
+      // Verify that a sort step can be added via the UI. This is the bug we are validating.
+      cy.button("Sort").click();
+      H.popover().contains(ccName).click();
+      H.getNotebookStep("sort").contains(ccName).click();
+
+      H.verifyNotebookQuery("49305 Base question", [
+        {
+          aggregations: ["Count"],
+          breakouts: [ccName],
+          limit: 2,
+          sort: [{ column: ccName, order: "desc" }],
+        },
+      ]);
+
+      H.visualize();
+      cy.findByLabelText("Switch to data").click();
+      H.assertTableData({
+        columns: ["CC Title", "Count"],
+        firstRows: [
+          ["49305 Synergistic Wool Coat", "1"],
+          ["49305 Synergistic Steel Chair", "1"],
+        ],
+      });
+    });
+  });
+});
+
 describe("issue 50925", () => {
   const questionDetails = {
     query: {
@@ -1878,5 +1948,78 @@ describe("issue 55687", () => {
     cy.findByTestId("query-visualization-root")
       .findByText("There was a problem with your question")
       .should("not.exist");
+  });
+});
+
+// TODO: re-enable this test when we have a fix for metabase/metabase#58371
+describe.skip("issue 58371", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      display_name: null,
+    });
+
+    const baseQuestion = {
+      name: "Base Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [
+          [
+            "aggregation-options",
+            ["count-where", ["=", ["field", PRODUCTS.TITLE, null], "OK"]],
+            { "display-name": "Aggregation with Dash-in-name" },
+          ],
+        ],
+        breakout: [["field", PRODUCTS.ID, null]],
+      },
+    };
+
+    H.createQuestion(baseQuestion, { wrapId: true }).then((questionId) => {
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": `card__${questionId}`,
+              alias: "Other Question",
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Other Question" }],
+              ],
+            },
+          ],
+          expressions: {
+            Foo: [
+              "+",
+              0,
+              [
+                "field",
+                "Aggregation with Dash-in-name",
+                {
+                  "base-type": "type/Float",
+                  "join-alias": "Other Question",
+                },
+              ],
+            ],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    H.openNotebook();
+  });
+
+  it("should allow using names with a dash in them from joined tables (metabase#58371)", () => {
+    H.getNotebookStep("expression").findByText("Foo").click();
+    H.CustomExpressionEditor.value().should(
+      "eq",
+      "0 + [Other Question → Aggregation with Dash-in-name]",
+    );
   });
 });

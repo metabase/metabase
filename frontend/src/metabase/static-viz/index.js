@@ -57,13 +57,13 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
   const { columnValuesMapping } = dashcardSettings.visualization;
   const datasets = rawSeries.reduce((acc, series) => {
     if (series.card.id) {
-      acc[`card:${series.card.entity_id}`] = series;
+      acc[`card:${series.card.id}`] = series;
     }
     return acc;
   }, {});
 
   const dataSources = rawSeries.map((series) =>
-    createDataSource("card", series.card.entity_id, series.card.name),
+    createDataSource("card", series.card.id, series.card.name),
   );
 
   const columns = getVisualizationColumns(
@@ -107,15 +107,28 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
 
   // If this is a visualizer card, we need to merge the data and split the series if needed
   if ("visualization" in dashcardSettings) {
+    const dataSourceNameMap = Object.fromEntries(
+      rawSeries.map((series) => {
+        const source = createDataSource(
+          "card",
+          series.card.entity_id,
+          series.card.name,
+        );
+        return [source.id, source.name];
+      }),
+    );
     rawSeries = getVisualizerRawSeries(rawSeries, dashcardSettings);
-    const { display, columnValuesMapping, settings } =
-      dashcardSettings.visualization;
+    const { display, columnValuesMapping } = dashcardSettings.visualization;
     if (
       display &&
       isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+      shouldSplitVisualizerSeries(columnValuesMapping)
     ) {
-      rawSeries = splitVisualizerSeries(rawSeries, columnValuesMapping);
+      rawSeries = splitVisualizerSeries(
+        rawSeries,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
     }
   }
 

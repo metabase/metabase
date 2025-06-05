@@ -9,7 +9,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.cmd :as cmd]
+   [metabase.cmd.core :as cmd]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize.test-users :as test-users]
@@ -28,7 +28,7 @@
     ;; while also not deleting or messing with any existing user personal collections that the real app DB might have,
     ;; since that will interfere with other tests)
     ;;
-    ;; making use of the functionality in the [[metabase.db.schema-migrations-test.impl]] namespace for this (since it
+    ;; making use of the functionality in the [[metabase.app-db.schema-migrations-test.impl]] namespace for this (since it
     ;; already does what we need)
     (mt/with-premium-features #{:serialization}
       (mt/with-empty-h2-app-db

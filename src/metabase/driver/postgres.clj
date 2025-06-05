@@ -11,7 +11,7 @@
    [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -269,29 +269,24 @@
   (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
 
 (defn- describe-syncable-tables
-  [{driver :engine :as database}]
+  [driver database]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database
-       nil
-       (fn [^Connection conn]
-         (reduce
-          rf
-          init
-          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
-              (eduction
-               (comp (filter have-select-privilege?)
-                     (map #(dissoc % :type)))
-               (get-tables database syncable-schemas nil))))))))))
+      (reduce
+       rf
+       init
+       (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+         (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver database)]
+           (eduction
+            (comp (filter have-select-privilege?)
+                  (map #(dissoc % :type)))
+            (get-tables database syncable-schemas nil))))))))
 
 (defmethod driver/describe-database :postgres
-  [_driver database]
+  [driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this
-  {:tables (into #{} (describe-syncable-tables database))})
+  {:tables (into #{} (describe-syncable-tables driver database))})
 
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
@@ -479,8 +474,8 @@
           (h2x/with-type-info (h2x/type-info hsql-form))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
-  [_driver]
-  (h2x/with-database-type-info :%now "timestamptz"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
@@ -1187,4 +1182,9 @@
   "NONE")
 
 (defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
-  (= (sql-jdbc/get-sql-state e) "57014"))
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (mdb/query-canceled-exception? :postgres e))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

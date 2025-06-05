@@ -363,9 +363,9 @@
   (mu/validate-throw ::NotificationRecipient recipient))
 
 (defenterprise validate-email-domains!
-  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting, if set.
-  This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the `:email-allow-list` feature."
-  metabase-enterprise.advanced-config.models.notification
+  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting,
+  if set. This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the
+  `:email-allow-list` feature." metabase-enterprise.advanced-config.models.notification
   [_email-addresses]
   nil)
 

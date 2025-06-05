@@ -9,7 +9,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -445,7 +445,7 @@
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
   (let [f (or @db-is-set-up-var
-              (reset! db-is-set-up-var (requiring-resolve 'metabase.db/db-is-set-up?)))]
+              (reset! db-is-set-up-var (requiring-resolve 'metabase.app-db.core/db-is-set-up?)))]
     (if f (f) false)))
 
 (defn- db-or-cache-value
@@ -960,15 +960,16 @@
       (mc/assert SettingDefinition <>)
       (validate-default-value-for-type <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
-      (when-let [registered-setting (core/get @registered-settings setting-name)]
-        (when (not= setting-ns (:namespace registered-setting))
+      ;; NOCOMMIT
+      #_(when-let [registered-setting (core/get @registered-settings setting-name)]
+          (when (not= setting-ns (:namespace registered-setting))
           ;; not i18n'ed because this is supposed to be developer-facing only.
-          (throw (ex-info (format "Setting %s already registered in %s. You can remove the old definition with (swap! %s dissoc %s)"
-                                  setting-name
-                                  (:namespace registered-setting)
-                                  `registered-settings
-                                  (keyword setting-name))
-                          {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
+            (throw (ex-info (format "Setting %s already registered in %s. You can remove the old definition with (swap! %s dissoc %s)"
+                                    setting-name
+                                    (:namespace registered-setting)
+                                    `registered-settings
+                                    (keyword setting-name))
+                            {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
       (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
                                            (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine

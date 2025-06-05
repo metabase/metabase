@@ -22,9 +22,10 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
+   [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
-   [metabase.db :as mdb]
    [metabase.task.bootstrap]
+   [metabase.task.job-factory :as job-factory]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -123,6 +124,7 @@
     (let [new-scheduler (qs/initialize)]
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
         (qs/standby new-scheduler)
+        (job-factory/add-to-scheduler new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         ;; Register Prometheus listeners
 

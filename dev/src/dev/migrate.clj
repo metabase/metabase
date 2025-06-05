@@ -2,8 +2,8 @@
   (:gen-class)
   (:require
    [clojure.string :as str]
-   [metabase.db :as mdb]
-   [metabase.db.liquibase :as liquibase]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.liquibase :as liquibase]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import

@@ -4,6 +4,8 @@
    [java-time.api :as t]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]))
 
 (defsetting slack-token
@@ -120,3 +122,101 @@
   :audit      :getter
   :doc "The base URL where dashboard notitification links will point to instead of the Metabase base URL.
         Only applicable for users who utilize interactive embedding and subscriptions.")
+
+(defsetting email-from-address
+  (deferred-tru "The email address you want to use for the sender of emails.")
+  :encryption :no
+  :default    "notifications@metabase.com"
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting email-from-name
+  (deferred-tru "The name you want to use for the sender of emails.")
+  :encryption :no
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting bcc-enabled?
+  (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")
+  :visibility :settings-manager
+  :type       :boolean
+  :default    true)
+
+(def ^:private ReplyToAddresses
+  [:maybe [:sequential ms/Email]])
+
+(def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
+  (mr/validator ReplyToAddresses))
+
+(defsetting email-reply-to
+  (deferred-tru "The email address you want the replies to go to, if different from the from address.")
+  :encryption :no
+  :type       :json
+  :visibility :settings-manager
+  :audit      :getter
+  :setter     (fn [new-value]
+                (if (validate-reply-to-addresses new-value)
+                  (setting/set-value-of-type! :json :email-reply-to new-value)
+                  (throw (ex-info "Invalid reply-to address" {:value new-value})))))
+
+(defsetting email-smtp-host
+  (deferred-tru "The address of the SMTP server that handles your emails.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting email-smtp-username
+  (deferred-tru "SMTP username.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting email-smtp-password
+  (deferred-tru "SMTP password.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :sensitive? true
+  :audit      :getter)
+
+(defsetting email-smtp-port
+  (deferred-tru "The port your SMTP server uses for outgoing emails.")
+  :encryption :when-encryption-key-set
+  :type       :integer
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting email-smtp-security
+  (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
+  :encryption :when-encryption-key-set
+  :type       :keyword
+  :default    :none
+  :visibility :settings-manager
+  :audit      :raw-value
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
+                (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
+
+(defsetting email-max-recipients-per-second
+  (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.
+                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.")
+  :export?    true
+  :type       :integer
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting email-configured?
+  "Check if email is enabled and that the mandatory settings are configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     #(boolean (email-smtp-host))
+  :doc        false)
+
+(defsetting surveys-enabled
+  (deferred-tru "Enable or disable surveys")
+  :type       :boolean
+  :default    true
+  :export?    false
+  :visibility :internal
+  :audit      :getter)

@@ -226,14 +226,8 @@
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^java.sql.Connection conn]
-     (let [[inclusion-patterns
-            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
-       (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
+  (let [[inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
+    (sql-jdbc.sync/filtered-syncable-schemas driver database inclusion-patterns exclusion-patterns)))
 
 (defmethod driver/set-role! :sql-jdbc
   [driver conn role]
@@ -271,7 +265,7 @@
         (recur cause)))))
 
 (defmulti impl-query-canceled?
-  "Implmenting multimethod for is query canceled. Notes when a query is canceled due to user action,
+  "Implementing multimethod for is query canceled. Notes when a query is canceled due to user action,
   which can include using the `.setQueryTimeout` on a `PreparedStatement.` Use this instead of implementing
   driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
   based drivers."
@@ -286,4 +280,19 @@
 (defmethod driver/query-canceled? :sql-jdbc [driver e]
   (if-let [sql-exception (extract-sql-exception e)]
     (impl-query-canceled? driver sql-exception)
+    false))
+
+(defmulti impl-table-known-to-not-exist?
+  "Implementing multimethod for is table known to not exist. Use this instead of implementing
+  driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
+  based drivers."
+  {:added "0.54.10" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impl-table-known-to-not-exist? ::driver/driver [_ _] false)
+
+(defmethod driver/table-known-to-not-exist? :sql-jdbc [driver e]
+  (if-let [sql-exception (extract-sql-exception e)]
+    (impl-table-known-to-not-exist? driver sql-exception)
     false))

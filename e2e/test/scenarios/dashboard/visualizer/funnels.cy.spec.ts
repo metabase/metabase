@@ -26,52 +26,42 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
 
     H.createQuestion(ORDERS_COUNT_BY_CREATED_AT, {
       idAlias: "ordersCountByCreatedAtQuestionId",
-      entityIdAlias: "ordersCountByCreatedAtQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
-      entityIdAlias: "ordersCountByProductCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
       idAlias: "productsCountByCreatedAtQuestionId",
-      entityIdAlias: "productsCountByCreatedAtQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      entityIdAlias: "productsCountByCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE, {
       idAlias: "productsCountByCategoryPieQuestionId",
-      entityIdAlias: "productsCountByCategoryPieQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
       idAlias: "landingPageViewsScalarQuestionId",
-      entityIdAlias: "landingPageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.CHECKOUT_PAGE_VIEWS, {
       idAlias: "checkoutPageViewsScalarQuestionId",
-      entityIdAlias: "checkoutPageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.PAYMENT_DONE_PAGE_VIEWS, {
       idAlias: "paymentDonePageViewsScalarQuestionId",
-      entityIdAlias: "paymentDonePageViewsScalarQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(STEP_COLUMN_CARD, {
       idAlias: "stepColumnQuestionId",
-      entityIdAlias: "stepColumnQuestionEntityId",
       wrapId: true,
     });
     H.createNativeQuestion(VIEWS_COLUMN_CARD, {
       idAlias: "viewsColumnQuestionId",
-      entityIdAlias: "viewsColumnQuestionEntityId",
       wrapId: true,
     });
   });
@@ -83,10 +73,9 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.openQuestionsSidebar();
     H.clickVisualizeAnotherWay(STEP_COLUMN_CARD.name);
 
-    H.modal().findByTestId("viz-picker-menu").click();
-    H.popover().findByText("Funnel").click();
-
     H.modal().within(() => {
+      H.selectVisualization("funnel");
+
       cy.button("Add more data").click();
       H.addDataset(VIEWS_COLUMN_CARD.name);
       cy.button("Done").click();
@@ -187,11 +176,7 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
 
     H.modal().within(() => {
-      cy.findByText(LANDING_PAGE_VIEWS.name).realHover();
-      cy.findAllByLabelText("Remove").eq(0).click();
-      cy.findByText("Funnel").click();
       H.switchToAddMoreData();
-      H.selectDataset(LANDING_PAGE_VIEWS.name);
       H.addDataset(CHECKOUT_PAGE_VIEWS.name);
       H.addDataset(PAYMENT_DONE_PAGE_VIEWS.name);
       H.switchToColumnsList();
@@ -274,9 +259,6 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
 
     H.modal().within(() => {
-      cy.findByText(LANDING_PAGE_VIEWS.name).realHover();
-      cy.findAllByLabelText("Remove").eq(0).click();
-      cy.findByText("Funnel").click();
       H.switchToAddMoreData();
       H.selectDataset(LANDING_PAGE_VIEWS.name);
       H.addDataset(CHECKOUT_PAGE_VIEWS.name);
