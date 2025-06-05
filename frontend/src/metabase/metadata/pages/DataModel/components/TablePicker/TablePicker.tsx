@@ -1,4 +1,10 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  type KeyboardEvent,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -25,7 +31,7 @@ export function TablePicker({
 
   // search results need their own keypress handling logic
   // because we want to keep the focus on the search input
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (deferredQuery === "") {
       return;
     }
