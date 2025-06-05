@@ -14,7 +14,6 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
-   [metabase-enterprise.data-editing.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
@@ -42,7 +41,6 @@
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :etl-connections            (deferred-tru "ETL Connections")
-   :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :query-reference-validation (deferred-tru "Query Reference Validation")
@@ -77,7 +75,6 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
