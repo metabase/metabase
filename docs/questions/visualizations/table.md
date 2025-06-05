@@ -9,23 +9,9 @@ redirect_from:
 
 # Tables
 
-Tables are data's natural habitat, with their columns and rows corresponding to the fields and records of relational databases. They may not be as "visual" as a [bar chart](/learn/metabase-basics/querying-and-dashboards/visualization/bar-charts) or a [map](/docs/latest/questions/visualizations/map), but they're often what you need when you're working with a lot of fields. The table visualization in Metabase comes packed with features---some automatic, and some you can customize for yourself.
+![A table in Metabase](../images/table.png)
 
-## Table visualization basics
-
-When you first visualize your data as a table, there's already a lot going on. Let's go through the features that come with it out of the box.
-
-### Column actions
-
-The options Metabase presents for each column differ depending on the type of data. For example, if you click on the heading of a numeric column, Metabase will present a set of options, like `Distribution`, `Sum`, `Average`, and so on. If you clicked on a date column, you'd get a different set of options, as it wouldn't make much sense to take the average date, for example.
-
-From the line chart, you can continue to [drill through the data](/learn/metabase-basics/querying-and-dashboards/questions/drill-through), like zooming in the data in a section of the chart, or by clicking on a point to view those records as a table.
-
-Similarly, if you click on a value in one of the columns, Metabase will present a menu that gives you some options depending on the type of data in that column. For instance, by clicking on a value in a numeric column, Metabase will present options to filter the data in relation to that value: greater than, less than, and so on.
-
-### Detail views
-
-To make records easier to read, you can click on an [entity key](/glossary/entity-key) column (either a primary or foreign key) to bring up a detail view. For example, clicking on an order `ID` will bring up details from that order.
+Tables are data's natural habitat.
 
 ## Rearranging, adding, and removing columns
 
@@ -45,9 +31,14 @@ To rearrange the order of the columns, simply click and drag any of the columns 
 
 ## Custom columns
 
-Let's say you want to include a column that lists the unit price of the product ordered, which we'd calculate by dividing the `Subtotal` by the `Quantity` orders. Open up the **Query Builder**, and select the **Custom Column** option. Enter the calculation in the **Field Formula** input box, and then give it a name.
+![Add column](../images/add-column.png)
 
-To learn more about what you can do with field formulas, check out our article on [custom expressions](/docs/latest/questions/query-builder/expressions) in the **Query Builder**.
+To add a column, you can click the **+** button in the upper right of the table. From here you can:
+
+- Extract part of column
+- Combine columns
+
+For more complicated calculations, you can use the editor to [add a custom column](../query-builder/editor.md#custom-columns).
 
 ## Add row numbers to a table
 
@@ -60,6 +51,8 @@ To number the rows of a table, click on the **gear** icon in bottom left to brin
 To change the width of a column, you can click and drag the edges of the column's header.
 
 ## Column heading options for filtering and summarizing
+
+![Column actions](../images/column-actions.png)
 
 Click on a column heading and Metabase will present quick options for filtering and summarizing the data. The options for the column depend on the column's data type (ID, Text, Number, Date).
 
@@ -295,6 +288,12 @@ When you add a table to dashboard, the table will be scrollable by default. You 
 3. In the **Columns** tab, toggle on **Paginate results**.
 
 ![Paginate table results on dashboard card](../images/paginate-table-on-dashboard-card.png)
+
+## Detail views
+
+![Detail view](../images/detail-view.png)
+
+To make records easier to read, you can click on an entity key column (either a primary or foreign key) to bring up a detail view. For example, clicking on an order `ID` will bring up details from that order.
 
 ## Foreign key remapping
 

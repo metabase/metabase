@@ -93,15 +93,13 @@ When viewing a [table](../visualizations/table.md), clicking on the heading of a
 
 Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions.
 
-![Custom expression](../images/aggregation-expression.png)
-
 For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
 
 ## Custom columns
 
 ![Custom column](../images/custom-column.png)
 
-Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; the columns will only be present in the given question.
+Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to the underlying database table; the columns will only be present in the given question.
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. See [list of expressions](../query-builder/expressions-list.md).
 
@@ -120,8 +118,6 @@ The row limit step lets you cap how many rows you want from the previous results
 ![View the SQL](../images/view-the-sql.png)
 
 Under the hood, all Metabase questions are converted to SQL or another language native to your query engine. To view the native query that Metabase will run when you click **Visualize**, click the **View SQL** or **View query** button in the top right of the query builder. Metabase will preview the native query in a sidebar:
-
-![SQL sidebar](../images/sql-sidebar.png)
 
 To view the native query, you must have [query builder and native permissions](../../permissions/data.md).
 
