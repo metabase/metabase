@@ -729,7 +729,9 @@
                                                          :show-row-totals
                                                          :show-column-totals])))
              ;; TODO: better way to detect native queries here?
-             query             (if (:native-pivot-rows pivot-opts)
+             query             (if (or (:native-pivot-rows pivot-opts)
+                                       (:native-pivot-cols pivot-opts)
+                                       (:native-pivot-measures pivot-opts))
                                  (nest-native-pivot-query query pivot-opts)
                                  query)
              query             (-> query
