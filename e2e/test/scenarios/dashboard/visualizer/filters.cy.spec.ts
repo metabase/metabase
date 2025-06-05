@@ -46,7 +46,7 @@ describe("scenarios > dashboard > visualizer > filters", () => {
       });
     });
 
-    H.saveDashcardVisualizerModal("create");
+    H.saveDashcardVisualizerModal({ mode: "create" });
 
     H.setFilter("Text or Category", "Is");
 

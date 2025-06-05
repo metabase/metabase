@@ -578,3 +578,42 @@
                   (lib/join join2)
                   (lib/join join1)
                   cols))))))
+
+(deftest ^:parallel implicit-join-columns
+  (let [inner (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/join (meta/table-metadata :people)))
+        mp    (lib.tu/metadata-provider-with-card-from-query 1 inner)
+        query (lib/query mp (lib.metadata/card mp 1))]
+    (is (=? [["ID" :source/card]
+             ["SUBTOTAL" :source/card]
+             ["TOTAL" :source/card]
+             ["TAX" :source/card]
+             ["DISCOUNT" :source/card]
+             ["QUANTITY" :source/card]
+             ["CREATED_AT" :source/card]
+             ["PRODUCT_ID" :source/card]
+             ["USER_ID" :source/card]
+             ["ID" :source/card]
+             ["STATE" :source/card]
+             ["CITY" :source/card]
+             ["ADDRESS" :source/card]
+             ["NAME" :source/card]
+             ["SOURCE" :source/card]
+             ["ZIP" :source/card]
+             ["LATITUDE" :source/card]
+             ["PASSWORD" :source/card]
+             ["BIRTH_DATE" :source/card]
+             ["LONGITUDE" :source/card]
+             ["EMAIL" :source/card]
+             ["CREATED_AT" :source/card]
+             ["ID" :source/implicitly-joinable]
+             ["EAN" :source/implicitly-joinable]
+             ["TITLE" :source/implicitly-joinable]
+             ["CATEGORY" :source/implicitly-joinable]
+             ["VENDOR" :source/implicitly-joinable]
+             ["PRICE" :source/implicitly-joinable]
+             ["RATING" :source/implicitly-joinable]
+             ["CREATED_AT" :source/implicitly-joinable]]
+            (-> query
+                (lib/visible-columns)
+                (->> (map (juxt :name :lib/source))))))))

@@ -1,0 +1,11 @@
+# dependencies
+node_modules
+
+# Compiled output
+/dist
+
+# Miscellaneous
+.angular
+
+# debug
+npm-debug.log*
