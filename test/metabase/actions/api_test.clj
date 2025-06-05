@@ -724,11 +724,11 @@
                                                     :description  "Premium leather side table"
                                                     :schema       "public"
                                                     :db_id        db-id-2}]
-        (testing "Returns only tables from the specified database"
-          (is (=? {:tables [{:id table-id-1 :name "oak_dining_table" :display_name "Oak Dining Table"
-                             :description "Elegant oak dining furniture" :schema "public"}
-                            {:id table-id-2 :name "mahogany_coffee_table" :display_name "Mahogany Coffee Table"
-                             :description "Luxurious mahogany coffee table" :schema "public"}]}
+        (testing "Returns only tables from the specified database, in alphabetical order"
+          (is (=? {:tables [{:id table-id-2 :name "mahogany_coffee_table" :display_name "Mahogany Coffee Table"
+                             :description "Luxurious mahogany coffee table" :schema "public"}
+                            {:id table-id-1 :name "oak_dining_table" :display_name "Oak Dining Table"
+                             :description "Elegant oak dining furniture" :schema "public"}]}
                   (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id-1))))
           (testing "Does not include tables from other databases"
             (let [tables (:tables (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id-1)))]
