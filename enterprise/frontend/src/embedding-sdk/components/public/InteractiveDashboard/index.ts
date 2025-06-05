@@ -3,6 +3,6 @@ export {
   type InteractiveDashboardProps,
 } from "./InteractiveDashboard";
 export {
-  EditableDashboard,
+  EditableDashboard as EditableDashboard,
   type EditableDashboardProps,
 } from "./EditableDashboard";

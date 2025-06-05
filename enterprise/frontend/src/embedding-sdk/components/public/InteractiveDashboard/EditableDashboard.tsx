@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -16,14 +16,8 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import {
-  DASHBOARD_EDITING_ACTIONS,
-  SDK_DASHBOARD_VIEW_ACTIONS,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import {
-  DashboardContextProvider,
-  useDashboardContext,
-} from "metabase/dashboard/context";
+import { SDK_DASHBOARD_VIEW_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { DashboardContextProvider } from "metabase/dashboard/context";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { setErrorPage } from "metabase/redux/app";
@@ -62,28 +56,6 @@ export type EditableDashboardProps = {
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   DashboardEventHandlersProps;
 
-const EditableDashboardInner = ({
-  drillThroughQuestionProps,
-  onEditQuestion,
-}: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
-  Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
-  const { isEditing } = useDashboardContext();
-
-  const dashboardActions = isEditing
-    ? DASHBOARD_EDITING_ACTIONS
-    : SDK_DASHBOARD_VIEW_ACTIONS;
-
-  return (
-    <InteractiveDashboardProvider
-      plugins={drillThroughQuestionProps?.plugins}
-      onEditQuestion={onEditQuestion}
-      dashboardActions={dashboardActions}
-    >
-      <Dashboard />
-    </InteractiveDashboardProvider>
-  );
-};
-
 /**
  * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
  *
@@ -91,7 +63,7 @@ const EditableDashboardInner = ({
  * @category InteractiveDashboard
  * @param props
  */
-export const EditableDashboard = ({
+export const SdkDashboard = ({
   dashboardId: initialDashboardId,
   initialParameters = {},
   withDownloads = false,
@@ -106,7 +78,9 @@ export const EditableDashboard = ({
     height: drillThroughQuestionHeight,
     plugins: plugins,
   },
-}: EditableDashboardProps) => {
+  dashboardActions,
+}: Pick<InteractiveDashboardContextType, "dashboardActions"> &
+  PropsWithChildren<EditableDashboardProps>) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
     onLoadWithoutCards,
@@ -202,8 +176,7 @@ export const EditableDashboard = ({
           getEmbeddingMode({
             question,
             queryMode: EmbeddingSdkMode,
-            plugins:
-              drillThroughQuestionProps.plugins as InternalMetabasePluginsConfig,
+            plugins: plugins as InternalMetabasePluginsConfig,
           })
         }
       >
@@ -214,12 +187,27 @@ export const EditableDashboard = ({
             {...drillThroughQuestionProps}
           />
         ) : (
-          <EditableDashboardInner
-            drillThroughQuestionProps={drillThroughQuestionProps}
+          <InteractiveDashboardProvider
+            plugins={plugins}
             onEditQuestion={onEditQuestion}
-          />
+            dashboardActions={dashboardActions}
+          >
+            <Dashboard />
+          </InteractiveDashboardProvider>
         )}
       </DashboardContextProvider>
     </StyledPublicComponentWrapper>
+  );
+};
+
+export const EditableDashboard = ({
+  drillThroughQuestionProps,
+  ...sdkDashboardProps
+}: PropsWithChildren<EditableDashboardProps> &
+  Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
+  const dashboardActions = SDK_DASHBOARD_VIEW_ACTIONS;
+
+  return (
+    <SdkDashboard {...sdkDashboardProps} dashboardActions={dashboardActions} />
   );
 };
