@@ -94,8 +94,7 @@
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
-             (nil? value)
-             (not (lib.types.isa/structured? column)))
+             (nil? value))
     ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
     (when-let [drill-details (prepare-query-for-drill-addition query stage-number column column-ref :filter)]
       (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.

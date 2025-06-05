@@ -19,8 +19,7 @@
      :drill-thru/column-filter
      (fn [test-case context {:keys [click]}]
        (and (= click :header)
-            (not (:native? test-case))
-            (not (lib.types.isa/structured? (:column context))))))))
+            (not (:native? test-case)))))))
 
 (def ^:private key-ops
   [{:lib/type :operator/filter, :short :=,        :display-name-variant :default}
