@@ -107,8 +107,21 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 
-  it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
+  it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
     cy.intercept("GET", "/auth/sso").as("authSso");
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
+    cy.signOut();
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      authMethod: "saml",
+    });
+
+    cy.wait("@authSso").its("response.body.method").should("eq", "jwt");
+    assertDashboardLoaded(frame);
+  });
+
+  it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
     cy.signOut();
@@ -119,21 +132,6 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       onVisitPage: () => stubWindowOpenForSamlPopup(),
     });
 
-    cy.wait("@authSso").its("response.body.method").should("eq", "saml");
-    assertDashboardLoaded(frame);
-  });
-
-  it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
-    cy.intercept("GET", "/auth/sso").as("authSso");
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
-    cy.signOut();
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      authMethod: "jwt",
-    });
-
-    cy.wait("@authSso").its("response.body.method").should("eq", "jwt");
     assertDashboardLoaded(frame);
   });
 });
