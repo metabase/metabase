@@ -27,7 +27,7 @@ import {
   SectionMessage,
   SectionMessageLink,
 } from "./ParameterLinkedFiltersComponents";
-import useFilterFields from "./use-filter-fields";
+import { type FilterFieldMapping, useFilterFields } from "./use-filter-fields";
 
 export interface ParameterLinkedFiltersProps {
   parameter: Parameter;
@@ -212,6 +212,11 @@ const LinkedParameter = ({
   onFilterChange,
   onExpandedChange,
 }: LinkedParameterProps): JSX.Element => {
+  const { fieldMapping, isLoading } = useFilterFields(
+    parameter,
+    otherParameter,
+  );
+
   const handleFilterToggle: ChangeEventHandler<HTMLInputElement> = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onFilterChange(otherParameter, e.target.checked);
@@ -224,55 +229,45 @@ const LinkedParameter = ({
   }, [isExpanded, otherParameter, onExpandedChange]);
 
   return (
-    <ParameterRoot>
-      <ParameterBody>
-        <ParameterName onClick={handleExpandedChange}>
-          {otherParameter.name}
-        </ParameterName>
-        <Switch
-          role="switch"
-          checked={isFiltered}
-          onChange={handleFilterToggle}
-        />
-      </ParameterBody>
-      {isExpanded && (
-        <LinkedFieldList
-          parameter={parameter}
-          otherParameter={otherParameter}
-        />
-      )}
-    </ParameterRoot>
+    <LoadingAndErrorWrapper loading={isLoading}>
+      <ParameterRoot>
+        <ParameterBody>
+          <ParameterName onClick={handleExpandedChange}>
+            {otherParameter.name}
+          </ParameterName>
+          <Switch
+            role="switch"
+            checked={isFiltered}
+            disabled={fieldMapping.length === 0}
+            onChange={handleFilterToggle}
+          />
+        </ParameterBody>
+        {isExpanded && <LinkedFieldList fieldMapping={fieldMapping} />}
+      </ParameterRoot>
+    </LoadingAndErrorWrapper>
   );
 };
 
 interface LinkedFieldListProps {
-  parameter: Parameter;
-  otherParameter: Parameter;
+  fieldMapping: FilterFieldMapping[];
 }
 
-const LinkedFieldList = ({
-  parameter,
-  otherParameter,
-}: LinkedFieldListProps) => {
-  const { data, error, loading } = useFilterFields(parameter, otherParameter);
-
+const LinkedFieldList = ({ fieldMapping }: LinkedFieldListProps) => {
   return (
-    <LoadingAndErrorWrapper loading={loading} error={error}>
-      <FieldListRoot>
-        {data && data.length > 0 && (
-          <FieldListHeader>
-            <FieldListTitle>{t`Filtering column`}</FieldListTitle>
-            <FieldListTitle>{t`Filtered column`}</FieldListTitle>
-          </FieldListHeader>
-        )}
-        {data?.map(([filteringId, filteredId]) => (
-          <FieldListItem key={filteredId}>
-            <LinkedField fieldId={filteringId} />
-            <LinkedField fieldId={filteredId} />
-          </FieldListItem>
-        ))}
-      </FieldListRoot>
-    </LoadingAndErrorWrapper>
+    <FieldListRoot>
+      {fieldMapping.length > 0 && (
+        <FieldListHeader>
+          <FieldListTitle>{t`Filtering column`}</FieldListTitle>
+          <FieldListTitle>{t`Filtered column`}</FieldListTitle>
+        </FieldListHeader>
+      )}
+      {fieldMapping.map(({ filteringId, filteredId }) => (
+        <FieldListItem key={filteredId}>
+          <LinkedField fieldId={filteringId} />
+          <LinkedField fieldId={filteredId} />
+        </FieldListItem>
+      ))}
+    </FieldListRoot>
   );
 };
 

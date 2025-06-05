@@ -1,55 +1,44 @@
-import { useCallback, useState } from "react";
-import { useMount } from "react-use";
-import { t } from "ttag";
-
-import { DashboardApi } from "metabase/services";
+import { useGetValidDashboardFilterFieldsQuery } from "metabase/api";
 import { getFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type { FieldId, Parameter } from "metabase-types/api";
 
-export interface UseFilterFieldsState {
-  data?: FieldId[][];
-  error?: string;
-  loading: boolean;
-}
+export type UseFilterFieldsState = {
+  fieldMapping: FilterFieldMapping[];
+  isLoading: boolean;
+  error?: unknown;
+};
 
-const useFilterFields = (
+export type FilterFieldMapping = {
+  filteredId: FieldId;
+  filteringId: FieldId;
+};
+
+export function useFilterFields(
   parameter: Parameter,
   otherParameter: Parameter,
-): UseFilterFieldsState => {
-  const [state, setState] = useState<UseFilterFieldsState>({ loading: false });
-
-  const handleLoad = useCallback(async () => {
-    const filtered = getFields(parameter).map((field) => field.id);
-    const filtering = getFields(otherParameter).map((field) => field.id);
-
-    if (!filtered.length || !filtered.length) {
-      const errorParameter = !filtered.length ? parameter : otherParameter;
-      const error = getParameterError(errorParameter);
-      setState({ error, loading: false });
-    } else {
-      setState({ loading: true });
-      const request = { filtered, filtering };
-      const response = await DashboardApi.validFilterFields(request);
-      setState({ data: getParameterMapping(response), loading: false });
-    }
-  }, [parameter, otherParameter]);
-
-  useMount(() => {
-    handleLoad();
-  });
-
-  return state;
-};
-
-const getParameterError = ({ name }: Parameter) => {
-  return t`To view this, ${name} must be connected to at least one field.`;
-};
-
-const getParameterMapping = (data: Record<FieldId, FieldId[]>) => {
-  return Object.entries(data).flatMap(([filteredId, filteringIds]) =>
-    filteringIds.map((filteringId) => [filteringId, parseInt(filteredId, 10)]),
+): UseFilterFieldsState {
+  const filtered = getFields(parameter).map((field) => Number(field.id));
+  const filtering = getFields(otherParameter).map((field) => Number(field.id));
+  const isEmpty = filtered.length === 0 || filtering.length === 0;
+  const { data, isLoading, error } = useGetValidDashboardFilterFieldsQuery(
+    { filtered, filtering },
+    { skip: isEmpty },
   );
-};
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default useFilterFields;
+  return {
+    fieldMapping: data ? getFieldMapping(data) : [],
+    isLoading,
+    error,
+  };
+}
+
+function getFieldMapping(
+  data: Record<FieldId, FieldId[]>,
+): FilterFieldMapping[] {
+  return Object.entries(data).flatMap(([filteredId, filteringIds]) =>
+    filteringIds.map((filteringId) => ({
+      filteringId,
+      filteredId: parseInt(filteredId, 10),
+    })),
+  );
+}

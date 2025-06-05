@@ -5,12 +5,14 @@ import type {
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  FieldId,
   FieldValue,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
   GetEmbeddableDashboard,
   GetPublicDashboard,
   GetRemappedDashboardParameterValueRequest,
+  GetValidDashboardFilterFieldsRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
@@ -104,6 +106,16 @@ export const dashboardApi = Api.injectEndpoints({
           method: "GET",
           url: `/api/dashboard/${id}/items`,
           body,
+        }),
+      }),
+      getValidDashboardFilterFields: builder.query<
+        Record<FieldId, FieldId[]>,
+        GetValidDashboardFilterFieldsRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: `/api/dashboard/params/valid-filter-fields`,
+          params,
         }),
       }),
       createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
@@ -234,6 +246,7 @@ export const {
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,
+  useGetValidDashboardFilterFieldsQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,
