@@ -30,6 +30,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -1072,6 +1073,38 @@
        (cond-> join-condition
          sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
          sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
+
+(mu/defn rename-join :- ::lib.schema/query
+  "Rename all joins with `old-alias` in a query to `new-alias`. Does not currently different between multiple join
+  with the same name appearing in multiple locations. Surgically updates only things that are actual join aliases and
+  not other occurrences of the string.
+
+  This is meant to use to reverse the join renaming done
+  by [[metabase.query-processor.middleware.escape-join-aliases]]."
+  [query     :- ::lib.schema/query
+   old-alias :- ::lib.schema.join/alias
+   new-alias :- ::lib.schema.join/alias]
+  (lib.walk/walk
+   query
+   (letfn [(update-field-refs [x]
+             (lib.util.match/replace x
+               [:field (opts :guard #(= (:join-alias %) old-alias)) id-or-name]
+               [:field (assoc opts :join-alias new-alias) id-or-name]))]
+     (fn [_query path-type _path stage-or-join]
+       (case path-type
+         :lib.walk/join
+         (let [join stage-or-join]
+           (-> join
+               (update :alias (fn [current-alias]
+                                (if (= current-alias old-alias)
+                                  new-alias
+                                  current-alias)))
+               (update :fields update-field-refs)
+               (update :conditions update-field-refs)))
+
+         :lib.walk/stage
+         (let [stage stage-or-join]
+           (update-field-refs stage)))))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :joins
   [query stage-number _key]

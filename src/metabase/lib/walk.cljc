@@ -1,9 +1,9 @@
 (ns metabase.lib.walk
   "Tools for walking and transforming a query."
   (:require
-   [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -169,7 +169,7 @@
     (if (empty? more)
       {:query query, :stage-number stage-number}
       (let [[_joins join-number & more] more
-            join                        (nth (lib.join/joins query stage-number) join-number)
+            join                        (nth (get (lib.util/query-stage query stage-number) :joins) join-number)
             query'                      (assoc query :stages (:stages join))]
         (recur query' (if (empty? more) [:stages 0] more))))))
 
