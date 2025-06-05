@@ -101,6 +101,7 @@ describe("Auth Flow - JWT", () => {
 
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      authMethod: "jwt",
       fetchRequestToken: customFetchFunction,
     });
 
