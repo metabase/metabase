@@ -49,7 +49,7 @@ describe("issue 13504", () => {
 
 const externalDatabaseId = 2;
 
-describe("issue 16170", () => {
+describe("issue 16170", { tags: "@mongo" }, () => {
   function replaceMissingValuesWith(value) {
     cy.get('[data-field-title="Replace missing values with"]').within(() => {
       cy.findByTestId("chart-setting-select").click();
