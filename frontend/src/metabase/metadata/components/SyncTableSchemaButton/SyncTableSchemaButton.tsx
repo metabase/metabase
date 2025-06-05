@@ -1,27 +1,23 @@
 import { t } from "ttag";
 
-import { useRescanTableFieldValuesMutation } from "metabase/api";
+import { useSyncTableSchemaMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { useTemporaryState } from "metabase/hooks/use-temporary-state";
 import { Button } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
-interface Props {
-  tableId: TableId;
-}
-
-export const RescanTableFieldsButton = ({ tableId }: Props) => {
-  const [rescanTableFieldValues] = useRescanTableFieldValuesMutation();
+export function SyncTableSchemaButton({ tableId }: { tableId: TableId }) {
+  const [syncTableSchema] = useSyncTableSchemaMutation();
   const [started, setStarted] = useTemporaryState(false, 2000);
   const [sendToast] = useToast();
 
   const handleClick = async () => {
-    const { error } = await rescanTableFieldValues(tableId);
+    const { error } = await syncTableSchema(tableId);
 
     if (error) {
       sendToast({
         icon: "warning",
-        message: t`Failed to start scan`,
+        message: t`Failed to start sync`,
         toastColor: "error",
       });
     } else {
@@ -31,7 +27,7 @@ export const RescanTableFieldsButton = ({ tableId }: Props) => {
 
   return (
     <Button variant="default" onClick={handleClick}>
-      {started ? t`Scan triggered!` : t`Re-scan table`}
+      {started ? t`Sync triggered!` : t`Sync table schema`}
     </Button>
   );
-};
+}
