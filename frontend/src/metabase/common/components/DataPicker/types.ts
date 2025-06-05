@@ -1,6 +1,7 @@
 import type {
   CardId,
   Collection,
+  CollectionId,
   DashboardId,
   DataGridWritebackActionId,
   DatabaseId,
@@ -84,6 +85,7 @@ export type ModelActionPickerValue = {
   name: string;
   model: "action";
   model_id: CardId;
+  collection_id?: CollectionId;
 };
 
 export type TablePickerValue = {
@@ -132,8 +134,10 @@ export type TableActionPickerStatePath = [
 ];
 export type TableActionPickerItem = TableActionPickerFolderItem | ActionItem;
 
+export type ModelActionPickerFolderItem = CollectionItem | ModelItem;
 export type ModelActionPickerStatePath = [
+  CollectionId | undefined,
   CardId | undefined,
   TableActionId | undefined,
 ];
-export type ModelActionPickerItem = ModelItem | ActionItem;
+export type ModelActionPickerItem = ModelActionPickerFolderItem | ActionItem;

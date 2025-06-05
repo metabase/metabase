@@ -95,6 +95,7 @@ export interface EntityPickerModalContentProps<
   onClose: () => void;
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
+  onTabChange?: (tabId: EntityPickerTabId) => void;
   isLoadingTabs?: boolean;
   searchExtraButtons?: ReactNode[];
   children?: ReactNode;
@@ -121,6 +122,7 @@ export const EntityPickerContent = <
   onClose,
   onConfirm,
   onItemSelect,
+  onTabChange,
   isLoadingTabs = false,
   disableCloseOnEscape = false,
   children,
@@ -295,8 +297,10 @@ export const EntityPickerContent = <
       if (tabId !== SEARCH_TAB_ID) {
         setSearchScope(tabFolderState[tabId] ? "folder" : "everywhere");
       }
+
+      onTabChange?.(tabId);
     },
-    [tabFolderState],
+    [tabFolderState, onTabChange],
   );
 
   const handleQueryChange = useCallback(

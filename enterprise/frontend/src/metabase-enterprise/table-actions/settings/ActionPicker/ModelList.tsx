@@ -2,14 +2,14 @@ import { useMemo } from "react";
 
 import type { ModelItem } from "metabase/common/components/DataPicker/types";
 import { ItemList, ListBox } from "metabase/common/components/EntityPicker";
-import type { Card } from "metabase-types/api";
+import type { ActionV2ListModelItem } from "metabase-types/api";
 
 interface Props {
   error: unknown;
   isLoading: boolean;
   isCurrentLevel: boolean;
   selectedItem: ModelItem | null;
-  models: Card[] | undefined;
+  models: ActionV2ListModelItem[] | undefined;
   onClick: (item: ModelItem) => void;
 }
 

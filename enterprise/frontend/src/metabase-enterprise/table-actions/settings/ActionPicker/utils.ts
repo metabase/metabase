@@ -1,5 +1,6 @@
 import type {
   ActionItem,
+  CollectionItem,
   DatabaseItem,
   ModelActionPickerItem,
   ModelItem,
@@ -8,11 +9,14 @@ import type {
   TableItem,
 } from "metabase/common/components/DataPicker";
 import type {
-  Card,
+  ActionV2ListModelItem,
   CardId,
+  CollectionId,
   DataGridWritebackAction,
   DataGridWritebackActionId,
 } from "metabase-types/api";
+
+import type { CollectionListItem } from "./types";
 
 export const generateTableActionKey = (
   dbItem: DatabaseItem | null,
@@ -51,15 +55,29 @@ export const isActionItem = (
 };
 
 export const getModelItem = (
-  models: Card[] | undefined,
+  modelItems: ActionV2ListModelItem[] | undefined,
   modelId: CardId | undefined,
 ): ModelItem | null => {
   if (typeof modelId === "undefined") {
     return null;
   }
 
-  const table = models?.find((model) => model.id === modelId);
-  const name = table?.name ?? "";
+  const item = modelItems?.find(({ id }) => id === modelId);
+  const name = item?.name ?? "";
 
   return { model: "dataset", id: modelId, name };
+};
+
+export const getCollectionItem = (
+  collectionItems: CollectionListItem[] | undefined,
+  collectionId: CollectionId | undefined,
+): CollectionItem | null => {
+  if (typeof collectionId === "undefined") {
+    return null;
+  }
+
+  const item = collectionItems?.find(({ id }) => id === collectionId);
+  const name = item?.name ?? "";
+
+  return { model: "collection", id: collectionId, name };
 };

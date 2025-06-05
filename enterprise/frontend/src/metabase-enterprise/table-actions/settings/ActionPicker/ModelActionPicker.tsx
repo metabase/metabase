@@ -1,26 +1,45 @@
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useLatest } from "react-use";
+import { t } from "ttag";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken, useListModelsQuery } from "metabase/api";
 import type {
   ActionItem,
+  ModelActionPickerFolderItem,
   ModelActionPickerItem,
   ModelActionPickerStatePath,
   ModelActionPickerValue,
-  ModelItem,
 } from "metabase/common/components/DataPicker/types";
-import { AutoScrollBox } from "metabase/common/components/EntityPicker";
+import {
+  AutoScrollBox,
+  ItemList,
+  ListBox,
+} from "metabase/common/components/EntityPicker";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   CardId,
+  CollectionId,
   DataGridWritebackActionId,
   WritebackAction,
 } from "metabase-types/api";
 
 import { ActionList } from "./ActionList";
 import { ModelList } from "./ModelList";
-import { generateModelActionKey, getActionItem, getModelItem } from "./utils";
+import type { CollectionListItem } from "./types";
+import {
+  generateModelActionKey,
+  getActionItem,
+  getCollectionItem,
+  getModelItem,
+} from "./utils";
 
 interface Props {
   path: ModelActionPickerStatePath | undefined;
@@ -30,6 +49,8 @@ interface Props {
   children?: ReactNode;
 }
 
+const isFolderTrue = () => true;
+
 export const ModelActionPicker = ({
   path,
   value,
@@ -38,9 +59,13 @@ export const ModelActionPicker = ({
   children,
 }: Props) => {
   const defaultPath = useMemo<ModelActionPickerStatePath>(() => {
-    return [value?.model_id, value?.id];
+    return [value?.collection_id, value?.model_id, value?.id];
   }, [value]);
-  const [initialModelId, initialActionId] = path ?? defaultPath;
+  const [initialCollectionId, initialModelId, initialActionId] =
+    path ?? defaultPath;
+  const [collectionId, setCollectionId] = useState<CollectionId | undefined>(
+    initialCollectionId,
+  );
   const [modelId, setModelId] = useState<CardId | undefined>(initialModelId);
   const [actionId, setActionId] = useState<
     DataGridWritebackActionId | undefined
@@ -50,9 +75,39 @@ export const ModelActionPicker = ({
     data: modelsResponse,
     error: errorModels,
     isFetching: isLoadingModels,
-  } = useSearchQuery({ models: ["dataset"] });
+  } = useListModelsQuery();
 
-  const models = isLoadingModels ? undefined : modelsResponse?.data;
+  const allModels = isLoadingModels ? undefined : modelsResponse?.models;
+
+  const collections = useMemo(() => {
+    const result: CollectionListItem[] = [];
+    const addedCollectionsSet = new Set();
+
+    allModels?.forEach(
+      ({ collection_id, collection_position, collection_name }) => {
+        const ensuredId = collection_id || "root";
+
+        if (ensuredId && !addedCollectionsSet.has(ensuredId)) {
+          result.push({
+            id: ensuredId,
+            name: collection_name ?? t`Our Analytics`,
+            model: "collection",
+            position: collection_position,
+          });
+          addedCollectionsSet.add(ensuredId);
+        }
+      },
+    );
+
+    return result;
+  }, [allModels]);
+
+  const models = useMemo(() => {
+    return allModels?.filter(({ collection_id: itemCollectionId }) => {
+      const ensuredId = itemCollectionId || "root";
+      return ensuredId === collectionId;
+    });
+  }, [allModels, collectionId]);
 
   // TODO: load by table
   const {
@@ -68,6 +123,11 @@ export const ModelActionPicker = ({
     [allActions, modelId],
   );
 
+  const selectedCollectionItem = useMemo(
+    () => getCollectionItem(collections, collectionId),
+    [collections, collectionId],
+  );
+
   const selectedModelItem = useMemo(
     () => getModelItem(models, modelId),
     [models, modelId],
@@ -79,25 +139,57 @@ export const ModelActionPicker = ({
   );
 
   const handleFolderSelect = useCallback(
-    (folder: ModelItem) => {
+    (folder: ModelActionPickerFolderItem) => {
+      if (folder.model === "collection") {
+        setCollectionId(folder.id);
+        onItemSelect(folder);
+        onPathChange([folder.id, undefined, undefined]);
+
+        setModelId(undefined);
+      }
+
       if (folder.model === "dataset") {
         setModelId(folder.id);
         onItemSelect(folder);
-        onPathChange([folder.id, undefined]);
+        onPathChange([collectionId, folder.id, undefined]);
       }
 
       setActionId(undefined);
     },
-    [onPathChange, onItemSelect],
+    [onItemSelect, onPathChange, collectionId],
   );
 
   const handleActionSelect = useCallback(
     (item: ActionItem) => {
       setActionId(item.id);
       onItemSelect(item);
-      onPathChange([modelId, item.id]);
+      onPathChange([collectionId, modelId, item.id]);
     },
-    [onItemSelect, onPathChange, modelId],
+    [onItemSelect, onPathChange, collectionId, modelId],
+  );
+
+  const handleFolderSelectRef = useLatest(handleFolderSelect);
+
+  useEffect(
+    function ensureCollectionSelected() {
+      const hasItems =
+        !isLoadingModels && collections && collections.length > 0;
+
+      if (hasItems && !selectedCollectionItem) {
+        const firstItem = collections[0];
+        const item = getCollectionItem(collections, firstItem.id);
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [
+      handleFolderSelectRef,
+      isLoadingModels,
+      collections,
+      selectedCollectionItem,
+    ],
   );
 
   return (
@@ -110,6 +202,20 @@ export const ModelActionPicker = ({
         data-testid="nested-item-picker"
       >
         <Flex h="100%" w="fit-content">
+          {collections?.length > 1 && (
+            <ListBox data-testid="item-picker-level-0">
+              <ItemList
+                error={errorModels}
+                isCurrentLevel={!modelId}
+                isFolder={isFolderTrue}
+                isLoading={isLoadingModels}
+                items={isLoadingModels ? undefined : collections}
+                selectedItem={selectedCollectionItem}
+                onClick={handleFolderSelect}
+              />
+            </ListBox>
+          )}
+
           <ModelList
             error={errorModels}
             isCurrentLevel={!actionId}

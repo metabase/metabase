@@ -17,7 +17,6 @@ import {
   type EntityPickerTab,
   defaultOptions,
 } from "metabase/common/components/EntityPicker";
-import type { RecentContexts, RecentItem } from "metabase-types/api";
 
 import { ModelActionPicker, TableActionPicker } from "./ActionPicker";
 import { isActionItem } from "./ActionPicker/utils";
@@ -29,16 +28,10 @@ type TableOrModelDataPickerProps = {
   children: ReactNode;
 };
 
-const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
-
-const SEARCH_PARAMS = {
-  include_dashboard_questions: true,
-};
-
 const options: Partial<EntityPickerOptions> = {
   ...defaultOptions,
   hasConfirmButtons: false,
-  hasRecents: true,
+  hasRecents: false,
 };
 
 export const TableOrModelDataPicker = ({
@@ -51,23 +44,6 @@ export const TableOrModelDataPicker = ({
     databaseId: undefined,
     models: ["dataset"],
   });
-
-  const recentFilter = useCallback(
-    (recentItems: RecentItem[]) => recentItems,
-    [],
-  );
-
-  const handleItemSelect = useCallback(
-    (item: TableActionPickerItem | ModelActionPickerItem) => {
-      if (!isActionItem(item)) {
-        onChange(undefined);
-        return;
-      }
-
-      onChange(item);
-    },
-    [onChange],
-  );
 
   const [tableActionPath, setTableActionPath] =
     useState<TableActionPickerStatePath>();
@@ -84,22 +60,20 @@ export const TableOrModelDataPicker = ({
         id: "tables-tab",
         displayName: t`Tables`,
         models: ["action" as const],
-        folderModels: [
-          "database" as const,
-          "schema" as const,
-          "table" as const,
-        ],
+        folderModels: [],
         icon: "table",
-        render: ({ onItemSelect }) => (
-          <TableActionPicker
-            path={tableActionPath}
-            value={value as TableActionPickerValue | undefined}
-            onItemSelect={onItemSelect}
-            onPathChange={setTableActionPath}
-          >
-            {children}
-          </TableActionPicker>
-        ),
+        render: ({ onItemSelect }) => {
+          return (
+            <TableActionPicker
+              path={tableActionPath}
+              value={value as TableActionPickerValue | undefined}
+              onItemSelect={onItemSelect}
+              onPathChange={setTableActionPath}
+            >
+              {children}
+            </TableActionPicker>
+          );
+        },
       },
     ];
 
@@ -108,23 +82,43 @@ export const TableOrModelDataPicker = ({
         id: "models-tab",
         displayName: t`Models`,
         models: ["action" as const],
-        folderModels: ["dataset" as const],
+        folderModels: [],
         icon: "model",
-        render: ({ onItemSelect }) => (
-          <ModelActionPicker
-            path={modelActionPath}
-            value={value as ModelActionPickerValue | undefined}
-            onItemSelect={onItemSelect}
-            onPathChange={setModelActionPath}
-          >
-            {children}
-          </ModelActionPicker>
-        ),
+        render: ({ onItemSelect }) => {
+          return (
+            <ModelActionPicker
+              path={modelActionPath}
+              value={value as ModelActionPickerValue | undefined}
+              onItemSelect={onItemSelect}
+              onPathChange={setModelActionPath}
+            >
+              {children}
+            </ModelActionPicker>
+          );
+        },
       });
     }
 
     return computedTabs;
   })();
+
+  const handleItemSelect = useCallback(
+    (item: TableActionPickerItem | ModelActionPickerItem) => {
+      if (!isActionItem(item)) {
+        onChange(undefined);
+        return;
+      }
+
+      onChange(item);
+    },
+    [onChange],
+  );
+
+  const handleTabChange = useCallback(() => {
+    onChange(undefined);
+    setTableActionPath(undefined);
+    setModelActionPath(undefined);
+  }, [onChange]);
 
   return (
     <EntityPickerContent
@@ -132,15 +126,13 @@ export const TableOrModelDataPicker = ({
       defaultToRecentTab={false}
       initialValue={value}
       options={options}
-      recentsContext={RECENTS_CONTEXT}
-      recentFilter={recentFilter}
-      searchParams={SEARCH_PARAMS}
       selectedItem={value ?? null}
       tabs={tabs}
-      title={t`Pick action to add`}
+      title={t`Pick an action to add`}
       onClose={onClose}
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData}
+      onTabChange={handleTabChange}
     />
   );
 };
