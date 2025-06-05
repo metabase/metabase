@@ -414,6 +414,83 @@ describe("scenarios > question > native", () => {
         H.rightSidebar().should("contain", "Enter a default value…");
       });
 
+      it("should handle time grouping in optional clause", () => {
+        const questionWithDefaultValue = {
+          name: "Saved question with time grouping",
+          native: {
+            query: `
+              SELECT
+                ID [[,{{mb.time_grouping("unit", "CREATED_AT")}} as unit]]
+              FROM
+                PEOPLE
+              WHERE
+                1 = 1 [[AND ID = {{x}}]]
+              ORDER BY
+                ID
+              LIMIT
+                10
+            `,
+            "template-tags": {
+              unit: {
+                type: "temporal-unit",
+                name: "unit",
+                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                "display-name": "Unit",
+                default: "year",
+              },
+            },
+          },
+        };
+
+        H.createNativeQuestion(questionWithDefaultValue, {
+          wrapId: true,
+          idAlias: "q1",
+        }).then((questionId) => H.visitQuestion(questionId));
+
+        cy.findByTestId("visualization-root")
+          .should("contain", "January 1, 2022")
+          .should("contain", "January 1, 2023");
+      });
+
+      // TODO: test is broken, unskip once optional usage of time grouping is supported
+      it.skip("should handle time grouping in optional clause without default value", () => {
+        const questionWithDefaultValue = {
+          name: "Saved question with time grouping",
+          native: {
+            query: `
+              SELECT
+                ID [[,{{mb.time_grouping("unit", "CREATED_AT")}} as unit]]
+              FROM
+                PEOPLE
+              WHERE
+                1 = 1 [[AND ID = {{x}}]]
+              ORDER BY
+                ID
+              LIMIT
+                10
+            `,
+            "template-tags": {
+              unit: {
+                type: "temporal-unit",
+                name: "unit",
+                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                "display-name": "Unit",
+              },
+            },
+          },
+        };
+
+        H.createNativeQuestion(questionWithDefaultValue, {
+          wrapId: true,
+          idAlias: "q1",
+        }).then((questionId) => H.visitQuestion(questionId));
+
+        cy.findByTestId("query-visualization-root").should(
+          "not.contain",
+          "Error: invalid value specified for temporal-unit parameter.",
+        );
+      });
+
       describe("validation", () => {
         it("should show validation error when query is invalid", () => {
           const question = {
