@@ -455,11 +455,12 @@
   such that they can be presented correctly in a modal ahead of execution."
   [{}
    {}
+   ;; TODO support for bulk actions
    {:keys [action_id scope input]}]
   (let [scope (actions/hydrate-scope scope)
         unified
         ;; this mess can go once callers are on new listing API, leaving only the unified-action call.
-        ;; but then this routes lifetime should be similarly limited!
+        ;; but then this route's lifetime should be similarly limited!
         (cond
           (not (#{"table.row/create"
                   "table.row/update"
@@ -610,8 +611,10 @@
             _           (when-not table-id
                           (throw (ex-info "Must provide table-id" {:status-code 400})))
             row-delay   (delay
-                         (when table-id
-                           (let [pk-fields    (data-editing/select-table-pk-fields table-id)
+                         ;; TODO this is incorrect - in general the row will not come from the table we are acting
+                         ;;      upon - this is not even true for our first use case!
+                          (when table-id
+                            (let [pk-fields    (data-editing/select-table-pk-fields table-id)
                                   pk           (select-keys input (mapv (comp keyword :name) pk-fields))
                                   pk-satisfied (= (count pk) (count pk-fields))]
                               (when pk-satisfied
