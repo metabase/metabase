@@ -1298,30 +1298,26 @@
                                              ["dashcard scope" {:dashcard-id (:id dashcard)}]]]
                   (testing testing-msg
                     (testing "create"
-                      (let [{:keys [status
-                                    body]} (req {:scope     scope
-                                                 :action_id create-id
-                                                 :input     {:id 1}})]
-                        (is (= 200 status))
-                        (when (:dashcard-id scope)
-                          (is (= [{:id "text" :readonly true  :value "a very important string"}
-                                  {:id "int"  :readonly false}
-                                 ;; note that timestamp is now hidden
-                                  {:id "date" :readonly false}]
-                                 (map #(select-keys % [:id
-                                                       :readonly
-                                                       :value])
-                                      (:parameters body)))))))
+                      (is (=? {:status 200
+                               :body   {:parameters
+                                        (if (:dashcard-id scope)
+                                          [{:id "text" :readonly true :value "a very important string"}
+                                           {:id "int" :readonly false}
+                                           ;; note that timestamp is now hidden
+                                           {:id "date" :readonly false}]
+                                          [{:id "text" :readonly false}
+                                           {:id "int" :readonly false}
+                                           {:id "timestamp" :readonly false}
+                                           {:id "date" :readonly false}])}}
+                              (req {:scope     scope
+                                    :action_id create-id
+                                    :input     {:id 1}}))))
 
                     (testing "update"
-                      (let [{:keys [status]} (req {:scope scope
-                                                   :action_id update-id})]
-                        (is (= 200 status))))
+                      (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
 
                     (testing "delete"
-                      (let [{:keys [status]} (req {:scope scope
-                                                   :action_id delete-id})]
-                        (is (= 200 status))))))))))))))
+                      (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))))
 
 (deftest tmp-modal-test)
 

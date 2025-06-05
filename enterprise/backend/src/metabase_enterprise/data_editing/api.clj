@@ -466,23 +466,28 @@
                   "table.row/delete"} action_id))
           (fetch-unified-action scope action_id)
 
+          (:table-id input)
+          {:action-kw (keyword action_id)
+           :mapping   {:table-id (:table-id input)
+                       :row      ::root}}
+
           (:table-id scope)
           {:action-kw (keyword action_id)
-           :mapping {:table-id (:table-id scope)
-                     :row ::root}}
+           :mapping   {:table-id (:table-id scope)
+                       :row      ::root}}
 
           (:dashcard-id scope)
           (let [{:keys [dashcard-id]} scope
                 {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
             (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-            {:row-action {:action-kw (keyword action_id)
-                          :mapping {:table-id (:table_id visualization_settings)
-                                    :row ::root}}
-             :mapping   (->> visualization_settings
-                             :editableTable.enabledActions
-                             (some (fn [{:keys [id parameterMappings]}]
-                                     (when (= id action_id)
-                                       parameterMappings))))})
+            {:row-action    {:action-kw (keyword action_id)
+                             :mapping   {:table-id (:table_id visualization_settings)
+                                         :row      ::root}}
+             :param-mapping (->> visualization_settings
+                                 :editableTable.enabledActions
+                                 (some (fn [{:keys [id parameterMappings]}]
+                                         (when (= id action_id)
+                                           parameterMappings))))})
           :else
           (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
                           {:status-code 400
@@ -500,12 +505,12 @@
         (fn [& {:keys [action-id
                        row-action-mapping
                        row-delay]}]
-          (let [action (-> (actions/select-action :id action-id
-                                                  :archived false
-                                                  {:where [:not [:= nil :model_id]]})
+          (let [action              (-> (actions/select-action :id action-id
+                                                               :archived false
+                                                               {:where [:not [:= nil :model_id]]})
 
-                           api/read-check
-                           api/check-404)
+                                        api/read-check
+                                        api/check-404)
                 param-id->viz-field (-> action :visualization_settings (:fields {}))
                 param-id->mapping   (u/index-by :parameterId row-action-mapping)]
 
@@ -521,6 +526,7 @@
                     (u/remove-nils
                      {:id (:id param)
                       :display_name (or (:display-name param) (:name param))
+                      :param-mapping param-mapping
                       :type (case (:type param)
                               :string/=    :type/Text
                               :number/=    :type/Number
@@ -543,16 +549,15 @@
         describe-table-action
         (fn [& {:keys [action-kw
                        table-id
-                       ;; this has been written to work with the existing viz-settings mapping
                        row-action-mapping
                        row-delay]}]
-          (let [table-id            (or table-id (:table-id row-action-mapping))
+          (let [table-id            table-id
                 table               (api/read-check (t2/select-one :model/Table :id table-id :active true))
                 field-name->mapping (u/index-by :parameterId row-action-mapping)]
             {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
              :parameters
              (->> (for [field (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
-                        :let [pk (= :type/PK (:semantic_type field))
+                        :let [pk            (= :type/PK (:semantic_type field))
                               param-mapping (field-name->mapping (:name field))]
                         :when (case action-kw
                                 ;; create does not take pk cols if auto increment, todo generated cols?
@@ -564,7 +569,7 @@
                         :when (not= "hidden" (:visibility param-mapping))
                         :let [required (or pk (:database_required field))]]
                     (u/remove-nils
-                     {:id (:name field)
+                     {:id           (:name field)
                       :display_name (:display_name field)
                       :type (:base_type field)
                       :semantic_type (:semantic_type field)
@@ -578,34 +583,33 @@
                   vec)}))]
 
     (cond
-      ;; saved action
+  ;; saved action
       (:action-id unified)
       (describe-saved-action :action-id (:action-id unified))
 
-      ;; table action
+  ;; table action
       (:action-kw unified)
       (describe-table-action
-       :action-kw          (:action-kw unified)
-       :row-action-mapping (:mapping unified))
+       :action-kw (:action-kw unified)
+       :table-id (or (:table-id input) (:table-id (:mapping unified)))
+       :row-action-mapping (:param-mapping unified))
 
       (:row-action unified)
       (let [row-action  (:row-action unified)
-            mapping     (:mapping unified)
+            mapping     (:param-mapping unified)
             dashcard-id (:dashcard-id unified)
             saved-id    (:action-id row-action)
             action-kw   (:action-kw row-action)
             table-id    (or (:table-id mapping)
                             (:table-id (:mapping row-action))
                             (:table-id scope))
-
-            row-delay
-            (delay
-              (when table-id
-                (let [pk-fields    (data-editing/select-table-pk-fields table-id)
-                      pk           (select-keys input (mapv (comp keyword :name) pk-fields))
-                      pk-satisfied (= (count pk) (count pk-fields))]
-                  (when pk-satisfied
-                    (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
+            row-delay   (delay
+                          (when table-id
+                            (let [pk-fields    (data-editing/select-table-pk-fields table-id)
+                                  pk           (select-keys input (mapv (comp keyword :name) pk-fields))
+                                  pk-satisfied (= (count pk) (count pk-fields))]
+                              (when pk-satisfied
+                                (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
         (cond
           saved-id
           (describe-saved-action :action-id saved-id
