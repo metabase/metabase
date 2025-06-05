@@ -602,7 +602,10 @@
             action-kw   (:action-kw row-action)
             table-id    (or (:table-id mapping)
                             (:table-id (:mapping row-action))
+                            (:table-id input)
                             (:table-id scope))
+            _           (when-not table-id
+                          (throw (ex-info "Must provide table-id" {:status-code 400})))
             row-delay   (delay
                           (when table-id
                             (let [pk-fields    (data-editing/select-table-pk-fields table-id)

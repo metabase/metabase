@@ -1294,6 +1294,41 @@
               (let [create-id "table.row/create"
                     update-id "table.row/update"
                     delete-id "table.row/delete"]
+
+                (testing "without a table-id"
+                  (let [scope           {:dashboard-id (:dashboard_id dashcard)}]
+                    (testing "create"
+                      (is (=? {:status 400} (req {:action_id create-id, :scope scope}))))
+                    (testing "update"
+                      (is (=? {:status 400} (req {:action_id update-id, :scope scope}))))
+                    (testing "delete"
+                      (is (=? {:status 400} (req {:action_id update-id, :scope scope}))))))
+
+                (testing "using a partially constructed :input"
+                  (let [unrelated-table Long/MAX_VALUE
+                        scope           {:table-id unrelated-table}
+                        input           {:table-id @test-table}]
+                    (testing "create"
+                      (is (=? {:status 200
+                               :body   {:parameters
+                                        (if (:dashcard-id scope)
+                                          [{:id "text" :readonly true :value "a very important string"}
+                                           {:id "int" :readonly false}
+                                           ;; note that timestamp is now hidden
+                                           {:id "date" :readonly false}]
+                                          [{:id "text" :readonly false}
+                                           {:id "int" :readonly false}
+                                           {:id "timestamp" :readonly false}
+                                           {:id "date" :readonly false}])}}
+                              (req {:action_id create-id
+                                    :scope     scope
+                                    :input     (assoc input :id 1)}))))
+                    (testing "update"
+                      (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))
+                    (testing "delete"
+                      (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))))
+
+                ;; magic scope detection, deprecated
                 (doseq [[testing-msg scope] [["table scope" {:table-id @test-table}]
                                              ["dashcard scope" {:dashcard-id (:id dashcard)}]]]
                   (testing testing-msg
@@ -1318,8 +1353,6 @@
 
                     (testing "delete"
                       (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))))
-
-(deftest tmp-modal-test)
 
 ;; Taken from metabase-enterprise.data-editing.api-test.
 ;; When we deprecate that API, we should move all the sibling tests here as well.
