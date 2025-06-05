@@ -19,7 +19,7 @@ export function TablePicker({
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const deferredQuery = useDeferredValue(query);
-  const debouncedQuery = useDebouncedValue(query, 300);
+  const debouncedQuery = useDebouncedValue(deferredQuery, 300);
   const { isLoading, tree } = useSearch(debouncedQuery);
   const searchItems = useMemo(() => flatten(tree), [tree]);
 
