@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-442-tests-for-sso-authentication-for-new-iframe-embedding",
-    "hash": "dda7181722324cd503f5c99d18e5df2135634f5a"
+    "hash": "8c8bac530ec35272663f00fd38f512331feb598c"
   },
   "upstream": {
     "branch": "emb-450-ability-to-select-auth-method-in-new-iframe-embedding"
