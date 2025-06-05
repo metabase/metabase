@@ -1,14 +1,24 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { 
+  skipToken, 
+  useListRecentsQuery, 
+  useSearchQuery,
+  useVisualizationCompatibleSearchMutation 
+} from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, Loader } from "metabase/ui";
-import { getDataSources } from "metabase/visualizer/selectors";
+import { 
+  getDataSources, 
+  getVisualizationType,
+  getVisualizationColumns 
+} from "metabase/visualizer/selectors";
 import { createDataSource } from "metabase/visualizer/utils";
+import { partitionTimeDimensions } from "metabase/visualizer/visualizations/compat";
 import {
   addDataSource,
   removeDataSource,
@@ -48,6 +58,17 @@ export function DatasetsList({
     () => new Set(dataSources.map((s) => s.id)),
     [dataSources],
   );
+  
+  // Get current visualization context
+  const visualizationType = useSelector(getVisualizationType);
+  const visualizationColumns = useSelector(getVisualizationColumns);
+
+  // State to store visualization search results
+  const [visualizationSearchResult, setVisualizationSearchResult] = useState<any[]>([]);
+  const [isVisualizationSearchLoading, setIsVisualizationSearchLoading] = useState(false);
+
+  // Test the new visualization-compatible endpoint
+  const [triggerVisualizationSearch] = useVisualizationCompatibleSearchMutation();
 
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
@@ -118,6 +139,46 @@ export function DatasetsList({
         refetchOnMountOrArgChange: true,
       },
     );
+    
+  // Test call to the new visualization-compatible endpoint
+  useEffect(() => {
+    // Only trigger when we have search and visualization context
+    if (visualizationType && visualizationColumns) {
+      setIsVisualizationSearchLoading(true);
+
+      // Extract dimension IDs from current visualization columns
+      const { timeDimensions, otherDimensions } = partitionTimeDimensions(visualizationColumns);
+      
+      const payload = {
+        limit: 50,
+        models: ["card", "dataset", "metric"] as Array<"card" | "dataset" | "metric">,
+        include_dashboard_questions: true,
+        include_metadata: true,
+        visualization_context: {
+          display: visualizationType || null,
+          dimensions: {
+            temporal: timeDimensions.map(col => col.id).filter((id): id is number => id != null),
+            non_temporal: otherDimensions.map(col => col.id).filter((id): id is number => id != null)
+          }
+        }
+      };
+      
+      console.log("Testing visualization-compatible endpoint with:", payload);
+      
+      triggerVisualizationSearch(payload)
+        .then((result) => {
+          console.log("Visualization-compatible endpoint response:", result);
+          // Assuming the response structure is similar to searchResult
+          setVisualizationSearchResult(result.data?.data || []);
+          setIsVisualizationSearchLoading(false);
+        })
+        .catch((error) => {
+          console.error("Visualization-compatible endpoint error:", error);
+          setVisualizationSearchResult([]);
+          setIsVisualizationSearchLoading(false);
+        });
+    }
+  }, [search, visualizationType, visualizationColumns, triggerVisualizationSearch]);
 
   const items = useMemo(() => {
     if (search.length > 0) {
@@ -135,7 +196,7 @@ export function DatasetsList({
         .filter(isNotNull);
     }
 
-    return allRecents
+    return visualizationSearchResult
       .filter((maybeCard) =>
         ["card", "dataset", "metric"].includes(maybeCard.model),
       )
@@ -144,9 +205,9 @@ export function DatasetsList({
         display: card.display,
         result_metadata: card.result_metadata,
       }));
-  }, [searchResult, allRecents, search, dashboardId]);
+  }, [searchResult, allRecents, visualizationSearchResult, search, dashboardId]);
 
-  if (isListRecentsLoading || isSearchLoading) {
+  if (isListRecentsLoading || isSearchLoading || isVisualizationSearchLoading) {
     return (
       <Flex
         gap="xs"
