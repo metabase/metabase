@@ -66,7 +66,7 @@
        ;; further constrain this so all of the exprs are of the same type
        {:error/message "All clauses should have the same type"}
        (fn [[_tag _opts pred-expr-pairs default]]
-         (let [expressions (conj (map second pred-expr-pairs) default)
+         (let [expressions (into (map second pred-expr-pairs) (filter some?) [default])
                expression-types (map expression/type-of expressions)
                same-types? (apply = expression-types)]
            same-types?))]]])
