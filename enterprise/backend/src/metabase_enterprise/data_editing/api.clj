@@ -385,12 +385,16 @@
              x))
          mapping)))))
 
-(defn- execute!* [action-id scope params inputs]
-  (let [scope      (actions/hydrate-scope scope)
-        unified    (fetch-unified-action scope action-id)
-        inputs     (->> inputs
-                        (apply-mapping unified params)
-                        (apply-mapping (:row-action unified) nil))]
+(defn- apply-mapping-nested [{:keys [row-action] :as outer-action} params inputs-before]
+  (let [inputs-after (apply-mapping outer-action params inputs-before)]
+    (if row-action
+      (recur row-action nil inputs-after)
+      inputs-after)))
+
+(defn- execute!* [action-id scope params raw-inputs]
+  (let [scope   (actions/hydrate-scope scope)
+        unified (fetch-unified-action scope action-id)
+        inputs  (apply-mapping-nested unified params raw-inputs)]
     (cond
       (:action-id unified)
       (let [action (api/read-check (actions/select-action :id (:action-id unified) :archived false))]
