@@ -15,12 +15,11 @@ import { Box } from "metabase/ui";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
-import { CurateContent } from "./CurateContent";
+import { ContentManager } from "./ContentManager";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
-import { ViewContent } from "./ViewContent";
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus();
@@ -76,10 +75,10 @@ const SdkIframeEmbedView = ({
       />
     ))
     .with({ template: "curate-content" }, (settings) => (
-      <CurateContent settings={settings} />
+      <ContentManager settings={settings} />
     ))
     .with({ template: "view-content" }, (settings) => (
-      <ViewContent settings={settings} />
+      <ContentManager settings={settings} />
     ))
     .with(
       {
