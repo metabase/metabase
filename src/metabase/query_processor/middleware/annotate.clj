@@ -1,32 +1,25 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.humanization :as humanization]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
@@ -38,7 +31,6 @@
 (p/import-vars
  [metabase.query-processor.middleware.annotate.legacy-helper-fns
   aggregation-name
-  infer-expression-type
   merged-column-info])
 
 (mr/def ::legacy-source
