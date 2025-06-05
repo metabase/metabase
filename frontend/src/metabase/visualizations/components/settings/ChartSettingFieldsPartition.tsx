@@ -253,8 +253,9 @@ export const ChartSettingFieldsPartition = ({
     const columnName = Lib.columnKey(column);
     const bucket = Lib.temporalBucket(column);
     const bucketName = bucket
-      ? Lib.displayInfo(query, 0, bucket)?.displayName
+      ? Lib.displayInfo(query, 0, bucket)?.shortName
       : undefined;
+
     const binning = Lib.binning(column);
     const binningInfo = binning
       ? Lib.displayInfo(query, 0, binning)
