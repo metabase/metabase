@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { ActionFormParameter } from "../../types";
 import { ActionFormParameterType } from "../../types";
 
@@ -12,12 +14,21 @@ type ParameterActionInputProps = ActionInputSharedProps & {
 export function ParameterActionInput(props: ParameterActionInputProps) {
   const { parameter, ...rest } = props;
 
+  // TOOD: add `Auto populated` label for db-generated values when BE supports it
+  const placeholder = parameter.optional ? t`Optional` : undefined;
+  const inputProps = {
+    ...rest.inputProps,
+    placeholder,
+  };
+
   switch (parameter.type) {
     case ActionFormParameterType.Date:
-      return <ActionInputDateTime {...rest} />;
+      return <ActionInputDateTime {...rest} inputProps={inputProps} />;
     case ActionFormParameterType.DateTime:
-      return <ActionInputDateTime {...rest} isDateTime />;
+      return (
+        <ActionInputDateTime {...rest} inputProps={inputProps} isDateTime />
+      );
     default:
-      return <ActionInputText {...rest} />;
+      return <ActionInputText {...rest} inputProps={inputProps} />;
   }
 }

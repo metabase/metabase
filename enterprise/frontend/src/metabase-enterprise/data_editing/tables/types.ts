@@ -87,14 +87,14 @@ export type TableExecuteActionResponse = {
   "rows-affected": number;
 };
 
-export enum PrimitiveTableAction {
+export enum BuiltInTableAction {
   Create = "table.row/create",
   Update = "table.row/update",
   Delete = "table.row/delete",
 }
 
 export type DescribeActionFormRequest = {
-  action_id: PrimitiveTableAction | number;
+  action_id: BuiltInTableAction | number;
   scope: TableEditingScope;
   input?: Record<string, unknown>;
 };

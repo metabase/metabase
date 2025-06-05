@@ -2,10 +2,10 @@ import { useEffect } from "react";
 
 import { useDescribeActionFormMutation } from "metabase-enterprise/api";
 
-import type { PrimitiveTableAction, TableEditingScope } from "../types";
+import type { BuiltInTableAction, TableEditingScope } from "../types";
 
 type UseTableDescribeTmpModalProps = {
-  actionId: PrimitiveTableAction;
+  actionId: BuiltInTableAction;
   scope: TableEditingScope;
 };
 

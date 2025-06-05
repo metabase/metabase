@@ -33,7 +33,7 @@ export function ActionFormModalParameter({
         />
         <Text className={S.modalBodyColumn}>
           {parameter.display_name}
-          {parameter.optional && (
+          {!parameter.optional && (
             <Text component="span" c="error">
               *
             </Text>

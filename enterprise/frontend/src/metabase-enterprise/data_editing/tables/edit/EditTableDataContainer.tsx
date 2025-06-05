@@ -18,7 +18,7 @@ import { extractRemappedColumns } from "metabase/visualizations";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 
-import { PrimitiveTableAction } from "../types";
+import { BuiltInTableAction } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
@@ -161,7 +161,7 @@ export const EditTableDataContainer = ({
   ] = useDisclosure(false);
 
   const { data: createRowFormDescription } = useActionFormDescription({
-    actionId: PrimitiveTableAction.Create,
+    actionId: BuiltInTableAction.Create,
     scope: editingScope,
   });
 

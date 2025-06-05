@@ -46,7 +46,7 @@ export function ActionCreateRowFormModal({
       const errors: Record<string, string> = {};
 
       description?.parameters.forEach((parameter) => {
-        const isRequired = parameter.optional;
+        const isRequired = !parameter.optional;
         if (isRequired && !values[parameter.id]) {
           errors[parameter.id] = t`This column is required`;
         }
