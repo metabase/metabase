@@ -1,11 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "branch",
-        "restack"
-      ],
-      "branch": "emb-450-ability-to-select-auth-method-in-new-iframe-embedding"
-    }
-  ]
+  "continuations": null
 }
