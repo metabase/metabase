@@ -357,7 +357,7 @@
   it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
   global state of the application database.")
 
-(def ^:private original-test-var clojure.test/test-var)
+(defonce ^:private original-test-var clojure.test/test-var)
 
 (defn- test-var-with-context
   "A modified version of `clojure.test/test-var` that:
