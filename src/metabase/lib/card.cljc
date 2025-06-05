@@ -141,9 +141,16 @@
    card                  :- Card]
   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
-      (when-let [result-metadata (or (:fields card)
-                                     (:result-metadata card)
-                                     (infer-returned-columns metadata-providerable card))]
+      (when-let [result-metadata (u/prog1
+                                   (or (:fields card)
+                                       (:result-metadata card)
+                                       (infer-returned-columns metadata-providerable card))
+                                   (tap> [`card-metadata-columns:inputs
+                                          :fields          (:fields card)
+                                          :result-metadata (:result-metadata card)
+                                          :inferred        (and (not (:fields card))
+                                                                (not (:result-metadata card))
+                                                                <>)]))]
         ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
         ;; contains` :columns` as well.
         (when-let [cols (not-empty (cond
@@ -166,22 +173,35 @@
   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
   ;; but handle that case anyway. (#29739)
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
-    (card-metadata-columns metadata-providerable card)))
+    (u/prog1 (card-metadata-columns metadata-providerable card)
+      (tap> [`saved-question-metadata <>]))))
+
+(defn- desired-column-alias
+  "When there's a `:source-alias`, it becomes part of the `:lib/desired-column-alias`."
+  [{:keys [source-alias] :as column}]
+  (or ((some-fn :lib/desired-column-alias :desired-column-alias) column)
+      (cond->> ((some-fn :lib/source-column-alias :name) column)
+        source-alias (str source-alias "__"))))
 
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as options}]
-  (mapv (fn [col]
-          (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
-            (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
-        (if (= (:type card) :metric)
-          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
-                                 (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (not-empty (lib.metadata.calculation/returned-columns
-                        (assoc metric-query :lib/metadata (:lib/metadata query))
-                        -1
-                        (lib.util/query-stage metric-query -1)
-                        options)))
-          (card-metadata-columns query card))))
+  (u/prog1 (mapv (fn [col]
+                   (let [desired-alias (desired-column-alias col)]
+                     (assoc col
+                   ; The desired column alias from the card becomes the source-column-alias here.
+                            :lib/source-column-alias  desired-alias
+                   ; It's also the desired-column-alias here, since there's no renaming by default.
+                            :lib/desired-column-alias (unique-name-fn desired-alias))))
+                 (if (= (:type card) :metric)
+                   (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                                          (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+                     (not-empty (lib.metadata.calculation/returned-columns
+                                 (assoc metric-query :lib/metadata (:lib/metadata query))
+                                 -1
+                                 (lib.util/query-stage metric-query -1)
+                                 options)))
+                   (card-metadata-columns query card)))
+    (tap> [`RCM-card <>])))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."

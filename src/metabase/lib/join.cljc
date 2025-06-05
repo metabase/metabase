@@ -8,6 +8,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -232,10 +233,17 @@
    column-metadata :- ::lib.schema.metadata/column
    join-alias      :- ::lib.schema.common/non-blank-string]
   (let [column-metadata (assoc column-metadata :source-alias join-alias)
-        col             (-> (assoc column-metadata
-                                   :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
-                                   :lib/source   :source/joins)
-                            (with-join-alias join-alias))]
+        col             (cond-> (assoc column-metadata
+                                       :display-name (lib.metadata.calculation/display-name
+                                                      query stage-number column-metadata)
+                                       :lib/source   :source/joins)
+                          (lib.field.util/inherited-column? column-metadata)
+                          (assoc :lib/source-column-alias  (:lib/desired-column-alias column-metadata)
+                                 ; Signals that this column, which no longer appears "inherited" since it's got
+                                 ; :source/joins rather than eg. `:source/card`, needs a string-shaped alias.
+                                 :lib/previously-inherited true)
+
+                          :always (with-join-alias join-alias))]
     (assert (= (lib.join.util/current-join-alias col) join-alias))
     col))
 
@@ -287,7 +295,9 @@
                        (ensure-previous-stages-have-metadata -1 options))
           join-cols       (lib.metadata.calculation/returned-columns
                            join-query -1 (lib.util/query-stage join-query -1)
-                           (assoc options :include-remaps? false))
+                           (-> options
+                               (assoc :include-remaps? false)
+                               (dissoc :unique-name-fn)))
           field-metadatas (if (= fields :all)
                             join-cols
                             (for [field-ref fields

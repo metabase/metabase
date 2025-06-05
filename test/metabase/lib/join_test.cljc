@@ -1447,8 +1447,9 @@
                                 :conditions [[:=
                                               {}
                                               [:field {:base-type :type/Text} "Products__CATEGORY"]
-                                              [:field {:join-alias "Card 2 - Category"} (meta/id :products :category)]]]
-                                :alias      "Card 2 - Category"}]
+                                              [:field {:join-alias "Card 2 - Products → Category"}
+                                               (meta/id :products :category)]]]
+                                :alias      "Card 2 - Products → Category"}]
                        :limit 2}]}
             (lib.tu.mocks-31769/query)))))
 
