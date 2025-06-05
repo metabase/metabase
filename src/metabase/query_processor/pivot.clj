@@ -677,10 +677,10 @@
    (fn [breakouts {:keys [name binning]}]
      (let [col                (find-col-by-name cols name)
            binning-strategy   (keyword (:strategy binning))
-           available-binnings (lib/available-binning-strategies query 0 col)
            available-temporal-buckets (lib/available-temporal-buckets query 0 col)
-           binning-setting    {:strategy binning-strategy
-                               :num-bins (:numbins binning)}
+           binning-setting    (when binning-strategy
+                                {:strategy binning-strategy
+                                 :num-bins (:numbins binning)})
            bucketing-setting (u/seek (fn [available-bucket]
                                        (= (keyword binning)
                                           (keyword (:unit available-bucket))))
