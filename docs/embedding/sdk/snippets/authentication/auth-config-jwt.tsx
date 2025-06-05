@@ -15,6 +15,7 @@ const authConfig = defineMetabaseAuthConfig({
       },
     );
 
+    // The backend should return a JSON object with the shape { jwt: string }
     return await response.json();
   },
   metabaseInstanceUrl: "http://localhost:3000",
