@@ -627,7 +627,8 @@
       (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
         (-> (qp/process-query (dissoc query :info))
             :data
-            :cols))))
+            :results_metadata
+            :columns))))
 
 (defn- add-breakouts
   [query breakout-cols]
@@ -641,6 +642,34 @@
   [cols name]
   (u/seek #(= (:name %) name) cols))
 
+;; From metabase.lib.card -- this is used to convert a column from the results metadata into its lib form
+(defn- ->column
+  "TODO"
+  [col _card-id _field]
+  (let [col (-> col
+                (update-keys u/->kebab-case-en))
+        col-meta (cond-> (merge
+                          {:base-type :type/*, :lib/type :metadata/column}
+                          ; field
+                          col
+                          {:lib/type                :metadata/column
+                           :lib/source              :source/card
+                           :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
+                   ; card-id
+                   ; (assoc :lib/card-id card-id)
+
+                   (:metabase.lib.field/temporal-unit col)
+                   (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
+
+                   ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
+                   ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
+                   ;; treated as FKs unless the metadata is configured accordingly.
+                   (not= (:semantic-type col) :type/FK)
+                   (assoc :fk-target-field-id nil))]
+    ;; :effective-type is required, but not always set, see e.g.,
+    ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
+    (u/assoc-default col-meta :effective-type (:base-type col-meta))))
+
 (defn- generate-breakouts
   "Generates the breakout columns to add to the query, for a given split setting (row or column)"
   [query cols split-setting]
@@ -650,11 +679,8 @@
            binning-strategy   (keyword (:strategy binning))
            available-binnings (lib/available-binning-strategies query 0 col)
            available-temporal-buckets (lib/available-temporal-buckets query 0 col)
-           binning-setting   (u/seek (fn [{:keys [mbql]}]
-                                       (and (= binning-strategy (:strategy mbql))
-                                            (or (not= binning-strategy :num-bins)
-                                                (= (:numBins binning) (:num-bins mbql)))))
-                                     available-binnings)
+           binning-setting    {:strategy binning-strategy
+                               :num-bins (:numbins binning)}
            bucketing-setting (u/seek (fn [available-bucket]
                                        (= (keyword binning)
                                           (keyword (:unit available-bucket))))
@@ -687,7 +713,8 @@
 
 (defn- nest-native-pivot-query
   [base-query pivot-opts]
-  (let [result-metadata   (qp.metadata/result-metadata base-query)
+  (let [original-cols     (original-cols base-query)
+        result-metadata   (map #(->column % nil nil) original-cols)
         rows              (:native-pivot-rows pivot-opts)
         columns           (:native-pivot-cols pivot-opts)
         measures          (:native-pivot-measures pivot-opts)

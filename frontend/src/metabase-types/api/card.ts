@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { BucketDisplayInfo } from "metabase-lib";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -172,7 +173,7 @@ export type NativeColumnSplit = {
   name: string;
   column?: string;
   bucket?: string;
-  binning?: string;
+  binning?: BucketDisplayInfo;
 };
 
 export type NativeColumnSplitSetting = {

@@ -231,9 +231,7 @@ export const ChartSettingFieldsPartition = ({
       const bucketName = bucket
         ? Lib.displayInfo(query, 0, bucket)?.shortName
         : undefined;
-      const columnName = column
-        ? Lib.displayInfo(query, -1, column).name
-        : undefined;
+      const columnName = column ? Lib.columnKey(column) : undefined;
 
       return {
         name: aggDisplay.name,
@@ -252,17 +250,14 @@ export const ChartSettingFieldsPartition = ({
     partition: "rows" | "columns",
     column: Lib.ColumnMetadata,
   ) => {
-    const columnName = Lib.displayInfo(query, -1, column).name;
-
-    // Lib.columnKey
-
+    const columnName = Lib.columnKey(column);
     const bucket = Lib.temporalBucket(column);
     const bucketName = bucket
-      ? Lib.displayInfo(query, 0, bucket)?.shortName
+      ? Lib.displayInfo(query, 0, bucket)?.displayName
       : undefined;
     const binning = Lib.binning(column);
-    const binningName = binning
-      ? Lib.displayInfo(query, 0, binning)?.shortName
+    const binningInfo = binning
+      ? Lib.displayInfo(query, 0, binning)
       : undefined;
 
     onChange({
@@ -273,7 +268,7 @@ export const ChartSettingFieldsPartition = ({
         {
           name: columnName,
           bucket: bucketName,
-          binning: binningName,
+          binning: binningInfo,
         },
       ),
     });
