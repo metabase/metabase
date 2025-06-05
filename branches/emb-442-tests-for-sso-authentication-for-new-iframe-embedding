@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-433-sso-authentication-in-embedjs-for-new-iframe-embedding",
-    "hash": "2894c36c7c8d2a690d8082df839b8f6f8f089761"
+    "hash": "8ad0655d7e0e630e6da9e6a4440627df04274d8c"
   },
   "upstream": {
     "branch": "emb-442-tests-for-sso-authentication-for-new-iframe-embedding"
