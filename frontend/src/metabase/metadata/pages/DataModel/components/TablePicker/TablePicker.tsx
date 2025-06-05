@@ -1,10 +1,4 @@
-import {
-  type KeyboardEvent,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -24,9 +18,8 @@ export function TablePicker({
 }) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const deferredQuery = useDeferredValue(query);
-  const debouncedQuery = useDebouncedValue(deferredQuery, 300);
-  const { isLoading, tree } = useSearch(debouncedQuery || deferredQuery);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const { isLoading, tree } = useSearch(debouncedQuery);
   const searchItems = useMemo(() => flatten(tree), [tree]);
 
   // search results need their own keypress handling logic
@@ -89,7 +82,7 @@ export function TablePicker({
         />
       </Box>
 
-      {deferredQuery === "" ? (
+      {debouncedQuery === "" ? (
         <Tree value={value} onChange={onChange} />
       ) : (
         <Search
