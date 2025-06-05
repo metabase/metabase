@@ -82,12 +82,12 @@
   (when-not (string? sql)
     (throw (ex-info (tru "Expected native source query to be a string, got: {0}"
                          (.getCanonicalName (class sql)))
-                    {:type  driver-api/invalid-query
+                    {:type  driver-api/qp.error-type.invalid-query
                      :query sql})))
   (when-not ((some-fn nil? sequential?) params)
     (throw (ex-info (tru "Expected native source query parameters to be sequential, got: {0}"
                          (.getCanonicalName (class params)))
-                    {:type  driver-api/invalid-query
+                    {:type  driver-api/qp.error-type.invalid-query
                      :query params})))
   {::sql-source-query [sql params]})
 
@@ -516,7 +516,7 @@
 (defmethod cast-temporal-string :default
   [driver coercion-strategy _expr]
   (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
-                  {:type driver-api/unsupported-feature
+                  {:type driver-api/qp.error-type.unsupported-feature
                    :coercion-strategy coercion-strategy})))
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
@@ -540,7 +540,7 @@
 (defmethod cast-temporal-byte :default
   [driver coercion-strategy _expr]
   (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
-                  {:type driver-api/unsupported-feature})))
+                  {:type driver-api/qp.error-type.unsupported-feature})))
 
 (defmulti apply-top-level-clause
   "Implementations of this methods define how the SQL Query Processor handles various top-level MBQL clauses. Each
@@ -648,7 +648,7 @@
                     `throw-double-compilation-error)
             {:driver driver
              :expr   x
-             :type   driver-api/driver})))
+             :type   driver-api/qp.error-type.driver})))
 
 (defmethod ->honeysql :default
   [driver x]
@@ -662,7 +662,7 @@
                           (pr-str [driver (driver-api/dispatch-by-clause-name-or-class x)]))
                   {:driver driver
                    :expr   x
-                   :type   driver-api/driver})))
+                   :type   driver-api/qp.error-type.driver})))
 
 (defmethod ->honeysql [:sql nil]
   [_driver _this]
@@ -721,7 +721,7 @@
   [coercion-type]
   (when-not (isa? coercion-type :Coercion/UNIXTime->Temporal)
     (throw (ex-info "Semantic type must be a UNIXTimestamp"
-                    {:type          driver-api/invalid-query
+                    {:type          driver-api/qp.error-type.invalid-query
                      :coercion-type coercion-type})))
   (or (get {:Coercion/UNIXNanoSeconds->DateTime  :nanoseconds
             :Coercion/UNIXMicroSeconds->DateTime :microseconds
@@ -1021,7 +1021,7 @@
 
              :else
              (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
-                             {:type  driver-api/invalid-query
+                             {:type  driver-api/qp.error-type.invalid-query
                               :query *inner-query*})))
          m (f driver *inner-query*)]
      (-> [:over [expr (merge m additional-hsql)]]
@@ -1133,12 +1133,12 @@
   [driver [_ & [first-arg & other-args :as args]]]
   (cond (interval? first-arg)
         (throw (ex-info (tru "Interval as first argrument to subtraction is not allowed.")
-                        {:type driver-api/invalid-query
+                        {:type driver-api/qp.error-type.invalid-query
                          :args args}))
         (and (some interval? other-args)
              (not (every? interval? other-args)))
         (throw (ex-info (tru "All but first argument to subtraction must be an interval.")
-                        {:type driver-api/invalid-query
+                        {:type driver-api/qp.error-type.invalid-query
                          :args args})))
   (if (interval? (first other-args))
     (reduce (fn [hsql-form [_ amount unit]]
@@ -1343,7 +1343,7 @@
     (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                          (pr-str db-type))
                     {:found db-type
-                     :type  driver-api/invalid-query}))))
+                     :type  driver-api/qp.error-type.invalid-query}))))
 
 (defmethod ->honeysql [:sql :datetime-diff]
   [driver [_ x y unit]]
@@ -1801,7 +1801,7 @@
 (defmethod ->honeysql [:sql :model/Table]
   [driver _table]
   (throw (ex-info "metabase.driver.sql.query-processor/->honeysql is no longer supported for :model/Table, use :metadata/table instead"
-                  {:driver driver, :type driver-api/driver})))
+                  {:driver driver, :type driver-api/qp.error-type.driver})))
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
@@ -1869,7 +1869,7 @@
             (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                             {:dialect dialect
                              :form    honeysql-form
-                             :type    driver-api/driver}
+                             :type    driver-api/qp.error-type.driver}
                             e))))))))
 
 (defn- default-select [driver {[from] :from, :as _honeysql-form}]

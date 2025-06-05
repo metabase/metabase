@@ -230,12 +230,12 @@
 
       (isa? coercion :Coercion/ISO8601->Date)
       (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
-                      {:type              driver-api/unsupported-feature
+                      {:type              driver-api/qp.error-type.unsupported-feature
                        :coercion-strategy coercion}))
 
       (isa? coercion :Coercion/ISO8601->Time)
       (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
-                      {:type              driver-api/unsupported-feature
+                      {:type              driver-api/qp.error-type.unsupported-feature
                        :coercion-strategy coercion}))
 
       (isa? coercion :Coercion/DateTime->Date)
@@ -1545,7 +1545,7 @@
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-                      {:type  driver-api/invalid-query
+                      {:type  driver-api/qp.error-type.invalid-query
                        :query s}
                       e)))))
 

@@ -89,13 +89,13 @@
                              (substitute* param->value parsed-query false)
                              (catch Throwable e
                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
-                                               {:type         (or (:type (ex-data e)) driver-api/qp)
+                                               {:type         (or (:type (ex-data e)) driver-api/qp.error-type.qp)
                                                 :params       param->value
                                                 :parsed-query parsed-query}
                                                e))))]
     (log/tracef "=>%s\n%s" sql (pr-str args))
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-                      {:type    driver-api/missing-required-parameter
+                      {:type    driver-api/qp.error-type.missing-required-parameter
                        :missing missing})))
     [(str/trim sql) args]))

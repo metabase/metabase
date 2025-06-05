@@ -162,7 +162,7 @@
                   (= user "sa"))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-                    {:type driver-api/db})))))))
+                    {:type driver-api/qp.error-type.db})))))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"

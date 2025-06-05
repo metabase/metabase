@@ -205,7 +205,7 @@
   (throw (ex-info (tru "Sqlite doesn''t support extract isoweek")
                   {:driver driver
                    :form   expr
-                   :type   driver-api/invalid-query})))
+                   :type   driver-api/qp.error-type.invalid-query})))
 
 (defmethod sql.qp/date [:sqlite :month]
   [_driver _ expr]

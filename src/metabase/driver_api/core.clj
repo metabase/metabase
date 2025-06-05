@@ -135,13 +135,6 @@
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>
- qp.error-type/db
- qp.error-type/driver
- qp.error-type/invalid-parameter
- qp.error-type/invalid-query
- qp.error-type/missing-required-parameter
- qp.error-type/qp
- qp.error-type/unsupported-feature
  qp.i/*disable-qp-logging*
  qp.pipeline/*canceled-chan*
  qp.preprocess/preprocess
@@ -179,7 +172,15 @@
   (p/import-fn setting/get-value-of-type setting-get-value-of-type)
   (p/import-fn secrets/value-as-string secret-value-as-string)
   (p/import-fn secrets/value-as-file! secret-value-as-file!)
-  (p/import-fn table/database table->database))
+  (p/import-fn table/database table->database)
+
+  (p/import-def qp.error-type/db qp.error-type.db)
+  (p/import-def qp.error-type/driver qp.error-type.driver)
+  (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
+  (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
+  (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
+  (p/import-def qp.error-type/qp qp.error-type.qp)
+  (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature))
 
 (def schema.common.non-blank-string
   "::lib.schema.common/non-blank-string"

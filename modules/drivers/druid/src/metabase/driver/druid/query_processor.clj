@@ -240,7 +240,7 @@
                  :value         (->rvalue pattern)
                  :caseSensitive (get options :case-sensitive true)}}
     (throw (ex-info (tru "Dynamic patterns are not supported.")
-                    {:type driver-api/invalid-query
+                    {:type driver-api/qp.error-type.invalid-query
                      :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :starts-with
@@ -250,7 +250,7 @@
                  (str (escape-like-filter-pattern (->rvalue pattern)) \%)
                  (get options :case-sensitive true))
     (throw (ex-info (tru "Dynamic patterns are not supported.")
-                    {:type driver-api/invalid-query
+                    {:type driver-api/qp.error-type.invalid-query
                      :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :ends-with
@@ -260,7 +260,7 @@
                  (str \% (escape-like-filter-pattern (->rvalue pattern)))
                  (get options :case-sensitive true))
     (throw (ex-info (tru "Dynamic patterns are not supported.")
-                    {:type driver-api/invalid-query
+                    {:type driver-api/qp.error-type.invalid-query
                      :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :=
@@ -684,7 +684,7 @@
                                        (create-aggregation-clause output-name ag-type ag-field args)
                                        (catch Throwable e
                                          (throw (ex-info (tru "Error creating aggregation clause")
-                                                         {:type        driver-api/driver
+                                                         {:type        driver-api/qp.error-type.driver
                                                           :clause-name output-name
                                                           :ag-type     ag-type
                                                           :ag-field    ag-field
@@ -1206,6 +1206,6 @@
         (build-druid-query query)
         (catch Throwable e
           (throw (ex-info (tru "Error generating Druid query")
-                          {:type         driver-api/driver
+                          {:type         driver-api/qp.error-type.driver
                            :source-query query}
                           e)))))))

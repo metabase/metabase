@@ -326,7 +326,7 @@
 
 (defn- throw-unsupported-conversion [from to]
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
-                  {:type driver-api/invalid-query})))
+                  {:type driver-api/qp.error-type.invalid-query})))
 
 (defmethod ->temporal-type [:date LocalTime]           [_ _t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date OffsetTime]          [_ _t] (throw-unsupported-conversion "time" "date"))
@@ -704,7 +704,7 @@
     (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                          (pr-str db-type))
                     {:found db-type
-                     :type  driver-api/invalid-query}))))
+                     :type  driver-api/qp.error-type.invalid-query}))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
   [driver [_ x y unit]]
@@ -946,7 +946,7 @@
   (let [current-type (temporal-type expr)]
     (when (#{[:date :time] [:time :date]} [current-type target-type])
       (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
-                      {:type driver-api/invalid-query}))))
+                      {:type driver-api/qp.error-type.invalid-query}))))
   ;; [[add-interval-form]] might return something of a different type than `target-type`, depending on unit... in that
   ;; case, just wrap the original `::add-interval` clause in a `cast` expression instead.
   (let [new-form (add-interval-form (->temporal-type target-type expr) amount unit)]

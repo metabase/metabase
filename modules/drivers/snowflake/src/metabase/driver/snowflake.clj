@@ -371,7 +371,7 @@
   (throw (ex-info (tru "Snowflake doesn''t support extract us week")
                   {:driver driver
                    :form   expr
-                   :type   driver-api/invalid-query})))
+                   :type   driver-api/qp.error-type.invalid-query})))
 
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]

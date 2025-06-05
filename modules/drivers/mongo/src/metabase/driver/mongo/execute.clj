@@ -52,7 +52,7 @@
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
         (throw (ex-info (tru "Unexpected columns in results: {0}" (sort not-in-expected))
-                        {:type     driver-api/driver
+                        {:type     driver-api/qp.error-type.driver
                          :actual   actual-cols
                          :expected expected-cols}))))))
 
@@ -202,6 +202,6 @@
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                                {:driver :mongo
                                                                 :native native-query
-                                                                :type   driver-api/invalid-query}
+                                                                :type   driver-api/qp.error-type.invalid-query}
                                                                e))))]
           (reduce-results native-query query cursor respond))))))

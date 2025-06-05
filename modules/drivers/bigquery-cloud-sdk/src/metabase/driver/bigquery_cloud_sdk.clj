@@ -490,7 +490,7 @@
 
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                  {:type driver-api/invalid-query, :sql sql, :parameters parameters}
+                  {:type driver-api/qp.error-type.invalid-query, :sql sql, :parameters parameters}
                   e)))
 
 (defn- throw-cancelled [sql parameters]

@@ -464,7 +464,7 @@
            (count params))
     (throw (ex-info (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
                     {:driver driver
-                     :type   driver-api/driver
+                     :type   driver-api/qp.error-type.driver
                      :statement (str/split-lines (str stmt))
                      :params params})))
   (dorun
@@ -541,7 +541,7 @@
           (catch Throwable e
             (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
-                             :type   driver-api/driver
+                             :type   driver-api/qp.error-type.driver
                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))
@@ -747,7 +747,7 @@
                                                     {:driver driver
                                                      :sql    (str/split-lines (driver/prettify-native-form driver sql))
                                                      :params params
-                                                     :type   driver-api/invalid-query}
+                                                     :type   driver-api/qp.error-type.invalid-query}
                                                     e))))]
         (let [rsmeta           (.getMetaData rs)
               results-metadata {:cols (column-metadata driver rsmeta)}]
@@ -815,7 +815,7 @@
                            (.executeUpdate stmt sql))})))
     (catch Throwable e
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type driver-api/invalid-query}
+                      {:sql sql, :params params, :type driver-api/qp.error-type.invalid-query}
                       e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

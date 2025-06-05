@@ -285,7 +285,7 @@
                          " it does not necessarily correspond to any actual names of anything in the data warehouse"
                          " itself. Make sure you're using the actual physical name (e.g. `test-data`) rather than the "
                          " display name.")
-                    {:driver driver, :db-name db-name, :type driver-api/driver}))))
+                    {:driver driver, :db-name db-name, :type driver-api/qp.error-type.driver}))))
 
 (defmethod get-table-pks :sql-jdbc
   [driver ^Connection conn db-name-or-nil table]

@@ -116,7 +116,7 @@
   (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
     (when-not (seq getters)
       (throw (ex-info (tru "Don''t know how to retrieve results for columns {0}" (pr-str actual-col-names))
-                      {:type    driver-api/driver
+                      {:type    driver-api/qp.error-type.driver
                        :results results})))
     (map (apply juxt getters) rows)))
 
@@ -159,7 +159,7 @@
                      (execute* details query)
                      (catch Throwable e
                        (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                       {:type  driver-api/db
+                                       {:type  driver-api/qp.error-type.db
                                         :query query}
                                        e))))
         result     (try (post-process query-type projections
@@ -168,14 +168,14 @@
                                       results)
                         (catch Throwable e
                           (throw (ex-info (tru "Error post-processing Druid query results")
-                                          {:type    driver-api/driver
+                                          {:type    driver-api/qp.error-type.driver
                                            :results results}
                                           e))))]
     (try
       (reduce-results mbql-query result respond)
       (catch Throwable e
         (throw (ex-info (tru "Error reducing Druid query results")
-                        {:type           driver-api/driver
+                        {:type           driver-api/qp.error-type.driver
                          :results        results
                          :post-processed result}
                         e))))))

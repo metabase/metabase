@@ -155,7 +155,7 @@
 
       (params/ReferencedCardQuery? v)
       (throw (ex-info (tru "Cannot run query: MongoDB doesn''t support saved questions reference: {0}" k)
-                      {:type driver-api/invalid-query}))
+                      {:type driver-api/qp.error-type.invalid-query}))
 
       (= v params/no-value)
       [acc (conj missing k)]
@@ -188,7 +188,7 @@
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
-                       {:type driver-api/driver}))))
+                       {:type driver-api/qp.error-type.driver}))))
    [[] nil]
    xs))
 
@@ -196,7 +196,7 @@
   (let [[replaced missing] (substitute* param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
-                      {:type driver-api/invalid-query})))
+                      {:type driver-api/qp.error-type.invalid-query})))
     (when (seq replaced)
       (str/join replaced))))
 
