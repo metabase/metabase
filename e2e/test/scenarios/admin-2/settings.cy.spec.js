@@ -625,7 +625,7 @@ describe("scenarios > admin > settings > email settings", () => {
       H.setupSMTP();
       cy.visit("/admin/settings/email/smtp");
       H.main().findByText("Send test email").click();
-      H.main().findByText("Sent!");
+      H.undoToast().findByText("Email sent!").should("be.visible");
 
       cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
         ({ body }) => {
