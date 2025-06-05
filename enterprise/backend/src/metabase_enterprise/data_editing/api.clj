@@ -567,6 +567,7 @@
                      {:id (:name field)
                       :display_name (:display_name field)
                       :type (:base_type field)
+                      :semantic_type (:semantic_type field)
                       :field_id (:id field)
                       :fk_target_field_id (:fk_target_field_id field)
                       :optional (not required)
