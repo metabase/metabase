@@ -11650,7 +11650,7 @@ databaseChangeLog:
                   , created_at
                   , updated_at
               ) VALUES (
-                  'Embeddeded Metabot'
+                  'Embedded Metabot'
                   , 'Metabot instance for embedded metabase users.'
                   , 'embeddedmetabotmetabo'
                   , now()
