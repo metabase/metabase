@@ -1,7 +1,5 @@
 import type { PropsWithChildren } from "react";
 
-import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
-
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 /**
@@ -11,8 +9,15 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
  */
 export type InteractiveDashboardProps = SdkDashboardProps;
 
-const InteractiveDashboardInner = ({
+/**
+ * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
+ *
+ * @function
+ * @category InteractiveDashboard
+ */
+export const InteractiveDashboard = ({
   drillThroughQuestionProps,
+  plugins,
   ...sdkDashboardProps
 }: PropsWithChildren<SdkDashboardProps> &
   Pick<SdkDashboardProps, "drillThroughQuestionProps">) => {
@@ -26,17 +31,9 @@ const InteractiveDashboardInner = ({
             withEditLink: false,
           },
         },
+        ...plugins,
       }}
+      mode="interactive"
     />
   );
 };
-
-/**
- * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
- *
- * @function
- * @category InteractiveDashboard
- */
-export const InteractiveDashboard = renderOnlyInSdkProvider(
-  InteractiveDashboardInner,
-);

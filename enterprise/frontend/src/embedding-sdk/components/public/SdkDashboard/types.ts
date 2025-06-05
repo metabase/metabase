@@ -3,7 +3,6 @@ import type { PropsWithChildren, ReactNode } from "react";
 import type { SdkDashboardDisplayProps } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type { DashboardContextProps } from "metabase/dashboard/context";
 
 import type { InteractiveDashboardContextType } from "../InteractiveDashboard/context";
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
@@ -42,5 +41,6 @@ export type SdkDashboardProps = PropsWithChildren<
 >;
 
 export type SdkDashboardInternalProps = SdkDashboardProps &
-  Pick<InteractiveDashboardContextType, "dashboardActions"> &
-  Pick<DashboardContextProps, "getClickActionMode">;
+  Pick<InteractiveDashboardContextType, "dashboardActions"> & {
+    mode: "static" | "interactive" | "editable";
+  };
