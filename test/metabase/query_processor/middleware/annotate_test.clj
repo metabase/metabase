@@ -399,10 +399,10 @@
 
   ([query ag-clause]
    (let [query (-> query
-                   (lib/aggregate (lib/->pMBQL ag-clause)))])
-   (-> (add-column-info query {:cols [{}]})
-       :cols
-       first)))
+                   (lib/aggregate (lib/->pMBQL ag-clause)))]
+     (-> (add-column-info query {:cols [{}]})
+         :cols
+         first))))
 
 (defn- aggregation-names
   [ag-clause]
@@ -646,9 +646,9 @@
 
 (deftest ^:parallel computed-columns-inference-2d
   (testing "Case"
-    (is (= {:base_type :type/Number}
-           (infered-col-type [:case [[[:> [:field (meta/id :venues :price) nil] 2]
-                                      [:+ [:field (meta/id :venues :price) nil] 1]]]])))))
+    (is (=? {:base_type :type/Number}
+            (infered-col-type [:case [[[:> [:field (meta/id :venues :price) nil] 2]
+                                       [:+ [:field (meta/id :venues :price) nil] 1]]]])))))
 
 (deftest ^:parallel detect-temporal-expressions-test
   (are [expr] (isa? (expression-type expr) :type/Temporal)
