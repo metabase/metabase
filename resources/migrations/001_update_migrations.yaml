@@ -11816,6 +11816,31 @@ databaseChangeLog:
             columnName: scope
 
   - changeSet:
+      id: v55.2025-04-29T12:02:00
+      author: qnkhuat
+      comment: Add irreversible column
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: data_edit_undo_chain
+                columnName: undoable
+      changes:
+        - addColumn:
+            tableName: data_edit_undo_chain
+            columns:
+              - column:
+                  name: undoable
+                  type: ${boolean.type}
+                  remarks: Identifies whether a change can be undo
+                  constraints:
+                    nullable: false
+                  defaultValue: true
+      rollback:
+        - dropColumn:
+            tableName: data_edit_undo_chain
+            columnName: undoable
+
+  - changeSet:
       id: v55.2025-05-02T08:21:44
       author: lbrdnk
       comment: Migrate hacked semantic types

@@ -455,7 +455,7 @@
   such that they can be presented correctly in a modal ahead of execution."
   [{}
    {}
-   {:keys [action_id scope #_input]}]
+   {:keys [action_id scope input]}]
   (let [scope   (actions/hydrate-scope scope)
         unified
         ;; this mess can go once callers are on new listing API, leaving only the unified-action call.
@@ -475,34 +475,50 @@
           (let [{:keys [dashcard-id]} scope
                 {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
             (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-            {:action-kw (keyword action_id)
-             :mapping {:table-id (:table_id visualization_settings)
-                       :row ::root}})
+            {:row-action {:action-kw (keyword action_id)
+                          :mapping {:table-id (:table_id visualization_settings)
+                                    :row ::root}}
+             :mapping   (->> visualization_settings
+                             :editableTable.enabledActions
+                             (some (fn [{:keys [id parameterMappings]}]
+                                     (when (= id action_id)
+                                       parameterMappings))))})
           :else
           (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
                           {:status-code 400
                            :scope scope
                            :action_id action_id})))
 
-        ;; todo mapping support
+        param-value
+        (fn [param-mapping row-delay]
+          (case (:sourceType param-mapping)
+            "constant" (:value param-mapping)
+            "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-mapping))))
+            nil))
+
         describe-saved-action
-        (fn [& {:keys [action-id _row-action-dashcard-id _mapping]}]
+        (fn [& {:keys [action-id
+                       row-action-mapping
+                       row-delay]}]
           (let [action (-> (actions/select-action :id action-id
                                                   :archived false
                                                   {:where [:not [:= nil :model_id]]})
 
                            api/read-check
                            api/check-404)
-                param-id->viz-field (-> action :visualization_settings (:fields {}))]
+                param-id->viz-field (-> action :visualization_settings (:fields {}))
+                param-id->mapping   (u/index-by :parameterId row-action-mapping)]
+
             {:title (:name action)
              :parameters
              (->> (for [param (:parameters action)
                         ;; query type actions store most stuff in viz settings rather than the
                         ;; parameter
-                        :let [viz-field (param-id->viz-field (:id param))]
-                        :when (not (:hidden viz-field))]
+                        :let [viz-field (param-id->viz-field (:id param))
+                              param-mapping (param-id->mapping (:id param))]
+                        :when (and (not (:hidden viz-field))
+                                   (not= "hidden" (:visibility param-mapping)))]
                     (u/remove-nils
-                      ;; todo dropdown options
                      {:id (:id param)
                       :display_name (or (:display-name param) (:name param))
                       :type (case (:type param)
@@ -517,19 +533,27 @@
                                            :param-type (:type param)
                                            :scope scope
                                            :unified unified}))))
-                      :optional (and (not (:required param)) (not (:required viz-field)))}))
+                      :value_options (:valueOptions viz-field)
+                      :optional (and (not (:required param)) (not (:required viz-field)))
+                      :nullable true ; is there a way to know this?
+                      :readonly (= "readonly" (:visibility param-mapping))
+                      :value    (param-value param-mapping row-delay)}))
                   vec)}))
 
-        ;; todo mapping support
         describe-table-action
-        (fn [& {:keys [action-kw mapping] :as _}]
-          (let [table-id (api/check-500 (:table-id mapping))
-                table (api/read-check (t2/select-one :model/Table :id table-id :active true))]
+        (fn [& {:keys [action-kw
+                       table-id
+                       ;; this has been written to work with the existing viz-settings mapping
+                       row-action-mapping
+                       row-delay]}]
+          (let [table-id            (or table-id (:table-id row-action-mapping))
+                table               (api/read-check (t2/select-one :model/Table :id table-id :active true))
+                field-name->mapping (u/index-by :parameterId row-action-mapping)]
             {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
              :parameters
-             (->> (for [field (->> (t2/select :model/Field :table_id table-id)
-                                   (sort-by :position))
-                        :let [pk (= :type/PK (:semantic_type field))]
+             (->> (for [field (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
+                        :let [pk (= :type/PK (:semantic_type field))
+                              param-mapping (field-name->mapping (:name field))]
                         :when (case action-kw
                                 ;; create does not take pk cols if auto increment, todo generated cols?
                                 :table.row/create (not (:database_is_auto_increment field))
@@ -537,13 +561,18 @@
                                 :table.row/delete pk
                                 ;; update takes both the pk and field (if not a row action)
                                 :table.row/update true)
+                        :when (not= "hidden" (:visibility param-mapping))
                         :let [required (or pk (:database_required field))]]
                     (u/remove-nils
                      {:id (:name field)
                       :display_name (:display_name field)
                       :type (:base_type field)
+                      :field_id (:id field)
+                      :fk_target_field_id (:fk_target_field_id field)
                       :optional (not required)
-                      :nullable (:database_is_nullable field)}))
+                      :nullable (:database_is_nullable field)
+                      :readonly (= "readonly" (:visibility param-mapping))
+                      :value (param-value param-mapping row-delay)}))
 
                   vec)}))]
 
@@ -554,25 +583,40 @@
 
       ;; table action
       (:action-kw unified)
-      (describe-table-action unified)
+      (describe-table-action
+       :action-kw          (:action-kw unified)
+       :row-action-mapping (:mapping unified))
 
       (:row-action unified)
       (let [row-action  (:row-action unified)
             mapping     (:mapping unified)
             dashcard-id (:dashcard-id unified)
             saved-id    (:action-id row-action)
-            action-kw   (:action-kw row-action)]
+            action-kw   (:action-kw row-action)
+            table-id    (or (:table-id mapping)
+                            (:table-id (:mapping row-action))
+                            (:table-id scope))
+
+            row-delay
+            (delay
+              (when table-id
+                (let [pk-fields    (data-editing/select-table-pk-fields table-id)
+                      pk           (select-keys input (mapv (comp keyword :name) pk-fields))
+                      pk-satisfied (= (count pk) (count pk-fields))]
+                  (when pk-satisfied
+                    (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
         (cond
           saved-id
           (describe-saved-action :action-id saved-id
                                  :row-action-dashcard-id dashcard-id
-                                 :row-action-mapping mapping)
+                                 :row-action-mapping mapping
+                                 :row-delay row-delay)
 
           action-kw
-          (let [table-id (:table-id row-action)]
-            (describe-table-action :action-kw action-kw
-                                   :table-id table-id
-                                   :row-action-mapping mapping))
+          (describe-table-action :action-kw action-kw
+                                 :table-id table-id
+                                 :row-action-mapping mapping
+                                 :row-delay row-delay)
 
           :else (ex-info "Not a supported row action" {:status-code 500, :scope scope, :unified unified})))
       :else

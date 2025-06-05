@@ -16,6 +16,7 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
@@ -460,7 +461,7 @@
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
 ;;; [[perform-action!]] with
 ;;;
-;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
+;;;    {:database <database-id>, :table-id <table-id>, :row <request-body>}
 ;;;
 ;;; and we transform this to
 ;;;
@@ -477,7 +478,30 @@
   :actions.args.crud.table/common)
 
 (defmethod normalize-action-arg-map :table.row/common
-  [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
+  [_action {:keys [database table-id row] row-arg :arg :as _arg-map}]
+  (when (seq row-arg)
+    (log/warn ":arg is deprecated, use :row instead"))
   {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})
+
+;;;; `:table.row/create-or-update` -- similar to common but with additional :key field
+
+(s/def :actions.args.crud.table.create-or-update/row-key
+  (s/map-of string? any?))
+
+(s/def :actions.args.crud.table/create-or-update
+  (s/merge
+   :actions.args.crud.table/common
+   (s/keys :req-un [:actions.args.crud.table.create-or-update/row-key])))
+
+(defmethod action-arg-map-spec :table.row/create-or-update
+  [_action]
+  :actions.args.crud.table/create-or-update)
+
+(defmethod normalize-action-arg-map :table.row/create-or-update
+  [_action {:keys [database table-id row row-key] :as _arg-map}]
+  {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
+   :table-id table-id
+   :row      (update-keys row u/qualified-name)
+   :row-key  (update-keys row-key u/qualified-name)})
