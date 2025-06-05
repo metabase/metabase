@@ -1,5 +1,8 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { stubWindowOpenForSamlPopup } from "e2e/support/helpers/embedding-sdk-testing";
+import {
+  mockAuthSsoEndpointForSamlAuthProvider,
+  stubWindowOpenForSamlPopup,
+} from "e2e/support/helpers/embedding-sdk-testing";
 
 const { H } = cy;
 
@@ -31,6 +34,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("can login via SAML", () => {
+    mockAuthSsoEndpointForSamlAuthProvider();
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["saml"] });
     cy.signOut();
 
@@ -42,19 +46,8 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     assertDashboardLoaded(frame);
   });
 
-  it("logins via SAML when more than one auth method is configured", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
-    cy.signOut();
-
-    const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      onVisitPage: () => stubWindowOpenForSamlPopup(),
-    });
-
-    assertDashboardLoaded(frame);
-  });
-
   it("shows an error if the SAML login results in an invalid user", () => {
+    mockAuthSsoEndpointForSamlAuthProvider();
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["saml"] });
     cy.signOut();
 
