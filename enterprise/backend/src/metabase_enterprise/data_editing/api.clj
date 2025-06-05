@@ -456,7 +456,7 @@
   [{}
    {}
    {:keys [action_id scope input]}]
-  (let [scope   (actions/hydrate-scope scope)
+  (let [scope (actions/hydrate-scope scope)
         unified
         ;; this mess can go once callers are on new listing API, leaving only the unified-action call.
         ;; but then this routes lifetime should be similarly limited!
@@ -491,8 +491,8 @@
           :else
           (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
                           {:status-code 400
-                           :scope scope
-                           :action_id action_id})))
+                           :scope       scope
+                           :action_id   action_id})))
 
         param-value
         (fn [param-mapping row-delay]
@@ -517,33 +517,33 @@
             {:title (:name action)
              :parameters
              (->> (for [param (:parameters action)
-                        ;; query type actions store most stuff in viz settings rather than the
-                        ;; parameter
-                        :let [viz-field (param-id->viz-field (:id param))
+                              ;; query type actions store most stuff in viz settings rather than the
+                              ;; parameter
+                        :let [viz-field     (param-id->viz-field (:id param))
                               param-mapping (param-id->mapping (:id param))]
                         :when (and (not (:hidden viz-field))
                                    (not= "hidden" (:visibility param-mapping)))]
                     (u/remove-nils
-                     {:id (:id param)
-                      :display_name (or (:display-name param) (:name param))
+                     {:id            (:id param)
+                      :display_name  (or (:display-name param) (:name param))
                       :param-mapping param-mapping
-                      :type (case (:type param)
-                              :string/=    :type/Text
-                              :number/=    :type/Number
-                              :date/single :type/Date
-                              (if (= "type" (namespace (:type param)))
-                                (:type param)
-                                (throw
-                                 (ex-info "Unsupported query action parameter type"
-                                          {:status-code 500
-                                           :param-type (:type param)
-                                           :scope scope
-                                           :unified unified}))))
+                      :type          (case (:type param)
+                                       :string/= :type/Text
+                                       :number/= :type/Number
+                                       :date/single :type/Date
+                                       (if (= "type" (namespace (:type param)))
+                                         (:type param)
+                                         (throw
+                                          (ex-info "Unsupported query action parameter type"
+                                                   {:status-code 500
+                                                    :param-type  (:type param)
+                                                    :scope       scope
+                                                    :unified     unified}))))
                       :value_options (:valueOptions viz-field)
-                      :optional (and (not (:required param)) (not (:required viz-field)))
-                      :nullable true ; is there a way to know this?
-                      :readonly (= "readonly" (:visibility param-mapping))
-                      :value    (param-value param-mapping row-delay)}))
+                      :optional      (and (not (:required param)) (not (:required viz-field)))
+                      :nullable      true             ; is there a way to know this?
+                      :readonly      (= "readonly" (:visibility param-mapping))
+                      :value         (param-value param-mapping row-delay)}))
                   vec)}))
 
         describe-table-action
@@ -560,34 +560,33 @@
                         :let [pk            (= :type/PK (:semantic_type field))
                               param-mapping (field-name->mapping (:name field))]
                         :when (case action-kw
-                                ;; create does not take pk cols if auto increment, todo generated cols?
+                                      ;; create does not take pk cols if auto increment, todo generated cols?
                                 :table.row/create (not (:database_is_auto_increment field))
-                                ;; delete only requires pk cols
+                                      ;; delete only requires pk cols
                                 :table.row/delete pk
-                                ;; update takes both the pk and field (if not a row action)
+                                      ;; update takes both the pk and field (if not a row action)
                                 :table.row/update true)
                         :when (not= "hidden" (:visibility param-mapping))
                         :let [required (or pk (:database_required field))]]
                     (u/remove-nils
-                     {:id           (:name field)
-                      :display_name (:display_name field)
-                      :type (:base_type field)
-                      :semantic_type (:semantic_type field)
-                      :field_id (:id field)
+                     {:id                 (:name field)
+                      :display_name       (:display_name field)
+                      :type               (:base_type field)
+                      :semantic_type      (:semantic_type field)
+                      :field_id           (:id field)
                       :fk_target_field_id (:fk_target_field_id field)
-                      :optional (not required)
-                      :nullable (:database_is_nullable field)
-                      :readonly (= "readonly" (:visibility param-mapping))
-                      :value (param-value param-mapping row-delay)}))
-
+                      :optional           (not required)
+                      :nullable           (:database_is_nullable field)
+                      :readonly           (= "readonly" (:visibility param-mapping))
+                      :value              (param-value param-mapping row-delay)}))
                   vec)}))]
 
     (cond
-  ;; saved action
+      ;; saved action
       (:action-id unified)
       (describe-saved-action :action-id (:action-id unified))
 
-  ;; table action
+      ;; table action
       (:action-kw unified)
       (describe-table-action
        :action-kw (:action-kw unified)
@@ -607,8 +606,8 @@
             _           (when-not table-id
                           (throw (ex-info "Must provide table-id" {:status-code 400})))
             row-delay   (delay
-                          (when table-id
-                            (let [pk-fields    (data-editing/select-table-pk-fields table-id)
+                         (when table-id
+                           (let [pk-fields    (data-editing/select-table-pk-fields table-id)
                                   pk           (select-keys input (mapv (comp keyword :name) pk-fields))
                                   pk-satisfied (= (count pk) (count pk-fields))]
                               (when pk-satisfied
