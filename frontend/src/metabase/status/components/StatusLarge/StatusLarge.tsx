@@ -1,3 +1,4 @@
+import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -81,6 +82,12 @@ const StatusLarge = ({
   );
 };
 
+const LinkWrapper = ({
+  children,
+  item,
+}: PropsWithChildren<{ item: StatusItem }>) =>
+  item?.href ? <Link to={item.href}>{children}</Link> : children;
+
 interface StatusCardProps {
   item: StatusItem;
   isActive?: boolean;
@@ -95,15 +102,12 @@ const StatusCard = ({
 
   const isVisible = useStatusVisibility(isActive || isInProgress);
 
-  const LinkWrapper = ({ children }: { children: JSX.Element }) =>
-    item?.href ? <Link to={item.href}>{children}</Link> : children;
-
   if (!isVisible) {
     return null;
   }
 
   return (
-    <LinkWrapper key={id}>
+    <LinkWrapper item={item} key={id}>
       <StatusCardRoot hasBody={!!description}>
         <StatusCardIcon>
           <Icon name={icon as unknown as IconName} />
