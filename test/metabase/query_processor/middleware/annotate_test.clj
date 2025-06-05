@@ -419,7 +419,7 @@
   ([query ag-clause]
    (let [query (-> query
                    (lib/aggregate (lib/->pMBQL ag-clause)))]
-     (-> (add-column-info query {:cols [{}]})
+     (-> (add-column-info query {:cols []})
          :cols
          first))))
 

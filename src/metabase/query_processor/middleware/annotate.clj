@@ -199,7 +199,6 @@
 
 (mu/defn- legacy-field-ref :- [:maybe ::legacy-field-ref]
   [col :- ::col]
-  (println "(pr-str col):" (pr-str col)) ; NOCOMMIT
   (when (= (:lib/type col) :metadata/column)
     (-> col lib/ref lib.convert/->legacy-MBQL fe-friendly-expression-ref)))
 
