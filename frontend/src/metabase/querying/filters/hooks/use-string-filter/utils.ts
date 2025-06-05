@@ -38,7 +38,7 @@ export function getDefaultOperator(
   const desiredOperator =
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
-    fieldValuesInfo.hasFieldValues !== "none"
+    (Lib.isCategory(column) && fieldValuesInfo.hasFieldValues !== "none")
       ? "="
       : "contains";
   return getDefaultAvailableOperator(availableOptions, desiredOperator);

@@ -66,9 +66,7 @@ const METADATA = createMockMetadata({
               base_type: "type/Text",
               effective_type: "type/Text",
             }),
-            createProductsCategoryField({
-              semantic_type: null,
-            }),
+            createProductsCategoryField(),
             createProductsEanField(),
           ],
         }),
@@ -282,7 +280,7 @@ describe("useStringFilter", () => {
     {
       title: "non-category column with field values",
       column: findColumn("PRODUCTS", "EAN"),
-      expectedOperator: "=",
+      expectedOperator: "contains",
     },
     {
       title: "regular column without field values",
