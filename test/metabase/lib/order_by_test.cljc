@@ -552,9 +552,6 @@
               :lib/type                 :metadata/column
               :base-type                :type/BigInteger
               :effective-type           :type/BigInteger
-              ;; Yes, the original display name here, because it's not really coming from the join, but rather listed
-              ;; directly in the top-level fields. I'm not sure this is really desired behaviour, but it's what happens
-              ;; now and it doesn't break anything.
               :display-name             "ID"
               :table-id                 (meta/id :categories)
               :lib/source-column-alias  "Cat__ID"
@@ -565,7 +562,7 @@
               :lib/type                 :metadata/column
               :base-type                :type/Text
               :effective-type           :type/Text
-              :display-name             "Cat → Name"
+              :display-name             "Name"
               :table-id                 (meta/id :categories)
               :lib/source-column-alias  "Cat__NAME"
               :lib/desired-column-alias "Cat__NAME"}]

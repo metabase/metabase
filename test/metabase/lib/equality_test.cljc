@@ -309,7 +309,8 @@
           cols     (lib/returned-columns query)
           refs     (map lib.ref/ref cols)
           cat-name [:field {:lib/uuid (str (random-uuid))
-                            :base-type :type/Text}
+                            :base-type :type/Text
+                            :join-alias "Cat"}
                     "Cat__NAME"]
           cat-raw  [:field {:lib/uuid (str (random-uuid))
                             :base-type :type/Text
