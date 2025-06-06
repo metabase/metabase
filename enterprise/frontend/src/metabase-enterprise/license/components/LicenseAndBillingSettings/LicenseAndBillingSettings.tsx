@@ -5,13 +5,14 @@ import { jt, t } from "ttag";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { Box, Divider, Flex, Stack } from "metabase/ui";
+import { Box, Divider, Flex, Stack, Title } from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
@@ -105,42 +106,40 @@ export const LicenseAndBillingSettings = () => {
   const shouldUpsell = !tokenStatus?.features?.includes(NO_UPSELL_FEATURE_HEY);
 
   return (
-    <Stack
-      data-testid="license-and-billing-content"
-      maw="36rem"
-      px="lg"
-      gap="lg"
-    >
-      <Box>
-        <BillingInfo
-          isStoreManagedBilling={isStoreManagedBilling}
-          hasToken={hasToken}
-          billingInfo={billingInfo}
-          error={!!billingError}
-        />
-      </Box>
-
-      {shouldShowLicenseInput && (
+    <Stack data-testid="license-and-billing-content">
+      <Title order={1}>{t`License`}</Title>
+      <SettingsSection>
         <Box>
-          <SettingHeader
-            id="license"
-            title={t`License`}
-            description={description}
-          />
-          <LicenseInput
-            disabled={settingDetails?.is_env_setting}
-            placeholder={
-              settingDetails?.is_env_setting
-                ? t`Using ${settingDetails?.env_name}`
-                : undefined
-            }
-            loading={isUpdating}
-            error={licenseError}
-            token={token ? String(token) : undefined}
-            onUpdate={updateToken}
+          <BillingInfo
+            isStoreManagedBilling={isStoreManagedBilling}
+            hasToken={hasToken}
+            billingInfo={billingInfo}
+            error={!!billingError}
           />
         </Box>
-      )}
+
+        {shouldShowLicenseInput && (
+          <Box>
+            <SettingHeader
+              id="license"
+              title={t`License`}
+              description={description}
+            />
+            <LicenseInput
+              disabled={settingDetails?.is_env_setting}
+              placeholder={
+                settingDetails?.is_env_setting
+                  ? t`Using ${settingDetails?.env_name}`
+                  : undefined
+              }
+              loading={isUpdating}
+              error={licenseError}
+              token={token ? String(token) : undefined}
+              onUpdate={updateToken}
+            />
+          </Box>
+        )}
+      </SettingsSection>
 
       {tokenStatus?.valid && shouldUpsell && <UpsellSection />}
     </Stack>

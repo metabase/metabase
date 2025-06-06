@@ -1,9 +1,10 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Stack, Tabs, Text } from "metabase/ui";
+import { Box, Stack, Tabs, Text, Title } from "metabase/ui";
 
 import { getLoadingMessageOptions } from "../lib/loading-message";
 
@@ -52,38 +53,49 @@ export function WhiteLabelSettingsPage({
 
 function BrandingTab() {
   return (
-    <Stack gap="xl" py="lg" data-testid="branding-settings">
-      <Text>
-        {t`Configure your instance to match your brand visuals and voice`}
-      </Text>
-
+    <Stack gap="xl" py="lg" data-testid="branding-settings" maw="50rem">
       <Box>
-        <Text tt="uppercase" fw="bold" c="text-medium">
-          {t`Color Palette`}
-        </Text>
-        <Text c="text-medium">
-          {t`Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.`}
+        <Title order={1} pb="xs">{t`Branding`}</Title>
+        <Text c="text-medium" mb="md">
+          {t`Configure your instance to match your brand visuals and voice`}
         </Text>
       </Box>
 
-      <ColorSettingsWidget />
+      <SettingsSection title={t`Colors`}>
+        <Box>
+          <Text tt="uppercase" fw="bold" c="text-medium">
+            {t`Color Palette`}
+          </Text>
+          <Text c="text-medium">
+            {t`Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.`}
+          </Text>
+        </Box>
 
-      <Stack maw="40rem" gap="xl">
+        <ColorSettingsWidget />
+      </SettingsSection>
+
+      <SettingsSection title={t`Icons`}>
         <ImageUploadWidget
           name="application-logo-url"
           title={t`Logo`}
           description={t`For best results, use an SVG file with a transparent
-              background.`}
+            background.`}
         />
+        <ImageUploadWidget name="application-favicon-url" title={t`Favicon`} />
+      </SettingsSection>
+
+      <SettingsSection title={t`Fonts`}>
         <FontWidget />
+      </SettingsSection>
+
+      <SettingsSection>
         <AdminSettingInput
           name="loading-message"
           title={t`Loading Message`}
           inputType="select"
           options={getLoadingMessageOptions()}
         />
-        <ImageUploadWidget name="application-favicon-url" title={t`Favicon`} />
-      </Stack>
+      </SettingsSection>
     </Stack>
   );
 }
@@ -91,58 +103,59 @@ function BrandingTab() {
 function ConcealTab() {
   return (
     <Stack gap="xl" maw="40rem" py="lg" data-testid="conceal-metabase-settings">
-      <Text>
-        {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
-      </Text>
-
-      <AdminSettingInput
-        name="application-name"
-        title={t`Application Name`}
-        inputType="text"
-      />
-
-      <AdminSettingInput
-        name="show-metabase-links"
-        title={t`Documentation and References`}
-        switchLabel={
-          <Text size="md">
-            {t`Show links and references to Metabase` + " "}
-            <MetabaseLinksToggleDescription />
-          </Text>
-        }
-        description={t`Control the display of Metabase documentation and Metabase references in your instance.`}
-        inputType="boolean"
-      />
-
-      <HelpLinkSettings />
-
       <Box>
-        <Text tt="uppercase" fw="bold" c="text-medium">
-          {t`Metabase Illustrations`}
-        </Text>
-        <Text c="text-medium">
-          {t`Customize each of the illustrations in Metabase`}
+        <Title order={1}>{t`Conceal Metabase`}</Title>
+        <Text>
+          {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
         </Text>
       </Box>
 
-      <MetabotToggleWidget />
+      <SettingsSection title={t`Names`}>
+        <AdminSettingInput
+          name="application-name"
+          title={t`Application Name`}
+          inputType="text"
+        />
 
-      <IllustrationWidget
-        name="login-page-illustration"
-        title={t`Login and unsubscribe pages`}
-      />
-      <IllustrationWidget
-        name="landing-page-illustration"
-        title={t`Landing Page`}
-      />
-      <IllustrationWidget
-        name="no-data-illustration"
-        title={t`When calculations return no results`}
-      />
-      <IllustrationWidget
-        name="no-object-illustration"
-        title={t`When no objects can be found`}
-      />
+        <AdminSettingInput
+          name="show-metabase-links"
+          title={t`Documentation and References`}
+          switchLabel={
+            <Text size="md">
+              {t`Show links and references to Metabase` + " "}
+              <MetabaseLinksToggleDescription />
+            </Text>
+          }
+          description={t`Control the display of Metabase documentation and Metabase references in your instance.`}
+          inputType="boolean"
+        />
+
+        <HelpLinkSettings />
+      </SettingsSection>
+
+      <SettingsSection
+        title={t`Metabase Illustrations`}
+        description={t`Customize each of the illustrations in Metabase`}
+      >
+        <MetabotToggleWidget />
+
+        <IllustrationWidget
+          name="login-page-illustration"
+          title={t`Login and unsubscribe pages`}
+        />
+        <IllustrationWidget
+          name="landing-page-illustration"
+          title={t`Landing Page`}
+        />
+        <IllustrationWidget
+          name="no-data-illustration"
+          title={t`When calculations return no results`}
+        />
+        <IllustrationWidget
+          name="no-object-illustration"
+          title={t`When no objects can be found`}
+        />
+      </SettingsSection>
     </Stack>
   );
 }

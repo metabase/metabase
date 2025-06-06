@@ -35,6 +35,7 @@ import type {
   Settings,
 } from "metabase-types/api";
 
+import { SettingsSection } from "../SettingsSection";
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
 const getBreadcrumbs = () => [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
@@ -163,127 +164,111 @@ export const SMTPConnectionForm = () => {
   }, [settingsDetails]);
 
   return (
-    <Flex justify="space-between" pl="lg">
-      <Stack gap="sm" w="25rem">
-        {isEmailConfigured && (
-          <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
-        )}
-        <FormProvider
-          initialValues={initialValues}
-          validationSchema={getFormValueSchema(settingsDetails)}
-          onSubmit={handleUpdateEmailSettings}
-          enableReinitialize
-        >
-          {({ dirty, isValid, isSubmitting, values }) => (
-            <Form>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-host"
-                settingDetails={settingsDetails?.["email-smtp-host"]}
-              >
-                <FormTextInput
-                  name="email-smtp-host"
-                  label={t`SMTP Host`}
-                  description={
-                    settingsDetails?.["email-smtp-host"]?.description
-                  }
-                  placeholder={"smtp.yourservice.com"}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    mb: "0.5rem",
-                  }}
-                  descriptionProps={{
-                    fz: "0.75rem",
-                    mb: "0.5rem",
-                  }}
-                />
-              </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-port"
-                settingDetails={settingsDetails?.["email-smtp-port"]}
-              >
-                <FormTextInput
-                  name="email-smtp-port"
-                  label={t`SMTP Port`}
-                  placeholder={"587"}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    mb: "0.5rem",
-                  }}
-                  descriptionProps={{
-                    fz: "0.75rem",
-                    mb: "0.5rem",
-                  }}
-                />
-              </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-security"
-                settingDetails={settingsDetails?.["email-smtp-security"]}
-              >
-                <FormRadioGroup
-                  name="email-smtp-security"
-                  label={t`SMTP Security`}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    fz: "0.875rem",
-                    c: "text-medium",
-                    mb: "0.5rem",
-                  }}
-                >
-                  <Group>
-                    {[
-                      { value: "none", name: "None" },
-                      { value: "ssl", name: "SSL" },
-                      { value: "tls", name: "TLS" },
-                      { value: "starttls", name: "STARTTLS" },
-                    ].map(({ value, name }) => (
-                      <Radio
-                        value={value as string}
-                        name="email-smtp-security"
-                        label={name}
-                        key={name}
-                        styles={{
-                          inner: { display: "none" },
-                          label: {
-                            paddingLeft: 0,
-                            color:
-                              values["email-smtp-security"] === value
-                                ? color("brand")
-                                : color("text-dark"),
-                          },
-                        }}
-                      />
-                    ))}
-                  </Group>
-                </FormRadioGroup>
-              </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-username"
-                settingDetails={settingsDetails?.["email-smtp-username"]}
-              >
-                <FormTextInput
-                  name="email-smtp-username"
-                  label={t`SMTP Username`}
-                  placeholder={"nicetoseeyou"}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    mb: "0.5rem",
-                  }}
-                />
-              </SetByEnvVarWrapper>
-              {!isHosted && (
+    <Flex justify="space-between" pl="lg" maw="30rem">
+      <SettingsSection>
+        <Stack gap="sm" w="25rem">
+          {isEmailConfigured && (
+            <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
+          )}
+          <FormProvider
+            initialValues={initialValues}
+            validationSchema={getFormValueSchema(settingsDetails)}
+            onSubmit={handleUpdateEmailSettings}
+            enableReinitialize
+          >
+            {({ dirty, isValid, isSubmitting, values }) => (
+              <Form>
                 <SetByEnvVarWrapper
-                  settingKey="email-smtp-password"
-                  settingDetails={settingsDetails?.["email-smtp-password"]}
+                  settingKey="email-smtp-host"
+                  settingDetails={settingsDetails?.["email-smtp-host"]}
                 >
                   <FormTextInput
-                    name="email-smtp-password"
-                    type="password"
-                    label={t`SMTP Password`}
-                    placeholder={"Shhh..."}
+                    name="email-smtp-host"
+                    label={t`SMTP Host`}
+                    description={
+                      settingsDetails?.["email-smtp-host"]?.description
+                    }
+                    placeholder={"smtp.yourservice.com"}
+                    mb="1.5rem"
+                    labelProps={{
+                      tt: "uppercase",
+                      mb: "0.5rem",
+                    }}
+                    descriptionProps={{
+                      fz: "0.75rem",
+                      mb: "0.5rem",
+                    }}
+                  />
+                </SetByEnvVarWrapper>
+                <SetByEnvVarWrapper
+                  settingKey="email-smtp-port"
+                  settingDetails={settingsDetails?.["email-smtp-port"]}
+                >
+                  <FormTextInput
+                    name="email-smtp-port"
+                    label={t`SMTP Port`}
+                    placeholder={"587"}
+                    mb="1.5rem"
+                    labelProps={{
+                      tt: "uppercase",
+                      mb: "0.5rem",
+                    }}
+                    descriptionProps={{
+                      fz: "0.75rem",
+                      mb: "0.5rem",
+                    }}
+                  />
+                </SetByEnvVarWrapper>
+                <SetByEnvVarWrapper
+                  settingKey="email-smtp-security"
+                  settingDetails={settingsDetails?.["email-smtp-security"]}
+                >
+                  <FormRadioGroup
+                    name="email-smtp-security"
+                    label={t`SMTP Security`}
+                    mb="1.5rem"
+                    labelProps={{
+                      tt: "uppercase",
+                      fz: "0.875rem",
+                      c: "text-medium",
+                      mb: "0.5rem",
+                    }}
+                  >
+                    <Group>
+                      {[
+                        { value: "none", name: "None" },
+                        { value: "ssl", name: "SSL" },
+                        { value: "tls", name: "TLS" },
+                        { value: "starttls", name: "STARTTLS" },
+                      ].map(({ value, name }) => (
+                        <Radio
+                          value={value as string}
+                          name="email-smtp-security"
+                          label={name}
+                          key={name}
+                          styles={{
+                            inner: { display: "none" },
+                            label: {
+                              paddingLeft: 0,
+                              color:
+                                values["email-smtp-security"] === value
+                                  ? color("brand")
+                                  : color("text-dark"),
+                            },
+                          }}
+                        />
+                      ))}
+                    </Group>
+                  </FormRadioGroup>
+                </SetByEnvVarWrapper>
+                <SetByEnvVarWrapper
+                  settingKey="email-smtp-username"
+                  settingDetails={settingsDetails?.["email-smtp-username"]}
+                >
+                  <FormTextInput
+                    name="email-smtp-username"
+                    label={t`SMTP Username`}
+                    placeholder={"nicetoseeyou"}
                     mb="1.5rem"
                     labelProps={{
                       tt: "uppercase",
@@ -291,44 +276,62 @@ export const SMTPConnectionForm = () => {
                     }}
                   />
                 </SetByEnvVarWrapper>
-              )}
-
-              {Boolean(sendTestEmailResult.error) && (
-                <Text
-                  role="alert"
-                  aria-label={getTestEmailErrorMessage(
-                    sendTestEmailResult.error,
-                  )}
-                  color="error"
-                  mb="1rem"
-                >
-                  {getTestEmailErrorMessage(sendTestEmailResult.error)}
-                </Text>
-              )}
-              <Flex mt="1rem" gap="1.5rem">
-                <FormSubmitButton
-                  label={t`Save changes`}
-                  disabled={!dirty || !isValid || isSubmitting}
-                  variant="filled"
-                />
-                {!dirty && isValid && !isSubmitting && (
-                  <Button onClick={handleSendTestEmail}>
-                    {sendTestEmailResult.isLoading
-                      ? t`Sending...`
-                      : t`Send test email`}
-                  </Button>
+                {!isHosted && (
+                  <SetByEnvVarWrapper
+                    settingKey="email-smtp-password"
+                    settingDetails={settingsDetails?.["email-smtp-password"]}
+                  >
+                    <FormTextInput
+                      name="email-smtp-password"
+                      type="password"
+                      label={t`SMTP Password`}
+                      placeholder={"Shhh..."}
+                      mb="1.5rem"
+                      labelProps={{
+                        tt: "uppercase",
+                        mb: "0.5rem",
+                      }}
+                    />
+                  </SetByEnvVarWrapper>
                 )}
-                <Button
-                  onClick={handleClearEmailSettings}
-                  disabled={allSetByEnvVars}
-                >
-                  {t`Clear`}
-                </Button>
-              </Flex>
-            </Form>
-          )}
-        </FormProvider>
-      </Stack>
+
+                {Boolean(sendTestEmailResult.error) && (
+                  <Text
+                    role="alert"
+                    aria-label={getTestEmailErrorMessage(
+                      sendTestEmailResult.error,
+                    )}
+                    color="error"
+                    mb="1rem"
+                  >
+                    {getTestEmailErrorMessage(sendTestEmailResult.error)}
+                  </Text>
+                )}
+                <Flex mt="1rem" gap="1.5rem">
+                  <FormSubmitButton
+                    label={t`Save changes`}
+                    disabled={!dirty || !isValid || isSubmitting}
+                    variant="filled"
+                  />
+                  {!dirty && isValid && !isSubmitting && (
+                    <Button onClick={handleSendTestEmail}>
+                      {sendTestEmailResult.isLoading
+                        ? t`Sending...`
+                        : t`Send test email`}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleClearEmailSettings}
+                    disabled={allSetByEnvVars}
+                  >
+                    {t`Clear`}
+                  </Button>
+                </Flex>
+              </Form>
+            )}
+          </FormProvider>
+        </Stack>
+      </SettingsSection>
       <Box>
         <UpsellHosting source="settings-email-migrate_to_cloud" />
       </Box>

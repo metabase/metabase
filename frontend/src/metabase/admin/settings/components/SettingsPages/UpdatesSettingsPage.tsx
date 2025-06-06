@@ -5,8 +5,9 @@ import { UpsellHostingUpdates } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
 import { NotFound } from "metabase/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex } from "metabase/ui";
+import { Box, Stack, Title } from "metabase/ui";
 
+import { SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
 
@@ -19,40 +20,37 @@ export function UpdatesSettingsPage() {
   }
 
   return (
-    <Flex justify="space-between" data-testid="settings-updates">
-      <Box w="36rem">
-        <Box p="0.5rem 1rem 2rem">
-          <AdminSettingInput
-            name="check-for-updates"
-            title={t`Check for updates`}
-            inputType="boolean"
-          />
-        </Box>
+    <Stack data-testid="settings-updates">
+      <Title order={1}>{t`Updates`}</Title>
+      <SettingsSection>
+        <AdminSettingInput
+          name="check-for-updates"
+          title={t`Check for updates`}
+          inputType="boolean"
+        />
         {checkForUpdates && (
-          <Box p="0.5rem 1rem 2rem">
-            <AdminSettingInput
-              name="update-channel"
-              title={t`Types of releases to check for`}
-              options={[
-                {
-                  label: c("describes a set of software version releases")
-                    .t`Stable releases`,
-                  value: "latest",
-                },
-                {
-                  label: c("describes a set of software version releases")
-                    .t`Beta releases`,
-                  value: "beta",
-                },
-                {
-                  label: c("describes a set of software version releases")
-                    .t`Nightly builds`,
-                  value: "nightly",
-                },
-              ]}
-              inputType="select"
-            />
-          </Box>
+          <AdminSettingInput
+            name="update-channel"
+            title={t`Types of releases to check for`}
+            options={[
+              {
+                label: c("describes a set of software version releases")
+                  .t`Stable releases`,
+                value: "latest",
+              },
+              {
+                label: c("describes a set of software version releases")
+                  .t`Beta releases`,
+                value: "beta",
+              },
+              {
+                label: c("describes a set of software version releases")
+                  .t`Nightly builds`,
+                value: "nightly",
+              },
+            ]}
+            inputType="select"
+          />
         )}
         {checkForUpdates && (
           <div
@@ -63,10 +61,10 @@ export function UpdatesSettingsPage() {
             <VersionUpdateNotice />
           </div>
         )}
-      </Box>
-      <div>
+      </SettingsSection>
+      <Box pos="absolute" right="2rem">
         <UpsellHostingUpdates source="settings-updates-migrate_to_cloud" />
-      </div>
-    </Flex>
+      </Box>
+    </Stack>
   );
 }
