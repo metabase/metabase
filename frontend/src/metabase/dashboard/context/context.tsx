@@ -56,8 +56,7 @@ export type DashboardContextOwnResult = {
   dashboardId: DashboardId | null;
 };
 
-export type DashboardControls = DashboardFullscreenControls &
-  UseAutoScrollToDashcardResult &
+export type DashboardControls = UseAutoScrollToDashcardResult &
   EmbedDisplayParams &
   EmbedThemeControls;
 

@@ -14,11 +14,19 @@ import {
   mapDispatchToProps,
   mapStateToProps,
 } from "metabase/dashboard/context/context.redux";
+import type { useDashboardFullscreen } from "metabase/dashboard/hooks";
+import type {
+  DashboardFullscreenControls,
+  DashboardRefreshPeriodControls,
+} from "metabase/dashboard/types";
 import { connect } from "metabase/lib/redux";
 
 export type MockDashboardContextProps = DashboardContextProps &
   Partial<ReduxProps> &
-  Partial<DashboardContextErrorState>;
+  Partial<DashboardContextErrorState> &
+  DashboardFullscreenControls & {
+    fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
+  } & DashboardRefreshPeriodControls;
 
 // Create a component that accepts all redux props and passes them into DashboardContext
 const DashboardContextWithReduxProps = (
@@ -26,7 +34,10 @@ const DashboardContextWithReduxProps = (
     ReduxProps &
       DashboardContextOwnProps &
       DashboardContextOwnResult &
-      DashboardControls
+      DashboardControls &
+      DashboardFullscreenControls & {
+        fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
+      } & DashboardRefreshPeriodControls
   >,
 ) => (
   <DashboardContext.Provider value={{ error: null, ...props }}>
