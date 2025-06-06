@@ -2,7 +2,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   mockAuthSsoEndpointForSamlAuthProvider,
   stubWindowOpenForSamlPopup,
-} from "e2e/support/helpers/component-testing-sdk";
+} from "e2e/support/helpers/embedding-sdk-testing";
 
 const { H } = cy;
 
