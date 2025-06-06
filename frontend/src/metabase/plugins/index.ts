@@ -553,6 +553,10 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+  SdkIframeEmbedSetupRoute: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,

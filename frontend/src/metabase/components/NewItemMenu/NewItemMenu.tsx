@@ -94,6 +94,13 @@ const NewItemMenu = ({
       },
     });
 
+    items.push({
+      title: t`Embed`,
+      icon: "embed",
+      link: "/embed",
+      onClose: onCloseNavbar,
+    });
+
     return items;
   }, [
     hasDataAccess,
