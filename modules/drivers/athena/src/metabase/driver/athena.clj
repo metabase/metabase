@@ -541,7 +541,6 @@
 (defn get-query-stats
   "Get query statistics using AWS SDK"
   [query-execution-id details]
-  (tap> {:athena-details details})
   (let [athena-client (database-details->client details)
         request (-> (GetQueryExecutionRequest/builder)
                     (.queryExecutionId query-execution-id)
