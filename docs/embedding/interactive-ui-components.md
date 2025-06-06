@@ -79,9 +79,15 @@ breadcrumbs=false
 
 ## `data_picker`
 
-`data_picker` controls the menu for selecting data sources in questions. By default, Metabase displays a simple data picker:
+`data_picker` controls the menu for selecting data sources in questions.
 
 ![Simple data picker](./images/data-picker.png)
+
+The default behavior for the data picker is:
+
+- Show both tables and models.
+- Exclude Metrics.
+- Display a simple dropdown menu. If there are 100 or more items, Metabase will display a souped-up data picker.
 
 You can opt for the full data picker by setting `data_picker=staged`:
 
@@ -109,18 +115,13 @@ Available entity types are:
 
 - `table`
 - `model`
+- `question`
 
 You can separate entity types with a comma:
 
 ```
 entity_types=table,model
 ```
-
-The default behavior for the data picker is:
-
-- Show both tables and models.
-- Exclude Metrics.
-- Display a simple dropdown menu. If there are 100 or more items, Metabase will display a souped-up data picker.
 
 ## `header`
 
