@@ -59,8 +59,11 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (pos? (t2/update! :model/ParameterCard conditions {:card_id card-id}))
-          (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
+      ;; TODO: Maybe update! should return different values for no rows to update vs
+      ;; no changes to be made
+      (if (apply t2/exists? :model/ParameterCard (flatten (seq conditions)))
+        (t2/update! :model/ParameterCard conditions {:card_id card-id})
+        (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
