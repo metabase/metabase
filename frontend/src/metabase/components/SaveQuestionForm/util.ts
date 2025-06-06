@@ -92,7 +92,7 @@ const getName = (question: Question, originalQuestion: Question | null) => {
   }
 
   // Ad-hoc query
-  return question.displayName() || question.generateQueryDescription();
+  return question.displayName() || question.generateQueryDescription() || "";
 };
 
 export const getInitialValues = (
