@@ -36,8 +36,8 @@ export const DataModel = ({
   return (
     <Flex bg="bg-light" h="100%">
       <Stack
-        bg="bg-white"
-        className={S.column}
+        bg="accent-gray-light"
+        className={cx(S.column, S.rightBorder)}
         flex="0 0 25%"
         gap={0}
         h="100%"
@@ -89,6 +89,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
     <>
       {tableId && (
         <Box
+          bg="bg-white"
           className={cx(S.column, S.rightBorder)}
           flex="0 0 25%"
           h="100%"
@@ -111,7 +112,7 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
       )}
 
       {isEmptyStateShown && (
-        <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
+        <Flex align="center" bg="bg-white" flex="1" justify="center">
           <Box maw={rem(320)}>
             <EmptyState
               illustrationElement={<img src={EmptyDashboardBot} />}
@@ -132,7 +133,13 @@ export function DataModelEditor({ params }: { params: RouteParams }) {
 
       {!isEmptyStateShown && (
         <>
-          <Box className={S.column} flex="0 0 25%" h="100%" miw={rem(400)}>
+          <Box
+            bg="bg-white"
+            className={S.column}
+            flex="0 0 25%"
+            h="100%"
+            miw={rem(400)}
+          >
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && (
                 <FieldSection

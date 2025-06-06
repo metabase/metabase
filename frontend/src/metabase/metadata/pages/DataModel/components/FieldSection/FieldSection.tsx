@@ -35,7 +35,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
   return (
     <Stack gap={0} p="xl" pt={0}>
       <Box
-        bg="accent-gray-light"
+        bg="bg-white"
         className={S.header}
         pb="lg"
         pos="sticky"
