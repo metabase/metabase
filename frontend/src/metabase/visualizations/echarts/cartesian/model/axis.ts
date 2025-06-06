@@ -422,6 +422,7 @@ const getYAxisFormatter = (
         formatValue(value, {
           column,
           number_style: "percent",
+          scale: formattingOptions?.scale,
         }),
       );
   }
@@ -547,6 +548,14 @@ export function getYAxisModel(
     stackType,
     formattingOptions,
   );
+  const formatGoal = getYAxisFormatter(column, settings, stackType, {
+    ...formattingOptions,
+    compact: false,
+    scale:
+      stackType === "normalized"
+        ? 1 / 100 // Users enter "50" for "50%" but visualizations use decimals (e.g. 0.5 = 50%) so we need to convert "50" -> 0.5 for percentage-based goals to be displayed correctly
+        : formattingOptions?.scale,
+  });
 
   return {
     seriesKeys,
@@ -554,6 +563,7 @@ export function getYAxisModel(
     column,
     label,
     formatter,
+    formatGoal,
     isNormalized: stackType === "normalized",
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
