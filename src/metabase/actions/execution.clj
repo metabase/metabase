@@ -3,12 +3,12 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.queries.models.query :as query]
@@ -112,7 +112,7 @@
 
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
-                                   [:row-parameters ::lib.schema.actions/row]
+                                   [:row-parameters ::actions.args/row]
                                    ;; TODO -- the schema for these should probably be
                                    ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
                                    ;; 100% sure about that.
