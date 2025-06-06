@@ -612,19 +612,18 @@
    :type/Structured "text"})
 
 (defn- field-types->fields [field-types]
-  (let [valid-fields (for [[field-path field-type] (seq field-types)
-                           :when field-type]
-                       (let [curr-type (get field-type-map field-type :type/*)]
-                         {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
-                          :database-type     (db-type-map curr-type)
-                          :base-type         curr-type
-                          ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
-                          :database-position 0
-                          :json-unfolding    false
-                          :visibility-type   :normal
-                          :nfc-path          field-path}))
-        field-hash   (into #{} valid-fields)]
-    field-hash))
+  (->> (for [[field-path field-type] (seq field-types)
+             :when field-type]
+         (let [curr-type (get field-type-map field-type :type/*)]
+           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+            :database-type     (db-type-map curr-type)
+            :base-type         curr-type
+            ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+            :database-position 0
+            :json-unfolding    false
+            :visibility-type   :normal
+            :nfc-path          field-path}))
+       (into #{})))
 
 (defn- table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
