@@ -110,10 +110,9 @@ await build({
       generateScopedName: generateScopedCssClassName,
     }),
     fixReactVirtualizedPlugin,
-    // We need the `babel` plugin only because of `@emotion` babel plugin
-    // The `@babel/preset-env` is set to properly apply @emotion plugin before `requireToImport`
+    // We need the `babel` plugin only to properly transform the usage of `@emotion` component selectors
     babel({
-      filter: /\.[jt]s?x/,
+      filter: /\.styled\.[jt]s?x/,
       config: {
         // The options below extend `babel.config.json`
         presets: [
