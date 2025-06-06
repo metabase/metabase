@@ -4,7 +4,6 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
@@ -80,10 +79,8 @@ export function PublicOrEmbeddedQuestionView({
     ) : null;
 
   const untranslatedRawSeries = [{ card, data: result?.data }] as RawSeries;
-  const tc = useTranslateContent();
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,
-    tc,
   );
 
   return (
