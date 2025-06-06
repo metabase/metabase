@@ -4,8 +4,8 @@
   `metabase.driver.sql-jdbc.execute.old-impl`, which will be removed in a future release; implementations of methods
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
-   #_{:clj-kondo/ignore [:metabase/modules]}
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
