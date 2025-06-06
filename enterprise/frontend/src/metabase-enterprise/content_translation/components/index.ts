@@ -1,1 +1,1 @@
-export { ContentTranslationConfiguration } from "./ContentTranslationConfiguration";
+export { ContentTranslationConfiguration } from "./ContentTranslationConfiguration/ContentTranslationConfiguration";

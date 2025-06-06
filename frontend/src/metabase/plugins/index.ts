@@ -724,7 +724,7 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
 
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
-  setEndpoints: (_encodedToken: string) => {},
+  setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: <
     T = string | null | undefined,
@@ -739,6 +739,8 @@ export const PLUGIN_CONTENT_TRANSLATION = {
   shouldTranslateFieldValuesOfColumn: (_col: DatasetColumn) => false,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,
+  useSortByContentTranslation: () => (a: string, b: string) =>
+    a.localeCompare(b),
 };
 
 export const PLUGIN_DB_ROUTING = {

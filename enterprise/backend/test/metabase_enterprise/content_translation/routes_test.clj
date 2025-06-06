@@ -9,7 +9,6 @@
    [metabase-enterprise.content-translation.utils :as ct-utils]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -69,7 +68,6 @@
         (mt/with-temp [:model/ContentTranslation _ {:locale "fr" :msgid "Hello" :msgstr "Bonjour"}]
           (mt/with-premium-features #{:content-translation}
             (let [body (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})]
-              (log/info (str "body" body))
               (let [data (with-open [reader (java.io.StringReader. body)]
                            (doall (csv/read-csv reader)))
                     matches (filter #(and (= (nth % 0) "fr")

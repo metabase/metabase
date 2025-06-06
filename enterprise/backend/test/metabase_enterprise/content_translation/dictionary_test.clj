@@ -5,7 +5,6 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase-enterprise.content-translation.utils :as ct-utils]
    [metabase.test :as mt]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -13,7 +12,7 @@
 (defn- count-translations
   "Count the number of translations in the database."
   []
-  (count (t2/select :model/ContentTranslation)))
+  (t2/count :model/ContentTranslation))
 
 (defn- get-translations
   "Get all translations from the database."
@@ -26,7 +25,6 @@
                 ["fr" "Goodbye" "Au revoir"]
                 ["de" "Thank you" "Danke"]]
           result (#'dictionary/process-rows rows)]
-      (log/info "process-rows-test")
       (is (empty? (:errors result)))
       (is (= 3 (count (:translations result))))
       (is (= #{{:locale "en" :msgid "Hello"}

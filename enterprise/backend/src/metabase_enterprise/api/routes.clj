@@ -13,10 +13,10 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
+   [metabase-enterprise.content-translation.embedding-routes]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-routing.api]
-   [metabase-enterprise.embed.content-translation.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
@@ -71,28 +71,28 @@
 (def ^:private ee-routes-map
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
-  {"/advanced-permissions"       (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-entity-analysis"         (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
-   "/ai-sql-fixer"               (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
-   "/ai-sql-generation"          (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
-   "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
-   "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
-   "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/content-translation"        (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
-   "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
-   "/embedded-content-translation"  (premium-handler metabase-enterprise.embed.content-translation.api/routes :content-translation)
-   "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
-                                     (premium-handler :attached-dwh)
-                                     (premium-handler :etl-connections))
-   "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
-   "/metabot-tools"              metabase-enterprise.metabot-v3.tools.api/routes
-   "/metabot-v3"                 (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
-   "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
-   "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
-   "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
-   "/stale"                      (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
-   "/upload-management"          (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+  {"/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
+   "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
+   "/ai-sql-fixer"                 (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
+   "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
+   "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
+   "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
+   "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
+   "/data-editing"                 (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
+   "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/embedded-content-translation" (premium-handler metabase-enterprise.content-translation.embedding-routes/routes :content-translation)
+   "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
+                                       (premium-handler :attached-dwh)
+                                       (premium-handler :etl-connections))
+   "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
+   "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
+   "/query-reference-validation"   (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
+   "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

@@ -1,5 +1,5 @@
 import * as I from "icepick";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -172,4 +172,17 @@ export const useTranslateSeries = (series: Series) => {
 
     return translateFieldValuesInSeries(withTranslatedDisplayNames, tc);
   }, [series, tc]);
+};
+
+/** Returns a function that can be used to sort user-generated strings in an
+ * array by their translations. */
+export const useSortByContentTranslation = () => {
+  const tc = useTranslateContent();
+  // What makes this sort translation-aware is the use of the tc function.
+  // 'localeCompare' is just a standard way of comparing two strings
+  // alphabetically.
+  return useCallback(
+    (a: string, b: string) => tc(a).localeCompare(tc(b)),
+    [tc],
+  );
 };

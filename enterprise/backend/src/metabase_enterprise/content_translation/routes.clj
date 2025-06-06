@@ -17,13 +17,12 @@
 
 ;; The maximum size of a content translation dictionary is 1.5MiB
 ;; This should equal the maxContentDictionarySizeInMiB variable in the frontend
-(def ^:private max-content-translation-dictionary-size (* 1.5 1024 1024))
+(def ^:private max-content-translation-dictionary-size-mib 1.5)
+(def ^:private max-content-translation-dictionary-size-bytes (* max-content-translation-dictionary-size-mib 1024 1024))
 
 (api.macros/defendpoint :get "/csv"
   "Provides content translation dictionary in CSV"
-  [_route-params
-   _query-params
-   _body]
+  []
   (let [translations (ct/get-translations)
         csv-data (cons ["Language" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
@@ -50,8 +49,8 @@
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (let [file (get-in multipart-params ["file" :tempfile])]
-    (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size)
-      (throw (ex-info (tru "The dictionary should be less than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
+    (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size-bytes)
+      (throw (ex-info (tru "The dictionary should be less than {0}MB." max-content-translation-dictionary-size-mib)
                       {:status-code http-status-content-too-large})))
     (when-not (instance? java.io.File file)
       (throw (ex-info (tru "No file provided") {:status-code 400})))
