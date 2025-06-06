@@ -96,13 +96,13 @@
 (defn- normalize-ref-opts [opts]
   (let [opts (normalize-tokens opts :ignore-path)]
     (cond-> opts
-      (:base-type opts)      (update :base-type keyword)
-      (:effective-type opts) (update :effective-type keyword)
-      (:temporal-unit opts)  (update :temporal-unit keyword)
-      (:inherited-temporal-unit opts)  (update :inherited-temporal-unit keyword)
-      (:binning opts)        (update :binning (fn [binning]
-                                                (cond-> binning
-                                                  (:strategy binning) (update :strategy keyword)))))))
+      (:base-type opts)               (update :base-type keyword)
+      (:effective-type opts)          (update :effective-type keyword)
+      (:temporal-unit opts)           (update :temporal-unit keyword)
+      (:inherited-temporal-unit opts) (update :inherited-temporal-unit keyword)
+      (:binning opts)                 (update :binning (fn [binning]
+                                                         (cond-> binning
+                                                           (:strategy binning) (update :strategy keyword)))))))
 
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.

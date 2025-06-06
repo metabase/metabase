@@ -499,7 +499,11 @@
 (defn- column-metadata->field-ref
   [metadata]
   (let [inherited-column? (lib.field.util/inherited-column? metadata)
-        options           (merge (select-keys metadata [:base-type])
+        options           (merge (u/select-non-nil-keys metadata [:base-type
+                                                                  :was-binned
+                                                                  :inherited-temporal-unit
+                                                                  ::original-effective-type
+                                                                  ::original-temporal-unit])
                                  {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
                                  ;; include `:metabase.lib.query/transformation-added-base-type` if this is going to
@@ -524,16 +528,8 @@
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
                                    {:temporal-unit temporal-unit})
-                                 (when-let [original-effective-type (::original-effective-type metadata)]
-                                   {::original-effective-type original-effective-type})
-                                 (when-let [original-temporal-unit (::original-temporal-unit metadata)]
-                                   {::original-temporal-unit original-temporal-unit})
-                                 (when-let [inherited-temporal-unit (:inherited-temporal-unit metadata)]
-                                   {:inherited-temporal-unit inherited-temporal-unit})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
-                                 (when-let [was-binned (:was-binned metadata)]
-                                   {:was-binned was-binned})
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id})
