@@ -1,12 +1,21 @@
 import { useEffect } from "react";
 
+import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
+declare global {
+  interface Window {
+    "metabase.embed": { MetabaseEmbed: typeof MetabaseEmbed };
+  }
+}
+
 export const SdkIframeEmbedSetup = () => {
+  const siteUrl = useSetting("site-url");
+
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "http://localhost:3000/app/embed.js";
+    script.src = "/app/embed.js";
     document.body.appendChild(script);
 
     let embed: MetabaseEmbed;
@@ -34,6 +43,7 @@ export const SdkIframeEmbedSetup = () => {
   return (
     <div>
       <Box id="iframe-embed-preview" mih="100vh" />
+      <div>{siteUrl}</div>
     </div>
   );
 };
