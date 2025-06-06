@@ -288,8 +288,8 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
       <Box mb="lg">
         <SettingHeader
           id={settingKey}
-          title={settingDetails?.display_name}
-          description={settingDetails?.description}
+          title={settingDetails.display_name}
+          description={settingDetails.description}
         />
         <SetByEnvVar varName={settingDetails.env_name} />
       </Box>
