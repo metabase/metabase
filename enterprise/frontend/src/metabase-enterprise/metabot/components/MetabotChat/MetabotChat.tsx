@@ -141,7 +141,7 @@ export const MetabotChat = () => {
           {!hasMessages && hasSuggestions && (
             <Stack gap="sm" data-testid="metabot-prompt-suggestions">
               <>
-                {metabot.suggestedPrompts.map(({ prompt }, index) => (
+                {suggestedPrompts.map(({ prompt }, index) => (
                   <Box key={index}>
                     <Button
                       fz="sm"
