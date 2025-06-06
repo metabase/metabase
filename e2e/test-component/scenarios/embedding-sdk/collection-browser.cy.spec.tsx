@@ -5,11 +5,11 @@ import {
   FIRST_COLLECTION_ENTITY_ID,
   SECOND_COLLECTION_ENTITY_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
-} from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-helpers";
+  signInAsAdminAndEnableEmbeddingSdk,
+} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > collection browser", () => {

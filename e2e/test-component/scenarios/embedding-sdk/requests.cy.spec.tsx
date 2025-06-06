@@ -1,10 +1,10 @@
 import { CollectionBrowser } from "@metabase/embedding-sdk-react";
 
-import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
-} from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-helpers";
+  signInAsAdminAndEnableEmbeddingSdk,
+} from "e2e/support/helpers/component-testing-sdk";
 
 describe("scenarios > embedding-sdk > requests", () => {
   describe("cache preflight requests", () => {
