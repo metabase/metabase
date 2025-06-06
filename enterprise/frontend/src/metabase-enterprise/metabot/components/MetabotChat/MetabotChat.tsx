@@ -3,7 +3,7 @@ import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { c, jt, t } from "ttag";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
@@ -48,7 +48,6 @@ export const MetabotChat = () => {
   const suggestedPrompts = useMemo(() => {
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
-  const hasSuggestions = suggestedPrompts.length > 0;
 
   const handleSubmitInput = (input: string) => {
     if (metabot.isDoingScience) {
@@ -123,12 +122,7 @@ export const MetabotChat = () => {
               justify="center"
               data-testid="metabot-empty-chat-info"
             >
-              <Box
-                component="img"
-                src={EmptyDashboardBot}
-                w="6rem"
-                alt={t`Empty metabot conversation`}
-              />
+              <Box component={EmptyDashboardBot} w="6rem" />
               <Text
                 c="text-light"
                 maw="12rem"
@@ -138,8 +132,12 @@ export const MetabotChat = () => {
           )}
 
           {/* empty state with suggested prompts */}
-          {!hasMessages && hasSuggestions && (
-            <Stack gap="sm" data-testid="metabot-prompt-suggestions">
+          {!hasMessages && (
+            <Stack
+              gap="sm"
+              className={Styles.promptSuggestionsContainer}
+              data-testid="metabot-prompt-suggestions"
+            >
               <>
                 {suggestedPrompts.map(({ prompt }, index) => (
                   <Box key={index}>

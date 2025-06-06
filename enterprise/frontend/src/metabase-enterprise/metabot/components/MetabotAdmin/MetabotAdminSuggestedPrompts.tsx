@@ -28,7 +28,7 @@ import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 import * as Urls from "metabase-enterprise/urls";
 import type { MetabotId, SuggestedMetabotPrompt } from "metabase-types/api";
 
-export const PAGE_SIZE = 3;
+export const PAGE_SIZE = 10;
 
 export const MetabotPromptSuggestionPane = ({
   metabotId,
@@ -110,8 +110,8 @@ export const MetabotPromptSuggestionPane = ({
           onClick={handleRefreshPrompts}
         >
           {isRefreshing
-            ? t`Refreshing prompts suggestions...`
-            : t`Refresh prompts suggestions`}
+            ? t`Refreshing suggested prompts...`
+            : t`Refresh suggested prompts`}
         </Button>
       </Flex>
       <Box maw="80rem">
