@@ -129,7 +129,7 @@
 
 (deftest ^:parallel coalasce-type-of-with-fields-only-test
   ;; Ideally expression/type-of should have enough information to determine the types of fields.
-  (testing "The type of a case expression can be determined even if it consists of fields only."
+  (testing "The type of a coalesce expression can be determined even if it consists of fields only."
     (is (= ::expression/type.unknown
            (expression/type-of
             [:coalesce

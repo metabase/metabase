@@ -90,8 +90,7 @@
   (when options
     (not-empty (into {}
                      (remove (fn [[k _]]
-                               (when (keyword? k)
-                                 (namespace k))))
+                               (qualified-keyword? k)))
                      options))))
 
 (defn normalize-clause
