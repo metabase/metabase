@@ -1,9 +1,10 @@
 (ns lint-migrations-file
   "This is cljc because it is used from both Clojure (:clj) and Babashka (:bb). Not cljs!"
+  #_{:clj-kondo/ignore [:unused-alias :unused-namespace]}
   (:require
-   #_:clj-kondo/ignore
    [change-set.strict]
-   [clj-yaml.core :as yaml]  [clojure.java.io :as io]
+   [clj-yaml.core :as yaml]
+   [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
@@ -177,8 +178,10 @@
   :ok)
 
 (defn- migration-files []
-  (let [dir #_:clj-kondo/ignore (io/file #?(:bb "resources/migrations" :clj "../../resources/migrations"))]
-    (->> #_:clj-kondo/ignore (file-seq dir)
+  #_{:clj-kondo/ignore [:unresolved-symbol :unused-binding :syntax]}
+  (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
+        dir (io/file dir-str)]
+    (->> (file-seq dir)
          (filter #(and (.isFile %) (str/ends-with? (.getName %) "_update_migrations.yaml"))))))
 
 (defn- migrations [file]
