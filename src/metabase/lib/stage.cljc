@@ -295,8 +295,8 @@
 
 (defn- column-signature [column-metadata]
   (dissoc column-metadata
-          :source-alias :ident :lib/source :lib/source-uuid
-          :lib/desired-column-alias :lib/hack-original-name))
+          :source-alias :ident :semantic-type :settings :display-name
+          :lib/source :lib/source-uuid :lib/desired-column-alias :lib/hack-original-name))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
