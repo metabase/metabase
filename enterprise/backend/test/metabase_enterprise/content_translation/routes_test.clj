@@ -18,40 +18,15 @@
   [& {:keys [num-rows locale]
       :or {num-rows 3
            locale "de"}}]
-  (str "Language,String,Translation\n"
-       (str/join "\n"
-                 (for [i (range num-rows)]
-                   (format "%s,Original %d,Translation %d" locale i i)))))
+  (.getBytes ^String (str "Language,String,Translation\n"
+                          (str/join "\n"
+                                    (for [i (range num-rows)]
+                                      (format "%s,Original %d,Translation %d" locale i i))))))
 
 (defn- count-translations
   "Count the number of translations in the database."
   []
   (count (t2/select :model/ContentTranslation)))
-
-(defn random-embedding-secret-key [] (crypto-random/hex 32))
-
-(def ^:dynamic *secret-key* nil)
-
-(defn sign [claims] (jwt/sign claims *secret-key*))
-
-(defn do-with-new-secret-key! [f]
-  (binding [*secret-key* (random-embedding-secret-key)]
-    (mt/with-temporary-setting-values [embedding-secret-key *secret-key*]
-      (f))))
-
-(defmacro with-new-secret-key! {:style/indent 0} [& body]
-  `(do-with-new-secret-key! (fn [] ~@body)))
-
-(defn token []
-  (sign {:resource {:question 1} ; The payload doesn't matter
-         :params   {}}))
-
-(defmacro with-static-embedding! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
-     (with-new-secret-key!
-       ~@body)))
-
-(defn embedded-dictionary-url [] (str "ee/embedded-content-translation/dictionary/" (token)))
 
 (deftest content-translation-api-test
   (testing "GET /api/ee/content-translation/csv"
@@ -88,30 +63,54 @@
           (is (=? {:success true}
                   (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                        {:file (.getBytes (valid-csv-content))})))
+                                        {:file (valid-csv-content)})))
+
           (is (= 3 (count-translations))))))))
+
+(defn random-embedding-secret-key [] (crypto-random/hex 32))
+
+(defn do-with-new-secret-key! [f]
+  (let [secret-key (random-embedding-secret-key)]
+    (mt/with-temporary-setting-values [embedding-secret-key secret-key]
+      (f secret-key))))
+
+(defmacro with-new-secret-key! ^{:style/indent 0} [binding & body]
+  `(do-with-new-secret-key! (fn ~binding ~@body)))
+
+(defmacro with-static-embedding! ^{:style/indent 0} [& body]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
+     ~@body))
+
+(defn- embedded-dictionary-url [token]
+  (str "/ee/embedded-content-translation/dictionary/" token))
 
 (deftest embedded-dictionary-test
   (with-static-embedding!
     (ct-utils/with-clean-translations!
-      (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
-        (testing "requires content-translation feature"
-          (mt/with-premium-features #{}
-            (mt/assert-has-premium-feature-error
-             "Content translation"
-             (client/client :get 402 (embedded-dictionary-url)))))
-        (testing "requires locale"
-          (mt/with-premium-features #{:content-translation}
-            (client/client :get 400 (embedded-dictionary-url))))
-        (testing "provides translations"
-          (mt/with-temp [:model/ContentTranslation _ {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
-            (mt/with-premium-features #{:content-translation}
-              (let [response (client/client :get 200 (str (embedded-dictionary-url) "?locale=sv"))]
-                (is (map? response))
-                (is (contains? response :data))
-                (let [data (:data response)
-                      translation (first data)]
-                  (is (= 1 (count data)))
-                  (is (= "sv" (:locale translation)))
-                  (is (= "blueberry" (:msgid translation)))
-                  (is (= "blåbär" (:msgstr translation))))))))))))
+      (with-new-secret-key! [k]
+        (mt/with-premium-features #{:content-translation}
+          (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
+            (mt/with-temp [:model/ContentTranslation _ {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
+              (testing "provides translations"
+                (let [resp (client/client :get 200
+                                          (str (embedded-dictionary-url (jwt/sign {} k))
+                                               "?locale=sv"))]
+                  (is (= 1 (count (:data resp))))
+                  (is (=? {:data [{:locale "sv"
+                                   :msgid "blueberry"
+                                   :msgstr "blåbär"}]}
+                          resp))))
+              (testing "requires content-translation feature"
+                (mt/with-premium-features #{}
+                  (mt/assert-has-premium-feature-error
+                   "Content translation"
+                   (client/client :get 402 (str (embedded-dictionary-url (jwt/sign {} k))
+                                                "?locale=sv")))))
+              (testing "requires locale"
+                (is (= "Locale is required."
+                       (client/client :get 400 (embedded-dictionary-url (jwt/sign {} k))))))
+              (testing "requires valid token"
+                (is (= "Message seems corrupt or manipulated"
+                       (client/client :get 400 (str (embedded-dictionary-url
+                                                     (jwt/sign {} (random-embedding-secret-key)))
+                                                    "?locale=sv"))))))))))))
