@@ -1,6 +1,7 @@
 (ns metabase.queries.models.parameter-card
   (:require
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -34,8 +35,8 @@
 
 (t2/define-before-update :model/ParameterCard
   [pc]
-  (u/prog1 (t2/changes pc)
-    (when (:parameterized_object_type <>)
+  (u/prog1 pc
+    (when (:parameterized_object_type (t2/changes <>))
       (validate-parameterized-object-type <>))))
 
 (defn delete-all-for-parameterized-object!
@@ -66,7 +67,7 @@
   or delete appropriate ParameterCards for each parameter in the dashboard"
   [parameterized-object-type :- ms/NonBlankString
    parameterized-object-id   :- ms/PositiveInt
-   parameters                :- [:maybe [:sequential ms/Parameter]]]
+   parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
                                      (= values_source_type "card")))

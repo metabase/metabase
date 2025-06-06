@@ -74,6 +74,7 @@
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -137,10 +138,15 @@
              (string? value))
       (u/ignore-exceptions
         (params.dates/date-string->filter value field-id))
-      (cond-> [op field-clause]
-        ;; we don't want to skip our value, even if its nil
-        true (into (if value (u/one-or-many value) [nil]))
-        (seq options) (conj options)))))
+      ;; we don't want to skip our value, even if its nil
+      (let [values (if (nil? value) [nil] (u/one-or-many value))]
+        (if (and (#{:starts-with :ends-with :contains :does-not-contain} op)
+                 (next values))
+          ;; special form: options come after the tag
+          (into [op options field-clause] values)
+          ;; standard form: options at the end
+          (cond-> (into [op field-clause] values)
+            (seq options) (conj options)))))))
 
 (defn- name-for-logging [model id]
   (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (t2/select-one-fn :name model :id id)))))
@@ -467,7 +473,7 @@
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
   [values            :- [:sequential ms/NonRemappedFieldValue]
-   v->human-readable :- :parameters/human-readable-remapping-map]
+   v->human-readable :- ::parameters.schema/human-readable-remapping-map]
   (map vector
        (map first values)
        (map (fn [[v]]
@@ -663,7 +669,7 @@
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ms/PositiveInt
-   v->human-readable :- :parameters/human-readable-remapping-map
+   v->human-readable :- ::parameters.schema/human-readable-remapping-map
    constraints       :- [:maybe Constraints]
    query             :- ms/NonBlankString
    options           :- [:maybe Options]]

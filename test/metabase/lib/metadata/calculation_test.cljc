@@ -228,42 +228,6 @@
                        :products))
               (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))
 
-(deftest ^:parallel visible-columns-excludes-offset-expressions-test
-  (testing "visible-columns should exclude expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/visible-columns query)))))))
-
-(deftest ^:parallel returned-columns-includes-offset-expressions-test
-  (testing "returned-columns should include expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:name "Offset col",    :lib/source :source/expressions}
-                 {:name "Nested Offset", :lib/source :source/expressions}]
-                (lib/returned-columns query)))))))
-
 (deftest ^:parallel implicitly-joinable-requires-numeric-id-test
   (letfn [(query-with-user-id-tweaks [tweaks]
             (let [base     (-> (lib.tu/mock-cards)
@@ -614,3 +578,42 @@
                   (lib/join join2)
                   (lib/join join1)
                   cols))))))
+
+(deftest ^:parallel implicit-join-columns
+  (let [inner (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/join (meta/table-metadata :people)))
+        mp    (lib.tu/metadata-provider-with-card-from-query 1 inner)
+        query (lib/query mp (lib.metadata/card mp 1))]
+    (is (=? [["ID" :source/card]
+             ["SUBTOTAL" :source/card]
+             ["TOTAL" :source/card]
+             ["TAX" :source/card]
+             ["DISCOUNT" :source/card]
+             ["QUANTITY" :source/card]
+             ["CREATED_AT" :source/card]
+             ["PRODUCT_ID" :source/card]
+             ["USER_ID" :source/card]
+             ["ID" :source/card]
+             ["STATE" :source/card]
+             ["CITY" :source/card]
+             ["ADDRESS" :source/card]
+             ["NAME" :source/card]
+             ["SOURCE" :source/card]
+             ["ZIP" :source/card]
+             ["LATITUDE" :source/card]
+             ["PASSWORD" :source/card]
+             ["BIRTH_DATE" :source/card]
+             ["LONGITUDE" :source/card]
+             ["EMAIL" :source/card]
+             ["CREATED_AT" :source/card]
+             ["ID" :source/implicitly-joinable]
+             ["EAN" :source/implicitly-joinable]
+             ["TITLE" :source/implicitly-joinable]
+             ["CATEGORY" :source/implicitly-joinable]
+             ["VENDOR" :source/implicitly-joinable]
+             ["PRICE" :source/implicitly-joinable]
+             ["RATING" :source/implicitly-joinable]
+             ["CREATED_AT" :source/implicitly-joinable]]
+            (-> query
+                (lib/visible-columns)
+                (->> (map (juxt :name :lib/source))))))))

@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -34,7 +35,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
-   [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -180,7 +180,7 @@
 ;; authentication test on every single individual endpoint
 
 (deftest ^:parallel auth-test
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "dashboard")
          (client/client :put 401 "dashboard/13"))))
 
@@ -5058,3 +5058,37 @@
                                     :base_type :type/Text}]}
                 (:param_fields (mt/with-test-user :crowberto
                                  (#'api.dashboard/get-dashboard (:id dashboard))))))))))
+
+(deftest post-update-test
+  (mt/with-temp [:model/Collection    {collection-id-1 :id} {}
+                 :model/Collection    {collection-id-2 :id} {}
+                 :model/Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
+                 :model/Card          {card-id :id}         {}
+                 :model/Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
+                 :model/DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
+                 :model/PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
+    (testing "Pulse name and collection-id updates"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                            {:name "Lucky's Close Shaves" :collection_id collection-id-2})
+      (is (= "Lucky's Close Shaves"
+             (t2/select-one-fn :name :model/Pulse :id pulse-id)))
+      (is (= collection-id-2
+             (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))
+
+(deftest post-update-card-sync-test
+  (mt/with-temp [:model/Collection    {collection-id-1 :id} {}
+                 :model/Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
+                 :model/Card          {card-id :id}         {}
+                 :model/Card          {new-card-id :id}     {}
+                 :model/Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
+                 :model/DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
+                 :model/PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
+    (testing "PulseCard syncing"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                            {:dashcards [{:id 100
+                                          :card_id new-card-id
+                                          :row     0
+                                          :col     0
+                                          :size_x  4
+                                          :size_y  4}]})
+      (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))

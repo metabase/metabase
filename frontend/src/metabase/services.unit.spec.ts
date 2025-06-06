@@ -187,6 +187,8 @@ describe("metabase/services > runQuestionQuery", () => {
         parameters: [],
         pivot_cols: [],
         pivot_rows: [],
+        show_column_totals: true,
+        show_row_totals: true,
       });
     });
 
