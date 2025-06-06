@@ -1044,5 +1044,5 @@
                        {:display_name (str join-alias " → Title")
                         :field_ref    [:field %products.title {:join-alias join-alias}]}])
                     (map
-                     #(select-keys % [:display_name :field_ref :source_alias])
+                     #(select-keys % [:display_name :field_ref])
                      metadata)))))))))

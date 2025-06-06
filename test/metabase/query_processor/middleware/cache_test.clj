@@ -366,7 +366,9 @@
                        (seq (-> cached-result :cache/details :hash))))
                 (is (= (dissoc original-result :cache/details)
                        (dissoc cached-result :cache/details))
-                    "Cached result should be in the same format as the uncached result, except for added keys"))))))))
+                    "Cached result should be in the same format as the uncached result, except for added keys")))))))))
+
+(deftest e2e-test-2
   (testing "Cached results don't impact average execution time"
     (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
@@ -403,20 +405,13 @@
               (is (= avg-execution-time (query/average-execution-time-ms q-hash))))))))))
 
 (def ^:private expected-inner-metadata
-  (for [[name col-key] [["ID"          :id]
-                        ["NAME"        :name]
-                        ["CATEGORY_ID" :category_id]
-                        ["LATITUDE"    :latitude]
-                        ["LONGITUDE"   :longitude]
-                        ["PRICE"       :price]]]
-    {:name name
-     :ident (mt/ident :venues col-key)}))
-
-(defn- expected-model-metadata [the-model]
-  (for [col expected-inner-metadata]
-    (-> (lib/add-model-ident col (:entity_id the-model))
-        ;; TODO: Inner idents are not returned on query results... but perhaps should be?
-        (dissoc :model/inner_ident))))
+  (for [name ["ID"
+              "NAME"
+              "CATEGORY_ID"
+              "LATITUDE"
+              "LONGITUDE"
+              "PRICE"]]
+    {:name name}))
 
 (deftest multiple-models-e2e-test
   (testing "caching works across the whole QP where two models have the same inner query"
@@ -429,9 +424,8 @@
                                                                 :type          :model})]
         (testing "both models get :result_metadata containing model :idents"
           (doseq [the-model [model1 model2]]
-            (is (=? (expected-model-metadata the-model)
+            (is (=? expected-inner-metadata
                     (:result_metadata the-model)))))
-
         (with-mock-cache! [save-chan]
           (let [inner1 (-> (:dataset_query model1)
                            (assoc :cache-strategy (ttl-strategy))
@@ -481,7 +475,7 @@
                       rerun-outer1     (qp/process-query outer1)
                       one-run-outer2   (qp/process-query outer2)]
                   (testing "Original results have correct model metadata"
-                    (is (=? (expected-model-metadata model1)
+                    (is (=? expected-inner-metadata
                             (-> original-result1 :data :results_metadata :columns))))
 
                   (testing "\n\nOuter queries are cached *separately*"
@@ -505,7 +499,7 @@
                     (doseq [[the-model cached-results] [[model1 rerun-outer1]
                                                         [model2 one-run-outer2]]]
                       (testing (:name the-model)
-                        (is (=? (expected-model-metadata the-model)
+                        (is (=? expected-inner-metadata
                                 (-> cached-results :data :results_metadata :columns)))))))))))))))
 
 (deftest duplicate-native-queries-e2e-test

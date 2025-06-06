@@ -28,13 +28,6 @@
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
-;;; this is only for convenience for drivers that used to use stuff in annotate directly -- we can remove it once we
-;;; convert drivers to MLv2
-(p/import-vars
- [metabase.query-processor.middleware.annotate.legacy-helper-fns
-  aggregation-name
-  merged-column-info])
-
 (mr/def ::legacy-source
   [:enum :aggregation :fields :breakout :native])
 
@@ -155,7 +148,7 @@
     :source/table-defaults      :fields
     :source/fields              :fields
     :source/aggregations        :aggregation
-    :source/breakouts           :fields
+    :source/breakouts           :breakout
     :source/joins               :fields
     :source/expressions         :fields
     :source/implicitly-joinable :fields))
@@ -378,3 +371,14 @@
     (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
       (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
       (infer-base-type-xform metadata' (rff metadata')))))
+
+;;;;
+;;;; NONSENSE
+;;;;
+
+;;; These are only for convenience for drivers that used to use stuff in annotate directly -- we can remove it once we
+;;; convert drivers to MLv2
+(p/import-vars
+ [metabase.query-processor.middleware.annotate.legacy-helper-fns
+  aggregation-name
+  merged-column-info])

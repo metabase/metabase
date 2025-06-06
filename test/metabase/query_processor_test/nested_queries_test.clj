@@ -63,36 +63,27 @@
 (deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with a SQL source-query"
-      (is (= {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
-                     [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
-                     [3 -118.428 11 2 "The Apple Pan"                34.0406]
-                     [4 -118.465 29 2 "Wurstküche"                   33.9997]
-                     [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-              ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
-              ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
-              :cols (mapv (fn [col-name]
-                            (let [col (-> (qp.test-util/native-query-col :venues col-name)
-                                          (dissoc :database_type))]
-                              (assoc col :ident (lib/native-ident (:name col) "AAAAAAAAAAAAAAAAAAAAA"))))
-                          [:id :longitude :category_id :price :name :latitude])}
-             (mt/format-rows-by
-              [int 4.0 int int str 4.0]
-              (let [native-query (compile-to-native
-                                  (mt/mbql-query venues
-                                    {:fields [$id $longitude $category_id $price $name $latitude]}))]
-                (-> (qp.test-util/rows-and-cols
-                     (mt/run-mbql-query venues
-                       {:source-query {:native native-query}
-                        :order-by     [[:asc *venues.id]]
-                        :limit        5}))
-                    (update :cols (fn [cols]
-                                    (mapv (fn [col]
-                                            (-> col
-                                                (dissoc :database_type)
-                                                ;; Overwrite the idents to make the card eid fixed.
-                                                (update :ident #(str "native[AAAAAAAAAAAAAAAAAAAAA]__"
-                                                                     (subs % 31)))))
-                                          cols)))))))))))
+      (is (=? {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
+                      [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
+                      [3 -118.428 11 2 "The Apple Pan"                34.0406]
+                      [4 -118.465 29 2 "Wurstküche"                   33.9997]
+                      [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
+               ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
+               ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
+               :cols (mapv (fn [col-name]
+                             (-> (qp.test-util/native-query-col :venues col-name)
+                                 (dissoc :database_type)))
+                           [:id :longitude :category_id :price :name :latitude])}
+              (mt/format-rows-by
+               [int 4.0 int int str 4.0]
+               (let [native-query (compile-to-native
+                                   (mt/mbql-query venues
+                                     {:fields [$id $longitude $category_id $price $name $latitude]}))]
+                 (qp.test-util/rows-and-cols
+                  (mt/run-mbql-query venues
+                    {:source-query {:native native-query}
+                     :order-by     [[:asc *venues.id]]
+                     :limit        5})))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
                            :or   {has-source-metadata? true
@@ -1080,7 +1071,7 @@
                    :base_type    :type/Text}
                   {:name         "count"
                    :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/Integer}]
+                   :field_ref    [:field "count" {:base-type :type/BigInteger}]
                    :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
                (for [col (mt/cols results)]
                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))

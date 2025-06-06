@@ -57,7 +57,7 @@
       (for [col cols
             :when (not (:remapped_from col))]
         (select-keys col [:name :id :ident :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
+                          :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id])))
     (catch Throwable e
       (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
