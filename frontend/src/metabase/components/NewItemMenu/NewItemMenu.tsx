@@ -97,7 +97,7 @@ const NewItemMenu = ({
     items.push({
       title: t`Embed`,
       icon: "embed",
-      link: "/embed",
+      link: "/embed/new",
       onClose: onCloseNavbar,
     });
 
