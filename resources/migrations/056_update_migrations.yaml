@@ -9,13 +9,13 @@ databaseChangeLog:
       author: edpaget
       comment: Placeholder migration that makes sure the downgrade check doesn't fail
       changes:
-        -  output:
-            message:  Placeholder until other changesets
-            target:  STDOUT
+        - output:
+            message: Placeholder until other changesets
+            target: STDOUT
       rollback:
 
   - changeSet:
-      id: v56.2025-06-04T15:00:00
+      id: v56.2025-06-06T15:00:00
       author: rafpaf
       comment: Create content translation table
       preConditions:
