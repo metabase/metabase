@@ -8,7 +8,7 @@ import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId } from "metabase-types/api";
-import { PRODUCTS } from "metabase-types/api/mocks/presets";
+import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 import type { ValuesSourceType } from "metabase-types/api/parameters";
 
 import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
@@ -61,6 +61,40 @@ describe("ParameterLinkedFilters", () => {
     await userEvent.click(await screen.findByRole("switch"));
 
     expect(onChangeFilteringParameters).toHaveBeenCalledWith(["p2"]);
+  });
+
+  it("should not display parameters that cannot be linked", async () => {
+    setup({
+      parameter: createMockUiParameter({
+        id: "p1",
+        name: "P1",
+        fields: [
+          checkNotNull(SAMPLE_METADATA.field(PRODUCTS.CREATED_AT)),
+          checkNotNull(SAMPLE_METADATA.field(ORDERS.CREATED_AT)),
+        ],
+      }),
+      otherParameters: [
+        createMockUiParameter({
+          id: "p2",
+          name: "P2",
+          fields: [
+            checkNotNull(SAMPLE_METADATA.field(ORDERS.ID)),
+            checkNotNull(SAMPLE_METADATA.field(PEOPLE.CREATED_AT)),
+          ],
+        }),
+        createMockUiParameter({
+          id: "p3",
+          name: "P3",
+          fields: [checkNotNull(SAMPLE_METADATA.field(PEOPLE.CREATED_AT))],
+        }),
+      ],
+      filteringIdsByFilteredId: {
+        [PRODUCTS.CREATED_AT]: [ORDERS.CREATED_AT, ORDERS.ID],
+      },
+    });
+
+    expect(await screen.findByText("P2")).toBeInTheDocument();
+    expect(screen.queryByText("P3")).not.toBeInTheDocument();
   });
 
   it.each(["static-list", "card"])(
