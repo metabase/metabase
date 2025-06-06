@@ -1,5 +1,7 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useState } from "react";
+import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -15,12 +17,27 @@ import {
   FieldSection,
   PreviewSection,
   type PreviewType,
+  ResizeHandle,
   RouterTablePicker,
   SegmentsLink,
   TableSection,
 } from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
+
+type Column = "nav" | "table" | "field";
+
+interface ColumnSizeConfig {
+  initial: number;
+  min: number;
+  max: number;
+}
+
+const columnSizesConfig: Record<Column, ColumnSizeConfig> = {
+  nav: { initial: 320, min: 240, max: 440 },
+  table: { initial: 320, min: 240, max: 640 },
+  field: { initial: 480, min: 240, max: 640 },
+};
 
 export const DataModel = ({
   params,
@@ -32,33 +49,58 @@ export const DataModel = ({
   children: ReactNode;
 }) => {
   const { databaseId, tableId, schemaId } = parseRouteParams(params);
+  const [isResizing, setIsResizing] = useState(false);
+  const [navWidth, setNavWidth] = useState(columnSizesConfig.nav.initial);
+  const { height, ref } = useElementSize();
 
   return (
-    <Flex bg="bg-light" h="100%">
-      <Stack
-        bg="accent-gray-light"
-        className={cx(S.column, S.rightBorder)}
-        flex="0 0 25%"
-        gap={0}
-        h="100%"
-        miw={rem(320)}
+    <Flex
+      bg="bg-light"
+      className={cx({ [S.resizing]: isResizing })}
+      h="100%"
+      ref={ref}
+    >
+      <ResizableBox
+        axis="x"
+        handle={<ResizeHandle />}
+        height={height}
+        maxConstraints={[columnSizesConfig.nav.max, height]}
+        minConstraints={[columnSizesConfig.nav.min, height]}
+        resizeHandles={["e"]}
+        width={navWidth}
+        onResize={(_event, data) => {
+          setNavWidth(data.size.width);
+        }}
+        onResizeStart={() => setIsResizing(true)}
+        onResizeStop={() => setIsResizing(false)}
       >
-        <RouterTablePicker
-          databaseId={databaseId}
-          schemaId={schemaId}
-          tableId={tableId}
-        />
-
-        <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink
-            active={
-              location.pathname.startsWith("/admin/datamodel/segments") ||
-              location.pathname.startsWith("/admin/datamodel/segment/")
-            }
-            to="/admin/datamodel/segments"
+        <Stack
+          bg="accent-gray-light"
+          className={cx(S.column, S.rightBorder)}
+          gap={0}
+          h="100%"
+          w="100%"
+          style={{
+            overflow: "hidden",
+          }}
+        >
+          <RouterTablePicker
+            databaseId={databaseId}
+            schemaId={schemaId}
+            tableId={tableId}
           />
-        </Box>
-      </Stack>
+
+          <Box className={S.footer} mx="xl" py="sm">
+            <SegmentsLink
+              active={
+                location.pathname.startsWith("/admin/datamodel/segments") ||
+                location.pathname.startsWith("/admin/datamodel/segment/")
+              }
+              to="/admin/datamodel/segments"
+            />
+          </Box>
+        </Stack>
+      </ResizableBox>
 
       {children}
     </Flex>
