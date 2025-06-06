@@ -92,6 +92,10 @@
   [database db-info]
   "23.4.0-0")
 
+(defmethod fetch-oldest-supported-version :druid
+  [database db-info]
+  "0.20.2")
+
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database db-info)
@@ -206,6 +210,18 @@
        "-p" (str port ":5433")
        "--name" container-name
        (str "opentext/vertica-ce:" resolved-version)])))
+
+(defmethod docker-cmd :druid
+  [_db container-name resolved-version port]
+  (let [host-port (if (= resolved-version "latest") 8085 8084)
+        router-port (if (= resolved-version "latest") 8890 8889)
+        version (if (= resolved-version "latest") "29.0.0" resolved-version)]
+    ["docker" "run" "-d"
+     "-p" (str port ":8081")
+     "-p" (str host-port ":8082")
+     "-p" (str router-port ":8888")
+     "--name" container-name
+     (str "metabase/druid:" version)]))
 
 (defn- start-db!
   [database version resolved-version port]
