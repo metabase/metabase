@@ -22,15 +22,20 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
+import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Flex } from "metabase/ui";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
+import type Question from "metabase-lib/v1/Question";
 
 import {
   type InteractiveDashboardContextType,
   InteractiveDashboardProvider,
 } from "../InteractiveDashboard/context";
+import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
 
 import type { SdkDashboardInternalProps, SdkDashboardProps } from "./types";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
@@ -136,7 +141,7 @@ export const SdkDashboard = ({
   drillThroughQuestionHeight,
   drillThroughQuestionProps,
   dashboardActions,
-  getClickActionMode,
+  mode,
 }: SdkDashboardProps &
   Pick<InteractiveDashboardContextType, "dashboardActions">) => {
   const dispatch = useSdkDispatch();
@@ -161,11 +166,32 @@ export const SdkDashboard = ({
   } = useCommonDashboardParams({
     dashboardId,
   });
+
+  const { getClickActionMode, navigateToNewCardFromDashboard } = useMemo(() => {
+    if (mode === "static") {
+      return {
+        getClickActionMode: ({ question }: { question: Question }) =>
+          getEmbeddingMode({ question, queryMode: StaticQuestionSdkMode }),
+        navigateToNewCardFromDashboard: null,
+      };
+    } else {
+      return {
+        getClickActionMode: ({ question }: { question: Question }) =>
+          getEmbeddingMode({
+            question,
+            queryMode: EmbeddingSdkMode,
+            plugins: plugins as InternalMetabasePluginsConfig,
+          }),
+        navigateToNewCardFromDashboard: onNavigateToNewCardFromDashboard,
+      };
+    }
+  }, [mode, onNavigateToNewCardFromDashboard, plugins]);
+
   return (
     <DashboardContextProvider
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       downloadsEnabled={displayOptions.downloadsEnabled}
       background={displayOptions.background}
       bordered={displayOptions.bordered}

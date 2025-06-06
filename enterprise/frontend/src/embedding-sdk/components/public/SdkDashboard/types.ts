@@ -39,6 +39,11 @@ export type SdkDashboardProps = PropsWithChildren<
      * Props for the drill-through question
      */
     drillThroughQuestionProps?: DrillThroughQuestionProps;
+
+    /**
+     * @internal
+     */
+    mode: "static" | "interactive" | "editable";
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps &
     Pick<DashboardContextProps, "getClickActionMode">

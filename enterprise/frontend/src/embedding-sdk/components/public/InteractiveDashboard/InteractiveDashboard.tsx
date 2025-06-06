@@ -31,8 +31,10 @@ const InteractiveDashboardInner = ({
           withDownloads: sdkDashboardProps.withDownloads,
           withEditLink: false,
         },
+        ...plugins,
       },
     }}
+    mode="interactive"
     getClickActionMode={({ question }: { question: Question }) =>
       getEmbeddingMode({
         question,
