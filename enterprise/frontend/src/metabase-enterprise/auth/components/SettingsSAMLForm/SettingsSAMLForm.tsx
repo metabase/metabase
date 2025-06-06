@@ -85,7 +85,7 @@ export function SettingsSAMLForm() {
   }
 
   return (
-    <Stack>
+    <Stack maw="40rem">
       <Title order={1}>{t`SAML`}</Title>
       <SettingsSection>
         <FormProvider

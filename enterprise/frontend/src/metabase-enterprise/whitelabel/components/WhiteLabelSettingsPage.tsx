@@ -103,13 +103,14 @@ function BrandingTab() {
 function ConcealTab() {
   return (
     <Stack gap="xl" maw="40rem" py="lg" data-testid="conceal-metabase-settings">
-      <Title order={1}>{t`Conceal Metabase`}</Title>
-
-      <SettingsSection>
+      <Box>
+        <Title order={1}>{t`Conceal Metabase`}</Title>
         <Text>
           {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
         </Text>
+      </Box>
 
+      <SettingsSection title={t`Names`}>
         <AdminSettingInput
           name="application-name"
           title={t`Application Name`}
@@ -130,16 +131,12 @@ function ConcealTab() {
         />
 
         <HelpLinkSettings />
+      </SettingsSection>
 
-        <Box>
-          <Text tt="uppercase" fw="bold" c="text-medium">
-            {t`Metabase Illustrations`}
-          </Text>
-          <Text c="text-medium">
-            {t`Customize each of the illustrations in Metabase`}
-          </Text>
-        </Box>
-
+      <SettingsSection
+        title={t`Metabase Illustrations`}
+        description={t`Customize each of the illustrations in Metabase`}
+      >
         <MetabotToggleWidget />
 
         <IllustrationWidget

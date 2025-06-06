@@ -50,7 +50,6 @@ const SetupHeader = ({
 }) => {
   return (
     <Box>
-      <Title order={2}>{t`Metabase on Slack`}</Title>
       {isBot ? (
         <Text>
           <SlackBadge isBot={isBot} isValid={isValid} />{" "}
