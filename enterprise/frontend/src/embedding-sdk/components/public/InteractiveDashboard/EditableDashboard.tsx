@@ -21,7 +21,6 @@ export type EditableDashboardProps = SdkDashboardProps;
  * @param props
  */
 export const EditableDashboard = ({
-  drillThroughQuestionProps,
   plugins,
   ...sdkDashboardProps
 }: EditableDashboardProps) => {

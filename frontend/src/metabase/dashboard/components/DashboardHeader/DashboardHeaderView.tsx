@@ -101,7 +101,6 @@ export function DashboardHeaderView({
 
   const { dashboardActions } = useInteractiveDashboardContext();
   const { titled } = useDashboardContext();
-
   const _headerButtons = useMemo(
     () => (
       <Flex

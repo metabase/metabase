@@ -16,35 +16,32 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 export type InteractiveDashboardProps = SdkDashboardProps;
 
 const InteractiveDashboardInner = ({
-  drillThroughQuestionProps,
   plugins,
   ...sdkDashboardProps
 }: PropsWithChildren<SdkDashboardProps> &
-  Pick<SdkDashboardProps, "drillThroughQuestionProps">) => {
-  return (
-    <SdkDashboard
-      {...sdkDashboardProps}
-      plugins={{
-        ...plugins,
-        dashboard: {
-          ...plugins?.dashboard,
-          dashboardCardMenu: {
-            ...plugins?.dashboard?.dashboardCardMenu,
-            withDownloads: sdkDashboardProps.withDownloads,
-            withEditLink: false,
-          },
+  Pick<SdkDashboardProps, "drillThroughQuestionProps">) => (
+  <SdkDashboard
+    {...sdkDashboardProps}
+    plugins={{
+      ...plugins,
+      dashboard: {
+        ...plugins?.dashboard,
+        dashboardCardMenu: {
+          ...plugins?.dashboard?.dashboardCardMenu,
+          withDownloads: sdkDashboardProps.withDownloads,
+          withEditLink: false,
         },
-      }}
-      getClickActionMode={({ question }: { question: Question }) =>
-        getEmbeddingMode({
-          question,
-          queryMode: EmbeddingSdkMode,
-          plugins: plugins as InternalMetabasePluginsConfig,
-        })
-      }
-    />
-  );
-};
+      },
+    }}
+    getClickActionMode={({ question }: { question: Question }) =>
+      getEmbeddingMode({
+        question,
+        queryMode: EmbeddingSdkMode,
+        plugins: plugins as InternalMetabasePluginsConfig,
+      })
+    }
+  />
+);
 
 /**
  * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
