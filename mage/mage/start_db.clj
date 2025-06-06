@@ -84,6 +84,10 @@
   [database db-info]
   "0.286")
 
+(defmethod fetch-oldest-supported-version :sparksql
+  [database db-info]
+  "2.1.1")
+
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database db-info)
@@ -102,8 +106,7 @@
 
 (defmethod docker-cmd :postgres
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":5432")
    ;; "--network" "psql-metabase-network"
    "-e" "POSTGRES_USER=metabase"
@@ -116,8 +119,7 @@
 
 (defmethod docker-cmd :mysql
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
@@ -126,8 +128,7 @@
 
 (defmethod docker-cmd :mariadb
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
@@ -136,8 +137,7 @@
 
 (defmethod docker-cmd :mongo
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])
@@ -153,8 +153,7 @@
 
 (defmethod docker-cmd :sqlserver
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":1433")
    "-e" "ACCEPT_EULA=Y"
    "-e" "SA_PASSWORD=P@ssw0rd"
@@ -163,8 +162,7 @@
 
 (defmethod docker-cmd :oracle
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":1521")
    "-e" "ORACLE_PASSWORD=password"
    "--name" container-name
@@ -175,13 +173,19 @@
 (defmethod docker-cmd :presto
   [_db container-name resolved-version port]
   (let [https-port (if (= resolved-version "latest") 8444 8443)]
-    ["docker" "run"
-     "-d"
+    ["docker" "run" "-d"
      "-p" (str port ":8080")
      "-p" (str https-port ":8443")
      "--name" container-name
      "--hostname" "presto"
      (str "prestodb/presto:" resolved-version)]))
+
+(defmethod docker-cmd :sparksql
+  [_db container-name resolved-version port]
+  ["docker" "run" "-d"
+   "-p" (str port ":10000")
+   "--name" container-name
+   (str "metabase/spark:" resolved-version)])
 
 (defn- start-db!
   [database version resolved-version port]
