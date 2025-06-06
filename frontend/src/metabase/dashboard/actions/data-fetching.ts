@@ -688,19 +688,18 @@ export const fetchDashboard = createAsyncThunk(
       } else if (dashboardType === "transient") {
         const subPath = String(dashId).split("/").slice(3).join("/");
         const [entity, entityId] = subPath.split(/[/?]/);
-        const [response] = await Promise.all([
-          AutoApi.dashboard(
-            { subPath, dashboard_load_id: dashboardLoadId },
-            { cancelled: fetchDashboardCancellation.promise },
-          ),
-          dispatch(
-            Dashboards.actions.fetchXrayMetadata({
-              entity,
-              entityId,
-              dashboard_load_id: dashboardLoadId,
-            }),
-          ),
-        ]);
+        // For the POC, ensure the metadata is fetched ie fingerprints are computed prior loading dashboard
+        const _metadataResponse = await dispatch(
+          Dashboards.actions.fetchXrayMetadata({
+            entity,
+            entityId,
+            dashboard_load_id: dashboardLoadId,
+          }),
+        );
+        const response = await AutoApi.dashboard(
+          { subPath, dashboard_load_id: dashboardLoadId },
+          { cancelled: fetchDashboardCancellation.promise },
+        );
         result = {
           ...response,
           id: dashId,
