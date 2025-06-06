@@ -114,8 +114,12 @@ export type ActionFormParameter = {
   id: string;
   display_name: string;
   type: ActionFormParameterType;
+  semantic_type?: string;
   optional?: boolean;
   nullable?: boolean;
+  readonly?: boolean;
+  field_id?: number;
+  fk_target_field_id?: number;
 };
 
 export type DescribeActionFormResponse = {

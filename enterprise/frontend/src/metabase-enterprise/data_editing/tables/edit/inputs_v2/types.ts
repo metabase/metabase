@@ -14,6 +14,7 @@ export type ActionInputSharedProps = {
   autoFocus?: boolean;
   initialValue?: string;
   inputProps?: ActionInputInputProps;
+  isNullable?: boolean;
   onChange?: (value: string | null) => unknown;
   onBlur?: (value: string | null) => unknown;
   onEscape?: (value: string | null) => unknown;
