@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :as i18n :refer [tru]]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

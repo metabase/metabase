@@ -1,4 +1,4 @@
-(ns metabase-enterprise.embed.content-translation.api
+(ns metabase-enterprise.content-translation.embedding-routes
   "Enterprise endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch data needed for embedded
   content translation. See the documentation for metabase.embedding.api.embed."
   (:require
@@ -6,8 +6,7 @@
    [metabase.content-translation.models :as ct]
    [metabase.embedding.jwt :as embedding.jwt]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [tru deferred-tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.i18n :refer [tru deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,7 +17,6 @@
   [{:keys [token]} :- [:map
                        [:token string?]]
    {:keys [locale]}]
-  (log/info "hit embed ct endpoint")
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale
@@ -33,5 +31,5 @@
                 :body {:message (str (deferred-tru "Content translation"))}}))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/embed/content-translation` routes."
+  "`/api/ee/embedded-content-translation` routes."
   (api.macros/ns-handler *ns* +require-content-translation))

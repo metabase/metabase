@@ -3,12 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen } from "__support__/ui";
 
-import { type SetupOpts, setup as baseSetup } from "./utils";
+import { setup } from "./utils";
 
 describe("TitleAndDescription component (OSS)", () => {
-  const setup = (opts?: SetupOpts) =>
-    baseSetup({ hasEnterprisePlugins: false, ...opts });
-
   const getContentTranslatorSpy = setupTranslateContentStringSpy();
 
   it("displays untranslated question title and description", async () => {

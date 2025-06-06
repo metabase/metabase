@@ -1,5 +1,5 @@
 import { invalidateTags, listTag } from "metabase/api/tags";
-import { contentTranslationURLs } from "metabase-enterprise/content_translation/constants";
+import { contentTranslationEndpoints } from "metabase-enterprise/content_translation/constants";
 import type { DictionaryResponse } from "metabase-types/api/content-translation";
 
 import { EnterpriseApi } from "./api";
@@ -17,7 +17,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
       >({
         query: (params) => ({
           method: "GET",
-          url: contentTranslationURLs.getDictionary,
+          url: contentTranslationEndpoints.getDictionary,
           params,
         }),
         providesTags: () => [listTag("content-translation")],
@@ -32,7 +32,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
 
           return {
             method: "POST",
-            url: contentTranslationURLs.uploadDictionary,
+            url: contentTranslationEndpoints.uploadDictionary,
             body: { formData },
             formData: true,
             fetch: true,

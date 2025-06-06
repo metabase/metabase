@@ -232,13 +232,13 @@ export const ParameterValueWidget = ({
     );
   }
 
-  const maybeTranslatedPlaceholder = tc(placeholder);
+  const translatedPlaceholder = tc(placeholder);
 
   const placeholderText = isEditing
     ? isDateParameter(parameter)
       ? t`Select a default value…`
       : t`Enter a default value…`
-    : maybeTranslatedPlaceholder || t`Select…`;
+    : translatedPlaceholder || t`Select…`;
 
   return (
     <Popover

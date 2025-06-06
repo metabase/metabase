@@ -8,11 +8,9 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import {
-  useSortByContentTranslation,
-  useTranslateContent,
-} from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { delay } from "metabase/lib/delay";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
@@ -56,7 +54,8 @@ const SingleSelectListField = ({
     createOptionsFromValuesWithoutOptions(value, options),
   );
   const tc = useTranslateContent();
-  const sortByTranslation = useSortByContentTranslation();
+  const sortByTranslation =
+    PLUGIN_CONTENT_TRANSLATION.useSortByContentTranslation();
 
   const augmentedOptions = useMemo<Option[]>(() => {
     return [...options.filter((option) => option[0] != null), ...addedOptions];

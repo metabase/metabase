@@ -8,12 +8,10 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import {
-  useSortByContentTranslation,
-  useTranslateContent,
-} from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { delay } from "metabase/lib/delay";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Checkbox, Flex, Text } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
@@ -57,7 +55,8 @@ export const ListField = ({
   }, [addedOptions, options]);
 
   const tc = useTranslateContent();
-  const sortByTranslation = useSortByContentTranslation();
+  const sortByTranslation =
+    PLUGIN_CONTENT_TRANSLATION.useSortByContentTranslation();
   const optionsHaveSomeTranslations = useMemo(
     () => augmentedOptions.some((option) => tc(option) !== option),
     [augmentedOptions, tc],
