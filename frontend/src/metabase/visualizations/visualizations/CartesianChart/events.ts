@@ -637,9 +637,23 @@ export const getStackedTooltipModel = (
         value,
       };
     });
+  let stackSeriesRowsBySign: Record<
+    "+" | "-",
+    { total: number; series: typeof stackSeriesRows }
+  > = { "+": { total: 0, series: [] }, "-": { total: 0, series: [] } };
+  stackSeriesRowsBySign = stackSeriesRows.reduce((acc, curr) => {
+    if (typeof curr.value !== "number") {
+      return acc;
+    }
+    const sign = curr.value < 0 ? "-" : "+";
+    const def = acc[sign];
+    def.series.push(curr);
+    def.total += curr.value;
+    return acc;
+  }, stackSeriesRowsBySign);
 
   // Reverse rows as they appear reversed on the stacked chart to match the order
-  stackSeriesRows.reverse();
+  stackSeriesRowsBySign["+"].series.reverse();
 
   const formatter = (value: unknown) =>
     String(
@@ -662,21 +676,44 @@ export const getStackedTooltipModel = (
     }),
   );
 
-  const formattedSeriesRows: EChartsTooltipRow[] = stackSeriesRows
-    .filter((row) => row.value != null)
-    .map((tooltipRow) => {
-      return {
-        isFocused: tooltipRow.isFocused,
-        name: tooltipRow.name,
-        markerColorClass: tooltipRow.color
-          ? getMarkerColorClass(tooltipRow.color)
-          : undefined,
-        values: [
-          formatter(tooltipRow.value),
-          formatPercent(getPercent(rowsTotal, tooltipRow.value) ?? 0),
-        ],
-      };
-    });
+  const hasPositivesAndNegatives =
+    stackSeriesRowsBySign["+"].total > 0 &&
+    stackSeriesRowsBySign["-"].total < 0;
+
+  const formattedSeriesRows: EChartsTooltipRow[] = (["+", "-"] as const)
+    .map((sign) => {
+      const def = stackSeriesRowsBySign[sign];
+      return [
+        ...def.series
+          .filter((row) => row.value != null)
+          .map((tooltipRow) => {
+            return {
+              isFocused: tooltipRow.isFocused,
+              name: tooltipRow.name,
+              markerColorClass: tooltipRow.color
+                ? getMarkerColorClass(tooltipRow.color)
+                : undefined,
+              values: [
+                formatter(tooltipRow.value),
+                formatPercent(getPercent(def.total, tooltipRow.value) ?? 0),
+              ],
+            };
+          }),
+        ...(def.series.length > 0 && hasPositivesAndNegatives
+          ? [
+              {
+                name: `Total ${sign === "-" ? "negative" : "positive"}`,
+                markerColorClass: " ",
+                values: [
+                  formatter(def.total),
+                  formatPercent(getPercent(def.total, def.total) ?? 0),
+                ],
+              },
+            ]
+          : []),
+      ];
+    })
+    .flat();
 
   const additionalColumnsRows = getAdditionalTooltipRowsData(
     chartModel,
@@ -699,7 +736,9 @@ export const getStackedTooltipModel = (
           name: t`Total`,
           values: [
             formatter(rowsTotal),
-            formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
+            hasPositivesAndNegatives
+              ? ""
+              : formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
           ],
         }
       : undefined,
