@@ -186,51 +186,52 @@
          ((comp cat (m/distinct-by :name)) rf)
          init
          [jdbc-metadata fallback-metadata])))))
-
-(def ^:private ^:dynamic *table-info*
-  "To be bound in [[describe-table-fields]] to convey table schema and name into [[describe-fields-xf]]. Reason
-  being, that describe-fields-xf is used in driver/describe-fields and driver/describe-table-fields, where transducer's
-  `col` arg is missing this information for the latter."
-  {})
-
 (defn describe-fields-xf
-  "Returns a transducer for computing metadata about the fields in `db`."
-  [driver db]
-  (map (fn [col]
-         (let [base-type (or (:base-type col) (database-type->base-type-or-warn
-                                               driver
-                                               [((some-fn :table-schema) col *table-info*)
-                                                ((some-fn :table-name)   col *table-info*)
-                                                (:name col)]
-                                               (:database-type col)))
-               semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
-               json? (isa? base-type :type/JSON)
-               database-position (some-> (:database-position col) int)]
-           (merge
-            (u/select-non-nil-keys col [:table-name
-                                        :pk?
-                                        :name
-                                        :database-type
-                                        :field-comment
-                                        :database-required
-                                        :database-is-auto-increment])
-            {:table-schema      (:table-schema col) ;; can be nil
-             :base-type         base-type
-             ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
-             :json-unfolding    json?}
-            (when database-position
-              {:database-position database-position})
-            (when semantic-type
-              {:semantic-type semantic-type})
-            (when (and json? (driver/database-supports? driver :nested-field-columns db))
-              {:visibility-type :details-only}))))))
+  "Returns a transducer for computing metadata about the fields in `db`.
+   Takes an optional map of `:table-schema` and `:table-name` to be used as fallbacks if they're not available in `col`"
+  ([driver db] (describe-fields-xf driver db {}))
+  ([driver db table-info]
+   (map (fn [col]
+          (let [table-schema ((some-fn :table-schema) col table-info)
+                table-name (((some-fn :table-name) col table-info))
+                base-type (or (:base-type col) (database-type->base-type-or-warn
+                                                driver
+                                                [table-schema
+                                                 table-name
+                                                 (:name col)]
+                                                (:database-type col)))
+                semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
+                json? (isa? base-type :type/JSON)
+                database-position (some-> (:database-position col) int)]
+            (merge
+             (u/select-non-nil-keys col [:pk?
+                                         :name
+                                         :database-type
+                                         :field-comment
+                                         :database-required
+                                         :database-is-auto-increment])
+             {:table-schema      table-schema ;; can be nil
+              :base-type         base-type
+              ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
+              :json-unfolding    json?}
+             (when table-name
+               {:table-name table-name})
+             (when database-position
+               {:database-position database-position})
+             (when semantic-type
+               {:semantic-type semantic-type})
+             (when (and json? (driver/database-supports? driver :nested-field-columns db))
+               {:visibility-type :details-only})))))))
 
 (defn describe-table-fields-xf
-  "Returns a transducer for computing metadata about the fields in a table, given the database `db`."
-  [driver db]
-  (comp
-   (describe-fields-xf driver db)
-   (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema)))))
+  "Returns a transducer for computing metadata about the fields in a table"
+  [driver table]
+  (let [table-info (merge {:table-name (:name table)}
+                          (when (:schema table)
+                            {:table-schema (:schema table)}))]
+    (comp
+     (describe-fields-xf driver (table/database table) table-info)
+     (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema))))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
@@ -241,13 +242,10 @@
 
 (defmethod describe-table-fields :sql-jdbc
   [driver conn table db-name-or-nil]
-  (binding [*table-info* (merge {:table-name (:name table)}
-                                (when (:schema table)
-                                  {:table-schema (:schema table)}))]
-    (into
-     #{}
-     (describe-table-fields-xf driver (table/database table))
-     (fields-metadata driver conn table db-name-or-nil))))
+  (into
+   #{}
+   (describe-table-fields-xf driver table)
+   (fields-metadata driver conn table db-name-or-nil)))
 
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
 ;;; always just `nil`. There's currently not a great driver-agnostic way to determine the actual physical Database name
