@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -139,3 +140,38 @@
     (let [collection-name "__METABOT__"]
       (map #(dissoc % :result_metadata :creator :collection) (get-metrics-and-models collection-name))))
   -)
+
+(defn metabot-scope
+  "Return a map from cards (models or metrics) to the ID of metabot entity they belong to.
+
+  Warning: this function assumes that each card is bought by one entity into scope. This assumption holds
+  in the known special cases when there is but one collection entity, or when there are only dataset (model)
+  and metric type entities."
+  [entities]
+  (let [{collection-entities true, other-entities false} (group-by #(= (:model %) :collection) entities)
+        entity->card (if (seq other-entities)
+                       (t2/select-pk->fn identity :model/Card
+                                         :id [:in (map :model-id other-entities)]
+                                         :type [:in [:model :metric]]
+                                         :archived false)
+                       {})]
+    (reduce (fn [scope coll-entity]
+              (let [coll-id (:model-id coll-entity)]
+                (if-let [coll (t2/select-one [:model/Collection :id :location] coll-id)]
+                  (let [all-coll-ids (conj (set (collection/descendant-ids coll)) coll-id)
+                        cards (t2/select :model/Card
+                                         :collection_id [:in all-coll-ids]
+                                         :type [:in [:model :metric]]
+                                         :archived false)
+                        coll-entity-id (:metabot-entity-id coll-entity)]
+                    (reduce (fn [scope card] (assoc scope card coll-entity-id))
+                            scope
+                            cards))
+                  scope)))
+            (reduce (fn [m e]
+                      (let [card (entity->card (:model-id e))]
+                        (cond-> m
+                          card (assoc card (:model-entity-id e)))))
+                    {}
+                    other-entities)
+            collection-entities)))

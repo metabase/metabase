@@ -18,7 +18,7 @@ import type {
 import { EnterpriseApi } from "./api";
 import { idTag } from "./tags";
 
-const isTesting = process?.env?.NODE_ENV === "test";
+const isTesting = true;
 
 // breaking typing for now, but let's me have the mocked version in browser
 // and unmocked version in jest tests
