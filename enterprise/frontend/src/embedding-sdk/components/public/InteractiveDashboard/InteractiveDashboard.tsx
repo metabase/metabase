@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type FC,
   type ReactNode,
   useCallback,
   useEffect,
@@ -199,6 +200,5 @@ const InteractiveDashboardInner = ({
  * @function
  * @category InteractiveDashboard
  */
-export const InteractiveDashboard = renderOnlyInSdkProvider(
-  InteractiveDashboardInner,
-);
+export const InteractiveDashboard: FC<InteractiveDashboardProps> =
+  renderOnlyInSdkProvider(InteractiveDashboardInner);

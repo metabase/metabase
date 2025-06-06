@@ -1,0 +1,183 @@
+import fs from "fs";
+import path from "path";
+
+import { NodeModulesPolyfillPlugin } from "@esbuild-plugins/node-modules-polyfill";
+import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
+import babel from "esbuild-plugin-babel";
+import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
+import { build } from "tsup";
+
+import { ALIAS } from "./frontend/build/embedding-sdk/constants/alias.mjs";
+import { EXTERNALS } from "./frontend/build/embedding-sdk/constants/externals.mjs";
+import { IS_DEV_MODE } from "./frontend/build/embedding-sdk/constants/is-dev-mode.mjs";
+import { LICENSE_BANNER } from "./frontend/build/embedding-sdk/constants/license-banner.mjs";
+import {
+  BUILD_PATH,
+  ROOT_PATH,
+  SDK_SRC_PATH,
+  SRC_PATH,
+} from "./frontend/build/embedding-sdk/constants/paths.mjs";
+import { RESOLVE_EXTENSIONS } from "./frontend/build/embedding-sdk/constants/resolve-extensions.mjs";
+import { SOURCE_MAPS_ENABLED } from "./frontend/build/embedding-sdk/constants/source-maps-enabled.mjs";
+import {
+  EMBEDDING_SDK_VERSION,
+  GIT_BRANCH,
+  GIT_COMMIT,
+} from "./frontend/build/embedding-sdk/constants/version-data.mjs";
+import { cssModulesPlugin } from "./frontend/build/embedding-sdk/plugins/css-modules-plugin.mjs";
+import { dynamicLocaleImportsPlugin } from "./frontend/build/embedding-sdk/plugins/dynamic-locale-imports-plugin.mjs";
+import { sideEffectsPlugin } from "./frontend/build/embedding-sdk/plugins/side-effects-plugin.mjs";
+import { svgPlugin } from "./frontend/build/embedding-sdk/plugins/svg-plugin.mjs";
+import { generateScopedCssClassName } from "./frontend/build/embedding-sdk/utils/generate-scoped-css-class-name.mjs";
+import { getCssModulesInjectCode } from "./frontend/build/embedding-sdk/utils/get-css-modules-inject-code.mjs";
+import { getExternalsConfig } from "./frontend/build/embedding-sdk/utils/get-externals-config.mjs";
+import { removeRequireCall } from "./frontend/build/embedding-sdk/utils/remove-require-call.mjs";
+import { setupBanners } from "./frontend/build/embedding-sdk/utils/setup-banners.mjs";
+
+await build({
+  entry: [path.join(SDK_SRC_PATH, "index.ts")],
+  outDir: BUILD_PATH,
+  outExtension({ format }) {
+    return {
+      js: `.${format === "esm" ? "js" : "cjs"}`,
+    };
+  },
+  bundle: true,
+  tsconfig: "./tsconfig.sdk.json",
+  platform: "browser",
+  target: "esnext",
+  format: !IS_DEV_MODE ? ["cjs", "esm"] : "esm",
+  shims: true,
+  splitting: !IS_DEV_MODE,
+  treeshake: !IS_DEV_MODE,
+  sourcemap: SOURCE_MAPS_ENABLED,
+  minify: !IS_DEV_MODE,
+  clean: !IS_DEV_MODE,
+  watch: IS_DEV_MODE
+    ? ["./enterprise/frontend/src/embedding-sdk", "./frontend/src"]
+    : false,
+  metafile: false,
+  // We have to generate `dts` via `tsc` to emit files on `dts` type errors
+  dts: false,
+  ...getExternalsConfig({ externals: EXTERNALS }),
+  injectStyle: true,
+  env: {
+    BUILD_TIME: JSON.stringify(new Date().toISOString()),
+    EMBEDDING_SDK_VERSION: JSON.stringify(EMBEDDING_SDK_VERSION),
+    GIT_BRANCH: JSON.stringify(GIT_BRANCH),
+    GIT_COMMIT: JSON.stringify(GIT_COMMIT),
+    IS_EMBEDDING_SDK: "true",
+    MB_LOG_ANALYTICS: "false",
+    MB_LOG_CHARTS_DEBUG: "false",
+    STORYBOOK: "false",
+    NODE_ENV: "production", // needed for Icepick to disable errors on frozen objects modification
+    WEBPACK_BUNDLE: "development", // this is weird, but it is how it is done in the rspack config
+  },
+  define: {
+    // To completely disable the AMD parsing by a HostApp's bundler for 3rd parties.
+    // AMD parser in Webpack produces incorrect code.
+    define: '"undefined"',
+  },
+  loader: {
+    ".css": "css",
+    ".svg": "dataurl",
+    ".png": "dataurl",
+    ".js": "jsx",
+    ".jsx": "jsx",
+    ".ts": "ts",
+    ".tsx": "tsx",
+  },
+  esbuildOptions: (options) => {
+    options.outbase = SDK_SRC_PATH;
+
+    options.alias = ALIAS;
+
+    options.resolveExtensions = RESOLVE_EXTENSIONS;
+
+    options.mainFields = ["browser", "module", "main"];
+
+    return options;
+  },
+  esbuildPlugins: [
+    cssModulesPlugin({
+      additionalCssModuleRegexps: [/css\/core\/index\.css/],
+      resolve: (filePath) => {
+        if (filePath === "style") {
+          return path.resolve(SRC_PATH, "css/core/index.css");
+        }
+
+        return filePath;
+      },
+      generateScopedName: generateScopedCssClassName,
+    }),
+    fixReactVirtualizedPlugin,
+    // We need the `babel` plugin only to properly transform the usage of `@emotion` component selectors
+    babel({
+      filter: /\.styled\.[jt]s?x/,
+      config: {
+        // The options below extend `babel.config.json`
+        sourceMaps: SOURCE_MAPS_ENABLED,
+        presets: [
+          [
+            "@babel/preset-env",
+            {
+              bugfixes: true,
+              modules: false,
+            },
+          ],
+        ],
+      },
+    }),
+    dynamicLocaleImportsPlugin({
+      basePath: ROOT_PATH,
+      filter: /embedding-sdk\/lib\/i18n\/.*$/,
+      libraryLocalePaths: [
+        "moment/dist/locale",
+        "moment/locale",
+        "dayjs/locale",
+      ],
+    }),
+    commonjs({
+      ignore: (path) => !EXTERNALS.includes(path),
+    }),
+    NodeModulesPolyfillPlugin(),
+    svgPlugin(),
+    !IS_DEV_MODE
+      ? // This plugin is slowdowns watch mode a bit (~1.5s), so we don't apply it for dev mode
+        sideEffectsPlugin({
+          basePath: ROOT_PATH,
+          sideEffects: [
+            "./enterprise/frontend/src/metabase-enterprise/**",
+            "./enterprise/frontend/src/embedding-sdk/index.ts",
+            "./enterprise/frontend/src/embedding-sdk/lib/sdk-specific-imports.ts",
+            // eslint-disable-next-line no-literal-metabase-strings -- build config
+            "./enterprise/frontend/src/embedding-sdk/components/public/MetabaseProvider.tsx",
+            "./frontend/src/metabase/visualizations/components/LeafletChoropleth.jsx",
+            "./frontend/src/metabase/visualizations/components/LeafletHeatMap.jsx",
+            "./frontend/src/metabase/visualizations/components/LeafletMap.jsx",
+            "./frontend/src/metabase/dashboard/components/grid/GridLayout.tsx",
+          ],
+        })
+      : null,
+  ],
+  onSuccess: async () => {
+    // Cleanup index.css file, styles are injected into .js file
+    fs.rmSync(path.join(BUILD_PATH, "index.css"));
+
+    if (SOURCE_MAPS_ENABLED) {
+      fs.rmSync(path.join(BUILD_PATH, "index.css.map"));
+    }
+
+    await removeRequireCall({
+      buildPath: BUILD_PATH,
+    });
+
+    const cssModulesInjectCode = await getCssModulesInjectCode();
+    await setupBanners({
+      buildPath: BUILD_PATH,
+      getBanners: ({ isMainBundle }) => {
+        return [LICENSE_BANNER, isMainBundle ? cssModulesInjectCode : null];
+      },
+    });
+  },
+});

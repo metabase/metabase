@@ -41,7 +41,7 @@
       "label": "Run embedding sdk dev commands",
       "dependsOn": [
         "embedding-sdk:dev:dts",
-        "embedding-sdk:dev:webpack",
+        "embedding-sdk:dev:esbuild",
         "embedding-sdk:dev:fixup",
       ],
       "problemMatcher": []
@@ -57,9 +57,9 @@
       "isBackground": true // this removes the spinning indicator
     },
     {
-      "label": "embedding-sdk:dev:webpack",
+      "label": "embedding-sdk:dev:esbuild",
       "type": "shell",
-      "command": "yarn embedding-sdk:dev:webpack",
+      "command": "yarn embedding-sdk:dev:esbuild",
       "presentation": {
         "group": "sdk:dev"
       },
