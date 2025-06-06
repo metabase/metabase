@@ -77,7 +77,6 @@
    "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   "/data-editing"                 (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/embedded-content-translation" (premium-handler metabase-enterprise.content-translation.embedding-routes/routes :content-translation)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
