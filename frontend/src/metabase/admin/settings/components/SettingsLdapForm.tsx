@@ -89,10 +89,8 @@ export const SettingsLdapForm = () => {
         enableReinitialize
       >
         {({ dirty }) => (
-          <Form m="0 1rem" maw="32.5rem">
-            <SettingsSection>
-              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
-            </SettingsSection>
+          <Form maw="32.5rem">
+            <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
             <FormSection title={"Server Settings"}>
               <SettingsSection>
                 <Stack gap="md">
