@@ -75,9 +75,23 @@ Shown by default in the top nav bar. Collection breadcrumbs show the path to the
 breadcrumbs=false
 ```
 
-## `entity_types`
+## `data_picker`
 
-![Entity types in the data picker](./images/data-picker.png)
+`data_picker` controls the menu for selecting data sources in questions. By default, Metabase displays a simple data picker:
+
+![Simple data picker](./images/data-picker.png)
+
+You can opt for the full data picker by setting `data_picker=staged`.
+
+![Full data picker](./images/full-data-picker.png)
+
+The above data picker has three entity types selected:
+
+```
+data_picker=staged&entity_types=tables,models,questions
+```
+
+## `entity_types`
 
 You can show or hide different entity types in the data picker, sidebar, and the New button menu. For example, you may only want to show tables.
 
