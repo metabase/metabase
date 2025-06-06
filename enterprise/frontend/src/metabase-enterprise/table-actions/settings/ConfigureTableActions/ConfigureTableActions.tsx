@@ -1,20 +1,19 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
-import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   RowActionFieldSettings,
   TableAction,
   TableActionDisplaySettings,
-  TableActionId,
   WritebackAction,
 } from "metabase-types/api";
 
+import { AddOrEditActionSettingsContent } from "../AddOrEditActionSettingsContent";
+
 import { RowActionItem } from "./RowActionItem";
-import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
 import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 
 type ConfigureTableActionsProps = {
@@ -24,7 +23,7 @@ type ConfigureTableActionsProps = {
 };
 
 export const ConfigureTableActions = ({
-  value: inputTableActions,
+  value: tableActions,
   cols: columns,
   onChange,
 }: ConfigureTableActionsProps) => {
@@ -35,32 +34,6 @@ export const ConfigureTableActions = ({
     setEditingAction,
     cancelEditAction,
   } = useTableActionsEditingModal();
-
-  const { tableActions, tableActionsMap } = useMemo(() => {
-    const tableActions = inputTableActions || [];
-
-    const tableActionsMap = new Map<
-      TableActionId,
-      TableActionDisplaySettings
-    >();
-
-    tableActions.forEach((item) => {
-      tableActionsMap.set(item.actionId, item);
-    });
-
-    return { tableActions, tableActionsMap };
-  }, [inputTableActions]);
-
-  const { data: actions } = useGetActionsQuery();
-
-  const addedTableActions = useMemo(
-    () => actions?.filter(({ id }) => tableActionsMap.get(id)) || [],
-    [actions, tableActionsMap],
-  );
-
-  const editingActionSetting = editingAction
-    ? tableActionsMap.get(editingAction.id)
-    : undefined;
 
   const handleAddAction = useCallback(
     ({
@@ -74,6 +47,7 @@ export const ConfigureTableActions = ({
     }) => {
       const newItem: TableActionDisplaySettings = {
         id: uuid(),
+        name: name || action.name,
         actionId: action.id,
         actionType: "data-grid/row-action",
         parameterMappings,
@@ -83,7 +57,7 @@ export const ConfigureTableActions = ({
         newItem.name = name;
       }
 
-      const newArray = [...tableActions, newItem];
+      const newArray = tableActions ? [...tableActions, newItem] : [newItem];
 
       onChange(newArray);
     },
@@ -104,6 +78,7 @@ export const ConfigureTableActions = ({
     }) => {
       const newItem: TableActionDisplaySettings = {
         id: id || uuid(),
+        name: name || action.name,
         actionId: action.id,
         actionType: "data-grid/row-action",
         parameterMappings,
@@ -113,7 +88,7 @@ export const ConfigureTableActions = ({
         newItem.name = name;
       }
 
-      const newArray = tableActions.map((action) => {
+      const newArray = (tableActions || []).map((action) => {
         return action.actionId !== newItem.actionId ? action : newItem;
       });
 
@@ -123,8 +98,10 @@ export const ConfigureTableActions = ({
   );
 
   const handleRemoveAction = useCallback(
-    (id: number) => {
-      const newArray = tableActions.filter(({ actionId }) => actionId !== id);
+    (idToRemove: TableActionDisplaySettings["id"]) => {
+      const newArray = (tableActions || []).filter(
+        ({ id }) => id !== idToRemove,
+      );
 
       onChange(newArray);
     },
@@ -134,15 +111,11 @@ export const ConfigureTableActions = ({
   return (
     <>
       <Stack gap="xs">
-        {addedTableActions?.map((action) => {
-          const actionSettings = tableActionsMap.get(action.id);
-          const userDefinedName = actionSettings?.name;
-
+        {tableActions?.map((action) => {
           return (
             <RowActionItem
               key={action.id}
               action={action}
-              userDefinedName={userDefinedName}
               onRemove={handleRemoveAction}
               onEdit={setEditingAction}
             />
@@ -156,20 +129,25 @@ export const ConfigureTableActions = ({
         onClick={openEditingModal}
       >{t`Add a new row action`}</Button>
 
-      <Modal
-        size={editingAction ? undefined : "xxl"}
-        opened={isEditingModalOpen}
-        onClose={cancelEditAction}
-      >
-        <RowActionSettingsModalContent
-          action={editingAction}
-          actions={actions}
-          rowActionSettings={editingActionSetting}
-          tableColumns={columns}
-          onSubmit={editingAction ? handleEditAction : handleAddAction}
+      {isEditingModalOpen && (
+        <Modal.Root
+          opened
           onClose={cancelEditAction}
-        />
-      </Modal>
+          data-testid="table-action-settings-modal"
+          h="100vh"
+          w="100vw"
+          closeOnEscape={false}
+          yOffset="10dvh"
+        >
+          <Modal.Overlay />
+          <AddOrEditActionSettingsContent
+            action={editingAction}
+            tableColumns={columns}
+            onSubmit={editingAction ? handleEditAction : handleAddAction}
+            onClose={cancelEditAction}
+          />
+        </Modal.Root>
+      )}
     </>
   );
 };

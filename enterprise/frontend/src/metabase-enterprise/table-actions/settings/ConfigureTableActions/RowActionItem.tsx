@@ -1,18 +1,16 @@
 import { t } from "ttag";
 
 import { ActionIcon, Group, Icon, Text, Tooltip } from "metabase/ui";
-import type { TableAction, WritebackAction } from "metabase-types/api";
+import type { TableActionDisplaySettings } from "metabase-types/api";
 
 type RowActionItemProps = {
-  action: WritebackAction | TableAction;
-  userDefinedName?: string;
-  onRemove: (id: number) => void;
-  onEdit: (action: WritebackAction | TableAction) => void;
+  action: TableActionDisplaySettings;
+  onRemove: (id: TableActionDisplaySettings["id"]) => void;
+  onEdit: (action: TableActionDisplaySettings) => void;
 };
 
 export const RowActionItem = ({
   action,
-  userDefinedName,
   onRemove,
   onEdit,
 }: RowActionItemProps) => {
@@ -20,7 +18,7 @@ export const RowActionItem = ({
 
   return (
     <Group justify="space-between" align="center">
-      <Text>{userDefinedName || name}</Text>
+      <Text>{name}</Text>
       <Group>
         <Tooltip label={t`Edit`}>
           <ActionIcon

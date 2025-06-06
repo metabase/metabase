@@ -1,15 +1,19 @@
 import { useSearchQuery } from "metabase/api";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, SearchModel } from "metabase-types/api";
 
 interface Props {
   databaseId?: DatabaseId;
+  models?: SearchModel[];
 }
 
-export const useAvailableData = ({ databaseId }: Props = {}) => {
+export const useAvailableData = ({
+  databaseId,
+  models = ["card"],
+}: Props = {}) => {
   const { data, isLoading } = useSearchQuery(
     {
       limit: 0,
-      models: ["card"],
+      models,
       table_db_id: databaseId,
       calculate_available_models: true,
     },
