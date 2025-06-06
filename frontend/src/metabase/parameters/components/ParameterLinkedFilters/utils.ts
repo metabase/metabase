@@ -23,7 +23,7 @@ export function getFilterFieldsRequest(
   const filteringIds = Array.from(
     new Set(otherParameters.flatMap(getFieldIds)),
   );
-  if (filteredIds.length > 0 || filteringIds.length > 0) {
+  if (filteredIds.length > 0 && filteringIds.length > 0) {
     return { filtered: filteredIds, filtering: filteringIds };
   }
 }
