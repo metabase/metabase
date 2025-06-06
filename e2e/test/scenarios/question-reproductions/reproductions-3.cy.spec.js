@@ -2629,7 +2629,7 @@ describe("issue 23449", () => {
     cy.findByLabelText("Custom mapping").click();
 
     const values = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
-    for (let k of Object.keys(values)) {
+    for (const k of Object.keys(values)) {
       cy.get(`input[value="${k}"]`).clear().type(values[k]);
     }
     cy.get("button").contains("Save").click();
