@@ -1,16 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 
-import type { TableAction, WritebackAction } from "metabase-types/api";
+import type { TableActionDisplaySettings } from "metabase-types/api";
 
 export const useTableActionsEditingModal = () => {
   const [isOpen, { close, open }] = useDisclosure(false);
-  const [editingAction, setEditingAction] = useState<
-    WritebackAction | TableAction | null
-  >(null);
+  const [editingAction, setEditingAction] =
+    useState<TableActionDisplaySettings | null>(null);
 
   const enableEditingAction = useCallback(
-    (action: WritebackAction | TableAction) => {
+    (action: TableActionDisplaySettings) => {
       setEditingAction(action);
       open();
     },
