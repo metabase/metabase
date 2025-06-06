@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -10,6 +11,7 @@ import {
   setupMetabotAddEntitiesEndpoint,
   setupMetabotDeleteEntitiesEndpoint,
   setupMetabotEntitiesEndpoint,
+  setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -107,6 +109,14 @@ const setup = async (
 
   setupRecentViewsAndSelectionsEndpoints(seedData.recents as RecentItem[]);
 
+  metabots.forEach((mb) =>
+    setupMetabotPromptSuggestionsEndpoint(mb.id, [], {
+      offset: 0,
+      limit: 3,
+      total: 0,
+    }),
+  );
+
   renderWithProviders(
     <Route path="/admin/metabot*" component={MetabotAdminPage} />,
     {
@@ -121,100 +131,112 @@ const setup = async (
 };
 
 describe("MetabotAdminPage", () => {
-  describe("page", () => {
-    it("should render the page", async () => {
-      await setup();
-      expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
+  it("should render the page", async () => {
+    await setup();
+    expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
+  });
+
+  it("should render the metabots list", async () => {
+    await setup();
+    expect(await screen.findByText("Metabot One")).toBeInTheDocument();
+    expect(screen.getByText("Metabot Two")).toBeInTheDocument();
+  });
+
+  it("should render a selected collection", async () => {
+    await setup();
+    expect(await screen.findByText("Collection One")).toBeInTheDocument();
+  });
+
+  it("should be able to switch between metabots", async () => {
+    await setup(1);
+    await screen.findByText("Collection One");
+
+    mockPathParam(2);
+    await userEvent.click(await screen.findByText("Metabot Two"));
+    expect(await screen.findByText("Collection Two")).toBeInTheDocument();
+  });
+
+  it("should change selected collection", async () => {
+    await setup(1);
+
+    expect(
+      fetchMock.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
+        .length,
+    ).toEqual(1); // should have loaded prompt suggestions
+
+    expect(await screen.findByText("Collection One")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Pick a different collection"));
+
+    await screen.findByText("Select a collection");
+    await userEvent.click(screen.getByText("Collection Three"));
+    await userEvent.click(screen.getByText("Select"));
+
+    await waitFor(async () => {
+      const deletes = await findRequests("DELETE");
+      expect(deletes.length).toBe(1);
+    });
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts.length).toBe(1);
+    });
+
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/ee\/metabot-v3\/metabot\/1\/entities/);
+    expect(body.items).toHaveLength(1); // 1 new
+
+    expect(
+      body.items.find((item: MetabotEntity) => item.id === 31),
+    ).toBeTruthy();
+
+    expect(
+      fetchMock.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
+        .length,
+    ).toEqual(3); // +1 refetch for DELETE, +1 for PUT
+  });
+
+  it("should delete the selected collection", async () => {
+    await setup(1);
+
+    expect(await screen.findByText("Collection One")).toBeInTheDocument();
+    expect(await screen.findByText("Prompt suggestions")).toBeInTheDocument();
+    const [deleteButton] = await screen.findAllByLabelText("trash icon");
+    setupMetabotEntitiesEndpoint(1, []);
+    await userEvent.click(deleteButton);
+
+    const [{ url: deleteUrl }, ...rest] = await findRequests("DELETE");
+    expect(deleteUrl).toContain("metabot/1/entities/collection/11");
+    expect(rest).toHaveLength(0); // only 1 delete
+    await waitFor(() => {
+      expect(screen.queryByText("Prompt suggestions")).not.toBeInTheDocument();
     });
   });
 
-  describe("navigation", () => {
-    it("should render the metabots list", async () => {
-      await setup();
-      expect(await screen.findByText("Metabot One")).toBeInTheDocument();
-      expect(screen.getByText("Metabot Two")).toBeInTheDocument();
+  it("should show an empty state when no entities", async () => {
+    await setup(1, {
+      1: [],
+      2: [],
+      3: [],
+      recents: [],
     });
+    expect(await screen.findByText("Pick a collection")).toBeInTheDocument();
 
-    it("should be able to switch between metabots", async () => {
-      await setup(1);
-      await screen.findByText("Collection One");
-
-      mockPathParam(2);
-      await userEvent.click(await screen.findByText("Metabot Two"));
-      expect(await screen.findByText("Collection Two")).toBeInTheDocument();
-    });
+    expect(screen.queryByLabelText("trash icon")).not.toBeInTheDocument();
   });
 
-  describe("configuration pane", () => {
-    it("should render a selected collection", async () => {
-      await setup();
-      expect(await screen.findByText("Collection One")).toBeInTheDocument();
-    });
+  it("should show special copy for embedded metabot", async () => {
+    await setup(3);
 
-    it("should change selected collection", async () => {
-      await setup(1);
-      expect(await screen.findByText("Collection One")).toBeInTheDocument();
-      await userEvent.click(screen.getByText("Pick a different collection"));
+    expect(
+      await screen.findByText(/embedding the metabot component/i),
+    ).toBeInTheDocument();
+  });
 
-      await screen.findByText("Select a collection");
-      await userEvent.click(screen.getByText("Collection Three"));
-      await userEvent.click(screen.getByText("Select"));
+  it("should show an error message when a request fails", async () => {
+    await setup(3, entities, true);
 
-      await waitFor(async () => {
-        const deletes = await findRequests("DELETE");
-        expect(deletes.length).toBe(1);
-      });
-      await waitFor(async () => {
-        const puts = await findRequests("PUT");
-        expect(puts.length).toBe(1);
-      });
-
-      const [{ url, body }] = await findRequests("PUT");
-      expect(url).toMatch(/\/api\/ee\/metabot-v3\/metabot\/1\/entities/);
-      expect(body.items).toHaveLength(1); // 1 new
-
-      expect(
-        body.items.find((item: MetabotEntity) => item.id === 31),
-      ).toBeTruthy();
-    });
-
-    it("should delete the selected collection", async () => {
-      await setup(1);
-      expect(await screen.findByText("Collection One")).toBeInTheDocument();
-      const [deleteButton] = await screen.findAllByLabelText("trash icon");
-      await userEvent.click(deleteButton);
-
-      const [{ url: deleteUrl }, ...rest] = await findRequests("DELETE");
-      expect(deleteUrl).toContain("metabot/1/entities/collection/11");
-      expect(rest).toHaveLength(0); // only 1 delete
-    });
-
-    it("should show an empty state when no entities", async () => {
-      await setup(1, {
-        1: [],
-        2: [],
-        3: [],
-        recents: [],
-      });
-      expect(await screen.findByText("Pick a collection")).toBeInTheDocument();
-
-      expect(screen.queryByLabelText("trash icon")).not.toBeInTheDocument();
-    });
-
-    it("should show special copy for embedded metabot", async () => {
-      await setup(3);
-
-      expect(
-        await screen.findByText(/embedding the metabot component/i),
-      ).toBeInTheDocument();
-    });
-
-    it("should show an error message when a request fails", async () => {
-      await setup(3, entities, true);
-
-      expect(
-        await screen.findByText("Error fetching Metabots"),
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText("Error fetching Metabots"),
+    ).toBeInTheDocument();
   });
 });

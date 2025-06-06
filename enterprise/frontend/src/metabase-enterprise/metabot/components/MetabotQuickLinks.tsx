@@ -3,8 +3,7 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { useDispatch } from "metabase/lib/redux";
-
-import { useMetabotAgent } from "../hooks";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export const getMetabotQuickLinks = () => {
   return (

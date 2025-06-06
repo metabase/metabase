@@ -18,6 +18,14 @@ import type {
 import { EnterpriseApi } from "./api";
 import { idTag } from "./tags";
 
+const isTesting = process?.env?.NODE_ENV === "test";
+
+// breaking typing for now, but let's me have the mocked version in browser
+// and unmocked version in jest tests
+const hackRTKQueryDefinition = (definition: any): any => {
+  return _.omit(definition, isTesting ? "queryFn" : "query");
+};
+
 let fakeSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> = {
   "1": [
     {
@@ -197,65 +205,77 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     getSuggestedMetabotPrompts: builder.query<
       SuggestedMetabotPromptsResponse,
       SuggestedMetabotPromptsRequest
-    >({
-      // query: ({ metabot_id, ...params }) => ({
-      //   method: "GET",
-      //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
-      //   params,
-      // }),
-      queryFn: async ({ metabot_id, sample, offset, limit }) => {
-        const suggestions = fakeSuggestedPrompts[metabot_id];
-        const sortedSuggestions = sample ? _.shuffle(suggestions) : suggestions;
-        const paginatedSuggestions = sortedSuggestions.slice(
-          offset ?? 0,
-          (offset ?? 0) + (limit ?? 50),
-        );
+    >(
+      hackRTKQueryDefinition({
+        query: ({ metabot_id, ...params }) => ({
+          method: "GET",
+          url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
+          params,
+        }),
+        queryFn: async ({ metabot_id, sample, offset, limit }) => {
+          const suggestions = fakeSuggestedPrompts[metabot_id];
+          const sortedSuggestions = sample
+            ? _.shuffle(suggestions)
+            : suggestions;
+          const paginatedSuggestions = sortedSuggestions.slice(
+            offset ?? 0,
+            (offset ?? 0) + (limit ?? 50),
+          );
 
-        await new Promise((res) => setTimeout(res, 100 + Math.random() * 200));
+          await new Promise((res) =>
+            setTimeout(res, 100 + Math.random() * 200),
+          );
 
-        return {
-          data: {
-            prompts: paginatedSuggestions,
-            total: suggestions.length,
-            limit: limit ?? null,
-            offset: offset ?? null,
-          },
-        };
-      },
-      providesTags: (_, __, { metabot_id }) => [
-        idTag("metabot-prompt-suggestions", metabot_id),
-      ],
-    }),
+          return {
+            data: {
+              prompts: paginatedSuggestions,
+              total: suggestions.length,
+              limit: limit ?? null,
+              offset: offset ?? null,
+            },
+          };
+        },
+        providesTags: (_, __, { metabot_id }) => [
+          idTag("metabot-prompt-suggestions", metabot_id),
+        ],
+      }),
+    ),
     deleteSuggestedMetabotPrompt: builder.mutation<
       void,
       DeleteSuggestedMetabotPromptRequest
-    >({
-      // query: ({ metabot_id, prompt_id }) => ({
-      //   method: "DELETE",
-      //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
-      // }),
-      queryFn: async ({ metabot_id, prompt_id }) => {
-        fakeSuggestedPrompts[metabot_id] = fakeSuggestedPrompts[
-          metabot_id
-        ].filter((s) => s.id !== prompt_id);
-        return { data: {} as any };
-      },
-      invalidatesTags: (_, error, { metabot_id }) =>
-        !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
-    }),
-    refreshSuggestedMetabotPrompts: builder.mutation<void, MetabotId>({
-      // query: (metabot_id) => ({
-      //   method: "DELETE",
-      //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
-      // }),
-      queryFn: async () => {
-        fakeSuggestedPrompts = clone(fakeSuggestedPromptsCopy);
-        await new Promise((res) => setTimeout(res, 100 + Math.random() * 200));
-        return { data: {} as any };
-      },
-      invalidatesTags: (_, error, metabot_id) =>
-        !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
-    }),
+    >(
+      hackRTKQueryDefinition({
+        query: ({ metabot_id, prompt_id }) => ({
+          method: "DELETE",
+          url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
+        }),
+        queryFn: async ({ metabot_id, prompt_id }) => {
+          fakeSuggestedPrompts[metabot_id] = fakeSuggestedPrompts[
+            metabot_id
+          ].filter((s) => s.id !== prompt_id);
+          return { data: {} as any };
+        },
+        invalidatesTags: (_, error, { metabot_id }) =>
+          !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
+      }),
+    ),
+    refreshSuggestedMetabotPrompts: builder.mutation<void, MetabotId>(
+      hackRTKQueryDefinition({
+        query: (metabot_id) => ({
+          method: "DELETE",
+          url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
+        }),
+        queryFn: async () => {
+          fakeSuggestedPrompts = clone(fakeSuggestedPromptsCopy);
+          await new Promise((res) =>
+            setTimeout(res, 100 + Math.random() * 200),
+          );
+          return { data: {} as any };
+        },
+        invalidatesTags: (_, error, metabot_id) =>
+          !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
+      }),
+    ),
   }),
 });
 

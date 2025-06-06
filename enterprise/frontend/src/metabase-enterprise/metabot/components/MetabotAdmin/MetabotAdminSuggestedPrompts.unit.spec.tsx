@@ -1,12 +1,20 @@
 import _userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
+import {
+  setupMetabotPromptSuggestionsEndpoint,
+  setupMetabotPromptSuggestionsEndpointError,
+  setupRefreshMetabotPromptSuggestionsEndpoint,
+  setupRemoveMetabotPromptSuggestionEndpoint,
+} from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { fakeSuggestedPromptsCopy } from "metabase-enterprise/api";
 import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 import type { SuggestedMetabotPrompt } from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
+
+const DEFAULT_TEST_PAGE_SIZE = 3;
 
 const defaultMockedPrompts =
   fakeSuggestedPromptsCopy[FIXED_METABOT_IDS.DEFAULT];
@@ -28,10 +36,29 @@ const nextPage = async () =>
 type SetupOpts = {
   metabotId?: number;
   pageSize?: number;
+  mockInitialPage?: boolean;
 };
 
 const setup = async (opts?: SetupOpts) => {
-  const { metabotId = FIXED_METABOT_IDS.DEFAULT, pageSize = 3 } = opts ?? {};
+  const {
+    metabotId = FIXED_METABOT_IDS.DEFAULT,
+    pageSize = DEFAULT_TEST_PAGE_SIZE,
+    mockInitialPage = true,
+  } = opts ?? {};
+
+  const paginationCtx = {
+    offset: 0,
+    limit: pageSize,
+    total: defaultMockedPrompts.length,
+  };
+
+  const nextPaginationContext = mockInitialPage
+    ? setupMetabotPromptSuggestionsEndpoint(
+        metabotId,
+        defaultMockedPrompts,
+        paginationCtx,
+      )
+    : paginationCtx;
 
   const TestComponent = () => (
     <MetabotPromptSuggestionPane metabotId={metabotId} pageSize={pageSize} />
@@ -40,6 +67,8 @@ const setup = async (opts?: SetupOpts) => {
   renderWithProviders(<Route path="/" component={TestComponent} />, {
     withRouter: true,
   });
+
+  return { metabotId, nextPaginationContext };
 };
 
 describe("suggested prompts", () => {
@@ -59,23 +88,51 @@ describe("suggested prompts", () => {
     expect(loadingRow).toBeInTheDocument();
   });
 
-  it.todo("should show error state");
+  it("should show empty state", async () => {
+    setupMetabotPromptSuggestionsEndpoint(FIXED_METABOT_IDS.DEFAULT, [], {
+      offset: 0,
+      limit: 3,
+      total: 0,
+    });
+    await setup({ mockInitialPage: false });
+    expect(await screen.findByText("No prompts found.")).toBeInTheDocument();
+  });
+
+  it("should show error state", async () => {
+    setupMetabotPromptSuggestionsEndpointError(FIXED_METABOT_IDS.DEFAULT);
+    await setup({ mockInitialPage: false });
+    expect(
+      await screen.findByText("Something went wrong."),
+    ).toBeInTheDocument();
+  });
 
   it("should allow the user to paginate through results", async () => {
-    await setup();
+    const { metabotId, nextPaginationContext } = await setup();
 
     expect(await screen.findByTestId("prompts-pagination")).toBeInTheDocument();
     await expectVisiblePrompts(defaultMockedPrompts.slice(0, 3));
     expect(await screen.findByText(/1 - 3/)).toBeInTheDocument();
 
+    const nextNextPaginationContext = setupMetabotPromptSuggestionsEndpoint(
+      metabotId,
+      defaultMockedPrompts,
+      nextPaginationContext,
+    );
     await nextPage();
     await expectVisiblePrompts(defaultMockedPrompts.slice(3, 6));
     expect(await screen.findByText(/4 - 6/)).toBeInTheDocument();
 
+    setupMetabotPromptSuggestionsEndpoint(
+      metabotId,
+      defaultMockedPrompts,
+      nextNextPaginationContext,
+    );
     await nextPage();
     await expectVisiblePrompts(defaultMockedPrompts.slice(6, 9));
     expect(await screen.findByText(/7 - 8/)).toBeInTheDocument();
 
+    // NOTE: we're relying on rtkquery cache to avoid another fetch
+    // that's why we don't need to mock another request
     await prevPage();
     await expectVisiblePrompts(defaultMockedPrompts.slice(3, 6));
     expect(await screen.findByText(/4 - 6/)).toBeInTheDocument();
@@ -106,9 +163,20 @@ describe("suggested prompts", () => {
   });
 
   it("should allow the user to remove a prompt", async () => {
-    await setup({ pageSize: 1 });
+    const { metabotId } = await setup({ pageSize: 1 });
 
     const [firstPrompt, secondPrompt] = defaultMockedPrompts;
+
+    setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
+    setupMetabotPromptSuggestionsEndpoint(
+      metabotId,
+      defaultMockedPrompts.slice(1),
+      {
+        offset: 0,
+        limit: 1,
+        total: defaultMockedPrompts.length,
+      },
+    );
 
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
     await userEvent.click(await screen.findByTestId("prompt-remove"));
@@ -117,6 +185,7 @@ describe("suggested prompts", () => {
     expect(screen.queryByText(firstPrompt.prompt)).not.toBeInTheDocument();
 
     // TODO: remove once mocking real endpoints
+    setupRefreshMetabotPromptSuggestionsEndpoint(metabotId);
     await userEvent.click(
       await screen.findByRole("button", {
         name: /Refresh prompts suggestions/,
@@ -125,15 +194,32 @@ describe("suggested prompts", () => {
   });
 
   it("should allow the user to refresh the prompts", async () => {
-    await setup({ pageSize: 1 });
-
+    const { metabotId } = await setup({ pageSize: 1 });
     const [firstPrompt] = defaultMockedPrompts;
+
+    setupRefreshMetabotPromptSuggestionsEndpoint(metabotId);
+    setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
+    setupMetabotPromptSuggestionsEndpoint(
+      metabotId,
+      defaultMockedPrompts.slice(1),
+      {
+        offset: 0,
+        limit: 1,
+        total: defaultMockedPrompts.length,
+      },
+    );
 
     // remove a prompt so when we refresh we can see it came back
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
     await userEvent.click(await screen.findByTestId("prompt-remove"));
     await waitFor(() => {
       expect(screen.queryByText(firstPrompt.prompt)).not.toBeInTheDocument();
+    });
+
+    setupMetabotPromptSuggestionsEndpoint(metabotId, defaultMockedPrompts, {
+      offset: 0,
+      limit: 1,
+      total: defaultMockedPrompts.length,
     });
 
     const refreshButton = await screen.findByRole("button", {
@@ -148,10 +234,4 @@ describe("suggested prompts", () => {
 
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
   });
-
-  it.todo("should render suggestions once a collection is selected");
-
-  it.todo("should refetch suggestions when a collection is changed");
-
-  it.todo("should remove suggestions when a collection is cleared");
 });
