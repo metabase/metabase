@@ -1,9 +1,11 @@
+import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Checkbox } from "metabase/ui";
@@ -11,7 +13,7 @@ import { Box, Checkbox } from "metabase/ui";
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
-import { AuthError, AuthErrorRoot, TextLink } from "./GoogleButton.styled";
+import S from "./GoogleButton.module.css";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -49,16 +51,25 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
     ]);
   }, []);
 
+  const [buttonContainer, rect] = useResizeObserver();
+
+  const [width] = useDebouncedValue(rect.width, 200);
+
   return (
-    <Box>
+    <Box ref={buttonContainer}>
       {isCard && clientId ? (
         <ErrorBoundary>
-          <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
+          <GoogleOAuthProvider
+            clientId={clientId}
+            nonce={window.MetabaseNonce}
+            onScriptLoadSuccess={() => {}}
+          >
             <GoogleLogin
               useOneTap
               onSuccess={handleLogin}
               onError={handleError}
               locale={locale}
+              width={width}
             />
           </GoogleOAuthProvider>
           <Checkbox
@@ -69,17 +80,19 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
           />
         </ErrorBoundary>
       ) : (
-        <TextLink to={Urls.login(redirectUrl)}>
+        <Link className={S.Link} to={Urls.login(redirectUrl)}>
           {t`Sign in with Google`}
-        </TextLink>
+        </Link>
       )}
 
       {errors.length > 0 && (
-        <AuthErrorRoot>
+        <Box mt="1rem">
           {errors.map((error, index) => (
-            <AuthError key={index}>{error}</AuthError>
+            <Box c="error" ta="center" key={index}>
+              {error}
+            </Box>
           ))}
-        </AuthErrorRoot>
+        </Box>
       )}
     </Box>
   );
