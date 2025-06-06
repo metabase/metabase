@@ -1,18 +1,15 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
-import {
-  METABOT_TAG,
-  useGetSuggestedMetabotPromptsQuery,
-  useMetabotAgentMutation,
-} from "metabase-enterprise/api";
+import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
+  getMetabotId,
   getMetabotVisible,
   resetConversation,
   setVisible,
@@ -22,16 +19,6 @@ import {
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const { getChatContext } = useMetabotContext();
-
-  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: 1, // TODO: fix
-    limit: 3,
-    sample: true,
-  });
-
-  const suggestedPrompts = useMemo(() => {
-    return suggestedPromptsReq.currentData?.prompts ?? [];
-  }, [suggestedPromptsReq.currentData?.prompts]);
 
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
@@ -46,6 +33,9 @@ export const useMetabotAgent = () => {
   });
 
   return {
+    metabotId: useSelector(getMetabotId as any) as ReturnType<
+      typeof getMetabotId
+    >,
     visible: useSelector(getMetabotVisible as any) as ReturnType<
       typeof getMetabotVisible
     >,
@@ -84,6 +74,5 @@ export const useMetabotAgent = () => {
       ],
     ),
     isDoingScience: sendMessageReq.isLoading || isProcessing,
-    suggestedPrompts,
   };
 };

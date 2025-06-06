@@ -1,6 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { c, jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -19,6 +19,7 @@ import {
   Textarea,
   UnstyledButton,
 } from "metabase/ui";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 
 import { useMetabotAgent } from "../../hooks";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
@@ -38,7 +39,16 @@ export const MetabotChat = () => {
   useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
 
   const hasMessages = metabot.messages.length > 0;
-  const hasSuggestions = metabot.suggestedPrompts.length > 0;
+
+  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
+    metabot_id: metabot.metabotId,
+    limit: 3,
+    sample: true,
+  });
+  const suggestedPrompts = useMemo(() => {
+    return suggestedPromptsReq.currentData?.prompts ?? [];
+  }, [suggestedPromptsReq.currentData?.prompts]);
+  const hasSuggestions = suggestedPrompts.length > 0;
 
   const handleSubmitInput = (input: string) => {
     if (metabot.isDoingScience) {
