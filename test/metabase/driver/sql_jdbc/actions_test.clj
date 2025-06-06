@@ -4,12 +4,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions.core]
    [metabase.actions.error :as actions.error]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
-   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -18,9 +18,9 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn- cast-values :- ::lib.schema.actions/row
+(mu/defn- cast-values :- ::actions.args/row
   [driver        :- :keyword
-   column->value :- ::lib.schema.actions/row
+   column->value :- ::actions.args/row
    table-id      :- ::lib.schema.id/table]
   (qp.store/with-metadata-provider (mt/id)
     (#'sql-jdbc.actions/cast-values driver column->value (mt/id) table-id)))
