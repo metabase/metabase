@@ -15,7 +15,7 @@ interface UseStringFilterProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter?: Lib.Filterable;
 }
 
 export function useStringFilter({

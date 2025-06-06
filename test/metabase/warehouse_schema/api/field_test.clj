@@ -2,6 +2,7 @@
   "Tests for `/api/field` endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
@@ -748,8 +749,13 @@
                                                :name                    "Product ID"
                                                :type                    :external})))
           ;; trigger a field values rescan (this API endpoint is synchronous)
-          (is (= {:status "success"}
-                 (mt/user-http-request :crowberto :post 200 (format "field/%d/rescan_values" (mt/id :orders :product_id)))))
+          (snowplow-test/with-fake-snowplow-collector
+            (is (= {:status "success"}
+                   (mt/user-http-request :crowberto :post 200 (format "field/%d/rescan_values" (mt/id :orders :product_id)))))
+            (testing "triggers snowplow event"
+              (is (=?
+                   {"event" "field_manual_scan", "target_id" (mt/id :orders :product_id)}
+                   (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))
           ;; mark the Field as has_field_values = list
           (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:has_field_values "list"}
             (is (partial= {:values [[1 "Rustic Paper Wallet"]
