@@ -78,7 +78,11 @@
 
 (defmethod fetch-oldest-supported-version :clickhouse
   [database db-info]
-  23.3)
+  "23.3")
+
+(defmethod fetch-oldest-supported-version :presto
+  [database db-info]
+  "0.286")
 
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
@@ -167,6 +171,17 @@
    (if (= resolved-version "latest")
      "gvenzl/oracle-free:latest"
      (str "gvenzl/oracle-xe:" resolved-version))])
+
+(defmethod docker-cmd :presto
+  [_db container-name resolved-version port]
+  (let [https-port (if (= resolved-version "latest") 8444 8443)]
+    ["docker" "run"
+     "-d"
+     "-p" (str port ":8080")
+     "-p" (str https-port ":8443")
+     "--name" container-name
+     "--hostname" "presto"
+     (str "prestodb/presto:" resolved-version)]))
 
 (defn- start-db!
   [database version resolved-version port]
