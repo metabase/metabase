@@ -1,10 +1,9 @@
-import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import InputWithSelectPrefix from "metabase/components/InputWithSelectPrefix";
+import { InputWithSelectPrefix } from "metabase/components/InputWithSelectPrefix";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { Box, Text } from "metabase/ui";
 
@@ -47,14 +46,10 @@ export function SiteUrlWidget() {
         }
       />
       <InputWithSelectPrefix
-        id="site-url"
-        value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-          handleChange(e.target.value)
-        }
+        value={value || ""}
+        onChange={(newValue: string) => handleChange(newValue)}
         prefixes={["https://", "http://"]}
         defaultPrefix="http://"
-        caseInsensitivePrefix={true}
         placeholder={"http://example.com"}
       />
       {errorMessage && (
