@@ -1,5 +1,7 @@
 import type { WithRouterProps } from "react-router";
 
+import { DashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/DashboardLocationSync";
+import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -10,7 +12,7 @@ import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
-import { PublicOrEmbeddedDashboard } from "../PublicOrEmbeddedDashboard";
+import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
@@ -20,8 +22,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const parameterQueryParams = props.location.query;
 
   const { dashboardId } = usePublicDashboardEndpoints(props);
-
-  useDashboardUrlQuery(router, location);
 
   useSetEmbedFont({ location });
 
@@ -44,8 +44,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <PublicOrEmbeddedDashboard
-        location={location}
+      <DashboardContextProvider
         dashboardId={dashboardId}
         hideParameters={hide_parameters}
         isNightMode={isNightMode}
@@ -64,7 +63,19 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         onError={(error) => {
           dispatch(setErrorPage(error));
         }}
-      />
+      >
+        <DashboardLocationSync location={location} />
+        <DashboardUrlSync router={router} location={location} />
+        <PublicOrEmbeddedDashboardView />
+      </DashboardContextProvider>
     </LocaleProvider>
   );
 };
+
+function DashboardUrlSync({
+  router,
+  location,
+}: Pick<WithRouterProps, "router" | "location">) {
+  useDashboardUrlQuery(router, location);
+  return null;
+}
