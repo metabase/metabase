@@ -2,7 +2,7 @@ import * as jose from "jose";
 
 import { USERS } from "e2e/support/cypress_data";
 
-export const AUTH_PROVIDER_URL = "http://auth-provider/sso";
+export const AUTH_PROVIDER_URL = "http://localhost/sso/metabase";
 
 export const JWT_SHARED_SECRET =
   "0000000000000000000000000000000000000000000000000000000000000000";
