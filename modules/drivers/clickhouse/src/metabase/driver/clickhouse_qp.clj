@@ -3,14 +3,13 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x])
@@ -35,7 +34,7 @@
 (defn- get-report-timezone-id-safely
   []
   (try
-    (qp.timezone/report-timezone-id-if-supported)
+    (driver-api/report-timezone-id-if-supported)
     (catch Throwable _e nil)))
 
 ;; datetime('europe/amsterdam') -> europe/amsterdam
@@ -266,7 +265,7 @@
   (map (fn [arg] [:'toFloat64 (sql.qp/->honeysql :clickhouse arg)]) args))
 
 (defn- interval? [expr]
-  (mbql.u/is-clause? :interval expr))
+  (driver-api/is-clause? :interval expr))
 
 (defmethod sql.qp/->honeysql [:clickhouse :+]
   [driver [_ & args]]
@@ -411,7 +410,7 @@
 
 (defn- uuid-field?
   [x]
-  (and (mbql.u/mbql-clause? x)
+  (and (driver-api/mbql-clause? x)
        (isa? (or (:effective-type (get x 2))
                  (:base-type (get x 2)))
              :type/UUID)))
