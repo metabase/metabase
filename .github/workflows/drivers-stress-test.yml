@@ -24,10 +24,8 @@ on:
           - Google Classpath Test
           - Maria DB
           - Maria DB (latest)
-          - Mongo 4
-          - Mongo 4 (SSL)
-          - Mongo 5
-          - Mongo 5 (SSL)
+          - Mongo 6
+          - Mongo 6 (SSL)
           - Mongo (latest)
           - MySQL
           - MySQL (latest)
@@ -161,8 +159,8 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-mongo-4-4-ee:
-    if: inputs.driver == 'Mongo 4'
+  be-tests-mongo-6-0-ee:
+    if: inputs.driver == 'Mongo 6'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -172,75 +170,19 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: metabase/qa-databases:mongo-sample-4.4
+        image: metabase/qa-databases:mongo-sample-6
         ports:
           - "27017:27017"
     steps:
     - uses: actions/checkout@v4
-    - name: Test MongoDB driver (4.4)
+    - name: Test MongoDB driver (6.0)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mongo-4-4-ee'
+        junit-name: 'be-tests-mongo-6-0-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-mongo-4-4-ssl-ee:
-    if: inputs.driver == 'Mongo 4 (SSL)'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: mongo
-      MB_MONGO_TEST_USER: metabase
-      MB_MONGO_TEST_PASSWORD: metasample123
-      MB_TEST_MONGO_REQUIRES_SSL: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: Spin up Mongo docker container
-        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.4 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
-      - name: Wait until the port 27017 is ready
-        run: while ! nc -z localhost 27017; do sleep 1; done
-        timeout-minutes: 5
-      - name: Make SSL certificates for Mongo available
-        run: |
-          curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt \
-          -o ./test_resources/ssl/mongo/metabase.crt
-
-          curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key \
-          -o ./test_resources/ssl/mongo/metabase.key
-
-          curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
-          -o ./test_resources/ssl/mongo/metaca.crt
-
-      - name: Test MongoDB SSL driver (4.4)
-        uses: ./.github/actions/test-driver
-        with:
-          junit-name: 'be-tests-mongo-4-4-ee'
-          test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
-
-  be-tests-mongo-5-0-ee:
-    if: inputs.driver == 'Mongo 5'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: mongo
-      MB_MONGO_TEST_USER: metabase
-      MB_MONGO_TEST_PASSWORD: metasample123
-    services:
-      mongodb:
-        image: metabase/qa-databases:mongo-sample-5.0
-        ports:
-          - "27017:27017"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test MongoDB driver (5.0)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
-
-  be-tests-mongo-5-0-ssl-ee:
-    if: inputs.driver == 'Mongo 5 (SSL)'
+  be-tests-mongo-6-0-ssl-ee:
+    if: inputs.driver == 'Mongo 6 (SSL)'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -252,7 +194,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Spin up Mongo docker container
-      run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-5.0 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
+      run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-6 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
     - name: Wait until the port 27017 is ready
       run: while ! nc -z localhost 27017; do sleep 1; done
       timeout-minutes: 5
@@ -267,10 +209,10 @@ jobs:
         curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
         -o ./test_resources/ssl/mongo/metaca.crt
 
-    - name: Test MongoDB SSL driver (5.0)
+    - name: Test MongoDB SSL driver (6.0)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mongo-5-0-ee'
+        junit-name: 'be-tests-mongo-6-0-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-latest-ee:
