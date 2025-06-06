@@ -344,9 +344,7 @@ export const getRoutes = (store) => {
 
           <Route
             path="/embed/new"
-            component={() => (
-              <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetupRoute />
-            )}
+            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
           />
 
           {/* ACCOUNT */}

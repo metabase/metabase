@@ -554,7 +554,8 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
 };
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
-  SdkIframeEmbedSetupRoute: (): ReactNode => null,
+  shouldShowEmbedInNewItemMenu: () => false,
+  SdkIframeEmbedSetup: () => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {

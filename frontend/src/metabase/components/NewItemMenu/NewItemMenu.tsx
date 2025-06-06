@@ -6,6 +6,7 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId } from "metabase-types/api";
@@ -94,12 +95,14 @@ const NewItemMenu = ({
       },
     });
 
-    items.push({
-      title: t`Embed`,
-      icon: "embed",
-      link: "/embed/new",
-      onClose: onCloseNavbar,
-    });
+    if (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu()) {
+      items.push({
+        title: t`Embed`,
+        icon: "embed",
+        link: "/embed/new",
+        onClose: onCloseNavbar,
+      });
+    }
 
     return items;
   }, [
