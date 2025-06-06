@@ -126,6 +126,7 @@ const init = async () => {
     case "vite-6-host-app-e2e":
     case "next-15-app-router-host-app-e2e":
     case "next-15-pages-router-host-app-e2e":
+    case "angular-20-host-app-e2e":
       await startHostAppContainers(options.TEST_SUITE);
       break;
   }

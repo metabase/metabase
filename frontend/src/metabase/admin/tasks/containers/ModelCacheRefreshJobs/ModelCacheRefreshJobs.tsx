@@ -1,5 +1,5 @@
 import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -39,7 +39,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
     name: job.collection_name,
   });
 
-  const lastRunAtLabel = capitalize(moment(job.refresh_begin).fromNow());
+  const lastRunAtLabel = capitalize(dayjs(job.refresh_begin).fromNow());
 
   const renderStatus = useCallback(() => {
     if (job.state === "off") {
