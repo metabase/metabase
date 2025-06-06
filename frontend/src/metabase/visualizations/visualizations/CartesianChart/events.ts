@@ -687,13 +687,6 @@ export const getStackedTooltipModel = (
         ...def.series
           .filter((row) => row.value != null)
           .map((tooltipRow) => {
-            const value =
-              typeof tooltipRow.value === "number" &&
-              sign === "-" &&
-              hasPositivesAndNegatives
-                ? Math.abs(tooltipRow.value)
-                : tooltipRow.value;
-            const pct = formatPercent(getPercent(def.total, value) ?? 0);
             return {
               isFocused: tooltipRow.isFocused,
               name: tooltipRow.name,
@@ -702,12 +695,22 @@ export const getStackedTooltipModel = (
                 : undefined,
               values: [
                 formatter(tooltipRow.value),
-                hasPositivesAndNegatives
-                  ? `${pct} of ${sign === "+" ? "positive" : "negative"}`
-                  : pct,
+                formatPercent(getPercent(def.total, tooltipRow.value) ?? 0),
               ],
             };
           }),
+        ...(def.series.length > 0 && hasPositivesAndNegatives
+          ? [
+              {
+                name: `Total ${sign === "-" ? "negative" : "positive"}`,
+                markerColorClass: " ",
+                values: [
+                  formatter(def.total),
+                  formatPercent(getPercent(def.total, def.total) ?? 0),
+                ],
+              },
+            ]
+          : []),
       ];
     })
     .flat();
