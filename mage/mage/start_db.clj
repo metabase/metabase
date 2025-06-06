@@ -96,10 +96,22 @@
   [database db-info]
   "0.20.2")
 
+(defmulti ^:private fetch-latest-supported-version
+  {:arglists '([database db-info])}
+  (fn [database db-info] database))
+
+(defmethod fetch-latest-supported-version :default
+  [database db-info]
+  "latest")
+
+(defmethod fetch-latest-supported-version :druid
+  [database db-info]
+  "29.0.0")
+
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database db-info)
-    "latest"))
+    (fetch-latest-supported-version database db-info)))
 
 ;; Docker stuff:
 
@@ -197,31 +209,28 @@
 
 (defmethod docker-cmd :vertica
   [_db container-name resolved-version port]
-  (let [arch (first (:out (shell/sh* {:quiet? true} "uname" "-m")))]
-    (if (= arch "arm64")
-      (do
-        (println (c/yellow "Warning! The database will be likely extremely slow on arm64!"))
-        ["docker" "run" "-d"
-         "-p" (str port ":5433")
-         "--name" container-name
-         "--env" "VERTICA_MEMDEBUG=2"
-         (str "opentext/vertica-ce:" resolved-version)])
-      ["docker" "run" "-d"
-       "-p" (str port ":5433")
-       "--name" container-name
-       (str "opentext/vertica-ce:" resolved-version)])))
+  (let [arch (first (:out (shell/sh* {:quiet? true} "uname" "-m")))
+        memdebug-arg (if (= arch "arm64")
+                       (do
+                         (println (c/yellow "Warning! The database will likely be extremely slow on arm64!"))
+                         ["--env" "VERTICA_MEMDEBUG=2"])
+                       [])]
+    (flatten ["docker" "run" "-d"
+              "-p" (str port ":5433")
+              "--name" container-name
+              memdebug-arg
+              (str "opentext/vertica-ce:" resolved-version)])))
 
 (defmethod docker-cmd :druid
   [_db container-name resolved-version port]
   (let [host-port (if (= resolved-version "latest") 8085 8084)
-        router-port (if (= resolved-version "latest") 8890 8889)
-        version (if (= resolved-version "latest") "29.0.0" resolved-version)]
+        router-port (if (= resolved-version "latest") 8890 8889)]
     ["docker" "run" "-d"
      "-p" (str port ":8081")
      "-p" (str host-port ":8082")
      "-p" (str router-port ":8888")
      "--name" container-name
-     (str "metabase/druid:" version)]))
+     (str "metabase/druid:" resolved-version)]))
 
 (defn- start-db!
   [database version resolved-version port]
