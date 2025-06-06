@@ -49,9 +49,6 @@ export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
     authConfig: createMockSdkConfig({
       ...config,
       metabaseInstanceUrl: config.metabaseInstanceUrl ?? MOCK_INSTANCE_URL,
-
-      // @ts-expect-error -- partial config were passed in the config prop
-      preferredAuthMethod: config.preferredAuthMethod,
     }),
   });
 
