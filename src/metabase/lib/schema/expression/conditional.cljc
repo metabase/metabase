@@ -66,11 +66,15 @@
        ;; further constrain this so all of the exprs are of the same type
        {:error/message "All clauses should have the same type"}
        (fn [[_tag _opts pred-expr-pairs default]]
-         (let [expressions (into (map second pred-expr-pairs) (filter some?) [default])
+         (let [expressions (filter some? (concat (map second pred-expr-pairs) [default]))
                expression-types (map expression/type-of expressions)
                [first-type & other-types] expression-types
-               common-ancestors (map #(types/most-specific-common-ancestor first-type %) other-types)]
-           (every? #(not= :type/* %) common-ancestors)))]]])
+               compatible? (fn [x y] (or
+                                      (= x ::expression/type.unknown)
+                                      (= y ::expression/type.unknown)
+                                      (not= (types/most-specific-common-ancestor x y) :type/*)))
+               compatible-with-first? #(compatible? first-type %)]
+           (every? compatible-with-first? other-types)))]]])
 
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs _default]]
