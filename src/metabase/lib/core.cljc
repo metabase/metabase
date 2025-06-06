@@ -389,4 +389,5 @@
   with-temporal-bucket]
  [lib.util
   normalized-query-type
+  query-stage
   source-table-id])

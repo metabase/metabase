@@ -22,6 +22,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
@@ -40,7 +41,7 @@
    [:field-ref {:optional true} ::legacy-field-ref]])
 
 (mr/def ::cols
-  [:sequential ::col])
+  [:maybe [:sequential ::col]])
 
 (mr/def ::metadata
   [:map
@@ -174,7 +175,11 @@
    cols  :- ::cols]
   (mapv (fn [col]
           (let [converted-timezone (when-let [expression-name (:lib/expression-name col)]
-                                     (let [expr (lib/resolve-expression query expression-name)]
+                                     (when-let [expr (try
+                                                       (lib/resolve-expression query expression-name)
+                                                       (catch Throwable e
+                                                         (log/error e "Warning: column metadata has invalid :lib/expression-name")
+                                                         nil))]
                                        (lib.util.match/match-one expr
                                          [:convert-timezone _opts _expr source-tz _dest-tz]
                                          source-tz)))]
@@ -250,6 +255,9 @@
   [col :- ::col]
   (letfn [(add-unit [col]
             (merge
+             ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
+            ;; formatting to display values of the column" according
+            ;; to [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
              (when-let [temporal-unit (:metabase.lib.field/temporal-unit col)]
                {:unit temporal-unit})
              col))
