@@ -1,0 +1,58 @@
+.EmbedPreviewIframe {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+}
+
+.Container {
+  display: flex;
+  height: calc(100vh - 4rem);
+  overflow: hidden;
+  position: fixed;
+  top: 4rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.ResizeHandle {
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: var(--mb-color-border);
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.Sidebar {
+  height: 100%;
+  border-right: 1px solid var(--mb-color-border);
+  padding: 1rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.SidebarContent {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 4rem;
+}
+
+.Navigation {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  background-color: var(--mb-color-bg-white);
+  padding: 0.5rem;
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.PreviewPanel {
+  flex: 1;
+  padding: 1rem;
+  overflow: hidden;
+}
