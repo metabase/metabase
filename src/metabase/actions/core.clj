@@ -2,6 +2,7 @@
   "API namespace for the `metabase.actions` module."
   (:require
    [metabase.actions.actions]
+   [metabase.actions.args]
    [metabase.actions.error]
    [metabase.actions.events]
    [metabase.actions.execution]
@@ -31,8 +32,9 @@
   perform-action!
   ;; allow actions to be defined in the data-editing module
   perform-action!*
-  perform-nested-action!
-  action-arg-map-spec
+  perform-nested-action!]
+ [metabase.actions.args
+  action-arg-map-schema
   normalize-action-arg-map]
  [metabase.actions.error
   children-exist

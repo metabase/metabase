@@ -1,14 +1,14 @@
 (ns metabase.actions.actions
   "Code related to the new writeback Actions."
   (:require
-   [clojure.spec.alpha :as s]
+   [malli.error :as me]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.events :as actions.events]
    [metabase.actions.scope :as actions.scope]
    [metabase.actions.settings :as actions.settings]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -16,38 +16,17 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
 
-(defmulti normalize-action-arg-map
-  "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
-  {:arglists '([action arg-map]), :added "0.44.0"}
-  (fn [action _arg-map]
-    (keyword action)))
-
-(defmethod normalize-action-arg-map :default
-  [_action arg-map]
-  arg-map)
-
-(defmulti action-arg-map-spec
-  "Return the appropriate spec to use to validate the arg map passed to [[perform-action!*]].
-
-    (action-arg-map-spec :model.row/create) => :actions.args.crud/row.create"
-  {:arglists '([action]), :added "0.44.0"}
-  keyword)
-
-(defmethod action-arg-map-spec :default
-  [_action]
-  any?)
-
 (defmulti perform-action!*
   "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
-  of each input depends on the action being performed. [[action-arg-map-spec]] returns the appropriate spec to use to
+  of each input depends on the action being performed. [[action-arg-map-schema]] returns the appropriate spec to use to
   validate the inputs for a given action. When implementing a new action type, be sure to implement both this method
-  and [[action-arg-map-spec]].
+  and [[action-arg-map-schema]].
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
@@ -231,7 +210,7 @@
 (mu/defn perform-action!
   "Perform an *implicit* `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
-  `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
+  `action` being performed. [[action-arg-map-schema]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
    scope
@@ -248,12 +227,12 @@
                         (= "data-grid.row" (namespace action-kw)) :data-editing
                         (= "data-editing" (namespace action-kw))  :data-editing
                         :else                                     :ad-hoc-invocation))
-        spec      (action-arg-map-spec action-kw)
-        arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
+        spec      (actions.args/action-arg-map-schema action-kw)
+        arg-maps  (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
-                        :when (s/invalid? (s/conform spec arg-map))]
-                    {:message (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
-                     :data    (s/explain-data spec arg-map)})
+                        :when (not (mr/validate spec arg-map))]
+                    {:message (format "Invalid Action arg map for %s: %s" action-kw (me/humanize (mr/explain spec arg-map)))
+                     :data    (mr/explain spec arg-map)})
         _         (when (seq errors)
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
@@ -321,187 +300,3 @@
          (if-let [{:keys [message data]} (first (::schema-errors (ex-data e)))]
            (throw (ex-info message data))
            (throw e)))))
-
-;;;; Action definitions.
-
-;;; Common base spec for *all* Actions. All Actions at least require
-;;;
-;;;    {:database <id>}
-;;;
-;;; Anything else required depends on the action type.
-
-(s/def :actions.args/id
-  (s/and integer? pos?))
-
-(s/def :actions.args.common/database
-  :actions.args/id)
-
-(s/def :actions.args/common
-  (s/keys :req-un [:actions.args.common/database]))
-
-;;; Common base spec for all CRUD model row Actions. All CRUD model row Actions at least require
-;;;
-;;;    {:database <id>, :query {:source-table <id>}}
-
-(s/def :actions.args.crud.row.common.query/source-table
-  :actions.args/id)
-
-(s/def :actions.args.crud.row.common/query
-  (s/keys :req-un [:actions.args.crud.row.common.query/source-table]))
-
-(s/def :actions.args.crud.row/common
-  (s/merge
-   :actions.args/common
-   (s/keys :req-un [:actions.args.crud.row.common/query])))
-
-;;;; `:model.row/create`
-
-;;; row/create requires at least
-;;;
-;;;    {:database   <id>
-;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
-;;;     :create-row <map>}
-
-(defmethod normalize-action-arg-map :model.row/create
-  [_action query]
-  (mbql.normalize/normalize-or-throw query))
-
-(s/def :actions.args.crud.row.create/create-row
-  (s/map-of string? any?))
-
-(s/def :actions.args.crud/row.create
-  (s/merge
-   :actions.args.crud.row/common
-   (s/keys :req-un [:actions.args.crud.row.create/create-row])))
-
-(defmethod action-arg-map-spec :model.row/create
-  [_action]
-  :actions.args.crud/row.create)
-
-;;;; `:model.row/update`
-
-;;; row/update requires at least
-;;;
-;;;    {:database   <id>
-;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
-;;;     :update-row <map>}
-
-(defmethod normalize-action-arg-map :model.row/update
-  [_action query]
-  (mbql.normalize/normalize-or-throw query))
-
-(s/def :actions.args.crud.row.update.query/filter
-  vector?) ; MBQL filter clause
-
-(s/def :actions.args.crud.row.update/query
-  (s/merge
-   :actions.args.crud.row.common/query
-   (s/keys :req-un [:actions.args.crud.row.update.query/filter])))
-
-(s/def :actions.args.crud.row.update/update-row
-  (s/map-of string? any?))
-
-(s/def :actions.args.crud/row.update
-  (s/merge
-   :actions.args.crud.row/common
-   (s/keys :req-un [:actions.args.crud.row.update/update-row
-                    :actions.args.crud.row.update/query])))
-
-(defmethod action-arg-map-spec :model.row/update
-  [_action]
-  :actions.args.crud/row.update)
-
-;;;; `:model.row/delete`
-
-;;; row/delete requires at least
-;;;
-;;;    {:database <id>
-;;;     :query    {:source-table <id>, :filter <mbql-filter-clause>}}
-
-(defmethod normalize-action-arg-map :model.row/delete
-  [_action query]
-  (mbql.normalize/normalize-or-throw query))
-
-(s/def :actions.args.crud.row.delete.query/filter
-  vector?) ; MBQL filter clause
-
-(s/def :actions.args.crud.row.delete/query
-  (s/merge
-   :actions.args.crud.row.common/query
-   (s/keys :req-un [:actions.args.crud.row.delete.query/filter])))
-
-(s/def :actions.args.crud/row.delete
-  (s/merge
-   :actions.args.crud.row/common
-   (s/keys :req-un [:actions.args.crud.row.delete/query])))
-
-(defmethod action-arg-map-spec :model.row/delete
-  [_action]
-  :actions.args.crud/row.delete)
-
-;;;; Table actions
-
-;;; All table Actions require at least
-;;;
-;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
-
-(s/def :actions.args.crud.table.common/table-id
-  :actions.args/id)
-
-(s/def :actions.args.crud.table/row
-  (s/map-of string? any?))
-
-(s/def :actions.args.crud.table/common
-  (s/merge
-   :actions.args/common
-   (s/keys :req-un [:actions.args.crud.table.common/table-id
-                    :actions.args.crud.table/row])))
-
-;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
-;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
-;;; [[perform-action!]] with
-;;;
-;;;    {:database <database-id>, :table-id <table-id>, :row <request-body>}
-;;;
-;;; and we transform this to
-;;;
-;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
-
-;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
-
-(derive :table.row/create :table.row/common)
-(derive :table.row/update :table.row/common)
-(derive :table.row/delete :table.row/common)
-
-(defmethod action-arg-map-spec :table.row/common
-  [_action]
-  :actions.args.crud.table/common)
-
-(defmethod normalize-action-arg-map :table.row/common
-  [_action {:keys [database table-id row] row-arg :arg :as _arg-map}]
-  (when (seq row-arg)
-    (log/warn ":arg is deprecated, use :row instead"))
-  {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
-   :table-id table-id
-   :row      (update-keys (or row row-arg) u/qualified-name)})
-
-;;;; `:table.row/create-or-update` -- similar to common but with additional :key field
-
-(s/def :actions.args.crud.table.create-or-update/row-key
-  (s/map-of string? any?))
-
-(s/def :actions.args.crud.table/create-or-update
-  (s/merge
-   :actions.args.crud.table/common
-   (s/keys :req-un [:actions.args.crud.table.create-or-update/row-key])))
-
-(defmethod action-arg-map-spec :table.row/create-or-update
-  [_action]
-  :actions.args.crud.table/create-or-update)
-
-(defmethod normalize-action-arg-map :table.row/create-or-update
-  [_action {:keys [database table-id row row-key] :as _arg-map}]
-  {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
-   :table-id table-id
-   :row      (update-keys row u/qualified-name)
-   :row-key  (update-keys row-key u/qualified-name)})

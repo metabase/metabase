@@ -1,10 +1,9 @@
 (ns metabase-enterprise.data-editing.actions
   (:require
-   [clojure.spec.alpha :as s]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.models.undo :as undo]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
-   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -16,12 +15,9 @@
 (derive :data-grid.row/update :data-grid.row/common)
 (derive :data-grid.row/delete :data-grid.row/common)
 
-(s/def :actions.args.data-grid/common
-  :actions.args.crud.table/row)
-
-(defmethod actions/action-arg-map-spec :data-grid.row/common
+(defmethod actions/action-arg-map-schema :data-grid.row/common
   [_action]
-  :actions.args.data-grid/common)
+  ::actions.args/row)
 
 (defmethod actions/normalize-action-arg-map :data-grid.row/common
   [_action input]
@@ -60,28 +56,26 @@
                                  post-process))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/create]
-  [_action context inputs :- [:sequential ::lib.schema.actions/row]]
+  [_action context inputs :- [:sequential ::actions.args/row]]
   (perform! :table.row/create context inputs))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/update]
-  [_action context inputs :- [:sequential ::lib.schema.actions/row]]
+  [_action context inputs :- [:sequential ::actions.args/row]]
   (perform! :table.row/update context inputs))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/delete]
-  [_action context inputs :- [:sequential ::lib.schema.actions/row]]
+  [_action context inputs :- [:sequential ::actions.args/row]]
   (perform! :table.row/delete context inputs))
 
 ;; undo
 
-(s/def :actions.args/none map?)
-
-(defmethod actions/action-arg-map-spec :data-editing/undo [_action] :actions.args/none)
-(defmethod actions/action-arg-map-spec :data-editing/redo [_action] :actions.args/none)
+(defmethod actions/action-arg-map-schema :data-editing/undo [_action] :map)
+(defmethod actions/action-arg-map-schema :data-editing/redo [_action] :map)
 
 (defmethod actions/normalize-action-arg-map :data-editing/undo [_action _input] {})
 (defmethod actions/normalize-action-arg-map :data-editing/redo [_action _input] {})
 
-(mr/def ::lib.schema.actions/nothing [:map {:closed true}])
+(mr/def ::empty-map [:map {:closed true}])
 
 (defn- translate-undo-error [e]
   (case (:error (ex-data e))
@@ -92,7 +86,7 @@
     e))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]
-  [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
+  [_action context _inputs :- [:sequential ::empty-map]]
   (try
     {:context context
      :outputs (undo/undo! context (:user-id context) (:scope context))}
@@ -100,7 +94,7 @@
       (throw (translate-undo-error e)))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/redo]
-  [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
+  [_action context _inputs :- [:sequential ::empty-map]]
   (try
     {:context context
      :outputs (undo/redo! context (:user-id context) (:scope context))}

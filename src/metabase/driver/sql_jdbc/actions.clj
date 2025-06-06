@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -13,7 +14,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -103,12 +103,12 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defn- cast-values :- ::lib.schema.actions/row
+(mu/defn- cast-values :- ::actions.args/row
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
   [driver        :- :keyword
-   column->value :- ::lib.schema.actions/row
+   column->value :- ::actions.args/row
    database-id   :- ::lib.schema.id/database
    table-id      :- ::lib.schema.id/table]
   (let [type->sql-type (base-type->sql-type-map driver)
@@ -279,10 +279,10 @@
    [:context :map]
    [:outputs [:sequential output-schema]]])
 
-(mu/defn- correct-columns-name :- [:maybe [:sequential ::lib.schema.actions/row]]
+(mu/defn- correct-columns-name :- [:maybe [:sequential ::actions.args/row]]
   "Ensure each rows have column name match with fields name.
   Some drivers like h2 have weird issue with casing."
-  [table-id rows :- [:sequential ::lib.schema.actions/row]]
+  [table-id rows :- [:sequential ::actions.args/row]]
   (when (seq rows)
     (let [field-names (actions/cached-value
                        [::correct-columns-name table-id]
@@ -415,7 +415,7 @@
 ;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
 ;;; the newly created row. This function will `SELECT` the newly created row
 ;;; assuming that `result` is a map from column names to the generated values.
-(mu/defmethod select-created-row :default :- [:maybe ::lib.schema.actions/row]
+(mu/defmethod select-created-row :default :- [:maybe ::actions.args/row]
   [driver create-hsql conn result]
   (let [select-hsql     (-> create-hsql
                             (dissoc :insert-into :values)
@@ -454,7 +454,7 @@
          :before   nil
          :after    row}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::lib.schema.actions/row]])
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::actions.args/row]])
   [action context inputs :- [:sequential ::mbql.s/Query]]
   (let [database (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -523,7 +523,7 @@
 (mr/def ::table-row-input
   [:map
    [:table-id ::lib.schema.id/table]
-   [:row ::lib.schema.actions/row]])
+   [:row ::actions.args/row]])
 
 (defn- row-create-input-fn
   [database table-id row]
@@ -581,7 +581,7 @@
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
   value build an appropriate MBQL filter clause."
   [field-name->id :- [:map-of :string :int]
-   row :- ::lib.schema.actions/row]
+   row :- ::actions.args/row]
   (when (empty? row)
     (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
                     {:field-name->id field-name->id, :row row, :status-code 400})))
@@ -813,7 +813,7 @@
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
-  [row      :- ::lib.schema.actions/row
+  [row      :- ::actions.args/row
    pk-names :- [:set :string]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
@@ -824,7 +824,7 @@
 
 (mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
-  [row      :- ::lib.schema.actions/row
+  [row      :- ::actions.args/row
    pk-names :- [:set :string]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)
