@@ -64,7 +64,9 @@
   flex-shrink: 0;
   opacity: 0;
 
+  &:focus,
   .item:hover &,
+  .item:focus &,
   .item.selected &,
   .item.active & {
     opacity: 0.75;
