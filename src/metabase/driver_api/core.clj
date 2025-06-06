@@ -238,15 +238,15 @@
   ::mbql.s/OrderBy)
 
 (def mbql.schema.Query
-  "::mbql.schema.Query"
-  ::mbql.schema.Query)
+  "::mbql.s/Query"
+  ::mbql.s/Query)
 
 (def mbql.schema.value
-  "::mbql.schema.value"
-  ::mbql.schema.value)
+  "mbql.s/value"
+  mbql.s/value)
 
 (def mbql.schema.field
-  "::mbql.schema.field"
+  "mbql.s/field"
   mbql.s/field)
 
 (def mbql.schema.FieldOrExpressionDef
