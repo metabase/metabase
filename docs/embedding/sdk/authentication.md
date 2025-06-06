@@ -140,7 +140,7 @@ Then you can then use the API key to authenticate with Metabase in your applicat
 
 To use SAML single sign-on with the Embedded analytics SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../../people-and-groups/authenticating-with-saml.md).
 
-Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `authMethod` in your `MetabaseAuthConfig` to `"saml"`:
+Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `preferredAuthMethod` in your `MetabaseAuthConfig` to `"saml"`:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
