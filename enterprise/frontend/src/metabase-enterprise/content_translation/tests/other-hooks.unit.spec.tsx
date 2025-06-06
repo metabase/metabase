@@ -1,9 +1,10 @@
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { setupForContentTranslationTest } from "metabase/i18n/test-utils";
 import type { HoveredObject } from "metabase/visualizations/types";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
 import {
+  useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
   useTranslateSeries,
 } from "../utils";
@@ -231,5 +232,55 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
 
     // This cell is not translated because the column does not have a categorical type
     expect(cells[1]).toHaveTextContent("b");
+  });
+
+  it("useSortByContentTranslation returns a function that sorts strings by their translations", async () => {
+    const TestComponent = () => {
+      const sortByTranslation = useSortByContentTranslation();
+      const unsortedItems = ["Zebra", "Apple", "Banana"];
+      const sortedItems = [...unsortedItems].sort(sortByTranslation);
+
+      return (
+        <div>
+          <div data-testid="unsorted">
+            {unsortedItems.map((item, index) => (
+              <span key={index} data-testid={`unsorted-${index}`}>
+                {item}
+              </span>
+            ))}
+          </div>
+          <div data-testid="sorted">
+            {sortedItems.map((item, index) => (
+              <span key={index} data-testid={`sorted-${index}`}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    setupForContentTranslationTest({
+      localeCode: "en",
+      hasEnterprisePlugins: true,
+      tokenFeatures: { content_translation: true },
+      dictionary: [
+        { locale: "en", msgid: "Zebra", msgstr: "A-Animal" },
+        { locale: "en", msgid: "Apple", msgstr: "B-Fruit" },
+        { locale: "en", msgid: "Banana", msgstr: "C-Plant" },
+      ],
+      staticallyEmbedded: true,
+      component: <TestComponent />,
+    });
+
+    await screen.findByTestId("sorted");
+
+    // Check that items are sorted by their translated values
+    // "A-Animal" < "B-Fruit" < "C-Plant" alphabetically
+    await waitFor(() => {
+      expect(screen.getByTestId("sorted-0")).toHaveTextContent("Zebra");
+    });
+    expect(screen.getByTestId("sorted-1")).toHaveTextContent("Apple");
+    expect(screen.getByTestId("sorted-2")).toHaveTextContent("Banana");
   });
 });
