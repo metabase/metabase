@@ -105,10 +105,6 @@ If only tables are allowed, the sidebar won't show models:
 
 ![Sidebar without models](./images/sidebar-without-models.png)
 
-The new button dropdown (if `new_button=true`) will also exclude models:
-
-![New button](./images/new-button-dropdown.png)
-
 Available entity types are:
 
 - `table`
@@ -125,7 +121,6 @@ The default behavior for the data picker is:
 - Show both tables and models.
 - Exclude Metrics.
 - Display a simple dropdown menu. If there are 100 or more items, Metabase will display a souped-up data picker.
-
 
 ## `header`
 
@@ -151,12 +146,12 @@ Read more about [localization](../configuring-metabase/localization.md).
 
 Whether to show the logo that opens and closes the sidebar nav. Default is true. The logo's behavior depends on the `side_nav` setting:
 
-| `logo` | `side_nav` | Result |
-|--------|------------|--------|
-| true   | true       | Shows your configured logo in the sidebar |
-| true   | false      | No sidebar or logo functionality |
+| `logo` | `side_nav` | Result                                                                |
+| ------ | ---------- | --------------------------------------------------------------------- |
+| true   | true       | Shows your configured logo in the sidebar                             |
+| true   | false      | No sidebar or logo functionality                                      |
 | false  | true       | Shows a generic sidebar icon (gray when normal, brand color on hover) |
-| false  | false      | No sidebar or logo, with breadcrumbs aligned to the left edge |
+| false  | false      | No sidebar or logo, with breadcrumbs aligned to the left edge         |
 
 ## `new_button`
 
