@@ -19,7 +19,7 @@ export function GeneralSettingsPage() {
   return (
     <Stack gap="lg" maw="42rem">
       <Title order={1}>{t`General`}</Title>
-      <SettingsSection>
+      <SettingsSection title={t`Site Config`}>
         <AdminSettingInput
           name="site-name"
           title={t`Site Name`}
@@ -35,7 +35,7 @@ export function GeneralSettingsPage() {
         <PLUGIN_LANDING_PAGE.LandingPageWidget />
       </SettingsSection>
 
-      <SettingsSection>
+      <SettingsSection title={t`Email and Tracking`}>
         <AdminSettingInput
           name="admin-email"
           title={t`Email Address for Help Requests`}
@@ -45,7 +45,7 @@ export function GeneralSettingsPage() {
         <AnonymousTrackingInput />
       </SettingsSection>
 
-      <SettingsSection>
+      <SettingsSection title={t`Tables, X-Rays and Domains`}>
         <AdminSettingInput
           name="humanization-strategy"
           title={t`Friendly Table and Field Names`}

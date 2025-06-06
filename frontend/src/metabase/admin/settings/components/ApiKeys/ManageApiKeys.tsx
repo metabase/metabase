@@ -12,6 +12,8 @@ import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
 
+import { SettingsSection } from "../SettingsSection";
+
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
@@ -152,38 +154,41 @@ export const ManageApiKeys = () => {
   const tableIsEmpty = !isLoading && !error && apiKeys?.length === 0;
 
   return (
-    <>
-      <ApiKeyModals
-        onClose={handleClose}
-        modal={modal}
-        activeApiKey={activeApiKey}
-      />
-      <Stack gap="lg">
-        <Group
-          align="start"
-          justify="space-between"
-          data-testid="api-keys-settings-header"
-        >
-          <Stack>
-            <Title order={2}>{t`Manage API Keys`}</Title>
-            {!tableIsEmpty && (
-              <Text color="text-medium">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
-            )}
-          </Stack>
-          <Button
-            variant="filled"
-            onClick={() => setModal("create")}
-          >{t`Create API Key`}</Button>
-        </Group>
-        <ApiKeysTable
-          loading={isLoading}
-          error={error}
-          apiKeys={sortedApiKeys}
-          setActiveApiKey={setActiveApiKey}
-          setModal={setModal}
+    <Stack>
+      <Title order={1}>{t`API Keys`}</Title>
+      <SettingsSection>
+        <ApiKeyModals
+          onClose={handleClose}
+          modal={modal}
+          activeApiKey={activeApiKey}
         />
-      </Stack>
-    </>
+        <Stack gap="lg">
+          <Group
+            align="start"
+            justify="space-between"
+            data-testid="api-keys-settings-header"
+          >
+            <Stack>
+              <Title order={2}>{t`Manage API Keys`}</Title>
+              {!tableIsEmpty && (
+                <Text color="text-medium">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
+              )}
+            </Stack>
+            <Button
+              variant="filled"
+              onClick={() => setModal("create")}
+            >{t`Create API Key`}</Button>
+          </Group>
+          <ApiKeysTable
+            loading={isLoading}
+            error={error}
+            apiKeys={sortedApiKeys}
+            setActiveApiKey={setActiveApiKey}
+            setModal={setModal}
+          />
+        </Stack>
+      </SettingsSection>
+    </Stack>
   );
 };
 
