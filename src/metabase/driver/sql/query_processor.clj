@@ -847,7 +847,7 @@
 
     (field-source-alias [:field 1 nil]) ; -> \"price\""
   [[_field id-or-name opts]]
-  (or (get opts driver-api/qp.add.source-table)
+  (or (get opts driver-api/qp.add.source-alias)
       (when (string? id-or-name)
         id-or-name)
       (when (integer? id-or-name)

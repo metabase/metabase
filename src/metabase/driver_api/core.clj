@@ -58,7 +58,6 @@
    [metabase.upload.core :as upload]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouses.core :as warehouses]
    [potemkin :as p]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -274,10 +273,10 @@
   "::add/nfc-path"
   ::add/nfc-path)
 
-(def qp.util.transformations.nest-breakouts.externally-remapped-field
-  ":metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field"
-  ::qp.util.transformations.nest-breakouts/externally-remapped-field)
-
 (def qp.add.desired-alias
   "::add/desired-alias"
   ::add/desired-alias)
+
+(def qp.util.transformations.nest-breakouts.externally-remapped-field
+  ":metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field"
+  ::qp.util.transformations.nest-breakouts/externally-remapped-field)
