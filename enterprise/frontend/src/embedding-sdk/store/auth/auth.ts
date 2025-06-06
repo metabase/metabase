@@ -14,10 +14,12 @@ import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
+import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
@@ -111,8 +113,14 @@ export const refreshTokenAsync = createAsyncThunk(
     }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "authMethod">,
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
-    const customGetRefreshToken =
-      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? undefined;
+    const state = getState() as SdkStoreState;
+
+    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSdkIframeEmbedAuth) {
+      return requestSessionTokenFromEmbedJs();
+    }
+
+    const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? undefined;
+
     const session = await getRefreshToken({
       metabaseInstanceUrl,
       authMethod,
@@ -138,7 +146,10 @@ const getRefreshToken = async ({
   });
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
-    return await openSamlLoginPopup(responseUrl);
+    const token = await openSamlLoginPopup(responseUrl);
+    samlTokenStorage.set(token);
+
+    return token;
   }
   if (method === "jwt") {
     return jwtDefaultRefreshTokenFunction(
@@ -148,9 +159,7 @@ const getRefreshToken = async ({
       customGetRequestToken,
     );
   }
-  throw new Error(
-    `Unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson, null, 2)}`,
-  );
+  throw MetabaseError.INVALID_AUTH_METHOD({ method });
 };
 
 export function getSdkRequestHeaders(hash?: string): Record<string, string> {
