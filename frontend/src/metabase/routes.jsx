@@ -37,7 +37,11 @@ import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import { PLUGIN_COLLECTIONS, PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_METABOT,
+} from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -117,6 +121,8 @@ export const getRoutes = (store) => {
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
+          {PLUGIN_METABOT.getMetabotRoutes()}
+
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
             path="/"

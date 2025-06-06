@@ -4,6 +4,8 @@ import type {
   MetabotApiEntity,
   MetabotId,
   MetabotInfo,
+  SuggestedMetabotPrompt,
+  SuggestedMetabotPromptsResponse,
 } from "metabase-types/api";
 
 export function setupMetabotsEndpoint(
@@ -38,4 +40,60 @@ export function setupMetabotDeleteEntitiesEndpoint() {
   fetchMock.delete(/api\/ee\/metabot-v3\/metabot\/\d+\/entities/, {
     status: 204,
   });
+}
+
+export function setupMetabotPromptSuggestionsEndpointError(
+  metabotId: MetabotId,
+) {
+  fetchMock.get(
+    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
+    { status: 500 },
+  );
+}
+
+export function setupMetabotPromptSuggestionsEndpoint(
+  metabotId: MetabotId,
+  prompts: SuggestedMetabotPromptsResponse["prompts"],
+  paginationContext: {
+    offset: number;
+    limit: number;
+    total: number;
+  },
+) {
+  const { total, limit, offset } = paginationContext;
+
+  const page = prompts.slice(offset, offset + limit);
+  const body = { prompts: page, limit, offset, total };
+  fetchMock.get(
+    {
+      url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
+      query: { limit, offset },
+    },
+    { status: 200, body },
+    { overwriteRoutes: true },
+  );
+
+  return {
+    ...paginationContext,
+    offset: limit + offset,
+  };
+}
+
+export function setupRemoveMetabotPromptSuggestionEndpoint(
+  metabotId: MetabotId,
+  promptId: SuggestedMetabotPrompt["id"],
+) {
+  fetchMock.delete(
+    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/${promptId}`,
+    { status: 202 },
+  );
+}
+
+export function setupRefreshMetabotPromptSuggestionsEndpoint(
+  metabotId: MetabotId,
+) {
+  fetchMock.delete(
+    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
+    { status: 202 },
+  );
 }

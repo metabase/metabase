@@ -184,7 +184,9 @@
                                   (not-empty (mapv #(convert-metric % metadata-provider options)
                                                    (lib/available-metrics card-query)))))))))
 
-(defn- cards-details
+(defn cards-details
+  "Get the details of metrics or models as specified by `card-type` and `cards`
+  from the database with ID `database-id` respecting `options`."
   [card-type database-id cards options]
   (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
         detail-fn (case card-type
@@ -196,7 +198,7 @@
          cards)))
 
 (defn answer-sources
-  "Get the details metrics and models from the collection with name `collection-name`."
+  "Get the details of metrics and models from the collection with name `collection-name`."
   ([metabot-collection]
    (answer-sources metabot-collection nil))
   ([metabot-collection options]

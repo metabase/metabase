@@ -27,6 +27,7 @@ import type {
   MetabotId,
 } from "metabase-types/api";
 
+import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
 export function MetabotAdminPage() {
@@ -35,6 +36,11 @@ export function MetabotAdminPage() {
   const metabotName =
     data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
   const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
+
+  const { data: entityList } = useListMetabotsEntitiesQuery(
+    metabotId ? { id: metabotId } : skipToken,
+  );
+  const hasEntities = (entityList?.items?.length ?? 0) > 0;
 
   if (isLoading || !data) {
     return (
@@ -49,23 +55,35 @@ export function MetabotAdminPage() {
     <ErrorBoundary>
       <Flex p="xl">
         <MetabotNavPane />
-        <Stack px="xl">
-          <SettingHeader
-            id="configure-metabot"
-            title={c("{0} is the name of an AI assistant")
-              .t`Configure ${metabotName}`}
-            description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
-              .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
-          />
-          {isEmbeddedMetabot && (
-            <Text c="text-medium" maw="40rem">
-              {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
-            </Text>
+        <Stack w="100%" px="xl" gap="xl">
+          <Box>
+            <SettingHeader
+              id="configure-metabot"
+              title={c("{0} is the name of an AI assistant")
+                .t`Configure ${metabotName}`}
+              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+                .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
+            />
+            {isEmbeddedMetabot && (
+              <Text c="text-medium" maw="40rem">
+                {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
+              </Text>
+            )}
+          </Box>
+          {metabotId && (
+            <>
+              <MetabotConfigurationPane
+                metabotId={metabotId}
+                metabotName={metabotName}
+              />
+              {hasEntities && (
+                <MetabotPromptSuggestionPane
+                  key={metabotId}
+                  metabotId={metabotId}
+                />
+              )}
+            </>
           )}
-          <MetabotConfigurationPane
-            metabotId={metabotId}
-            metabotName={metabotName}
-          />
         </Stack>
       </Flex>
     </ErrorBoundary>
@@ -110,22 +128,19 @@ function MetabotConfigurationPane({
   metabotId,
   metabotName,
 }: {
-  metabotId: MetabotId | null;
+  metabotId: MetabotId;
   metabotName: string;
 }) {
   const {
     data: entityList,
     isLoading,
     error,
-  } = useListMetabotsEntitiesQuery(metabotId ? { id: metabotId } : skipToken);
+  } = useListMetabotsEntitiesQuery({ id: metabotId });
   const [updateEntities] = useUpdateMetabotEntitiesMutation();
   const [deleteEntity] = useDeleteMetabotEntitiesMutation();
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
-  if (!metabotId) {
-    return null;
-  }
   if (isLoading || !entityList || error) {
     return (
       <LoadingAndErrorWrapper
