@@ -102,7 +102,7 @@ describe("getLinkedParametersInfo", () => {
       }),
     ];
 
-    const fieldIds = {
+    const filteringIdsByFilteredId = {
       [PRODUCTS.CATEGORY]: [
         PRODUCTS.VENDOR,
         REVIEWS.RATING,
@@ -135,8 +135,8 @@ describe("getLinkedParametersInfo", () => {
       },
     ];
 
-    expect(getLinkedParametersInfo(parameters, fieldIds)).toEqual(
-      expectedParameters,
-    );
+    expect(
+      getLinkedParametersInfo(parameters, filteringIdsByFilteredId),
+    ).toEqual(expectedParameters);
   });
 });
