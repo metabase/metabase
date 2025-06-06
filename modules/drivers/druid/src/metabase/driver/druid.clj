@@ -55,7 +55,7 @@
 (defmethod driver/execute-reducible-query :druid
   [_driver query _context respond]
   (druid.execute/execute-reducible-query
-   (partial druid.client/do-query-with-cancellation driver-api/*canceled-chan*)
+   (partial druid.client/do-query-with-cancellation (driver-api/canceled-chan))
    (update-in query [:native :query] add-timeout-to-query driver.settings/*query-timeout-ms*)
    respond))
 

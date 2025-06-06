@@ -166,7 +166,7 @@
                 (do (vreset! has-returned-first-row? true)
                     (first-row-thunk))
                 (remaining-rows-thunk)))]
-      (driver-api/reducible-rows row-thunk driver-api/*canceled-chan*))))
+      (driver-api/reducible-rows row-thunk (driver-api/canceled-chan)))))
 
 (defn- reduce-results [native-query query ^MongoCursor cursor respond]
   (let [first-row (when (.hasNext cursor)
@@ -190,7 +190,7 @@
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
       (a/go
-        (when (a/<! driver-api/*canceled-chan*)
+        (when (a/<! (driver-api/canceled-chan))
           (mongo.util/kill-session! client-database session)))
       (let [aggregate ^AggregateIterable (*aggregate* client-database
                                                       collection-name

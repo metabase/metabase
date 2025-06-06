@@ -739,7 +739,7 @@
     (driver-api/database (driver-api/metadata-provider))
     {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))}
     (fn [^Connection conn]
-      (with-open [stmt          (statement-or-prepared-statement driver conn sql params driver-api/*canceled-chan*)
+      (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                   ^ResultSet rs (try
                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                   (catch Throwable e
@@ -751,12 +751,12 @@
                                                     e))))]
         (let [rsmeta           (.getMetaData rs)
               results-metadata {:cols (column-metadata driver rsmeta)}]
-          (try (respond results-metadata (reducible-rows driver rs rsmeta driver-api/*canceled-chan*))
+          (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
                ;; Following cancels the statment on the dbms side.
                ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
                ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
-               ;; It also handles situation where query is canceled through [[driver-api/*canceled-chan*]] (#41448).
+               ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
                (finally
                  ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
                  ;;       It should be removed afterwards!

@@ -673,7 +673,7 @@
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
                   (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (*process-native* respond database sql params driver-api/*canceled-chan*)))))
+        (*process-native* respond database sql params (driver-api/canceled-chan))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

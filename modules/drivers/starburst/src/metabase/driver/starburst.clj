@@ -630,7 +630,8 @@
 (defn- impersonate-user
   [^Connection conn]
   (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (let [email (get (deref driver-api/*current-user*) :email)]
+    #_{:clj-kondo/ignore [:deprecated-var]}
+    (let [email (get (deref (driver-api/current-user)) :email)]
       (log/info "[starburst] Using legacy impersonation.")
       (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))))
 
@@ -921,7 +922,8 @@
 (defn- remove-role? [details-map]
   (and
    (:impersonation details-map)
-   (not= (get (deref driver-api/*current-user*) :email) (:user details-map))))
+   #_{:clj-kondo/ignore [:deprecated-var]}
+   (not= (get (deref (driver-api/current-user)) :email) (:user details-map))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :starburst
   [_ details-map]

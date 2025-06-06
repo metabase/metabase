@@ -73,7 +73,6 @@
  annotate/aggregation-name
  annotate/base-type-inferer
  annotate/merged-column-info
- api/*current-user*
  appearance/site-name
  classloader/the-classloader
  config/is-prod?
@@ -135,7 +134,6 @@
  qp.compile/compile
  qp.debug/debug>
  qp.i/*disable-qp-logging*
- qp.pipeline/*canceled-chan*
  qp.preprocess/preprocess
  qp.reducible/reducible-rows
  qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
@@ -164,6 +162,17 @@
  sync-util/name-for-logging
  system/site-uuid
  upload/current-database)
+
+(defn ^:deprecated current-user
+  "Fetch the user making the request."
+  []
+  api/*current-user*)
+
+(defn canceled-chan
+  "If this channel is bount you can check if it has received a message
+  to see if the query has been canceled."
+  []
+  qp.pipeline/*canceled-chan*)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
