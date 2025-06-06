@@ -124,7 +124,7 @@ export const useTranslateFieldValuesInHoveredObject = (
   }, [obj, tc]);
 };
 
-const translateFieldValuesInSeries = (
+export const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
 ) => {
