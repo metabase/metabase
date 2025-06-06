@@ -88,7 +88,7 @@ You can opt for the full data picker by setting `data_picker=staged`.
 The above data picker has three entity types selected:
 
 ```
-data_picker=staged&entity_types=tables,models,questions
+data_picker=staged&entity_types=table,model,question
 ```
 
 ## `entity_types`
