@@ -169,7 +169,7 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
       databases={databases}
       selectedDatabaseId={database?.id}
       setDatabaseFn={setDatabaseId}
-      isInitiallyOpen={database == null}
+      isInitiallyOpen={database == null && databases.length > 1}
       readOnly={readOnly}
     />
   </div>

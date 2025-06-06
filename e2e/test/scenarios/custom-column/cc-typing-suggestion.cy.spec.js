@@ -203,6 +203,12 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.get().findByText('"baz"').click();
     verifyHelptextPosition('"baz"');
   });
+
+  it("should not show helptext for functions that are not supported by the expression mode", () => {
+    addCustomColumn();
+    H.CustomExpressionEditor.type("Average([Price]){leftarrow}{leftarrow}");
+    H.CustomExpressionEditor.helpText().should("not.exist");
+  });
 });
 
 const addCustomColumn = () => {

@@ -407,6 +407,104 @@ describe("diagnostics", () => {
         );
       });
     });
+
+    it("should reject aggregations functions in expression mode", () => {
+      const mode = "expression";
+      expect(err("CumulativeCount([Total])", mode)).toBe(
+        "Aggregations like CumulativeCount are not allowed when building a custom expression",
+      );
+      expect(err("CumulativeSum([Total])", mode)).toBe(
+        "Aggregations like CumulativeSum are not allowed when building a custom expression",
+      );
+      expect(err("Count([Total])", mode)).toBe(
+        "Aggregations like Count are not allowed when building a custom expression",
+      );
+      expect(err("Sum([Total])", mode)).toBe(
+        "Aggregations like Sum are not allowed when building a custom expression",
+      );
+      expect(err("Distinct([Total])", mode)).toBe(
+        "Aggregations like Distinct are not allowed when building a custom expression",
+      );
+      expect(err("Average([Total])", mode)).toBe(
+        "Aggregations like Average are not allowed when building a custom expression",
+      );
+      expect(err("Median([Total])", mode)).toBe(
+        "Aggregations like Median are not allowed when building a custom expression",
+      );
+      expect(err("Min([Total])", mode)).toBe(
+        "Aggregations like Min are not allowed when building a custom expression",
+      );
+      expect(err("Max([Total])", mode)).toBe(
+        "Aggregations like Max are not allowed when building a custom expression",
+      );
+      expect(err("Share([Total] = 10)", mode)).toBe(
+        "Aggregations like Share are not allowed when building a custom expression",
+      );
+      expect(err("CountIf([Total] = 10)", mode)).toBe(
+        "Aggregations like CountIf are not allowed when building a custom expression",
+      );
+      expect(err("DistinctIf([Total], [Tax] = 10)", mode)).toBe(
+        "Aggregations like DistinctIf are not allowed when building a custom expression",
+      );
+      expect(err("SumIf([Total], [Tax] = 10)", mode)).toBe(
+        "Aggregations like SumIf are not allowed when building a custom expression",
+      );
+      expect(err("Variance([Total])", mode)).toBe(
+        "Aggregations like Variance are not allowed when building a custom expression",
+      );
+      expect(err("Percentile([Total], 0.9)", mode)).toBe(
+        "Aggregations like Percentile are not allowed when building a custom expression",
+      );
+    });
+
+    it("should reject aggregations functions in filter mode", () => {
+      const mode = "filter";
+      expect(err("CumulativeCount([Total] > 1)", mode)).toBe(
+        "Aggregations like CumulativeCount are not allowed when building a custom filter",
+      );
+      expect(err("CumulativeSum([Total] > 1)", mode)).toBe(
+        "Aggregations like CumulativeSum are not allowed when building a custom filter",
+      );
+      expect(err("Count([Total] > 1)", mode)).toBe(
+        "Aggregations like Count are not allowed when building a custom filter",
+      );
+      expect(err("Sum([Total])", mode)).toBe(
+        "Aggregations like Sum are not allowed when building a custom filter",
+      );
+      expect(err("Distinct([Total])", mode)).toBe(
+        "Aggregations like Distinct are not allowed when building a custom filter",
+      );
+      expect(err("Average([Total])", mode)).toBe(
+        "Aggregations like Average are not allowed when building a custom filter",
+      );
+      expect(err("Median([Total])", mode)).toBe(
+        "Aggregations like Median are not allowed when building a custom filter",
+      );
+      expect(err("Min([Total])", mode)).toBe(
+        "Aggregations like Min are not allowed when building a custom filter",
+      );
+      expect(err("Max([Total])", mode)).toBe(
+        "Aggregations like Max are not allowed when building a custom filter",
+      );
+      expect(err("Share([Total] = 10)", mode)).toBe(
+        "Aggregations like Share are not allowed when building a custom filter",
+      );
+      expect(err("CountIf([Total] = 10)", mode)).toBe(
+        "Aggregations like CountIf are not allowed when building a custom filter",
+      );
+      expect(err("DistinctIf([Total], [Tax] = 10)", mode)).toBe(
+        "Aggregations like DistinctIf are not allowed when building a custom filter",
+      );
+      expect(err("SumIf([Total], [Tax] = 10)", mode)).toBe(
+        "Aggregations like SumIf are not allowed when building a custom filter",
+      );
+      expect(err("Variance([Total])", mode)).toBe(
+        "Aggregations like Variance are not allowed when building a custom filter",
+      );
+      expect(err("Percentile([Total], 0.9)", mode)).toBe(
+        "Aggregations like Percentile are not allowed when building a custom filter",
+      );
+    });
   });
 
   describe("diagnoseAndCompile", () => {

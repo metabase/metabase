@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
@@ -86,7 +86,7 @@ describe("BaseItemsTable", () => {
 
   it("displays item data", () => {
     setup();
-    const lastEditedAt = moment(timestamp).format("MMMM D, YYYY");
+    const lastEditedAt = dayjs(timestamp).format("MMMM D, YYYY");
 
     expect(screen.getByText(ITEM.name)).toBeInTheDocument();
     expect(screen.getByText("John Doe")).toBeInTheDocument();
@@ -95,12 +95,12 @@ describe("BaseItemsTable", () => {
 
   it("displays last edit time on hover", async () => {
     setup();
-    const lastEditedAt = moment(timestamp).format("MMMM D, YYYY");
+    const lastEditedAt = dayjs(timestamp).format("MMMM D, YYYY");
 
     await userEvent.hover(screen.getByText(lastEditedAt));
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
+      dayjs(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
     );
   });
 

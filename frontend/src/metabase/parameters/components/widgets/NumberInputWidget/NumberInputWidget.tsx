@@ -12,6 +12,7 @@ import {
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterValue,
@@ -80,7 +81,14 @@ export function NumberInputWidget({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!isValid || (isRequired && isEmpty)) {
+    if (!isValid) {
+      return;
+    }
+
+    if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default);
+      }
       return;
     }
 

@@ -93,7 +93,7 @@
                          {:in       :query
                           :name     "value"
                           :required true
-                          :schema   {:$ref "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}}]}}
+                          :schema   {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}]}}
           (-> (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.open-api-test) "")
               (get-in [:paths "/{id}"])))))
 
@@ -162,7 +162,7 @@
                  {:type     :object
                   :required ["dashcards"]
                   :properties
-                  {"name"      {:$ref "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}
+                  {"name"      {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}
                    "dashcards" {:type :array
                                 :description string?
                                 :items       {:type       :object
@@ -180,7 +180,7 @@
   (is (=? {:paths      {"/{id}/upload" {:post {}}
                         "/{id}"        {:get  {}
                                         :post {}}}
-           :components {:schemas {"metabase.lib.schema.common/non-blank-string" {:type :string, :minLength 1}}}}
+           :components {:schemas {"metabase.lib.schema.common.non-blank-string" {:type :string, :minLength 1}}}}
           (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.open-api-test) ""))))
 
 (deftest ^:parallel openapi-all-routes

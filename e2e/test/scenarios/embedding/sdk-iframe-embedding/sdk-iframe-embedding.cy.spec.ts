@@ -183,19 +183,4 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.get("iframe").invoke("attr", "src").should("eq", originalSrc);
     });
   });
-
-  it("shows an error if we are using an API key in production", () => {
-    cy.log("restore the current page's domain");
-    cy.visit("http://localhost:4000");
-
-    cy.log("visit a test page with an origin of example.com using api keys");
-    const frame = H.loadSdkIframeEmbedTestPage({
-      origin: "http://example.com",
-      template: "exploration",
-    });
-
-    frame
-      .findByText("Using an API key in production is not allowed.")
-      .should("exist");
-  });
 });

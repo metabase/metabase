@@ -1,5 +1,4 @@
 import { useContext, useEffect } from "react";
-import { useKeyPressEvent } from "react-use";
 
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 
@@ -25,9 +24,7 @@ export const UserHasSeen = ({
   const indicatorContext = useContext(UserHasSeenAllContext);
   const { upsertBadge, removeBadge } = indicatorContext ?? {};
 
-  const [hasSeen, { ack, isLoading, unack }] = useUserAcknowledgement(id, true);
-
-  useKeyPressEvent("q", unack);
+  const [hasSeen, { ack, isLoading }] = useUserAcknowledgement(id, true);
 
   useEffect(() => {
     const hasContext = upsertBadge && removeBadge;

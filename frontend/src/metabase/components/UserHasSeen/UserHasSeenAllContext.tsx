@@ -5,7 +5,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useKeyPressEvent } from "react-use";
 
 import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 
@@ -60,8 +59,6 @@ const useUserHasSeenAll = (id: string) => {
     key: id,
     defaultValue: EMPTY_ARRAY,
   });
-
-  useKeyPressEvent("q", () => setSeenBadges?.([]));
 
   const unseenBadges = useMemo(() => {
     return badges

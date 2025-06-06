@@ -2551,3 +2551,62 @@ describe("issue 57697", () => {
       });
   });
 });
+
+describe("issue 32499", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Self-join columns can be edited independently", () => {
+    H.createQuestion(
+      {
+        name: "Model",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [
+            ["field", ORDERS.ID, null],
+            ["field", ORDERS.USER_ID, null],
+          ],
+          joins: [
+            {
+              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders" }]],
+              alias: "Orders",
+              "source-table": ORDERS_ID,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", ORDERS.ID, null],
+                ["field", ORDERS.ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openQuestionActions("Edit metadata");
+
+    const columns = [
+      { original: "Orders → User ID", modified: "JOIN COLUMN" },
+      { original: "User ID", modified: "ORIGINAL COLUMN" },
+    ];
+
+    // we can click the headers and modify their names
+    for (const { original, modified } of columns) {
+      H.tableHeaderClick(original);
+      cy.findByLabelText("Display name")
+        .should("have.value", original)
+        .click()
+        .clear()
+        .type(modified);
+    }
+
+    // the modified names are now in the headers
+    for (const { modified } of columns) {
+      H.tableHeaderColumn(modified).should("exist");
+    }
+  });
+});

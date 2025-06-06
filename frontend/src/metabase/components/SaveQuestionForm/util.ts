@@ -85,6 +85,16 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
   }
 }
 
+const getName = (question: Question, originalQuestion: Question | null) => {
+  if (originalQuestion) {
+    // Saved question
+    return t`${originalQuestion.displayName()} - Modified`;
+  }
+
+  // Ad-hoc query
+  return question.displayName() || question.generateQueryDescription() || "";
+};
+
 export const getInitialValues = (
   originalQuestion: Question | null,
   question: Question,
@@ -93,11 +103,6 @@ export const getInitialValues = (
 ): FormValues => {
   const isNewQuestion = originalQuestion && question.card().type === "question";
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
-
-  const getOriginalNameModification = (originalQuestion: Question | null) =>
-    originalQuestion
-      ? t`${originalQuestion.displayName()} - Modified`
-      : undefined;
 
   const dashboardId =
     question.dashboardId() === undefined || isReadonly
@@ -112,12 +117,7 @@ export const getInitialValues = (
       : question.collectionId();
 
   return {
-    name:
-      // Saved question
-      getOriginalNameModification(originalQuestion) ||
-      // Ad-hoc query
-      question.generateQueryDescription() ||
-      "",
+    name: getName(question, originalQuestion),
     description:
       originalQuestion?.description() || question.description() || "",
     collection_id: collectionId,

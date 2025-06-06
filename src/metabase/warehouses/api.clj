@@ -362,13 +362,13 @@
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
-            include-mirror-databases?]}
+            include-destination-databases?]}
     :- [:map
         [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
-        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
-         database               (api/check-404 (if include-mirror-databases?
+         database               (api/check-404 (if include-destination-databases?
                                                  (t2/select-one :model/Database :id id)
                                                  (t2/select-one :model/Database :id id :router_database_id nil)))
          router-db-id           (:router_database_id database)]
@@ -380,10 +380,10 @@
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
   ([id :- ms/PositiveInt
-    {:keys [include-mirror-databases?]}
+    {:keys [include-destination-databases?]}
     :- [:map
-        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
-   (api/check-404 (if (and include-mirror-databases? api/*is-superuser?*)
+        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+   (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (t2/exists? :model/Database :id id)
                     (t2/exists? :model/Database :id id :router_database_id nil)))))
 
@@ -425,7 +425,7 @@
    (get-database id {:include include
                      :include-editable-data-model? include_editable_data_model
                      :exclude-uneditable-details? exclude_uneditable_details
-                     :include-mirror-databases? true})
+                     :include-destination-databases? true})
    {:include include
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))

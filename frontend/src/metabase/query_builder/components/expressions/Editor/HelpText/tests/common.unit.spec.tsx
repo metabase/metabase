@@ -37,6 +37,7 @@ describe("HelpText (OSS)", () => {
       enclosingFunction: {
         name: "cum-count",
       },
+      expressionMode: "aggregation",
     });
 
     const exampleCodeEl = screen.getByTestId(

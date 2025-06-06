@@ -372,11 +372,12 @@
 (defn- parse-http-client-args
   "Parse the list of required and optional `args` into the various separated params that `-client` requires"
   [args]
-  (let [parsed (http-client-args-parser args)]
-    (when (= parsed :malli.core/invalid)
-      (let [explain-data (mr/explain http-client-args args)]
-        (throw (ex-info (str "Invalid http-client args: " (mu.humanize/humanize explain-data))
-                        explain-data))))
+  (let [parsed (http-client-args-parser args)
+        _ (when (= parsed :malli.core/invalid)
+            (let [explain-data (mr/explain http-client-args args)]
+              (throw (ex-info (str "Invalid http-client args: " (mu.humanize/humanize explain-data))
+                              explain-data))))
+        parsed (:values parsed)]
     (cond-> parsed
       ;; escape spaces in url
       (:url parsed)              (update :url url-escape)
@@ -384,7 +385,9 @@
       (:request-options parsed)  (update :request-options :request-options)
       ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {:a 1, :b [2 3]}
       (:query-parameters parsed) (update :query-parameters (fn [query-params]
-                                                             (update-vals (group-by :k query-params)
+                                                             (update-vals (->> query-params
+                                                                               (map :values)
+                                                                               (group-by :k))
                                                                           (fn [values]
                                                                             (if (> (count values) 1)
                                                                               (map :v values)

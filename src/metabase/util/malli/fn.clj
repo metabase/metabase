@@ -54,10 +54,11 @@
   the arity."
   [{:keys [args], :as _arity} return-schema {:keys [target], :as _options}]
   (let [parsed       (md/parse (add-default-schemas args))
-        varargs-info (get-in parsed [:parsed :rest :arg :arg])
-        varargs-type (cond
-                       (= (first varargs-info) :map) :varargs/map
-                       (seq varargs-info)            :varargs/sequential)
+        varargs-info (get-in parsed [:parsed :values :rest :values :arg :values :arg])
+        varargs-type (when varargs-info
+                       (if (= (:key varargs-info) :map)
+                         :varargs/map
+                         :varargs/sequential))
         schema       (case target
                        :target/metadata        (if (= varargs-type :varargs/map)
                                                  (vec (concat (butlast (:schema parsed)) [[:* :any]]))
@@ -131,14 +132,15 @@
    (fn-schema parsed {:target :target/instrumentation}))
 
   ([parsed options]
-   (let [{:keys [return arities]}     parsed
-         return-schema                (:schema return :any)
-         [arities-type arities-value] arities]
+   (let [{:keys [return arities]}     (:values parsed)
+         return-schema                (:schema (:values return) :any)
+         arities-type (:key arities)
+         arities-value (:values (:value arities))]
      (case arities-type
        :single   (arity-schema arities-value return-schema options)
        :multiple (into [:function]
                        (for [arity (:arities arities-value)]
-                         (arity-schema arity return-schema options)))))))
+                         (arity-schema (:values arity) return-schema options)))))))
 
 (defn- deparameterized-arity [{:keys [body args prepost], :as _arity}]
   (concat
@@ -149,11 +151,14 @@
 
 (defn deparameterized-fn-tail
   "Generate a deparameterized `fn` tail (the contents of a `fn` form after the `fn` symbol)."
-  [{[arities-type arities-value] :arities, :as _parsed}]
-  (let [body (case arities-type
+  [parsed]
+  (let [arities (:arities (:values parsed))
+        arities-type (:key arities)
+        arities-value (:values (:value arities))
+        body (case arities-type
                :single   (deparameterized-arity arities-value)
                :multiple (for [arity (:arities arities-value)]
-                           (deparameterized-arity arity)))]
+                           (deparameterized-arity (:values arity))))]
     body))
 
 (defn deparameterized-fn-form

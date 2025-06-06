@@ -1,5 +1,3 @@
-import { Flex } from "metabase/ui";
-
 import {
   AdminContent,
   AdminMain,
@@ -10,7 +8,6 @@ import {
 interface AdminLayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
-  upsell?: React.ReactNode;
   headerHeight?: number;
 }
 
@@ -18,7 +15,6 @@ export function AdminLayout({
   sidebar,
   children,
   headerHeight,
-  upsell,
 }: AdminLayoutProps) {
   return (
     <AdminWrapper headerHeight={headerHeight}>
@@ -27,14 +23,7 @@ export function AdminLayout({
           {sidebar}
         </AdminSidebar>
         <AdminContent data-testid="admin-layout-content">
-          {upsell ? (
-            <Flex justify="space-between" w="100%">
-              {children}
-              {upsell}
-            </Flex>
-          ) : (
-            children
-          )}
+          {children}
         </AdminContent>
       </AdminMain>
     </AdminWrapper>

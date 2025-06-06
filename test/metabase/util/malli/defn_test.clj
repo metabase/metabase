@@ -161,9 +161,7 @@
 
 (deftest ^:parallel preserve-arglists-metadata-test
   (is (= 'java.lang.Integer
-         (-> '{:arities [:single {:args    ^{:tag Integer} [x :- :int y :- :int]
-                                  :prepost nil
-                                  :body    [(+ x y)]}]}
+         (-> (mu.fn/parse-fn-tail '[^Integer [x :- :int y :- :int] (+ x y)])
              (#'mu.defn/deparameterized-arglists)
              first
              meta

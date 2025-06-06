@@ -2023,3 +2023,36 @@ describe.skip("issue 58371", () => {
     );
   });
 });
+
+describe("Issue 58230", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should display an error when using an aggregation function in a custom column (metabase#58230)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom expression",
+    );
+  });
+
+  it("should display an error when using an aggregation function in a custom filter (metabase#58230)", () => {
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom filter",
+    );
+  });
+
+  it("should not display an error when using an aggregation function in a custom aggregation (metabase#58230)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.CustomExpressionEditor.nameInput().type("Foo");
+    H.popover().button("Done").should("be.enabled");
+  });
+});

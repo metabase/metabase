@@ -2,7 +2,7 @@ import { UpsellWhitelabel } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_WHITELABEL } from "metabase/plugins";
 
-export function AppearanceSettingsPage({ tab }: { tab: string }) {
+export function AppearanceSettingsPage({ tab }: { tab?: string }) {
   const hasWhitelabeling = useHasTokenFeature("whitelabel");
 
   if (hasWhitelabeling) {

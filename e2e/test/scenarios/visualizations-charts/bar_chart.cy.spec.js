@@ -964,4 +964,22 @@ describe("scenarios > visualizations > bar chart", () => {
     H.otherSeriesChartPaths().first().realHover();
     H.assertEChartsTooltip({ rows: [{ name: "Max", value: "3" }] });
   });
+
+  it("should format goal tooltip value as a percent when the Stacking option is 'Stack - 100%'", () => {
+    H.visitQuestionAdhoc({
+      ...breakoutBarChart,
+      visualization_settings: {
+        "graph.goal_value": 87.5,
+        "graph.show_goal": true,
+        "stackable.stack_type": "normalized",
+      },
+    });
+
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
+
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("87.5%").should("exist");
+    });
+  });
 });

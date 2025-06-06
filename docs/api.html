@@ -6080,57 +6080,10 @@ redirect_from:
         "tags" : [ "/api/ee/billing" ]
       }
     },
-    "/api/ee/data-editing/table/{table-id}" : {
+    "/api/ee/database-routing/destination-database" : {
       "post" : {
-        "summary" : "POST /api/ee/data-editing/table/{table-id}",
-        "description" : "Insert row(s) into the given table.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "table-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/ee/data-editing" ]
-      },
-      "put" : {
-        "summary" : "PUT /api/ee/data-editing/table/{table-id}",
-        "description" : "Update row(s) within the given table.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "table-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/ee/data-editing" ]
-      },
-      "delete" : {
-        "summary" : "DELETE /api/ee/data-editing/table/{table-id}",
-        "description" : "Delete row(s) from the given table",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "table-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/ee/data-editing" ]
-      }
-    },
-    "/api/ee/database-routing/mirror-database" : {
-      "post" : {
-        "summary" : "POST /api/ee/database-routing/mirror-database",
-        "description" : "Create new Mirror Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+        "summary" : "POST /api/ee/database-routing/destination-database",
+        "description" : "Create new destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
         "parameters" : [ {
           "in" : "query",
           "name" : "check_connection_details",
@@ -6145,7 +6098,7 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "mirrors" : {
+                  "destinations" : {
                     "type" : "array",
                     "items" : {
                       "type" : "object",
@@ -6169,7 +6122,7 @@ redirect_from:
                     "minimum" : 1
                   }
                 },
-                "required" : [ "router_database_id", "mirrors" ]
+                "required" : [ "router_database_id", "destinations" ]
               }
             }
           }

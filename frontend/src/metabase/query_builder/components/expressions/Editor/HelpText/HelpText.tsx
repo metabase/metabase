@@ -15,6 +15,7 @@ import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   type HelpText,
+  expressionModeSupportsClause,
   getClauseDefinition,
   getHelpText,
 } from "metabase-lib/v1/expressions";
@@ -47,6 +48,7 @@ export type HelpTextProps = {
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
+  expressionMode: Lib.ExpressionMode;
 };
 
 function getDatabase(query: Lib.Query, metadata: Metadata) {
@@ -78,6 +80,7 @@ export function HelpText({
   query,
   metadata,
   reportTimezone,
+  expressionMode,
 }: HelpTextProps) {
   const database = getDatabase(query, metadata);
   const helpText =
@@ -86,7 +89,10 @@ export function HelpText({
       : null;
 
   const clause = helpText && getClauseDefinition(helpText.name);
-  const isSupported = clause && database?.hasFeature(clause?.requiresFeature);
+  const isSupported =
+    clause &&
+    database?.hasFeature(clause?.requiresFeature) &&
+    expressionModeSupportsClause(expressionMode, clause.name);
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     helpText?.docsUrl ?? "",

@@ -174,7 +174,7 @@ export const SaveQuestionProvider = ({
 
   return (
     <FormProvider
-      initialValues={{ ...initialValues }}
+      initialValues={initialValues}
       onSubmit={handleSubmit}
       validationSchema={SAVE_QUESTION_SCHEMA}
       enableReinitialize
