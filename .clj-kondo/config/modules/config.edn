@@ -295,16 +295,6 @@
            task
            util}}
 
-<<<<<<< HEAD
-||||||| parent of 5d8cc509f77 (Content translation: validate uploads (#57544))
-  content-verification
-  {:api  #{metabase.content-verification.core
-           metabase.content-verification.init}
-   :uses #{app-db
-           models
-           util}}
-
-=======
   content-translation
   {:api  #{metabase.content-translation.api
            metabase.content-translation.models}
@@ -319,7 +309,6 @@
            models
            util}}
 
->>>>>>> 5d8cc509f77 (Content translation: validate uploads (#57544))
   cmd
   {:team "Admin Webapp"
    :api  #{metabase.cmd.copy
@@ -1513,8 +1502,7 @@
            query-analysis
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
