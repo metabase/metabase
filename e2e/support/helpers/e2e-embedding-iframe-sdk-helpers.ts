@@ -4,7 +4,10 @@ import { createApiKey } from "./api";
 import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
-import { mockAuthProviderAndJwtSignIn } from "./embedding-sdk-testing";
+import {
+  enableSamlAuth,
+  mockAuthProviderAndJwtSignIn,
+} from "./embedding-sdk-testing";
 
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
@@ -21,6 +24,7 @@ export interface BaseEmbedTestPageOptions {
   template?: "exploration";
   theme?: MetabaseTheme;
   locale?: string;
+  preferredAuthMethod?: "jwt" | "saml";
 
   // Options for the test page
   origin?: string;
@@ -150,12 +154,18 @@ export function prepareSdkIframeEmbedTest({
   setupMockAuthProviders(enabledAuthMethods);
 }
 
-type EnabledAuthMethods = "jwt" | "api-key";
+type EnabledAuthMethods = "jwt" | "saml" | "api-key";
 
 function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
   if (enabledAuthMethods.includes("jwt")) {
     enableJwtAuth();
     mockAuthProviderAndJwtSignIn();
+  }
+
+  // Doesn't actually allow us to login via SAML, but this tricks
+  // Metabase into thinking that SAML is enabled and configured.
+  if (enabledAuthMethods.includes("saml")) {
+    enableSamlAuth();
   }
 
   if (enabledAuthMethods.includes("api-key")) {

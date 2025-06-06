@@ -106,6 +106,41 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         .should("not.exist");
     });
   });
+
+  it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
+    cy.intercept("GET", "/auth/sso?preferred_method=jwt").as("authSso");
+
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
+    cy.signOut();
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      preferredAuthMethod: "jwt",
+    });
+
+    cy.wait("@authSso").its("response.body.method").should("eq", "jwt");
+    assertDashboardLoaded(frame);
+  });
+
+  it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
+    cy.intercept("GET", "/auth/sso?preferred_method=saml").as("authSso");
+
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
+    cy.signOut();
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      preferredAuthMethod: "saml",
+    });
+
+    cy.log("must fail to login via SAML as the SAML endpoint does not exist");
+    cy.wait("@authSso").its("response.statusCode").should("eq", 500);
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and("contain", "Backend returned an error when refreshing the token.");
+    });
+  });
 });
 
 function assertDashboardLoaded(frame: Cypress.Chainable) {
