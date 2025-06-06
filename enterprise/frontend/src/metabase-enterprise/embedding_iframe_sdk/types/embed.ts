@@ -5,18 +5,36 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk";
+import type { MetabaseError } from "embedding-sdk/errors";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
-export type SdkIframeEmbedTagMessage = {
-  type: "metabase.embed.iframeReady";
-};
+export type SdkIframeEmbedTagMessage =
+  | { type: "metabase.embed.iframeReady" }
+  | { type: "metabase.embed.requestSessionToken" };
 
 /** Events that the sdk embed route listens for */
-export type SdkIframeEmbedMessage = {
-  type: "metabase.embed.setSettings";
-  data: SdkIframeEmbedSettings;
-};
+export type SdkIframeEmbedMessage =
+  | {
+      type: "metabase.embed.setSettings";
+      data: SdkIframeEmbedSettings;
+    }
+  | {
+      type: "metabase.embed.submitSessionToken";
+      data: {
+        authMethod: SdkIframeAuthMethod;
+        sessionToken: MetabaseEmbeddingSessionToken;
+      };
+    }
+  | {
+      type: "metabase.embed.reportAuthenticationError";
+      data: {
+        error: MetabaseError<string, unknown>;
+      };
+    };
+
+type SdkIframeAuthMethod = "saml" | "jwt";
 
 // --- Embed Option Interfaces ---
 

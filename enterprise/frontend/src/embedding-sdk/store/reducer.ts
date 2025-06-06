@@ -1,6 +1,6 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import { samlTokenStorage } from "embedding/auth-common/saml-token-storage";
+import { samlTokenStorage } from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
   MetabaseFetchRequestTokenFn,
