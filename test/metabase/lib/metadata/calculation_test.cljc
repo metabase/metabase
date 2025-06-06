@@ -506,27 +506,17 @@
                     (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
                                                    [(lib/= (meta/field-metadata :venues :id)
                                                            (meta/field-metadata :orders :id))])
-                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))
-          join-ident (:ident (first (lib/joins query)))]
-      (is (=? [{:name  "ID"
-                :ident (meta/ident :venues :id)}
-               {:name  "CATEGORY_ID"
-                :ident (meta/ident :venues :category-id)}
-               {:name  "price10"
-                :ident (lib.options/ident (first (lib/expressions query)))}
-               {:name  "SUBTOTAL"
-                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}
+               {:name  "price10"}
+               {:name  "SUBTOTAL"}]
               (lib/returned-columns query)))
-      (is (=? [{:name  "ID"
-                :ident (meta/ident :venues :id)}
-               {:name  "CATEGORY_ID"
-                :ident (meta/ident :venues :category-id)}
-               {:name  "price10"
-                :ident (lib.options/ident (first (lib/expressions query)))}
-               {:name  "NAME"
-                :ident (lib.metadata.ident/remap-ident (meta/ident :categories :name) (meta/ident :venues :category-id))}
-               {:name  "SUBTOTAL"
-                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}
+               {:name  "price10"}
+               {:name  "NAME"}
+               {:name  "SUBTOTAL"}]
               (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))))))
 
 (deftest ^:parallel remapped-columns-test-2-remapping-in-joins

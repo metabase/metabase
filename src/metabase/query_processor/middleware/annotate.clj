@@ -35,13 +35,13 @@
 (mr/def ::legacy-source
   [:enum :aggregation :fields :breakout :native])
 
-(mr/def ::legacy-field-ref
+(mr/def ::super-broken-legacy-field-ref
   mbql.s/Reference)
 
 (mr/def ::col
   [:map
    [:source    {:optional true} ::legacy-source]
-   [:field-ref {:optional true} ::legacy-field-ref]])
+   [:field-ref {:optional true} ::super-broken-legacy-field-ref]])
 
 (mr/def ::kebab-cased-col
   [:and
@@ -158,10 +158,13 @@
 
     :else
     (throw (ex-info (format (str "column number mismatch between initial metadata columns returned by driver (%d) and"
-                                 " those expected by MLv2 (%d). Did the driver return the wrong number of columns?")
+                                 " those expected by MLv2 (%d). Did the driver return the wrong number of columns? "
+                                 " Or is there a bug in MLv2 metadata calculation?")
                             (count initial-cols)
                             (count lib-cols))
-                    {:initial-cols initial-cols, :lib-cols lib-cols, :type qp.error-type/driver}))))
+                    {:initial-cols (map :name initial-cols)
+                     :lib-cols     (map (some-fn :lib/desired-column-alias :name) lib-cols)
+                     :type         qp.error-type/driver}))))
 
 (mu/defn- source->legacy-source :- ::legacy-source
   [source :- ::lib.schema.metadata/column-source]
@@ -210,12 +213,12 @@
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))
 
-(mu/defn- fe-friendly-expression-ref :- ::legacy-field-ref
+(mu/defn- fe-friendly-expression-ref :- ::super-broken-legacy-field-ref
   "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
   info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
   don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
   will see."
-  [a-ref :- ::legacy-field-ref]
+  [a-ref :- ::super-broken-legacy-field-ref]
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) opts]
@@ -228,10 +231,21 @@
           [:expression expression-name fe-friendly-opts]
           [:expression expression-name])))))
 
-(mu/defn- legacy-field-ref :- [:maybe ::legacy-field-ref]
+(mu/defn- super-broken-legacy-field-ref :- [:maybe ::super-broken-legacy-field-ref]
+  "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage."
   [col :- ::kebab-cased-col]
   (when (= (:lib/type col) :metadata/column)
-    (-> col lib/ref lib/->legacy-MBQL fe-friendly-expression-ref)))
+    (as-> col col
+      ;; MEGA HACK!!! APPARENTLY THE GENERATED FIELD REFS ALWAYS USE THE ORIGINAL NAME OF THE COLUMN, EVEN IF IT'S NOT
+      ;; EVEN THE NAME WE ACTUALLY USE IN THE SOURCE QUERY!! BARF!
+      #_(merge
+       col
+       (when-let [source-column-alias (:lib/source-column-alias col)]
+         {:name source-column-alias}))
+      #_(dissoc col :lib/desired-column-alias :lib/source-column-alias)
+      (lib/ref col)
+      (lib/->legacy-MBQL col)
+      (fe-friendly-expression-ref col))))
 
 (mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-col]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
@@ -242,7 +256,7 @@
    (lib/aggregations query)
    (fn []
      (mapv (fn [col]
-             (let [field-ref (legacy-field-ref col)]
+             (let [field-ref (super-broken-legacy-field-ref col)]
                (cond-> col
                  field-ref (assoc :field-ref field-ref))))
            cols))))
