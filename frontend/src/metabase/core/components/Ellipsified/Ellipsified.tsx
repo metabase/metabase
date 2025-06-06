@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
 import { Text, type TextProps, Tooltip } from "metabase/ui";
 
-interface EllipsifiedProps {
+export interface EllipsifiedProps {
   style?: CSSProperties;
   className?: string;
   showTooltip?: boolean;
@@ -41,7 +41,7 @@ export const Ellipsified = ({
     (showTooltip && (isTruncated || alwaysShowTooltip)) || false;
 
   const truncatedProps: Partial<TextProps> =
-    lines > 1 ? { lineClamp: lines } : { truncate: true };
+    lines > 1 ? { lineClamp: lines } : { truncate: "end" };
 
   return (
     <Tooltip
