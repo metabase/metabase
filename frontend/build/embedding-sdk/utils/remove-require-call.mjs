@@ -1,7 +1,8 @@
-import fs from "fs";
 import path from "path";
 
 import glob from "glob";
+
+import { updateChunkContentAndSourceMap } from "./update-chunk-content-and-source-map.mjs";
 
 const REQUIRE_CALL_REGEXP =
   /return require\.apply\s*\(\s*this\s*,\s*arguments\s*\)/g;
@@ -15,11 +16,9 @@ const REQUIRE_CALL_REGEXP =
 export const removeRequireCall = async ({ buildPath }) => {
   await glob("./**/*.{js,mjs,cjs}", { cwd: buildPath }, (err, files) => {
     files.forEach((file) => {
-      const content = fs.readFileSync(path.join(buildPath, file), "utf8");
-
-      const adjustedContent = content.replace(REQUIRE_CALL_REGEXP, "{}");
-
-      fs.writeFileSync(path.join(buildPath, file), adjustedContent);
+      updateChunkContentAndSourceMap(path.join(buildPath, file), (content) =>
+        content.replace(REQUIRE_CALL_REGEXP, "{}"),
+      );
     });
   });
 };

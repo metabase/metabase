@@ -18,6 +18,7 @@ import {
   SRC_PATH,
 } from "./frontend/build/embedding-sdk/constants/paths.mjs";
 import { RESOLVE_EXTENSIONS } from "./frontend/build/embedding-sdk/constants/resolve-extensions.mjs";
+import { SOURCE_MAPS_ENABLED } from "./frontend/build/embedding-sdk/constants/source-maps-enabled.mjs";
 import {
   EMBEDDING_SDK_VERSION,
   GIT_BRANCH,
@@ -49,7 +50,7 @@ await build({
   shims: true,
   splitting: !IS_DEV_MODE,
   treeshake: !IS_DEV_MODE,
-  sourcemap: false,
+  sourcemap: SOURCE_MAPS_ENABLED,
   minify: !IS_DEV_MODE,
   clean: !IS_DEV_MODE,
   watch: IS_DEV_MODE
@@ -115,6 +116,7 @@ await build({
       filter: /\.styled\.[jt]s?x/,
       config: {
         // The options below extend `babel.config.json`
+        sourceMaps: SOURCE_MAPS_ENABLED,
         presets: [
           [
             "@babel/preset-env",
@@ -161,6 +163,10 @@ await build({
   onSuccess: async () => {
     // Cleanup index.css file, styles are injected into .js file
     fs.rmSync(path.join(BUILD_PATH, "index.css"));
+
+    if (SOURCE_MAPS_ENABLED) {
+      fs.rmSync(path.join(BUILD_PATH, "index.css.map"));
+    }
 
     await removeRequireCall({
       buildPath: BUILD_PATH,
