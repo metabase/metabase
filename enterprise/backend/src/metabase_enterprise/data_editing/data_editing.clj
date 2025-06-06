@@ -66,14 +66,14 @@
                      (if (= 1 (count pk-fields))
                        (apply lib/in
                               (lib.metadata/field mp (:id (first pk-fields)))
-                              (map (comp first vals) row-pks))
+                              (map (comp val first) row-pks))
                        ;; Optimizing this could be done in many cases, but it would be complex.
                        (apply* lib/or
                                (for [row-pk row-pks]
                                  (apply* lib/and
                                          (for [field pk-fields]
                                            (lib/= (lib.metadata/field mp (:id field))
-                                                  (get row-pk (keyword (:name field))))))))))]
+                                                  (get row-pk (:name field)))))))))]
           (->> query
                qp/userland-query-with-default-constraints
                qp/process-query
