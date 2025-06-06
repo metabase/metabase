@@ -1,9 +1,9 @@
-(ns metabase.util.formatting.internal.date-formatters
+(ns metabase.formatter.internal.date-formatters
   "The gory details of transforming date and time styles, with units and other options, into formatting functions.
 
   This namespace deals with the options only, not with specific dates, and returns reusable formatter functions."
   (:require
-   [metabase.util.formatting.internal.date-builder :as builder]))
+   [metabase.formatter.internal.date-builder :as builder]))
 
 (def ^:private iso-format
   [:year "-" :month-dd "-" :day-of-month-dd "T" :hour-24-dd ":" :minute-dd ":" :second-dd])

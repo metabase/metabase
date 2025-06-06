@@ -1,4 +1,4 @@
-(ns metabase.util.formatting.internal.date-builder
+(ns metabase.formatter.internal.date-builder
   "The formatting strings are not standardized.
   Rather than wrangling with strings, this library defines a data structure for describing the format of
   date/time strings.
