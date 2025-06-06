@@ -553,12 +553,6 @@
      :cents-per-unit 0.0000000005
      :total-cents (* 0.0000000005 bytes-scanned)}))
 
-(defmethod driver/execute-reducible-query :athena
-  [driver query context respond]
-  (assert (empty? (get-in query [:native :params]))
-          "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
-  (execute-reducible-query driver query context respond))
-
 ;; Copied from sql-jdbc.execute with some slight variations
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
@@ -613,3 +607,9 @@
                                      (name driver)))
                         (catch Throwable _
                           (log/warn "Statement cancelation failed."))))))))))))
+
+(defmethod driver/execute-reducible-query :athena
+  [driver query context respond]
+  (assert (empty? (get-in query [:native :params]))
+          "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
+  (execute-reducible-query driver query context respond))
