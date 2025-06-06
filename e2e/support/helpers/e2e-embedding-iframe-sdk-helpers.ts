@@ -1,7 +1,7 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
-import { mockAuthProviderAndJwtSignIn } from "./component-testing-sdk";
+import { mockAuthProviderAndJwtSignIn } from "./component-testing-sdk/component-embedding-sdk-auth-helpers";
 import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
