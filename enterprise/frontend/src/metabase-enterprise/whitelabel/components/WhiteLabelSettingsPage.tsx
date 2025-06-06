@@ -53,14 +53,15 @@ export function WhiteLabelSettingsPage({
 
 function BrandingTab() {
   return (
-    <Stack gap="xl" py="lg" data-testid="branding-settings">
-      <Title order={1}>{t`Branding`}</Title>
-
-      <SettingsSection>
-        <Text>
+    <Stack gap="xl" py="lg" data-testid="branding-settings" maw="50rem">
+      <Box>
+        <Title order={1} pb="xs">{t`Branding`}</Title>
+        <Text c="text-medium" mb="md">
           {t`Configure your instance to match your brand visuals and voice`}
         </Text>
+      </Box>
 
+      <SettingsSection title={t`Colors`}>
         <Box>
           <Text tt="uppercase" fw="bold" c="text-medium">
             {t`Color Palette`}
@@ -71,26 +72,29 @@ function BrandingTab() {
         </Box>
 
         <ColorSettingsWidget />
+      </SettingsSection>
 
-        <Stack maw="40rem" gap="xl">
-          <ImageUploadWidget
-            name="application-logo-url"
-            title={t`Logo`}
-            description={t`For best results, use an SVG file with a transparent
-              background.`}
-          />
-          <FontWidget />
-          <AdminSettingInput
-            name="loading-message"
-            title={t`Loading Message`}
-            inputType="select"
-            options={getLoadingMessageOptions()}
-          />
-          <ImageUploadWidget
-            name="application-favicon-url"
-            title={t`Favicon`}
-          />
-        </Stack>
+      <SettingsSection title={t`Icons`}>
+        <ImageUploadWidget
+          name="application-logo-url"
+          title={t`Logo`}
+          description={t`For best results, use an SVG file with a transparent
+            background.`}
+        />
+        <ImageUploadWidget name="application-favicon-url" title={t`Favicon`} />
+      </SettingsSection>
+
+      <SettingsSection title={t`Fonts`}>
+        <FontWidget />
+      </SettingsSection>
+
+      <SettingsSection>
+        <AdminSettingInput
+          name="loading-message"
+          title={t`Loading Message`}
+          inputType="select"
+          options={getLoadingMessageOptions()}
+        />
       </SettingsSection>
     </Stack>
   );
