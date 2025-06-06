@@ -59,11 +59,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
     <Box ref={buttonContainer}>
       {isCard && clientId ? (
         <ErrorBoundary>
-          <GoogleOAuthProvider
-            clientId={clientId}
-            nonce={window.MetabaseNonce}
-            onScriptLoadSuccess={() => {}}
-          >
+          <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
             <GoogleLogin
               useOneTap
               onSuccess={handleLogin}
