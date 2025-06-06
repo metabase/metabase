@@ -101,10 +101,23 @@ let fakeSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> = {
       updated_at: "2025-05-18T15:30:00Z",
     },
   ],
-  "2": [],
+  "2": [
+    {
+      id: 1,
+      metabot_id: 1,
+      prompt: "What is the total revenue for this quarter?",
+      model: "metric",
+      model_id: 1,
+      model_name: "Quarterly Revenue Calculator",
+      created_at: "2025-05-15T10:30:00Z",
+      updated_at: "2025-05-15T10:30:00Z",
+    },
+  ],
 };
 
-const fakeSuggestedPromptsCopy = structuredClone(fakeSuggestedPrompts);
+const clone = <T>(json: T): T => JSON.parse(JSON.stringify(json));
+
+export const fakeSuggestedPromptsCopy = clone(fakeSuggestedPrompts);
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -198,7 +211,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
           (offset ?? 0) + (limit ?? 50),
         );
 
-        await new Promise((res) => setTimeout(res, Math.random() * 1000));
+        await new Promise((res) => setTimeout(res, 100 + Math.random() * 200));
 
         return {
           data: {
@@ -236,10 +249,8 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       //   url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
       // }),
       queryFn: async () => {
-        fakeSuggestedPrompts = structuredClone(fakeSuggestedPromptsCopy);
-        await new Promise((res) =>
-          setTimeout(res, Math.random() * 2000 + 3000),
-        );
+        fakeSuggestedPrompts = clone(fakeSuggestedPromptsCopy);
+        await new Promise((res) => setTimeout(res, 100 + Math.random() * 200));
         return { data: {} as any };
       },
       invalidatesTags: (_, error, metabot_id) =>

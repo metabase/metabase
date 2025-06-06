@@ -77,7 +77,10 @@ export function MetabotAdminPage() {
                 metabotName={metabotName}
               />
               {hasEntities && (
-                <MetabotPromptSuggestionPane metabotId={metabotId} />
+                <MetabotPromptSuggestionPane
+                  key={metabotId}
+                  metabotId={metabotId}
+                />
               )}
             </>
           )}

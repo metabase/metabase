@@ -1,3 +1,4 @@
+import { useClipboard } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -23,18 +24,22 @@ import {
   useGetSuggestedMetabotPromptsQuery,
   useRefreshSuggestedMetabotPromptsMutation,
 } from "metabase-enterprise/api";
+import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 import * as Urls from "metabase-enterprise/urls";
 import type { MetabotId, SuggestedMetabotPrompt } from "metabase-types/api";
 
+export const PAGE_SIZE = 3;
+
 export const MetabotPromptSuggestionPane = ({
   metabotId,
+  pageSize = PAGE_SIZE,
 }: {
   metabotId: MetabotId;
+  pageSize?: number;
 }) => {
   const [sendToast] = useToast();
 
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
-  const pageSize = 3;
   const offset = page * pageSize;
 
   const { data, isLoading, error } = useGetSuggestedMetabotPromptsQuery({
@@ -135,6 +140,7 @@ export const MetabotPromptSuggestionPane = ({
                 key={row.id}
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
+                metabotId={metabotId}
               />
             )
           }
@@ -160,6 +166,7 @@ export const MetabotPromptSuggestionPane = ({
               showTotal
               onNextPage={handleNextPage}
               onPreviousPage={handlePreviousPage}
+              data-testid="prompts-pagination"
             />
           )}
         </Flex>
@@ -169,7 +176,7 @@ export const MetabotPromptSuggestionPane = ({
 };
 
 const SkeletonSuggestedPromptRow = () => (
-  <Box component="tr" h="3.5rem">
+  <Box component="tr" h="3.5rem" data-testid="prompt-loading-row">
     <td>
       <Skeleton h="1rem" natural />
     </td>
@@ -185,37 +192,56 @@ const SkeletonSuggestedPromptRow = () => (
 const SuggestedPromptRow = ({
   row,
   onDelete,
+  metabotId,
 }: {
   row: SuggestedMetabotPrompt;
   onDelete: () => Promise<void>;
-}) => (
-  <Box component="tr" mih="3.5rem">
-    <Box component="td" py="1rem">
-      <Flex gap="sm">{row.prompt}</Flex>
+  metabotId: number;
+}) => {
+  const clipboard = useClipboard();
+
+  return (
+    <Box component="tr" mih="3.5rem">
+      <Box component="td" py="1rem">
+        <Flex gap="sm">{row.prompt}</Flex>
+      </Box>
+      <td>
+        <Flex align="center" gap="sm">
+          <Icon name={row.model} c="text-medium" /> {row.model_name}
+        </Flex>
+      </td>
+      <Box component="td" h="3.5rem">
+        <Flex align="center" gap="sm">
+          {metabotId === FIXED_METABOT_IDS.DEFAULT ? (
+            <Tooltip label={t`Run prompt`}>
+              <ActionIcon
+                component={ForwardRefLink}
+                to={Urls.newMetabotConversation({ prompt: row.prompt })}
+                data-testid="prompt-run"
+                target="_blank"
+                h="sm"
+              >
+                <Icon name="play" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          ) : (
+            <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy prompt`}>
+              <ActionIcon
+                onClick={() => clipboard.copy(row.prompt)}
+                data-testid="prompt-copy"
+                h="sm"
+              >
+                <Icon name="copy" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          <Tooltip label={t`Remove prompt`}>
+            <ActionIcon onClick={onDelete} data-testid="prompt-remove" h="sm">
+              <Icon name="trash" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
+        </Flex>
+      </Box>
     </Box>
-    <td>
-      <Flex align="center" gap="sm">
-        <Icon name={row.model} c="text-medium" /> {row.model_name}
-      </Flex>
-    </td>
-    <Box component="td" h="3.5rem">
-      <Flex align="center" gap="sm">
-        <Tooltip label={t`Run prompt`}>
-          <ActionIcon
-            component={ForwardRefLink}
-            to={Urls.newMetabotConversation({ prompt: row.prompt })}
-            target="_blank"
-            h="sm"
-          >
-            <Icon name="sql" size="1rem" />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label={t`Remove prompt`}>
-          <ActionIcon onClick={onDelete} h="sm">
-            <Icon name="trash" size="1rem" />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
-    </Box>
-  </Box>
-);
+  );
+};
