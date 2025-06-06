@@ -258,6 +258,7 @@ export const getCollectionsPermissionEditor = createSelector(
       ];
 
       const isIACollection = isInstanceAnalyticsCollection(collection);
+      const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
       const options = isIACollection
         ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
@@ -271,6 +272,9 @@ export const getCollectionsPermissionEditor = createSelector(
         ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
         : UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
+      const disabled =
+        (isTenantCollection && !isExternal) || isAdmin || isExternal;
+
       return {
         id: group.id,
         name: getGroupNameLocalized(group),
@@ -278,7 +282,7 @@ export const getCollectionsPermissionEditor = createSelector(
           {
             toggleLabel,
             hasChildren,
-            isDisabled: isAdmin || isExternal,
+            isDisabled: disabled,
             disabledTooltip: isAdmin ? disabledTooltip : null,
             value: getCollectionPermission(
               permissions,
