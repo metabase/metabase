@@ -1822,7 +1822,7 @@ describe("issue 55300", () => {
     it("should be possible to disambiguate between segments and no-argument functions (metabase#55300)", () => {
       H.addCustomColumn();
 
-      H.CustomExpressionEditor.type("case(now, now(), 0)");
+      H.CustomExpressionEditor.type("case(now, now(), [Created At])");
 
       cy.log("Move cursor over now()");
       H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
