@@ -19,8 +19,9 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- standardize-metadata [metadata]
+(defn- standardize-metadata
   "Smooth out any unimportant differences in metadata so we can do an easy equality check."
+  [metadata]
   (mapv #(dissoc % :ident) metadata))
 
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
