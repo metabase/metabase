@@ -192,6 +192,7 @@
   "Map representing the `refingerprint` option in a DB connection form."
   {:name         "refingerprint"
    :type         :boolean
+   :default      false
    :display-name (deferred-tru "Periodically refingerprint tables")
    :description  (deferred-tru
                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
