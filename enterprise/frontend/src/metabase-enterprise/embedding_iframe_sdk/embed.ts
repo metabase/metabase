@@ -233,7 +233,7 @@ class MetabaseEmbed {
 
     const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
       headers: this._getAuthRequestHeader(),
-      authMethod: preferredAuthMethod,
+      preferredAuthMethod,
     });
 
     const { method, url: responseUrl, hash } = urlResponseJson || {};
