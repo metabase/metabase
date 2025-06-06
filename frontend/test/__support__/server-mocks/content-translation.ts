@@ -1,23 +1,28 @@
 import fetchMock from "fetch-mock";
 
-import type { DictionaryResponse } from "metabase-types/api";
+import type { DictionaryArray, DictionaryResponse } from "metabase-types/api";
 
 export function setupContentTranslationEndpoints({
   dictionary = [],
+  uploadSuccess = true,
 }: {
-  dictionary?: DictionaryResponse["data"];
-}) {
+  dictionary?: DictionaryArray;
+  uploadSuccess?: boolean;
+} = {}) {
   fetchMock.post("path:/api/ee/content-translation/upload-dictionary", () => ({
-    success: true,
+    success: uploadSuccess,
   }));
+
   fetchMock.get(
-    "path:/api/ee/embedded-content-translation/dictionary/*",
+    "express:/api/ee/embedded-content-translation/dictionary/:token",
     (url): DictionaryResponse => {
       const localeCode = new URL(url).searchParams.get("locale");
       if (!localeCode) {
         throw new Error("Locale is required");
       }
-      const data = dictionary.filter((row) => row.locale === localeCode);
+      const data: DictionaryResponse["data"] = dictionary
+        .filter((row) => row.locale === localeCode)
+        .map((row, i) => ({ ...row, id: i }));
       return { data };
     },
   );
