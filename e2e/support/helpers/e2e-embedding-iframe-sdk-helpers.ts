@@ -55,9 +55,11 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
 
-  cy.visit(testPageUrl);
-
-  onVisitPage?.();
+  cy.visit(testPageUrl, {
+    onLoad() {
+      onVisitPage?.();
+    },
+  });
 
   cy.title().should("include", "Metabase Embed Test");
 
