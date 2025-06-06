@@ -167,7 +167,9 @@
                   :rand)
         base-query (cond-> {:join     [[:metabot_entity :mbe] [:= :mbe.id :metabot_entity_id]
                                        [:report_card :card]   [:= :card.id :card_id]]
-                            :where    [:and [:= :mbe.metabot_id id]]}
+                            :where    [:and
+                                       [:= :mbe.metabot_id id]
+                                       (collection/visible-collection-filter-clause :card.collection_id)]}
                      model    (update :where conj [:= :card.type model])
                      model_id (update :where conj [:= :card.id model_id]))
         total (t2/count :model/MetabotPrompt base-query)
