@@ -1046,3 +1046,70 @@
                     (map
                      #(select-keys % [:display_name :field_ref])
                      metadata)))))))))
+
+(deftest ^:parallel rename-join-with-long-alias-test
+  (let [old-alias   "Products with a very long name - Product ID with a _598bd25b"
+        new-alias   "Products with a very long name - Product ID with a very long name"
+        query       (lib/query
+                     meta/metadata-provider
+                     {:lib/type :mbql/query
+                      :database (meta/id)
+                      :stages [{:lib/type :mbql.stage/mbql
+                                :source-table (meta/id :orders)
+                                :joins [{:lib/type :mbql/join
+                                         :stages [{:lib/type :mbql.stage/mbql
+                                                   :source-table (meta/id :products)}]
+                                         :alias old-alias
+                                         :strategy :left-join
+                                         :fields [[:field {:join-alias old-alias, :base-type :type/BigInteger} (meta/id :products :id)]
+                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :ean)]
+                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :title)]
+                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]
+                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :vendor)]
+                                                  [:field {:join-alias old-alias, :base-type :type/Float} (meta/id :products :price)]
+                                                  [:field {:join-alias old-alias, :base-type :type/Float} (meta/id :products :rating)]
+                                                  [:field {:join-alias old-alias, :base-type :type/DateTimeWithLocalTZ} (meta/id :products :created-at)]]
+                                         :conditions [[:=
+                                                       {}
+                                                       [:field {:base-type :type/Integer} (meta/id :orders :product-id)]
+                                                       [:field {:join-alias old-alias, :base-type :type/BigInteger} (meta/id :products :id)]]]}]
+                                :aggregation [[:count {:name "count"}]]
+                                :breakout [[:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]]
+                                :order-by [[:asc
+                                            {}
+                                            [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]]]}
+                               {:lib/type :mbql.stage/mbql
+                                :fields [[:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]
+                                         [:field {:base-type :type/Integer} "count"]]
+                                :filters [[:=
+                                           {}
+                                           [:field {:base-type :type/Integer} "count"]
+                                           [:value {:base-type :type/Integer, :effective-type :type/Integer} 1337]]]}]
+                      :info {:alias/escaped->original {old-alias new-alias}}})]
+    (is (=? {:stages [{:joins [{:alias new-alias
+                                :strategy :left-join
+                                :fields [[:field {:join-alias new-alias} (meta/id :products :id)]
+                                         [:field {:join-alias new-alias} (meta/id :products :ean)]
+                                         [:field {:join-alias new-alias} (meta/id :products :title)]
+                                         [:field {:join-alias new-alias} (meta/id :products :category)]
+                                         [:field {:join-alias new-alias} (meta/id :products :vendor)]
+                                         [:field {:join-alias new-alias} (meta/id :products :price)]
+                                         [:field {:join-alias new-alias} (meta/id :products :rating)]
+                                         [:field {:join-alias new-alias} (meta/id :products :created-at)]]
+                                :conditions [[:=
+                                              {}
+                                              [:field {} (meta/id :orders :product-id)]
+                                              [:field {:join-alias new-alias} (meta/id :products :id)]]]}]
+                       :breakout [[:field {:join-alias new-alias} (meta/id :products :category)]]
+                       :order-by [[:asc
+                                   {}
+                                   [:field {:join-alias new-alias} (meta/id :products :category)]]]}
+                      {:lib/type :mbql.stage/mbql
+                       :fields [[:field {:join-alias new-alias} (meta/id :products :category)]
+                                [:field {} "count"]]
+                       :filters [[:=
+                                  {}
+                                  [:field {} "count"]
+                                  [:value {:effective-type :type/Integer} 1337]]]}]
+             :info {:alias/escaped->original {old-alias new-alias}}}
+            (#'annotate/rename-join query old-alias new-alias)))))

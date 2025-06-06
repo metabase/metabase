@@ -97,7 +97,7 @@
     ::walk-stages-fn-result
     ::lib.schema.join/join]])
 
-(mu/defn walk
+(mu/defn walk :- ::lib.schema/query
   "Depth-first recursive walk and replace for a `query`; call
 
     (f query path-type path stage-or-join)
@@ -129,12 +129,12 @@
                   (reduced true))))))"
   [query :- ::lib.schema/query
    f     :- [:=>
-             [:cat ::lib.schema/query ::path-type ::path ::stage-or-join]
+             [:cat :map ::path-type ::path ::stage-or-join]
              ::walk-fn-result]]
   (unreduced
    (walk-query*
     query
-    (mu/fn [query     :- ::lib.schema/query
+    (mu/fn [query     :- :map ; query can be invalid during the walk process, only needs to be valid again at the end.
             path-type :- ::path-type
             path      :- ::path]
       (let [stage-or-join  (get-in query path)
@@ -146,16 +146,16 @@
           (sequential? stage-or-join')              (splice-at-point query path stage-or-join')
           :else                                     (assoc-in query path stage-or-join')))))))
 
-(mu/defn walk-stages
+(mu/defn walk-stages :- ::lib.schema/query
   "Like [[walk]], but only walks the stages in a query. `f` is invoked like
 
     (f query path stage) => updated-stage-or-nil"
   [query :- ::lib.schema/query
-   f     :- [:=> [:cat ::lib.schema/query ::path ::lib.schema/stage] ::walk-stages-fn-result]]
+   f     :- [:=> [:cat :map ::path ::lib.schema/stage] ::walk-stages-fn-result]]
   (walk
    query
    (mu/fn :- ::walk-stages-fn-result
-     [query         :- ::lib.schema/query
+     [query         :- :map ; don't re-validate query at every step in case we make edits that make it temporarily invalid
       path-type     :- ::path-type
       path          :- ::path
       stage-or-join :- ::stage-or-join]

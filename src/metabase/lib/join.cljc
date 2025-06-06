@@ -504,7 +504,7 @@
           ;; we leave alone the condition otherwise
           :else &match)))))
 
-(def ^:dynamic *truncate-and-uniqify-join-names*
+(def ^:dynamic ^:deprecated *truncate-and-uniqify-join-names*
   "Whether to truncate and uniqify join names when adding new joins to the query."
   true)
 

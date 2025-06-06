@@ -94,28 +94,48 @@
   (fn [query _rff]
     (first-stage-type query)))
 
+;;; TODO -- move into lib, deduplicate with [[metabase.lib.remove-replace/rename-join]]
+(mu/defn- rename-join :- ::lib.schema/query
+  "Rename all joins with `old-alias` in a query to `new-alias`. Does not currently different between multiple join
+  with the same name appearing in multiple locations. Surgically updates only things that are actual join aliases and
+  not other occurrences of the string.
+
+  This is meant to use to reverse the join renaming done
+  by [[metabase.query-processor.middleware.escape-join-aliases]]."
+  [query     :- ::lib.schema/query
+   old-alias :- ::lib.schema.join/alias
+   new-alias :- ::lib.schema.join/alias]
+  (lib.walk/walk
+   query
+   (letfn [(update-field-refs [x]
+             (if (keyword? x)
+               x
+               (lib.util.match/replace x
+                 [:field (opts :guard #(= (:join-alias %) old-alias)) id-or-name]
+                 [:field (assoc opts :join-alias new-alias) id-or-name])))]
+     (fn [_query path-type _path stage-or-join]
+       (case path-type
+         :lib.walk/join
+         (let [join stage-or-join]
+           (-> join
+               (update :alias (fn [current-alias]
+                                (if (= current-alias old-alias)
+                                  new-alias
+                                  current-alias)))
+               (m/update-existing :fields update-field-refs)
+               (update :conditions update-field-refs)))
+
+         :lib.walk/stage
+         (let [stage stage-or-join]
+           (update-field-refs stage)))))))
+
 (mu/defn- restore-original-join-aliases :- ::lib.schema/query
   [query :- ::lib.schema/query]
-  (binding [lib.join/*truncate-and-uniqify-join-names* false]
-    (let [escaped->original (get-in query [:info :alias/escaped->original])]
-      (if (empty? escaped->original)
-        query
-        (lib.walk/walk-stages
-         query
-         (mu/fn [query  :- ::lib.schema/query
-                 path   :- ::lib.walk/path
-                 _stage :- :map]
-           (let [joins  (lib.walk/apply-f-for-stage-at-path lib/joins query path)
-                 query' (reduce
-                         (mu/fn [query :- ::lib.schema/query
-                                 join  :- ::lib.schema.join/join]
-                           (if-let [original (get escaped->original (lib/current-join-alias join))]
-                             (lib.walk/apply-f-for-stage-at-path lib/rename-join query path join original)
-                             query))
-                         query
-                         joins)]
-             ;; return updated stage.
-             (get-in query' path))))))))
+  (reduce
+   (fn [query [old-alias new-alias]]
+     (rename-join query old-alias new-alias))
+   query
+   (get-in query [:info :alias/escaped->original])))
 
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata from MLv2. We'll generally prefer the values
@@ -293,7 +313,7 @@
                            ;; TODO -- this is supposed to mean `:inherited-temporal-unit` is included in the output
                            ;; but doesn't seem to be working?
                            lib.metadata.calculation/*propagate-binning-and-bucketing* true]
-                   (doall (lib/returned-columns query)))]
+                   (doall (lib/returned-columns query -1 (lib/query-stage query -1) {} #_{:unique-name-fn identity})))]
     (as-> initial-cols cols
       (map (fn [col]
              (update-keys col u/->kebab-case-en))
