@@ -240,11 +240,14 @@
 (deftest ^:parallel card-display-info-test
   (testing "Cards with joins should return correct column metadata/refs (#31769)"
     (let [query (lib.tu.mocks-31769/query)
-          card  (lib.metadata/card query 1)]
-      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1"}
-             (lib/display-info query card)))
-      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :metric? true}
-             (lib/display-info query (assoc card :type :metric)))))))
+          card-1  (lib.metadata/card query 1)
+          card-2  (lib.metadata/card query 2)]
+      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :is-source-card true}
+             (lib/display-info query card-1)))
+      (is (= {:name "Card 2", :display-name "Card 2", :long-display-name "Card 2"}
+             (lib/display-info query card-2)))
+      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :is-source-card true, :metric? true}
+             (lib/display-info query (assoc card-1 :type :metric)))))))
 
 (deftest ^:parallel ->card-metadata-column-test
   (testing ":effective-type is set for columns coming from an aggregation in a card (#47184)"

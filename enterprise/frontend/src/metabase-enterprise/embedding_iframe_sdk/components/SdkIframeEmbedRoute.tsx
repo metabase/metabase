@@ -4,11 +4,11 @@ import { P, match } from "ts-pattern";
 import {
   InteractiveDashboard,
   InteractiveQuestion,
+  MetabaseProvider,
   StaticDashboard,
   StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
-import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
@@ -25,7 +25,7 @@ export const SdkIframeEmbedRoute = () => {
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
-  if (!embedSettings || !embedSettings.instanceUrl || !embedSettings.apiKey) {
+  if (!embedSettings || !embedSettings.instanceUrl) {
     return null;
   }
 
