@@ -410,7 +410,7 @@
 
 (defn- uuid-field?
   [x]
-  (and (mbql.u/mbql-clause? x)
+  (and (driver-api/mbql-clause? x)
        (isa? (or (:effective-type (get x 2))
                  (:base-type (get x 2)))
              :type/UUID)))
