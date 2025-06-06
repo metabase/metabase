@@ -85,7 +85,8 @@ export const AuthCard = ({
       )}
       <ConfirmModal
         opened={isOpened}
-        title={t`Deactivate ${name}?`}
+        title={c("{0} is the name of an authentication service")
+          .t`Deactivate ${name}?`}
         message={t`This will clear all your settings.`}
         confirmButtonText={t`Deactivate`}
         onConfirm={handleDeactivate}
