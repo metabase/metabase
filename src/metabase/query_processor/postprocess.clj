@@ -1,6 +1,5 @@
 (ns metabase.query-processor.postprocess
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]

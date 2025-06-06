@@ -8,13 +8,16 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
-(defn- legacy-inner-query->mlv2-query [inner-query]
+(mu/defn legacy-inner-query->mlv2-query :- ::lib.schema/query
+  "Convert a legacy `inner-query` to an MLv2 query. Requires bound QP store."
+  [inner-query :- :map]
   (qp.store/cached [:mlv2-query (hash inner-query)]
     (try
       (lib/query-from-legacy-inner-query

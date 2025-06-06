@@ -8,6 +8,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
@@ -23,7 +24,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.lib.join :as lib.join]
    [potemkin :as p]))
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)

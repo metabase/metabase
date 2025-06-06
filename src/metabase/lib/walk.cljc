@@ -1,15 +1,13 @@
 (ns metabase.lib.walk
   "Tools for walking and transforming a query."
   (:require
+   [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.lib.join :as lib.join]
-   [metabase.lib.core :as lib]))
+   [metabase.util.malli.registry :as mr]))
 
 (declare walk-stages*)
 
