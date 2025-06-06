@@ -20,15 +20,15 @@
   current user exists, an exception will be thrown."
   ([db-or-id]
    (router-db-or-id->mirror-db-id @api/*current-user* db-or-id))
-  ([user db-or-id]
+  ([current-user db-or-id]
    (when-let [attr-name (user-attribute db-or-id)]
-     (let [database-name (get (:login_attributes user) attr-name)]
+     (let [database-name (get (:attributes current-user) attr-name)]
        (cond
          ;; if database routing is EXPLICITLY off, e.g. in `POST /api/database/:id/sync_schema`, don't do any routing.
          (= :off *database-routing-on*)
          nil
 
-         (nil? user)
+         (nil? current-user)
          (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400}))
 
          (= database-name "__METABASE_ROUTER__")

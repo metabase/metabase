@@ -12,6 +12,7 @@
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.tenants.core :as tenants]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
@@ -180,17 +181,14 @@
            common-name)
       (assoc :common_name common-name))))
 
-(defn- add-tenant-attribute
-  [{:keys [tenant_id] :as user}]
-  (cond-> user
-    tenant_id (assoc-in [:login_attributes "{{tenant_slug}}"]
-                        (t2/select-one-fn :slug :model/Tenant :id tenant_id))))
+(defn add-attributes [{:keys [login_attributes] :as user}]
+  (assoc user :attributes (merge login_attributes (tenants/login-attributes user))))
 
 (t2/define-after-select :model/User
   [user]
   (-> user
       add-common-name
-      add-tenant-attribute))
+      add-attributes))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."

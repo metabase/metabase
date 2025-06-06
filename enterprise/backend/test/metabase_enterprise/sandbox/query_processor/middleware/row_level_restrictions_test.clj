@@ -779,7 +779,7 @@
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
               (is (= {"cat" 40}
-                     (:login_attributes @api/*current-user*)))
+                     (:attributes @api/*current-user*)))
               (let [result (run-query)]
                 (is (= nil
                        (:cached (:cache/details result))))
