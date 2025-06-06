@@ -35,7 +35,7 @@ import {
 } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
-import { contentTranslationEndpoints } from "../constants";
+import { contentTranslationEndpoints } from "../../constants";
 
 /** Maximum file size for uploaded content-translation dictionaries, expressed
  * in mebibytes. */

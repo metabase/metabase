@@ -334,13 +334,13 @@ export function setPublicDashboardEndpoints(uuid) {
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
   setCardEndpoints(`${embedBase}/card/${encodedToken}`);
-  PLUGIN_CONTENT_TRANSLATION.setEndpoints(encodedToken);
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
 export function setEmbedDashboardEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
   setDashboardEndpoints(`${embedBase}/dashboard/${encodedToken}`);
-  PLUGIN_CONTENT_TRANSLATION.setEndpoints(encodedToken);
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
 function GET_with(url, omitKeys) {
