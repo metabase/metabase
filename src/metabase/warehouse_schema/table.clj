@@ -1,12 +1,13 @@
 (ns metabase.warehouse-schema.table
   (:require
+   #_[metabase.sync.analyze.fingerprint :as analyze.fingerprint]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.sync.analyze.fingerprint :as analyze.fingerprint]
+   [metabase.sync.analyze :as analyze]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
@@ -235,7 +236,8 @@
     (api/write-check table)
     (api/read-check table))
   (try
-    (analyze.fingerprint/fingerprint-table! table)
+    #_(analyze.fingerprint/fingerprint-table! table)
+    (analyze/analyze-table! table)
     (catch Throwable t
       (log/errorf "Fingerprinting of table %d failed" (:id table))
       (log/debug t)))
@@ -261,7 +263,8 @@
           ;; brute force for now
           _ (doseq [table tables]
               (try
-                (analyze.fingerprint/fingerprint-table! table)
+                #_(analyze.fingerprint/fingerprint-table! table)
+                (analyze/analyze-table! table)
                 (catch Throwable t
                   (log/errorf "Fingerprinting of table %d failed" (:id table))
                   (log/debug t))))
