@@ -14,7 +14,8 @@
      query
      (fn [_query _path {:keys [source-table], :as _stage}]
        (when source-table
-         (vswap! source-table-ids conj source-table))))
+         (vswap! source-table-ids conj source-table))
+       nil))
     (not-empty @source-table-ids)))
 
 (defn resolve-source-tables

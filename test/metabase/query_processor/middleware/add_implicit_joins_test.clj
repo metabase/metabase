@@ -759,7 +759,6 @@
                                           :parent_id         nil
                                           :semantic_type     nil
                                           :settings          nil
-                                          :source_alias      "PRODUCTS__via__PRODUCT_ID"
                                           :table_id          $$products}]
                        :fields          [[:field %product-id {::namespaced true}]
                                          [:field

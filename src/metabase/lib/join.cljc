@@ -504,6 +504,10 @@
           ;; we leave alone the condition otherwise
           :else &match)))))
 
+(def ^:dynamic ^:deprecated *truncate-and-uniqify-join-names*
+  "Whether to truncate and uniqify join names when adding new joins to the query."
+  true)
+
 (defn- generate-unique-name [base-name taken-names]
   (let [generator (lib.util/unique-name-generator)]
     (run! generator taken-names)
@@ -520,7 +524,9 @@
          cond-fields (lib.util.match/match (:conditions a-join) :field)
          home-col    (select-home-column home-cols cond-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
-       (generate-unique-name s (keep :alias (:joins stage)))))))
+       (if *truncate-and-uniqify-join-names*
+         (generate-unique-name s (keep :alias (:joins stage)))
+         s)))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a

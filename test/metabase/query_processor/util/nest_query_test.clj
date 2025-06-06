@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -53,7 +54,7 @@
                                                       ::add/source-alias  "PRICE"
                                                       ::add/desired-alias "PRICE"
                                                       ::add/position      0}]
-                                      [:field "double_price" {:base-type          :type/Float
+                                      [:field "double_price" {:base-type          :type/Integer
                                                               ::add/source-table  ::add/source
                                                               ::add/source-alias  "double_price"
                                                               ::add/desired-alias "double_price"
@@ -91,7 +92,7 @@
                                                                              ::add/position      0}]
                                                        [:expression "double_price" {::add/desired-alias "double_price"
                                                                                     ::add/position      1}]]}
-                         :order-by     [[:asc *double_price/Float]]})
+                         :order-by     [[:asc *double_price/Integer]]})
                       (-> (lib.tu.macros/mbql-query venues
                             {:expressions {"double_price" [:* $price 2]}
                              :fields      [$price
@@ -114,15 +115,15 @@
                                                                             ::add/position      0}]
                                                        [:expression "favorite" {::add/desired-alias "favorite"
                                                                                 ::add/position      1}]]}
-                         :filter       [:= [:field %name {::add/source-table ::add/source,
-                                                          ::add/source-alias "NAME",
-                                                          ::add/desired-alias "NAME",
-                                                          ::add/position 0,
+                         :filter       [:= [:field %name {::add/source-table ::add/source
+                                                          ::add/source-alias "NAME"
+                                                          ::add/desired-alias "NAME"
+                                                          ::add/position 0
                                                           :qp/ignore-coercion true}]
-                                        [:field "favorite" {:base-type :type/Text,
-                                                            ::add/source-table ::add/source,
-                                                            ::add/source-alias "favorite",
-                                                            ::add/desired-alias "favorite",
+                                        [:field "favorite" {:base-type :type/Text
+                                                            ::add/source-table ::add/source
+                                                            ::add/source-alias "favorite"
+                                                            ::add/desired-alias "favorite"
                                                             ::add/position 1}]]
                          :order-by     [[:asc *favorite/Text]]})
                       (-> (lib.tu.macros/mbql-query venues
@@ -216,7 +217,7 @@
                                                            :breakout [[:field %id #::add{:source-table  ::add/source
                                                                                          :source-alias  "ID"
                                                                                          :desired-alias "ID"}]
-                                                                      [:field "x" {:base-type          :type/Float
+                                                                      [:field "x" {:base-type          :type/Integer
                                                                                    ::add/source-table  ::add/source
                                                                                    ::add/source-alias  "x"
                                                                                    ::add/desired-alias "x"}]]}
@@ -227,7 +228,7 @@
                                             :fields [[:field %id #::add{:source-table  ::add/source
                                                                         :source-alias  "ID"
                                                                         :desired-alias "ID"}]
-                                                     [:field "x" {:base-type          :type/Float
+                                                     [:field "x" {:base-type          :type/Integer
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "x"
                                                                   ::add/desired-alias "x"}]
@@ -236,7 +237,7 @@
                                                            :source-alias  "ID"
                                                            :desired-alias "ID"
                                                            :position      0}]
-                                        [:field "x_2" {:base-type          :type/Float
+                                        [:field "x_2" {:base-type          :type/Integer
                                                        ::add/source-table  ::add/source
                                                        ::add/source-alias  "x_2"
                                                        ::add/desired-alias "x_2"
@@ -290,6 +291,34 @@
               [:field "count" {:join-alias "Question 4918"}]]
              (#'nest-query/joined-fields query))))))
 
+(deftest ^:parallel idempotence-test
+  (testing "A nested query should return the same set of columns as the original"
+    (mt/with-temp [:model/Card base {:dataset_query
+                                     (mt/mbql-query
+                                       reviews
+                                       {:breakout [$product_id]
+                                        :aggregation [[:count]]
+                                        ;; filter on an implicit join
+                                        :filter [:= $product_id->products.category "Doohickey"]})}]
+      (let [query   (mt/mbql-query orders
+                      {:joins [{:source-table (str "card__" (:id base))
+                                :alias (str "Question " (:id base))
+                                :condition [:=
+                                            $product_id
+                                            [:field
+                                             %reviews.product_id
+                                             {:join-alias (str "Question " (:id base))}]]
+                                :fields :all}]
+                       :expressions {"CC" [:+ 1 1]}
+                       :limit 2})
+            nested  (assoc query :query (nest-expressions query))
+            query*  (qp.store/with-metadata-provider (mt/id)
+                      (lib/query (qp.store/metadata-provider) query))
+            nested* (qp.store/with-metadata-provider (mt/id)
+                      (lib/query (qp.store/metadata-provider) nested))]
+        (is (= (map :lib/desired-column-alias (lib/returned-columns query*))
+               (map :lib/desired-column-alias (lib/returned-columns nested*))))))))
+
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
     (mt/dataset test-data
@@ -298,7 +327,7 @@
                                          reviews
                                          {:breakout [$product_id]
                                           :aggregation [[:count]]
-                                                    ;; filter on an implicit join
+                                          ;; filter on an implicit join
                                           :filter [:= $product_id->products.category "Doohickey"]})}]
         ;; the result returned is not important, just important that the query is valid and completes
         (is (vector?
@@ -552,7 +581,7 @@
                                                         ::add/source-alias        "PRICE"
                                                         ::add/desired-alias       "PRICE"
                                                         ::add/position            0}]
-                                        [:field "test" {:base-type          :type/Float
+                                        [:field "test" {:base-type          :type/Integer
                                                         ::add/source-table  ::add/source
                                                         ::add/source-alias  "test"
                                                         ::add/desired-alias "test"
@@ -801,7 +830,7 @@
                                                      [:field %vendor nil]
                                                      [:field %price nil]
                                                      [:field %rating nil]
-                                                     [:field %created-at {:temporal-unit :default}]]},
+                                                     [:field %created-at {:temporal-unit :default}]]}
                        :expressions {"pivot-grouping" [:abs 0]}
                        :breakout    [[:field "CATEGORY" {:base-type :type/Text}]
                                      [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
@@ -839,33 +868,33 @@
                  {:fields
                   [[:field
                     (meta/id :orders :user-id)
-                    {::add/source-table (meta/id :orders),
-                     ::add/source-alias "USER_ID",
-                     ::add/desired-alias "USER_ID",
+                    {::add/source-table (meta/id :orders)
+                     ::add/source-alias "USER_ID"
+                     ::add/desired-alias "USER_ID"
                      ::add/position 0}]
                    [:field
                     (meta/id :orders :total)
-                    {::add/source-table (meta/id :orders),
-                     ::add/source-alias "TOTAL",
-                     ::add/desired-alias "TOTAL",
+                    {::add/source-table (meta/id :orders)
+                     ::add/source-alias "TOTAL"
+                     ::add/desired-alias "TOTAL"
                      ::add/position 1}]
                    [:expression
                     "double_total"
                     {::add/desired-alias "double_total", ::add/position 2}]
                    [:field
                     (meta/id :people :id)
-                    {:join-alias "p",
-                     ::add/source-table "p",
-                     ::add/source-alias "ID",
-                     ::add/desired-alias "p__ID",
+                    {:join-alias "p"
+                     ::add/source-table "p"
+                     ::add/source-alias "ID"
+                     ::add/desired-alias "p__ID"
                      ::add/position 3}]
                    [:field
                     (meta/id :people :created-at)
                     {:temporal-unit (symbol "nil #_\"key is not present.\"")
-                     ::add/source-alias "CREATED_AT",
-                     :join-alias "p",
-                     ::add/desired-alias "p__CREATED_AT",
-                     ::add/position 4,
+                     ::add/source-alias "CREATED_AT"
+                     :join-alias "p"
+                     ::add/desired-alias "p__CREATED_AT"
+                     ::add/position 4
                      ::add/source-table "p"}]]}}
                 (->> (lib.tu.macros/mbql-query orders
                        {:expressions {"double_total" [:* $total 2]}

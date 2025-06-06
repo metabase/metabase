@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -662,3 +663,47 @@
     [:value {:base-type :type/Integer} 123]      123
     [:value {:base-type :type/Boolean} false]    false
     [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))
+
+(deftest ^:parallel coalese-type-test
+  (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          price (-> (lib/ref (meta/field-metadata :venues :price))
+                    (lib.options/update-options dissoc :base-type :effective-type))]
+      (are [expr expected-type] (= expected-type
+                                   (lib.metadata.calculation/type-of query expr))
+        (lib/coalesce price 1)
+        :type/Integer
+
+        ;; so apparently `:type/Float` is the common ancestor of `:type/Integer` and `:type/Float` as of #36558... I'm
+        ;; certain this is wrong but I can't fix every single querying bug all at once. See Slack thread for more
+        ;; discussion https://metaboat.slack.com/archives/C0645JP1W81/p1749169799757029
+        (lib/coalesce price 1.0)
+        :type/Float))))
+
+(deftest ^:parallel case-type-test
+  (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          price (-> (lib/ref (meta/field-metadata :venues :price))
+                    (lib.options/update-options dissoc :base-type :effective-type))]
+      (are [expr expected-type] (= expected-type
+                                   (lib.metadata.calculation/type-of query expr))
+        (lib/case
+         [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500]]
+          600)
+        :type/Integer
+
+        ;; see explanation in test above
+        (lib/case
+         [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.0]]
+          600)
+        :type/Float
+
+        ;; [:if ...] is allegedly an alias of [:case ...]
+        (let [[_case & args] (lib/case
+                              [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+                               [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.0]]
+                               "600")]
+          (into [:if] args))
+        :type/*))))

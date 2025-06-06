@@ -14,6 +14,8 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -293,10 +295,26 @@
             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
-(defn- column-signature [column-metadata]
-  (dissoc column-metadata
-          :source-alias :ident :lib/source :lib/source-uuid
-          :lib/desired-column-alias :lib/hack-original-name))
+(defn- deduplicate-cols-from-joins
+  "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
+  to make sure not to include them twice! We de-duplicate them here.
+
+  This matches the logic in [[metabase.query-processor.middleware.resolve-joins/append-join-fields]] -- important to
+  have the exact same behavior in both places."
+  [cols]
+  (letfn [(identity-ref [col]
+            (-> (lib.ref/ref col)
+                ;; remove stuff that is not relevant for determining whether two columns are the same or not.
+                ;; Basically the only things that are really important are name/ID, join alias, and bucketing/binning
+                ;; -- the sort of things that would go in 'classic' legacy field refs.
+                (lib.options/update-options (fn [opts]
+                                              (not-empty
+                                               (into {}
+                                                     (remove (fn [[k _]]
+                                                               (or (#{:base-type :effective-type :inherited-temporal-unit} k)
+                                                                   (qualified-keyword? k))))
+                                                     opts))))))]
+    (m/distinct-by identity-ref cols)))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
@@ -314,22 +332,11 @@
        (into summary-cols field-cols)
 
        field-cols
-       (let [_          (doall field-cols)           ; force generation of unique names before join columns
-             join-cols  (lib.join/all-joins-expected-columns query stage-number options)
-             ;; The field-cols may contain would-be joined cols already! We de-duplicate them, but take the :ident
-             ;; from the last of the duplicates.
-             ;; TODO: This almost certainly doesn't work properly with double-joins, and should be powered by
-             ;; "original ident" where possible. Or field-cols should return the correct joins; then taking that
-             ;; copy doesn't hurt anything.
-             signed    (mapv (juxt column-signature identity) (concat field-cols join-cols))
-             idents    (into {} (keep (fn [[sig col]]
-                                        (when-let [ident (:ident col)]
-                                          [sig ident])))
-                             signed)]
-         (mapv (fn [[sig column]]
-                 (let [ident (get idents sig)]
-                   (assoc column :ident ident)))
-               (m/distinct-by first signed)))
+       (let [_          (doall field-cols) ; force generation of unique names before join columns
+             join-cols  (lib.join/all-joins-expected-columns query stage-number options)]
+         (if (empty? join-cols)
+           field-cols
+           (deduplicate-cols-from-joins (concat field-cols join-cols))))
 
        :else
        ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible

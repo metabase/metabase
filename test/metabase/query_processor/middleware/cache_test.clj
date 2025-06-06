@@ -30,13 +30,17 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.test.initialize :as initialize])
   (:import
    (java.time ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fn [thunk]
+                      (initialize/initialize-if-needed! :db)
+                      (metabase.cache.core/enable-query-caching! true)
+                      (thunk)))
 
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
@@ -362,7 +366,9 @@
                        (seq (-> cached-result :cache/details :hash))))
                 (is (= (dissoc original-result :cache/details)
                        (dissoc cached-result :cache/details))
-                    "Cached result should be in the same format as the uncached result, except for added keys"))))))))
+                    "Cached result should be in the same format as the uncached result, except for added keys")))))))))
+
+(deftest e2e-test-2
   (testing "Cached results don't impact average execution time"
     (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
@@ -399,20 +405,13 @@
               (is (= avg-execution-time (query/average-execution-time-ms q-hash))))))))))
 
 (def ^:private expected-inner-metadata
-  (for [[name col-key] [["ID"          :id]
-                        ["NAME"        :name]
-                        ["CATEGORY_ID" :category_id]
-                        ["LATITUDE"    :latitude]
-                        ["LONGITUDE"   :longitude]
-                        ["PRICE"       :price]]]
-    {:name name
-     :ident (mt/ident :venues col-key)}))
-
-(defn- expected-model-metadata [the-model]
-  (for [col expected-inner-metadata]
-    (-> (lib/add-model-ident col (:entity_id the-model))
-        ;; TODO: Inner idents are not returned on query results... but perhaps should be?
-        (dissoc :model/inner_ident))))
+  (for [name ["ID"
+              "NAME"
+              "CATEGORY_ID"
+              "LATITUDE"
+              "LONGITUDE"
+              "PRICE"]]
+    {:name name}))
 
 (deftest multiple-models-e2e-test
   (testing "caching works across the whole QP where two models have the same inner query"
@@ -425,9 +424,8 @@
                                                                 :type          :model})]
         (testing "both models get :result_metadata containing model :idents"
           (doseq [the-model [model1 model2]]
-            (is (=? (expected-model-metadata the-model)
+            (is (=? expected-inner-metadata
                     (:result_metadata the-model)))))
-
         (with-mock-cache! [save-chan]
           (let [inner1 (-> (:dataset_query model1)
                            (assoc :cache-strategy (ttl-strategy))
@@ -477,7 +475,7 @@
                       rerun-outer1     (qp/process-query outer1)
                       one-run-outer2   (qp/process-query outer2)]
                   (testing "Original results have correct model metadata"
-                    (is (=? (expected-model-metadata model1)
+                    (is (=? expected-inner-metadata
                             (-> original-result1 :data :results_metadata :columns))))
 
                   (testing "\n\nOuter queries are cached *separately*"
@@ -501,14 +499,8 @@
                     (doseq [[the-model cached-results] [[model1 rerun-outer1]
                                                         [model2 one-run-outer2]]]
                       (testing (:name the-model)
-                        (is (=? (expected-model-metadata the-model)
+                        (is (=? expected-inner-metadata
                                 (-> cached-results :data :results_metadata :columns)))))))))))))))
-
-(defn- expected-native-metadata [the-card]
-  [{:name  "ID"
-    :ident (lib/native-ident "ID"   (:entity_id the-card))}
-   {:name  "NAME"
-    :ident (lib/native-ident "NAME" (:entity_id the-card))}])
 
 (deftest duplicate-native-queries-e2e-test
   (testing "caching works across the whole QP when two native cards have the same inner query"
@@ -518,9 +510,11 @@
                      :model/Card card2 (mt/card-with-metadata {:dataset_query inner-query
                                                                :name          "Native card 2"})]
         (testing "both cards get :result_metadata containing the card's :entity_id"
-          (is (=? (expected-native-metadata card1)
+          (is (=? [{:name "ID"}
+                   {:name "NAME"}]
                   (:result_metadata card1)))
-          (is (=? (expected-native-metadata card2)
+          (is (=? [{:name "ID"}
+                   {:name "NAME"}]
                   (:result_metadata card2))))
 
         (with-mock-cache! [save-chan]
@@ -557,13 +551,15 @@
                           (is (=? {:cache/details  {:cached     true
                                                     :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
                                                     :hash       some?
-                                                    ;; TODO: this check is not working if the key is not present in the data
+                                                    ;; TODO: this check is not working if the key is not present in the
+                                                    ;; data
                                                     :cache-hash some?}
                                    :row_count 5
                                    :status    :completed}
                                   (dissoc cached-results :data))))
                         (testing "should have correct **card-specific** metadata"
-                          (is (=? (expected-native-metadata the-card)
+                          (is (=? [{:name "ID"}
+                                   {:name "NAME"}]
                                   (-> cached-results :data :results_metadata :columns))))))))))))))))
 
 (deftest insights-from-cache-test

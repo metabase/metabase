@@ -208,6 +208,29 @@
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
 
+(defmethod lib.metadata.calculation/type-of-method :coalesce
+  [query stage-number [_coalesce _opts expr null-expr]]
+  (let [expr-type      (lib.metadata.calculation/type-of-method query stage-number expr)
+        null-expr-type (lib.metadata.calculation/type-of-method query stage-number null-expr)]
+    (types/most-specific-common-ancestor expr-type null-expr-type)))
+
+;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
+;;; `:if` is an alias to `:case`
+(doseq [tag [:case :if]]
+  (lib.hierarchy/derive tag ::case))
+
+(defmethod lib.metadata.calculation/type-of-method ::case
+  [query stage-number [_case _opts cases fallback]]
+  (let [case-exprs (map second cases)
+        exprs      (cond-> case-exprs
+                     fallback
+                     (clojure.core/concat [fallback]))
+        types      (map #(lib.metadata.calculation/type-of-method query stage-number %)
+                        exprs)]
+    (if (> (count types) 1)
+      (reduce types/most-specific-common-ancestor (first types) (rest types))
+      (first types))))
+
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :expression
   [expr-ref unit]
   (lib.temporal-bucket/add-temporal-bucket-to-ref expr-ref unit))
@@ -276,7 +299,7 @@
 ;; Kondo gets confused
 #_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
-(lib.common/defop case [cases] [cases fallback])
+(lib.common/defop ^{:style/indent [:form]} case [cases] [cases fallback])
 (lib.common/defop coalesce [x y & more])
 (lib.common/defop abs [x])
 (lib.common/defop log [x])
