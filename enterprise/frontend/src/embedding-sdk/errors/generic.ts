@@ -28,3 +28,10 @@ export function INVALID_AUTH_METHOD({ method }: { method: string }) {
     { method },
   );
 }
+
+export function AUTH_TIMEOUT() {
+  return new MetabaseError(
+    "AUTH_TIMEOUT",
+    "Authentication has not been completed in time.",
+  );
+}
