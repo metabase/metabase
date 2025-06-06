@@ -168,7 +168,7 @@ export const ModelActionPicker = ({
   const handleFolderSelectRef = useLatest(handleFolderSelect);
 
   useEffect(
-    function ensureCollectionSelected() {
+    function ensureSingleCollectionSelected() {
       const hasItems =
         !isLoadingModels && collections && collections.length > 0;
 
@@ -187,6 +187,22 @@ export const ModelActionPicker = ({
       collections,
       selectedCollectionItem,
     ],
+  );
+
+  useEffect(
+    function ensureSingleModelSelected() {
+      const hasSingleItem = !isLoadingModels && models && models.length === 1;
+
+      if (hasSingleItem && !selectedModelItem) {
+        const firstItem = models[0];
+        const item = getModelItem(models, firstItem.id);
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [handleFolderSelectRef, isLoadingModels, models, selectedModelItem],
   );
 
   return (
