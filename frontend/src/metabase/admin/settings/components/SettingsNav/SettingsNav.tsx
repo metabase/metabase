@@ -15,9 +15,14 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import type { TokenFeature } from "metabase-types/api";
 
 export function SettingsNav() {
   const hasHosting = useHasTokenFeature("hosting");
+  const hasEmbedding = useHasTokenFeature("embedding");
+  const hasWhitelabel = useHasTokenFeature("whitelabel");
+  const hasSaml = useHasTokenFeature("sso_saml");
+  const hasJwt = useHasTokenFeature("sso_jwt");
 
   return (
     <Stack w="16rem" gap="xs" bg="white" p="md" h="100%">
@@ -34,8 +39,20 @@ export function SettingsNav() {
         <SettingsNavItem path="authentication/api-keys" label={t`Api Keys`} />
         <SettingsNavItem path="authentication/google" label={t`Google Auth`} />
         <SettingsNavItem path="authentication/ldap" label="LDAP" />
-        <SettingsNavItem path="authentication/saml" label="SAML" />
-        <SettingsNavItem path="authentication/jwt" label="JWT" />
+        {hasSaml && (
+          <SettingsNavItem
+            path="authentication/saml"
+            label="SAML"
+            requiresFeature="sso_saml"
+          />
+        )}
+        {hasJwt && (
+          <SettingsNavItem
+            path="authentication/jwt"
+            label="JWT"
+            requiresFeature="sso_jwt"
+          />
+        )}
       </SettingsNavItem>
       <Divider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail">
@@ -48,12 +65,9 @@ export function SettingsNav() {
       >
         <SettingsNavItem path="notifications/slack" label="Slack" />
       </SettingsNavItem>
-      <SettingsNavItem
-        path="updates"
-        label={t`Updates`}
-        hidden={hasHosting}
-        icon="sparkles"
-      />
+      {!hasHosting && (
+        <SettingsNavItem path="updates" label={t`Updates`} icon="sparkles" />
+      )}
       <Divider />
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
@@ -61,12 +75,30 @@ export function SettingsNav() {
         label={t`Localization`}
         icon="globe"
       />
-      <SettingsNavItem path="whitelabel" label={t`Appearance`} icon="palette">
-        <SettingsNavItem path="whitelabel/branding" label={t`Branding`} />
-        <SettingsNavItem
-          path="whitelabel/conceal-metabase"
-          label={t`Conceal Metabase`}
-        />
+      <SettingsNavItem
+        path="whitelabel"
+        label={
+          <Flex gap="sm" align="center">
+            <Text>{t`Appearance`}</Text>
+            {!hasWhitelabel && <UpsellGem />}
+          </Flex>
+        }
+        icon="palette"
+      >
+        {hasWhitelabel && (
+          <>
+            <SettingsNavItem
+              path="whitelabel/branding"
+              label={t`Branding`}
+              requiresFeature="whitelabel"
+            />
+            <SettingsNavItem
+              path="whitelabel/conceal-metabase"
+              label={t`Conceal Metabase`}
+              requiresFeature="whitelabel"
+            />
+          </>
+        )}
       </SettingsNavItem>
       <Divider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
@@ -84,10 +116,13 @@ export function SettingsNav() {
           path="embedding-in-other-applications/standalone"
           label={t`Static Embedding`}
         />
-        <SettingsNavItem
-          path="embedding-in-other-applications/full-app"
-          label={t`Interactive Embedding`}
-        />
+        {hasEmbedding && (
+          <SettingsNavItem
+            path="embedding-in-other-applications/full-app"
+            requiresFeature={"embedding"}
+            label={t`Interactive Embedding`}
+          />
+        )}
         <SettingsNavItem
           path="embedding-in-other-applications/sdk"
           label={t`Embedding SDK`}
@@ -104,7 +139,6 @@ export function SettingsNav() {
           </Flex>
         }
         icon="cloud"
-        rightSection={hasHosting ? <UpsellGem /> : undefined}
       />
     </Stack>
   );
@@ -113,27 +147,22 @@ export function SettingsNav() {
 function SettingsNavItem({
   path,
   label,
-  hidden,
   icon,
+  requiresFeature,
   ...navLinkProps
-}: { path: string; hidden?: boolean; icon?: IconName } & Omit<
+}: { path: string; icon?: IconName; requiresFeature?: TokenFeature } & Omit<
   NavLinkProps,
   "href"
 >) {
   const location = useSelector(getLocation);
   const subpath = location?.pathname?.replace?.("/admin/settings/", "");
 
-  if (hidden) {
-    return null;
-  }
-
-  const activeBit = subpath.split("/")[0];
-
   return (
     <NavLink
       component={Link}
       to={`/admin/settings/${path}`}
-      active={path === activeBit}
+      defaultOpened={subpath.includes(path)}
+      active={path === subpath}
       variant="admin-nav"
       label={label}
       {...(icon ? { leftSection: <Icon name={icon} /> } : undefined)}

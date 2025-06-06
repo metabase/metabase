@@ -11,7 +11,7 @@ import { ConfirmModal } from "metabase/components/ConfirmModal";
 import ExternalLink, {
   ButtonLink,
 } from "metabase/core/components/ExternalLink";
-import { Box, Button, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import { SlackBadge } from "./SlackBadge";
 
@@ -32,24 +32,21 @@ export const SlackStatus = () => {
   };
 
   return (
-    <Box maw="40rem">
-      <Flex justify="space-between">
-        <Box>
-          <Title order={2} mb="sm">{t`Metabase on Slack`}</Title>
-          <Flex gap="sm">
-            <SlackBadge isValid={isValid} />
-            {!isValid && (
-              <Text ml="sm" inline>
-                {jt`Need help? ${(
-                  <ExternalLink
-                    key="link"
-                    href={docsUrl}
-                  >{t`See our docs`}</ExternalLink>
-                )}.`}
-              </Text>
-            )}
-          </Flex>
-        </Box>
+    <Box maw="40rem" miw="25rem">
+      <Flex justify="space-between" align="center">
+        <Flex gap="sm" align="center" h="100%">
+          <SlackBadge isValid={isValid} />
+          {!isValid && (
+            <Text ml="sm" inline>
+              {jt`Need help? ${(
+                <ExternalLink
+                  key="link"
+                  href={docsUrl}
+                >{t`See our docs`}</ExternalLink>
+              )}.`}
+            </Text>
+          )}
+        </Flex>
         <Box>
           <ButtonLink href={docsUrl}>
             {t`Create Slack App`}
