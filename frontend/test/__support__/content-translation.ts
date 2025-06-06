@@ -9,7 +9,7 @@ import * as EnterpriseContentTranslationUtilsModule from "metabase-enterprise/co
  *
  * To check that no content translation was performed, use this spy to assert
  * that the translateContentString utility function was not invoked.
- * 
+ *
  * To provide a custom implementation, pass mockImplementation parameter.
  * */
 export const setupTranslateContentStringSpy = (
