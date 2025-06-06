@@ -28,16 +28,7 @@ import {
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Radio,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Button, Flex, Group, Radio, Stack, Text } from "metabase/ui";
 import type {
   EmailSMTPSettings,
   SettingDefinitionMap,
@@ -173,118 +164,20 @@ export const SMTPConnectionForm = () => {
   }, [settingsDetails]);
 
   return (
-    <Flex justify="space-between">
-      <Stack>
-        {isEmailConfigured && (
-          <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
-        )}
-        <FormProvider
-          initialValues={initialValues}
-          validationSchema={getFormValueSchema(settingsDetails)}
-          onSubmit={handleUpdateEmailSettings}
-          enableReinitialize
-        >
-          {({ dirty, isValid, isSubmitting, values }) => (
-            <Form>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-host"
-                settingDetails={settingsDetails?.["email-smtp-host"]}
-              >
-                <FormTextInput
-                  name="email-smtp-host"
-                  label={t`SMTP Host`}
-                  description={
-                    settingsDetails?.["email-smtp-host"]?.description
-                  }
-                  placeholder={"smtp.yourservice.com"}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    mb: "0.5rem",
-                  }}
-                  descriptionProps={{
-                    fz: "0.75rem",
-                    mb: "0.5rem",
-                  }}
-                />
-              </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-port"
-                settingDetails={settingsDetails?.["email-smtp-port"]}
-              >
-                <FormTextInput
-                  name="email-smtp-port"
-                  label={t`SMTP Port`}
-                  placeholder={"587"}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    mb: "0.5rem",
-                  }}
-                  descriptionProps={{
-                    fz: "0.75rem",
-                    mb: "0.5rem",
-                  }}
-                />
-              </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-security"
-                settingDetails={settingsDetails?.["email-smtp-security"]}
-              >
-                <FormRadioGroup
-                  name="email-smtp-security"
-                  label={t`SMTP Security`}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    fz: "0.875rem",
-                    c: "text-medium",
-                    mb: "0.5rem",
-                  }}
-                >
-                  <Group>
-                    {[
-                      { value: "none", name: "None" },
-                      { value: "ssl", name: "SSL" },
-                      { value: "tls", name: "TLS" },
-                      { value: "starttls", name: "STARTTLS" },
-                    ].map(({ value, name }) => (
-                      <Radio
-                        value={value as string}
-                        name="email-smtp-security"
-                        label={name}
-                        key={name}
-                        styles={{
-                          inner: { display: "none" },
-                          label: {
-                            paddingLeft: 0,
-                            color:
-                              values["email-smtp-security"] === value
-                                ? color("brand")
-                                : color("text-dark"),
-                          },
-                        }}
-                      />
-                    ))}
-                  </Group>
-                </FormRadioGroup>
-              </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper
-                settingKey="email-smtp-username"
-                settingDetails={settingsDetails?.["email-smtp-username"]}
-              >
-                <FormTextInput
-                  name="email-smtp-username"
-                  label={t`SMTP Username`}
-                  placeholder={"nicetoseeyou"}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    mb: "0.5rem",
-                  }}
-                />
-              </SetByEnvVarWrapper>
-              {!isHosted && (
+    <Flex justify="space-between" pl="lg" maw="30rem">
+      <SettingsSection>
+        <Stack gap="sm" w="25rem">
+          {isEmailConfigured && (
+            <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
+          )}
+          <FormProvider
+            initialValues={initialValues}
+            validationSchema={getFormValueSchema(settingsDetails)}
+            onSubmit={handleUpdateEmailSettings}
+            enableReinitialize
+          >
+            {({ dirty, isValid, isSubmitting, values }) => (
+              <Form>
                 <SetByEnvVarWrapper
                   settingKey="email-smtp-host"
                   settingDetails={settingsDetails?.["email-smtp-host"]}
@@ -293,7 +186,7 @@ export const SMTPConnectionForm = () => {
                     name="email-smtp-host"
                     label={t`SMTP Host`}
                     description={
-                      settingsDetails?.["email-smtp-host"].description
+                      settingsDetails?.["email-smtp-host"]?.description
                     }
                     placeholder={"smtp.yourservice.com"}
                     mb="1.5rem"
@@ -437,9 +330,9 @@ export const SMTPConnectionForm = () => {
               </Form>
             )}
           </FormProvider>
-        </SettingsSection>
-      </Stack>
-      <Box pos="absolute" right="2rem">
+        </Stack>
+      </SettingsSection>
+      <Box>
         <UpsellHosting source="settings-email-migrate_to_cloud" />
       </Box>
     </Flex>
