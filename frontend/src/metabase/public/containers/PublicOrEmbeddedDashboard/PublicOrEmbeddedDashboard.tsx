@@ -1,3 +1,6 @@
+import type { WithRouterProps } from "react-router";
+
+import { DashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/DashboardLocationSync";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
@@ -10,13 +13,8 @@ export type PublicOrEmbeddedDashboardProps = Pick<
   DashboardContextProps,
   | "dashboardId"
   | "hasNightModeToggle"
-  | "isFullscreen"
   | "isNightMode"
-  | "onFullscreenChange"
   | "onNightModeChange"
-  | "onRefreshPeriodChange"
-  | "refreshPeriod"
-  | "setRefreshElapsedHook"
   | "background"
   | "bordered"
   | "titled"
@@ -32,13 +30,16 @@ export type PublicOrEmbeddedDashboardProps = Pick<
   | "getClickActionMode"
   | "navigateToNewCardFromDashboard"
 > &
-  Pick<EmbeddingAdditionalHashOptions, "locale">;
+  Pick<EmbeddingAdditionalHashOptions, "locale"> &
+  Pick<WithRouterProps, "location">;
 
 export const PublicOrEmbeddedDashboard = ({
   locale,
+  location,
   ...contextProps
 }: PublicOrEmbeddedDashboardProps) => (
   <DashboardContextProvider {...contextProps}>
+    <DashboardLocationSync location={location} />
     <PublicOrEmbeddedDashboardView />
   </DashboardContextProvider>
 );

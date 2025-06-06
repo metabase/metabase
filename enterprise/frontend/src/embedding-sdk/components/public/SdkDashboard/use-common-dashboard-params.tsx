@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { usePrevious, useUnmount } from "react-use";
+import { usePrevious } from "react-use";
 
 import { useSdkDispatch, useSdkStore } from "embedding-sdk/store";
-import {
-  NAVIGATE_TO_NEW_CARD,
-  reset as dashboardReset,
-} from "metabase/dashboard/actions";
+import { NAVIGATE_TO_NEW_CARD } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import * as Urls from "metabase/lib/urls";
@@ -26,13 +23,8 @@ export const useCommonDashboardParams = ({
 
   const previousDashboardId = usePrevious(dashboardId);
 
-  useUnmount(() => {
-    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
-  });
-
   useEffect(() => {
     if (previousDashboardId && dashboardId !== previousDashboardId) {
-      dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
       setAdhocQuestionUrl(null);
     }
   }, [dashboardId, dispatch, previousDashboardId]);

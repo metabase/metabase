@@ -15,6 +15,11 @@ import { useDispatch } from "metabase/lib/redux";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
+import {
+  useDashboardFullscreen,
+  useDashboardRefreshPeriod,
+  useRefreshDashboard,
+} from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
   CancelledFetchDashboardResult,
@@ -52,7 +57,6 @@ export type DashboardContextOwnResult = {
 };
 
 export type DashboardControls = DashboardFullscreenControls &
-  DashboardRefreshPeriodControls &
   UseAutoScrollToDashcardResult &
   EmbedDisplayParams &
   EmbedThemeControls;
@@ -66,7 +70,10 @@ type ContextReturned = DashboardContextOwnResult &
   Omit<DashboardContextOwnProps, "dashboardId"> &
   ReduxProps &
   Required<DashboardControls> &
-  DashboardContextErrorState;
+  DashboardContextErrorState &
+  DashboardFullscreenControls & {
+    fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
+  } & DashboardRefreshPeriodControls;
 
 export const DashboardContext = createContext<ContextReturned | undefined>(
   undefined,
@@ -82,14 +89,9 @@ const DashboardContextProviderInner = ({
   children,
 
   // url params
-  isFullscreen = false,
-  onFullscreenChange = noop,
   hasNightModeToggle = false,
   onNightModeChange = noop,
   isNightMode = false,
-  refreshPeriod = null,
-  setRefreshElapsedHook = noop,
-  onRefreshPeriodChange = noop,
   background = true,
   bordered = true,
   titled = true,
@@ -137,6 +139,20 @@ const DashboardContextProviderInner = ({
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
+
+  const { refreshDashboard } = useRefreshDashboard({
+    dashboardId,
+    parameterQueryParams,
+  });
+
+  const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
+    useDashboardRefreshPeriod({ onRefresh: refreshDashboard });
+
+  const {
+    isFullscreen,
+    onFullscreenChange,
+    ref: fullscreenRef,
+  } = useDashboardFullscreen();
 
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
@@ -243,9 +259,10 @@ const DashboardContextProviderInner = ({
       dashboardId &&
       dashboardId !== previousDashboardId
     ) {
+      reset();
       fetchData(dashboardId);
     }
-  }, [dashboardId, fetchData, initialDashboardId, previousDashboardId]);
+  }, [dashboardId, fetchData, initialDashboardId, previousDashboardId, reset]);
 
   useEffect(() => {
     if (dashboard) {
@@ -263,7 +280,7 @@ const DashboardContextProviderInner = ({
       onLoadWithoutCards?.(dashboard);
       // For whatever reason, isLoading waits for all cards to be loaded but doesn't account for the
       // fact that there might be no dashcards. So onLoad never triggers when there are no cards,
-      // so this solves that issue
+      // so this solves that issue for now.
       if (dashboard?.dashcards.length === 0) {
         onLoad?.(dashboard);
       }
@@ -315,6 +332,7 @@ const DashboardContextProviderInner = ({
 
         isFullscreen,
         onFullscreenChange,
+        fullscreenRef,
         hasNightModeToggle,
         onNightModeChange,
         isNightMode,

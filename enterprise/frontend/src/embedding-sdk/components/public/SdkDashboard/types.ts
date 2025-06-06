@@ -1,15 +1,14 @@
 import type { CSSProperties, PropsWithChildren, ReactNode } from "react";
 
-import type {
-  SdkDashboardDisplayProps,
-  useSdkDashboardParams,
-} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import type { SdkDashboardDisplayProps } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { DashboardContextProps } from "metabase/dashboard/context";
 
 import type { InteractiveDashboardContextType } from "../InteractiveDashboard/context";
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
+
+import type { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
  * @interface
@@ -40,18 +39,28 @@ export type SdkDashboardProps = PropsWithChildren<
      * Props for the drill-through question
      */
     drillThroughQuestionProps?: DrillThroughQuestionProps;
+
+    /**
+     * @internal
+     */
+    mode: "static" | "interactive" | "editable";
   } & SdkDashboardDisplayProps &
-    DashboardEventHandlersProps
+    DashboardEventHandlersProps &
+    Pick<DashboardContextProps, "getClickActionMode">
 >;
 
-export type SdkDashboardInternalProps = Omit<
+export type SdkDashboardInternalProps = Pick<
   SdkDashboardProps,
-  "dashboardId" | "className" | "style"
+  | "renderDrillThroughQuestion"
+  | "plugins"
+  | "drillThroughQuestionHeight"
+  | "drillThroughQuestionProps"
 > &
   Pick<InteractiveDashboardContextType, "dashboardActions"> &
-  Pick<DashboardContextProps, "getClickActionMode"> &
-  ReturnType<typeof useSdkDashboardParams> & {
+  Omit<
+    ReturnType<typeof useCommonDashboardParams>,
+    "onNavigateToNewCardFromDashboard"
+  > & {
     initialDashboardId: SdkDashboardProps["dashboardId"];
     dashboardId: Nullable<SdkDashboardProps["dashboardId"]>;
-    mode: "static" | "interactive" | "editable";
   };

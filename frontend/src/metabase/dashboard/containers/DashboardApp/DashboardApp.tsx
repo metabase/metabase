@@ -14,21 +14,20 @@ import {
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { DashboardContextProvider } from "metabase/dashboard/context";
-import {
-  useDashboardUrlParams,
-  useDashboardUrlQuery,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
+import { useDashboardUrlQuery, useEmbedTheme } from "metabase/dashboard/hooks";
+import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
 import { useFavicon } from "metabase/hooks/use-favicon";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import { getFavicon } from "../../selectors";
 
+import { DashboardLocationSync } from "./DashboardLocationSync";
 import { DashboardTitle } from "./DashboardTitle";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
@@ -57,33 +56,12 @@ export const DashboardApp = ({
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
 
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId,
-    parameterQueryParams,
-  });
-
-  const {
-    hasNightModeToggle,
-    isFullscreen,
-    isNightMode,
-    onNightModeChange,
-    refreshPeriod,
-    onFullscreenChange,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
-    theme,
-    setTheme,
-  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
 
   const onLoadDashboard = (dashboard: IDashboard) => {
     try {
       if (editingOnLoad) {
-        onRefreshPeriodChange(null);
         dispatch(setEditingDashboard(dashboard));
         dispatch(push({ ...location, hash: "" }));
       }
@@ -110,6 +88,19 @@ export const DashboardApp = ({
     }
   };
 
+  useSetEmbedFont({ location });
+
+  const {
+    hasNightModeToggle,
+    isNightMode,
+    onNightModeChange,
+    setTheme,
+    theme,
+  } = useEmbedTheme();
+
+  const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+    useAutoScrollToDashcard(location);
+
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
@@ -117,14 +108,9 @@ export const DashboardApp = ({
         parameterQueryParams={parameterQueryParams}
         theme={theme}
         setTheme={setTheme}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
         hasNightModeToggle={hasNightModeToggle}
         onNightModeChange={onNightModeChange}
         isNightMode={isNightMode}
-        refreshPeriod={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onRefreshPeriodChange={onRefreshPeriodChange}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onLoad={onLoadDashboard}
@@ -136,6 +122,7 @@ export const DashboardApp = ({
         <DashboardTitle />
         <DashboardFavicon />
         <DashboardNotifications />
+        <DashboardLocationSync location={location} />
         <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
           <DashboardLeaveConfirmationModal route={route} />
           <Dashboard />

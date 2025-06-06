@@ -9,7 +9,10 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useSdkDashboardParams } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import {
+  type SdkDashboardDisplayProps,
+  useSdkDashboardParams,
+} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -28,7 +31,6 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type Question from "metabase-lib/v1/Question";
 
-import type { InteractiveDashboardProps } from "../InteractiveDashboard/InteractiveDashboard";
 import {
   type InteractiveDashboardContextType,
   InteractiveDashboardProvider,
@@ -38,22 +40,41 @@ import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
 import type { SdkDashboardInternalProps, SdkDashboardProps } from "./types";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
-const SdkDashboardContent = ({
+/**
+ * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
+ *
+ * @function
+ * @category InteractiveDashboard
+ * @param props
+ */
+export const SdkDashboardInner = ({
+  renderDrillThroughQuestion: AdHocQuestionView,
+  plugins,
+  drillThroughQuestionHeight,
+  drillThroughQuestionProps: initQuestionProps,
+  dashboardActions = [],
   adhocQuestionUrl,
   onNavigateBackToDashboard,
-  drillThroughQuestionProps,
-  plugins,
   onEditQuestion,
-  dashboardActions,
-  renderDrillThroughQuestion: AdHocQuestionView,
-}: Pick<SdkDashboardInternalProps, "renderDrillThroughQuestion"> &
-  Pick<
-    ReturnType<typeof useCommonDashboardParams>,
-    "onNavigateBackToDashboard" | "adhocQuestionUrl" | "onEditQuestion"
-  > &
-  Pick<InteractiveDashboardProps, "drillThroughQuestionProps"> &
-  Pick<InteractiveDashboardContextType, "plugins" | "dashboardActions">) => {
-  const { isEditing, downloadsEnabled } = useDashboardContext();
+  dashboardId,
+  initialDashboardId,
+}: SdkDashboardInternalProps) => {
+  const { isEditing, downloadsEnabled, titled, isLoading } =
+    useDashboardContext();
+
+  const drillThroughQuestionProps = initQuestionProps ?? {
+    title: titled,
+    height: drillThroughQuestionHeight,
+    plugins: plugins,
+  };
+
+  const errorPage = useSdkSelector(getErrorPage);
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    if (dashboardId) {
+      dispatch(setErrorPage(null));
+    }
+  }, [dispatch, dashboardId]);
 
   const actions = useMemo(() => {
     const actions =
@@ -63,6 +84,22 @@ const SdkDashboardContent = ({
     }
     return actions;
   }, [dashboardActions, downloadsEnabled.pdf, isEditing]);
+
+  if (isLoading) {
+    return <SdkLoader />;
+  }
+
+  if (!dashboardId || errorPage?.status === 404) {
+    return <DashboardNotFoundError id={initialDashboardId} />;
+  }
+
+  if (errorPage) {
+    return (
+      <SdkError
+        message={errorPage.data?.message ?? t`Something's gone wrong`}
+      />
+    );
+  }
 
   if (adhocQuestionUrl) {
     return (
@@ -87,48 +124,47 @@ const SdkDashboardContent = ({
   );
 };
 
-/**
- * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
- *
- * @function
- * @category InteractiveDashboard
- * @param props
- */
-export const SdkDashboardInner = ({
-  initialParameters,
-  withTitle,
+export const SdkDashboard = ({
+  dashboardId,
+  className,
+  style,
+  dashboardId: initialDashboardId,
   onLoad,
   onLoadWithoutCards,
-  renderDrillThroughQuestion,
+  initialParameters,
+  hiddenParameters,
   plugins,
+  withDownloads,
+  withTitle,
+  withCardTitle,
+  renderDrillThroughQuestion,
   drillThroughQuestionHeight,
-  drillThroughQuestionProps = {
-    title: withTitle,
-    height: drillThroughQuestionHeight,
-    plugins: plugins,
-  },
-  dashboardActions = [],
-  displayOptions,
-  isFullscreen,
-  onFullscreenChange,
-  refreshPeriod,
-  onRefreshPeriodChange,
-  setRefreshElapsedHook,
-  isLoading,
-  dashboardId,
-  initialDashboardId,
+  drillThroughQuestionProps,
+  dashboardActions,
   mode,
-}: SdkDashboardInternalProps) => {
+}: SdkDashboardProps &
+  Pick<InteractiveDashboardContextType, "dashboardActions">) => {
+  const dispatch = useSdkDispatch();
+
+  const { displayOptions } = useSdkDashboardParams({
+    dashboardId: initialDashboardId,
+    withDownloads,
+    withTitle,
+    withCardTitle,
+    hiddenParameters,
+    initialParameters,
+  });
+
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
     onLoadWithoutCards,
   });
 
   const {
+    onNavigateToNewCardFromDashboard,
     adhocQuestionUrl,
     onNavigateBackToDashboard,
     onEditQuestion,
-    onNavigateToNewCardFromDashboard,
   } = useCommonDashboardParams({
     dashboardId,
   });
@@ -153,39 +189,10 @@ export const SdkDashboardInner = ({
     }
   }, [mode, onNavigateToNewCardFromDashboard, plugins]);
 
-  const errorPage = useSdkSelector(getErrorPage);
-  const dispatch = useSdkDispatch();
-  useEffect(() => {
-    if (dashboardId) {
-      dispatch(setErrorPage(null));
-    }
-  }, [dispatch, dashboardId]);
-
-  if (isLoading) {
-    return <SdkLoader />;
-  }
-
-  if (!dashboardId || errorPage?.status === 404) {
-    return <DashboardNotFoundError id={initialDashboardId} />;
-  }
-
-  if (errorPage) {
-    return (
-      <SdkError
-        message={errorPage.data?.message ?? t`Something's gone wrong`}
-      />
-    );
-  }
-
   return (
     <DashboardContextProvider
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
-      refreshPeriod={refreshPeriod}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      isFullscreen={isFullscreen}
-      onFullscreenChange={onFullscreenChange}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       downloadsEnabled={displayOptions.downloadsEnabled}
       background={displayOptions.background}
@@ -199,26 +206,39 @@ export const SdkDashboardInner = ({
       onError={(error) => dispatch(setErrorPage(error))}
       getClickActionMode={getClickActionMode}
     >
-      <SdkDashboardContent
+      <WrappedSdkDashboardInner
+        className={className}
+        style={style}
+        initialDashboardId={initialDashboardId}
+        dashboardId={dashboardId}
         adhocQuestionUrl={adhocQuestionUrl}
         onNavigateBackToDashboard={onNavigateBackToDashboard}
-        drillThroughQuestionProps={drillThroughQuestionProps}
-        plugins={plugins}
         onEditQuestion={onEditQuestion}
-        dashboardActions={dashboardActions}
         renderDrillThroughQuestion={renderDrillThroughQuestion}
+        plugins={plugins}
+        drillThroughQuestionHeight={drillThroughQuestionHeight}
+        drillThroughQuestionProps={drillThroughQuestionProps}
+        dashboardActions={dashboardActions}
       />
     </DashboardContextProvider>
   );
 };
-
-export const SdkDashboard = ({
+function WrappedSdkDashboardInner({
   className,
   style,
-
-  ...props
-}: SdkDashboardProps & Pick<SdkDashboardInternalProps, "mode">) => {
-  const sdkDashboardParams = useSdkDashboardParams(props);
+  initialDashboardId,
+  dashboardId,
+  adhocQuestionUrl,
+  onNavigateBackToDashboard,
+  onEditQuestion,
+  renderDrillThroughQuestion,
+  plugins,
+  drillThroughQuestionHeight,
+  drillThroughQuestionProps,
+  dashboardActions,
+}: Pick<SdkDashboardDisplayProps, "className" | "style"> &
+  SdkDashboardInternalProps) {
+  const { fullscreenRef } = useDashboardContext();
 
   return (
     <Flex
@@ -230,14 +250,20 @@ export const SdkDashboard = ({
       align="stretch"
       className={cx(className, CS.overflowAuto)}
       style={style}
-      ref={sdkDashboardParams.ref}
+      ref={fullscreenRef}
     >
       <SdkDashboardInner
-        {...props}
-        {...sdkDashboardParams}
-        initialDashboardId={props.dashboardId}
-        dashboardId={sdkDashboardParams.dashboardId}
+        initialDashboardId={initialDashboardId}
+        dashboardId={dashboardId}
+        adhocQuestionUrl={adhocQuestionUrl}
+        onNavigateBackToDashboard={onNavigateBackToDashboard}
+        onEditQuestion={onEditQuestion}
+        renderDrillThroughQuestion={renderDrillThroughQuestion}
+        plugins={plugins}
+        drillThroughQuestionHeight={drillThroughQuestionHeight}
+        drillThroughQuestionProps={drillThroughQuestionProps}
+        dashboardActions={dashboardActions}
       />
     </Flex>
   );
-};
+}

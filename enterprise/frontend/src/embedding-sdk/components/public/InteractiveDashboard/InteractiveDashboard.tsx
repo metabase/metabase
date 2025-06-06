@@ -25,8 +25,11 @@ export const InteractiveDashboard = ({
     <SdkDashboard
       {...sdkDashboardProps}
       plugins={{
+        ...plugins,
         dashboard: {
+          ...plugins?.dashboard,
           dashboardCardMenu: {
+            ...plugins?.dashboard?.dashboardCardMenu,
             withDownloads: sdkDashboardProps.withDownloads,
             withEditLink: false,
           },
