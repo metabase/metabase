@@ -52,7 +52,7 @@ registerVisualization(BarChart);
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
 
 export default {
-  title: "App/Embed/PublicOrEmbeddedDashboard/filters",
+  title: "App/Embed/PublicOrEmbeddedDashboardView/filters",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
