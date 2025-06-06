@@ -9,7 +9,7 @@ import { build } from "tsup";
 
 import { ALIAS } from "./frontend/build/embedding-sdk/constants/alias.mjs";
 import { EXTERNALS } from "./frontend/build/embedding-sdk/constants/externals.mjs";
-import { IS_DEV_MODE } from "./frontend/build/embedding-sdk/constants/is-dev-mode.js";
+import { IS_DEV_MODE } from "./frontend/build/embedding-sdk/constants/is-dev-mode.mjs";
 import { LICENSE_BANNER } from "./frontend/build/embedding-sdk/constants/license-banner.mjs";
 import {
   BUILD_PATH,

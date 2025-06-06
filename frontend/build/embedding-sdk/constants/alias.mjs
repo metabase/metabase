@@ -1,6 +1,6 @@
 import path from "path";
 
-import { IS_DEV_MODE } from "./is-dev-mode.js";
+import { IS_DEV_MODE } from "./is-dev-mode.mjs";
 import {
   ASSETS_PATH,
   CLJS_SRC_PATH,
