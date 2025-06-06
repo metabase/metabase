@@ -5,7 +5,7 @@ import {
   handleActions,
 } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { SettingsApi, SlackApi } from "metabase/services";
+import { SettingsApi } from "metabase/services";
 
 // ACTION TYPES AND ACTION CREATORS
 
@@ -76,22 +76,7 @@ export const updateSettings = createThunkAction(
   },
 );
 
-export const UPDATE_SLACK_SETTINGS =
-  "metabase/admin/settings/UPDATE_SLACK_SETTINGS";
-export const updateSlackSettings = createThunkAction(
-  UPDATE_SLACK_SETTINGS,
-  function (settings) {
-    return async function (dispatch) {
-      const result = await SlackApi.updateSettings(settings);
-      await dispatch(reloadSettings());
-      return result;
-    };
-  },
-  {},
-);
-
 // REDUCERS
-
 const settings = handleActions(
   {
     [REFRESH_SETTINGS_LIST]: { next: (state, { payload }) => payload },

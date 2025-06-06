@@ -10,12 +10,12 @@ For using the SDK in production, you'll need to set up authentication with JWT S
 
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
-If both SAML and JWT are enabled in your Metabase, the SDK will default to using SAML authentication unless you explicitly set the `authMethod` to `"jwt"` in your `MetabaseAuthConfig`:
+If both SAML and JWT are enabled in your Metabase, the SDK will default to using SAML authentication unless you explicitly set the `preferredAuthMethod` to `"jwt"` in your `MetabaseAuthConfig`:
 
 ```javascript
 authConfig: {
   metabaseInstanceUrl: "...",
-  authMethod: "jwt",
+  preferredAuthMethod: "jwt",
   // other JWT config...
 }
 ```
@@ -140,7 +140,7 @@ Then you can then use the API key to authenticate with Metabase in your applicat
 
 To use SAML single sign-on with the Embedded analytics SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../../people-and-groups/authenticating-with-saml.md).
 
-Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `authMethod` in your `MetabaseAuthConfig` to `"saml"`:
+Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `preferredAuthMethod` in your `MetabaseAuthConfig` to `"saml"`:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
