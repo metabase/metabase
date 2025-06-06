@@ -122,12 +122,20 @@
                       {:was-binned (boolean was-binned)}))
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
-                  (cond
-                    (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
-                    join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
-                    :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name)})))]
+                  (when (integer? id-or-name)
+                    (or (lib.equality/resolve-field-id query stage-number id-or-name)
+                        {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")}))
+                  (when (string? id-or-name)
+                    (let [resolved (or (resolve-column-name query stage-number id-or-name)
+                                       {:lib/type :metadata/column, :name (str id-or-name)})]
+                      ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
+                      ;; forward anything else? No idea. Waiting for an answer in
+                      ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
+                      (if join-alias
+                        (merge
+                         {:lib/type :metadata/column, :name (str id-or-name)}
+                         (select-keys resolved [:semantic-type]))
+                        resolved))))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 

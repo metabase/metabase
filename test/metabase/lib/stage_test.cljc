@@ -9,6 +9,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util.malli.registry :as mr]))
 
 #?(:cljs
@@ -410,7 +411,9 @@
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/aggregate (lib/count))
                        (lib/append-stage))]]
-      (is (= query (lib/ensure-filter-stage query)))))
+      (is (= query (lib/ensure-filter-stage query))))))
+
+(deftest ^:parallel ensure-filter-stage-test-2
   (testing "a stage is added if the filter stage doesn't exists yet"
     (doseq [query [(-> (lib.tu/venues-query)
                        (lib/breakout (meta/field-metadata :venues :category-id))
@@ -446,3 +449,41 @@
                          (lib/breakout (by-name "CATEGORY_ID"))))]]
       (is (= (inc (lib/stage-count query))
              (lib/stage-count (lib/ensure-filter-stage query)))))))
+
+(deftest ^:parallel deduplicate-field-from-join-test
+  (testing "We should correctly deduplicate columns in :fields and [:join :fields] (QUE-1330)"
+    (let [query (lib/query meta/metadata-provider
+                           (lib.tu.macros/mbql-query orders
+                             {:joins [{:alias        "Q"
+                                       :strategy     :left-join
+                                       :source-query {:source-table $$reviews
+                                                      :joins        [{:alias        "P"
+                                                                      :strategy     :left-join
+                                                                      :fk-field-id  %orders.product-id
+                                                                      :condition    [:=
+                                                                                     [:field %orders.product-id nil]
+                                                                                     [:field %products.id {:join-alias "P"}]]
+                                                                      :source-table $$products}]
+                                                      :aggregation  [[:aggregation-options [:count] {:name "count"}]]
+                                                      :breakout     [$reviews.product-id]
+                                                      :filter       [:=
+                                                                     [:field
+                                                                      %products.category
+                                                                      {:source-field %reviews.product-id
+                                                                       :join-alias "P"}]
+                                                                     "Doohickey"]
+                                                      :order-by     [[:asc $reviews.product-id]]}
+                                       :fields    [[:field $reviews.product-id {:join-alias "Q"}]
+                                                   [:field "count" {:base-type :type/Integer, :join-alias "Q"}]]
+                                       :condition [:=
+                                                   $orders.product-id
+                                                   [:field %reviews.product-id {:join-alias "Q"}]]}]
+                              :fields [$orders.id
+                                       $orders.product-id
+                                       [:field %reviews.product-id {:join-alias "Q"}]
+                                       [:field "count" {:base-type :type/Integer, :join-alias "Q"}]]}))]
+      (is (= ["ID"
+              "PRODUCT_ID"
+              "Q__PRODUCT_ID"
+              "Q__count"]
+             (map :lib/desired-column-alias (lib/returned-columns query)))))))
