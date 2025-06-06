@@ -79,6 +79,11 @@ function getSdkIframeEmbedHtml({
   origin,
   ...embedConfig
 }: BaseEmbedTestPageOptions) {
+  console.log(
+    Object.entries(embedConfig)
+      .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+      .join(",\n          "),
+  );
   return `
     <!DOCTYPE html>
     <html>

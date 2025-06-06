@@ -18,7 +18,7 @@ import {
 } from "metabase-types/store/mocks";
 
 import { DashboardHeaderButtonRow } from "./DashboardHeaderButtonRow";
-import { DASHBOARD_ACTION } from "./action-buttons";
+import { DASHBOARD_ACTION } from "./action-types";
 import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
 
 const DASHBOARD_EXPECTED_DATA_MAP: Record<
@@ -96,6 +96,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.FULLSCREEN_ANALYTICS_DASHBOARD]: {
     icon: "expand",
+    tooltip: null,
+  },
+  DOWNLOAD_DASHBOARD_PDF: {
+    icon: "string",
     tooltip: null,
   },
 };

@@ -29,6 +29,16 @@ export function getParameterValueFromQueryParams(
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
+  // eslint-disable-next-line no-console
+  console.log("Parameter parsing:", {
+    parameter,
+    queryParams,
+    lastUsedParametersValues,
+    maybeParameterValue,
+    slug: parameter.slug,
+    id: parameter.id,
+  });
+
   // don't use the default with "param=" because it indicates an unset/cleared parameter value
   if (maybeParameterValue === "") {
     return null;

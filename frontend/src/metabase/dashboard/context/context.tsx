@@ -15,6 +15,11 @@ import { useDispatch } from "metabase/lib/redux";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
+import {
+  useDashboardFullscreen,
+  useDashboardRefreshPeriod,
+  useRefreshDashboard,
+} from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
   CancelledFetchDashboardResult,
@@ -26,6 +31,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "../types";
+import { getTabHiddenParameterSlugs } from "../utils/parameters";
 
 import { type ReduxProps, connector } from "./context.redux";
 
@@ -50,9 +56,7 @@ export type DashboardContextOwnResult = {
   dashboardId: DashboardId | null;
 };
 
-export type DashboardControls = DashboardFullscreenControls &
-  DashboardRefreshPeriodControls &
-  UseAutoScrollToDashcardResult &
+export type DashboardControls = UseAutoScrollToDashcardResult &
   EmbedDisplayParams &
   EmbedThemeControls;
 
@@ -65,7 +69,10 @@ type ContextReturned = DashboardContextOwnResult &
   Omit<DashboardContextOwnProps, "dashboardId"> &
   ReduxProps &
   Required<DashboardControls> &
-  DashboardContextErrorState;
+  DashboardContextErrorState &
+  DashboardFullscreenControls & {
+    fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
+  } & DashboardRefreshPeriodControls;
 
 export const DashboardContext = createContext<ContextReturned | undefined>(
   undefined,
@@ -81,21 +88,16 @@ const DashboardContextProviderInner = ({
   children,
 
   // url params
-  isFullscreen = false,
-  onFullscreenChange = noop,
   hasNightModeToggle = false,
   onNightModeChange = noop,
   isNightMode = false,
-  refreshPeriod = null,
-  setRefreshElapsedHook = noop,
-  onRefreshPeriodChange = noop,
   background = true,
   bordered = true,
   titled = true,
   font = null,
   theme = "light",
   setTheme = noop,
-  hideParameters = null,
+  hideParameters: hide_parameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
   reportAutoScrolledToDashcard = noop,
@@ -111,6 +113,7 @@ const DashboardContextProviderInner = ({
   parameterValues,
   isLoading,
   isLoadingWithoutCards,
+  parameters,
 
   // redux actions
   addCardToDashboard,
@@ -135,6 +138,20 @@ const DashboardContextProviderInner = ({
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
+
+  const { refreshDashboard } = useRefreshDashboard({
+    dashboardId,
+    parameterQueryParams,
+  });
+
+  const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
+    useDashboardRefreshPeriod({ onRefresh: refreshDashboard });
+
+  const {
+    isFullscreen,
+    onFullscreenChange,
+    ref: fullscreenRef,
+  } = useDashboardFullscreen();
 
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
@@ -241,9 +258,10 @@ const DashboardContextProviderInner = ({
       dashboardId &&
       dashboardId !== previousDashboardId
     ) {
+      reset();
       fetchData(dashboardId);
     }
-  }, [dashboardId, fetchData, initialDashboardId, previousDashboardId]);
+  }, [dashboardId, fetchData, initialDashboardId, previousDashboardId, reset]);
 
   useEffect(() => {
     if (dashboard) {
@@ -261,7 +279,7 @@ const DashboardContextProviderInner = ({
       onLoadWithoutCards?.(dashboard);
       // For whatever reason, isLoading waits for all cards to be loaded but doesn't account for the
       // fact that there might be no dashcards. So onLoad never triggers when there are no cards,
-      // so this solves that issue
+      // so this solves that issue for now.
       if (dashboard?.dashcards.length === 0) {
         onLoad?.(dashboard);
       }
@@ -287,6 +305,16 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
+  const hiddenParameterSlugs = getTabHiddenParameterSlugs({
+    parameters,
+    dashboard,
+    selectedTabId,
+  });
+
+  const hideParameters = !isEditing
+    ? [hide_parameters, hiddenParameterSlugs].filter(Boolean).join(",")
+    : null;
+
   return (
     <DashboardContext.Provider
       value={{
@@ -303,6 +331,7 @@ const DashboardContextProviderInner = ({
 
         isFullscreen,
         onFullscreenChange,
+        fullscreenRef,
         hasNightModeToggle,
         onNightModeChange,
         isNightMode,
@@ -329,6 +358,7 @@ const DashboardContextProviderInner = ({
         selectedTabId,
         isEditing,
         isNavigatingBackToDashboard,
+        parameters,
         parameterValues,
 
         // redux actions

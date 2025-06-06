@@ -398,6 +398,14 @@ export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
   const searchSection = searchParams ? `?${searchParams}` : "";
   const hashParams = new URLSearchParams(hash).toString();
   const hashSection = hashParams ? `#${hashParams}` : "";
+  console.log({
+    searchParams,
+    searchSection,
+    hashParams,
+    hashSection,
+    params,
+    hash,
+  });
 
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
