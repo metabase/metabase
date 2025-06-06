@@ -2610,3 +2610,47 @@ describe("issue 32499", () => {
     }
   });
 });
+
+describe("issue 23449", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Remapped fields should work in a model", () => {
+    // set the metadata for review
+    cy.visit("/admin/datamodel");
+    cy.findAllByTestId("admin-metadata-table-list-item")
+      .contains("Reviews")
+      .click();
+
+    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
+    cy.findAllByTestId("select-button").contains("Use original value").click();
+    cy.findByLabelText("Custom mapping").click();
+
+    const values = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
+    for (let k of Object.keys(values)) {
+      cy.get(`input[value="${k}"]`).clear().type(values[k]);
+    }
+    cy.get("button").contains("Save").click();
+
+    // make a model on Reviews
+    cy.visit("/model/new");
+    cy.get("a").contains("Use the notebook editor").click();
+    cy.findAllByTestId("picker-item").contains("Reviews").click();
+
+    // Remove Body column
+    cy.findByLabelText("Pick columns").click();
+    cy.get("li").contains("Body").click();
+
+    // save model
+    cy.findByTestId("dataset-edit-bar").get("button").contains("Save").click();
+    cy.findByTestId("save-question-button").click();
+
+    // check that the data renders
+    H.tableHeaderColumn("Rating").should("exist");
+    // reload to flush cached results
+    cy.reload(true);
+    H.tableHeaderColumn("Rating").should("exist");
+  });
+});
