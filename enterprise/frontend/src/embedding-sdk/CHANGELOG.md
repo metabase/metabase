@@ -1,3 +1,12 @@
+## [0.55.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2-nightly...embedding-sdk-0.55.2) (2025-06-06)
+
+
+### Features
+
+* **sdk:** ability to specify preferred authentication method ([#58641](https://github.com/metabase/metabase/issues/58641)) ([#58720](https://github.com/metabase/metabase/issues/58720)) ([25a78a3](https://github.com/metabase/metabase/commit/25a78a355fa6f04e3ce2029006b24ebe9a02ebcb))
+
+
+
 ## [0.55.5-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.4-metabot...embedding-sdk-0.55.5-metabot) (2025-05-07)
 
 
