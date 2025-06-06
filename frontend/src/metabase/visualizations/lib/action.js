@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
+import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { isEmbeddingSdk } from "metabase/env";
 import { open } from "metabase/lib/dom";
 

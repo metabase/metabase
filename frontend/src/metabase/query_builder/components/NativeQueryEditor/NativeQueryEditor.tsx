@@ -48,6 +48,7 @@ import S from "./NativeQueryEditor.module.css";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorActionButtons";
 import { NativeQueryEditorActionButtons } from "./NativeQueryEditorActionButtons";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
+import { NativeQueryValidationError } from "./NativeQueryValidationError/NativeQueryValidationError";
 import { RightClickPopover } from "./RightClickPopover";
 import { VisibilityToggler } from "./VisibilityToggler";
 import { MIN_HEIGHT_LINES } from "./constants";
@@ -180,11 +181,11 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
-      setDatasetQuery(
-        query
-          .setQueryText(queryText)
-          .updateSnippetsWithIds(this.props.snippets),
-      );
+      const updatedQuery = query
+        .setQueryText(queryText)
+        .updateSnippetsWithIds(this.props.snippets);
+
+      setDatasetQuery(updatedQuery);
     }
   };
 
@@ -410,7 +411,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             }
           }}
         >
-          <>
+          <Flex w="100%" flex="1">
             <CodeMirrorEditor
               ref={this.editor}
               query={question.query()}
@@ -433,7 +434,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 runQuery={this.props.runQuery}
               />
             )}
-          </>
+          </Flex>
+
+          <NativeQueryValidationError query={query.question().query()} />
         </ResizableBox>
 
         <RightClickPopover
