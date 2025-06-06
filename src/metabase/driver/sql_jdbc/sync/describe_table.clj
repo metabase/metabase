@@ -498,7 +498,7 @@
   [v path]
   (if-not (json-object? v)
     {}
-    (let [p (json-parser v)]
+    (with-open [p (json-parser v)]
       (loop [path      (or path [])
              field     nil
              res       (transient {})]
