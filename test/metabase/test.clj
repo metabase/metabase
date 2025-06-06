@@ -240,6 +240,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-http-request-full-response
   user-real-request
   with-group
   with-group-for-user

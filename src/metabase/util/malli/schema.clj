@@ -115,6 +115,16 @@
                      (str message))
       :api/regex   #"[1-9]\d*"}]))
 
+(def NegativeInt
+  "Schema representing an integer than must be less than zero."
+  (let [message (deferred-tru "value must be a negative integer")]
+    [:int
+     {:max         -1
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"-[1-9]\d*"}]))
+
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message
@@ -197,6 +207,15 @@
     :string
     [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
    (deferred-tru "password is too common.")))
+
+(def IntString
+  "Schema for a string that can be parsed as an integer.
+  Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
+  (mu/with-api-error-message
+   [:and
+    :string
+    [:fn #(u/ignore-exceptions (Integer/parseInt %))]]
+   (deferred-tru "value must be a valid integer.")))
 
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."

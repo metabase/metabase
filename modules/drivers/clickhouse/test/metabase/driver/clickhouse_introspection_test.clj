@@ -433,7 +433,9 @@
 (def ^:private base-field
   {:database-is-auto-increment false
    :json-unfolding false
-   :database-required true})
+   :database-required true
+   :database-is-nullable false
+   :database-is-generated false})
 
 (deftest clickhouse-filtered-aggregate-functions-test-table-metadata
   (mt/test-driver :clickhouse

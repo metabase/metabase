@@ -31,6 +31,16 @@ export const showClickBehaviorSidebar =
     }
   };
 
+export const showConfigureEditableTableSidebar =
+  (dashcardId: DashCardId) => (dispatch: Dispatch) => {
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.configureEditableTable,
+        props: { dashcardId },
+      }),
+    );
+  };
+
 export const toggleSidebar =
   (name: DashboardSidebarName) => (dispatch: Dispatch, getState: GetState) => {
     const currentSidebarName = getSidebar(getState()).name;

@@ -13,12 +13,14 @@ export interface RowIdCellProps {
   value?: React.ReactNode;
   backgroundColor?: string;
   canExpand?: boolean;
+  onRowExpandClick?: () => void;
 }
 
 export const RowIdCell = memo(function RowIdCell({
   value,
   backgroundColor,
   canExpand = true,
+  onRowExpandClick,
 }: RowIdCellProps) {
   const hasValue = value != null;
 
@@ -38,6 +40,7 @@ export const RowIdCell = memo(function RowIdCell({
               {value}
             </span>
           ) : null}
+
           {canExpand && (
             <Button
               data-testid="detail-shortcut"
@@ -46,6 +49,7 @@ export const RowIdCell = memo(function RowIdCell({
               className={cx(DataGridS.rowHoverVisible, S.expandButton)}
               size="compact-md"
               leftSection={<Icon name="expand" size={14} />}
+              onClick={onRowExpandClick}
             />
           )}
         </BaseCell>

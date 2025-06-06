@@ -97,5 +97,6 @@ export type SearchItem = Pick<SearchResult, "id" | "model" | "name"> &
       | "display"
       | "database_name"
       | "table_schema"
+      | "model_name"
     >
   >;

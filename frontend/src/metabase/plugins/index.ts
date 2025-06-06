@@ -1,3 +1,5 @@
+import type { Row } from "@tanstack/react-table";
+import type { Location } from "history";
 import React, {
   type ComponentType,
   type HTMLAttributes,
@@ -6,6 +8,7 @@ import React, {
   useMemo,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {
@@ -43,6 +46,10 @@ import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type {
+  BasicTableViewColumn,
+  SelectedTableActionState,
+} from "metabase/visualizations/types/table-actions";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -58,13 +65,16 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  ConcreteTableId,
   DashCardId,
   Dashboard,
   DashboardId,
   Database as DatabaseType,
   Dataset,
+  DatasetData,
   DatasetError,
   DatasetErrorType,
+  EditableTableActionsDisplaySettings,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -72,10 +82,14 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  RowValues,
+  TableActionDisplaySettings,
   TableId,
   Timeline,
   TimelineEvent,
   User,
+  VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
 import type {
   AdminPath,
@@ -744,6 +758,71 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_DATA_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+    location: Location<{ filter?: string }>;
+  }>,
+  CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
+    dashcardId: number;
+    cardId: number;
+    data: DatasetData;
+    tableId: ConcreteTableId;
+    className?: string;
+    visualizationSettings?: VisualizationSettings;
+    question: Question;
+    isEditing?: boolean;
+  }>,
+};
+
+export const PLUGIN_TABLE_ACTIONS = {
+  isEnabled: () => false,
+  isBuiltInEditableTableAction: (
+    _action: EditableTableActionsDisplaySettings,
+  ) => false,
+  useTableActionsExecute: (_params: {
+    actionsVizSettings: TableActionDisplaySettings[] | undefined;
+    datasetData: DatasetData | null | undefined;
+  }) =>
+    ({
+      tableActions: [],
+      selectedTableActionState: null,
+      handleTableActionRun: _.noop,
+      handleExecuteActionModalClose: _.noop,
+    }) as {
+      tableActions: WritebackAction[];
+      selectedTableActionState: SelectedTableActionState | null;
+      handleTableActionRun: (
+        action: WritebackAction,
+        row: Row<RowValues>,
+      ) => void;
+      handleExecuteActionModalClose: () => void;
+    },
+  TableActionExecuteModal: PluginPlaceholder as ComponentType<{
+    selectedTableActionState: SelectedTableActionState | null;
+    onClose: () => void;
+  }>,
+  ConfigureTableActions: PluginPlaceholder as ComponentType<{
+    value: TableActionDisplaySettings[] | undefined;
+    cols: BasicTableViewColumn[];
+    onChange: (newValue: TableActionDisplaySettings[]) => void;
+  }>,
 };
 
 export const PLUGIN_API = {

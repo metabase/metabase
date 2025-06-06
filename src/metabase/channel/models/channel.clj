@@ -80,14 +80,10 @@
   {:channel_type  (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
    :details       mi/transform-json})
 
-(def ^:private channel-template-details-type
-  #{:email/handlebars-text
-    :email/handlebars-resource})
-
 (mr/def ::ChannelTemplateEmailDetails
   [:merge
    [:map
-    [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
+    [:type                            (apply ms/enum-keywords-and-strings #{:email/handlebars-text :email/handlebars-resource})]
     [:subject                         string?]
     [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
    [:multi {:dispatch (comp keyword :type)}
@@ -98,16 +94,39 @@
      [:map
       [:body string?]]]]])
 
+(mr/def ::ChannelTemplateSlackDetails
+  [:merge
+   [:map
+    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text :slack/handlebars-resource})]]
+   [:multi {:dispatch (comp keyword :type)}
+    [:slack/handlebars-resource
+     [:map
+      [:path string?]]]
+    [:slack/handlebars-text
+     [:map
+      [:body string?]]]]])
+
+(mr/def ::ChannelTemplateHttpDetails
+  [:merge
+   [:map
+    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text})]
+    [:http/handlebars-text
+     [:map
+      [:body string?]]]]])
+
 (mr/def ::ChannelTemplate
   "Channel Template schema."
   [:merge
    [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
+    [:channel_type {:decode/string keyword} [:fn #(= "channel" (-> % keyword namespace))]]]
    [:multi {:dispatch :channel_type}
     [:channel/email
      [:map
       [:details ::ChannelTemplateEmailDetails]]]
-    [::mc/default :any]]])
+    [:channel/slack
+     [:map
+      [:details ::ChannelTemplateSlackDetails]]]
+    [::mc/default :map]]])
 
 (defn- check-valid-channel-template
   [channel-template]

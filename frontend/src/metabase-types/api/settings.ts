@@ -223,6 +223,7 @@ export const tokenFeatures = [
   "cache_granular_controls",
   "disable_password_login",
   "content_verification",
+  // "data_editing", // TODO[WRK]: enable this check after this feature token is added on the BE
   "embedding",
   "embedding_sdk",
   "embedding_iframe_sdk",
@@ -246,6 +247,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "table_data_editing",
   "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
@@ -401,6 +403,11 @@ interface PublicSettings {
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
   "ee-ai-features-enabled"?: boolean;
+  "default-handlebars-helpers"?: Array<{
+    name: string;
+    doc: string;
+    type: "built-in" | "custom";
+  }>;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;

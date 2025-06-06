@@ -1,4 +1,5 @@
 export * from "./action";
+export * from "./actionV2";
 export * from "./activity";
 export * from "./api";
 export * from "./api-key";

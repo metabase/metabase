@@ -53,7 +53,8 @@ describe("impersonated permission", { tags: "@external" }, () => {
         setImpersonatedPermission();
       });
 
-      it("have limited access", () => {
+      // TODO [WRK]: refactor this test to check data editing
+      it.skip("have limited access", () => {
         cy.signInAsImpersonatedUser();
 
         cy.visit(`/browse/databases/${PG_DB_ID}`);

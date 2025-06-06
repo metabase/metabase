@@ -87,18 +87,18 @@
   [_driver error-type _database action-type error-message]
   (when-let [[_match column]
              (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\)" error-message)]
-    (let  [column (db-identifier->name column)]
+    (let [column (db-identifier->name column)]
       (merge {:type error-type}
              (case action-type
-               :row/create
+               (:table.row/create :model.row/create)
                {:message (tru "Unable to create a new record.")
                 :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
 
-               :row/delete
+               (:table.row/delete :model.row/delete)
                {:message (tru "Other tables rely on this row so it cannot be deleted.")
                 :errors  {}}
 
-               :row/update
+               (:table.row/update :model.row/update)
                {:message (tru "Unable to update the record.")
                 :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
 

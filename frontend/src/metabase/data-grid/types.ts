@@ -12,10 +12,13 @@ import type {
   RowSelectionState,
   SortingState,
   Table,
+  VisibilityState,
 } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import type React from "react";
 import type { RefObject } from "react";
+
+import type { WritebackAction } from "metabase-types/api";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
 import type { VirtualGrid } from "./hooks/use-virtual-grid";
@@ -69,6 +72,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom cell render template */
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
 
+  /** Custom cell render template for cells in editing state */
+  editingCell?: (props: CellContext<TRow, TValue>) => React.JSX.Element;
+
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
@@ -80,6 +86,11 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to determine CSS styles for cells */
   getCellStyle?: (value: TValue, rowIndex: number) => React.CSSProperties;
+
+  /** Function to determine CSS class names for cells */
+  getCellClassNameByCellId?: (
+    cellContext: CellContext<TRow, TValue>,
+  ) => string | undefined;
 
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
@@ -104,6 +115,8 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values for display */
   formatter?: CellFormatter<TValue>;
+
+  getIsCellEditing?: (cellId: string) => boolean;
 }
 
 /**
@@ -115,6 +128,18 @@ export interface RowIdColumnOptions {
 
   /** Function to determine background color for the ID cells */
   getBackgroundColor?: (rowIndex: number) => string;
+
+  /** Handler for variant="expandButton" */
+  onRowExpandClick?: (rowIndex: number) => void;
+}
+
+export interface RowActionsColumnConfig<TData> {
+  actions: WritebackAction[];
+  onActionRun: (action: WritebackAction, row: Row<TData>) => void;
+  renderCell?: (
+    actions: WritebackAction[],
+    rowIndex: number,
+  ) => React.ReactNode;
 }
 
 export interface DataGridTheme {
@@ -153,6 +178,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
+
+  /** Visibility state of columns */
+  columnVisibility?: VisibilityState;
 
   /** Pinning state of columns */
   columnPinning?: ColumnPinningState;
@@ -213,12 +241,16 @@ export interface DataGridOptions<TData = any, TValue = any> {
   measurementRenderWrapper?: (
     children: React.ReactElement,
   ) => React.ReactElement;
+
+  rowActionsColumn?: RowActionsColumnConfig<TData>;
 }
 
 export type CellAlign = "left" | "middle" | "right";
 export type BodyCellVariant = "text" | "pill";
 export type HeaderCellVariant = "light" | "outline";
 export type RowIdVariant = "indexExpand" | "expandButton" | "index";
+
+export type DataGridCellId = string;
 
 export type CellFormatter<TValue> = (
   value: TValue,
@@ -274,8 +306,11 @@ export interface DataGridInstance<TData> {
   ) => void;
   onBodyCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
-    rowIndex: number,
-    columnId: string,
+    cellProps: {
+      rowIndex: number;
+      columnId: string;
+      cellId: string;
+    },
   ) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
   onWheel?: React.UIEventHandler<HTMLDivElement>;
