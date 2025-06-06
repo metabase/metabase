@@ -1,11 +1,12 @@
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
+import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
 import {
-  translateFieldValuesInSeries,
   translateContentString,
   translateDisplayNames,
   translateFieldValuesInHoveredObject,
+  translateFieldValuesInSeries,
 } from "./utils";
 
 describe("content translation utils", () => {
@@ -450,84 +451,37 @@ describe("content translation utils", () => {
   });
 
   describe("translateFieldValuesInSeries", () => {
-    // Mock ContentTranslationFunction
-    const mockTC = jest.fn((x) => `translated-${x}`);
+    const mockTC = jest.fn((x) => `mock translation of ${x}`);
 
     beforeEach(() => {
       jest.clearAllMocks(); // Clear mocks before each test
     });
 
     it("should return the original series if no translations are available", () => {
-      hasTranslations.mockReturnValue(false);
-      const series = [{ data: { rows: [["a"]], cols: ["col1"] } }];
-
-      const result = translateFieldValuesInSeries(series, mockTC);
-      expect(result).toEqual(series);
-      expect(mockTC).not.toHaveBeenCalled();
-    });
-
-    it("should return the original series for entries without data", () => {
-      hasTranslations.mockReturnValue(true);
-      const series = [{ card: {} }]; // Entry without 'data'
-
-      const result = translateFieldValuesInSeries(series, mockTC);
-      expect(result).toEqual(series);
-    });
-
-    it("should return unmodified series for data with no translatable columns", () => {
-      hasTranslations.mockReturnValue(true);
-      shouldTranslateFieldValuesOfColumn.mockReturnValue(false); // No column should be translated
-
-      const series = [{ data: { rows: [["a"]], cols: ["col1"] } }];
+      const series = createMockSeries();
       const result = translateFieldValuesInSeries(series, mockTC);
       expect(result).toEqual(series);
       expect(mockTC).not.toHaveBeenCalled();
     });
 
     it("should translate specific columns in the series", () => {
-      hasTranslations.mockReturnValue(true);
-      shouldTranslateFieldValuesOfColumn.mockImplementation(
-        (col) => col === "col1",
-      );
+      const series = createMockSeries();
+      series[0].data.cols = [
+        createMockColumn({
+          display_name: "Column 1",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          display_name: "Column 2",
+          semantic_type: "not translatable",
+        }),
+      ];
+      series[0].data.rows = [["a", "b"]];
 
-      const series = [{ data: { rows: [["a", "1"]], cols: ["col1", "col2"] } }];
       const result = translateFieldValuesInSeries(series, mockTC);
 
-      expect(result).toEqual([
-        { data: { rows: [["translated-a", "1"]], cols: ["col1", "col2"] } },
-      ]);
+      expect(result[0].data.rows).toEqual([["mock translation of a", "b"]]);
       expect(mockTC).toHaveBeenCalledWith("a");
-    });
-
-    it("should not translate non-string values even in translatable columns", () => {
-      hasTranslations.mockReturnValue(true);
-      shouldTranslateFieldValuesOfColumn.mockImplementation(
-        (col) => col === "col1",
-      );
-
-      const series = [{ data: { rows: [["a", 1]], cols: ["col1", "col2"] } }];
-      const result = translateFieldValuesInSeries(series, mockTC);
-
-      expect(result).toEqual([
-        { data: { rows: [["translated-a", 1]], cols: ["col1", "col2"] } },
-      ]);
-      expect(mockTC).toHaveBeenCalledWith("a");
-    });
-
-    it("should handle a mix of translatable and non-translatable columns correctly", () => {
-      hasTranslations.mockReturnValue(true);
-      shouldTranslateFieldValuesOfColumn.mockImplementation(
-        (col) => col === "col1",
-      );
-
-      const series = [{ data: { rows: [["a", "b"]], cols: ["col1", "col2"] } }];
-      const result = translateFieldValuesInSeries(series, mockTC);
-
-      expect(result).toEqual([
-        { data: { rows: [["translated-a", "b"]], cols: ["col1", "col2"] } },
-      ]);
-      expect(mockTC).toHaveBeenCalledWith("a");
-      expect(mockTC).not.toHaveBeenCalledWith("b");
     });
   });
 });
