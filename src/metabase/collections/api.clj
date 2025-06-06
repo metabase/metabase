@@ -516,18 +516,18 @@
       true)))
 
 (defn- post-process-card-row [row]
-  (-> (t2/instance :model/Card row)
-      (update :collection_preview api/bit->boolean)
+  (-> (update row :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete :dashboard_count [:dashboard :moderation_status])
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
   [_ _options _ rows]
-  (map post-process-card-row rows))
+  (as-> (map #(t2/instance :model/Card %) rows) $
+    (t2/hydrate $ :can_write :can_restore :can_delete :dashboard_count [:dashboard :moderation_status])
+    (map post-process-card-row $)))
 
 (defmethod post-process-collection-children :metric
   [_ _options _ rows]
@@ -623,6 +623,7 @@
   (-> (assoc
        (collection/effective-children-query
         collection
+        {:cte-name :visible_collection_ids}
         (if archived?
           [:or
            [:= :archived true]
@@ -908,7 +909,8 @@
                           (update select-clause-type add-model-ranking model)))
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
-                     :permission-level (if archived? :write :read)}
+                     :permission-level (if archived? :write :read)
+                     :include-trash-collection? archived?}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
