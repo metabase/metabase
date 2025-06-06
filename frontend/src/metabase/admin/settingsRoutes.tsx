@@ -1,9 +1,9 @@
 import { IndexRedirect, Route } from "react-router";
 
+import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
-import { SettingsEditor } from "./settings/app/components/SettingsEditor";
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import { SMTPConnectionForm } from "./settings/components/Email/SMTPConnectionForm";
 import {
@@ -11,6 +11,7 @@ import {
   StaticEmbeddingSettings,
 } from "./settings/components/EmbeddingSettings";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
+import { SettingsNav } from "./settings/components/SettingsNav";
 import { AppearanceSettingsPage } from "./settings/components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "./settings/components/SettingsPages/AuthenticationSettingsPage";
 import { CloudSettingsPage } from "./settings/components/SettingsPages/CloudSettingsPage";
@@ -27,7 +28,13 @@ import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSe
 import { SlackSettingsPage } from "./settings/slack/SlackSettingsPage";
 
 export const getSettingsRoutes = () => (
-  <Route component={SettingsEditor}>
+  <Route
+    component={({ children }) => (
+      <AdminSettingsLayout sidebar={<SettingsNav />}>
+        {children}
+      </AdminSettingsLayout>
+    )}
+  >
     <IndexRedirect to="general" />
     <Route path="general" component={GeneralSettingsPage} />
     <Route path="updates" component={UpdatesSettingsPage} />
