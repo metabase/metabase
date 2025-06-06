@@ -39,6 +39,24 @@
     (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
     oldest-version))
 
+(defmethod fetch-oldest-supported-version :oracle
+  [database db-info]
+  (let [now (java.time.LocalDate/now)
+        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
+        oldest-version (->> all-versions
+                            (mapv (fn [m]
+                                    (-> m
+                                        (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
+                                        (update :eol #(and % (-> % java.time.LocalDate/parse))))))
+                            (filter (fn [{:keys [^java.time.LocalDate eol cycle]}]
+                                      (and eol (.isAfter eol now)
+                                           cycle (> (Integer/parseInt cycle) 19))))
+                            (sort-by :releaseDate)
+                            vec
+                            first
+                            :cycle)]
+    oldest-version))
+
 (defmethod fetch-oldest-supported-version :sqlserver
   [database db-info]
   (let [now (java.time.LocalDate/now)
@@ -53,6 +71,7 @@
                             (filter (fn [{:keys [releaseLabel]}]
                                       (and releaseLabel (re-matches #"^\d{4}$" releaseLabel))))
                             (sort-by :releaseLabel)
+                            vec
                             first
                             :releaseLabel)]
     (str oldest-version "-latest")))
@@ -137,6 +156,17 @@
    "-e" "SA_PASSWORD=P@ssw0rd"
    "--name" container-name
    (str "mcr.microsoft.com/mssql/server:" resolved-version)])
+
+(defmethod docker-cmd :oracle
+  [_db container-name resolved-version port]
+  ["docker" "run"
+   "-d"
+   "-p" (str port ":1521")
+   "-e" "ORACLE_PASSWORD=password"
+   "--name" container-name
+   (if (= resolved-version "latest")
+     "gvenzl/oracle-free:latest"
+     (str "gvenzl/oracle-xe:" resolved-version))])
 
 (defn- start-db!
   [database version resolved-version port]
