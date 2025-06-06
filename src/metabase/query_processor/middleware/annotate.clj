@@ -196,7 +196,8 @@
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) opts]
-      [:field id (not-empty (dissoc opts :base-type :effective-type))]
+      [:field id (not-empty (cond-> (dissoc opts :base-type :effective-type :inherited-temporal-unit)
+                              (:source-field opts) (dissoc :join-alias)))]
 
       [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
@@ -239,8 +240,11 @@
   I guess. -- Cam"
   [query :- ::lib.schema/query
    cols  :- ::cols]
-  (let [lib-metadata (binding [lib.metadata.calculation/*display-name-style* :long]
-                       (lib/returned-columns query))]
+  (let [lib-metadata (binding [lib.metadata.calculation/*display-name-style* :long
+                               ;; TODO -- this is supposed to mean `:inherited-temporal-unit` is included in the output
+                               ;; but doesn't seem to be working?
+                               lib.metadata.calculation/*propagate-binning-and-bucketing* true]
+                       (doall (lib/returned-columns query)))]
     (as-> cols cols
       (cond-> cols
         (seq lib-metadata) (merge-cols lib-metadata))

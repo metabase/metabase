@@ -98,14 +98,14 @@
                     {::original-effective-type original-effective-type})
                   (when-let [original-temporal-unit (::original-temporal-unit opts)]
                     {::original-temporal-unit original-temporal-unit})
-                  ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
-                  ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is thruthy, ie. bound. Intent
-                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
+                  ;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+                  ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound. Intent
+                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise e.g.
                   ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
                   ;; contained `:temporal-unit` contains no `:inherited-temporal-unit`. If the column like this was used
                   ;; to generate ref for eg. order by it would contain the `:inherited-temporal-unit`, while
                   ;; the original column (eg. in breakout) would not.
-                  (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
+                  (let [inherited-temporal-unit-keys (cond-> [:inherited-temporal-unit]
                                                        lib.metadata.calculation/*propagate-binning-and-bucketing*
                                                        (conj :temporal-unit))]
                     (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
@@ -122,6 +122,18 @@
                       {:was-binned (boolean was-binned)}))
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
+                  ;; Preserve additional information that may have been added by QP middleware. Sometimes pre-processing
+                  ;; middleware needs to add extra info to track things that it did (e.g. the
+                  ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds
+                  ;; keys to track which Fields it adds or needs to remap, and then the post-processing middleware
+                  ;; does the actual remapping based on that info)
+                  (when-let [external-namespaced-options (not-empty (into {}
+                                                                          (filter (fn [[k _v]]
+                                                                                    (and (qualified-keyword? k)
+                                                                                         (not= (namespace k) "lib")
+                                                                                         (not (str/starts-with? (namespace k) "metabase.lib")))))
+                                                                          opts))]
+                    {:options external-namespaced-options})
                   (when (integer? id-or-name)
                     (or (lib.equality/resolve-field-id query stage-number id-or-name)
                         {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")}))
