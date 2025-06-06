@@ -604,3 +604,46 @@ describe("issue 56905", () => {
       .should("be.visible");
   });
 });
+
+describe("issue 57644", () => {
+  describe("with only one database", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+      cy.findByTestId("native-query-top-bar")
+        .findByText("Select a database")
+        .should("be.visible");
+
+      // The popover should not be visible, we give it a timeout here because the
+      // popover disappears immediately and we don't want that to make the test pass.
+      cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
+    });
+  });
+
+  describe("with multiple databases", () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)", () => {
+      H.popover()
+        .should("be.visible")
+        .and("contain", "Sample Database")
+        .and("contain", "QA Postgres12");
+    });
+  });
+});

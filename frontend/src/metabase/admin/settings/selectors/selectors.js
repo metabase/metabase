@@ -32,7 +32,7 @@ import { NotificationSettingsPage } from "../components/SettingsPages/Notificati
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import SlackSettings from "../slack/containers/SlackSettings";
+import { SlackSettingsPage } from "../slack/SlackSettingsPage";
 
 import { getAdminSettingDefinitions } from "./typed-selectors";
 
@@ -86,7 +86,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "notifications/slack": {
     name: "Slack",
     order: 50,
-    component: SlackSettings,
+    component: SlackSettingsPage,
     settings: [],
   },
   notifications: {
