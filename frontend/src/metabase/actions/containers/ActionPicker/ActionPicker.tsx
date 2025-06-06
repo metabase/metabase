@@ -103,7 +103,7 @@ export function ActionPicker({
   );
 }
 
-export function ModelActionPicker({
+function ModelActionPicker({
   onClick,
   model,
   actions,
@@ -193,7 +193,7 @@ export function ModelActionPicker({
   );
 }
 
-export function TableActionPicker({
+function TableActionPicker({
   onClick,
   title,
   actions,

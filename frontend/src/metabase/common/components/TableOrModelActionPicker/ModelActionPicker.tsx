@@ -13,13 +13,7 @@ import {
   useListActionsV2Query,
   useListModelsWithActionsQuery,
 } from "metabase/api";
-import type {
-  ActionItem,
-  ModelActionPickerFolderItem,
-  ModelActionPickerItem,
-  ModelActionPickerStatePath,
-  ModelActionPickerValue,
-} from "metabase/common/components/DataPicker/types";
+import type { ActionItem } from "metabase/common/components/DataPicker/types";
 import {
   AutoScrollBox,
   ItemList,
@@ -35,7 +29,13 @@ import type {
 
 import { ActionList } from "./ActionList";
 import { ModelList } from "./ModelList";
-import type { CollectionListItem } from "./types";
+import type {
+  CollectionListItem,
+  ModelActionPickerFolderItem,
+  ModelActionPickerItem,
+  ModelActionPickerStatePath,
+  ModelActionPickerValue,
+} from "./types";
 import {
   generateModelActionKey,
   getActionItem,

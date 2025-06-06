@@ -2,10 +2,8 @@ import type {
   ActionItem,
   CollectionItem,
   DatabaseItem,
-  ModelActionPickerItem,
   ModelItem,
   SchemaItem,
-  TableActionPickerItem,
   TableItem,
   TablePickerValue,
 } from "metabase/common/components/DataPicker";
@@ -21,7 +19,11 @@ import type {
   TableWithActionsItem,
 } from "metabase-types/api";
 
-import type { CollectionListItem } from "./types";
+import type {
+  CollectionListItem,
+  ModelActionPickerItem,
+  TableActionPickerItem,
+} from "./types";
 
 export const generateTableActionKey = (
   dbItem: DatabaseItem | null,

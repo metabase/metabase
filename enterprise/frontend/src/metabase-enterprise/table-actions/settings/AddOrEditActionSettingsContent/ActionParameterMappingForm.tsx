@@ -7,11 +7,6 @@ import EditableText from "metabase/core/components/EditableText/EditableText";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Stack, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
-import type { ActionParametersFormValues } from "metabase-enterprise/table-actions/settings/AddOrEditActionSettingsContent/types";
-import {
-  cleanEmptyVisibility,
-  isValidMapping,
-} from "metabase-enterprise/table-actions/settings/AddOrEditActionSettingsContent/utils";
 import type {
   DataGridWritebackAction,
   RowActionFieldSettings,
@@ -20,6 +15,8 @@ import type {
 
 import { ActionParameterSettingsItem } from "./ActionParameterSettingsItem";
 import S from "./AddOrEditActionSettingsContent.module.css";
+import type { ActionParametersFormValues } from "./types";
+import { cleanEmptyVisibility, isValidMapping } from "./utils";
 
 interface ActionParameterMappingProps {
   action: DataGridWritebackAction;

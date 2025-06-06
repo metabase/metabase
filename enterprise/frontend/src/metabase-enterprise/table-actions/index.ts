@@ -1,9 +1,10 @@
 import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import { TableActionExecuteModal } from "metabase-enterprise/table-actions/execution/TableActionExecuteModal";
-import { useTableActionsExecute } from "metabase-enterprise/table-actions/execution/use-table-actions-execute";
-import { isBuiltInEditableTableAction } from "metabase-enterprise/table-actions/settings/AddOrEditActionSettingsContent/utils";
-import { ConfigureTableActions } from "metabase-enterprise/table-actions/settings/ConfigureTableActions/ConfigureTableActions";
+
+import { TableActionExecuteModal } from "./execution/TableActionExecuteModal";
+import { useTableActionsExecute } from "./execution/use-table-actions-execute";
+import { isBuiltInEditableTableAction } from "./settings/AddOrEditActionSettingsContent/utils";
+import { ConfigureTableActions } from "./settings/ConfigureTableActions/ConfigureTableActions";
 
 if (hasPremiumFeature("table_data_editing")) {
   PLUGIN_TABLE_ACTIONS.isEnabled = () => true;

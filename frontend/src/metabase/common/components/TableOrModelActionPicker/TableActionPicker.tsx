@@ -17,13 +17,7 @@ import { getSchemaItem } from "metabase/common/components/DataPicker";
 import { DatabaseList } from "metabase/common/components/DataPicker/components/DatabaseList";
 import { SchemaList } from "metabase/common/components/DataPicker/components/SchemaList";
 import { TableList } from "metabase/common/components/DataPicker/components/TableList";
-import type {
-  ActionItem,
-  TableActionPickerFolderItem,
-  TableActionPickerItem,
-  TableActionPickerStatePath,
-  TableActionPickerValue,
-} from "metabase/common/components/DataPicker/types";
+import type { ActionItem } from "metabase/common/components/DataPicker/types";
 import { AutoScrollBox } from "metabase/common/components/EntityPicker";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
@@ -37,6 +31,12 @@ import type {
 } from "metabase-types/api";
 
 import { ActionList } from "./ActionList";
+import type {
+  TableActionPickerFolderItem,
+  TableActionPickerItem,
+  TableActionPickerStatePath,
+  TableActionPickerValue,
+} from "./types";
 import {
   generateTableActionKey,
   getActionItem,

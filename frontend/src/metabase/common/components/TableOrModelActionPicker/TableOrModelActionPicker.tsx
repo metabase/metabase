@@ -1,15 +1,7 @@
 import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import type {
-  ActionItem,
-  ModelActionPickerItem,
-  ModelActionPickerStatePath,
-  ModelActionPickerValue,
-  TableActionPickerItem,
-  TableActionPickerStatePath,
-  TableActionPickerValue,
-} from "metabase/common/components/DataPicker";
+import type { ActionItem } from "metabase/common/components/DataPicker";
 import { useAvailableData } from "metabase/common/components/DataPicker/hooks";
 import {
   EntityPickerContent,
@@ -18,8 +10,17 @@ import {
   defaultOptions,
 } from "metabase/common/components/EntityPicker";
 
-import { ModelActionPicker, TableActionPicker } from "./ActionPicker";
-import { isActionItem } from "./ActionPicker/utils";
+import { ModelActionPicker } from "./ModelActionPicker";
+import { TableActionPicker } from "./TableActionPicker";
+import type {
+  ModelActionPickerItem,
+  ModelActionPickerStatePath,
+  ModelActionPickerValue,
+  TableActionPickerItem,
+  TableActionPickerStatePath,
+  TableActionPickerValue,
+} from "./types";
+import { isActionItem } from "./utils";
 
 type TableOrModelDataPickerProps = {
   value: ActionItem | undefined;
@@ -34,7 +35,7 @@ const options: Partial<EntityPickerOptions> = {
   hasRecents: false,
 };
 
-export const TableOrModelDataPicker = ({
+export const TableOrModelActionPicker = ({
   value,
   onChange,
   onClose,

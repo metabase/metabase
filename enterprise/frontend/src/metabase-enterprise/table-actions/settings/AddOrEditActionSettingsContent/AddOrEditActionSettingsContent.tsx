@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { ActionSettingsWrapper } from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
 import { skipToken } from "metabase/api";
 import type { ActionItem } from "metabase/common/components/DataPicker";
+import { TableOrModelActionPicker } from "metabase/common/components/TableOrModelActionPicker";
 import { Modal } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetActionsQuery } from "metabase-enterprise/api";
@@ -11,8 +12,6 @@ import type {
   RowActionFieldSettings,
   TableActionDisplaySettings,
 } from "metabase-types/api";
-
-import { TableOrModelDataPicker } from "../TableOrModelDataPicker";
 
 import { ActionParameterMappingForm } from "./ActionParameterMappingForm";
 
@@ -83,7 +82,7 @@ export function AddOrEditActionSettingsContent({
 
   if (!isEditMode) {
     return (
-      <TableOrModelDataPicker
+      <TableOrModelActionPicker
         value={selectedPickerAction}
         onChange={setSelectedPickerAction}
         onClose={onClose}
@@ -96,7 +95,7 @@ export function AddOrEditActionSettingsContent({
             onSubmit={handleSubmit}
           />
         )}
-      </TableOrModelDataPicker>
+      </TableOrModelActionPicker>
     );
   }
 
