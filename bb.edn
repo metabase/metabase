@@ -88,7 +88,7 @@
                   :mysql    {:ports {:oldest 3308  :latest 3309}  :eol-url "https://endoflife.date/api/mysql.json"}
                   :mariadb  {:ports {:oldest 3306  :latest 3307}  :eol-url "https://endoflife.date/api/mariadb.json"}
                   :mongo    {:ports {:oldest 27017 :latest 27018} :eol-url "https://endoflife.date/api/mongodb.json"}
-                  :clickhouse {:ports {:oldest 8124 :latest 8123} :eol-url nil}}
+                  :clickhouse {:ports {:oldest 8124 :latest 8123} :eol-url nil}} ;; clickhouse is not on endoflife.date
    :usage-fn   start-db/usage
    :task       (task!
                 (let [[db version] (:arguments parsed)]

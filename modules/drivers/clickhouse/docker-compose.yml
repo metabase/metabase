@@ -51,6 +51,7 @@ services:
   ##########################################################################################################
 
   clickhouse_older_version:
+    # if the oldest supported veresion changes please update fetch-supported-versions in mage/mage/start_db.clj
     image: 'clickhouse/clickhouse-server:23.3-alpine'
     container_name: 'mb-clickhouse-oldest'
     hostname: clickhouse.older

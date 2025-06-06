@@ -17,33 +17,35 @@
 
 (defn- ->deps-edn-alias [db version] (c/green ":db/" (name db) "-" (name version)))
 
-(defn- fetch-supported-versions [db-info database]
-  (if (= database :clickhouse)
-    "23.3"
-    (let [now (java.time.LocalDate/now)
-          all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
-          _ (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
-          supported (->> all-versions
-                         (mapv (fn [m]
-                                 (-> m
-                                     (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
-                                     (update :eol #(and % (-> % java.time.LocalDate/parse))))))
-                         (filter (fn [{:keys [^java.time.LocalDate eol]}]
-                                   (and eol (.isAfter eol now))))
-                         (sort-by :releaseDate)
-                         vec)]
-      (u/debug "supported: \n" (with-out-str (t/table supported)))
-      supported)))
+(defmulti ^:private fetch-oldest-supported-version
+  {:arglists '([database db-info])}
+  (fn [database db-info] database))
 
-(defn- fetch-oldest-supported-version [db-info database]
-  (let [versions (fetch-supported-versions db-info database)
-        oldest-version (-> versions first :cycle)]
-    (u/debug "OLDEST VERSION:" oldest-version)
+(defmethod fetch-oldest-supported-version :default
+  [database db-info]
+  (let [now (java.time.LocalDate/now)
+        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
+        oldest-version (->> all-versions
+                            (mapv (fn [m]
+                                    (-> m
+                                        (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
+                                        (update :eol #(and % (-> % java.time.LocalDate/parse))))))
+                            (filter (fn [{:keys [^java.time.LocalDate eol]}]
+                                      (and eol (.isAfter eol now))))
+                            (sort-by :releaseDate)
+                            vec
+                            first
+                            :cycle)]
+    (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
     oldest-version))
+
+(defmethod fetch-oldest-supported-version :clickhouse
+  [database db-info]
+  23.3)
 
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
-    (fetch-oldest-supported-version db-info database)
+    (fetch-oldest-supported-version database db-info)
     (cond-> version (keyword? version) name)))
 
 ;; Docker stuff:
@@ -106,7 +108,7 @@
    "up" "-d"
    (if (= resolved-version "latest")
      "clickhouse"
-     "clickhouse_older_version")])
+     "clickhouse_older_version")]) ;; these are defined in modules/drivers/clickhouse/docker-compose.yml
 
 (defn- start-db!
   [database version resolved-version port]
