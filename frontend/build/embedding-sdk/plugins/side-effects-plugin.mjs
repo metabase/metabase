@@ -3,6 +3,8 @@ import path from "path";
 
 import { minimatch } from "minimatch";
 
+import { enhancedResolve } from "../utils/enhanced-resolve.mjs";
+
 /**
  * We have to define side-effects for the SDK when using `esbuild`, but we completely have to ignore them in all other cases:
  *  - Main App build
@@ -13,32 +15,31 @@ import { minimatch } from "minimatch";
  * This plugin mimics the `sideEffects` checking mechanism using `esbuild` API.
  */
 export const sideEffectsPlugin = ({ basePath, sideEffects }) => ({
-  name: "no-side-effects",
+  name: "side-effects",
   setup(build) {
-    build.onResolve({ filter: /.*/ }, async (args) => {
-      const importer = args.importer;
-      const relativeImporter = "./" + path.relative(basePath, importer);
+    build.onResolve(
+      { filter: /.*/ },
+      async ({ importer, resolveDir, path: importPath }) => {
+        const resolvedPath = enhancedResolve(resolveDir, importPath, {
+          resolveNodeModules: false,
+        });
 
-      if (args.pluginData) {
-        // Ignore this if we called ourselves
-        return;
-      }
+        if (!resolvedPath) {
+          return;
+        }
 
-      const { path: argsPath, ...rest } = args;
+        const relativeImporter = "./" + path.relative(basePath, importer);
 
-      // Avoid infinite recursion
-      rest.pluginData = true;
+        const isSideEffectPath = sideEffects.some((sideEffectPath) =>
+          minimatch(relativeImporter, sideEffectPath),
+        );
 
-      const result = await build.resolve(argsPath, rest);
-
-      const isSideEffectPath = sideEffects.some((sideEffectPath) =>
-        minimatch(relativeImporter, sideEffectPath),
-      );
-
-      result.sideEffects = isSideEffectPath;
-
-      return result;
-    });
+        return {
+          path: resolvedPath,
+          sideEffects: isSideEffectPath,
+        };
+      },
+    );
 
     build.onEnd((result) => {
       if (!result.warnings.length) {

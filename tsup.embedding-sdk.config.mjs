@@ -1,5 +1,3 @@
-/* eslint-disable no-undef */
-import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
@@ -9,80 +7,31 @@ import babel from "esbuild-plugin-babel";
 import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
 import { build } from "tsup";
 
+import { ALIAS } from "./frontend/build/embedding-sdk/constants/alias.mjs";
+import { EXTERNALS } from "./frontend/build/embedding-sdk/constants/externals.mjs";
+import { IS_DEV_MODE } from "./frontend/build/embedding-sdk/constants/is-dev-mode.js";
 import { LICENSE_BANNER } from "./frontend/build/embedding-sdk/constants/license-banner.mjs";
+import {
+  BUILD_PATH,
+  ROOT_PATH,
+  SDK_SRC_PATH,
+  SRC_PATH,
+} from "./frontend/build/embedding-sdk/constants/paths.mjs";
+import { RESOLVE_EXTENSIONS } from "./frontend/build/embedding-sdk/constants/resolve-extensions.mjs";
+import {
+  EMBEDDING_SDK_VERSION,
+  GIT_BRANCH,
+  GIT_COMMIT,
+} from "./frontend/build/embedding-sdk/constants/version-data.mjs";
 import { cssModulesPlugin } from "./frontend/build/embedding-sdk/plugins/css-modules-plugin.mjs";
 import { dynamicLocaleImportsPlugin } from "./frontend/build/embedding-sdk/plugins/dynamic-locale-imports-plugin.mjs";
 import { sideEffectsPlugin } from "./frontend/build/embedding-sdk/plugins/side-effects-plugin.mjs";
 import { svgPlugin } from "./frontend/build/embedding-sdk/plugins/svg-plugin.mjs";
-import { filterExternalDependencies } from "./frontend/build/embedding-sdk/utils/filter-external-dependencies.mjs";
 import { generateScopedCssClassName } from "./frontend/build/embedding-sdk/utils/generate-scoped-css-class-name.mjs";
 import { getCssModulesInjectCode } from "./frontend/build/embedding-sdk/utils/get-css-modules-inject-code.mjs";
 import { getExternalsConfig } from "./frontend/build/embedding-sdk/utils/get-externals-config.mjs";
-import { getPackageJsonContent } from "./frontend/build/embedding-sdk/utils/get-package-json-content.mjs";
-import { removeRequireCall } from "./frontend/build/embedding-sdk/utils/remove_require_call.mjs";
+import { removeRequireCall } from "./frontend/build/embedding-sdk/utils/remove-require-call.mjs";
 import { setupBanners } from "./frontend/build/embedding-sdk/utils/setup-banners.mjs";
-
-const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
-const isDevMode = WEBPACK_BUNDLE !== "production";
-
-const ROOT_PATH = import.meta.dirname;
-
-const SRC_PATH = path.resolve(import.meta.dirname, "frontend/src/metabase");
-const SDK_SRC_PATH = path.resolve(
-  import.meta.dirname,
-  "enterprise/frontend/src/embedding-sdk",
-);
-const ENTERPRISE_SRC_PATH = path.resolve(
-  import.meta.dirname,
-  "enterprise/frontend/src/metabase-enterprise",
-);
-const LIB_SRC_PATH = path.resolve(
-  import.meta.dirname,
-  "frontend/src/metabase-lib",
-);
-const TYPES_SRC_PATH = path.resolve(
-  import.meta.dirname,
-  "frontend/src/metabase-types",
-);
-const ROOT_CSS_FILE_PATH = path.join(SRC_PATH, "css/core/index");
-
-const CLJS_SRC_PATH_DEV = path.resolve(import.meta.dirname, "target/cljs_dev");
-const CLJS_SRC_PATH = path.resolve(import.meta.dirname, "target/cljs_release");
-
-const BUILD_PATH = path.resolve(
-  import.meta.dirname,
-  "resources/embedding-sdk",
-  "dist",
-);
-
-const ASSETS_PATH = path.resolve(
-  import.meta.dirname,
-  "resources/frontend_client/app/assets",
-);
-const FONTS_PATH = path.resolve(
-  import.meta.dirname,
-  "resources/frontend_client/app/fonts",
-);
-
-const TEST_SUPPORT_PATH = path.resolve(
-  import.meta.dirname,
-  "frontend/test/__support__",
-);
-const E2E_PATH = path.resolve(import.meta.dirname, "e2e");
-
-const pkgTpl = fs.readFileSync(
-  path.resolve(SDK_SRC_PATH, "package.template.json"),
-  "utf-8",
-);
-const EMBEDDING_SDK_VERSION = JSON.parse(pkgTpl).version;
-const GIT_BRANCH = execSync("git rev-parse --abbrev-ref HEAD")
-  .toString()
-  .trim();
-const GIT_COMMIT = execSync("git rev-parse HEAD").toString().trim();
-
-const externals = Object.keys(
-  filterExternalDependencies(getPackageJsonContent().dependencies),
-);
 
 await build({
   entry: [path.join(SDK_SRC_PATH, "index.ts")],
@@ -96,20 +45,20 @@ await build({
   tsconfig: "./tsconfig.sdk.json",
   platform: "browser",
   target: "esnext",
-  format: !isDevMode ? ["cjs", "esm"] : "esm",
+  format: !IS_DEV_MODE ? ["cjs", "esm"] : "esm",
   shims: true,
-  splitting: !isDevMode,
-  treeshake: !isDevMode,
+  splitting: !IS_DEV_MODE,
+  treeshake: !IS_DEV_MODE,
   sourcemap: false,
-  minify: !isDevMode,
-  clean: !isDevMode,
-  watch: isDevMode
+  minify: !IS_DEV_MODE,
+  clean: !IS_DEV_MODE,
+  watch: IS_DEV_MODE
     ? ["./enterprise/frontend/src/embedding-sdk", "./frontend/src"]
     : false,
   metafile: false,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
-  ...getExternalsConfig({ externals }),
+  ...getExternalsConfig({ externals: EXTERNALS }),
   injectStyle: true,
   env: {
     BUILD_TIME: JSON.stringify(new Date().toISOString()),
@@ -140,38 +89,9 @@ await build({
   esbuildOptions: (options) => {
     options.outbase = SDK_SRC_PATH;
 
-    options.alias = {
-      assets: ASSETS_PATH,
-      "~assets": ASSETS_PATH,
-      fonts: FONTS_PATH,
-      metabase: SRC_PATH,
-      "metabase-lib": LIB_SRC_PATH,
-      "metabase-enterprise": ENTERPRISE_SRC_PATH,
-      "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": path.join(SRC_PATH, `dev${isDevMode ? "" : "-noop"}.js`),
-      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-      __support__: TEST_SUPPORT_PATH,
-      e2e: E2E_PATH,
-      style: ROOT_CSS_FILE_PATH,
-      "sdk-ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
-      "sdk-specific-imports": path.join(
-        SDK_SRC_PATH,
-        "/lib/sdk-specific-imports.ts",
-      ),
-      "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
-      "embedding-sdk": SDK_SRC_PATH,
-    };
+    options.alias = ALIAS;
 
-    options.resolveExtensions = [
-      ".tsx",
-      ".ts",
-      ".jsx",
-      ".js",
-      ".mjs",
-      ".css",
-      ".svg",
-      ".png",
-    ];
+    options.resolveExtensions = RESOLVE_EXTENSIONS;
 
     options.mainFields = ["browser", "module", "main"];
 
@@ -190,7 +110,8 @@ await build({
       generateScopedName: generateScopedCssClassName,
     }),
     fixReactVirtualizedPlugin,
-    // To properly apply @emotion plugin before `requireToImport`
+    // We need the `babel` plugin only because of `@emotion` babel plugin
+    // The `@babel/preset-env` is set to properly apply @emotion plugin before `requireToImport`
     babel({
       filter: /\.[jt]s?x/,
       config: {
@@ -216,12 +137,12 @@ await build({
       ],
     }),
     commonjs({
-      ignore: (path) => !externals.includes(path),
+      ignore: (path) => !EXTERNALS.includes(path),
     }),
     NodeModulesPolyfillPlugin(),
     svgPlugin(),
-    !isDevMode
-      ? // This plugin is heavy, so we don't apply it for dev mode
+    !IS_DEV_MODE
+      ? // This plugin is slowdowns watch mode a bit (~1.5s), so we don't apply it for dev mode
         sideEffectsPlugin({
           basePath: ROOT_PATH,
           sideEffects: [

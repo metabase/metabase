@@ -8,7 +8,7 @@ export const getExternalsConfig = ({ externals }) => {
   );
 
   return {
-    externals: undefined,
+    external: undefined,
     noExternal: [
       noExternalsRegExp,
       // Preserve all 3rd party CSS imports to bundle them
