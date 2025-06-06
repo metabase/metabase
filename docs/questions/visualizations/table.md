@@ -2,9 +2,6 @@
 title: Tables
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/table
-  - /learn/basics/visualizing-data/table
-  - /learn/visualization/table
-  - /learn/metabase-basics/querying-and-dashboards/visualization/table
 ---
 
 # Tables
