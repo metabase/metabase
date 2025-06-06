@@ -21,5 +21,5 @@
   ([locale]
    (premium-features/assert-has-feature :content-translation (tru "Content translation"))
    (if locale
-     (t2/select :model/ContentTranslation :locale locale)
-     (t2/select :model/ContentTranslation))))
+     (t2/select :model/ContentTranslation :locale locale {:order-by [:msgid]})
+     (t2/select :model/ContentTranslation {:order-by [:locale :msgid]}))))

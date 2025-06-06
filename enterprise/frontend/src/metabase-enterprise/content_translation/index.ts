@@ -7,6 +7,7 @@ import { useTranslateContent } from "./use-translate-content";
 import {
   shouldTranslateFieldValuesOfColumn,
   translateDisplayNames,
+  useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
   useTranslateSeries,
 } from "./utils";
@@ -14,14 +15,15 @@ import {
 if (hasPremiumFeature("content_translation")) {
   Object.assign(PLUGIN_CONTENT_TRANSLATION, {
     isEnabled: true,
+    useSortByContentTranslation,
     useTranslateContent,
-    translateDisplayNames,
-    ContentTranslationConfiguration,
-    shouldTranslateFieldValuesOfColumn,
     useTranslateFieldValuesInHoveredObject,
     useTranslateSeries,
-    setEndpoints: (encodedToken: string) => {
+    setEndpointsForStaticEmbedding: (encodedToken: string) => {
       contentTranslationEndpoints.getDictionary = `/api/ee/embedded-content-translation/dictionary/${encodedToken}`;
     },
+    shouldTranslateFieldValuesOfColumn,
+    translateDisplayNames,
+    ContentTranslationConfiguration,
   });
 }
