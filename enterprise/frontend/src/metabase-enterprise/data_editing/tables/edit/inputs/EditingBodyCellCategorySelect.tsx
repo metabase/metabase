@@ -11,6 +11,7 @@ import {
   Input,
   Loader,
   type SelectOption,
+  Text,
   TextInput,
   useCombobox,
 } from "metabase/ui";
@@ -119,14 +120,18 @@ export const EditingBodyCellCategorySelect = ({
           maybeHydratedDatasetColumn.remapping.get(value) ??
           maybeHydratedDatasetColumn.remapping.get(intValue);
 
-        return getSelectedLabelText({
-          value: value,
-          label: remappedValue,
-        });
+        return (
+          <Text truncate="end">
+            {getSelectedLabelText({
+              value: value,
+              label: remappedValue,
+            })}
+          </Text>
+        );
       }
 
       // Fallback to the raw value instead of a label
-      return value;
+      return <Text truncate="end">{value}</Text>;
     }
 
     return null;
@@ -159,6 +164,7 @@ export const EditingBodyCellCategorySelect = ({
             wrapper: classNames?.wrapper,
             input: classNames?.selectTextInputElement,
           }}
+          style={{ overflow: "hidden" }} // for label truncation
           rightSectionPointerEvents="all"
           rightSection={
             shouldDisplayClearButton && (
