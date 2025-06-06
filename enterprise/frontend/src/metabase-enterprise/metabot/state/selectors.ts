@@ -3,7 +3,10 @@ import _ from "underscore";
 
 import { getIsEmbedding } from "metabase/selectors/embed";
 
-import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "../constants";
+import {
+  FIXED_METABOT_IDS,
+  LONG_CONVO_MSG_LENGTH_THRESHOLD,
+} from "../constants";
 
 import type { MetabotStoreState } from "./types";
 
@@ -67,5 +70,5 @@ export const getIsLongMetabotConversation = createSelector(
 );
 
 export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
-  isEmbedding ? 2 : 1,
+  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
