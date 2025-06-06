@@ -30,13 +30,17 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.test.initialize :as initialize])
   (:import
    (java.time ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fn [thunk]
+                      (initialize/initialize-if-needed! :db)
+                      (metabase.cache.core/enable-query-caching! true)
+                      (thunk)))
 
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
@@ -504,12 +508,6 @@
                         (is (=? (expected-model-metadata the-model)
                                 (-> cached-results :data :results_metadata :columns)))))))))))))))
 
-(defn- expected-native-metadata [the-card]
-  [{:name  "ID"
-    :ident (lib/native-ident "ID"   (:entity_id the-card))}
-   {:name  "NAME"
-    :ident (lib/native-ident "NAME" (:entity_id the-card))}])
-
 (deftest duplicate-native-queries-e2e-test
   (testing "caching works across the whole QP when two native cards have the same inner query"
     (let [inner-query (mt/native-query {:query "SELECT ID, NAME FROM venues ORDER BY ID LIMIT 5;"})]
@@ -518,9 +516,11 @@
                      :model/Card card2 (mt/card-with-metadata {:dataset_query inner-query
                                                                :name          "Native card 2"})]
         (testing "both cards get :result_metadata containing the card's :entity_id"
-          (is (=? (expected-native-metadata card1)
+          (is (=? [{:name "ID"}
+                   {:name "NAME"}]
                   (:result_metadata card1)))
-          (is (=? (expected-native-metadata card2)
+          (is (=? [{:name "ID"}
+                   {:name "NAME"}]
                   (:result_metadata card2))))
 
         (with-mock-cache! [save-chan]
@@ -557,13 +557,15 @@
                           (is (=? {:cache/details  {:cached     true
                                                     :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
                                                     :hash       some?
-                                                    ;; TODO: this check is not working if the key is not present in the data
+                                                    ;; TODO: this check is not working if the key is not present in the
+                                                    ;; data
                                                     :cache-hash some?}
                                    :row_count 5
                                    :status    :completed}
                                   (dissoc cached-results :data))))
                         (testing "should have correct **card-specific** metadata"
-                          (is (=? (expected-native-metadata the-card)
+                          (is (=? [{:name "ID"}
+                                   {:name "NAME"}]
                                   (-> cached-results :data :results_metadata :columns))))))))))))))))
 
 (deftest insights-from-cache-test

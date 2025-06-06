@@ -652,7 +652,7 @@
   (testing "Case"
     (is (=? {:base_type :type/Text, :effective_type :type/Text}
             (infered-col-type [:case [[[:> [:field (meta/id :venues :price) nil] 2] "big"]]])))
-    (is (=? {:base_type :type/Number}
+    (is (=? {:base_type :type/Integer}
             (infered-col-type [:case [[[:> [:field (meta/id :venues :price) nil] 2]
                                        [:+ [:field (meta/id :venues :price) nil] 1]]]])))))
 
@@ -665,7 +665,7 @@
 
 (deftest ^:parallel computed-columns-inference-2d
   (testing "Case"
-    (is (=? {:base_type :type/Number}
+    (is (=? {:base_type :type/Integer}
             (infered-col-type [:case [[[:> [:field (meta/id :venues :price) nil] 2]
                                        [:+ [:field (meta/id :venues :price) nil] 1]]]])))))
 
@@ -700,7 +700,7 @@
     [:regex-match-first "foo" "f"]                         :type/Text
     [:concat "foo" "bar"]                                  :type/Text
     [:coalesce "foo" "bar"]                                :type/Text
-    [:coalesce [:field (meta/id :venues :name) nil] "bar"] :type/*))
+    [:coalesce [:field (meta/id :venues :name) nil] "bar"] :type/Text))
 
 (deftest ^:parallel unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"

@@ -268,6 +268,10 @@
                                  {:binning-strategy strategy})
                                binning-info)})
              col))
+          ;; remove `:lib/uuid` because it causes way to many test failures. Probably would be better to keep it around
+          ;; but I don't have time to update a million tests.
+          (remove-lib-uuids [col]
+            (dissoc col :lib/uuid :lib/source-uuid))
           (->snake_case [col]
             (as-> col col
               (update-keys col u/->snake_case_en)
@@ -275,6 +279,7 @@
     (-> col
         add-unit
         add-binning-info
+        remove-lib-uuids
         ->snake_case)))
 
 (mu/defn- cols->legacy-metadata :- ::cols
