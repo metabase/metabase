@@ -31,6 +31,7 @@ import {
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
   provideParameterValuesTags,
+  provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
 
@@ -117,6 +118,8 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/params/valid-filter-fields`,
           params,
         }),
+        providesTags: (_response, _error, { filtered, filtering }) =>
+          provideValidDashboardFilterFieldTags(filtered, filtering),
       }),
       createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
         query: (body) => ({
