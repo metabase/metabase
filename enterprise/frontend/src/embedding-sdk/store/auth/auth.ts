@@ -14,6 +14,7 @@ import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
+import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -22,7 +23,7 @@ import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_if
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
-import { getFetchRefreshTokenFn, getIsSdkIframeEmbedAuth } from "../selectors";
+import { getFetchRefreshTokenFn } from "../selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
@@ -114,7 +115,7 @@ export const refreshTokenAsync = createAsyncThunk(
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const state = getState() as SdkStoreState;
 
-    if (getIsSdkIframeEmbedAuth(state)) {
+    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSdkIframeEmbedAuth) {
       return requestSessionTokenFromEmbedJs();
     }
 
