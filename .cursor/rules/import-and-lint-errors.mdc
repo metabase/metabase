@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-DO NOT fix linting or import errors
