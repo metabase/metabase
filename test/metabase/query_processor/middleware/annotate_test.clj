@@ -288,7 +288,7 @@
                ;; TODO -- not sure about this display name, seems like it's including parent twice -- Cam
                :display_name      "Grandparent: Grandparent: Parent"
                :base_type         :type/Text}
-              (-> (add-column-info query {:cols [{}]})
+              (-> (add-column-info query {:cols [{:metabase.lib.query/transformation-added-base-type true}]})
                   :cols
                   first))))))
 
@@ -302,7 +302,7 @@
                :coercion_strategy nil
                :name              "grandparent.parent.child"
                :settings          nil
-               :field_ref         [:field 3 nil]
+               :field_ref         [:field 3 {:base-type :type/Text}]
                :nfc_path          nil
                :parent_id         2
                :id                3
@@ -310,7 +310,7 @@
                ;; TODO -- not sure about this display name, seems like it's including parent twice -- Cam
                :display_name      "Grandparent: Parent: Grandparent: Parent: Child"
                :base_type         :type/Text}
-              (-> (add-column-info query {:cols [{}]})
+              (-> (add-column-info query {:cols [{:metabase.lib.query/transformation-added-base-type false}]})
                   :cols
                   first))))))
 

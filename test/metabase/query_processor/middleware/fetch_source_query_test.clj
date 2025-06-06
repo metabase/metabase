@@ -52,7 +52,7 @@
          result-metadata (not-empty (for [col (if (= metadata ::infer)
                                                 (qp.preprocess/query->expected-cols outer-query)
                                                 metadata)]
-                                      (dissoc col :field_ref)))]
+                                      (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)))]
      (cond-> outer-query
        result-metadata
        (assoc-in [:query :source-metadata] result-metadata)))))
@@ -171,7 +171,7 @@
                    (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
                   (assoc-in [:query :source-query :source-metadata]
                             (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                              (dissoc col :field_ref)))
+                              (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)))
                   (assoc :info {:card-id 2}
                          :qp/source-card-id 2))
               (resolve-source-cards
@@ -377,7 +377,7 @@
         (is (=? (assoc (lib.tu.macros/mbql-query nil
                          {:source-query    {:source-table (meta/id :venues)}
                           :source-metadata (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                                             (dissoc col :field_ref))})
+                                             (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type))})
                        :info {:card-id Integer/MAX_VALUE}
                        :qp/source-card-id 1)
                 (resolve-source-cards query)))))))

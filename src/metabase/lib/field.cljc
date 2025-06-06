@@ -90,8 +90,8 @@
    stage-number                                                          :- :int
    [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (let [metadata (merge
-                  (when-let [base-type (:base-type opts)]
-                    {:base-type base-type})
+                  (select-keys opts [:base-type
+                                     :metabase.lib.query/transformation-added-base-type])
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
                   (when-let [original-effective-type (::original-effective-type opts)]
@@ -499,9 +499,18 @@
 (defn- column-metadata->field-ref
   [metadata]
   (let [inherited-column? (lib.field.util/inherited-column? metadata)
-        options           (merge {:lib/uuid       (str (random-uuid))
-                                  :base-type      (:base-type metadata)
+        options           (merge (select-keys metadata [:base-type])
+                                 {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
+                                 ;; include `:metabase.lib.query/transformation-added-base-type` if this is going to
+                                 ;; be a field ID ref, so we can remove `:base-type` if it wasn't included in the
+                                 ;; original query if we convert this ref back to legacy (mostly important
+                                 ;; for [[metabase.query-processor.middleware.annotate/super-broken-legacy-field-ref]]
+                                 ;; purposes). But if this will have a Field name then don't include the key because
+                                 ;; we don't want the convert code to strip out base types -- they're required for
+                                 ;; field name refs.
+                                 (when-not (lib.field.util/inherited-column? metadata)
+                                   (select-keys metadata [:metabase.lib.query/transformation-added-base-type]))
                                  ;; This one deliberately comes first so it will be overwritten by current-join-alias.
                                  ;; We don't want both :source-field and :join-alias, though.
                                  (when-let [source-alias (and (not inherited-column?)

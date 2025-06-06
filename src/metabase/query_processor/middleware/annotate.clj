@@ -222,7 +222,7 @@
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) opts]
-      [:field id (not-empty (cond-> (dissoc opts :base-type :effective-type :inherited-temporal-unit)
+      [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)))]
 
       [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
@@ -235,17 +235,17 @@
   "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage."
   [col :- ::kebab-cased-col]
   (when (= (:lib/type col) :metadata/column)
-    (as-> col col
-      ;; MEGA HACK!!! APPARENTLY THE GENERATED FIELD REFS ALWAYS USE THE ORIGINAL NAME OF THE COLUMN, EVEN IF IT'S NOT
-      ;; EVEN THE NAME WE ACTUALLY USE IN THE SOURCE QUERY!! BARF!
-      #_(merge
-       col
-       (when-let [source-column-alias (:lib/source-column-alias col)]
-         {:name source-column-alias}))
-      #_(dissoc col :lib/desired-column-alias :lib/source-column-alias)
-      (lib/ref col)
-      (lib/->legacy-MBQL col)
-      (fe-friendly-expression-ref col))))
+    (->> col
+         ;; MEGA HACK!!! APPARENTLY THE GENERATED FIELD REFS ALWAYS USE THE ORIGINAL NAME OF THE COLUMN, EVEN IF IT'S NOT
+         ;; EVEN THE NAME WE ACTUALLY USE IN THE SOURCE QUERY!! BARF!
+         #_(merge
+            col
+            (when-let [source-column-alias (:lib/source-column-alias col)]
+              {:name source-column-alias}))
+         #_(dissoc col :lib/desired-column-alias :lib/source-column-alias)
+         lib/ref
+         lib/->legacy-MBQL
+         fe-friendly-expression-ref)))
 
 (mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-col]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
