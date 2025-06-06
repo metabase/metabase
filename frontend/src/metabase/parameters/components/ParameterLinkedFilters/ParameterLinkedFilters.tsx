@@ -1,15 +1,20 @@
 import type { ChangeEventHandler } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import { skipToken, useGetFieldQuery, useGetTableQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetFieldQuery,
+  useGetValidDashboardFilterFieldsQuery,
+} from "metabase/api";
 import { useLearnUrl } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Switch } from "metabase/ui";
-import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { FieldId, ParameterId } from "metabase-types/api";
 
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 
@@ -27,11 +32,15 @@ import {
   SectionMessage,
   SectionMessageLink,
 } from "./ParameterLinkedFiltersComponents";
-import useFilterFields from "./use-filter-fields";
+import {
+  type LinkedParameterInfo,
+  getFilterFieldsRequest,
+  getLinkedParametersInfo,
+} from "./utils";
 
 export interface ParameterLinkedFiltersProps {
-  parameter: Parameter;
-  otherParameters: Parameter[];
+  parameter: UiParameter;
+  otherParameters: UiParameter[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
 }
 
@@ -58,14 +67,30 @@ export const ParameterLinkedFilters = ({
 };
 
 function Content({
-  usableParameters,
   parameter,
+  usableParameters,
   onChangeFilteringParameters,
 }: {
-  usableParameters: Parameter[];
-  parameter: Parameter;
+  parameter: UiParameter;
+  usableParameters: UiParameter[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
 }) {
+  const {
+    data: filteringIdsByFilteredId = {},
+    isLoading,
+    error,
+  } = useGetValidDashboardFilterFieldsQuery(
+    getFilterFieldsRequest(parameter, usableParameters) ?? skipToken,
+  );
+  const linkedParametersInfo = getLinkedParametersInfo(
+    usableParameters,
+    filteringIdsByFilteredId,
+  );
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
   if (usableParameters.length === 0) {
     return <NoUsableParameters />;
   }
@@ -79,9 +104,9 @@ function Content({
   }
 
   return (
-    <UsableParameters
+    <LinkedParameterList
       parameter={parameter}
-      usableParameters={usableParameters}
+      linkedParametersInfo={linkedParametersInfo}
       onChangeFilteringParameters={onChangeFilteringParameters}
     />
   );
@@ -140,23 +165,23 @@ function ParametersFromOtherSource(): JSX.Element {
   );
 }
 
-function UsableParameters({
+function LinkedParameterList({
   parameter,
-  usableParameters,
+  linkedParametersInfo,
   onChangeFilteringParameters,
 }: {
-  parameter: Parameter;
-  usableParameters: Parameter[];
+  parameter: UiParameter;
+  linkedParametersInfo: LinkedParameterInfo[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
 }): JSX.Element {
   const [expandedParameterId, setExpandedParameterId] = useState<ParameterId>();
 
   const handleFilterChange = useCallback(
-    (otherParameter: Parameter, isFiltered: boolean) => {
+    (linkedParameter: UiParameter, isFiltered: boolean) => {
       const newParameters = isFiltered
-        ? (parameter.filteringParameters ?? []).concat(otherParameter.id)
+        ? (parameter.filteringParameters ?? []).concat(linkedParameter.id)
         : (parameter.filteringParameters ?? []).filter(
-            (id) => id !== otherParameter.id,
+            (id) => id !== linkedParameter.id,
           );
 
       onChangeFilteringParameters(newParameters);
@@ -165,8 +190,8 @@ function UsableParameters({
   );
 
   const handleExpandedChange = useCallback(
-    (otherParameter: Parameter, isExpanded: boolean) => {
-      setExpandedParameterId(isExpanded ? otherParameter.id : undefined);
+    (linkedParameter: UiParameter, isExpanded: boolean) => {
+      setExpandedParameterId(isExpanded ? linkedParameter.id : undefined);
     },
     [],
   );
@@ -178,35 +203,40 @@ function UsableParameters({
           <em key="text">{t`this`}</em>
         )} filter.`}
       </SectionMessage>
-      {usableParameters.map((otherParameter) => (
-        <LinkedParameter
-          key={otherParameter.id}
-          parameter={parameter}
-          otherParameter={otherParameter}
-          isFiltered={
-            !!parameter.filteringParameters?.includes(otherParameter.id)
-          }
-          isExpanded={otherParameter.id === expandedParameterId}
-          onFilterChange={handleFilterChange}
-          onExpandedChange={handleExpandedChange}
-        />
-      ))}
+      {linkedParametersInfo.map(
+        ({ parameter: linkedParameter, filteredIds, filteringIds }) => (
+          <LinkedParameter
+            key={parameter.id}
+            linkedParameter={linkedParameter}
+            filteredIds={filteredIds}
+            filteringIds={filteringIds}
+            isFiltered={
+              !!parameter.filteringParameters?.includes(linkedParameter.id)
+            }
+            isExpanded={linkedParameter.id === expandedParameterId}
+            onFilterChange={handleFilterChange}
+            onExpandedChange={handleExpandedChange}
+          />
+        ),
+      )}
     </div>
   );
 }
 
 interface LinkedParameterProps {
-  parameter: Parameter;
-  otherParameter: Parameter;
+  linkedParameter: UiParameter;
+  filteredIds: FieldId[];
+  filteringIds: FieldId[];
   isFiltered: boolean;
   isExpanded: boolean;
-  onFilterChange: (otherParameter: Parameter, isFiltered: boolean) => void;
-  onExpandedChange: (otherParameter: Parameter, isExpanded: boolean) => void;
+  onFilterChange: (linkedParameter: UiParameter, isFiltered: boolean) => void;
+  onExpandedChange: (linkedParameter: UiParameter, isExpanded: boolean) => void;
 }
 
 const LinkedParameter = ({
-  parameter,
-  otherParameter,
+  linkedParameter,
+  filteredIds,
+  filteringIds,
   isFiltered,
   isExpanded,
   onFilterChange,
@@ -214,20 +244,20 @@ const LinkedParameter = ({
 }: LinkedParameterProps): JSX.Element => {
   const handleFilterToggle: ChangeEventHandler<HTMLInputElement> = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      onFilterChange(otherParameter, e.target.checked);
+      onFilterChange(linkedParameter, e.target.checked);
     },
-    [otherParameter, onFilterChange],
+    [linkedParameter, onFilterChange],
   );
 
   const handleExpandedChange = useCallback(() => {
-    onExpandedChange(otherParameter, !isExpanded);
-  }, [isExpanded, otherParameter, onExpandedChange]);
+    onExpandedChange(linkedParameter, !isExpanded);
+  }, [isExpanded, linkedParameter, onExpandedChange]);
 
   return (
     <ParameterRoot>
       <ParameterBody>
         <ParameterName onClick={handleExpandedChange}>
-          {otherParameter.name}
+          {linkedParameter.name}
         </ParameterName>
         <Switch
           role="switch"
@@ -237,8 +267,8 @@ const LinkedParameter = ({
       </ParameterBody>
       {isExpanded && (
         <LinkedFieldList
-          parameter={parameter}
-          otherParameter={otherParameter}
+          filteredIds={filteredIds}
+          filteringIds={filteringIds}
         />
       )}
     </ParameterRoot>
@@ -246,33 +276,31 @@ const LinkedParameter = ({
 };
 
 interface LinkedFieldListProps {
-  parameter: Parameter;
-  otherParameter: Parameter;
+  filteredIds: FieldId[];
+  filteringIds: FieldId[];
 }
 
 const LinkedFieldList = ({
-  parameter,
-  otherParameter,
+  filteredIds,
+  filteringIds,
 }: LinkedFieldListProps) => {
-  const { data, error, loading } = useFilterFields(parameter, otherParameter);
-
   return (
-    <LoadingAndErrorWrapper loading={loading} error={error}>
-      <FieldListRoot>
-        {data && data.length > 0 && (
-          <FieldListHeader>
-            <FieldListTitle>{t`Filtering column`}</FieldListTitle>
-            <FieldListTitle>{t`Filtered column`}</FieldListTitle>
-          </FieldListHeader>
-        )}
-        {data?.map(([filteringId, filteredId]) => (
-          <FieldListItem key={filteredId}>
-            <LinkedField fieldId={filteringId} />
-            <LinkedField fieldId={filteredId} />
-          </FieldListItem>
-        ))}
-      </FieldListRoot>
-    </LoadingAndErrorWrapper>
+    <FieldListRoot>
+      <FieldListHeader>
+        <FieldListTitle>{t`Filtering column`}</FieldListTitle>
+        <FieldListTitle>{t`Filtered column`}</FieldListTitle>
+      </FieldListHeader>
+      {filteringIds.map((filteringId) => (
+        <Fragment key={filteringId}>
+          {filteredIds.map((filteredId) => (
+            <FieldListItem key={filteredId}>
+              <LinkedField fieldId={filteringId} />
+              <LinkedField fieldId={filteredId} />
+            </FieldListItem>
+          ))}
+        </Fragment>
+      ))}
+    </FieldListRoot>
   );
 };
 
@@ -281,34 +309,16 @@ interface LinkedFieldProps {
 }
 
 const LinkedField = ({ fieldId }: LinkedFieldProps) => {
-  const {
-    data: field,
-    error: fieldError,
-    isLoading: fieldIsLoading,
-  } = useGetFieldQuery({ id: fieldId });
-  const {
-    data: table,
-    error: tableError,
-    isLoading: tableIsLoading,
-  } = useGetTableQuery(field ? { id: field.table_id } : skipToken);
-  const isTableLoaded = !tableError && !tableIsLoading;
-
-  if (fieldError || fieldIsLoading) {
-    return (
-      <LoadingAndErrorWrapper error={fieldError} loading={fieldIsLoading} />
-    );
+  const { data: field, isLoading, error } = useGetFieldQuery({ id: fieldId });
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
     <FieldRoot>
       <FieldLabel>
-        {!isTableLoaded && (
-          <LoadingAndErrorWrapper error={tableError} loading={tableIsLoading} />
-        )}
-
-        {isTableLoaded && table && <span>{table.display_name}</span>}
+        {field?.table && <span>{field.table.display_name}</span>}
       </FieldLabel>
-
       {field && <div>{field.display_name}</div>}
     </FieldRoot>
   );

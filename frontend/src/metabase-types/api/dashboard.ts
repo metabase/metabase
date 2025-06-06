@@ -8,6 +8,7 @@ import type {
   CollectionId,
   Database,
   Field,
+  FieldId,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -336,4 +337,9 @@ export type GetRemappedDashboardParameterValueRequest = {
   dashboard_id: DashboardId;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
+};
+
+export type GetValidDashboardFilterFieldsRequest = {
+  filtered: FieldId[];
+  filtering: FieldId[];
 };
