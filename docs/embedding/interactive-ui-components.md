@@ -59,11 +59,13 @@ header=false&action_buttons=false
 
 ## `additional_info`
 
-Visible by default on question and dashboard pages, when the [header](#header) is enabled.
+Visible by default on question and dashboard pages when the [header](#header) is enabled.
 
 To hide the gray text "Edited X days ago by FirstName LastName", as well as the breadcrumbs with collection, database, and table names:
 
-`header=false&additional_info=false`
+```
+header=false&additional_info=false
+```
 
 ![Additional info](./images/additional-info.png)
 
@@ -81,7 +83,7 @@ breadcrumbs=false
 
 ![Simple data picker](./images/data-picker.png)
 
-You can opt for the full data picker by setting `data_picker=staged`.
+You can opt for the full data picker by setting `data_picker=staged`:
 
 ![Full data picker](./images/full-data-picker.png)
 
@@ -93,7 +95,7 @@ data_picker=staged&entity_types=table,model,question
 
 ## `entity_types`
 
-You can show or hide different entity types in the data picker, sidebar, and the New button menu. For example, you may only want to show tables.
+You can show or hide different entity types in the data picker, sidebar, and the New button menu. For example, you may only want to show tables:
 
 ```
 entity_types=table
@@ -112,7 +114,7 @@ Available entity types are:
 - `table`
 - `model`
 
-You can separate entity types with a comma, like:
+You can separate entity types with a comma:
 
 ```
 entity_types=table,model
@@ -131,7 +133,9 @@ Visible by default on question and dashboard pages.
 
 To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
 
-`header=false`
+```
+header=false
+```
 
 ## `locale`
 
