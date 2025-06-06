@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import type { CSSProperties, PropsWithChildren, ReactNode } from "react";
 
 import type {
   SdkDashboardDisplayProps,
@@ -21,7 +21,7 @@ export type SdkDashboardProps = PropsWithChildren<
     /**
      * Height of a question component when drilled from the dashboard to a question level.
      */
-    drillThroughQuestionHeight?: number;
+    drillThroughQuestionHeight?: CSSProperties["height"];
 
     // @todo pass the question context to the question view component,
     //       once we have a public-facing question context.
