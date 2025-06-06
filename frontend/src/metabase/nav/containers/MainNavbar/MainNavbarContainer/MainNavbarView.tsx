@@ -252,7 +252,11 @@ export function MainNavbarView({
         <WhatsNewNotification />
       </SidebarContentRoot>
 
-      <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
+      <AddDataModal
+        databases={databases}
+        opened={addDataModalOpened}
+        onClose={closeAddDataModal}
+      />
     </ErrorBoundary>
   );
 }

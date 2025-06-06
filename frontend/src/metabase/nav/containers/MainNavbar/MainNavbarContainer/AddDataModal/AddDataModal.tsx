@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getSetting } from "metabase/selectors/settings";
+import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import S from "./AddDataModal.module.css";
 import { CSVPanel } from "./Panels/CSVPanel";
@@ -12,16 +15,36 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 
-export const AddDataModal = ({
-  onClose,
-  opened,
-}: {
-  onClose: () => void;
+interface AddDataModalProps {
+  databases: Database[];
   opened: boolean;
-}) => {
+  onClose: () => void;
+}
+
+export const AddDataModal = ({
+  databases,
+  opened,
+  onClose,
+}: AddDataModalProps) => {
   const [activeTab, setActiveTab] = useState<string | null>("db");
 
   const isAdmin = useSelector(getUserIsAdmin);
+  // Instances with DWH enabled already have uploads enabled by default.
+  // It is not possible to turn the uploads off, nor to delete the attached database.
+  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+
+  const uploadDbId = useSelector(
+    (state) => getSetting(state, "uploads-settings")?.db_id,
+  );
+  const areUploadsEnabled = !!uploadDbId || hasAttachedDWHFeature;
+
+  const uploadDB = databases?.find((db) => db.id === uploadDbId);
+  const canUploadToDatabase = !!uploadDB?.canUpload();
+
+  const userCanAccessSettings = useSelector(canAccessSettings);
+  const canManageUploads =
+    isAdmin || (userCanAccessSettings && canUploadToDatabase);
+  const canManageDatabases = isAdmin;
 
   return (
     <Modal.Root opened={opened} onClose={onClose} size="auto">
@@ -61,15 +84,20 @@ export const AddDataModal = ({
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
             <PanelsHeader
-              activeTab={activeTab}
-              isAdmin={isAdmin}
+              showDatabasesLink={activeTab === "db" && canManageDatabases}
+              showUploadsLink={activeTab === "csv" && canManageUploads}
               onAddDataModalClose={onClose}
             />
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel canSeeContent={isAdmin} />
             </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>
-              <CSVPanel canSeeContent={true} onCloseAddDataModal={onClose} />
+              <CSVPanel
+                onCloseAddDataModal={onClose}
+                uploadsEnabled={areUploadsEnabled}
+                canUpload={canUploadToDatabase}
+                canManageUploads={canManageUploads}
+              />
             </Tabs.Panel>
           </Box>
         </Tabs>
