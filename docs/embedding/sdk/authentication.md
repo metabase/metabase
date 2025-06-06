@@ -10,12 +10,12 @@ For using the SDK in production, you'll need to set up authentication with JWT S
 
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
-If both SAML and JWT are enabled in your Metabase, the SDK will default to using SAML authentication unless you explicitly set the `authMethod` to `"jwt"` in your `MetabaseAuthConfig`:
+If both SAML and JWT are enabled in your Metabase, the SDK will default to using SAML authentication unless you explicitly set the `preferredAuthMethod` to `"jwt"` in your `MetabaseAuthConfig`:
 
 ```javascript
 authConfig: {
   metabaseInstanceUrl: "...",
-  authMethod: "jwt",
+  preferredAuthMethod: "jwt",
   // other JWT config...
 }
 ```
