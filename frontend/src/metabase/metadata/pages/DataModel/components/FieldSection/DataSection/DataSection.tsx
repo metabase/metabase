@@ -76,7 +76,10 @@ export const DataSection = ({ field }: Props) => {
                 onChange={async (event) => {
                   setIsCasting(event.target.checked);
 
-                  if (!event.target.checked) {
+                  if (
+                    !event.target.checked &&
+                    field.coercion_strategy !== null
+                  ) {
                     await updateField({ id, coercion_strategy: null });
 
                     sendToast({
