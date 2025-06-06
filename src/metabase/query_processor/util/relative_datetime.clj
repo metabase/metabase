@@ -41,4 +41,7 @@
            database-type "timestamp"}}]
   (if (use-server-side-relative-datetime? unit)
     (h2x/cast database-type (relative-datetime-sql-str unit amount (or effective-type base-type)))
-    ((get-method (requiring-resolve 'metabase.driver.sql.query-processor/->honeysql) [:sql :relative-datetime]) driver [:relative-datetime amount unit])))
+    ((-> 'metabase.driver.sql.query-processor/->honeysql
+         requiring-resolve
+         var-get
+         (get-method [:sql :relative-datetime])) driver [:relative-datetime amount unit])))

@@ -433,12 +433,13 @@
            util}}
 
   driver-api
-  {:api #{metabase.driver-api.core
+  {:team "Drivers"
+   :api #{metabase.driver-api.core
           metabase.driver-api.init}
    :uses #{actions
-           appearance
            api
            app-db
+           appearance
            auth-provider
            classloader
            config
