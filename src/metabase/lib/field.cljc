@@ -90,14 +90,12 @@
    stage-number                                                          :- :int
    [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (let [metadata (merge
-                  (select-keys opts [:base-type
-                                     :metabase.lib.query/transformation-added-base-type])
+                  (u/select-non-nil-keys opts [:base-type
+                                               :metabase.lib.query/transformation-added-base-type
+                                               ::original-effective-type
+                                               ::original-temporal-unit])
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
-                  (when-let [original-effective-type (::original-effective-type opts)]
-                    {::original-effective-type original-effective-type})
-                  (when-let [original-temporal-unit (::original-temporal-unit opts)]
-                    {::original-temporal-unit original-temporal-unit})
                   ;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
                   ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound. Intent
                   ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise e.g.
