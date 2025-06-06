@@ -147,12 +147,10 @@ export const SdkDashboard = ({
   const dispatch = useSdkDispatch();
 
   const { displayOptions } = useSdkDashboardParams({
-    dashboardId: initialDashboardId,
     withDownloads,
     withTitle,
     withCardTitle,
     hiddenParameters,
-    initialParameters,
   });
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({

@@ -311,9 +311,9 @@ const DashboardContextProviderInner = ({
     selectedTabId,
   });
 
-  const hideParameters = [hide_parameters, hiddenParameterSlugs]
-    .filter(Boolean)
-    .join(",");
+  const hideParameters = !isEditing
+    ? [hide_parameters, hiddenParameterSlugs].filter(Boolean).join(",")
+    : [];
 
   return (
     <DashboardContext.Provider

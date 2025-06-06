@@ -1,5 +1,11 @@
 import type { PropsWithChildren } from "react";
 
+import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
+import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
+import type Question from "metabase-lib/v1/Question";
+
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 /**
@@ -9,34 +15,42 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
  */
 export type InteractiveDashboardProps = SdkDashboardProps;
 
+const InteractiveDashboardInner = ({
+  plugins,
+  ...sdkDashboardProps
+}: PropsWithChildren<SdkDashboardProps> &
+  Pick<SdkDashboardProps, "drillThroughQuestionProps">) => (
+  <SdkDashboard
+    {...sdkDashboardProps}
+    plugins={{
+      ...plugins,
+      dashboard: {
+        ...plugins?.dashboard,
+        dashboardCardMenu: {
+          ...plugins?.dashboard?.dashboardCardMenu,
+          withDownloads: sdkDashboardProps.withDownloads,
+          withEditLink: false,
+        },
+        ...plugins,
+      },
+    }}
+    mode="interactive"
+    getClickActionMode={({ question }: { question: Question }) =>
+      getEmbeddingMode({
+        question,
+        queryMode: EmbeddingSdkMode,
+        plugins: plugins as InternalMetabasePluginsConfig,
+      })
+    }
+  />
+);
+
 /**
  * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
  *
  * @function
  * @category InteractiveDashboard
  */
-export const InteractiveDashboard = ({
-  drillThroughQuestionProps,
-  plugins,
-  ...sdkDashboardProps
-}: PropsWithChildren<SdkDashboardProps> &
-  Pick<SdkDashboardProps, "drillThroughQuestionProps">) => {
-  return (
-    <SdkDashboard
-      {...sdkDashboardProps}
-      plugins={{
-        ...plugins,
-        dashboard: {
-          ...plugins?.dashboard,
-          dashboardCardMenu: {
-            ...plugins?.dashboard?.dashboardCardMenu,
-            withDownloads: sdkDashboardProps.withDownloads,
-            withEditLink: false,
-          },
-        },
-        ...plugins,
-      }}
-      mode="interactive"
-    />
-  );
-};
+export const InteractiveDashboard = renderOnlyInSdkProvider(
+  InteractiveDashboardInner,
+);
