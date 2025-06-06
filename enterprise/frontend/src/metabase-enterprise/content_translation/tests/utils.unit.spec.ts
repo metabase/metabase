@@ -7,7 +7,7 @@ import {
   translateDisplayNames,
   translateFieldValuesInHoveredObject,
   translateFieldValuesInSeries,
-} from "./utils";
+} from "../utils";
 
 describe("content translation utils", () => {
   describe("translateContentString", () => {
