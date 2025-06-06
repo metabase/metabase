@@ -1,6 +1,9 @@
 (ns metabase.query-processor.middleware.annotate
-  "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
+  "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column.
+
+  TODO -- we should move most of this into a lib namespace -- Cam"
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
@@ -39,6 +42,26 @@
   [:map
    [:source    {:optional true} ::legacy-source]
    [:field-ref {:optional true} ::legacy-field-ref]])
+
+(mr/def ::kebab-cased-col
+  [:and
+   ::col
+   [:fn
+    {:error/message "column with all kebab-cased keys"}
+    (fn [m]
+      (every? (fn [k]
+                (not (str/includes? k "_")))
+              (keys m)))]])
+
+(mr/def ::snake_cased-col
+  [:and
+   ::col
+   [:fn
+    {:error/message "column with all snake-cased keys"}
+    (fn [m]
+      (every? (fn [k]
+                (not (str/includes? k "-")))
+              (keys m)))]])
 
 (mr/def ::cols
   [:maybe [:sequential ::col]])
@@ -116,13 +139,13 @@
                                 (:effective-type lib-col)
                                 (:base-type lib-col))})))
 
-(mu/defn- merge-cols :- ::cols
+(mu/defn- merge-cols :- [:sequential ::kebab-cased-col]
   "Merge our column metadata (`:cols`) from MLv2 with the `initial-cols` metadata returned by the driver.
 
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order (matching
   the order supposed by MLv2). "
-  [initial-cols :- ::cols
-   lib-cols     :- ::cols]
+  [initial-cols :- [:maybe [:sequential ::kebab-cased-col]]
+   lib-cols     :- [:maybe [:sequential ::kebab-cased-col]]]
   (cond
     (= (count initial-cols) (count lib-cols))
     (mapv merge-col initial-cols lib-cols)
@@ -156,23 +179,23 @@
 
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
-                                 ::col
+                                 ::kebab-cased-col
                                  [:map
                                   [:source ::legacy-source]]]]
   "Add `:source` to result columns. Needed for legacy FE code. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
-  [cols :- ::cols]
+  [cols :- [:sequential ::kebab-cased-col]]
   (mapv (fn [col]
           (assoc col :source (source->legacy-source (:lib/source col))))
         cols))
 
-(mu/defn- add-converted-timezone :- ::cols
+(mu/defn- add-converted-timezone :- [:sequential ::kebab-cased-col]
   "Add `:converted-timezone` to columns that are from `:convert-timezone` expressions (or expressions wrapping them) --
   this is used by [[metabase.query-processor.middleware.format-rows/format-rows-xform]].
 
   TODO -- we should move this into mainline lib metadata calculation -- Cam"
   [query :- ::lib.schema/query
-   cols  :- ::cols]
+   cols  :- [:sequential ::kebab-cased-col]]
   (mapv (fn [col]
           (let [converted-timezone (when-let [expression-name (:lib/expression-name col)]
                                      (when-let [expr (try
@@ -206,15 +229,15 @@
           [:expression expression-name])))))
 
 (mu/defn- legacy-field-ref :- [:maybe ::legacy-field-ref]
-  [col :- ::col]
+  [col :- ::kebab-cased-col]
   (when (= (:lib/type col) :metadata/column)
     (-> col lib/ref lib/->legacy-MBQL fe-friendly-expression-ref)))
 
-(mu/defn- add-legacy-field-refs :- ::cols
+(mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-col]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064632710409?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [query :- ::lib.schema/query
-   cols  :- ::cols]
+   cols  :- [:sequential ::kebab-cased-col]]
   (lib.convert/do-with-aggregation-list
    (lib/aggregations query)
    (fn []
@@ -224,39 +247,55 @@
                  field-ref (assoc :field-ref field-ref))))
            cols))))
 
-(mu/defn- deduplicate-names :- ::cols
+(mu/defn- deduplicate-names :- [:sequential ::kebab-cased-col]
   "Needed for legacy FE viz settings purposes for the time being. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81"
-  [cols :- ::cols]
+  [cols :- [:sequential ::kebab-cased-col]]
   (map (fn [col unique-name]
          (assoc col :name unique-name))
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
-(mu/defn- add-extra-metadata :- ::cols
+(mu/defn- merge-model-metadata :- [:sequential ::kebab-cased-col]
+  "Merge in `:metadata/model-metadata`. I believe this should be `snake_case` which means this needs to happen AFTER
+  `cols` are converted to `snake_case`."
+  [query :- ::lib.schema/query
+   cols  :- [:sequential ::kebab-cased-col]]
+  (let [model-metadata (map (fn [col]
+                              (update-keys col u/->kebab-case-en))
+                            (get-in query [:info :metadata/model-metadata]))]
+    (cond-> cols
+      (seq model-metadata)
+      (qp.util/combine-metadata model-metadata))))
+
+(mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-col]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata.
 
   TODO -- we should probably move all this stuff into lib so it comes back there as well! That's a tech debt problem tho
   I guess. -- Cam"
-  [query :- ::lib.schema/query
-   cols  :- ::cols]
-  (let [lib-metadata (binding [lib.metadata.calculation/*display-name-style* :long
-                               ;; TODO -- this is supposed to mean `:inherited-temporal-unit` is included in the output
-                               ;; but doesn't seem to be working?
-                               lib.metadata.calculation/*propagate-binning-and-bucketing* true]
-                       (doall (lib/returned-columns query)))]
-    (as-> cols cols
+  [query        :- ::lib.schema/query
+   initial-cols :- ::cols]
+  (let [lib-cols (binding [lib.metadata.calculation/*display-name-style* :long
+                           ;; TODO -- this is supposed to mean `:inherited-temporal-unit` is included in the output
+                           ;; but doesn't seem to be working?
+                           lib.metadata.calculation/*propagate-binning-and-bucketing* true]
+                   (doall (lib/returned-columns query)))]
+    (as-> initial-cols cols
+      (map (fn [col]
+             (update-keys col u/->kebab-case-en))
+           cols)
       (cond-> cols
-        (seq lib-metadata) (merge-cols lib-metadata))
+        (seq lib-cols) (merge-cols lib-cols))
       (add-converted-timezone query cols)
       (add-legacy-source cols)
       (add-legacy-field-refs query cols)
-      (deduplicate-names cols))))
+      (deduplicate-names cols)
+      (merge-model-metadata query cols))))
 
-(mu/defn- col->legacy-metadata :- ::col
+(mu/defn- col->legacy-metadata :- ::snake_cased-col
   "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love
   in QP results metadata (`data.cols`)."
-  [col :- ::col]
+  [col :- ::kebab-cased-col]
   (letfn [(add-unit [col]
             (merge
              ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
@@ -287,14 +326,14 @@
         remove-lib-uuids
         ->snake_case)))
 
-(mu/defn- cols->legacy-metadata :- ::cols
+(mu/defn- cols->legacy-metadata :- [:sequential ::snake_cased-col]
   "Convert MLv2-style `kebab-case` metadata to legacy QP metadata results `snake_case`-style metadata. Keys are slightly
   different as well. This is mostly for backwards compatibility with old FE code. See this thread
   https://metaboat.slack.com/archives/C0645JP1W81/p1749077302448169?thread_ts=1748958872.704799&cid=C0645JP1W81"
-  [cols :- ::cols]
+  [cols :- [:sequential ::kebab-cased-col]]
   (mapv col->legacy-metadata cols))
 
-(mu/defmethod expected-cols :mbql.stage/mbql
+(mu/defmethod expected-cols :mbql.stage/mbql :- [:sequential ::snake_cased-col]
   ([query]
    (expected-cols query []))
 
@@ -348,17 +387,7 @@
              (map? result)
              (assoc-in [:data :cols] cols')))))))
 
-(mu/defn- add-model-metadata
-  "Merge in `:metadata/model-metadata`. I believe this should be `snake_case` which means this needs to happen AFTER
-  `cols` are converted to `snake_case`."
-  [query :- ::lib.schema/query
-   cols  :- ::cols]
-  (let [model-metadata (get-in query [:info :metadata/model-metadata])]
-    (cond-> cols
-      (seq model-metadata)
-      (qp.util/combine-metadata model-metadata))))
-
-(mu/defmethod expected-cols :mbql.stage/native
+(mu/defmethod expected-cols :mbql.stage/native :- [:sequential ::snake_cased-col]
   ([query]
    (expected-cols query []))
 
@@ -366,15 +395,16 @@
     initial-cols :- ::cols]
    (as-> initial-cols cols
      (for [col cols]
-       (merge {:lib/type     :metadata/column
-               :lib/source   :source/native
-               :display-name (:name col)
-               :base-type    (or ((some-fn :base-type :base_type) col)
-                                 :type/*)}
+       (merge (let [base-type (or ((some-fn :base-type :base_type) col)
+                                  :type/*)]
+                {:lib/type       :metadata/column
+                 :lib/source     :source/native
+                 :display-name   (:name col)
+                 :base-type      base-type
+                 :effective-type base-type})
               col))
      (add-extra-metadata query cols)
-     (cols->legacy-metadata cols)
-     (add-model-metadata query cols))))
+     (cols->legacy-metadata cols))))
 
 (mu/defmethod add-column-info :mbql.stage/native :- ::qp.schema/rff
   [query :- ::lib.schema/query

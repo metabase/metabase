@@ -34,7 +34,6 @@
         name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
     [{:name           "ID"
       :display_name   "ID"
-      :ident          (lib/native-ident "ID" card-entity-id)
       :base_type      :type/BigInteger
       :effective_type :type/BigInteger
       :database_type  "BIGINT"
@@ -43,7 +42,6 @@
       :field_ref      [:field "ID" {:base-type :type/BigInteger}]}
      {:name           "NAME"
       :display_name   "Name"
-      :ident          (lib/native-ident "NAME" card-entity-id)
       :base_type      :type/Text
       :effective_type :type/Text
       :database_type  "CHARACTER VARYING"
@@ -52,7 +50,6 @@
       :field_ref      [:field "NAME" {:base-type :type/Text}]}
      {:name           "PRICE"
       :display_name   "Price"
-      :ident          (lib/native-ident "PRICE" card-entity-id)
       :base_type      :type/Integer
       :effective_type :type/Integer
       :database_type  "INTEGER"
@@ -61,7 +58,6 @@
       :field_ref      [:field "PRICE" {:base-type :type/Integer}]}
      {:name           "CATEGORY_ID"
       :display_name   "Category ID"
-      :ident          (lib/native-ident "CATEGORY_ID" card-entity-id)
       :base_type      :type/Integer
       :effective_type :type/Integer
       :database_type  "INTEGER"
@@ -70,7 +66,6 @@
       :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]}
      {:name           "LATITUDE"
       :display_name   "Latitude"
-      :ident          (lib/native-ident "LATITUDE" card-entity-id)
       :base_type      :type/Float
       :effective_type :type/Float
       :database_type  "DOUBLE PRECISION"
@@ -79,7 +74,6 @@
       :field_ref      [:field "LATITUDE" {:base-type :type/Float}]}
      {:name           "LONGITUDE"
       :display_name   "Longitude"
-      :ident          (lib/native-ident "LONGITUDE" card-entity-id)
       :base_type      :type/Float
       :effective_type :type/Float
       :database_type  "DOUBLE PRECISION"
@@ -124,7 +118,6 @@
      :entity_id       eid
      :result_metadata [{:name         "NAME"
                         :display_name "Name"
-                        :ident        (lib/native-ident "NAME" eid)
                         :base_type    :type/Text}]}))
 
 (deftest save-result-metadata-test-2
@@ -132,7 +125,6 @@
     (mt/with-temp [:model/Card card (test-card-1)]
       (is (= [{:name         "NAME"
                :display_name "Name"
-               :ident        (lib/native-ident "NAME" (:entity_id card))
                :base_type    :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
@@ -144,7 +136,6 @@
                       result)))
       (is (= [{:name         "NAME"
                :display_name "Name"
-               :ident        (lib/native-ident "NAME" (:entity_id card))
                :base_type    :type/Text}]
              (card-metadata card))))))
 
@@ -158,7 +149,6 @@
                                                         :query    {:source-table (str "card__" (u/the-id card))}})
       (is (= [{:name         "NAME"
                :display_name "Name"
-               :ident        (lib/native-ident "NAME" (:entity_id card))
                :base_type    :type/Text}]
              (card-metadata card))))))
 
@@ -167,11 +157,9 @@
     (mt/with-temp [:model/Card card {:dataset_query   (mt/mbql-query venues {:fields [$name]})
                                      :result_metadata [{:name         "NAME"
                                                         :display_name "Custom Name"
-                                                        :ident        (mt/ident :venues :name)
                                                         :base_type    :type/Text}]}]
       (is (= [{:name         "NAME"
                :display_name "Custom Name"
-               :ident        (mt/ident :venues :name)
                :base_type    :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
@@ -183,7 +171,6 @@
                       result)))
       (is (= [{:name         "NAME"
                :display_name "Custom Name"
-               :ident        (mt/ident :venues :name)
                :base_type    :type/Text}]
              (card-metadata card))))))
 
@@ -197,7 +184,6 @@
           [{:base_type :type/Text
             :database_type "CHARACTER VARYING"
             :display_name "NAME"
-            :ident "native[]__NAME"
             :effective_type :type/Text
             :field_ref [:field "NAME" {:base-type :type/Text}]
             :fingerprint {:global {:distinct-count 100, :nil% 0.0}
@@ -236,8 +222,8 @@
                  round-to-2-decimals))))))
 
 (deftest ^:parallel metadata-in-results-test-2
-  (testing "datasets"
-    (testing "metadata from datasets can be preserved"
+  (testing "models"
+    (testing "metadata from models can be preserved"
       (letfn [(choose [col] (select-keys col [:name :description :display_name :semantic_type]))
               (refine-type [base-type] (condp #(isa? %2 %1) base-type
                                          :type/Integer :type/Quantity
@@ -444,11 +430,6 @@
                                                                             :database (mt/id)
                                                                             :query    {:source-table (format "card__%s" base-card-id)}}
                                                           :result_metadata [{:semantic_type :type/Percentage
-                                                                             :ident         (get-in base-card
-                                                                                                    [:dataset_query
-                                                                                                     :query
-                                                                                                     :expression-idents
-                                                                                                     "Tax Rate"])
                                                                              :name          "Tax Rate"}]}]
         (testing "The baseline behavior is for data results_metadata to be independently computed"
           (let [results (qp/process-query dataset-query)]
