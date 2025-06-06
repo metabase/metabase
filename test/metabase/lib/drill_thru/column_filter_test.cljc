@@ -16,7 +16,7 @@
   (testing "column-filter is available for any header click, and nothing else"
     (canned/canned-test
      :drill-thru/column-filter
-     (fn [test-case context {:keys [click]}]
+     (fn [test-case _context {:keys [click]}]
        (and (= click :header)
             (not (:native? test-case)))))))
 
