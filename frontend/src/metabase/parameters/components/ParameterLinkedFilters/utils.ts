@@ -15,6 +15,12 @@ function getFieldIds(parameter: UiParameter): FieldId[] {
   return getFields(parameter).map((field) => Number(field.id));
 }
 
+/*
+ `filteredIds` are the field ids of the parameter which values are being
+ filtered, i.e. the ids of fields mapped to the current `parameter`.
+ `filteringIds` are the field ids of parameters that can filter the value of the
+ current parameter, i.e. potentially all other parameters.
+ */
 export function getFilterFieldsRequest(
   parameter: UiParameter,
   otherParameters: UiParameter[],
@@ -28,6 +34,10 @@ export function getFilterFieldsRequest(
   }
 }
 
+/*
+  Parses `data` returned from the API call. A `Map` is used to be able to use
+  integer keys.
+ */
 function getFilteringIdsByFilteredId(
   data: Record<FieldId, FieldId[]>,
 ): Map<FieldId, FieldId[]> {
@@ -39,6 +49,10 @@ function getFilteringIdsByFilteredId(
   );
 }
 
+/*
+  Reverses the Map so the keys are `filteringIds`, and the values are
+  `filteredIds`.
+ */
 function getFilteredIdsByFilteringId(
   filteringIdsByFilteredId: Map<FieldId, FieldId[]>,
 ): Map<FieldId, FieldId[]> {
@@ -53,6 +67,20 @@ function getFilteredIdsByFilteringId(
   return filteredIdsByFilteringId;
 }
 
+/*
+  Computes the list of parameters that can be linked to the current parameter,
+  and adds information about the ids of the fields used for linking.
+  `filteredIds` are the field ids of the subset of all fields connected to the
+  current parameter that used to link to the other parameter. `filteringIds`
+  are the field ids of the subset of all fields connected to the other parameter
+  used for linking.
+
+  First of all, for each other parameter, we need to compute the list of field
+  ids that can be used to link to the current parameter - `filteringIds`. Then,
+  for the `filteringIds` we find the list of field ids that used for mapping in
+  the original parameter - `filteredIds`. Then we remove duplicates, and leave
+  only parameters where the fields for linking were found.
+ */
 function getLinkedParametersInfoForMapping(
   otherParameters: UiParameter[],
   filteredIdsByFilteringId: Map<FieldId, FieldId[]>,
