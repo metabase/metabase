@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { GoogleAuthCard } from "metabase/admin/settings/auth/containers/GoogleAuthCard";
 import { LdapAuthCard } from "metabase/admin/settings/auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
@@ -63,20 +64,22 @@ function AuthenticationTab() {
   const canDisablePasswordLogin = useHasTokenFeature("disable_password_login");
   const hasAnySsoProviderEnabled = useHasSsoEnabled();
   return (
-    <Stack gap="xl" pb="xl">
+    <Stack gap="sm" pb="xl">
       <GoogleAuthCard />
       <LdapAuthCard />
       <SamlAuthCard />
       <JwtAuthCard />
 
-      <AdminSettingInput
-        hidden={!canDisablePasswordLogin || !hasAnySsoProviderEnabled}
-        name="enable-password-login"
-        inputType="boolean"
-        title={t`Enable password authentication`}
-        description={t`When enabled, users can additionally log in with email and password.`}
-      />
-      <SessionTimeoutSetting />
+      <SettingsSection>
+        <AdminSettingInput
+          hidden={!canDisablePasswordLogin || !hasAnySsoProviderEnabled}
+          name="enable-password-login"
+          inputType="boolean"
+          title={t`Enable password authentication`}
+          description={t`When enabled, users can additionally log in with email and password.`}
+        />
+        <SessionTimeoutSetting />
+      </SettingsSection>
     </Stack>
   );
 }
