@@ -25,6 +25,7 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "template",
   "theme",
   "locale",
+  "preferredAuthMethod",
 ] as const satisfies EmbedSettingKey[];
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
@@ -228,10 +229,11 @@ class MetabaseEmbed {
    * @returns {{ method: "saml" | "jwt", sessionToken: {jwt: string} }}
    */
   private async _getMetabaseSessionToken() {
-    const { instanceUrl } = this._settings;
+    const { instanceUrl, preferredAuthMethod } = this._settings;
 
     const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
       headers: this._getAuthRequestHeader(),
+      preferredAuthMethod,
     });
 
     const { method, url: responseUrl, hash } = urlResponseJson || {};
