@@ -5,6 +5,7 @@ import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -24,12 +25,7 @@ import {
 } from "metabase/forms";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
 import { Group, Radio, Stack } from "metabase/ui";
-import type {
-  EnterpriseSettings,
-  SettingDefinition,
-  Settings,
-} from "metabase-types/api";
-
+import type { EnterpriseSettings, Settings } from "metabase-types/api";
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
   message: "Check your parentheses",
@@ -106,7 +102,7 @@ export const SettingsLdapForm = () => {
                 placeholder="ldap.yourdomain.org"
                 required
                 autoFocus
-                {...getExtraProps(settingDetails?.["ldap-host"])}
+                {...getExtraFormFieldProps(settingDetails?.["ldap-host"])}
               />
               <FormTextInput
                 name="ldap-port"
@@ -114,12 +110,12 @@ export const SettingsLdapForm = () => {
                 placeholder="389"
                 required
                 type="number"
-                {...getExtraProps(settingDetails?.["ldap-port"])}
+                {...getExtraFormFieldProps(settingDetails?.["ldap-port"])}
               />
               <FormRadioGroup
                 name="ldap-security"
                 label={t`LDAP Security`}
-                {...getExtraProps(settingDetails?.["ldap-security"])}
+                {...getExtraFormFieldProps(settingDetails?.["ldap-security"])}
                 description={null}
               >
                 <Group mt={"xs"}>
@@ -135,14 +131,14 @@ export const SettingsLdapForm = () => {
                 name="ldap-bind-dn"
                 label={t`Username or DN`}
                 nullable
-                {...getExtraProps(settingDetails?.["ldap-bind-dn"])}
+                {...getExtraFormFieldProps(settingDetails?.["ldap-bind-dn"])}
               />
               <FormTextInput
                 name="ldap-password"
                 label={t`Password`}
                 type="password"
                 nullable
-                {...getExtraProps(settingDetails?.["ldap-password"])}
+                {...getExtraFormFieldProps(settingDetails?.["ldap-password"])}
               />
             </Stack>
           </FormSection>
@@ -153,13 +149,15 @@ export const SettingsLdapForm = () => {
                 placeholder="ou=users,dc=example,dc=org"
                 label={t`User search base`}
                 required
-                {...getExtraProps(settingDetails?.["ldap-user-base"])}
+                {...getExtraFormFieldProps(settingDetails?.["ldap-user-base"])}
               />
               <FormTextInput
                 name="ldap-user-filter"
                 label={t`User filter`}
                 nullable
-                {...getExtraProps(settingDetails?.["ldap-user-filter"])}
+                {...getExtraFormFieldProps(
+                  settingDetails?.["ldap-user-filter"],
+                )}
               />
             </Stack>
           </FormSection>
@@ -169,19 +167,25 @@ export const SettingsLdapForm = () => {
                 name="ldap-attribute-email"
                 label={t`Email attribute`}
                 nullable
-                {...getExtraProps(settingDetails?.["ldap-attribute-email"])}
+                {...getExtraFormFieldProps(
+                  settingDetails?.["ldap-attribute-email"],
+                )}
               />
               <FormTextInput
                 name="ldap-attribute-firstname"
                 label={t`First name attribute`}
                 nullable
-                {...getExtraProps(settingDetails?.["ldap-attribute-firstname"])}
+                {...getExtraFormFieldProps(
+                  settingDetails?.["ldap-attribute-firstname"],
+                )}
               />
               <FormTextInput
                 name="ldap-attribute-lastname"
                 label={t`Last name attribute`}
                 nullable
-                {...getExtraProps(settingDetails?.["ldap-attribute-lastname"])}
+                {...getExtraFormFieldProps(
+                  settingDetails?.["ldap-attribute-lastname"],
+                )}
               />
             </Stack>
           </FormSection>
@@ -200,7 +204,7 @@ export const SettingsLdapForm = () => {
                 name="ldap-group-base"
                 label={t`Group search base`}
                 nullable
-                {...getExtraProps(settingDetails?.["ldap-group-base"])}
+                {...getExtraFormFieldProps(settingDetails?.["ldap-group-base"])}
               />
               <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
             </Stack>
@@ -217,18 +221,6 @@ export const SettingsLdapForm = () => {
       )}
     </FormProvider>
   );
-};
-
-const getExtraProps = (setting?: SettingDefinition) => {
-  if (setting?.is_env_setting) {
-    return {
-      description: t`Using ${setting.env_name}`,
-      readOnly: true,
-    };
-  }
-  return {
-    description: setting?.description ?? "",
-  };
 };
 
 export const getFormValues = (allSettings: Partial<Settings>) => {

@@ -56,6 +56,10 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     });
 
     H.popover().contains(value).click();
+    H.popover().findByDisplayValue(value);
+
+    // click outside popover
+    cy.findByTestId("chartsettings-list-container").click();
   }
 
   function assertOnTheYAxis() {
@@ -92,13 +96,12 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       replaceMissingValuesWith(replacementValue);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
-
       assertOnTheYAxis();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.cartesianChartCircle().eq(-2).trigger("mousemove");
+      H.cartesianChartCircle()
+        .should("have.length", 6)
+        .eq(-2)
+        .trigger("mousemove");
 
       H.assertEChartsTooltip({
         header: "2019",

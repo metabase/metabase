@@ -266,13 +266,19 @@ export function toggleVisualizerSettingsSidebar() {
 }
 
 export function saveDashcardVisualizerModal(
-  mode: "create" | "update" = "update",
+  options: {
+    mode?: "create" | "update";
+    waitMs?: number;
+  } = {},
 ) {
+  const { mode = "update", waitMs = 1 } = options;
+
   modal().within(() => {
     cy.findByText(mode === "create" ? "Add to dashboard" : "Save").click();
   });
 
   modal({ timeout: 6000 }).should("not.exist");
+  cy.wait(waitMs); // Wait for the modal to close and the dashboard to update
 }
 
 export function closeDashcardVisualizerModal() {
