@@ -155,7 +155,7 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
     expect(cells[1]).toHaveTextContent("b");
   });
 
-  it("translateFieldValuesInHoveredObject translates field values in a HoveredObject (which is used in visualization tooltips)", async () => {
+  it("useTranslateFieldValuesInHoveredObject translates field values in a HoveredObject (which is used in visualization tooltips)", async () => {
     const TestComponent = () => {
       const untranslatedHoveredObject: HoveredObject = {
         data: [
