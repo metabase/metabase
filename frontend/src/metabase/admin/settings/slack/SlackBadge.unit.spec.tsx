@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import SlackBadge from "./SlackBadge";
+import { SlackBadge } from "./SlackBadge";
 
 describe("SlackBadge", () => {
   it("should render when there is a bot and the token is valid", () => {
