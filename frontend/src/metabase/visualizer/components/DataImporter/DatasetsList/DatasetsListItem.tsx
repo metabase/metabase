@@ -1,16 +1,6 @@
-import { useMemo } from "react";
-
 import ButtonGroup from "metabase/common/components/ButtonGroup";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
-import {
-  getDatasets,
-  getVisualizationType,
-  getVisualizerComputedSettings,
-  getVisualizerComputedSettingsForFlatSeries,
-  getVisualizerDatasetColumns,
-} from "metabase/visualizer/selectors";
 import type {
   Field,
   VisualizationDisplay,
@@ -20,7 +10,6 @@ import type {
 import { useVisualizerUi } from "../../VisualizerUiContext";
 
 import S from "./DatasetsListItem.module.css";
-import { getIsCompatible } from "./getIsCompatible";
 
 interface DatasetsListItemProps {
   item: VisualizerDataSource & {
@@ -38,32 +27,8 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
 
   const { setSwapAffordanceVisible } = useVisualizerUi();
 
-  const currentDisplay = useSelector(getVisualizationType);
-  const columns = useSelector(getVisualizerDatasetColumns);
-  const settings = useSelector(getVisualizerComputedSettings);
-  const computedSettings = useSelector(
-    getVisualizerComputedSettingsForFlatSeries,
-  );
-  const datasets = useSelector(getDatasets);
-
-  const isCompatible = useMemo(() => {
-    if (!item.display || !item.result_metadata) {
-      return false;
-    }
-
-    return getIsCompatible({
-      currentDataset: {
-        display: currentDisplay ?? null,
-        columns,
-        settings,
-        computedSettings,
-      },
-      targetDataset: {
-        fields: item.result_metadata,
-      },
-      datasets,
-    });
-  }, [item, currentDisplay, columns, settings, computedSettings, datasets]);
+  // TODO: We run compatibility in DatasetsList now
+  const isCompatible = true;
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>
