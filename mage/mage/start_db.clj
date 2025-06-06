@@ -88,6 +88,10 @@
   [database db-info]
   "2.1.1")
 
+(defmethod fetch-oldest-supported-version :vertica
+  [database db-info]
+  "23.4.0-0")
+
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database db-info)
@@ -186,6 +190,22 @@
    "-p" (str port ":10000")
    "--name" container-name
    (str "metabase/spark:" resolved-version)])
+
+(defmethod docker-cmd :vertica
+  [_db container-name resolved-version port]
+  (let [arch (first (:out (shell/sh* {:quiet? true} "uname" "-m")))]
+    (if (= arch "arm64")
+      (do
+        (println (c/yellow "Warning! The database will be likely extremely slow on arm64!"))
+        ["docker" "run" "-d"
+         "-p" (str port ":5433")
+         "--name" container-name
+         "--env" "VERTICA_MEMDEBUG=2"
+         (str "opentext/vertica-ce:" resolved-version)])
+      ["docker" "run" "-d"
+       "-p" (str port ":5433")
+       "--name" container-name
+       (str "opentext/vertica-ce:" resolved-version)])))
 
 (defn- start-db!
   [database version resolved-version port]

@@ -82,7 +82,7 @@
                 ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
    :requires   [[mage.start-db :as start-db]]
    :arg-schema [:tuple
-                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle :presto :sparksql]
+                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle :presto :sparksql :vertica]
                 [:enum :oldest :latest]]
    :db-info      {:postgres   {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
                   :mysql      {:ports {:oldest 3308  :latest 3309}  :eol-url "https://endoflife.date/api/mysql.json"}
@@ -91,9 +91,10 @@
                   :sqlserver  {:ports {:oldest 1433 :latest 1434}   :eol-url "https://endoflife.date/api/mssqlserver.json"}
                   :oracle     {:ports {:oldest 1521 :latest 1522}   :eol-url "https://endoflife.date/api/oracle-database.json"}
                   ;; some databases aren't on endoflife.date
-                  :presto     {:ports {:oldest 8080 :latest 8081}    :eol-url nil}
+                  :vertica    {:ports {:oldest 5434 :latest 5435}   :eol-url nil}
+                  :presto     {:ports {:oldest 8080 :latest 8081}   :eol-url nil}
                   :sparksql   {:ports {:oldest 10000 :latest 10001} :eol-url nil}
-                  :clickhouse {:ports {:oldest 8124 :latest 8123}    :eol-url nil}}
+                  :clickhouse {:ports {:oldest 8124 :latest 8123}   :eol-url nil}}
    :usage-fn   start-db/usage
    :task       (task!
                 (let [[db version] (:arguments parsed)]
