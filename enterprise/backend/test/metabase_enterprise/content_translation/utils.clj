@@ -11,4 +11,3 @@
          (t2/delete! :model/ContentTranslation)
          (when (seq original-entities#)
            (t2/insert! :model/ContentTranslation original-entities#))))))
-
