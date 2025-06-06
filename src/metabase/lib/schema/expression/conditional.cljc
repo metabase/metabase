@@ -57,13 +57,21 @@
                                              #_expr [:ref ::expression/expression]]]]
     [:default [:? [:schema [:ref ::expression/expression]]]])
   (defmethod expression/type-of-method tag
-    [[_tag _opts pred-expr-pairs _default]]
-    (some
-     (fn [[_pred expr]]
-       (if-some [t (expression/type-of expr)]
-         t
-         ::expression/type.unknown))
-     pred-expr-pairs)))
+    [[_tag _opts pred-expr-pairs default]]
+    (let [exprs (concat
+                 (map second pred-expr-pairs)
+                 (when default
+                   [default]))
+          types (keep expression/type-of exprs)]
+      (cond
+        (>= (count types) 2)
+        (reduce best-return-type (first types) (rest types))
+
+        (= (count types) 1)
+        (first types)
+
+        :else
+        ::expression/type.unknown))))
 
 ;;; TODO -- add constraint that these types have to be compatible
 (mbql-clause/define-catn-mbql-clause :coalesce
