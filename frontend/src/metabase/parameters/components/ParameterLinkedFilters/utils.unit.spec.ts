@@ -9,11 +9,73 @@ import {
   REVIEWS,
 } from "metabase-types/api/mocks/presets";
 
-import { getLinkedParametersInfo } from "./utils";
+import { getFilterFieldsRequest, getLinkedParametersInfo } from "./utils";
 
 function fieldById(fieldId: FieldId) {
   return checkNotNull(SAMPLE_METADATA.field(fieldId));
 }
+
+describe("getFilterFieldsRequest", () => {
+  it.each([
+    {
+      parameter: createMockUiParameter({
+        name: "p1",
+        fields: [fieldById(PRODUCTS.CATEGORY)],
+      }),
+      otherParameters: [
+        createMockUiParameter({
+          name: "p2",
+          fields: [fieldById(PRODUCTS.VENDOR)],
+        }),
+        createMockUiParameter({
+          name: "p3",
+          fields: [fieldById(PRODUCTS.VENDOR)],
+        }),
+        createMockUiParameter({
+          name: "p4",
+          fields: [fieldById(ORDERS.ID)],
+        }),
+      ],
+      expectedRequest: {
+        filtered: [PRODUCTS.CATEGORY],
+        filtering: [PRODUCTS.VENDOR, ORDERS.ID],
+      },
+    },
+    {
+      parameter: createMockUiParameter({
+        name: "p1",
+        fields: [fieldById(PRODUCTS.CATEGORY)],
+      }),
+      otherParameters: [
+        createMockUiParameter({
+          name: "p2",
+          fields: [],
+        }),
+      ],
+      expectedRequest: undefined,
+    },
+    {
+      parameter: createMockUiParameter({
+        name: "p1",
+        fields: [],
+      }),
+      otherParameters: [
+        createMockUiParameter({
+          name: "p2",
+          fields: [fieldById(PRODUCTS.CATEGORY)],
+        }),
+      ],
+      expectedRequest: undefined,
+    },
+  ])(
+    "should return the correct request",
+    ({ parameter, otherParameters, expectedRequest }) => {
+      expect(getFilterFieldsRequest(parameter, otherParameters)).toEqual(
+        expectedRequest,
+      );
+    },
+  );
+});
 
 describe("getLinkedParametersInfo", () => {
   it("should return linked parameters with fields info", () => {
