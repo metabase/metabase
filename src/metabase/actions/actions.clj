@@ -1,7 +1,7 @@
 (ns metabase.actions.actions
   "Code related to the new writeback Actions."
   (:require
-   [clojure.spec.alpha :as s]
+   [malli.error :as me]
    [metabase.actions.events :as actions.events]
    [metabase.actions.scope :as actions.scope]
    [metabase.actions.settings :as actions.settings]
@@ -18,6 +18,7 @@
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
@@ -251,9 +252,9 @@
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
-                        :when (s/invalid? (s/conform spec arg-map))]
-                    {:message (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
-                     :data    (s/explain-data spec arg-map)})
+                        :when (not (mr/validate spec arg-map))]
+                    {:message (format "Invalid Action arg map for %s: %s" action-kw (me/humanize (mr/explain spec arg-map)))
+                     :data    (mr/explain spec arg-map)})
         _         (when (seq errors)
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
@@ -324,35 +325,35 @@
 
 ;;;; Action definitions.
 
-;;; Common base spec for *all* Actions. All Actions at least require
+;;; Common base schema for *all* Actions. All Actions at least require
 ;;;
 ;;;    {:database <id>}
 ;;;
 ;;; Anything else required depends on the action type.
 
-(s/def :actions.args/id
-  (s/and integer? pos?))
+(mr/def :actions.args/id
+  [:and pos-int? int?])
 
-(s/def :actions.args.common/database
+(mr/def :actions.args.common/database
   :actions.args/id)
 
-(s/def :actions.args/common
-  (s/keys :req-un [:actions.args.common/database]))
+(mr/def :actions.args/common
+  [:map [:database :actions.args.common/database]])
 
-;;; Common base spec for all CRUD model row Actions. All CRUD model row Actions at least require
+;;; Common base schema for all CRUD model row Actions. All CRUD model row Actions at least require
 ;;;
 ;;;    {:database <id>, :query {:source-table <id>}}
 
-(s/def :actions.args.crud.row.common.query/source-table
+(mr/def :actions.args.crud.row.common.query/source-table
   :actions.args/id)
 
-(s/def :actions.args.crud.row.common/query
-  (s/keys :req-un [:actions.args.crud.row.common.query/source-table]))
+(mr/def :actions.args.crud.row.common/query
+  [:map [:source-table :actions.args.crud.row.common.query/source-table]])
 
-(s/def :actions.args.crud.row/common
-  (s/merge
+(mr/def :actions.args.crud.row/common
+  [:merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.row.common/query])))
+   [:map [:query :actions.args.crud.row.common/query]]])
 
 ;;;; `:model.row/create`
 
@@ -366,13 +367,13 @@
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
-(s/def :actions.args.crud.row.create/create-row
-  (s/map-of string? any?))
+(mr/def :actions.args.crud.row.create/create-row
+  [:map-of :string :any])
 
-(s/def :actions.args.crud/row.create
-  (s/merge
+(mr/def :actions.args.crud/row.create
+  [:merge
    :actions.args.crud.row/common
-   (s/keys :req-un [:actions.args.crud.row.create/create-row])))
+   [:map [:create-row :actions.args.crud.row.create/create-row]]])
 
 (defmethod action-arg-map-spec :model.row/create
   [_action]
@@ -390,22 +391,22 @@
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
-(s/def :actions.args.crud.row.update.query/filter
-  vector?) ; MBQL filter clause
+(mr/def :actions.args.crud.row.update.query/filter
+  :vector) ; MBQL filter clause
 
-(s/def :actions.args.crud.row.update/query
-  (s/merge
+(mr/def :actions.args.crud.row.update/query
+  [:merge
    :actions.args.crud.row.common/query
-   (s/keys :req-un [:actions.args.crud.row.update.query/filter])))
+   [:map [:filter :actions.args.crud.row.update.query/filter]]])
 
-(s/def :actions.args.crud.row.update/update-row
-  (s/map-of string? any?))
+(mr/def :actions.args.crud.row.update/update-row
+  [:map-of :string :any])
 
-(s/def :actions.args.crud/row.update
-  (s/merge
+(mr/def :actions.args.crud/row.update
+  [:merge
    :actions.args.crud.row/common
-   (s/keys :req-un [:actions.args.crud.row.update/update-row
-                    :actions.args.crud.row.update/query])))
+   [:map [:update-row :actions.args.crud.row.update/update-row]
+    [:query :actions.args.crud.row.update/query]]])
 
 (defmethod action-arg-map-spec :model.row/update
   [_action]
@@ -422,18 +423,18 @@
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
-(s/def :actions.args.crud.row.delete.query/filter
-  vector?) ; MBQL filter clause
+(mr/def :actions.args.crud.row.delete.query/filter
+  :vector) ; MBQL filter clause
 
-(s/def :actions.args.crud.row.delete/query
-  (s/merge
+(mr/def :actions.args.crud.row.delete/query
+  [:merge
    :actions.args.crud.row.common/query
-   (s/keys :req-un [:actions.args.crud.row.delete.query/filter])))
+   [:map [:filter :actions.args.crud.row.delete.query/filter]]])
 
-(s/def :actions.args.crud/row.delete
-  (s/merge
+(mr/def :actions.args.crud/row.delete
+  [:merge
    :actions.args.crud.row/common
-   (s/keys :req-un [:actions.args.crud.row.delete/query])))
+   [:map [:query :actions.args.crud.row.delete/query]]])
 
 (defmethod action-arg-map-spec :model.row/delete
   [_action]
@@ -445,17 +446,17 @@
 ;;;
 ;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
 
-(s/def :actions.args.crud.table.common/table-id
+(mr/def :actions.args.crud.table.common/table-id
   :actions.args/id)
 
-(s/def :actions.args.crud.table/row
-  (s/map-of string? any?))
+(mr/def :actions.args.crud.table/row
+  [:map-of :string :any])
 
-(s/def :actions.args.crud.table/common
-  (s/merge
+(mr/def :actions.args.crud.table/common
+  [:merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.table.common/table-id
-                    :actions.args.crud.table/row])))
+   [:map [:table-id :actions.args.crud.table.common/table-id]
+    [:row :actions.args.crud.table/row]]])
 
 ;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
@@ -487,13 +488,13 @@
 
 ;;;; `:table.row/create-or-update` -- similar to common but with additional :key field
 
-(s/def :actions.args.crud.table.create-or-update/row-key
-  (s/map-of string? any?))
+(mr/def :actions.args.crud.table.create-or-update/row-key
+  [:map-of :string :any])
 
-(s/def :actions.args.crud.table/create-or-update
-  (s/merge
+(mr/def :actions.args.crud.table/create-or-update
+  [:merge
    :actions.args.crud.table/common
-   (s/keys :req-un [:actions.args.crud.table.create-or-update/row-key])))
+   [:map [:row-key :actions.args.crud.table.create-or-update/row-key]]])
 
 (defmethod action-arg-map-spec :table.row/create-or-update
   [_action]

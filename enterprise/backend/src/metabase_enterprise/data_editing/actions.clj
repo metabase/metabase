@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.actions
   (:require
-   [clojure.spec.alpha :as s]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.models.undo :as undo]
    [metabase.actions.core :as actions]
@@ -16,7 +15,7 @@
 (derive :data-grid.row/update :data-grid.row/common)
 (derive :data-grid.row/delete :data-grid.row/common)
 
-(s/def :actions.args.data-grid/common
+(mr/def :actions.args.data-grid/common
   :actions.args.crud.table/row)
 
 (defmethod actions/action-arg-map-spec :data-grid.row/common
@@ -73,7 +72,7 @@
 
 ;; undo
 
-(s/def :actions.args/none map?)
+(mr/def :actions.args/none :map)
 
 (defmethod actions/action-arg-map-spec :data-editing/undo [_action] :actions.args/none)
 (defmethod actions/action-arg-map-spec :data-editing/redo [_action] :actions.args/none)
