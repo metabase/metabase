@@ -38,7 +38,7 @@ export const SlackSetupForm = ({
   );
   const [updateSlackSettings] = useUpdateSlackSettingsMutation();
   const handleSubmit = (values: SlackSettings) =>
-    updateSlackSettings(SLACK_SCHEMA.cast(values) as SlackSettings);
+    updateSlackSettings(SLACK_SCHEMA.cast(values) as SlackSettings).unwrap();
 
   return (
     <FormProvider
