@@ -313,7 +313,7 @@ const DashboardContextProviderInner = ({
 
   const hideParameters = !isEditing
     ? [hide_parameters, hiddenParameterSlugs].filter(Boolean).join(",")
-    : [];
+    : null;
 
   return (
     <DashboardContext.Provider

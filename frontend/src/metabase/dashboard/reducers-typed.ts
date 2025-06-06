@@ -224,11 +224,18 @@ export const parameterValues = createReducer(
     builder.addCase(
       initialize,
       (state, { payload: { clearCache = true } = {} }) => {
+        // eslint-disable-next-line no-console
+        console.log("Parameter values initialize:", { state, clearCache });
         return clearCache ? {} : state;
       },
     );
 
     builder.addCase(fetchDashboard.fulfilled, (_state, { payload }) => {
+      // eslint-disable-next-line no-console
+      console.log("Parameter values fetchDashboard.fulfilled:", {
+        payload,
+        parameterValues: payload.parameterValues,
+      });
       return payload.parameterValues;
     });
 
@@ -243,6 +250,13 @@ export const parameterValues = createReducer(
         };
       }
     >(SET_PARAMETER_VALUE, (state, { payload: { id, value, isDraft } }) => {
+      // eslint-disable-next-line no-console
+      console.log("Parameter values SET_PARAMETER_VALUE:", {
+        id,
+        value,
+        isDraft,
+        state,
+      });
       if (!isDraft) {
         state[id] = value;
       }
