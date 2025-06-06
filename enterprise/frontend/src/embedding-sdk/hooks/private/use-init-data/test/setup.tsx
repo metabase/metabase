@@ -49,6 +49,7 @@ export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
     authConfig: createMockSdkConfig({
       ...config,
       metabaseInstanceUrl: config.metabaseInstanceUrl ?? MOCK_INSTANCE_URL,
+      preferredAuthMethod: config.preferredAuthMethod,
     }),
   });
 
@@ -56,7 +57,7 @@ export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
     dispatch(
       refreshTokenAsync({
         metabaseInstanceUrl: MOCK_INSTANCE_URL,
-        authMethod: config.authMethod,
+        preferredAuthMethod: config.preferredAuthMethod,
       }),
     );
 
