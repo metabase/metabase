@@ -28,7 +28,7 @@ import { getFetchRefreshTokenFn } from "../selectors";
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
-    { metabaseInstanceUrl, authMethod, apiKey }: MetabaseAuthConfig,
+    { metabaseInstanceUrl, preferredAuthMethod, apiKey }: MetabaseAuthConfig,
     { dispatch },
   ) => {
     // remove any stale tokens that might be there from a previous session=
@@ -48,7 +48,7 @@ export const initAuth = createAsyncThunk(
         const session = await dispatch(
           getOrRefreshSession({
             metabaseInstanceUrl,
-            authMethod,
+            preferredAuthMethod,
           }),
         ).unwrap();
         if (session?.id) {
@@ -60,7 +60,7 @@ export const initAuth = createAsyncThunk(
         await dispatch(
           getOrRefreshSession({
             metabaseInstanceUrl,
-            authMethod,
+            preferredAuthMethod,
           }),
         ).unwrap();
       } catch (e) {
@@ -109,8 +109,8 @@ export const refreshTokenAsync = createAsyncThunk(
   async (
     {
       metabaseInstanceUrl,
-      authMethod,
-    }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "authMethod">,
+      preferredAuthMethod,
+    }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const state = getState() as SdkStoreState;
@@ -123,7 +123,7 @@ export const refreshTokenAsync = createAsyncThunk(
 
     const session = await getRefreshToken({
       metabaseInstanceUrl,
-      authMethod,
+      preferredAuthMethod,
       fetchRequestToken: customGetRefreshToken,
     });
     validateSessionToken(session);
@@ -134,14 +134,14 @@ export const refreshTokenAsync = createAsyncThunk(
 
 const getRefreshToken = async ({
   metabaseInstanceUrl,
-  authMethod,
+  preferredAuthMethod,
   fetchRequestToken: customGetRequestToken,
 }: Pick<
   MetabaseAuthConfig,
-  "metabaseInstanceUrl" | "fetchRequestToken" | "authMethod"
+  "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
 >) => {
   const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
-    authMethod,
+    preferredAuthMethod,
     headers: getSdkRequestHeaders(),
   });
   const { method, url: responseUrl, hash } = urlResponseJson || {};
