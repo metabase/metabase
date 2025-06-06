@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import { Group, Icon, type IconName, Text } from "metabase/ui";
 
 import { type ActionFormParameter, ActionFormParameterType } from "../../types";
@@ -24,12 +25,16 @@ export function ActionFormModalParameter({
   parameter,
   children,
 }: ActionFormModalParameterProps) {
+  const iconName = parameter.semantic_type
+    ? FIELD_SEMANTIC_TYPES_MAP[parameter.semantic_type].icon
+    : PARAMETER_ICON_MAP[parameter.type];
+
   return (
     <>
       <Group h="2.5rem" align="center">
         <Icon
           className={S.modalBodyColumn}
-          name={PARAMETER_ICON_MAP[parameter.type] ?? DEFAULT_PARAMETER_ICON}
+          name={iconName ?? DEFAULT_PARAMETER_ICON}
         />
         <Text className={S.modalBodyColumn}>
           {parameter.display_name}
