@@ -13,7 +13,8 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Switch } from "metabase/ui";
-import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { FieldId, ParameterId } from "metabase-types/api";
 
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 
@@ -38,8 +39,8 @@ import {
 } from "./utils";
 
 export interface ParameterLinkedFiltersProps {
-  parameter: Parameter;
-  otherParameters: Parameter[];
+  parameter: UiParameter;
+  otherParameters: UiParameter[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
 }
 
@@ -66,12 +67,12 @@ export const ParameterLinkedFilters = ({
 };
 
 function Content({
-  usableParameters,
   parameter,
+  usableParameters,
   onChangeFilteringParameters,
 }: {
-  usableParameters: Parameter[];
-  parameter: Parameter;
+  parameter: UiParameter;
+  usableParameters: UiParameter[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
 }) {
   const {
@@ -169,18 +170,18 @@ function LinkedParameterList({
   linkedParametersInfo,
   onChangeFilteringParameters,
 }: {
-  parameter: Parameter;
+  parameter: UiParameter;
   linkedParametersInfo: LinkedParameterInfo[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
 }): JSX.Element {
   const [expandedParameterId, setExpandedParameterId] = useState<ParameterId>();
 
   const handleFilterChange = useCallback(
-    (otherParameter: Parameter, isFiltered: boolean) => {
+    (linkedParameter: UiParameter, isFiltered: boolean) => {
       const newParameters = isFiltered
-        ? (parameter.filteringParameters ?? []).concat(otherParameter.id)
+        ? (parameter.filteringParameters ?? []).concat(linkedParameter.id)
         : (parameter.filteringParameters ?? []).filter(
-            (id) => id !== otherParameter.id,
+            (id) => id !== linkedParameter.id,
           );
 
       onChangeFilteringParameters(newParameters);
@@ -189,8 +190,8 @@ function LinkedParameterList({
   );
 
   const handleExpandedChange = useCallback(
-    (otherParameter: Parameter, isExpanded: boolean) => {
-      setExpandedParameterId(isExpanded ? otherParameter.id : undefined);
+    (linkedParameter: UiParameter, isExpanded: boolean) => {
+      setExpandedParameterId(isExpanded ? linkedParameter.id : undefined);
     },
     [],
   );
@@ -223,13 +224,13 @@ function LinkedParameterList({
 }
 
 interface LinkedParameterProps {
-  linkedParameter: Parameter;
+  linkedParameter: UiParameter;
   filteredIds: FieldId[];
   filteringIds: FieldId[];
   isFiltered: boolean;
   isExpanded: boolean;
-  onFilterChange: (otherParameter: Parameter, isFiltered: boolean) => void;
-  onExpandedChange: (otherParameter: Parameter, isExpanded: boolean) => void;
+  onFilterChange: (linkedParameter: UiParameter, isFiltered: boolean) => void;
+  onExpandedChange: (linkedParameter: UiParameter, isExpanded: boolean) => void;
 }
 
 const LinkedParameter = ({

@@ -1,23 +1,23 @@
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
   FieldId,
   GetValidDashboardFilterFieldsRequest,
-  Parameter,
 } from "metabase-types/api";
 
 export type LinkedParameterInfo = {
-  parameter: Parameter;
+  parameter: UiParameter;
   filteredIds: FieldId[];
   filteringIds: FieldId[];
 };
 
-function getFieldIds(parameter: Parameter): FieldId[] {
+function getFieldIds(parameter: UiParameter): FieldId[] {
   return getFields(parameter).map((field) => Number(field.id));
 }
 
 export function getFilterFieldsRequest(
-  parameter: Parameter,
-  otherParameters: Parameter[],
+  parameter: UiParameter,
+  otherParameters: UiParameter[],
 ): GetValidDashboardFilterFieldsRequest | undefined {
   const filteredIds = getFieldIds(parameter);
   const filteringIds = Array.from(
@@ -54,7 +54,7 @@ function getFilteredIdsByFilteringId(
 }
 
 function getLinkedParametersInfoForMapping(
-  otherParameters: Parameter[],
+  otherParameters: UiParameter[],
   filteredIdsByFilteringId: Map<FieldId, FieldId[]>,
 ): LinkedParameterInfo[] {
   return otherParameters
@@ -79,7 +79,7 @@ function getLinkedParametersInfoForMapping(
 }
 
 export function getLinkedParametersInfo(
-  otherParameters: Parameter[],
+  otherParameters: UiParameter[],
   fieldIds: Record<FieldId, FieldId[]>,
 ): LinkedParameterInfo[] {
   const filteringIdsByFilteredId = getFilteringIdsByFilteredId(fieldIds);

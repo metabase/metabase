@@ -1,9 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as dashboardActions from "metabase/dashboard/actions/parameters";
+import { checkNotNull } from "metabase/lib/types";
+import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { FieldId } from "metabase-types/api";
+import { PRODUCTS } from "metabase-types/api/mocks/presets";
 import type { ValuesSourceType } from "metabase-types/api/parameters";
 
 import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
@@ -11,10 +16,16 @@ import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
 interface SetupOpts {
   parameter: UiParameter;
   otherParameters: UiParameter[];
+  filteringIdsByFilteredId?: Record<FieldId, FieldId[]>;
 }
 
-const setup = ({ parameter, otherParameters }: SetupOpts) => {
+const setup = ({
+  parameter,
+  otherParameters,
+  filteringIdsByFilteredId = {},
+}: SetupOpts) => {
   const onChangeFilteringParameters = jest.fn();
+  setupValidFilterFieldsEndpoint(filteringIdsByFilteredId);
 
   renderWithProviders(
     <ParameterLinkedFilters
@@ -33,16 +44,21 @@ describe("ParameterLinkedFilters", () => {
       parameter: createMockUiParameter({
         id: "p1",
         name: "P1",
+        fields: [checkNotNull(SAMPLE_METADATA.field(PRODUCTS.CATEGORY))],
       }),
       otherParameters: [
         createMockUiParameter({
           id: "p2",
           name: "P2",
+          fields: [checkNotNull(SAMPLE_METADATA.field(PRODUCTS.VENDOR))],
         }),
       ],
+      filteringIdsByFilteredId: {
+        [PRODUCTS.CATEGORY]: [PRODUCTS.VENDOR],
+      },
     });
 
-    await userEvent.click(screen.getByRole("switch"));
+    await userEvent.click(await screen.findByRole("switch"));
 
     expect(onChangeFilteringParameters).toHaveBeenCalledWith(["p2"]);
   });
