@@ -1,8 +1,12 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import type { CSSProperties, PropsWithChildren, ReactNode } from "react";
 
-import type { SdkDashboardDisplayProps } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import type {
+  SdkDashboardDisplayProps,
+  useSdkDashboardParams,
+} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import type { DashboardContextProps } from "metabase/dashboard/context";
 
 import type { InteractiveDashboardContextType } from "../InteractiveDashboard/context";
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
@@ -17,7 +21,7 @@ export type SdkDashboardProps = PropsWithChildren<
     /**
      * Height of a question component when drilled from the dashboard to a question level.
      */
-    drillThroughQuestionHeight?: number;
+    drillThroughQuestionHeight?: CSSProperties["height"];
 
     // @todo pass the question context to the question view component,
     //       once we have a public-facing question context.
@@ -40,7 +44,14 @@ export type SdkDashboardProps = PropsWithChildren<
     DashboardEventHandlersProps
 >;
 
-export type SdkDashboardInternalProps = SdkDashboardProps &
-  Pick<InteractiveDashboardContextType, "dashboardActions"> & {
+export type SdkDashboardInternalProps = Omit<
+  SdkDashboardProps,
+  "dashboardId" | "className" | "style"
+> &
+  Pick<InteractiveDashboardContextType, "dashboardActions"> &
+  Pick<DashboardContextProps, "getClickActionMode"> &
+  ReturnType<typeof useSdkDashboardParams> & {
+    initialDashboardId: SdkDashboardProps["dashboardId"];
+    dashboardId: Nullable<SdkDashboardProps["dashboardId"]>;
     mode: "static" | "interactive" | "editable";
   };
