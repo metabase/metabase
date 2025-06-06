@@ -115,7 +115,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      authMethod: "jwt",
+      preferredAuthMethod: "jwt",
     });
 
     cy.wait("@authSso").its("response.body.method").should("eq", "jwt");
@@ -130,7 +130,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      authMethod: "saml",
+      preferredAuthMethod: "saml",
     });
 
     cy.log("must fail to login via SAML as the SAML endpoint does not exist");

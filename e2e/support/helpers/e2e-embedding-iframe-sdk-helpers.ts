@@ -24,6 +24,7 @@ export interface BaseEmbedTestPageOptions {
   template?: "exploration";
   theme?: MetabaseTheme;
   locale?: string;
+  preferredAuthMethod?: "jwt" | "saml";
 
   // Options for the test page
   origin?: string;

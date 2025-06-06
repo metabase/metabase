@@ -111,7 +111,7 @@ type SdkIframeEmbedBaseSettings = {
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
-  authMethod?: MetabaseAuthMethod;
+  preferredAuthMethod?: MetabaseAuthMethod;
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 };
