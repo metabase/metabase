@@ -149,12 +149,12 @@
   and metric type entities."
   [entities]
   (let [{collection-entities true, other-entities false} (group-by #(= (:model %) :collection) entities)
-        entity->card (if (seq other-entities)
-                       (t2/select-pk->fn identity :model/Card
-                                         :id [:in (map :model-id other-entities)]
-                                         :type [:in [:model :metric]]
-                                         :archived false)
-                       {})]
+        card-id->card (if (seq other-entities)
+                        (t2/select-pk->fn identity :model/Card
+                                          :id [:in (map :model-id other-entities)]
+                                          :type [:in [:model :metric]]
+                                          :archived false)
+                        {})]
     (reduce (fn [scope coll-entity]
               (let [coll-id (:model-id coll-entity)]
                 (if-let [coll (t2/select-one [:model/Collection :id :location] coll-id)]
@@ -164,14 +164,15 @@
                                          :type [:in [:model :metric]]
                                          :archived false)
                         coll-entity-id (:metabot-entity-id coll-entity)]
-                    (reduce (fn [scope card] (assoc scope card coll-entity-id))
+                    (reduce (fn [scope card]
+                              (assoc scope card coll-entity-id))
                             scope
                             cards))
                   scope)))
             (reduce (fn [m e]
-                      (let [card (entity->card (:model-id e))]
+                      (let [card (card-id->card (:model-id e))]
                         (cond-> m
-                          card (assoc card (:model-entity-id e)))))
+                          card (assoc card (:metabot-entity-id e)))))
                     {}
                     other-entities)
             collection-entities)))
