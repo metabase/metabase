@@ -186,36 +186,34 @@
          ((comp cat (m/distinct-by :name)) rf)
          init
          [jdbc-metadata fallback-metadata])))))
+
 (defn describe-fields-xf
   "Returns a transducer for computing metadata about the fields in `db`.
    Takes an optional map of `:table-schema` and `:table-name` to be used as fallbacks if they're not available in `col`"
   ([driver db] (describe-fields-xf driver db {}))
   ([driver db table-info]
    (map (fn [col]
-          (let [table-schema ((some-fn :table-schema) col table-info)
-                table-name (((some-fn :table-name) col table-info))
-                base-type (or (:base-type col) (database-type->base-type-or-warn
+          (let [base-type (or (:base-type col) (database-type->base-type-or-warn
                                                 driver
-                                                [table-schema
-                                                 table-name
+                                                [((some-fn :table-schema) col table-info)
+                                                 ((some-fn :table-name)   col table-info)
                                                  (:name col)]
                                                 (:database-type col)))
                 semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
                 json? (isa? base-type :type/JSON)
                 database-position (some-> (:database-position col) int)]
             (merge
-             (u/select-non-nil-keys col [:pk?
+             (u/select-non-nil-keys col [:table-name
+                                         :pk?
                                          :name
                                          :database-type
                                          :field-comment
                                          :database-required
                                          :database-is-auto-increment])
-             {:table-schema      table-schema ;; can be nil
+             {:table-schema      (:table-schema col) ;; can be nil
               :base-type         base-type
               ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
               :json-unfolding    json?}
-             (when table-name
-               {:table-name table-name})
              (when database-position
                {:database-position database-position})
              (when semantic-type
@@ -614,33 +612,37 @@
    :type/Structured "text"})
 
 (defn- field-types->fields [field-types]
-  (let [valid-fields (for [[field-path field-type] (seq field-types)]
-                       (if (nil? field-type)
-                         nil
-                         (let [curr-type (get field-type-map field-type :type/*)]
-                           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
-                            :database-type     (db-type-map curr-type)
-                            :base-type         curr-type
-                            ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
-                            :database-position 0
-                            :json-unfolding    false
-                            :visibility-type   :normal
-                            :nfc-path          field-path})))
-        field-hash   (apply hash-set (filter some? valid-fields))]
+  (let [valid-fields (for [[field-path field-type] (seq field-types)
+                           :when field-type]
+                       (let [curr-type (get field-type-map field-type :type/*)]
+                         {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+                          :database-type     (db-type-map curr-type)
+                          :base-type         curr-type
+                          ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+                          :database-position 0
+                          :json-unfolding    false
+                          :visibility-type   :normal
+                          :nfc-path          field-path}))
+        field-hash   (into #{} valid-fields)]
     field-hash))
 
 (defn- table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
   [driver conn table]
-  (let [table-fields (describe-table-fields driver conn table nil)
-        json-fields  (filter #(isa? (:base-type %) :type/JSON) table-fields)]
-    (if-not (seq json-fields)
-      #{}
-      (let [existing-fields-by-name (m/index-by :name (t2/select [:model/Field :name :json_unfolding] :table_id (u/the-id table)))
-            should-not-unfold?      (fn [field]
-                                      (when-let [existing-field (existing-fields-by-name (:name field))]
-                                        (false? (:json_unfolding existing-field))))]
-        (remove should-not-unfold? json-fields)))))
+  (let [existing-fields-by-name
+        (->> (t2/select [:model/Field :name :json_unfolding]
+                        :table_id (u/the-id table)
+                        :json_unfolding false)
+             (m/index-by :name)
+             ;; in a delay so we'll query only if there's at least one json field
+             (delay))]
+    (into #{}
+          (comp
+           (remove #(when-let [existing-field (@existing-fields-by-name (:name %))]
+                      (false? (:json_unfolding existing-field))))
+           (filter #(isa? (:base-type %) :type/JSON))
+           (describe-table-fields-xf driver table))
+          (describe-table-fields driver conn table nil))))
 
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
