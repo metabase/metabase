@@ -22,9 +22,13 @@
        (fn []
          (try
            ;; only do the 'full' sync if this is a "full sync" database. Otherwise just do metadata sync only
-           (if (:is_full_sync database)
-             (sync/sync-database! database)
-             (sync-metadata/sync-db-metadata! database))
+           ;; is_full_sync -- how that maps to database connection options?
+           #_(if (:is_full_sync database)
+               (sync/sync-database! database)
+               (sync-metadata/sync-db-metadata! database))
+           ;; POC: sync metadata only
+           ;; TODO: Dependency of field values on analysis. How to resolve that?
+           (sync-metadata/sync-db-metadata! database)
            (catch Throwable e
              (log/errorf e "Error syncing Database %s" (u/the-id database)))))))
     (catch Throwable e
