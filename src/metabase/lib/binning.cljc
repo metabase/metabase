@@ -138,7 +138,9 @@
 (defmethod lib.metadata.calculation/display-info-method ::binning
   [query stage-number binning-value]
   (let [field-metadata ((:metadata-fn binning-value) query stage-number)]
-    (merge {:display-name (binning-display-name binning-value field-metadata)}
+    (merge {:display-name (binning-display-name binning-value field-metadata)
+            :strategy (:strategy binning-value)
+            :num-bins (:num-bins binning-value)}
            (when (= :default (:strategy binning-value))
              {:default true}))))
 

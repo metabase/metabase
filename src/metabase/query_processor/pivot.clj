@@ -617,6 +617,118 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
+(defn- original-cols
+  [query]
+  (or (-> (qp.store/with-metadata-provider (:database query)
+            (lib/query (qp.store/metadata-provider) query))
+          lib/returned-columns
+          seq)
+      (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+        (-> (qp/process-query (dissoc query :info))
+            :data
+            :results_metadata
+            :columns))))
+
+(defn- add-breakouts
+  [query breakout-cols]
+  (reduce lib/breakout query breakout-cols))
+
+(defn- add-aggregations
+  [query aggregations]
+  (reduce lib/aggregate query aggregations))
+
+(defn- find-col-by-name
+  [cols name]
+  (u/seek #(= (:name %) name) cols))
+
+;; From metabase.lib.card -- this is used to convert a column from the results metadata into its lib form
+(defn- ->column
+  "TODO"
+  [col _card-id _field]
+  (let [col (-> col
+                (update-keys u/->kebab-case-en))
+        col-meta (cond-> (merge
+                          {:base-type :type/*, :lib/type :metadata/column}
+                          ; field
+                          col
+                          {:lib/type                :metadata/column
+                           :lib/source              :source/card
+                           :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
+                   ; card-id
+                   ; (assoc :lib/card-id card-id)
+
+                   (:metabase.lib.field/temporal-unit col)
+                   (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
+
+                   ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
+                   ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
+                   ;; treated as FKs unless the metadata is configured accordingly.
+                   (not= (:semantic-type col) :type/FK)
+                   (assoc :fk-target-field-id nil))]
+    ;; :effective-type is required, but not always set, see e.g.,
+    ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
+    (u/assoc-default col-meta :effective-type (:base-type col-meta))))
+
+(defn- generate-breakouts
+  "Generates the breakout columns to add to the query, for a given split setting (row or column)"
+  [query cols split-setting]
+  (reduce
+   (fn [breakouts {:keys [name binning bucket]}]
+     (let [col                (find-col-by-name cols name)
+           binning-strategy   (keyword (:strategy binning))
+           available-temporal-buckets (lib/available-temporal-buckets query 0 col)
+           binning-setting    (when binning-strategy
+                                {:strategy binning-strategy
+                                 :num-bins (:numbins binning)})
+           bucketing-setting (u/seek (fn [available-bucket]
+                                       (= (keyword bucket)
+                                          (keyword (:unit available-bucket))))
+                                     available-temporal-buckets)]
+       (conj breakouts
+             (cond
+               binning-setting
+               (lib/with-binning col binning-setting)
+
+               bucketing-setting
+               (lib/with-temporal-bucket col bucketing-setting)
+
+               :else col))))
+   []
+   split-setting))
+
+(defn- generate-aggregations
+  "Generates the aggregation clauses to add to the query, based on the split setting for the pivot table values."
+  [query cols value-split-setting]
+  (let [available-operators (lib/available-aggregation-operators query)]
+    (reduce
+     (fn [aggregations {:keys [name column]}]
+       (let [col (find-col-by-name cols column)
+             op  (u/seek (fn [op] (= (:short op) (keyword name)))
+                         available-operators)]
+         (conj aggregations
+               (lib/aggregation-clause op col))))
+     []
+     value-split-setting)))
+
+(defn- nest-native-pivot-query
+  [base-query pivot-opts]
+  (let [original-cols     (original-cols base-query)
+        result-metadata   (map #(->column % nil nil) original-cols)
+        rows              (:native-pivot-rows pivot-opts)
+        columns           (:native-pivot-cols pivot-opts)
+        measures          (:native-pivot-measures pivot-opts)
+        query             (-> (lib/query (qp.store/metadata-provider) base-query)
+                              (lib.util/update-query-stage -1 assoc :lib/stage-metadata {:columns result-metadata})
+                              (lib/append-stage))
+        breakoutable-cols (lib/breakoutable-columns query)
+        row-breakouts     (generate-breakouts query breakoutable-cols rows)
+        col-breakouts     (generate-breakouts query breakoutable-cols columns)
+        aggregations      (generate-aggregations query breakoutable-cols measures)]
+    (-> query
+        (add-breakouts row-breakouts)
+        (add-breakouts col-breakouts)
+        (add-aggregations aggregations))))
+
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
@@ -633,7 +745,21 @@
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
-                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+                                (not-empty (select-keys query
+                                                        [:pivot-rows
+                                                         :pivot-cols
+                                                         :pivot-measures
+                                                         :native-pivot-rows
+                                                         :native-pivot-cols
+                                                         :native-pivot-measures
+                                                         :show-row-totals
+                                                         :show-column-totals])))
+             ;; TODO: better way to detect native queries here?
+             query             (if (or (:native-pivot-rows pivot-opts)
+                                       (:native-pivot-cols pivot-opts)
+                                       (:native-pivot-measures pivot-opts))
+                                 (nest-native-pivot-query query pivot-opts)
+                                 query)
              query             (-> query
                                    (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)
