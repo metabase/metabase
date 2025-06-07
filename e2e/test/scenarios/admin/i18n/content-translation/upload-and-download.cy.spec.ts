@@ -148,10 +148,11 @@ describe("scenarios > admin > localization > content translation", () => {
 
       it("erases previously stored translations when a new CSV is uploaded", () => {
         uploadTranslationDictionary(germanFieldNames);
-        assertOnlyTheseTranslationsAreStored(germanFieldNames);
-        const oneArabicFieldName = [nonAsciiFieldNames[0]];
-        uploadTranslationDictionary(oneArabicFieldName);
-        assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
+        assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
+          const oneArabicFieldName = [nonAsciiFieldNames[0]];
+          uploadTranslationDictionary(oneArabicFieldName);
+          assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
+        });
       });
 
       it("does not erase previously stored translations when an upload fails", () => {

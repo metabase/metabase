@@ -54,27 +54,31 @@ export const assertOnlyTheseTranslationsAreStored = (
   rows: DictionaryArray,
   locale = "de",
 ) => {
-  cy.task("signJwt", {
-    payload: {
-      question: 1,
-      exp: Math.round(Date.now() / 1000) + 10 * 60,
-    },
-    secret: METABASE_SECRET_KEY,
-  }).then((jwtToken) => {
-    cy.log("A normal user should be able to get the translations via the API");
-    cy.signInAsNormalUser();
-    cy.request<DictionaryResponse>(
-      "GET",
-      `/api/ee/content-translation/dictionary/${jwtToken}?locale=${locale}`,
-    ).then((interception) => {
-      const { data } = interception.body;
-      const msgstrs = data.map((row) => row.msgstr);
-      expect(msgstrs.toSorted()).to.deep.equal(
-        rows.map((row) => row.msgstr).toSorted(),
-        `The expected translations (length: ${rows.length}) match the actual translations (length: ${msgstrs.length})`,
+  return cy
+    .task("signJwt", {
+      payload: {
+        question: 1,
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
+      },
+      secret: METABASE_SECRET_KEY,
+    })
+    .then((jwtToken) => {
+      cy.log(
+        "A normal user should be able to get the translations via the API",
       );
+      cy.signInAsNormalUser();
+      cy.request<DictionaryResponse>(
+        "GET",
+        `/api/ee/content-translation/dictionary/${jwtToken}?locale=${locale}`,
+      ).then((interception) => {
+        const { data } = interception.body;
+        const msgstrs = data.map((row) => row.msgstr);
+        expect(msgstrs.toSorted()).to.deep.equal(
+          rows.map((row) => row.msgstr).toSorted(),
+          `The expected translations (length: ${rows.length}) match the actual translations (length: ${msgstrs.length})`,
+        );
+      });
     });
-  });
 };
 
 export const interceptContentTranslationRoutes = () => {
