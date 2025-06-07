@@ -253,7 +253,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         .should("be.visible");
     });
 
-    it("translations do not break normal dashboard", () => {
+    it("translations of tab names and text cards do not break normal dashboard", () => {
       visitNormalDashboard();
       cy.findByRole("tab", { name: "Tab 1" }).should("be.visible");
       cy.findByRole("tab", { name: "Tab 2" }).should("be.visible");

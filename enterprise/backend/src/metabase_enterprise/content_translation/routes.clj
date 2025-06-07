@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
+   [metabase.embedding.jwt :as embedding.jwt]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]))
 
@@ -23,6 +24,7 @@
 (api.macros/defendpoint :get "/csv"
   "Provides content translation dictionary in CSV"
   []
+  (api/check-superuser)
   (let [translations (ct/get-translations)
         csv-data (cons ["Language" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
@@ -48,6 +50,8 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+
+  (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size-bytes)
       (throw (ex-info (tru "The dictionary should be less than {0}MB." max-content-translation-dictionary-size-mib)
@@ -59,9 +63,21 @@
         (dictionary/import-translations! rows)))
     {:success true}))
 
+(api.macros/defendpoint :get "/dictionary/:token"
+  "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   {:keys [locale]}]
+  ;; this will error if bad
+  (embedding.jwt/unsign token)
+  (if locale
+    {:data (ct/get-translations locale)}
+    (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
+
 (defn- +require-content-translation [handler]
   (ee.api.common/+require-premium-feature :content-translation (deferred-tru "Content translation") handler))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
-  (api.macros/ns-handler *ns* api/+check-superuser +require-content-translation))
+  (->> (api.macros/ns-handler *ns*)
+       +require-content-translation))

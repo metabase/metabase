@@ -65,7 +65,7 @@ export const assertOnlyTheseTranslationsAreStored = (
     cy.signInAsNormalUser();
     cy.request<DictionaryResponse>(
       "GET",
-      `/api/ee/embedded-content-translation/dictionary/${jwtToken}?locale=${locale}`,
+      `/api/ee/content-translation/dictionary/${jwtToken}?locale=${locale}`,
     ).then((interception) => {
       const { data } = interception.body;
       const msgstrs = data.map((row) => row.msgstr);

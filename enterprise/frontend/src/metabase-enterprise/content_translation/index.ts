@@ -20,7 +20,7 @@ if (hasPremiumFeature("content_translation")) {
     useTranslateFieldValuesInHoveredObject,
     useTranslateSeries,
     setEndpointsForStaticEmbedding: (encodedToken: string) => {
-      contentTranslationEndpoints.getDictionary = `/api/ee/embedded-content-translation/dictionary/${encodedToken}`;
+      contentTranslationEndpoints.getDictionary = `/api/ee/content-translation/dictionary/${encodedToken}`;
     },
     shouldTranslateFieldValuesOfColumn,
     translateDisplayNames,

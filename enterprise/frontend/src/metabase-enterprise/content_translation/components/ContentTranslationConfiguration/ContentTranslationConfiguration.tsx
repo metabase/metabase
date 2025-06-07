@@ -153,7 +153,7 @@ export const ContentTranslationConfiguration = () => {
           leftSection={
             showDownloadingIndicator ? null : <Icon name="download" c="brand" />
           }
-          miw="10rem"
+          miw="calc(50% - 0.5rem)"
           style={{ flexGrow: 1 }}
           disabled={isDownloadInProgress}
         >
@@ -269,47 +269,51 @@ const UploadForm = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Form data-testid="content-localization-setting">
-      <Stack gap="md" display="flex">
-        <FormSubmitButton
-          style={{ flexGrow: 1 }}
-          disabled={status === "pending"}
-          label={
-            <Group gap="sm">
-              <Icon name="upload" c="brand" />
-              <Text c="inherit">{t`Upload translation dictionary`}</Text>
-            </Group>
-          }
-          successLabel={
-            <Group gap="sm" role="alert">
-              <Icon name="check" c="success" />
-              <Text c="inherit">{t`Dictionary uploaded`}</Text>
-            </Group>
-          }
-          failedLabel={
-            <Group gap="sm" role="alert">
-              <Icon name="warning" c="danger" />
-              <Text c="inherit">{t`Could not upload dictionary`}</Text>
-            </Group>
-          }
-          activeLabel={
-            <Group gap="md" role="alert">
-              <Loader size="xs" opacity=".8" />
-              <Text c="inherit">{t`Uploading dictionary…`}</Text>
-            </Group>
-          }
-          onClick={(e) => {
-            triggerUpload();
-            e.preventDefault();
-          }}
-        />
-        <UploadInput
-          id="content-translation-dictionary-upload-input"
-          ref={inputRef}
-          accept="text/csv"
-          onChange={handleFileChange}
-        />
-      </Stack>
+    <Form
+      data-testid="content-localization-setting"
+      flex="1 1 0"
+      miw="calc(50% - 1rem)"
+      display="flex"
+    >
+      <FormSubmitButton
+        flex="1 1 0"
+        w="auto"
+        disabled={status === "pending"}
+        label={
+          <Group gap="sm">
+            <Icon name="upload" c="brand" />
+            <Text c="inherit">{t`Upload translation dictionary`}</Text>
+          </Group>
+        }
+        successLabel={
+          <Group gap="sm" role="alert">
+            <Icon name="check" c="success" />
+            <Text c="inherit">{t`Dictionary uploaded`}</Text>
+          </Group>
+        }
+        failedLabel={
+          <Group gap="sm" role="alert">
+            <Icon name="warning" c="danger" />
+            <Text c="inherit">{t`Could not upload dictionary`}</Text>
+          </Group>
+        }
+        activeLabel={
+          <Group gap="md" role="alert">
+            <Loader size="xs" opacity=".8" />
+            <Text c="inherit">{t`Uploading dictionary…`}</Text>
+          </Group>
+        }
+        onClick={(e) => {
+          triggerUpload();
+          e.preventDefault();
+        }}
+      />
+      <UploadInput
+        id="content-translation-dictionary-upload-input"
+        ref={inputRef}
+        accept="text/csv"
+        onChange={handleFileChange}
+      />
     </Form>
   );
 };
