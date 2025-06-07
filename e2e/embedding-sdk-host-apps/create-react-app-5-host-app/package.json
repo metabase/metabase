@@ -1,0 +1,38 @@
+{
+  "name": "create-react-app",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0",
+    "react-scripts": "5.0.1",
+    "serve": "^14.2.4",
+    "url": "^0.11.4",
+    "wouter": "^3.7.1"
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0"
+  },
+  "overrides": {
+    "nth-check": "2.1.1",
+    "postcss": "^8.4.31"
+  },
+  "scripts": {
+    "start": "./entrypoint.sh",
+    "dev": "DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false BROWSER=none craco start",
+    "build": "DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false craco build",
+    "preview": "serve -s build"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
