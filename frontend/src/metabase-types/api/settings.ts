@@ -483,6 +483,7 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
+  "license-token-missing-banner-dismissal-timestamp": Array<string>;
 };
 
 /**

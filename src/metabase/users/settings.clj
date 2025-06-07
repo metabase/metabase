@@ -101,6 +101,15 @@
   :visibility :authenticated
   :type       :string)
 
+(defsetting license-token-missing-banner-dismissal-timestamp
+  (deferred-tru "The ISO8601 date when a user last dismissed the banner.")
+  :user-local :only
+  :encryption :no
+  :export?    false
+  :visibility :authenticated
+  :type       :csv
+  :default    [])
+
 (defsetting user-visibility
   (deferred-tru "Note: Sandboxed users will never see suggestions.")
   :visibility   :authenticated
