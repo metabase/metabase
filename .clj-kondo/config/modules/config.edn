@@ -482,7 +482,6 @@
    :uses #{analytics
            api
            config
-           content-translation
            driver
            eid-translation
            events
@@ -1560,13 +1559,13 @@
 
   enterprise/content-translation
   {:team "Admin Webapp"
-   :api  #{metabase-enterprise.content-translation.routes
-           metabase-enterprise.content-translation.dictionary}
+   :api  #{metabase-enterprise.content-translation.dictionary
+           metabase-enterprise.content-translation.routes}
    :uses #{api
            content-translation
+           embedding
            premium-features
            util
-           embedding
            enterprise/api}}
 
   enterprise/content-verification
