@@ -146,9 +146,15 @@
                                                      "describe %s"
                                                      (sql.u/quote-name driver :table
                                                                        (dash-to-underscore schema)
-                                                                       (dash-to-underscore table-name)))])]
+                                                                       (dash-to-underscore table-name)))])
+                                                    ;;ignore partition columns when using hive partitioning
+                                                    [main-rows _] (split-with (fn [row]
+                                                     (let [col-name (str/lower-case (:col_name row ""))]
+                                                     (not (str/includes? col-name "# partition information"))))
+                                                     results)]
+            
         (set
-         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
+         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed main-rows)
                :when (valid-describe-table-row? result)]
            {:name              col-name
             :database-type     data-type
