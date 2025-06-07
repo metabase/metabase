@@ -34,9 +34,8 @@ export const getLastAgentMessagesByType = createSelector(
   },
 );
 
-export const getActiveToolCalls = createSelector(
-  getMetabot,
-  (metabot) => metabot.activeToolCalls,
+export const getActiveToolCall = createSelector(getMetabot, (metabot) =>
+  _.first(metabot.activeToolCalls),
 );
 
 export const getIsProcessing = createSelector(

@@ -28,6 +28,7 @@ export interface MetabotState {
   visible: boolean;
   history: MetabotHistory;
   stateContext: MetabotStateContext;
+  // TODO: should this only ever be one item??
   activeToolCalls: { id: string; name: string }[];
 }
 

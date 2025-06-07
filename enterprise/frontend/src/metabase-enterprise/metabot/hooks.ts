@@ -5,7 +5,7 @@ import { useMetabotContext } from "metabase/metabot";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 
 import {
-  getActiveToolCalls,
+  getActiveToolCall,
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
@@ -61,8 +61,8 @@ export const useMetabotAgent = () => {
     ),
     isDoingScience: isProcessing,
     suggestedPrompts: suggestedPromptsReq,
-    activeToolCalls: useSelector(getActiveToolCalls as any) as ReturnType<
-      typeof getActiveToolCalls
+    activeToolCall: useSelector(getActiveToolCall as any) as ReturnType<
+      typeof getActiveToolCall
     >,
   };
 };

@@ -167,22 +167,9 @@ export const MetabotChat = () => {
                 />
               ))}
 
-              {/* metabot's progress */}
-              {metabot.activeToolCalls.map((tc) => (
-                <Text
-                  key={tc.id}
-                  c="text-light"
-                >{t`Calling tool: ${tc.name}`}</Text>
-              ))}
-
               {/* loading */}
               {metabot.isDoingScience && (
-                <Loader
-                  color="brand"
-                  type="dots"
-                  size="lg"
-                  data-testid="metabot-response-loader"
-                />
+                <Thinking activeToolCallName={metabot.activeToolCall?.name} />
               )}
 
               {/* long convo warning */}
@@ -288,6 +275,41 @@ const Message = ({
           <Icon name="copy" size="1rem" />
         </ActionIcon>
       </Flex>
+    </Flex>
+  );
+};
+
+const Thinking = ({
+  activeToolCallName,
+}: {
+  activeToolCallName: string | undefined;
+}) => {
+  const tool = activeToolCallName ?? "__NO_TOOL_NAME__";
+  const messages = {
+    __NO_TOOL_NAME__: [
+      t`Thinking...`,
+      t`Working on your request`,
+      t`Lot's to consider`,
+    ],
+    construct_notebook_query: [t`Creating a query`, t`Contructing a question`],
+    analyze_data: [t`Analyzing the data`, t`Exploring your data`],
+    list_available_fields: [
+      t`Inspecting the fields`,
+      t`Looking at what fields are available`,
+    ],
+  } as Record<string, string[]>;
+
+  const message = _.sample(messages[tool] ?? messages["__NO_TOOL_NAME__"]);
+
+  return (
+    <Flex gap="md" align="center">
+      <Loader
+        color="brand"
+        type="dots"
+        size="lg"
+        data-testid="metabot-response-loader"
+      />
+      {message && <Text c="text-light">{message}</Text>}
     </Flex>
   );
 };
