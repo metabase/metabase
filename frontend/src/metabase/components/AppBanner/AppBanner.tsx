@@ -3,6 +3,10 @@ import dayjs from "dayjs";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
+import {
+  LicenseTokenMissingBanner,
+  useLicenseTokenMissingBanner,
+} from "metabase/nav/components/LicenseTokenMissingBanner";
 import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBanner";
 import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
 import { TrialBanner } from "metabase/nav/components/TrialBanner";
@@ -15,6 +19,8 @@ export const AppBanner = () => {
   const [lastDismissed, setLastDismissed] = useUserSetting(
     "trial-banner-dismissal-timestamp",
   );
+
+  const { shouldShow, dismissBanner } = useLicenseTokenMissingBanner();
 
   const isAdmin = useSelector(getUserIsAdmin);
   const isHosted = useSelector(getIsHosted);
@@ -38,6 +44,10 @@ export const AppBanner = () => {
 
   if (readOnly) {
     return <ReadOnlyBanner />;
+  }
+
+  if (shouldShow) {
+    return <LicenseTokenMissingBanner onClose={dismissBanner} />;
   }
 
   if (isValidTrial) {

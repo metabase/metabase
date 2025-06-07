@@ -15,7 +15,7 @@ export const Default = {
   render: (args: BannerProps) => <Banner {...args} />,
   args: {
     icon: "warning_round_filled",
-    bg: "var(--mb-color-bg-black)",
+    bg: "var(--mb-color-background-inverse)",
     iconColor: "var(--mb-color-text-white)",
     body: (
       <Text lh="inherit" c="text-white">
