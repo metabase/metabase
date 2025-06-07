@@ -7,6 +7,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
 
 import S from "./AddDataModal.module.css";
+import { CSVPanel } from "./Panels/CSVPanel";
 import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
@@ -49,6 +50,13 @@ export const AddDataModal = ({
               >
                 {t`Database`}
               </Tabs.Tab>
+              <Tabs.Tab
+                value="csv"
+                leftSection={<Icon name="table2" />}
+                onClick={() => trackAddDataEvent("csv_upload_clicked")}
+              >
+                {t`CSV`}
+              </Tabs.Tab>
             </Tabs.List>
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
@@ -59,6 +67,9 @@ export const AddDataModal = ({
             />
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel canSeeContent={isAdmin} />
+            </Tabs.Panel>
+            <Tabs.Panel value="csv" className={S.panel}>
+              <CSVPanel canSeeContent={true} onCloseAddDataModal={onClose} />
             </Tabs.Panel>
           </Box>
         </Tabs>

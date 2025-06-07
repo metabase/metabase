@@ -1,0 +1,232 @@
+import cx from "classnames";
+import { type ChangeEvent, useRef, useState } from "react";
+import { type FileRejection, useDropzone } from "react-dropzone";
+import { c, t } from "ttag";
+
+import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
+import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import { UploadInput } from "metabase/components/upload";
+import { useDispatch } from "metabase/lib/redux";
+import {
+  MAX_UPLOAD_SIZE,
+  MAX_UPLOAD_STRING,
+  uploadFile,
+} from "metabase/redux/uploads";
+import {
+  Alert,
+  Box,
+  Button,
+  Center,
+  Group,
+  Icon,
+  Select,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
+import { UploadMode } from "metabase-types/store/upload";
+
+import S from "../AddDataModal.module.css";
+
+import IconCSV from "./icons/csv.svg?component";
+import IconCSVWarning from "./icons/csv_warning.svg?component";
+
+interface CSVPanelProps {
+  canSeeContent: boolean;
+  onCloseAddDataModal: () => void;
+}
+
+export const CSVPanel = ({
+  canSeeContent,
+  onCloseAddDataModal,
+}: CSVPanelProps) => {
+  const dispatch = useDispatch();
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
+
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const triggerUploadInput = () => uploadInputRef?.current?.click();
+
+  const handleFileSelect = () => {
+    // setFileUploadError(null);
+    triggerUploadInput();
+  };
+
+  const handleFileRejections = (rejected: FileRejection[]) => {
+    if (!rejected) {
+      return;
+    }
+
+    if (rejected.length > 1) {
+      setFileUploadError(t`Please upload files individually`);
+    }
+
+    if (rejected.length === 1) {
+      const [{ errors }] = rejected;
+      const [{ code }] = errors;
+
+      switch (code) {
+        case "file-invalid-type":
+          setFileUploadError(t`Sorry, this file type is not supported`);
+          break;
+        case "file-too-large":
+          setFileUploadError(t`Sorry, this file is too large`);
+          break;
+        default:
+          setFileUploadError("An error has occurred");
+          break;
+      }
+    }
+  };
+
+  const onDrop = (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+    if (acceptedFiles.length === 1) {
+      setFileUploadError(null);
+      setUploadedFile(acceptedFiles[0]);
+    }
+
+    handleFileRejections(fileRejections);
+  };
+
+  const { getRootProps, isDragActive } = useDropzone({
+    onDrop,
+    maxFiles: 1,
+    maxSize: MAX_UPLOAD_SIZE,
+    noClick: true,
+    noDragEventsBubbling: true,
+    accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
+  });
+
+  const dropzoneProps = getComposedDragProps(getRootProps());
+
+  const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      setFileUploadError(t`Sorry, this file is too large`);
+      return;
+    }
+
+    setFileUploadError(null);
+    setUploadedFile(file);
+  };
+
+  const handleFileUpload = (uploadedFile: File | null) => {
+    if (!uploadedFile) {
+      return;
+    }
+
+    dispatch(
+      uploadFile({
+        uploadMode: UploadMode.create,
+        collectionId: "root", // TODO: dynamically change this
+        file: uploadedFile,
+      }),
+    );
+
+    // reset the input so that the same file can be uploaded again
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = "";
+    }
+    setUploadedFile(null);
+    onCloseAddDataModal();
+  };
+
+  const getPrimaryText = (
+    uploadedFile: File | null,
+    fileUploadError: string | null,
+  ) => {
+    if (uploadedFile) {
+      return uploadedFile.name;
+    }
+    if (fileUploadError) {
+      return fileUploadError;
+    }
+
+    return t`Drag and drop a file here`;
+  };
+
+  return canSeeContent ? (
+    <Stack align="stretch" justify="space-between" h="100%" w="100%">
+      <Center
+        ta="center"
+        {...dropzoneProps}
+        className={cx(S.dropZone, isDragActive && S.isActive)}
+      >
+        <Stack gap="sm" align="center">
+          {fileUploadError ? (
+            <Box component={IconCSVWarning} h={50} />
+          ) : (
+            <Box
+              c={uploadedFile ? "brand" : "text-secondary-inverse"}
+              component={IconCSV}
+              h={50}
+            />
+          )}
+
+          <div>
+            <Text fw={700}>
+              {getPrimaryText(uploadedFile, fileUploadError)}
+            </Text>
+            {!uploadedFile && (
+              <Text c="text-light">
+                {c("The allowed MB size of a file")
+                  .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
+              </Text>
+            )}
+          </div>
+          {uploadedFile ? (
+            <Button
+              variant="subtle"
+              p={0}
+              h="auto"
+              onClick={() => setUploadedFile(null)}
+            >
+              {t`Remove`}
+            </Button>
+          ) : (
+            <Button variant="subtle" p={0} h="auto" onClick={handleFileSelect}>
+              {t`Select a file`}
+            </Button>
+          )}
+        </Stack>
+      </Center>
+      <Group>
+        <Select
+          data={["Never", "gonna", "give", "you", "up"]}
+          style={{ flex: 1 }}
+        />
+        <Button
+          variant="filled"
+          disabled={!uploadedFile}
+          onClick={() => handleFileUpload(uploadedFile)}
+        >
+          {t`Upload`}
+        </Button>
+      </Group>
+
+      <UploadInput
+        id="add-data-modal-upload-csv-input"
+        ref={uploadInputRef}
+        onChange={handleFileInput}
+      />
+    </Stack>
+  ) : (
+    <Stack gap="lg" align="center" justify="center" pt="3rem">
+      <Box component={IconCSV} c="brand" h={66} />
+      <Box component="header" ta="center">
+        <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
+        <Text maw="22.5rem" c="text-medium">
+          {t`Work with CSVs, just like with any other data source.`}
+        </Text>
+      </Box>
+      <Alert icon={<Icon name="info_filled" />}>
+        {t`To enable CSV file upload, please contact your administrator.`}
+      </Alert>
+    </Stack>
+  );
+};
