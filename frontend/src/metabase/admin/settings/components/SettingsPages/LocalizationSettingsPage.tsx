@@ -1,12 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
