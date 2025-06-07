@@ -54,6 +54,15 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import {
+  DataConnectionStep,
+  DoneStep,
+  FinalStep,
+  ProcessingStep,
+  TableSelectionStep,
+  WelcomeStep,
+} from "metabase/setup/components/EmbeddingSetup";
+import { EmbeddingSetupWrapper } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetupWrapper";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -89,6 +98,29 @@ export const getRoutes = (store) => {
         }}
         disableCommandPalette
       />
+
+      <Route
+        path="/setup/embedding"
+        component={EmbeddingSetupWrapper}
+        onEnter={async (nextState, replace, done) => {
+          await store.dispatch(loadCurrentUser());
+          trackPageView(nextState.location.pathname);
+          done();
+        }}
+        onChange={(prevState, nextState) => {
+          if (nextState.location.pathname !== prevState.location.pathname) {
+            trackPageView(nextState.location.pathname);
+          }
+        }}
+        disableCommandPalette
+      >
+        <IndexRoute component={WelcomeStep} />
+        <Route path="data-connection" component={DataConnectionStep} />
+        <Route path="table-selection" component={TableSelectionStep} />
+        <Route path="processing" component={ProcessingStep} />
+        <Route path="final" component={FinalStep} />
+        <Route path="done" component={DoneStep} />
+      </Route>
 
       {/* APP */}
       <Route
