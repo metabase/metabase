@@ -1,3 +1,6 @@
+import _ from "underscore";
+
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -14,6 +17,7 @@ import type { ColumnItem } from "./types";
 export function getColumnItems(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
+  tc: ContentTranslationFunction = _.identity,
 ): ColumnItem[] {
   const columnIndexes = findColumnIndexesForColumnSettings(
     columns,
@@ -29,7 +33,7 @@ export function getColumnItems(
       enabled: columnSetting.enabled,
       index: columnSettingIndex,
       icon: getIconForField(column) as IconName,
-      column,
+      column: { ...column, display_name: tc(column.display_name) },
       columnSetting,
     };
   });
