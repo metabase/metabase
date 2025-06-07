@@ -1,4 +1,5 @@
 import { match } from "ts-pattern";
+import _ from "underscore";
 
 import type { MetabotHistory } from "metabase-types/api";
 
@@ -47,7 +48,8 @@ function parseDataStreamPart(line: string) {
 
   const prefix = line.slice(0, firstSeparatorIndex);
   if (!StreamingPartTypes.includes(prefix as StreamingPartType)) {
-    throw new Error(`Failed to parse stream string. Invalid code ${prefix}.`);
+    console.warn(`Recieved invalid message code: ${prefix}`);
+    return;
   }
 
   const code = prefix as StreamingPartType;
@@ -88,7 +90,7 @@ function parseDataStreamPart(line: string) {
     .exhaustive();
 }
 
-type ParsedStreamPart = ReturnType<typeof parseDataStreamPart>;
+type ParsedStreamPart = Exclude<ReturnType<typeof parseDataStreamPart>, void>;
 type ParsedStreamPartName = ParsedStreamPart["name"];
 
 type AccumulatedStreamParts = {
@@ -172,9 +174,7 @@ export type AIStreamingConfig = {
   onStreamStateUpdate?: (
     state: ReturnType<typeof accumulateStreamParts>,
   ) => void;
-  // maximum time to wait between recieved chunks before abandoning the request
-  maxChunkTimeout?: number | undefined;
-  onError: (error: Error) => void;
+  onError?: (error: Error) => void;
 };
 
 export async function processChatResponse(
@@ -188,22 +188,7 @@ export async function processChatResponse(
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    let timeoutId: NodeJS.Timeout | undefined;
-    if (config.maxChunkTimeout) {
-      timeoutId = setTimeout(() => {
-        config.onError(
-          new Error(
-            `Stream timeout - no data received last ${config.maxChunkTimeout}ms`,
-          ),
-        );
-      }, config.maxChunkTimeout);
-    }
-
     const { value: chunk } = await reader.read();
-
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
 
     if (chunk) {
       chunks.push(chunk);
@@ -220,11 +205,13 @@ export async function processChatResponse(
     const concatenatedChunks = concatChunks(chunks);
     chunks = [];
 
-    const streamParts = decoder
-      .decode(concatenatedChunks, { stream: true })
-      .split("\n")
-      .filter((line) => line !== "") // splitting leaves an empty string at the end
-      .map(parseDataStreamPart);
+    const streamParts = _.compact(
+      decoder
+        .decode(concatenatedChunks, { stream: true })
+        .split("\n")
+        .filter((line) => line !== "") // splitting leaves an empty string at the end
+        .map(parseDataStreamPart),
+    );
 
     for (const streamPart of streamParts) {
       parsedStreamParts.push(streamPart);

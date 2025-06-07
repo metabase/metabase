@@ -10,6 +10,7 @@ import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
 import { uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { mockStreamedEndpoint } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -27,7 +28,14 @@ import {
   metabotReducer,
   setVisible,
 } from "./state";
-import { mockAgentEndpoint } from "./test/utils";
+
+const mockAgentEndpoint = (
+  params: Omit<Parameters<typeof mockStreamedEndpoint>[0], "url">,
+) =>
+  mockStreamedEndpoint({
+    url: "/api/ee/metabot-v3/v2/agent-streaming",
+    ...params,
+  });
 
 function setup(
   options: {
@@ -118,7 +126,7 @@ describe("metabot", () => {
 
     it("should show empty state ui if conversation is empty", async () => {
       setup();
-      mockAgentEndpoint(whoIsYourFavoriteResponse);
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       expect(
         await screen.findByTestId("metabot-empty-chat-info"),
@@ -203,11 +211,13 @@ describe("metabot", () => {
 
     it("should render markdown for metabot's replies", async () => {
       setup();
-      mockAgentEndpoint([
-        `0:"# You, but don't tell anyone."`,
-        `2:{"type":"state","value":{"queries":{}}}`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
-      ]);
+      mockAgentEndpoint({
+        textChunks: [
+          `0:"# You, but don't tell anyone."`,
+          `2:{"type":"state","version":1,"value":{"queries":{}}}`,
+          `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        ],
+      });
       await enterChatMessage("Who is your favorite?");
 
       const heading = await screen.findByRole("heading", { level: 1 });
@@ -217,7 +227,7 @@ describe("metabot", () => {
 
     it("should not render markdown for user messages", async () => {
       setup();
-      mockAgentEndpoint(whoIsYourFavoriteResponse);
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       const msg = "# Who is your favorite?";
       await enterChatMessage(msg);
@@ -233,7 +243,9 @@ describe("metabot", () => {
         { prompt: "Who is your favorite?" },
       ];
       setup({ promptSuggestions: prompts });
-      const agentSpy = mockAgentEndpoint(whoIsYourFavoriteResponse);
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // should render prompts
       expect(
@@ -261,8 +273,7 @@ describe("metabot", () => {
       setup();
 
       mockAgentEndpoint(
-        whoIsYourFavoriteResponse,
-        { delay: 50 }, // small delay to cause loading state
+        { textChunks: whoIsYourFavoriteResponse, initialDelay: 50 }, // small delay to cause loading state
       );
 
       await enterChatMessage("Who is your favorite?", false);
@@ -283,7 +294,9 @@ describe("metabot", () => {
   describe("context", () => {
     it("should send along default context", async () => {
       setup();
-      const agentSpy = mockAgentEndpoint(whoIsYourFavoriteResponse);
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       await enterChatMessage("Who is your favorite?");
 
@@ -313,7 +326,9 @@ describe("metabot", () => {
         ),
       });
 
-      const agentSpy = mockAgentEndpoint(whoIsYourFavoriteResponse);
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       await enterChatMessage("Who is your favorite?");
 
@@ -332,7 +347,9 @@ describe("metabot", () => {
   describe("history", () => {
     it("should send history from last response along with next message", async () => {
       setup();
-      const agentSpy1 = mockAgentEndpoint(whoIsYourFavoriteResponse);
+      const agentSpy1 = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
@@ -340,7 +357,7 @@ describe("metabot", () => {
 
       // send another message and check that there is proper history
       /* repsonse doesn't matter */
-      const agentSpy2 = mockAgentEndpoint([]);
+      const agentSpy2 = mockAgentEndpoint({ textChunks: [] });
       await enterChatMessage("Hi!");
       const reqBody = await lastReqBody(agentSpy2);
       expect(reqBody?.history).toEqual([
@@ -351,7 +368,9 @@ describe("metabot", () => {
 
     it("should not clear history when metabot is hidden or opened", async () => {
       const { store } = setup();
-      const agentSpy1 = mockAgentEndpoint(whoIsYourFavoriteResponse);
+      const agentSpy1 = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
@@ -361,9 +380,9 @@ describe("metabot", () => {
       hideMetabot(store.dispatch);
       showMetabot(store.dispatch);
 
-      const agentSpy2 = mockAgentEndpoint([
-        /* repsonse doesn't matter */
-      ]);
+      /* repsonse doesn't matter */
+      const agentSpy2 = mockAgentEndpoint({ textChunks: [] });
+
       await enterChatMessage("Hi!");
       await waitFor(() => expect(agentSpy2).toHaveBeenCalled());
 
@@ -378,7 +397,9 @@ describe("metabot", () => {
 
     it("should clear history when the user hits the reset button", async () => {
       const { store } = setup();
-      const agentSpy = mockAgentEndpoint(whoIsYourFavoriteResponse);
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
@@ -444,6 +465,6 @@ describe("metabot", () => {
 
 const whoIsYourFavoriteResponse = [
   `0:"You, but don't tell anyone."`,
-  `2:{"type":"state","value":{"queries":{}}}`,
+  `2:{"type":"state","version":1,"value":{"queries":{}}}`,
   `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
 ];

@@ -124,7 +124,7 @@ export const sendMessageRequest = createAsyncThunk(
       return {
         data: {
           conversation_id: body.conversation_id,
-          history: [...getHistory(getState() as any), ...response.history],
+          history: [...body.history, ...response.history],
           state,
         },
         error: undefined,

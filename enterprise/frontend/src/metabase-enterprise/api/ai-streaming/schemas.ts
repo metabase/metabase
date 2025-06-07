@@ -1,14 +1,8 @@
 import * as Yup from "yup";
-import type { RequiredStringSchema } from "yup/lib/string";
-import type { AnyObject } from "yup/lib/types";
-
-const dataPartTypes = ["state", "navigate_to"] as const;
-type DataPartType = (typeof dataPartTypes)[number];
 
 export const dataPartSchema = Yup.object({
-  type: Yup.string()
-    .oneOf([...dataPartTypes])
-    .required() as RequiredStringSchema<DataPartType, AnyObject>,
+  type: Yup.string().required(),
+  version: Yup.number().required(),
   value: Yup.mixed(),
 });
 

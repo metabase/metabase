@@ -5,8 +5,6 @@ import api from "metabase/lib/api";
 import { type AIStreamingConfig, processChatResponse } from "./process-stream";
 import type { JSONValue } from "./types";
 
-const DEFAULT_TIMEOUT = 30 * 1000;
-
 // keep track of inflight requests so that can be cancelled programmitcally from other
 // places in the app w/o passing references to the abort controller directly
 export const inflightAiStreamingRequests = new Map<
@@ -30,20 +28,21 @@ export async function aiStreamingQuery(
     signal?: AbortSignal | null | undefined;
     body: JSONValue;
   },
-  config: Omit<AIStreamingConfig, "onError"> &
-    Pick<Partial<AIStreamingConfig>, "onError"> = {},
+  config: AIStreamingConfig = {},
 ) {
   const reqId = `${req.url}-${nanoid()}`;
 
-  const abortController = new AbortController();
-  if (req.signal) {
-    req.signal.addEventListener("abort", () => {
-      abortController.abort(req.signal?.reason);
-    });
-  }
-  inflightAiStreamingRequests.set(reqId, { abortController });
-
   try {
+    const abortController = new AbortController();
+
+    if (req.signal) {
+      req.signal.addEventListener("abort", () => {
+        abortController.abort(req.signal?.reason);
+        inflightAiStreamingRequests.delete(reqId);
+      });
+    }
+    inflightAiStreamingRequests.set(reqId, { abortController });
+
     const response = await fetch(req.url, {
       method: "POST",
       headers: {
@@ -63,14 +62,7 @@ export async function aiStreamingQuery(
       throw new Error("No Response");
     }
 
-    return processChatResponse(response.body, {
-      ...config,
-      maxChunkTimeout: config.maxChunkTimeout ?? DEFAULT_TIMEOUT,
-      onError: (error) => {
-        abortController.abort(); // stop streaming the request on failure
-        throw error;
-      },
-    });
+    return processChatResponse(response.body, config);
   } finally {
     inflightAiStreamingRequests.delete(reqId);
   }
