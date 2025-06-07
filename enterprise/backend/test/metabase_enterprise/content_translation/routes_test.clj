@@ -82,14 +82,14 @@
      ~@body))
 
 (defn- embedded-dictionary-url [token]
-  (str "/ee/embedded-content-translation/dictionary/" token))
+  (str "/ee/content-translation/dictionary/" token))
 
 (deftest embedded-dictionary-test
   (with-static-embedding!
     (ct-utils/with-clean-translations!
       (with-new-secret-key! [k]
         (mt/with-premium-features #{:content-translation}
-          (testing "GET /api/ee/embedded-content-translation/dictionary/:token"
+          (testing "GET /api/ee/content-translation/dictionary/:token"
             (mt/with-temp [:model/ContentTranslation _ {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
               (testing "provides translations"
                 (let [resp (client/client :get 200
