@@ -2966,9 +2966,9 @@
 (deftest can-filter-on-series-params
   (let [mp (mt/metadata-provider)]
     (mt/with-temp
-      [:model/Card          {source-card-id :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
-                                                        {:database_id (mt/id)
-                                                         :table_id    (mt/id :categories)})
+      [:model/Card          _ (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
+                                     {:database_id (mt/id)
+                                      :table_id    (mt/id :categories)})
        :model/Dashboard     dashboard {:parameters [{:name "Category"
                                                      :slug "category"
                                                      :id   "_CATEGORY_"
@@ -2988,9 +2988,9 @@
                                       :parameter_mappings [{:parameter_id "_CATEGORY_"
                                                             :card_id      (:id card2)
                                                             :target       [:dimension [:field "CATEGORY" {:base-type :type/Text}] {:stage-number 0}]}]}
-       :model/DashboardCardSeries series {:card_id (:id card2)
-                                          :dashboardcard_id (:id dashcard)
-                                          :position 0}]
+       :model/DashboardCardSeries _ {:card_id (:id card2)
+                                     :dashboardcard_id (:id dashcard)
+                                     :position 0}]
       ;; make sure we have a clean start
       (field-values/clear-field-values-for-field! (mt/id :categories :name))
       (testing "Can get field values for parameters tied to series #58328"
