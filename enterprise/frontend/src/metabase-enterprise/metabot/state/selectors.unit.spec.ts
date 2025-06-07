@@ -16,9 +16,11 @@ describe("metabot selectors", () => {
         isProcessing: false,
         lastSentContext: undefined,
         messages,
-        state: {},
+        stateContext: {},
+        history: [],
         visible: true,
         conversationId: uuid(),
+        activeToolCalls: [],
       };
 
       return createMockState({ plugins: { metabotPlugin } } as any);

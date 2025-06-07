@@ -10,6 +10,7 @@ import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
 import { uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { mockStreamedEndpoint } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -27,6 +28,14 @@ import {
   metabotReducer,
   setVisible,
 } from "./state";
+
+const mockAgentEndpoint = (
+  params: Omit<Parameters<typeof mockStreamedEndpoint>[0], "url">,
+) =>
+  mockStreamedEndpoint({
+    url: "/api/ee/metabot-v3/v2/agent-streaming",
+    ...params,
+  });
 
 function setup(
   options: {
@@ -96,10 +105,9 @@ const showMetabot = (dispatch: any) => act(() => dispatch(setVisible(true)));
 
 const getMetabotState = (store: any) => store.getState().plugins.metabotPlugin;
 
-const lastReqBody = async () => {
-  const lastCall = fetchMock.lastCall();
-  const bodyStr = String(await lastCall?.[1]?.body) || "";
-  return JSON.parse(bodyStr);
+const lastReqBody = async (agentSpy: ReturnType<typeof mockAgentEndpoint>) => {
+  await waitFor(() => expect(agentSpy).toHaveBeenCalled());
+  return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
 };
 
 describe("metabot", () => {
@@ -118,10 +126,7 @@ describe("metabot", () => {
 
     it("should show empty state ui if conversation is empty", async () => {
       setup();
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       expect(
         await screen.findByTestId("metabot-empty-chat-info"),
@@ -206,28 +211,23 @@ describe("metabot", () => {
 
     it("should render markdown for metabot's replies", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent`, {
-        ...whoIsYourFavoriteResponse,
-        reactions: [
-          {
-            type: "metabot.reaction/message",
-            message: "# You are... but don't tell anyone!",
-          },
+      mockAgentEndpoint({
+        textChunks: [
+          `0:"# You, but don't tell anyone."`,
+          `2:{"type":"state","version":1,"value":{"queries":{}}}`,
+          `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         ],
       });
       await enterChatMessage("Who is your favorite?");
 
       const heading = await screen.findByRole("heading", { level: 1 });
       expect(heading).toBeInTheDocument();
-      expect(heading).toHaveTextContent(`You are... but don't tell anyone!`);
+      expect(heading).toHaveTextContent(`You, but don't tell anyone.`);
     });
 
     it("should not render markdown for user messages", async () => {
       setup();
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       const msg = "# Who is your favorite?";
       await enterChatMessage(msg);
@@ -243,10 +243,9 @@ describe("metabot", () => {
         { prompt: "Who is your favorite?" },
       ];
       setup({ promptSuggestions: prompts });
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // should render prompts
       expect(
@@ -258,11 +257,7 @@ describe("metabot", () => {
 
       // user should be able to click prompts to start a new convo
       await userEvent.click(prompt1);
-      await waitFor(async () => {
-        expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
-        ).toHaveLength(1);
-      });
+      await waitFor(() => expect(agentSpy).toHaveBeenCalled());
 
       // unclicked prompts should be gone, but clicked prompt should be in convo
       expect(await screen.findByText(prompts[1].prompt)).toBeInTheDocument();
@@ -276,10 +271,9 @@ describe("metabot", () => {
   describe("message", () => {
     it("should properly send chat messages", async () => {
       setup();
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-        { delay: 50 }, // small delay to cause loading state
+
+      mockAgentEndpoint(
+        { textChunks: whoIsYourFavoriteResponse, initialDelay: 50 }, // small delay to cause loading state
       );
 
       await enterChatMessage("Who is your favorite?", false);
@@ -288,7 +282,7 @@ describe("metabot", () => {
       await enterChatMessage("Who is your favorite?");
       expect(await responseLoader()).toBeInTheDocument();
       expect(
-        await screen.findByText("You are... but don't tell anyone!"),
+        await screen.findByText("You, but don't tell anyone."),
       ).toBeInTheDocument();
 
       // should auto-clear input + refocus
@@ -300,27 +294,21 @@ describe("metabot", () => {
   describe("context", () => {
     it("should send along default context", async () => {
       setup();
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       await enterChatMessage("Who is your favorite?");
 
       expect(
         isMatching(
           { current_time_with_timezone: P.string },
-          (await lastReqBody())?.context,
+          (await lastReqBody(agentSpy))?.context,
         ),
       ).toEqual(true);
     });
 
     it("should allow components to register additional context", async () => {
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
-
       const TestComponent = () => {
         useRegisterMetabotContextProvider(
           () => ({ user_is_viewing: [{ type: "question", id: 1 }] }),
@@ -338,6 +326,10 @@ describe("metabot", () => {
         ),
       });
 
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
+
       await enterChatMessage("Who is your favorite?");
 
       expect(
@@ -346,7 +338,7 @@ describe("metabot", () => {
             current_time_with_timezone: P.string,
             user_is_viewing: [{ type: "question", id: 1 }],
           },
-          (await lastReqBody())?.context,
+          (await lastReqBody(agentSpy))?.context,
         ),
       ).toBe(true);
     });
@@ -355,66 +347,63 @@ describe("metabot", () => {
   describe("history", () => {
     it("should send history from last response along with next message", async () => {
       setup();
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
+      const agentSpy1 = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
-      await waitFor(() =>
-        expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
-        ).toHaveLength(1),
-      );
+      await waitFor(() => expect(agentSpy1).toHaveBeenCalled());
 
       // send another message and check that there is proper history
+      /* repsonse doesn't matter */
+      const agentSpy2 = mockAgentEndpoint({ textChunks: [] });
       await enterChatMessage("Hi!");
-      const lastCall = fetchMock.lastCall();
-      const bodyStr = String(await lastCall?.[1]?.body) || "";
-      const sentHistory = JSON.parse(bodyStr)?.history;
-      expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
+      const reqBody = await lastReqBody(agentSpy2);
+      expect(reqBody?.history).toEqual([
+        { content: "Who is your favorite?", role: "user" },
+        { content: "You, but don't tell anyone.", role: "assistant" },
+      ]);
     });
 
     it("should not clear history when metabot is hidden or opened", async () => {
       const { store } = setup();
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
+      const agentSpy1 = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
-      await waitFor(() =>
-        expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
-        ).toHaveLength(1),
-      );
+      await waitFor(() => expect(agentSpy1).toHaveBeenCalled());
 
       // close, open, and then send another message and check that there is no history
       hideMetabot(store.dispatch);
       showMetabot(store.dispatch);
+
+      /* repsonse doesn't matter */
+      const agentSpy2 = mockAgentEndpoint({ textChunks: [] });
+
       await enterChatMessage("Hi!");
-      const lastCall = fetchMock.lastCall();
-      const bodyStr = String(await lastCall?.[1]?.body) || "";
-      const sentHistory = JSON.parse(bodyStr)?.history;
-      expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
+      await waitFor(() => expect(agentSpy2).toHaveBeenCalled());
+
+      const lastCall = agentSpy2.mock.lastCall;
+      const body = JSON.parse(lastCall?.[1]?.body as string);
+      const sentHistory = body?.history;
+      expect(sentHistory).toEqual([
+        { content: "Who is your favorite?", role: "user" },
+        { content: "You, but don't tell anyone.", role: "assistant" },
+      ]);
     });
 
     it("should clear history when the user hits the reset button", async () => {
       const { store } = setup();
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
-      await waitFor(() =>
-        expect(
-          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
-        ).toHaveLength(1),
-      );
+      await waitFor(() => expect(agentSpy).toHaveBeenCalled());
 
       const beforeResetState = getMetabotState(store);
       expect(beforeResetState.conversationId).not.toBe(null);
@@ -422,9 +411,13 @@ describe("metabot", () => {
         { actor: "user", message: "Who is your favorite?" },
         {
           actor: "agent",
-          message: "You are... but don't tell anyone!",
+          message: "You, but don't tell anyone.",
           type: "reply",
         },
+      ]);
+      expect(beforeResetState.history).toEqual([
+        { content: "Who is your favorite?", role: "user" },
+        { content: "You, but don't tell anyone.", role: "assistant" },
       ]);
 
       await userEvent.click(await resetChatButton());
@@ -434,6 +427,7 @@ describe("metabot", () => {
         beforeResetState.conversationId,
       );
       expect(afterResetState.messages).toStrictEqual([]);
+      expect(afterResetState.history).toStrictEqual([]);
     });
 
     it("should warn the chat is getting long if the conversation is long w/ ability to clear history", async () => {
@@ -469,38 +463,8 @@ describe("metabot", () => {
   });
 });
 
-const whoIsYourFavoriteResponse = {
-  reactions: [
-    {
-      type: "metabot.reaction/message",
-      message: "You are... but don't tell anyone!",
-    },
-  ],
-  history: [
-    {
-      role: "user",
-      content: "Who is your favorite?",
-    },
-    {
-      content: "",
-      role: "assistant",
-      "tool-calls": [
-        {
-          id: "call_PVmnR8mcnYFF2AmqupSKzJDh",
-          name: "who-is-your-favorite",
-          arguments: {},
-        },
-      ],
-    },
-    {
-      role: "tool",
-      "tool-call-id": "call_PVmnR8mcnYFF2AmqupSKzJDh",
-      content: "You are... but don't tell anyone!",
-    },
-    {
-      content: "You are... but don't tell anyone!",
-      role: "assistant",
-    },
-  ],
-  state: {},
-};
+const whoIsYourFavoriteResponse = [
+  `0:"You, but don't tell anyone."`,
+  `2:{"type":"state","version":1,"value":{"queries":{}}}`,
+  `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+];
