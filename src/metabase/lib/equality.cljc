@@ -9,6 +9,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -144,12 +145,17 @@
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
+      (not-empty (filter #(and (clojure.core/= (:name %) ref-name)
+                               ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                               ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                               (or (and (not (:join-alias opts))
+                                        (#{:source/fields :source/card} (:lib/source %)))
+                                   (matching-join? a-ref %)))
+                         columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                    ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                    (or (and (not (:join-alias opts))
-                             (#{:source/fields :source/card} (:lib/source %)))
-                        (matching-join? a-ref %)))
+                    (:join-alias opts)
+                    (clojure.core/= (:lib/desired-column-alias %)
+                                    (lib.join.util/joined-field-desired-alias (:join-alias opts) ref-name)))
               columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]

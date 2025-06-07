@@ -279,14 +279,14 @@
               :lib/source :source/previous-stage
               :effective-type :type/BigInteger,
               :lib/desired-column-alias "Cat__ID",
-              :display-name "ID"}
+              :display-name "Cat → ID"}
              {:base-type :type/Text,
               :semantic-type :type/Name,
               :name "NAME",
               :lib/source :source/previous-stage
               :effective-type :type/Text,
               :lib/desired-column-alias "Cat__NAME",
-              :display-name "Name"}]
+              :display-name "Cat → Name"}]
             (lib/visible-columns query)))))
 
 (deftest ^:parallel expression-breakout-visible-column
