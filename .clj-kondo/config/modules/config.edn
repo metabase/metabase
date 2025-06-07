@@ -1553,12 +1553,15 @@
            util}}
 
   enterprise/content-translation
-  {:api  #{metabase-enterprise.content-translation.routes
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.content-translation.routes
            metabase-enterprise.content-translation.dictionary}
    :uses #{api
            content-translation
            premium-features
-           util}}
+           util
+           embedding
+           enterprise/api}}
 
   enterprise/content-verification
   {:team "Admin Webapp"
