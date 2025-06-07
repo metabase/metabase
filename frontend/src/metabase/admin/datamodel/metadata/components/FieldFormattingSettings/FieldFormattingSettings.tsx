@@ -33,9 +33,7 @@ const FieldFormattingSettings = ({
       : new Set(["column_title"]);
   }, [field]);
 
-  const inheritedSettings = useMemo(() => {
-    return getGlobalSettingsForColumn(field);
-  }, [field]);
+  const inheritedSettings = useMemo(() => getGlobalSettingsForColumn(), []);
 
   const handleChangeSettings = useCallback(
     (settings: FieldSettings) => {
@@ -53,6 +51,7 @@ const FieldFormattingSettings = ({
         inheritedSettings={inheritedSettings}
         onChange={handleChangeSettings}
         extraData={{ forAdminSettings: true }}
+        style={{}}
       />
     </MetadataSection>
   );
