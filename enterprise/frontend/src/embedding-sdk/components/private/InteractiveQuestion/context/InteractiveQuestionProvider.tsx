@@ -40,6 +40,7 @@ export const InteractiveQuestionProvider = ({
   children,
   onBeforeSave,
   onSave,
+  onRun,
   isSaveEnabled = true,
   entityTypes,
   targetCollection,
@@ -141,6 +142,7 @@ export const InteractiveQuestionProvider = ({
     targetCollection,
     withDownloads,
     variant,
+    onRun,
   };
 
   useEffect(() => {
