@@ -74,6 +74,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         breakoutValues.push(seriesValue);
         groupParts.push(stackedKeys);
       }
+
       const newRow = rowColumnIndexes.map((columnIndex) => row[columnIndex]);
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);

@@ -102,12 +102,21 @@ const getColumnsData = (
 
   let metricDatum: MetricDatum;
 
-  // For now, this only accepts 1 dimension breakouts.
   if ("breakout" in chartColumns && datum.breakout) {
-    data.push({
-      key: chartColumns.breakout.breakoutDimensions[0].column.display_name,
-      value: series.seriesKey,
-      col: chartColumns.breakout.breakoutDimensions[0].column,
+    const breakoutDims = chartColumns.breakout.breakoutDimensions;
+    const breakoutValues =
+      typeof series.seriesKey === "string"
+        ? series.seriesKey.split(" - ")
+        : Array.isArray(series.seriesKey)
+          ? series.seriesKey
+          : [series.seriesKey];
+
+    breakoutDims.forEach((dim, i) => {
+      data.push({
+        key: dim.column.display_name,
+        value: breakoutValues[i],
+        col: dim.column,
+      });
     });
 
     metricDatum = datum.breakout[series.seriesKey].metrics;
