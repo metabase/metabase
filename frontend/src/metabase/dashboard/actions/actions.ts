@@ -53,22 +53,30 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
-  const executeDashcardAction =
-    getDashboardType(dashboard.id) === "public"
-      ? PublicApi.executeDashcardAction
-      : ActionsApi.executeDashcardAction;
+  const isPublicDashboard = getDashboardType(dashboard.id) === "public";
+  const executeAction = isPublicDashboard
+    ? PublicApi.executeDashcardAction
+    : ActionsApi.executeDashcardAction;
 
   try {
-    const result = await executeDashcardAction({
-      dashboardId: dashboard.id,
-      dashcardId: dashcard.id,
-      modelId: dashcard.card_id,
-      parameters,
-    });
+    const actionPayload = isPublicDashboard
+      ? {
+          dashboardId: dashboard.id,
+          dashcardId: dashcard.id,
+          modelId: dashcard.card_id,
+          parameters,
+        }
+      : {
+          action_id: `dashcard:${dashcard.id}`,
+          input: parameters,
+          scope: { "dashboard-id": dashboard.id },
+        };
+    const result = await executeAction(actionPayload);
 
+    const resultPayload = isPublicDashboard ? result : result.outputs?.[0];
     const message = getActionExecutionMessage(
       dashcard.action as WritebackAction,
-      result,
+      resultPayload,
     );
 
     if (shouldToast) {
