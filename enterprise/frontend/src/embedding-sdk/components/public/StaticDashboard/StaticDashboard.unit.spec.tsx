@@ -92,7 +92,7 @@ const setup = async (options: SetupOptions = {}) => {
     }),
   });
 
-  renderWithSDKProviders(
+  await renderWithSDKProviders(
     <Box h="500px">
       <StaticDashboard dashboardId={dashboardId} {...props} />
     </Box>,

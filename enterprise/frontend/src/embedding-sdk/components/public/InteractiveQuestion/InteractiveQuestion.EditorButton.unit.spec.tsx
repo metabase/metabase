@@ -45,7 +45,7 @@ const TEST_DATASET = createMockDataset({
   }),
 });
 
-const setup = ({
+const setup = async ({
   isOpen = true,
 }: {
   isOpen?: boolean;
@@ -77,7 +77,7 @@ const setup = ({
 
   const clickSpy = jest.fn();
 
-  renderWithSDKProviders(
+  await renderWithSDKProviders(
     <InteractiveQuestion questionId={TEST_CARD.id}>
       <div>Look! A Button! 👇</div>
       <InteractiveQuestion.EditorButton onClick={clickSpy} isOpen={isOpen} />
@@ -101,7 +101,7 @@ describe("InteractiveQuestion.EditorButton", () => {
   it("should render the editor button", async () => {
     const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
 
-    setup({ isOpen: true });
+    await setup({ isOpen: true });
 
     expect(await screen.findByTestId("notebook-button")).toBeInTheDocument();
     expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
@@ -109,7 +109,7 @@ describe("InteractiveQuestion.EditorButton", () => {
 
   it("should fire click handler when clicking the notebook button", async () => {
     const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
-    const { clickSpy } = setup({ isOpen: true });
+    const { clickSpy } = await setup({ isOpen: true });
 
     await userEvent.click(await screen.findByTestId("notebook-button"));
     expect(shouldRenderSpy).toHaveBeenCalledTimes(1);

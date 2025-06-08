@@ -22,6 +22,7 @@ export * from "./gdrive";
 export * from "./geojson";
 export * from "./google";
 export * from "./group";
+export * from "./i18n";
 export * from "./impersonation";
 export * from "./logger";
 export * from "./model-indexes";
