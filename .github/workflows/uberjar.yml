@@ -10,6 +10,7 @@ on:
       - metabot-v3-main
       - feature-visualizer
       - internal-tools
+      - on-demand-fingerprint-poc
     paths-ignore:
       # config files
       - ".**"
