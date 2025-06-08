@@ -27,8 +27,8 @@
                (sync/sync-database! database)
                (sync-metadata/sync-db-metadata! database))
            ;; POC: sync metadata only
-           ;; TODO: Dependency of field values on analysis. How to resolve that?
-           (sync-metadata/sync-db-metadata! database)
+           ;; TODO: Confirm that field values can be removed as seemingly none are created during initial sync.
+           (sync/sync-database! database {:scan :metadata+field-values})
            (catch Throwable e
              (log/errorf e "Error syncing Database %s" (u/the-id database)))))))
     (catch Throwable e
