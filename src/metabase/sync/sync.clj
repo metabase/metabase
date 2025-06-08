@@ -40,9 +40,14 @@
    :field-values sync.field-values/update-field-values!})
 
 (defn- scan-phases [scan]
-  (if (not= :full scan)
-    [:metadata]
-    [:metadata :analyze :field-values]))
+  (cond (= :metadata+field-values scan)
+        [:metadata :field-values]
+
+        (not= :full scan)
+        [:metadata]
+
+        :else
+        [:metadata :analyze :field-values]))
 
 (defn- do-phase! [database phase]
   (let [f      (phase->fn phase)
@@ -67,7 +72,8 @@
 
   ([database                         :- i/DatabaseInstance
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
-                                                 [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
+                                                 [:scan {:optional true}
+                                                  [:maybe [:enum :schema :full :metadata+field-values]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (->> (scan-phases scan)
           (keep (partial do-phase! database))
