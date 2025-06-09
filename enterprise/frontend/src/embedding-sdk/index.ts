@@ -64,3 +64,5 @@ export type {
 } from "./types/refresh-token";
 
 export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+
+export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
