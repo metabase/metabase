@@ -150,8 +150,7 @@
                {:base-type lib-base-type}))
            ;; Prefer our `:name` if it's something different that what's returned by the driver (e.g. for named
            ;; aggregations)
-           (when-let [lib-name (:name lib-col)]
-             {:name lib-name})
+           (u/select-non-nil-keys lib-col [:name :lib/source])
            ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
            ;; type calculated by MLv2
            {:effective-type (or (:base-type driver-col)

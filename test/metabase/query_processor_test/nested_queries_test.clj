@@ -391,7 +391,7 @@
                   long-col-re (re-pattern (str "(?i)" long-col-name))]
               (is (=? {:rows [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]],
                        :cols
-                       [{:source       :fields
+                       [{:source       :fields ; QUE-1340
                          :name         long-col-re
                          :display_name long-col-re
                          :field_ref    [:field long-col-re {}]}
