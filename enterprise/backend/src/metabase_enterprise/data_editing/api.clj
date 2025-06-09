@@ -483,6 +483,41 @@
             "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-mapping))))
             nil))
 
+        saved-param-base-type
+        (fn [saved-param viz-field]
+          (let [{param-type :type} saved-param]
+            (case param-type
+              :string/= :type/Text
+              :number/= :type/Number
+              :date/single (case (:inputType viz-field)
+                             ;; formatting needs thought
+                             "datetime" :type/DateTime
+                             :type/Date)
+              (if (= "type" (namespace param-type))
+                type
+                (throw
+                 (ex-info "Unsupported query action parameter type"
+                          {:status-code 500
+                           :param-type  param-type
+                           :scope       scope
+                           :unified     unified}))))))
+
+        saved-param-input-type
+        (fn [saved-param viz-field]
+          (cond
+            ;; we could distinguish between inline-select and dropdown (which are both options for model action params)
+            (seq (:valueOptions viz-field))
+            "dropdown"
+
+            (= "text" (:inputType viz-field))
+            "textarea"
+
+            :else
+            (condp #(isa? %2 %1) (saved-param-base-type saved-param viz-field)
+              :type/Date     "date"
+              :type/DateTime "datetime"
+              "text")))
+
         describe-saved-action
         (fn [& {:keys [action-id
                        param-mapping
@@ -490,7 +525,6 @@
           (let [action              (-> (actions/select-action :id action-id
                                                                :archived false
                                                                {:where [:not [:= nil :model_id]]})
-
                                         api/read-check
                                         api/check-404)
                 param-id->viz-field (-> action :visualization_settings (:fields {}))
@@ -499,8 +533,8 @@
             {:title (:name action)
              :parameters
              (->> (for [param (:parameters action)
-                              ;; query type actions store most stuff in viz settings rather than the
-                              ;; parameter
+                        ;; query type actions store most stuff in viz settings rather than the
+                        ;; parameter
                         :let [viz-field     (param-id->viz-field (:id param))
                               param-mapping (param-id->mapping (:id param))]
                         :when (and (not (:hidden viz-field))
@@ -509,24 +543,26 @@
                      {:id            (:id param)
                       :display_name  (or (:display-name param) (:name param))
                       :param-mapping param-mapping
-                      :type          (case (:type param)
-                                       :string/= :type/Text
-                                       :number/= :type/Number
-                                       :date/single :type/Date
-                                       (if (= "type" (namespace (:type param)))
-                                         (:type param)
-                                         (throw
-                                          (ex-info "Unsupported query action parameter type"
-                                                   {:status-code 500
-                                                    :param-type  (:type param)
-                                                    :scope       scope
-                                                    :unified     unified}))))
-                      :value_options (:valueOptions viz-field)
+                      :input_type    (saved-param-input-type param viz-field)
                       :optional      (and (not (:required param)) (not (:required viz-field)))
                       :nullable      true             ; is there a way to know this?
                       :readonly      (= "readonly" (:visibility param-mapping))
-                      :value         (param-value param-mapping row-delay)}))
+                      :value         (param-value param-mapping row-delay)
+                      :value_options (:valueOptions viz-field)}))
                   vec)}))
+
+        field-input-type
+        (fn [field field-values]
+          (case (:type field-values)
+            (:list :auto-list :search) "dropdown"
+            (condp #(isa? %2 %1) (:semantic_type field)
+              :type/Description "textarea"
+              :type/Category    "dropdown"
+              :type/FK          "dropdown"
+              (condp #(isa? %2 %1) (:base_type field)
+                :type/Date     "date"
+                :type/DateTime "datetime"
+                "text"))))
 
         describe-table-action
         (fn [& {:keys [action-kw
@@ -535,32 +571,38 @@
                        row-delay]}]
           (let [table-id            table-id
                 table               (api/read-check (t2/select-one :model/Table :id table-id :active true))
-                field-name->mapping (u/index-by :parameterId param-mapping)]
+                field-name->mapping (u/index-by :parameterId param-mapping)
+                fields              (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
+                                        (t2/hydrate :dimensions
+                                                    :has_field_values
+                                                    :values))]
             {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
              :parameters
-             (->> (for [field (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
-                        :let [pk            (= :type/PK (:semantic_type field))
-                              param-mapping (field-name->mapping (:name field))]
+             (->> (for [field fields
+                        :let [{field-values :values} field
+                              pk                     (= :type/PK (:semantic_type field))
+                              param-mapping          (field-name->mapping (:name field))]
                         :when (case action-kw
-                                      ;; create does not take pk cols if auto increment, todo generated cols?
+                                ;; create does not take pk cols if auto increment, todo generated cols?
                                 :table.row/create (not (:database_is_auto_increment field))
-                                      ;; delete only requires pk cols
+                                ;; delete only requires pk cols
                                 :table.row/delete pk
-                                      ;; update takes both the pk and field (if not a row action)
+                                ;; update takes both the pk and field (if not a row action)
                                 :table.row/update true)
                         :when (not= "hidden" (:visibility param-mapping))
                         :let [required (or pk (:database_required field))]]
                     (u/remove-nils
-                     {:id                 (:name field)
-                      :display_name       (:display_name field)
-                      :type               (:base_type field)
-                      :semantic_type      (:semantic_type field)
-                      :field_id           (:id field)
-                      :fk_target_field_id (:fk_target_field_id field)
-                      :optional           (not required)
-                      :nullable           (:database_is_nullable field)
-                      :readonly           (= "readonly" (:visibility param-mapping))
-                      :value              (param-value param-mapping row-delay)}))
+                     {:id                      (:name field)
+                      :display_name            (:display_name field)
+                      :semantic_type           (:semantic_type field)
+                      :input_type              (field-input-type field field-values)
+                      :field_id                (:id field)
+                      :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
+                      :optional                (not required)
+                      :nullable                (:database_is_nullable field)
+                      :readonly                (= "readonly" (:visibility param-mapping))
+                      :value                   (param-value param-mapping row-delay)}))
+
                   vec)}))]
 
     (cond
