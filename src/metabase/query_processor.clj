@@ -78,7 +78,7 @@
     rff   :- [:maybe ::qp.schema/rff]]
    (qp.setup/with-qp-setup [query query]
      (let [rff (or rff qp.reducible/default-rff)]
-       (process-query* query rff)))))
+       (process-query* (assoc-in query [:middleware :skip-results-metadata?] true) rff)))))
 
 (mu/defn userland-query :- ::qp.schema/query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP

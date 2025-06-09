@@ -19,7 +19,7 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- standardize-metadata
+(defn- comparable-metadata
   "Smooth out any unimportant differences in metadata so we can do an easy equality check."
   [metadata]
   (mapv #(dissoc % :ident) metadata))
@@ -35,7 +35,7 @@
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query))
                ;; Only update changed metadata
-               (not= (standardize-metadata metadata) (standardize-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
+               (not= (comparable-metadata metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
       (t2/update! :model/Card card-id {:result_metadata metadata
                                        :updated_at      :updated_at}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
