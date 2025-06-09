@@ -17,7 +17,6 @@ export const LicenseTokenMissingBanner = ({
       iconColor="var(--mb-color-text-white)"
       className={styles.BannerContainer}
       bg="var(--mb-color-background-inverse)"
-      align="flex-start"
       aria-label={t`License activation notice`}
       aria-live="polite"
       role="status"
