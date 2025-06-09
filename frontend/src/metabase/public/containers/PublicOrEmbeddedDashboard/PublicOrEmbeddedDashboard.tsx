@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import { useEffect, useRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { usePrevious, useUnmount } from "react-use";
@@ -28,6 +27,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { connect } from "metabase/lib/redux";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -65,7 +65,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams: Query;
+  parameterQueryParams: ParameterValues;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;

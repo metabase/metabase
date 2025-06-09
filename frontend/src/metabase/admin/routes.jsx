@@ -22,7 +22,6 @@ import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPas
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
-import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import { Help } from "metabase/admin/tasks/components/Help";
 import { LogLevelsModal } from "metabase/admin/tasks/components/LogLevelsModal";
 import { Logs } from "metabase/admin/tasks/components/Logs";
@@ -51,6 +50,7 @@ import {
 
 import { PerformanceTabId } from "./performance/types";
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
+import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
@@ -186,10 +186,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
-        <IndexRedirect to="general" />
-        <Route title={t`Settings`}>
-          <Route path="*" component={SettingsEditor} />
-        </Route>
+        {getSettingsRoutes()}
       </Route>
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>

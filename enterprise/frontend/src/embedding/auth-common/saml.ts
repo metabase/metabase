@@ -1,8 +1,6 @@
 import * as MetabaseError from "embedding-sdk/errors";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 
-import { samlTokenStorage } from "./saml-token-storage";
-
 /*
  * For the markup for the popup (nice rhyme), visit
  * enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
@@ -16,7 +14,9 @@ import { samlTokenStorage } from "./saml-token-storage";
  *  5) The IDP eventually redirects back to POST /auth/sso which returns HTML markup
  *      that postMessages the token to this window. We'll save it in localStorage for now.
  * */
-export const openSamlLoginPopup = async (idpUrl: string) => {
+export const openSamlLoginPopup = async (
+  idpUrl: string,
+): Promise<MetabaseEmbeddingSessionToken> => {
   return new Promise((resolve, reject) => {
     const width = 600;
     const height = 700;
@@ -40,7 +40,6 @@ export const openSamlLoginPopup = async (idpUrl: string) => {
       }>,
     ) => {
       if (event.data && event.data.type === "SAML_AUTH_COMPLETE") {
-        samlTokenStorage.set(event.data.authData);
         window.removeEventListener("message", messageHandler);
         if (!popup.closed) {
           popup.close();
