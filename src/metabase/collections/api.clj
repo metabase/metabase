@@ -834,14 +834,10 @@
 
 (defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
   (when official-collections-first?
-    [[[:case [:= :authority_level "official"] 0 :else 1]] :asc]))
+    [:authority_level :asc :nulls-last]))
 
 (def ^:private normal-collections-first-sort-clause
-  [[[:case
-     [:= :collection_type nil] 0
-     [:= :collection_type collection/trash-collection-type] 1
-     :else 2]]
-   :asc])
+  [:collection_type :asc :nulls-first])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
