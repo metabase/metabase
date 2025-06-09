@@ -2,11 +2,16 @@ import cx from "classnames";
 import { type ChangeEvent, useRef, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
 import { Link } from "react-router";
-import { c, jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
-import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import {
+  type CollectionPickerItem,
+  CollectionPickerModal,
+} from "metabase/common/components/CollectionPicker";
 import { UploadInput } from "metabase/components/upload";
+import CollectionName from "metabase/containers/CollectionName";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -19,13 +24,14 @@ import {
   Box,
   Button,
   Center,
+  Flex,
   Group,
   Icon,
-  Select,
   Stack,
   Text,
   Title,
   Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
 import { UploadMode } from "metabase-types/store/upload";
 
@@ -48,15 +54,30 @@ export const CSVPanel = ({
   uploadsEnabled,
 }: CSVPanelProps) => {
   const dispatch = useDispatch();
+  const initialCollectionId = useGetDefaultCollectionId() ?? "root";
+
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileUploadError, setFileUploadError] = useState<string | null>(null);
+
+  const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
+  const [uploadCollectionId, setUploadCollectionId] =
+    useState(initialCollectionId);
 
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const triggerUploadInput = () => uploadInputRef?.current?.click();
 
-  const handleFileSelect = () => {
-    // setFileUploadError(null);
-    triggerUploadInput();
+  const handleCollectionChange = (item: CollectionPickerItem) => {
+    // The model should always be a collection since we explicitly set it in the CollectionPickerModal.
+    // In case anything ever changes in the picker, we want to ignore it in this handler.
+    if (item.model !== "collection") {
+      return;
+    }
+
+    const { id } = item;
+    if (typeof id === "number" || id === "root") {
+      setUploadCollectionId(id);
+      setIsCollectionPickerOpen(false);
+    }
   };
 
   const handleFileRejections = (rejected: FileRejection[]) => {
@@ -130,7 +151,7 @@ export const CSVPanel = ({
     dispatch(
       uploadFile({
         uploadMode: UploadMode.create,
-        collectionId: "root", // TODO: dynamically change this
+        collectionId: uploadCollectionId,
         file: uploadedFile,
       }),
     );
@@ -202,7 +223,7 @@ export const CSVPanel = ({
                   variant="subtle"
                   p={0}
                   h="auto"
-                  onClick={handleFileSelect}
+                  onClick={triggerUploadInput}
                 >
                   {t`Select a file`}
                 </Button>
@@ -210,10 +231,25 @@ export const CSVPanel = ({
             </Stack>
           </Center>
           <Group>
-            <Select
-              data={["Never", "gonna", "give", "you", "up"]}
-              style={{ flex: 1 }}
-            />
+            <UnstyledButton
+              onClick={() => setIsCollectionPickerOpen(true)}
+              style={{
+                flex: 1,
+              }}
+            >
+              <Flex
+                align="center"
+                justify="space-between"
+                w="100%"
+                wrap="nowrap"
+              >
+                <Group gap="xs" flex={1}>
+                  <Icon name="folder" />
+                  <CollectionName id={uploadCollectionId} />
+                </Group>
+                <Icon name="chevrondown" style={{ flexShrink: "noshrink" }} />
+              </Flex>
+            </UnstyledButton>
             <Button
               variant="filled"
               disabled={!uploadedFile}
@@ -231,47 +267,70 @@ export const CSVPanel = ({
         </Stack>
       )}
 
-      {!uploadsEnabled &&
-        (canManageUploads ? (
-          <Stack gap="lg" align="center" justify="center" pt="3rem">
-            <Box component={IconCSV} c="brand" h={66} />
-            <Box component="header" ta="center">
-              <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
-              <Text maw="22.5rem" c="text-medium">
-                {jt`To work with CSVs, enable file uploads in ${(
-                  <Tooltip
-                    inline
-                    maw="12.5rem"
-                    multiline
-                    label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
-                    key="database-tooltip"
-                  >
-                    <Text td="underline">{t`your database`}</Text>
-                  </Tooltip>
-                )}.`}
-              </Text>
-              <Button
-                variant="filled"
-                w="12.5rem"
-                component={Link}
-                to={Urls.uploadsSettings()}
-              >{t`Enable uploads`}</Button>
-            </Box>
-          </Stack>
-        ) : (
-          <Stack gap="lg" align="center" justify="center" pt="3rem">
-            <Box component={IconCSV} c="brand" h={66} />
-            <Box component="header" ta="center">
-              <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
-              <Text maw="22.5rem" c="text-medium">
-                {t`Work with CSVs, just like with any other data source.`}
-              </Text>
-            </Box>
-            <Alert icon={<Icon name="info_filled" />}>
-              {t`To enable CSV file upload, please contact your administrator.`}
-            </Alert>
-          </Stack>
-        ))}
+      {!uploadsEnabled && canManageUploads && (
+        <Stack gap="lg" align="center" justify="center" pt="3rem">
+          <Box component={IconCSV} c="brand" h={66} />
+          <Box component="header" ta="center">
+            <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
+            <Text maw="22.5rem" c="text-medium">
+              {c("{0} refers to the string 'your database'")
+                .jt`To work with CSVs, enable file uploads in ${(
+                <Tooltip
+                  inline
+                  maw="12.5rem"
+                  multiline
+                  label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
+                  key="database-tooltip"
+                >
+                  <Text td="underline">{t`your database`}</Text>
+                </Tooltip>
+              )}.`}
+            </Text>
+            <Button
+              variant="filled"
+              w="12.5rem"
+              component={Link}
+              to={Urls.uploadsSettings()}
+            >
+              {t`Enable uploads`}
+            </Button>
+          </Box>
+        </Stack>
+      )}
+
+      <Stack gap="lg" align="center" justify="center" pt="3rem">
+        <Box component={IconCSV} c="brand" h={66} />
+        <Box component="header" ta="center">
+          <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
+          <Text maw="22.5rem" c="text-medium">
+            {t`Work with CSVs, just like with any other data source.`}
+          </Text>
+        </Box>
+        <Alert icon={<Icon name="info_filled" />}>
+          {t`To enable CSV file upload, please contact your administrator.`}
+        </Alert>
+      </Stack>
+
+      {isCollectionPickerOpen && (
+        <CollectionPickerModal
+          title={t`Select a collection`}
+          value={{ id: uploadCollectionId, model: "collection" }}
+          onChange={handleCollectionChange}
+          onClose={() => setIsCollectionPickerOpen(false)}
+          options={{
+            showPersonalCollections: true,
+            showRootCollection: true,
+            showSearch: true,
+            confirmButtonText: t`Select this collection`,
+          }}
+          models={["collection"]}
+          recentFilter={(items) =>
+            items.filter((item) => {
+              return item.model !== "table" && item.can_write;
+            })
+          }
+        />
+      )}
     </>
   );
 };
