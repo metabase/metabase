@@ -110,7 +110,7 @@ export type WritebackImplicitQueryAction = WritebackActionBase &
   ImplicitQueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
 
-export interface TableActionParameter extends Omit<Parameter, "name" | "type"> {
+export interface TableActionParameter extends Omit<Parameter, "name"> {
   id: string;
   "display-name": string;
   type: string;
@@ -274,3 +274,6 @@ export type RowActionFieldSourceType = RowActionFieldSettings["sourceType"];
 
 export type PartialRowActionFieldSettings = RowActionFieldSettingsBase &
   Partial<RowActionFieldSettings>;
+
+export type DataGridWritebackAction = WritebackAction | TableAction;
+export type DataGridWritebackActionId = DataGridWritebackAction["id"];

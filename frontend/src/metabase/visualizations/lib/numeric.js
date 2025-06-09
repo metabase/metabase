@@ -55,7 +55,7 @@ export function decimalCount(a) {
   return p;
 }
 
-export function computeNumericDataInverval(xValues) {
+export function computeNumericDataInterval(xValues) {
   let bestPrecision = Infinity;
   for (const value of xValues) {
     const p = precision(value) || 1;

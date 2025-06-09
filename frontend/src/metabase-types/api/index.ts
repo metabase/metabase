@@ -1,4 +1,5 @@
 export * from "./actions";
+export * from "./actionV2";
 export * from "./activity";
 export * from "./admin";
 export * from "./ai-sql-fixer";
@@ -15,8 +16,10 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./email";
 export * from "./entity-id";
 export * from "./field";
+export * from "./geojson";
 export * from "./group";
 export * from "./logger";
 export * from "./metabot";

@@ -125,8 +125,8 @@
                      (mt/user-http-request :crowberto :post 200 url
                                            {:action_id "data-grid.row/create"
                                             :scope     {:table-id table-id}
-                                            :inputs    [{:name "Pidgey" :song "Car alarms"}
-                                                        {:name "Spearow" :song "Hold music"}
+                                            :inputs    [{:name "Pidgey"     :song "Car alarms"}
+                                                        {:name "Spearow"    :song "Hold music"}
                                                         {:name "Farfetch'd" :song "The land of lisp"}]})))))
 
             (is (= [[1 "Pidgey" "Car alarms"]
@@ -143,28 +143,29 @@
                                            {:action_id "data-grid.row/update"
                                             :scope     {:table-id table-id}
                                             :inputs    [{:id 1 :song "Join us now and share the software"}
-                                                        {:id 2 :name "Speacolumn"}]}))))
+                                                        {:id 2 :name "Speacolumn"}]})))))
 
-                (is (= #{[1 "Pidgey" "Join us now and share the software"]
-                         [2 "Speacolumn" "Hold music"]
-                         [3 "Farfetch'd" "The land of lisp"]}
-                       (set (table-rows table-id))))))
+            (is (= #{[1 "Pidgey" "Join us now and share the software"]
+                     [2 "Speacolumn" "Hold music"]
+                     [3 "Farfetch'd" "The land of lisp"]}
+                   (set (table-rows table-id)))))
 
-          ;; Leaning against not adding this action.
-          #_(testing "PUT can also do bulk updates"
-              (is (= #{{:id 1, :name "Pidgey",     :song "The Star-Spangled Banner"}
-                       {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}
-                     (set
-                      (:updated
-                       (mt/user-http-request :crowberto :put 200 url
-                                             {:pks     [{:id 1}
+          (testing "PUT can also do bulk updates"
+            (is (= #{{:op "updated", :table-id table-id, :row {:id 1, :name "Pidgey",     :song "The Star-Spangled Banner"}}
+                     {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/update"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:id 1}
                                                         {:id 2}]
-                                              :updates {:song "The Star-Spangled Banner"}}))))
+                                            :params    {:song "The Star-Spangled Banner"}})))))
 
-                  (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
-                           [2 "Speacolumn" "The Star-Spangled Banner"]
-                           [3 "Farfetch'd" "The land of lisp"]}
-                         (set (table-rows table-id))))))
+            (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
+                     [2 "Speacolumn" "The Star-Spangled Banner"]
+                     [3 "Farfetch'd" "The land of lisp"]}
+                   (set (table-rows table-id)))))
 
           (testing "DELETE should remove the corresponding rows"
             (is (= #{{:op "deleted", :table-id table-id, :row {:id 1}}
@@ -177,6 +178,85 @@
                                             :inputs    [{:id 1}
                                                         {:id 2}]})))))
             (is (= [[3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id)))))))))
+
+(deftest table-operations-via-action-execute-with-compound-pk-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (with-open [table-ref (data-editing.tu/open-test-table!
+                             {:id_1   'auto-inc-type
+                              :id_2   'auto-inc-type
+                              :name  [:text]
+                              :song  [:text]}
+                             {:primary-key [:id_1 :id_2]})]
+        (let [table-id @table-ref
+              url      "ee/data-editing/action/v2/execute-bulk"]
+          (data-editing.tu/toggle-data-editing-enabled! true)
+          (testing "Initially the table is empty"
+            (is (= [] (table-rows table-id))))
+
+          (testing "POST should insert new rows"
+            (is (= #{{:op "created", :table-id table-id, :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "Car alarms"}}
+                     {:op "created", :table-id table-id, :row {:id_1 2, :id_2 2, :name "Spearow",    :song "Hold music"}}
+                     {:op "created", :table-id table-id, :row {:id_1 3, :id_2 3, :name "Farfetch'd", :song "The land of lisp"}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/create"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:name "Pidgey"     :song "Car alarms"}
+                                                        {:name "Spearow"    :song "Hold music"}
+                                                        {:name "Farfetch'd" :song "The land of lisp"}]})))))
+
+            (is (= [[1 1 "Pidgey" "Car alarms"]
+                    [2 2 "Spearow" "Hold music"]
+                    [3 3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id))))
+
+          (testing "PUT should update the relevant rows and columns"
+            (is (= #{{:op "updated", :table-id table-id :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "Join us now and share the software"}}
+                     {:op "updated", :table-id table-id :row {:id_1 2, :id_2 2, :name "Speacolumn", :song "Hold music"}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/update"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:id_1 1, :id_2 1, :song "Join us now and share the software"}
+                                                        {:id_1 2, :id_2 2, :name "Speacolumn"}]})))))
+
+            (is (= #{[1 1 "Pidgey" "Join us now and share the software"]
+                     [2 2 "Speacolumn" "Hold music"]
+                     [3 3 "Farfetch'd" "The land of lisp"]}
+                   (set (table-rows table-id)))))
+
+          (testing "PUT can also do bulk updates"
+            (is (= #{{:op "updated", :table-id table-id, :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "The Star-Spangled Banner"}}
+                     {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/update"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:id_1 1, :id_2 1}
+                                                        {:id_1 2, :id_2 2}]
+                                            :params    {:song "The Star-Spangled Banner"}})))))
+
+            (is (= #{[1 1 "Pidgey" "The Star-Spangled Banner"]
+                     [2 2 "Speacolumn" "The Star-Spangled Banner"]
+                     [3 3 "Farfetch'd" "The land of lisp"]}
+                   (set (table-rows table-id)))))
+
+          (testing "DELETE should remove the corresponding rows"
+            (is (= #{{:op "deleted", :table-id table-id, :row {:id_1 1, :id_2 1}}
+                     {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 2}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/delete"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:id_1 1, :id_2 1}
+                                                        {:id_1 2, :id_2 2}]})))))
+            (is (= [[3 3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
 
 (deftest simple-delete-with-children-test
@@ -1094,7 +1174,13 @@
                                                                           :type "string/="}
                                                                          {:id "d"
                                                                           :name "D"
-                                                                          :type "string/="}]}]
+                                                                          :type "string/="}
+                                                                         {:id "e"
+                                                                          :name "E"
+                                                                          :type "string/="}]
+                                                          :visualization_settings
+                                                          {:fields {"c" {:inputType "text"}
+                                                                    "e" {:valueOptions ["a" "b"]}}}}]
               (let [{:keys [status, body]} (req {:scope {:model-id (:id model)
                                                          :table-id (:id table)}
                                                  :action_id (:id action)})]
@@ -1102,18 +1188,22 @@
                 (is (= "Do cool thing" (:title body)))
                 (is (= [{:id "a"
                          :display_name "A"
-                         :type "type/Number"}
+                         :input_type "text"}
                         {:id "b"
                          :display_name "B"
-                         :type "type/Date"}
+                         :input_type "date"}
                         {:id "c"
                          :display_name "C"
-                         :type "type/Text"}
+                         :input_type "textarea"}
                         {:id "d"
                          :display_name "D"
-                         :type "type/Text"}]
+                         :input_type "text"}
+                        {:id "e"
+                         :display_name "E"
+                         :input_type "dropdown"
+                         :value_options ["a" "b"]}]
                        (->> (:parameters body)
-                            (map #(select-keys % [:id :display_name :type])))))))))))))
+                            (map #(select-keys % [:id :display_name :input_type :value_options])))))))))))))
 
 (deftest tmp-modal-table-action-test
   (let [list-req
@@ -1152,24 +1242,24 @@
                       {:keys [status body]} (req {:scope scope
                                                   :action_id create-id})]
                   (is (= 200 status))
-                  (is (= [{:id "text"      :display_name "Text"      :type "type/Text"}
-                          {:id "int"       :display_name "Int"       :type "type/Integer"}
-                          {:id "timestamp" :display_name "Timestamp" :type "type/DateTime"}
-                          {:id "date"      :display_name "Date"      :type "type/Date"}]
+                  (is (= [{:id "text"      :display_name "Text"      :input_type "text"}
+                          {:id "int"       :display_name "Int"       :input_type "text"}
+                          {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                          {:id "date"      :display_name "Date"      :input_type "date"}]
                          (->> (:parameters body)
-                              (map #(select-keys % [:id :display_name :type])))))))
+                              (map #(select-keys % [:id :display_name :input_type])))))))
               (testing "update"
                 (let [scope {:table-id @test-table}
                       {:keys [status body]} (req {:scope scope
                                                   :action_id update-id})]
                   (is (= 200 status))
-                  (is (= [{:id "id"        :display_name "ID"        :type "type/BigInteger"}
-                          {:id "text"      :display_name "Text"      :type "type/Text"}
-                          {:id "int"       :display_name "Int"       :type "type/Integer"}
-                          {:id "timestamp" :display_name "Timestamp" :type "type/DateTime"}
-                          {:id "date"      :display_name "Date"      :type "type/Date"}]
+                  (is (= [{:id "id"        :display_name "ID"        :input_type "text"}
+                          {:id "text"      :display_name "Text"      :input_type "text"}
+                          {:id "int"       :display_name "Int"       :input_type "text"}
+                          {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                          {:id "date"      :display_name "Date"      :input_type "date"}]
                          (->> (:parameters body)
-                              (map #(select-keys % [:id :display_name :type])))))))
+                              (map #(select-keys % [:id :display_name :input_type])))))))
               (testing "delete"
                 (let [scope {:table-id @test-table}
                       {:keys [status body]} (req {:scope scope
@@ -1177,9 +1267,9 @@
                   (is (= 200 status))
                   (is (= [{:id "id"
                            :display_name "ID"
-                           :type "type/BigInteger"}]
+                           :input_type "text"}]
                          (->> (:parameters body)
-                              (map #(select-keys % [:id :display_name :type])))))))))
+                              (map #(select-keys % [:id :display_name :input_type])))))))))
 
           (mt/with-temp
             [:model/Dashboard     dashboard {}

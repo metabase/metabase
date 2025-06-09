@@ -5175,3 +5175,37 @@
       (testing "accepts its new parent"
         (is (= "dashcard:1337:SAVE_ME"
                (f saved "dashcard:unknown:SAVE_ME")))))))
+
+(deftest post-update-test
+  (mt/with-temp [:model/Collection    {collection-id-1 :id} {}
+                 :model/Collection    {collection-id-2 :id} {}
+                 :model/Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
+                 :model/Card          {card-id :id}         {}
+                 :model/Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
+                 :model/DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
+                 :model/PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
+    (testing "Pulse name and collection-id updates"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                            {:name "Lucky's Close Shaves" :collection_id collection-id-2})
+      (is (= "Lucky's Close Shaves"
+             (t2/select-one-fn :name :model/Pulse :id pulse-id)))
+      (is (= collection-id-2
+             (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))
+
+(deftest post-update-card-sync-test
+  (mt/with-temp [:model/Collection    {collection-id-1 :id} {}
+                 :model/Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
+                 :model/Card          {card-id :id}         {}
+                 :model/Card          {new-card-id :id}     {}
+                 :model/Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
+                 :model/DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
+                 :model/PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
+    (testing "PulseCard syncing"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                            {:dashcards [{:id 100
+                                          :card_id new-card-id
+                                          :row     0
+                                          :col     0
+                                          :size_x  4
+                                          :size_y  4}]})
+      (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))

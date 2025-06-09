@@ -12,7 +12,7 @@ import type {
   TableUpdateRowsRequest,
   TableUpdateRowsResponse,
 } from "metabase-enterprise/data_editing/tables/types";
-import type { TableAction, WritebackAction } from "metabase-types/api/actions";
+import type { DataGridWritebackAction } from "metabase-types/api/actions";
 
 import { EnterpriseApi } from "./api";
 
@@ -79,14 +79,13 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         },
       }),
     }),
-    getActions: builder.query<Array<WritebackAction | TableAction>, void>({
+    getActions: builder.query<DataGridWritebackAction[], void>({
       query: () => ({
         method: "GET",
         url: `/api/ee/data-editing/tmp-action`,
       }),
-      transformResponse: (response: {
-        actions: Array<WritebackAction | TableAction>;
-      }) => response?.actions,
+      transformResponse: (response: { actions: DataGridWritebackAction[] }) =>
+        response?.actions,
     }),
     executeAction: builder.mutation<
       TableExecuteActionResponse,

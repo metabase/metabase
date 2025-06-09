@@ -15,6 +15,17 @@ import {
   createDashboardWithVisualizerDashcards,
 } from "e2e/support/test-visualizer-data";
 
+// TODO editing a dashcard when it isn't done loading
+// causes the visualizer modal to be in error for some reason
+// this should be fixed in the future
+const DASHCARD_QUERY_WAIT_TIME = 1000;
+
+// There's a race condition when saving a dashboard
+// and then immediately editing it again. After saving,
+// we exit the edit mode and that can happen after
+// `H.editDashboard` is called for some reason
+const DASHBOARD_SAVE_WAIT_TIME = 450;
+
 describe("scenarios > dashboard > visualizer > basics", () => {
   beforeEach(() => {
     H.restore();
@@ -218,12 +229,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     // Click on both series of the first chart
     // Series 1
     H.showUnderlyingQuestion(0, ORDERS_COUNT_BY_CREATED_AT.name);
-
     cy.get("@ordersCountByCreatedAtQuestionId").then((id) =>
       cy.url().should("contain", `${id}-orders-by-created-at-month`),
     );
     cy.findByLabelText("Back to Test Dashboard").click();
-
     // Series 2
     H.showUnderlyingQuestion(0, PRODUCTS_COUNT_BY_CREATED_AT.name);
     cy.get("@productsCountByCreatedAtQuestionId").then((id) =>
@@ -231,10 +240,47 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     );
     cy.findByLabelText("Back to Test Dashboard").click();
 
-    // Click on the third chart (a pie)
+    // Click on the third chart (a pie with a single series)
+    H.clickOnCardTitle(2);
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
+
+    // make the pie a two series pie and check that the title is still clickable
+    H.editDashboard();
+    H.showDashcardVisualizerModal(2);
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(PRODUCTS_COUNT_BY_CATEGORY.name);
+      H.assertWellItems({
+        vertical: ["Count"],
+        horizontal: ["Category"],
+      });
+      H.addDataset(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
+      H.assertWellItems({
+        vertical: ["Count", "Count (Products by Category (Pie))"],
+        horizontal: ["Category"],
+      });
+      H.selectVisualization("pie");
+      H.assertWellItems({
+        pieMetric: ["Count"],
+        pieDimensions: ["Category", "Category (Products by Category (Pie))"],
+      });
+    });
+
+    H.saveDashcardVisualizerModal({ waitMs: 500 });
+    H.saveDashboard({ waitMs: 2000 });
+
     H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY.name);
     cy.get("@productsCountByCategoryQuestionId").then((id) =>
       cy.url().should("contain", `${id}-products-by-category`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
+
+    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
+    cy.get("@productsCountByCategoryPieQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category-pie`),
     );
     cy.findByLabelText("Back to Test Dashboard").click();
 
@@ -261,7 +307,8 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByTestId("visualizer-title").clear().blur();
     });
     H.saveDashcardVisualizerModal();
-    H.saveDashboard();
+    cy.wait(DASHCARD_QUERY_WAIT_TIME);
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     H.getDashboardCard(2).realHover();
     H.getDashboardCardMenu(2).click();
@@ -290,6 +337,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByDisplayValue("My chart").clear().type("Renamed chart").blur();
     });
     H.saveDashcardVisualizerModal();
+    H.getDashboardCard(0).findByText("Created At: Month").should("exist"); // wait for query rerun
     H.assertDashboardCardTitle(0, "Renamed chart");
 
     // Rename the third card and check
@@ -302,6 +350,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
         .blur();
     });
     H.saveDashcardVisualizerModal();
+    H.getDashboardCard(3).findByText("Created At: Month").should("exist"); // wait for query rerun
     H.assertDashboardCardTitle(3, "Another chart");
 
     // Clear the second card title
@@ -311,10 +360,11 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByTestId("visualizer-title").clear().blur();
     });
     H.saveDashcardVisualizerModal();
+    H.getDashboardCard(1).findByText("Product → Category").should("exist"); // wait for query rerun
     H.assertDashboardCardTitle(1, "");
 
     // Save the dashboard
-    H.saveDashboard();
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     // Check that the card titles are still good
     H.assertDashboardCardTitle(0, "Renamed chart");
@@ -427,10 +477,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.button("Add to dashboard").click();
     });
 
-    // TODO editing a dashcard when it isn't done loading
-    // causes the visualizer modal to be in error for some reason
-    // this should be fixed in the future
-    cy.wait(1000);
+    cy.wait(DASHCARD_QUERY_WAIT_TIME);
 
     // Ensure history set is reset
     H.showDashcardVisualizerModal(1);
@@ -544,29 +591,50 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.openQuestionsSidebar();
     H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
 
-    H.saveDashcardVisualizerModal("create");
-    H.saveDashboard();
+    H.saveDashcardVisualizerModal({ mode: "create" });
+    H.getDashboardCard(0).within(() => {
+      cy.wait("@cardQuery");
+      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findByText("Created At: Month").should("exist");
+    });
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     H.editDashboard();
     H.showDashcardVisualizerModal(0);
-
-    H.switchToAddMoreData();
-    H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
-    H.assertWellItemsCount({ vertical: 2 });
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.assertWellItemsCount({ vertical: 2 });
+    });
     H.saveDashcardVisualizerModal();
+    H.getDashboardCard(0).within(() => {
+      cy.wait("@cardQuery");
+      cy.wait("@cardQuery");
+      // Dashcard title, legend and y-axis label
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        3,
+      );
+      // Legend and y-axis label
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
+      cy.findByText("Created At: Month").should("exist");
+    });
     H.saveDashboard();
 
     // Making sure the card renders
     H.getDashboardCard(0).within(() => {
       cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
         "have.length",
-        3, // dashcard title, legend and y-axis label
+        3,
       );
       cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
         "have.length",
-        2, // legend and y-axis label
+        2,
       );
-      cy.findByText("Created At: Month").should("exist"); // x-axis
+      cy.findByText("Created At: Month").should("exist");
     });
   });
 
@@ -585,7 +653,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
           vertical: ["Count", "Count (Products by Created At (Month))"],
         });
       });
-      H.saveDashcardVisualizerModal("create");
+      H.saveDashcardVisualizerModal({ mode: "create" });
       H.saveDashboard();
 
       cy.intercept("GET", `/api/dashboard/${dashboardId}*`).as("dashboardLoad");

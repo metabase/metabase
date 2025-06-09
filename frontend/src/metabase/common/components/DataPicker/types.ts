@@ -2,6 +2,7 @@ import type {
   CardId,
   Collection,
   DashboardId,
+  DataGridWritebackActionId,
   DatabaseId,
   SchemaName,
   TableId,
@@ -59,6 +60,12 @@ export type MetricItem = {
   id: CardId;
   name: string;
   model: "metric";
+};
+
+export type ActionItem = {
+  id: DataGridWritebackActionId;
+  name: string;
+  model: "action";
 };
 
 export type TablePickerValue = {

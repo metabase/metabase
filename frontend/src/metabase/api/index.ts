@@ -1,4 +1,5 @@
 export * from "./action";
+export * from "./actionV2";
 export * from "./activity";
 export * from "./api";
 export * from "./api-key";
@@ -28,6 +29,7 @@ export * from "./search";
 export * from "./segment";
 export * from "./session";
 export * from "./settings";
+export * from "./slack";
 export * from "./snippet";
 export * from "./subscription";
 export * from "./table";

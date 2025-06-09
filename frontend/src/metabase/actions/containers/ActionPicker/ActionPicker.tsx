@@ -38,11 +38,10 @@ export function ActionPicker({
     () => _.partition(actions, (action) => "table_id" in action),
     [actions],
   );
-  const sortedModels =
-    useMemo(
-      () => models?.sort((a, b) => a.name.localeCompare(b.name)),
-      [models],
-    ) ?? [];
+  const sortedModels = useMemo(
+    () => models?.sort((a, b) => a.name.localeCompare(b.name)) ?? [],
+    [models],
+  );
 
   const actionsByModel = useMemo(
     () => sortAndGroupActions(modelActions as WritebackAction[]),

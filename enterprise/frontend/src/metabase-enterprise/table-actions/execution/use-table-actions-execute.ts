@@ -15,7 +15,7 @@ import type {
 import {
   isBuiltInEditableTableAction,
   remapRowActionMappingsToActionOverride,
-} from "../utils";
+} from "../settings/AddOrEditActionSettingsContent/utils";
 
 export const useTableActionsExecute = ({
   actionsVizSettings,

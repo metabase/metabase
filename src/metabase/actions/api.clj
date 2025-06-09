@@ -246,7 +246,7 @@
         databases          (when non-empty-dbs
                              (t2/select [:model/Database :id :name :description :settings]
                                         :id [:in non-empty-dbs]
-                                        :order-by :name))
+                                        {:order-by :name}))
         editable-database? (comp boolean :database-enable-table-editing :settings)
         editable-databases (filter editable-database? databases)]
     {:databases (for [db editable-databases]

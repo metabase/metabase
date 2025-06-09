@@ -19,6 +19,9 @@ const IGNORED_PACKAGES = [
   "@visx/text",
   "formik",
   "react-beautiful-dnd",
+
+  // Not used in the SDK, and triggers code-scanning errors
+  "react-ansi-style",
 ];
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
