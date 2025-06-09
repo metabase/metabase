@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
@@ -14,6 +15,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
@@ -418,3 +420,42 @@
         (is (not= ::thrown
                   (try (sync-fields/sync-fields-for-table! (mt/db) table)
                        (catch Throwable _ ::thrown))))))))
+
+(deftest visibility-type-stays-normal-after-manual-change-test
+  (testing "visibility_type remains :normal after being manually changed from :details-only"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "visibility_type_json_test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "visibility_type_json_test"
+                                                                 :json-unfolding true})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+
+        (doseq [statement
+                ["CREATE TABLE IF NOT EXISTS test_table (
+                    id INT PRIMARY KEY,
+                    something JSONB);"
+                 "INSERT INTO test_table (id, something) VALUES (
+                    1,
+                    jsonb_build_object(
+                     'field1', repeat('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ', 500),
+                     'field2', repeat('The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! ', 500)));"]]
+          (jdbc/execute! spec [statement]))
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-after-first-sync (t2/select-one :model/Field :table_id table-id :name "something")]
+              (is (= :details-only (:visibility_type field-after-first-sync))
+                  "First sync should set visibility_type to :details-only for large JSONB"))
+
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
+              (t2/update! :model/Field field-id {:visibility_type :normal})
+              (let [field-after-manual-change (t2/select-one :model/Field :id field-id)]
+                (is (= :normal (:visibility_type field-after-manual-change))
+                    "Manual change should set visibility_type to :normal")))
+
+            (sync/sync-database! database)
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-after-second-sync (t2/select-one :model/Field :table_id table-id :name "something")]
+              (is (= :normal (:visibility_type field-after-second-sync))
+                  "Second sync should preserve manually set :normal visibility_type"))))))))

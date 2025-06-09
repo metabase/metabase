@@ -22,7 +22,8 @@
               :pk?               true
               :database-required false
               :database-is-auto-increment true
-              :json-unfolding    false}
+              :json-unfolding    false
+              :visibility-type   :normal}
              {:name              "buyer"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
@@ -31,6 +32,7 @@
               :database-required false
               :database-is-auto-increment false
               :json-unfolding    false
+              :visibility-type   :normal
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
@@ -38,6 +40,7 @@
                                     :pk?               false
                                     :database-required false
                                     :json-unfolding    false
+                                    :visibility-type   :normal
                                     :database-is-auto-increment false}
                                    {:name              "cc"
                                     :database-type     "VARCHAR"
@@ -46,6 +49,7 @@
                                     :pk?               false
                                     :database-required false
                                     :json-unfolding    false
+                                    :visibility-type   :normal
                                     :database-is-auto-increment false}}}
              {:name              "ts"
               :database-type     "BIGINT"
@@ -55,6 +59,7 @@
               :pk?               false
               :database-is-auto-increment false
               :json-unfolding    false
+              :visibility-type   :normal
               :database-required false}
              {:name              "toucan"
               :database-type     "OBJECT"
@@ -64,6 +69,7 @@
               :database-required false
               :database-is-auto-increment false
               :json-unfolding    false
+              :visibility-type   :normal
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
@@ -71,6 +77,7 @@
                                     :pk?               false
                                     :database-required false
                                     :json-unfolding    false
+                                    :visibility-type   :normal
                                     :database-is-auto-increment false}
                                    {:name              "details"
                                     :database-type     "OBJECT"
@@ -79,6 +86,7 @@
                                     :pk?               false
                                     :database-required false
                                     :json-unfolding    false
+                                    :visibility-type   :normal
                                     :database-is-auto-increment false
                                     :nested-fields     #{{:name              "weight"
                                                           :database-type     "DECIMAL"
@@ -88,6 +96,7 @@
                                                           :pk?               false
                                                           :database-required false
                                                           :json-unfolding    false
+                                                          :visibility-type   :normal
                                                           :database-is-auto-increment false}
                                                          {:name              "age"
                                                           :database-type     "INT"
@@ -96,6 +105,7 @@
                                                           :pk?               false
                                                           :database-required false
                                                           :json-unfolding    false
+                                                          :visibility-type   :normal
                                                           :database-is-auto-increment false}}}}}}
 
            (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
