@@ -250,9 +250,7 @@ function ParameterList({
 function ParameterHelpInfo() {
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     "dashboards/linked-filters",
-    {
-      anchor: "set-up-tables-for-linked-filters",
-    },
+    { anchor: "set-up-tables-for-linked-filters" },
   );
 
   return (
