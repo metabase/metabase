@@ -70,6 +70,7 @@ export const SortableList = <T,>({
     }, new Map<number, SortableDivider>());
   }, [dividers]);
 
+  // layout effect to prevent layout shift on mount
   useLayoutEffect(() => {
     setItemIds(items.map(getId));
     setIndexedItems(_.indexBy(items, getId));
