@@ -73,5 +73,6 @@
   is-hosted?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
+  table-data-editing?
   token-features
   token-status))
