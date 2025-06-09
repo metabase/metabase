@@ -231,7 +231,7 @@
 
 (defn- cleanup-orphaned-inline-parameters!
   "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
-   Since inline parameters can only be referenced by a single card, all inline parameters 
+   Since inline parameters can only be referenced by a single card, all inline parameters
    from deleted cards become orphaned."
   [dashboard-card-ids]
   (when (seq dashboard-card-ids)
