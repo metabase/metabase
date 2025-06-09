@@ -22,7 +22,8 @@ export const EditingBodyCellFKSelect = (props: EditingBodyPrimitiveProps) => {
       {...props}
       getDropdownLabelText={getDropdownLabelText}
       getSelectedLabelText={getSelectedLabelText}
-      withCreateNew={false}
+      // Temporary enable create new for FKs (see WRK-490)
+      withCreateNew={true}
     />
   );
 };
