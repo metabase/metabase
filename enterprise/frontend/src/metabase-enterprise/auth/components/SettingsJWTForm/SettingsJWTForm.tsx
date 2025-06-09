@@ -66,6 +66,14 @@ export const SettingsJWTForm = () => {
     <Stack>
       <Title order={1}>{t`JWT`}</Title>
       <SettingsSection>
+        <AdminSettingInput
+          name="jwt-user-provisioning-enabled?"
+          title={t`User provisioning`}
+          inputType="boolean"
+          hidden={!jwtEnabled}
+        />
+      </SettingsSection>
+      <SettingsSection>
         <FormProvider
           initialValues={getFormValues(settingValues ?? {})}
           onSubmit={handleSubmit}
@@ -73,12 +81,6 @@ export const SettingsJWTForm = () => {
         >
           {({ dirty }) => (
             <Form>
-              <AdminSettingInput
-                name="jwt-user-provisioning-enabled?"
-                title={t`User provisioning`}
-                inputType="boolean"
-                hidden={!jwtEnabled}
-              />
               <FormSection title={"Server Settings"}>
                 <Stack gap="lg">
                   <FormTextInput
@@ -147,8 +149,8 @@ export const SettingsJWTForm = () => {
                   groupPlaceholder={t`Group Name`}
                 />
               </FormSection>
-              <Flex direction={"column"} align={"start"} gap={"1rem"}>
-                <FormErrorMessage />
+              <FormErrorMessage />
+              <Flex justify="end">
                 <FormSubmitButton
                   disabled={!dirty}
                   label={jwtEnabled ? t`Save changes` : t`Save and enable`}

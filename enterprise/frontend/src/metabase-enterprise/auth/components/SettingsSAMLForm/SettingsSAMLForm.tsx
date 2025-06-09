@@ -26,7 +26,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Box, Flex, Stack, Text, Title } from "metabase/ui";
+import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
 import type { EnterpriseSettings } from "metabase-types/api";
 
@@ -85,8 +85,9 @@ export function SettingsSAMLForm() {
   }
 
   return (
-    <Stack maw="40rem">
+    <Stack>
       <Title order={1}>{t`SAML`}</Title>
+      {isEnabled && <SamlUserProvisioning />}
       <SettingsSection>
         <FormProvider
           initialValues={getFormValues(settingValues ?? {})}
@@ -105,7 +106,6 @@ export function SettingsSAMLForm() {
                   >{t`documentation`}</ExternalLink>
                 )}.`}
               </Text>
-              {isEnabled && <SamlUserProvisioning />}
               <FormSection title={t`Configure your identity provider (IdP)`}>
                 <Text c="text-medium" mb="xl">
                   {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
@@ -258,8 +258,8 @@ export function SettingsSAMLForm() {
                 </Stack>
               </FormSection>
 
-              <Flex direction="column" gap="lg" mb="lg" align="start">
-                <FormErrorMessage />
+              <FormErrorMessage />
+              <Flex justify="end">
                 <FormSubmitButton
                   disabled={!dirty}
                   label={isEnabled ? t`Save changes` : t`Save and enable`}
@@ -306,7 +306,7 @@ function SamlUserProvisioning() {
 
   if (scimEnabled) {
     return (
-      <Box my="lg">
+      <SettingsSection>
         <SettingHeader
           id="saml-user-provisioning-enabled?"
           title={t`User provisioning`}
@@ -317,17 +317,17 @@ function SamlUserProvisioning() {
             </Markdown>
           }
         />
-      </Box>
+      </SettingsSection>
     );
   }
 
   return (
-    <Box my="lg">
+    <SettingsSection>
       <AdminSettingInput
         name="saml-user-provisioning-enabled?"
         title={t`User provisioning`}
         inputType="boolean"
       />
-    </Box>
+    </SettingsSection>
   );
 }

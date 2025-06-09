@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
-import { UpsellHostingUpdates } from "metabase/admin/upsells";
+import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
 import { NotFound } from "metabase/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
-import { Box, Stack, Title } from "metabase/ui";
+import { Stack, Title } from "metabase/ui";
 
 import { SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -20,7 +20,7 @@ export function UpdatesSettingsPage() {
   }
 
   return (
-    <Stack data-testid="settings-updates">
+    <Stack data-testid="settings-updates" gap="xl">
       <Title order={1}>{t`Updates`}</Title>
       <SettingsSection>
         <AdminSettingInput
@@ -62,9 +62,7 @@ export function UpdatesSettingsPage() {
           </div>
         )}
       </SettingsSection>
-      <Box pos="absolute" right="2rem">
-        <UpsellHostingUpdates source="settings-updates-migrate_to_cloud" />
-      </Box>
+      <UpsellHostingBanner source="settings-updates-migrate_to_cloud" />
     </Stack>
   );
 }

@@ -13,7 +13,6 @@
 .Sidebar {
   overflow-y: auto;
   flex-shrink: 0;
-  padding-block: 1rem;
   border-right: 1px solid var(--mb-color-border);
 }
 

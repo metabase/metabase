@@ -164,12 +164,11 @@ export const ManageApiKeys = () => {
         />
         <Stack gap="lg">
           <Group
-            align="start"
             justify="space-between"
+            align="center"
             data-testid="api-keys-settings-header"
           >
             <Stack>
-              <Title order={2}>{t`Manage API Keys`}</Title>
               {!tableIsEmpty && (
                 <Text color="text-medium">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
               )}

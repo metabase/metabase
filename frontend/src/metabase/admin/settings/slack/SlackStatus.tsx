@@ -32,7 +32,7 @@ export const SlackStatus = () => {
   };
 
   return (
-    <Box maw="40rem" miw="25rem">
+    <Box>
       <Flex justify="space-between" align="center">
         <Flex gap="sm" align="center" h="100%">
           <SlackBadge isValid={isValid} />

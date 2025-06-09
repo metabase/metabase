@@ -17,14 +17,14 @@ export function SettingsSection({
 }) {
   return (
     <Box {...boxProps}>
-      {(title || description) && (
-        <Box mb="sm">
-          {title && <Title order={2}>{title}</Title>}
-          {description && <Text c="text-medium">{description}</Text>}
-        </Box>
-      )}
       {children && (
         <Stack gap="lg" className={S.SettingsSection} {...boxProps}>
+          {(title || description) && (
+            <Box mb="sm">
+              {title && <Title order={2}>{title}</Title>}
+              {description && <Text c="text-medium">{description}</Text>}
+            </Box>
+          )}
           {children}
         </Stack>
       )}

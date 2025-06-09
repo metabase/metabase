@@ -1,10 +1,9 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useListChannelsQuery } from "metabase/api/channel";
 import {
-  Box,
   Button,
   Flex,
   Icon,
@@ -13,15 +12,20 @@ import {
   Stack,
   Text,
   Title,
+  UnstyledButton,
 } from "metabase/ui";
 import type { NotificationChannel } from "metabase-types/api";
 
+import { SlackSettingsModal } from "../../slack/SlackSettingsPage";
+import { SettingsSection } from "../SettingsSection";
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
 
 type NotificationModals = null | "create" | "edit";
 
 export const NotificationSettingsPage = () => {
+  const [showSlackModal, { open: openSlackModal, close: closeSlackModal }] =
+    useDisclosure(false);
   const [webhookModal, setWebhookModal] = useState<NotificationModals>(null);
   const [currentChannel, setCurrentChannel] = useState<NotificationChannel>();
 
@@ -31,61 +35,66 @@ export const NotificationSettingsPage = () => {
 
   return (
     <>
-      <Box w="47rem">
-        <Title mb="1.5rem" order={2}>{t`Slack`}</Title>
-        <Link to="/admin/settings/notifications/slack">
-          <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
-            <Flex gap="0.5rem" align="center" mb="0.5rem">
-              <Icon name="slack_colorized" />
-              <Title order={3}>{t`Connect to Slack`}</Title>
-            </Flex>
-            <Text>
-              {t`If your team uses Slack, you can send dashboard subscriptions and
-            alerts there`}
-            </Text>
-          </Paper>
-        </Link>
+      <Stack gap="xl">
+        <Title order={1}>{t`Notifications`}</Title>
+        <SettingsSection title={t`Slack`}>
+          <UnstyledButton onClick={openSlackModal} variant="unstyled" w="100%">
+            <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
+              <Flex gap="0.5rem" align="center" mb="0.5rem">
+                <Icon name="slack_colorized" />
+                <Title order={3}>{t`Connect to Slack`}</Title>
+              </Flex>
+              <Text>
+                {t`If your team uses Slack, you can send dashboard subscriptions and
+              alerts there`}
+              </Text>
+            </Paper>
+          </UnstyledButton>
+        </SettingsSection>
 
-        <Flex justify="space-between" align="center" mb="1.5rem">
-          <Title order={2}>{t`Webhooks for Alerts`}</Title>{" "}
-          {hasChannels && (
-            <Button
-              variant="subtle"
-              size="compact-md"
-              leftSection={<Icon name="add" />}
+        <SettingsSection>
+          <Flex justify="space-between" align="center" mb="1.5rem">
+            <Title order={2}>{t`Webhooks for Alerts`}</Title>{" "}
+            {hasChannels && (
+              <Button
+                variant="subtle"
+                size="compact-md"
+                leftSection={<Icon name="add" />}
+                onClick={() => setWebhookModal("create")}
+              >{c("Short for 'Add another Webhook'").t`Add another`}</Button>
+            )}
+          </Flex>
+          {hasChannels ? (
+            <Stack>
+              {channels?.map((c) => (
+                <ChannelBox
+                  key={`channel-${c.id}`}
+                  title={c.name}
+                  description={c.description}
+                  onClick={() => {
+                    setWebhookModal("edit");
+                    setCurrentChannel(c);
+                  }}
+                  icon="webhook"
+                />
+              ))}
+            </Stack>
+          ) : (
+            <ChannelBox
+              title={t`Add a webhook`}
+              description={t`Specify a webhook URL where you can send the content of Alerts`}
               onClick={() => setWebhookModal("create")}
-            >{c("Short for 'Add another Webhook'").t`Add another`}</Button>
+              icon="webhook"
+            />
           )}
-        </Flex>
-        {hasChannels ? (
-          <Stack>
-            {channels?.map((c) => (
-              <ChannelBox
-                key={`channel-${c.id}`}
-                title={c.name}
-                description={c.description}
-                onClick={() => {
-                  setWebhookModal("edit");
-                  setCurrentChannel(c);
-                }}
-                icon="webhook"
-              />
-            ))}
-          </Stack>
-        ) : (
-          <ChannelBox
-            title={t`Add a webhook`}
-            description={t`Specify a webhook URL where you can send the content of Alerts`}
-            onClick={() => setWebhookModal("create")}
-            icon="webhook"
-          />
-        )}
-      </Box>
+        </SettingsSection>
+      </Stack>
       <NotificationSettingsModals
         modal={webhookModal}
         channel={currentChannel}
         onClose={() => setWebhookModal(null)}
       />
+      <SlackSettingsModal isOpen={showSlackModal} onClose={closeSlackModal} />
     </>
   );
 };

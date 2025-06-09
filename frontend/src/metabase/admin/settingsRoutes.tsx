@@ -5,7 +5,6 @@ import { NotFound } from "metabase/components/ErrorPages";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
-import { SMTPConnectionForm } from "./settings/components/Email/SMTPConnectionForm";
 import {
   EmbeddingSdkSettings,
   StaticEmbeddingSettings,
@@ -39,7 +38,6 @@ export const getSettingsRoutes = () => (
     <Route path="general" component={GeneralSettingsPage} />
     <Route path="updates" component={UpdatesSettingsPage} />
     <Route path="email" component={EmailSettingsPage} />
-    <Route path="email/smtp" component={SMTPConnectionForm} />
     <Route path="notifications" component={NotificationSettingsPage} />
     <Route path="notifications/slack" component={SlackSettingsPage} />
     <Route

@@ -3,9 +3,11 @@ import { Switch, getSize, rem } from "@mantine/core";
 import SwitchStyles from "./Switch.module.css";
 
 const LABEL_FONT_SIZES: Record<string, string> = {
-  xs: rem(12),
-  sm: rem(14),
-  md: rem(16),
+  xs: rem(10),
+  sm: rem(12),
+  md: rem(14),
+  lg: rem(16),
+  xl: rem(20),
 };
 
 const LABEL_LINE_HEIGHT: Record<string, string> = {

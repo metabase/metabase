@@ -1,34 +1,28 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { Stack, Title } from "metabase/ui";
-
-import { SettingsSection } from "../components/SettingsSection";
+import { Modal } from "metabase/ui";
 
 import { SlackSetup } from "./SlackSetup";
 import { SlackStatus } from "./SlackStatus";
 
-export const SlackSettingsPage = () => {
-  const { value: isApp, isLoading } = useAdminSetting("slack-app-token");
-
-  if (isLoading) {
-    return <LoadingAndErrorWrapper />;
-  }
+export const SlackSettingsModal = ({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  const { value: isApp } = useAdminSetting("slack-app-token");
 
   return (
-    <Stack>
-      <Title order={1}>{t`Metabase on Slack`}</Title>
-      <Breadcrumbs
-        crumbs={[
-          [t`Notification channels`, "/admin/settings/notifications"],
-          ["Slack"],
-        ]}
-      />
-      <SettingsSection>
-        {isApp ? <SlackStatus /> : <SlackSetup />}
-      </SettingsSection>
-    </Stack>
+    <Modal
+      opened={isOpen}
+      title={t`Metabase on Slack`}
+      onClose={onClose}
+      padding="xl"
+    >
+      {isApp ? <SlackStatus /> : <SlackSetup />}
+    </Modal>
   );
 };
