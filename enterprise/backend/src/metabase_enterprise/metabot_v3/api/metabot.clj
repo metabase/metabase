@@ -162,9 +162,8 @@
                   :postgres :random
                   :rand)
         base-query (cond-> {:join  [[{:select [:id :name :type :collection_id :metabot_entity_id]
-                                      :from   [(metabot-v3.tools.u/metabot-scope-query
-                                                [:= :mbe.metabot_id id])
-                                               :scope]}
+                                      :from   (metabot-v3.tools.u/metabot-scope-query
+                                               [:= :mbe.metabot_id id])}
                                      :card]
                                     [:and
                                      [:= :card.id                :metabot_prompt.card_id]
