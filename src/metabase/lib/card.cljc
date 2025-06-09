@@ -187,11 +187,13 @@
   [query _stage-number card {:keys [unique-name-fn], :as options}]
   (u/prog1 (mapv (fn [col]
                    (let [desired-alias (desired-column-alias col)]
-                     (assoc col
-                   ; The desired column alias from the card becomes the source-column-alias here.
-                            :lib/source-column-alias  desired-alias
-                   ; It's also the desired-column-alias here, since there's no renaming by default.
-                            :lib/desired-column-alias (unique-name-fn desired-alias))))
+                     (-> col
+                         (assoc ; The desired column alias from the card becomes the source-column-alias here.
+                          :lib/source-column-alias  desired-alias
+                                ; It's also the desired-column-alias here, since there's no renaming by default.
+                          :lib/desired-column-alias (unique-name-fn desired-alias))
+                         ; Any join aliases from inside the card should be invisible outside the card.
+                         (dissoc :source-alias :join-alias :metabase.lib.join/join-alias))))
                  (if (= (:type card) :metric)
                    (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                           (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]

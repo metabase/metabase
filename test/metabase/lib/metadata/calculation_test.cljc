@@ -802,3 +802,46 @@
     #_(is (=? [[:= {} [:field {:join-alias key-not-present} "Card__Products__VENDOR"]
                 "Some Company"]]
               (lib/filters query)))))
+
+(deftest ^:parallel join-aliases-do-not-propagate-test
+  (let [query1   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/join (meta/table-metadata :products)))
+        query2   (lib/query meta/metadata-provider (meta/table-metadata :people))
+        mp       (lib.tu/metadata-provider-with-cards-for-queries meta/metadata-provider [query1 query2])
+        query3   (-> (lib/query mp (lib.metadata/card mp 1))
+                     (lib/join (lib.metadata/card mp 2)))
+        orders-cols (for [col-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL"
+                                    "DISCOUNT" "CREATED_AT" "QUANTITY"]]
+                      {:name                         col-name
+                       :source-alias                 key-not-present
+                       :join-alias                   key-not-present
+                       :metabase.lib.join/join-alias key-not-present
+                       :lib/source                   :source/card
+                       :lib/card-id                  1
+                       :lib/source-column-alias      col-name
+                       :lib/desired-column-alias     col-name})
+        ;; Inner join from card 1. Note that there is no `:source-alias` or `:join-alias` anymore.
+        products-cols (for [col-name ["ID" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE" "RATING" "CREATED_AT"]]
+                        {:name                         col-name
+                         :source-alias                 key-not-present
+                         :join-alias                   key-not-present
+                         :metabase.lib.join/join-alias key-not-present
+                         :lib/source                   :source/card
+                         :lib/card-id                  1
+                         :lib/source-column-alias      (str "Products__" col-name)
+                         :lib/desired-column-alias     (str "Products__" col-name)})]
+    (is (=? (concat orders-cols products-cols)
+            (lib/returned-columns query3 (lib.metadata/card mp 1))))
+    (is (=? (concat orders-cols
+                    products-cols
+                    ;; Outer join in query3: this join alias is visible.
+                    (for [col-name ["ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE"
+                                    "STATE" "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]]
+                      {:name                         col-name
+                       :source-alias                 "Card 2 - User"
+                       :metabase.lib.join/join-alias "Card 2 - User"
+                       :lib/source                   :source/joins
+                       :lib/card-id                  2
+                       :lib/source-column-alias      col-name
+                       :lib/desired-column-alias     (str "Card 2 - User__" col-name)}))
+            (lib/returned-columns query3)))))
