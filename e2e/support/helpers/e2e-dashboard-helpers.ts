@@ -113,9 +113,7 @@ export function checkFilterLabelAndValue(label: string, value: string) {
   cy.get("fieldset").contains(value);
 }
 
-export function setFilter(type: string, subType?: string, name?: string) {
-  cy.icon("filter").click();
-
+function _setFilter(type: string, subType?: string, name?: string) {
   popover().findByText("Add a filter or parameter").should("be.visible");
   popover().findByText(type).click();
 
@@ -127,6 +125,23 @@ export function setFilter(type: string, subType?: string, name?: string) {
   if (name) {
     sidebar().findByLabelText("Label").clear().type(name);
   }
+}
+
+export function setFilter(type: string, subType?: string, name?: string) {
+  cy.icon("filter").click();
+  _setFilter(type, subType, name);
+}
+
+export function setDashCardFilter(
+  dashcardIndex: number,
+  type: string,
+  subType?: string,
+  name?: string,
+) {
+  findDashCardAction(getDashboardCard(dashcardIndex), "Add a filter").click({
+    force: true,
+  });
+  _setFilter(type, subType, name);
 }
 
 export function getRequiredToggle() {
