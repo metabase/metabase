@@ -94,5 +94,5 @@ export function dataModelFieldFormatting(
 }
 
 export function adminLicense() {
-  return `/admin/settings/license`;
+  return "/admin/settings/license";
 }
