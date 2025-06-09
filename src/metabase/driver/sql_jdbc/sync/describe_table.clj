@@ -66,9 +66,9 @@
   (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
       (do (let [pretty-column (str/join "." (map #(str "'" % "'")
                                                  (drop-while nil? namespaced-col)))]
-            (log/warnf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
-                       database-type
-                       pretty-column))
+            (log/debugf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
+                        database-type
+                        pretty-column))
           :type/*)))
 
 (defn- calculated-semantic-type

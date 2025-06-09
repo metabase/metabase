@@ -1,12 +1,12 @@
 import dayjs from "dayjs";
 
 import testAcrossTimezones from "__support__/timezones";
-import { computeTimeseriesDataInverval } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import { computeTimeseriesDataInterval } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 
 testAcrossTimezones((reportTz) => {
-  computeTimeseriesDataInverval;
+  computeTimeseriesDataInterval;
 
-  describe("computeTimeseriesDataInvervalIndex", () => {
+  describe("computeTimeseriesDataIntervalIndex", () => {
     [
       ["hour", 6, ["2015-01-01T00:00:00", "2016-05-04T06:00:00"]],
       ["hour", 12, ["2015-01-01T00:00:00", "2016-05-04T12:00:00"]],
@@ -19,7 +19,7 @@ testAcrossTimezones((reportTz) => {
         // parse timestamps in reporting timezone and serialize
         const xValues = data.map((d) => dayjs.tz(d, reportTz).format());
 
-        const { unit, count } = computeTimeseriesDataInverval(xValues);
+        const { unit, count } = computeTimeseriesDataInterval(xValues);
 
         expect(unit).toBe(expectedUnit);
         expect(count).toBe(expectedCount);

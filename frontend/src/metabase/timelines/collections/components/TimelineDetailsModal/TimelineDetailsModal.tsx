@@ -7,7 +7,7 @@ import type { InputProps } from "metabase/core/components/Input";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getTimelineName } from "metabase/lib/timelines";
 import * as Urls from "metabase/lib/urls";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
