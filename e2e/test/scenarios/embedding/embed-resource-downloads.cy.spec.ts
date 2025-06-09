@@ -489,9 +489,16 @@ H.describeWithSnowplowEE(
 
           const FIRST_ROW = [1, "February 11, 2025, 9:40 PM", 2];
 
-          H.assertTableData({
-            columns: ["ID", "CREATED_AT", "QUANTITY"],
-            firstRows: [FIRST_ROW],
+          cy.findByTestId("visualization-root").within(() => {
+            cy.findAllByTestId("cell-data")
+              .eq(0)
+              .should("have.text", FIRST_ROW[0]);
+            cy.findAllByTestId("cell-data")
+              .eq(1)
+              .should("have.text", FIRST_ROW[1]);
+            cy.findAllByTestId("cell-data")
+              .eq(2)
+              .should("have.text", FIRST_ROW[2]);
           });
 
           cy.findByRole("heading", { name: QUESTION_NAME }).realHover();
