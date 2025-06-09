@@ -151,8 +151,14 @@ export const DataModel = ({
           )}
 
           {isEmptyStateShown && (
-            <Flex align="center" bg="bg-white" flex="1" justify="center">
-              <Box maw={rem(320)}>
+            <Flex
+              align="center"
+              bg="bg-white"
+              flex="1"
+              justify="center"
+              miw={240}
+            >
+              <Box maw={rem(320)} p="xl">
                 <EmptyState
                   illustrationElement={<img src={EmptyDashboardBot} />}
                   title={
