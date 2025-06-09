@@ -53,6 +53,7 @@ export const DataModel = ({ params, location, children }: Props) => {
   const { databaseId, fieldId, tableId, schemaId } = parseRouteParams(params);
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isResizing, setIsResizing] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [navWidth, setNavWidth] = useState(columnSizesConfig.nav.initial);
   const [tableWidth, setTableWidth] = useState(columnSizesConfig.table.initial);
   const { height, ref } = useElementSize();
@@ -184,17 +185,19 @@ export const DataModel = ({ params, location, children }: Props) => {
                     <MemoizedFieldSection
                       databaseId={databaseId}
                       field={field}
+                      isPreviewOpen={isPreviewOpen}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
                       key={getRawTableFieldId(field)}
+                      onPreviewClick={() => setIsPreviewOpen(true)}
                     />
                   )}
                 </LoadingAndErrorWrapper>
               </Box>
 
-              {field && table && (
+              {field && table && isPreviewOpen && (
                 <Box flex={`1 1 ${rem(200)}`} miw={0} p="xl">
                   <MemoizedPreviewSection
                     databaseId={databaseId}
@@ -203,6 +206,7 @@ export const DataModel = ({ params, location, children }: Props) => {
                     previewType={previewType}
                     table={table}
                     tableId={tableId}
+                    onClose={() => setIsPreviewOpen(false)}
                     onPreviewTypeChange={setPreviewType}
                   />
                 </Box>

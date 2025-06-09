@@ -1,7 +1,15 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  SegmentedControl,
+  Text,
+} from "metabase/ui";
 import type {
   DatabaseId,
   Field,
@@ -23,6 +31,7 @@ interface Props {
   previewType: PreviewType;
   table: Table;
   tableId: TableId;
+  onClose: () => void;
   onPreviewTypeChange: (value: PreviewType) => void;
 }
 
@@ -33,13 +42,20 @@ export const PreviewSection = ({
   previewType,
   table,
   tableId,
+  onClose,
   onPreviewTypeChange,
 }: Props) => {
   const data = useMemo(() => getPreviewTypeData(), []);
 
   return (
     <Card bg="white" h="100%" px="lg" py="md" shadow="xs">
-      <Text fw="bold">{t`Field preview`}</Text>
+      <Group justify="space-between">
+        <Text fw="bold">{t`Field preview`}</Text>
+
+        <ActionIcon color="text-dark" variant="transparent" onClick={onClose}>
+          <Icon name="close" />
+        </ActionIcon>
+      </Group>
 
       <Flex py="sm" w="100%">
         <SegmentedControl

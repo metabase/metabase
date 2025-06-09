@@ -12,7 +12,7 @@ import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Stack } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, Field } from "metabase-types/api";
 
@@ -25,9 +25,16 @@ import { MetadataSection } from "./MetadataSection";
 interface Props {
   databaseId: DatabaseId;
   field: Field;
+  isPreviewOpen: boolean;
+  onPreviewClick: () => void;
 }
 
-export const FieldSection = ({ databaseId, field }: Props) => {
+export const FieldSection = ({
+  databaseId,
+  field,
+  isPreviewOpen,
+  onPreviewClick,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
@@ -66,6 +73,20 @@ export const FieldSection = ({ databaseId, field }: Props) => {
           }}
         />
       </Box>
+
+      <Group align="center" h={48} justify="space-between">
+        <Text fw="bold">{t`Field settings`}</Text>
+
+        {!isPreviewOpen && (
+          <Button
+            leftSection={<Icon name="eye" />}
+            px="sm"
+            py="xs"
+            size="xs"
+            onClick={onPreviewClick}
+          >{t`Preview`}</Button>
+        )}
+      </Group>
 
       <Stack gap="xl">
         <DataSection field={field} />
