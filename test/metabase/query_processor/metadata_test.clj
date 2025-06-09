@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]))

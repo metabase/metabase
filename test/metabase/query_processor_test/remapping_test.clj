@@ -161,20 +161,20 @@
                  :cols [(mt/col :venues :name)
                         (mt/col :venues :price)
                         (mt/$ids venues
-                                 (assoc (mt/col :categories :name)
-                                        :fk_field_id   %category_id
-                                        :display_name  "Category ID [external remap]"
-                                        :options       {::qp.add-dimension-projections/new-field-dimension-id integer?}
-                                        :name          (mt/format-name "name_2")
-                                        :remapped_from (mt/format-name "category_id")
-                                        :field_ref     $category_id->categories.name))]}
+                          (assoc (mt/col :categories :name)
+                                 :fk_field_id   %category_id
+                                 :display_name  "Category ID [external remap]"
+                                 :options       {::qp.add-dimension-projections/new-field-dimension-id integer?}
+                                 :name          (mt/format-name "name_2")
+                                 :remapped_from (mt/format-name "category_id")
+                                 :field_ref     $category_id->categories.name))]}
                 (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                                 (mt/format-rows-by
                                  [str int str str]
                                  (mt/run-mbql-query venues
-                                                    {:fields   [$name $price $category_id]
-                                                     :order-by [[:asc $name]]
-                                                     :limit    4})))))))))
+                                   {:fields   [$name $price $category_id]
+                                    :order-by [[:asc $name]]
+                                    :limit    4})))))))))
 
 (deftest ^:parallel remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"

@@ -11,7 +11,6 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
@@ -25,18 +24,18 @@
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.test.fixtures :as fixtures]
+   [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
-   [toucan2.core :as t2]
-   [metabase.test.initialize :as initialize])
+   [toucan2.core :as t2])
   (:import
    (java.time ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
                       (metabase.cache.core/enable-query-caching! true)

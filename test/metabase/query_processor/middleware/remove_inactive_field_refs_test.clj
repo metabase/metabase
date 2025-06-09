@@ -80,14 +80,14 @@
   (qp.store/with-metadata-provider (test-metadata-provider)
     (testing "Behavior before the deletion (if this changes, the other cases have to change accordingly)"
       (doseq [[card-id fields] {1 ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT"
-                                       "CREATED_AT" "QUANTITY"
-                                       "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
-                                       "RATING" "CREATED_AT_2"]
+                                   "CREATED_AT" "QUANTITY"
+                                   "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
+                                   "RATING" "CREATED_AT_2"]
                                 2 ["ID" "SUBTOTAL" "TAX" "TOTAL" "CREATED_AT" "QUANTITY"
-                                       "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
-                                       "RATING" "CREATED_AT_2"]
+                                   "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
+                                   "RATING" "CREATED_AT_2"]
                                 3 ["ID" "SUBTOTAL" "TAX" "TOTAL" "CREATED_AT" "QUANTITY"
-                                       "ID_2" "TITLE" "VENDOR" "PRICE" "RATING"]
+                                   "ID_2" "TITLE" "VENDOR" "PRICE" "RATING"]
                                 4 ["ID" "TAX" "TOTAL" "ID_2" "RATING"]}]
         (let [query (mt/mbql-query orders
                       {:source-table (str "card__" card-id)})

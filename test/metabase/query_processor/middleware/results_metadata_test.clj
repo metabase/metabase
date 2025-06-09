@@ -5,7 +5,6 @@
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
@@ -29,7 +28,7 @@
   [data]
   (mt/round-all-decimals 2 data))
 
-(defn- default-card-results [card-entity-id]
+(defn- default-card-results []
   (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
         name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
     [{:name           "ID"
@@ -81,10 +80,9 @@
       :fingerprint    (name->fingerprint :longitude)
       :field_ref      [:field "LONGITUDE" {:base-type :type/Float}]}]))
 
-(defn- default-card-results-native
-  "These are rounded to two decimal places."
-  [card-entity-id]
-  (for [column (-> (default-card-results card-entity-id)
+(defn- default-card-results-native  "These are rounded to two decimal places."
+  []
+  (for [column (-> (default-card-results)
                    (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0
                                                                           :max 74.0
                                                                           :avg 29.98
@@ -105,7 +103,7 @@
                         :query-hash     (qp.util/query-hash {})}))]
           (when-not (= :completed (:status result))
             (throw (ex-info "Query failed." result))))
-        (is (= (round-to-2-decimals (default-card-results-native (:entity_id card)))
+        (is (= (round-to-2-decimals (default-card-results-native))
                (-> card card-metadata round-to-2-decimals)))
 
         ;; updated_at should not be modified when saving result metadata
@@ -212,7 +210,7 @@
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"
     (let [card-eid (u/generate-nano-id)]
-      (is (= {:columns  (for [col (round-to-2-decimals (default-card-results-native card-eid))]
+      (is (= {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
                           (-> col (update :semantic_type keyword) (update :base_type keyword)))}
              (-> (qp/process-query
                   (qp/userland-query
@@ -241,9 +239,9 @@
                                               cols)))]
         (testing "native"
           (let [card-eid (u/generate-nano-id)
-                fields (str/join ", " (map :name (default-card-results-native card-eid)))
+                fields (str/join ", " (map :name (default-card-results-native)))
                 native-query (str "SELECT " fields " FROM VENUES")
-                existing-metadata (add-preserved (default-card-results-native card-eid))
+                existing-metadata (add-preserved (default-card-results-native))
                 results (-> (mt/native-query   {:query native-query})
                             (qp/userland-query {:metadata/model-metadata existing-metadata
                                                 :card-entity-id          card-eid})
@@ -413,8 +411,7 @@
 (deftest ^:parallel result-metadata-preservation-test
   (testing "result_metadata is preserved in the query processor if passed into the context"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card {base-card-id :id
-                                  :as base-card}    {:dataset_query {:database (mt/id)
+      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query {:database (mt/id)
                                                                      :type     :query
                                                                      :query    {:source-table (mt/id :orders)
                                                                                 :expressions  {"Tax Rate" [:/

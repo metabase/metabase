@@ -518,11 +518,9 @@
         [idx old-name] (when (< -1 idx (count the-joins))
                          [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
-      (let [unique-name (if lib.join/*truncate-and-uniqify-join-names*
-                          (let [unique-name-fn (lib.util/unique-name-generator)]
-                            (run! unique-name-fn (map :alias the-joins))
-                            (unique-name-fn new-name))
-                          new-name)]
+      (let [unique-name (let [unique-name-fn (lib.util/unique-name-generator)]
+                          (run! unique-name-fn (map :alias the-joins))
+                          (unique-name-fn new-name))]
         (-> stage
             (assoc-in [:joins idx :alias] unique-name)
             (replace-join-alias old-name unique-name)))
