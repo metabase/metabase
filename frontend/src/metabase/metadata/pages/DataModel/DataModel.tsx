@@ -1,7 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, memo, useState } from "react";
-import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -17,7 +16,7 @@ import {
   FieldSection,
   PreviewSection,
   type PreviewType,
-  ResizeHandle,
+  ResizableColumn,
   RouterTablePicker,
   SegmentsLink,
   TableSection,
@@ -44,15 +43,13 @@ const columnSizesConfig: Record<Column, ColumnSizeConfig> = {
   field: { initial: 480, min: 240, max: 640 },
 };
 
-export const DataModel = ({
-  params,
-  location,
-  children,
-}: {
+interface Props {
   params: RouteParams;
   location: Location;
   children: ReactNode;
-}) => {
+}
+
+export const DataModel = ({ params, location, children }: Props) => {
   const { databaseId, fieldId, tableId, schemaId } = parseRouteParams(params);
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isResizing, setIsResizing] = useState(false);
@@ -84,13 +81,9 @@ export const DataModel = ({
       h="100%"
       ref={ref}
     >
-      <ResizableBox
-        axis="x"
-        handle={<ResizeHandle />}
+      <ResizableColumn
         height={height}
-        maxConstraints={[columnSizesConfig.nav.max, height]}
-        minConstraints={[columnSizesConfig.nav.min, height]}
-        resizeHandles={["e"]}
+        constraints={columnSizesConfig.nav}
         width={navWidth}
         onResize={(_event, data) => setNavWidth(data.size.width)}
         onResizeStart={() => setIsResizing(true)}
@@ -113,20 +106,16 @@ export const DataModel = ({
             <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
           </Box>
         </Stack>
-      </ResizableBox>
+      </ResizableColumn>
 
       {isSegments && children}
 
       {!isSegments && (
         <>
           {tableId && (
-            <ResizableBox
-              axis="x"
-              handle={<ResizeHandle />}
+            <ResizableColumn
               height={height}
-              maxConstraints={[columnSizesConfig.table.max, height]}
-              minConstraints={[columnSizesConfig.table.min, height]}
-              resizeHandles={["e"]}
+              constraints={columnSizesConfig.table}
               width={tableWidth}
               onResize={(_event, data) => setTableWidth(data.size.width)}
               onResizeStart={() => setIsResizing(true)}
@@ -152,7 +141,7 @@ export const DataModel = ({
                   )}
                 </LoadingAndErrorWrapper>
               </Box>
-            </ResizableBox>
+            </ResizableColumn>
           )}
 
           {isEmptyStateShown && (
