@@ -536,42 +536,62 @@
 (defn- json-map->types [json-map]
   (apply merge (map #(json->types (second %) [(first %)]) json-map)))
 
+(defn- lowest-common-denominator-type [acc-map second-map json-column]
+  (let [acc-type (get acc-map json-column)
+        second-type (get second-map json-column)]
+    (cond
+      (or (nil? acc-type)
+          (= (hash acc-type) (hash second-type)))
+      second-type
+
+      (nil? second-type)
+      acc-type
+
+      (every? #(isa? % Number) [acc-type second-type])
+      java.lang.Number
+
+      (every?
+       (fn [column-type]
+         (some (fn [allowed-type]
+                 (isa? column-type allowed-type))
+               [String Number Boolean java.time.LocalDateTime]))
+       [acc-type second-type])
+      java.lang.String
+
+      :else
+      nil)))
+
+(def ^:const max-nested-field-columns-factor
+  "Multiplier for intermediate type analysis working set limit.
+
+  During JSON schema inference, we process multiple JSON samples and reconcile their field types.
+  We allow the working set to grow to `(max-nested-field-columns * max-nested-field-columns-factor)` entries
+  before applying early termination."
+  10)
+
 (defn- describe-json-rf
   "Reducing function that takes a bunch of maps from json-map->types,
   and gets them to conform to the type hierarchy,
   going through and taking the lowest common denominator type at each pass,
-  ignoring the nils."
-  ([] nil)
+  ignoring the nils.
+  Short circuits after `(max-nested-field-columns * max-nested-field-columns-factor)` entries."
+  ([] {})
   ([acc-field-type-map] acc-field-type-map)
   ([acc-field-type-map second-field-type-map]
-   (into {}
-         (for [json-column (set/union (set (keys second-field-type-map))
-                                      (set (keys acc-field-type-map)))]
-           (cond
-             (or (nil? acc-field-type-map)
-                 (nil? (acc-field-type-map json-column))
-                 (= (hash (acc-field-type-map json-column))
-                    (hash (second-field-type-map json-column))))
-             [json-column (second-field-type-map json-column)]
-
-             (or (nil? second-field-type-map)
-                 (nil? (second-field-type-map json-column)))
-             [json-column (acc-field-type-map json-column)]
-
-             (every? #(isa? % Number) [(acc-field-type-map json-column)
-                                       (second-field-type-map json-column)])
-             [json-column java.lang.Number]
-
-             (every?
-              (fn [column-type]
-                (some (fn [allowed-type]
-                        (isa? column-type allowed-type))
-                      [String Number Boolean java.time.LocalDateTime]))
-              [(acc-field-type-map json-column) (second-field-type-map json-column)])
-             [json-column java.lang.String]
-
-             :else
-             [json-column nil])))))
+   (let [max-count (* max-nested-field-columns max-nested-field-columns-factor)]
+     (if (> (count acc-field-type-map) max-count)
+       (reduced acc-field-type-map)
+       (->>
+        (set/union (set (keys second-field-type-map))
+                   (set (keys acc-field-type-map)))
+        (reduce
+         (fn [acc json-column]
+           (if (> (count acc) max-count)
+             (reduced acc)
+             (let [merged-type (lowest-common-denominator-type acc-field-type-map second-field-type-map json-column)]
+               (assoc! acc json-column merged-type))))
+         (transient {}))
+        persistent!)))))
 
 (def field-type-map
   "Map from Java types for deserialized JSON (so small subset of Java types) to MBQL types.
