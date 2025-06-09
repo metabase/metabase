@@ -1272,31 +1272,32 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-one (nth (:aggregation *inner-query*) index)
-                        [:aggregation-options ag (options :guard :name)]
-                        (->honeysql driver (h2x/identifier :field-alias (:name options)))
+  (driver-api/match-one
+   (nth (:aggregation *inner-query*) index)
+   [:aggregation-options ag (options :guard :name)]
+   (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
-                        [:aggregation-options ag _]
-                        #_:clj-kondo/ignore
-                        (recur ag)
+   [:aggregation-options ag _]
+   #_:clj-kondo/ignore
+   (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
-                        :distinct
-                        (->honeysql driver (h2x/identifier :field-alias :count))
+   :distinct
+   (->honeysql driver (h2x/identifier :field-alias :count))
 
-                        #{:+ :- :* :/}
-                        (->honeysql driver &match)
+   #{:+ :- :* :/}
+   (->honeysql driver &match)
 
-                        [:offset (options :guard :name) _expr _n]
-                        (->honeysql driver (h2x/identifier :field-alias (:name options)))
+   [:offset (options :guard :name) _expr _n]
+   (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
     ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
     ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
-                        [ag-type & _]
-                        (->honeysql driver (h2x/identifier :field-alias ag-type))))
+   [ag-type & _]
+   (->honeysql driver (h2x/identifier :field-alias ag-type))))
 
 (mu/defmethod ->honeysql [:sql :absolute-datetime] :- some?
   [driver [_ timestamp unit]]
@@ -1441,21 +1442,22 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace form
-                       [:field id-or-name opts]
-                       [:field id-or-name (cond-> opts
-                                            true
-                                            (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.source-alias)
-                                                   driver-api/qp.add.source-table        driver-api/qp.add.none
+   (driver-api/replace
+    form
+    [:field id-or-name opts]
+    [:field id-or-name (cond-> opts
+                         true
+                         (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
+                                driver-api/qp.add.source-table        driver-api/qp.add.none
                                  ;; this key will tell the SQL QP not to apply casting here either.
-                                                   :qp/ignore-coercion       true
+                                :qp/ignore-coercion       true
                                  ;; used to indicate that this is a forced alias
-                                                   ::forced-alias            true)
+                                ::forced-alias            true)
                           ;; don't want to do temporal bucketing or binning inside the order by only.
                           ;; That happens inside the `SELECT`
                           ;; (#22831) however, we do want it in breakout
-                                            (not is-breakout)
-                                            (dissoc :temporal-unit :binning))])))
+                         (not is-breakout)
+                         (dissoc :temporal-unit :binning))])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
