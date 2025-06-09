@@ -64,10 +64,10 @@ const getFormValueSchema = (
   settingsDetails: SettingDefinitionMap | undefined,
 ) => {
   return Yup.object({
-    "email-smtp-host": settingsDetails?.["email-smtp-host"].is_env_setting
+    "email-smtp-host": settingsDetails?.["email-smtp-host"]?.is_env_setting
       ? anySchema
       : Yup.string().required(Errors.required).default(""),
-    "email-smtp-port": settingsDetails?.["email-smtp-port"].is_env_setting
+    "email-smtp-port": settingsDetails?.["email-smtp-port"]?.is_env_setting
       ? anySchema
       : Yup.number()
           .positive()
@@ -75,15 +75,15 @@ const getFormValueSchema = (
           .required(Errors.required)
           .default(null),
     "email-smtp-security": settingsDetails?.["email-smtp-security"]
-      .is_env_setting
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default("none"),
     "email-smtp-username": settingsDetails?.["email-smtp-username"]
-      .is_env_setting
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
     "email-smtp-password": settingsDetails?.["email-smtp-password"]
-      .is_env_setting
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
   });
@@ -157,7 +157,7 @@ export const SMTPConnectionForm = () => {
     return (
       settingsDetails &&
       emailSettingKeys.every(
-        (settingKey) => settingsDetails[settingKey].is_env_setting,
+        (settingKey) => settingsDetails[settingKey]?.is_env_setting,
       )
     );
   }, [settingsDetails]);
@@ -183,7 +183,9 @@ export const SMTPConnectionForm = () => {
                 <FormTextInput
                   name="email-smtp-host"
                   label={t`SMTP Host`}
-                  description={settingsDetails?.["email-smtp-host"].description}
+                  description={
+                    settingsDetails?.["email-smtp-host"]?.description
+                  }
                   placeholder={"smtp.yourservice.com"}
                   mb="1.5rem"
                   labelProps={{

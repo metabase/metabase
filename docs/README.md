@@ -49,6 +49,7 @@ Metabase's reference documentation.
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
+- [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
 - [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
