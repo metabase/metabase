@@ -41,6 +41,7 @@ import IconCSV from "./icons/csv.svg?component";
 import IconCSVWarning from "./icons/csv_warning.svg?component";
 
 interface CSVPanelProps {
+  adminEmail: string;
   canUpload: boolean;
   canManageUploads: boolean;
   onCloseAddDataModal: () => void;
@@ -48,6 +49,7 @@ interface CSVPanelProps {
 }
 
 export const CSVPanel = ({
+  adminEmail,
   canUpload,
   canManageUploads,
   onCloseAddDataModal,
@@ -160,6 +162,7 @@ export const CSVPanel = ({
     if (uploadInputRef.current) {
       uploadInputRef.current.value = "";
     }
+
     setUploadedFile(null);
     onCloseAddDataModal();
   };
@@ -180,136 +183,169 @@ export const CSVPanel = ({
 
   return (
     <>
-      {canUpload && (
-        <Stack align="stretch" justify="space-between" h="100%" w="100%">
-          <Center
-            ta="center"
-            {...dropzoneProps}
-            className={cx(S.dropZone, isDragActive && S.isActive)}
-          >
-            <Stack gap="sm" align="center">
-              {fileUploadError ? (
-                <Box component={IconCSVWarning} h={50} />
-              ) : (
-                <Box
-                  c={uploadedFile ? "brand" : "text-secondary-inverse"}
-                  component={IconCSV}
-                  h={50}
-                />
-              )}
-
-              <div>
-                <Text fw={700}>
-                  {getPrimaryText(uploadedFile, fileUploadError)}
-                </Text>
-                {!uploadedFile && (
-                  <Text c="text-light">
-                    {c("The allowed MB size of a file")
-                      .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
-                  </Text>
+      {uploadsEnabled &&
+        (canUpload ? (
+          <Stack align="stretch" justify="space-between" h="100%" w="100%">
+            <Center
+              ta="center"
+              {...dropzoneProps}
+              className={cx(S.dropZone, isDragActive && S.isActive)}
+            >
+              <Stack gap="sm" align="center">
+                {fileUploadError ? (
+                  <Box component={IconCSVWarning} h={50} />
+                ) : (
+                  <Box
+                    c={uploadedFile ? "brand" : "text-secondary-inverse"}
+                    component={IconCSV}
+                    h={50}
+                  />
                 )}
-              </div>
-              {uploadedFile ? (
-                <Button
-                  variant="subtle"
-                  p={0}
-                  h="auto"
-                  onClick={() => setUploadedFile(null)}
-                >
-                  {t`Remove`}
-                </Button>
-              ) : (
-                <Button
-                  variant="subtle"
-                  p={0}
-                  h="auto"
-                  onClick={triggerUploadInput}
-                >
-                  {t`Select a file`}
-                </Button>
-              )}
-            </Stack>
-          </Center>
-          <Group>
-            <UnstyledButton
-              onClick={() => setIsCollectionPickerOpen(true)}
-              style={{
-                flex: 1,
-              }}
-            >
-              <Flex
-                align="center"
-                justify="space-between"
-                w="100%"
-                wrap="nowrap"
+
+                <div>
+                  <Text fw={700}>
+                    {getPrimaryText(uploadedFile, fileUploadError)}
+                  </Text>
+                  {!uploadedFile && (
+                    <Text c="text-light">
+                      {c("The allowed MB size of a file")
+                        .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
+                    </Text>
+                  )}
+                </div>
+                {uploadedFile ? (
+                  <Button
+                    variant="subtle"
+                    p={0}
+                    h="auto"
+                    onClick={() => setUploadedFile(null)}
+                  >
+                    {t`Remove`}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="subtle"
+                    p={0}
+                    h="auto"
+                    onClick={triggerUploadInput}
+                  >
+                    {t`Select a file`}
+                  </Button>
+                )}
+              </Stack>
+            </Center>
+            <Group>
+              <UnstyledButton
+                onClick={() => setIsCollectionPickerOpen(true)}
+                style={{
+                  flex: 1,
+                }}
               >
-                <Group gap="xs" flex={1}>
-                  <Icon name="folder" />
-                  <CollectionName id={uploadCollectionId} />
-                </Group>
-                <Icon name="chevrondown" style={{ flexShrink: "noshrink" }} />
-              </Flex>
-            </UnstyledButton>
-            <Button
-              variant="filled"
-              disabled={!uploadedFile}
-              onClick={() => handleFileUpload(uploadedFile)}
-            >
-              {t`Upload`}
-            </Button>
-          </Group>
-
-          <UploadInput
-            id="add-data-modal-upload-csv-input"
-            ref={uploadInputRef}
-            onChange={handleFileInput}
-          />
-        </Stack>
-      )}
-
-      {!uploadsEnabled && canManageUploads && (
-        <Stack gap="lg" align="center" justify="center" pt="3rem">
-          <Box component={IconCSV} c="brand" h={66} />
-          <Box component="header" ta="center">
-            <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
-            <Text maw="22.5rem" c="text-medium">
-              {c("{0} refers to the string 'your database'")
-                .jt`To work with CSVs, enable file uploads in ${(
-                <Tooltip
-                  inline
-                  maw="12.5rem"
-                  multiline
-                  label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
-                  key="database-tooltip"
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  w="100%"
+                  wrap="nowrap"
                 >
-                  <Text td="underline">{t`your database`}</Text>
-                </Tooltip>
-              )}.`}
-            </Text>
-            <Button
-              variant="filled"
-              w="12.5rem"
-              component={Link}
-              to={Urls.uploadsSettings()}
-            >
-              {t`Enable uploads`}
-            </Button>
-          </Box>
-        </Stack>
-      )}
+                  <Group gap="xs" flex={1}>
+                    <Icon name="folder" />
+                    <CollectionName id={uploadCollectionId} />
+                  </Group>
+                  <Icon name="chevrondown" style={{ flexShrink: "noshrink" }} />
+                </Flex>
+              </UnstyledButton>
+              <Button
+                variant="filled"
+                disabled={!uploadedFile}
+                onClick={() => handleFileUpload(uploadedFile)}
+              >
+                {t`Upload`}
+              </Button>
+            </Group>
 
-      <Stack gap="lg" align="center" justify="center" pt="3rem">
-        <Box component={IconCSV} c="brand" h={66} />
-        <Box component="header" ta="center">
-          <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
-          <Text maw="22.5rem" c="text-medium">
-            {t`Work with CSVs, just like with any other data source.`}
-          </Text>
-        </Box>
-        <Alert icon={<Icon name="info_filled" />}>
-          {t`To enable CSV file upload, please contact your administrator.`}
-        </Alert>
-      </Stack>
+            <UploadInput
+              id="add-data-modal-upload-csv-input"
+              ref={uploadInputRef}
+              onChange={handleFileInput}
+            />
+          </Stack>
+        ) : (
+          <Stack
+            gap="lg"
+            align="center"
+            justify="center"
+            pt="3rem"
+            maw="22.5rem"
+          >
+            <Box component={IconCSV} c="brand" h={66} />
+            <Box component="header" ta="center">
+              <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
+              <Text c="text-medium">
+                {t`Work with CSVs, just like with any other data source.`}
+              </Text>
+            </Box>
+            <Alert icon={<Icon name="info_filled" />}>
+              <Text fz="md" lh="lg">
+                {c("${0} is admin's email address")
+                  .jt`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator at ${(<b key="admin-email">{adminEmail}</b>)}.`}
+              </Text>
+            </Alert>
+          </Stack>
+        ))}
+
+      {!uploadsEnabled &&
+        (canManageUploads ? (
+          <Stack gap="lg" align="center" justify="center" pt="3rem">
+            <Box component={IconCSV} c="brand" h={66} />
+            <Box component="header" ta="center">
+              <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
+              <Text maw="22.5rem" c="text-medium">
+                {c("{0} refers to the string 'your database'")
+                  .jt`To work with CSVs, enable file uploads in ${(
+                  <Tooltip
+                    inline
+                    maw="12.5rem"
+                    multiline
+                    label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
+                    key="database-tooltip"
+                  >
+                    <Text td="underline">{t`your database`}</Text>
+                  </Tooltip>
+                )}.`}
+              </Text>
+              <Button
+                variant="filled"
+                w="12.5rem"
+                component={Link}
+                to={Urls.uploadsSettings()}
+              >
+                {t`Enable uploads`}
+              </Button>
+            </Box>
+          </Stack>
+        ) : (
+          <Stack
+            gap="lg"
+            align="center"
+            justify="center"
+            pt="3rem"
+            maw="22.5rem"
+          >
+            <Box component={IconCSV} c="brand" h={66} />
+            <Box component="header" ta="center">
+              <Title order={2} size="h4" mb="xs">{t`Upload CSV files`}</Title>
+              <Text c="text-medium">
+                {t`Work with CSVs, just like with any other data source.`}
+              </Text>
+            </Box>
+            <Alert icon={<Icon name="info_filled" />}>
+              <Text fz="md" lh="lg">
+                {c("${0} is admin's email address")
+                  .jt`To enable CSV file upload, please contact your administrator at ${(<b key="admin-email">{adminEmail}</b>)}.`}
+              </Text>
+            </Alert>
+          </Stack>
+        ))}
 
       {isCollectionPickerOpen && (
         <CollectionPickerModal
