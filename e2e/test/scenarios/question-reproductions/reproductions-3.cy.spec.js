@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -2619,38 +2623,46 @@ describe("issue 23449", () => {
 
   it("Remapped fields should work in a model", () => {
     // set the metadata for review
-    cy.visit("/admin/datamodel");
-    cy.findAllByTestId("admin-metadata-table-list-item")
-      .contains("Reviews")
-      .click();
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
+    );
 
     cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
     cy.findAllByTestId("select-button").contains("Use original value").click();
     cy.findByLabelText("Custom mapping").click();
 
     const values = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
-    for (const k of Object.keys(values)) {
-      cy.get(`input[value="${k}"]`).clear().type(values[k]);
+    for (const [key, value] of Object.entries(values)) {
+      cy.findByDisplayValue(key).clear().type(value);
     }
-    cy.get("button").contains("Save").click();
+    cy.button("Save").click();
 
     // make a model on Reviews
-    cy.visit("/model/new");
-    cy.get("a").contains("Use the notebook editor").click();
-    cy.findAllByTestId("picker-item").contains("Reviews").click();
+    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByLabelText("Create a new model").click();
+    cy.findByRole("link", { name: /Use the notebook editor/ }).click();
+    H.entityPickerModal().findByText("Reviews").click();
 
     // Remove Body column
     cy.findByLabelText("Pick columns").click();
-    cy.get("li").contains("Body").click();
+    H.popover().findByText("Body").click();
 
     // save model
-    cy.findByTestId("dataset-edit-bar").get("button").contains("Save").click();
+    cy.button("Save").click();
     cy.findByTestId("save-question-button").click();
 
     // check that the data renders
-    H.tableHeaderColumn("Rating").should("exist");
+    const checkTable = () => {
+      H.assertTableData({
+        columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
+        firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
+      });
+    };
+    checkTable();
+
     // reload to flush cached results
     cy.reload(true);
-    H.tableHeaderColumn("Rating").should("exist");
+    checkTable();
   });
 });
