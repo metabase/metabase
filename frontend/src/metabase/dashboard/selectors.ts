@@ -50,6 +50,7 @@ import {
   canResetFilter,
   getMappedParametersIds,
   hasDatabaseActionsEnabled,
+  hasInlineParameters,
   isDashcardInlineParameter,
   isQuestionCard,
   isQuestionDashCard,
@@ -430,6 +431,28 @@ export const getDashboardHeaderParameters = createSelector(
 export const getDashboardHeaderValuePopulatedParameters = createSelector(
   [getDashboardHeaderParameters, getEffectiveParameterValues],
   (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
+);
+
+export const getDashCardInlineValuePopulatedParameters = createSelector(
+  [
+    getDashcards,
+    getParameters,
+    getEffectiveParameterValues,
+    (_, dashcardId: number) => dashcardId,
+  ],
+  (dashcards, parameters, parameterValues, dashcardId) => {
+    const dashcard = dashcards[dashcardId];
+    if (!dashcard || !hasInlineParameters(dashcard)) {
+      return [];
+    }
+    const inlineParameters = dashcard.inline_parameters.map((parameterId) =>
+      parameters.find((p) => p.id === parameterId),
+    );
+    return _getValuePopulatedParameters({
+      parameters: inlineParameters,
+      values: parameterValues,
+    });
+  },
 );
 
 export const getValuePopulatedParameters = createSelector(

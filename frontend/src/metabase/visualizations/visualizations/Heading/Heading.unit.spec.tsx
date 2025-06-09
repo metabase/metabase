@@ -8,12 +8,12 @@ import type {
   Parameter,
   ParameterId,
   ParameterValueOrArray,
-  QuestionDashboardCard,
+  VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockDashboard,
-  createMockDashboardCard,
+  createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
@@ -24,7 +24,7 @@ interface Settings {
 }
 
 interface Options {
-  dashcard?: QuestionDashboardCard;
+  dashcard?: VirtualDashboardCard;
   isEditing?: boolean;
   isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
@@ -34,9 +34,10 @@ interface Options {
 }
 
 const defaultProps = {
-  dashcard: createMockDashboardCard(),
+  dashcard: createMockVirtualDashCard(),
   dashboard: createMockDashboard(),
   isEditing: false,
+  isFullscreen: false,
   isEditingParameter: false,
   onUpdateVisualizationSettings: () => {
     return;
@@ -79,7 +80,7 @@ describe("Text", () => {
 
       const options = {
         settings: getSettingsWithText(text),
-        dashcard: createMockDashboardCard({ parameter_mappings }),
+        dashcard: createMockVirtualDashCard({ parameter_mappings }),
         dashboard: createMockDashboard({ parameters }),
         parameterValues: parameterValues,
       };
@@ -131,7 +132,7 @@ describe("Text", () => {
 
         const options = {
           settings: getSettingsWithText(text),
-          dashcard: createMockDashboardCard({ parameter_mappings }),
+          dashcard: createMockVirtualDashCard({ parameter_mappings }),
           dashboard: createMockDashboard({ parameters }),
           parameterValues: parameterValues,
           isEditing: true,
@@ -197,7 +198,7 @@ describe("Text", () => {
 
         const options = {
           settings: getSettingsWithText(text),
-          dashcard: createMockDashboardCard({ parameter_mappings }),
+          dashcard: createMockVirtualDashCard({ parameter_mappings }),
           dashboard: createMockDashboard({ parameters }),
           parameterValues: parameterValues,
           isEditing: true,

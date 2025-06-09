@@ -137,6 +137,15 @@ export function supportsInlineParameters(
   return isHeadingDashCard(dashcard);
 }
 
+export function hasInlineParameters(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard & { inline_parameters: ParameterId[] } {
+  return (
+    supportsInlineParameters(dashcard) &&
+    Array.isArray(dashcard.inline_parameters)
+  );
+}
+
 export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: DashboardCard[],
