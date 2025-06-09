@@ -6,7 +6,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import EmbedFrameS from "../EmbedFrame.module.css";
 
 import LogoBadgeStyle from "./LogoBadge.module.css";
-import MetabaseLogoWithText from "./metabase_logo_with_text.svg?component";
+import FrodohLogoImg from "./frodoh_logo.svg?component";
 
 export const LogoBadge = ({ dark }: { dark: boolean }) => {
   const utmContentValue = `embedded_banner_${encodeURIComponent(
@@ -24,7 +24,7 @@ export const LogoBadge = ({ dark }: { dark: boolean }) => {
     >
       <span>{t`Powered by`}</span>
       {/* eslint-disable-next-line no-literal-metabase-strings -- This embedding badge which we don't want to show the whitelabeled name */}
-      <MetabaseLogoWithText height={32} aria-label="Metabase" />
+      <FrodohLogoImg />
     </ExternalLink>
   );
 };
