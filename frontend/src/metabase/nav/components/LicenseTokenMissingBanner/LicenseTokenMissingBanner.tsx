@@ -18,6 +18,9 @@ export const LicenseTokenMissingBanner = ({
       className={styles.BannerContainer}
       bg="var(--mb-color-background-inverse)"
       align="flex-start"
+      aria-label={t`License activation notice`}
+      aria-live="polite"
+      role="status"
       body={
         <Flex align="" gap="xs" className={styles.BannerBody}>
           <Text lh="inherit" c="text-white" ta={{ base: "left", sm: "center" }}>
