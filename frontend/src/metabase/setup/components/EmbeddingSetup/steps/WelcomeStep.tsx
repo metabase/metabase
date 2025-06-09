@@ -57,10 +57,7 @@ export const WelcomeStep = () => {
       <Space h="lg" />
 
       <Text>
-        <Link
-          to="/setup/embedding/manual"
-          style={{ color: "#888" }}
-        >{t`Set up manually`}</Link>
+        <Link to="/" style={{ color: "#888" }}>{t`Set up manually`}</Link>
       </Text>
     </Box>
   );

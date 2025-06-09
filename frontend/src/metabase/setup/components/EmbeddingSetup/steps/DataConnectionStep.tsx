@@ -31,7 +31,7 @@ export const DataConnectionStep = () => {
       <DatabaseForm
         onSubmit={handleSubmit}
         onEngineChange={() => {}}
-        onCancel={() => {}}
+        onCancel={() => dispatch(push("/"))}
       />
     </Stack>
   );
