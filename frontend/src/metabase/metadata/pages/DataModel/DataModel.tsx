@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, memo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
@@ -24,6 +24,11 @@ import {
 } from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
+
+// memoize components for smooth column resizing experience
+const MemoizedFieldSection = memo(FieldSection);
+const MemoizedPreviewSection = memo(PreviewSection);
+const MemoizedTableSection = memo(TableSection);
 
 type Column = "nav" | "table" | "field";
 
@@ -135,7 +140,7 @@ export const DataModel = ({
               >
                 <LoadingAndErrorWrapper error={error} loading={isLoading}>
                   {table && (
-                    <TableSection
+                    <MemoizedTableSection
                       /**
                        * Make sure internal component state is reset when changing tables.
                        * This is to avoid state mix-up with optimistic updates.
@@ -187,7 +192,7 @@ export const DataModel = ({
               >
                 <LoadingAndErrorWrapper error={error} loading={isLoading}>
                   {field && (
-                    <FieldSection
+                    <MemoizedFieldSection
                       databaseId={databaseId}
                       field={field}
                       /**
@@ -202,7 +207,7 @@ export const DataModel = ({
 
               {field && table && (
                 <Box flex={`1 1 ${rem(200)}`} miw={0} p="xl">
-                  <PreviewSection
+                  <MemoizedPreviewSection
                     databaseId={databaseId}
                     field={field}
                     fieldId={fieldId}
