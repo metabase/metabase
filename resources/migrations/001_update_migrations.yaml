@@ -11736,7 +11736,7 @@ databaseChangeLog:
                     unique: true
 
   - changeSet:
-      id: v55.2025-06-05T01:00:00
+      id: v55.2025-06-09T01:00:00
       author: metabase-dev
       comment: Add inline_parameters to report_dashboardcard for card-level parameter display
       changes:
@@ -11745,7 +11745,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: inline_parameters
-                  type: text
+                  type: ${text.type}
                   remarks: JSON array of parameter IDs that should be displayed inline with this card
                   constraints:
                     nullable: true
