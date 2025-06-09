@@ -311,8 +311,6 @@
   [driver conn table-id query]
   (correct-columns-name table-id (query-rows driver conn query)))
 
-(declare count-row-descendants)
-
 (defn- row-delete!* [action database query]
   (let [db-id      (u/the-id database)
         table-id   (-> query :query :source-table)
@@ -766,7 +764,6 @@
           (throw (ex-info (tru "Sorry, the row you''re trying to delete doesn''t exist")
                           {:status-code 400})))
         (let [table-id->deleted-children (delete-row-with-children! database-id table-id row-before)]
-
           {:table-id         table-id
            :db-id            database-id
            :before           row-before

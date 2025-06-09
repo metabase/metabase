@@ -298,6 +298,113 @@
                                             :scope     {:table-id (mt/id :products)}
                                             :inputs    []}))))))))))
 
+#_(mt/defdataset self-referential-categories
+    [["category"
+      [{:field-name "name" :base-type :type/Text :not-null? true}
+       {:field-name "parent_id" :base-type :type/Integer :fk :category}]
+      [["Electronics" nil]
+       ["Phones" 1]
+       ["Laptops" 1]
+       ["Smartphones" 2]
+       ["Gaming Laptops" 3]]]])
+
+#_(deftest simple-delete-with-self-referential-children-test
+    (mt/with-premium-features #{:table-data-editing}
+      (actions.tu/with-actions-temp-db self-referential-categories
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (let [body {:action_id "data-grid.row/delete"
+                    :scope     {:table-id (mt/id :category)}
+                    :inputs    [{(mt/format-name :id) 1}]}
+              children-count (fn [parent-id]
+                               (let [result (mt/rows (qp/process-query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :category)
+                                                                                   :aggregation  [[:count]]
+                                                                                   :filter       [:= (mt/$ids $category.parent_id) parent-id]}}))]
+                                 (-> result first first)))]
+
+          (testing "sanity check that we have self-referential children"
+            (is (= 2 (children-count 1)))
+            (is (= 1 (children-count 2)))
+            (is (= 1 (children-count 3))))
+
+          (testing "delete parent with self-referential children should return error without delete-children param"
+            (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :category) 4}}}
+                    (mt/user-http-request :crowberto :post 400 execute-v2-url body))))
+
+          (testing "success with delete-children option should cascade delete all descendants"
+            (is (=? {:outputs [{:table-id (mt/id :category)
+                                :o        "deleted"
+                                :row      {(keyword (mt/format-name :id)) 1}}]}
+                    (mt/user-http-request :crowberto :post 200 execute-v2-url
+                                          (assoc body :params {:delete-children true}))))
+            (is (= 0 (count (table-rows (mt/id :category)))))
+
+            #_(testing "the change is not undoable for self-referential cascades"
+                (is (= "Your previous change cannot be undone"
+                       (mt/user-http-request :crowberto :post 405 execute-v2-url
+                                             {:action_id "data-editing/undo"
+                                              :scope     {:table-id (mt/id :category)}
+                                              :inputs    []})))))))))
+
+#_(mt/defdataset mutual-recursion-users-teams
+    [["user"
+      [{:field-name "name" :base-type :type/Text :not-null? true}
+       {:field-name "team_id" :base-type :type/Integer :fk :team}]
+      [["Alice" 1]
+       ["Bob" 2]
+       ["Charlie" 1]
+       ["David" 2]]]
+     ["team"
+      [{:field-name "name" :base-type :type/Text :not-null? true}
+       {:field-name "manager_id" :base-type :type/Integer :fk :user}]
+      [["Alpha" 2]
+       ["Beta" 1]]]])
+
+#_(deftest mutual-recursion-delete-test
+    (mt/with-premium-features #{:table-data-editing}
+      (actions.tu/with-actions-temp-db mutual-recursion-users-teams
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (let [users-table-id (mt/id :user)
+              teams-table-id (mt/id :team)
+              delete-user-body {:action_id "data-grid.row/delete"
+                                :scope     {:table-id users-table-id}
+                                :inputs    [{(mt/format-name :id) 1}]}]
+
+          (testing "sanity check: mutual recursion is established"
+            (let [users (table-rows users-table-id)
+                  teams (table-rows teams-table-id)]
+              (is (= 4 (count users))) ; 4 users
+              (is (= 2 (count teams))) ; 2 teams
+              (is (some #(and (= 1 (first %)) (= 1 (nth % 2))) users))
+              (is (some #(and (= 2 (first %)) (= 2 (nth % 2))) users))
+              (is (some #(and (= 1 (first %)) (= 2 (nth % 2))) teams))
+              (is (some #(and (= 2 (first %)) (= 1 (nth % 2))) teams))))
+
+          (testing "delete user involved in mutual recursion should return error without delete-children param"
+            (is (=? {:errors {:type "metabase.actions.error/children-exist"}}
+                    (mt/user-http-request :crowberto :post 400 execute-v2-url delete-user-body))))
+
+          (testing "delete with delete-children should handle mutual recursion gracefully"
+          ; When deleting Alice with delete-children, it should:
+          ; 1. Delete Alice (user 1)
+          ; 2. This should cascade to Team Beta (which Alice manages)
+          ; 3. Deleting Team Beta should cascade to Bob and David (who belong to Team Beta)
+          ; 4. Deleting Bob should cascade to Team Alpha (which Bob manages)
+          ; 5. Deleting Team Alpha should cascade to Charlie (who belongs to Team Alpha)
+          ; Result: All users and teams should be deleted due to circular dependencies
+            (is (=? {:outputs [{:table-id users-table-id
+                                :op       "deleted"
+                                :row      {(keyword (mt/format-name :id)) 1}}]}
+                    (mt/user-http-request :crowberto :post 200 execute-v2-url
+                                          (assoc delete-user-body :params {:delete-children true}))))
+
+            (let [remaining-users (table-rows users-table-id)
+                  remaining-teams (table-rows teams-table-id)]
+              (testing "mutual recursion cascade should delete interconnected records"
+                (is (or (empty? remaining-users) (< (count remaining-users) 4)))
+                (is (or (empty? remaining-teams) (< (count remaining-teams) 2))))))))))
+
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}

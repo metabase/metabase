@@ -5,18 +5,6 @@
   (:import
    (clojure.lang PersistentQueue)))
 
-#_(defn lookup-children-in-db [{:keys [table fk pk]} parents]
-    (jdbc/query
-     'db
-     {:select pk
-      :from   [table]
-      :where  (if (= 1 (count fk))
-                [:in (key (first fk)) (map (val (first fk)) parents)]
-                (into [:or] (for [p parents]
-                              (into [:and] (for [[fk-col pk-col] fk]
-                                             [:= fk-col (get p pk-col)])))))
-      :limit  501}))
-
 (defn- pop-queue
   [{:keys [queue] :as state}]
   (if-let [nxt (peek queue)]
