@@ -117,21 +117,31 @@ describe("getLinkedParametersInfo", () => {
         parameter: parameters[0],
         filteredIds: [PRODUCTS.CATEGORY],
         filteringIds: [PRODUCTS.VENDOR],
+        isCompatible: true,
       },
       {
         parameter: parameters[1],
         filteredIds: [PRODUCTS.CATEGORY, PRODUCTS.VENDOR],
         filteringIds: [REVIEWS.RATING],
+        isCompatible: true,
       },
       {
         parameter: parameters[2],
         filteredIds: [PRODUCTS.CATEGORY, PRODUCTS.VENDOR],
         filteringIds: [ORDERS.ID],
+        isCompatible: true,
       },
       {
         parameter: parameters[3],
         filteredIds: [PRODUCTS.CATEGORY, PRODUCTS.VENDOR],
         filteringIds: [ORDERS.ID, ORDERS.PRODUCT_ID],
+        isCompatible: true,
+      },
+      {
+        parameter: parameters[4],
+        filteredIds: [],
+        filteringIds: [],
+        isCompatible: false,
       },
     ];
 

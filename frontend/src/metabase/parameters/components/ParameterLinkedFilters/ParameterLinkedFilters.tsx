@@ -20,6 +20,7 @@ import {
   Stack,
   Switch,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId, ParameterId } from "metabase-types/api";
@@ -223,7 +224,9 @@ function ParameterList({
         <Stack gap="md">
           <Group gap="sm">
             <Text c="text-secondary" fw="bold">{t`Incompatible filters`}</Text>
-            <Icon c="text-secondary" name="info_filled" />
+            <Tooltip label={t`TBD`}>
+              <Icon c="text-secondary" name="info_filled" />
+            </Tooltip>
           </Group>
           {incompatibleParameters.map(
             ({ parameter: otherParameter, filteredIds, filteringIds }) => (
