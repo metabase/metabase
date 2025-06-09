@@ -1,5 +1,6 @@
 (ns metabase.queries.models.parameter-card
   (:require
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
@@ -61,7 +62,7 @@
                       :parameter_id              id}]
       ;; TODO: Maybe update! should return different values for no rows to update vs
       ;; no changes to be made
-      (if (apply t2/exists? :model/ParameterCard (flatten (seq conditions)))
+      (if (m/mapply t2/exists? :model/ParameterCard conditions)
         (t2/update! :model/ParameterCard conditions {:card_id card-id})
         (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
 
