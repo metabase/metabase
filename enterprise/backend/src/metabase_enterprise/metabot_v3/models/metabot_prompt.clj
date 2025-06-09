@@ -30,6 +30,9 @@
   (conj (serdes/generate-path "MetabotEntity" (t2/select-one :model/MetabotEntity (:metabot_entity_id entity)))
         (serdes/infer-self-path "MetabotPrompt" entity)))
 
+(defmethod serdes/dependencies "MetabotPrompt" [prompt]
+  #{[{:model "Card" :id (:card_id prompt)}]})
+
 (defmethod serdes/make-spec "MetabotPrompt" [_model-name _opts]
   {:copy      [:entity_id :prompt]
    :transform {:created_at        (serdes/date)
