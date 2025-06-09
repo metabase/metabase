@@ -424,7 +424,7 @@ H.describeWithSnowplowEE(
         });
 
         it("should be able to download a static embedded question as CSV when a filter expects 1 parameter value e.g. date (metabase#58957, 59074)", () => {
-          const FILTER_VALUE = "2025-02-11";
+          const FILTER_VALUE = "02/11/2025";
           const QUESTION_NAME = "Native question with a Date parameter";
 
           // Can't figure out the type if I extracted `questionDetails` to a variable.
