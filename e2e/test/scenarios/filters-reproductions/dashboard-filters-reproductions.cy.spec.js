@@ -4534,26 +4534,42 @@ describe("issue 14595", () => {
     H.selectDashboardFilter(H.getDashboardCard(2), "String");
   }
 
-  function assertLinkedFilters() {
-    cy.findByTestId("fixed-width-filters").findByText("p1").click();
+  function assertLinkedFilterSettings({
+    parameterName,
+    compatibleParameterNames,
+    incompatibleParameterNames,
+  }) {
+    cy.findByTestId("fixed-width-filters").findByText(parameterName).click();
     H.sidebar().within(() => {
       cy.findByText("Linked filters").click();
-      cy.findByText("p2").should("be.visible");
-      cy.findByText("p3").should("not.exist");
+      compatibleParameterNames.forEach((compatibleParameterName) => {
+        cy.findByTestId("compatible-parameters")
+          .findByText(compatibleParameterName)
+          .should("be.visible");
+      });
+      incompatibleParameterNames.forEach((incompatibleParameterName) => {
+        cy.findByTestId("incompatible-parameters")
+          .findByText(incompatibleParameterName)
+          .should("be.visible");
+      });
     });
+  }
 
-    cy.findByTestId("fixed-width-filters").findByText("p2").click();
-    H.sidebar().within(() => {
-      cy.findByText("Linked filters").click();
-      cy.findByText("p1").should("be.visible");
-      cy.findByText("p3").should("not.exist");
+  function assertParameterSettings() {
+    assertLinkedFilterSettings({
+      parameterName: "p1",
+      compatibleParameterNames: ["p2"],
+      incompatibleParameterNames: ["p3"],
     });
-
-    cy.findByTestId("fixed-width-filters").findByText("p3").click();
-    H.sidebar().within(() => {
-      cy.findByText("Linked filters").click();
-      cy.findByText("p1").should("not.exist");
-      cy.findByText("p2").should("not.exist");
+    assertLinkedFilterSettings({
+      parameterName: "p2",
+      compatibleParameterNames: ["p1"],
+      incompatibleParameterNames: ["p3"],
+    });
+    assertLinkedFilterSettings({
+      parameterName: "p3",
+      compatibleParameterNames: [],
+      incompatibleParameterNames: ["p1", "p2"],
     });
   }
 
@@ -4568,6 +4584,6 @@ describe("issue 14595", () => {
     createDashboard().then((dashboardId) => H.visitDashboard(dashboardId));
     H.editDashboard();
     mapParameters();
-    assertLinkedFilters();
+    assertParameterSettings();
   });
 });

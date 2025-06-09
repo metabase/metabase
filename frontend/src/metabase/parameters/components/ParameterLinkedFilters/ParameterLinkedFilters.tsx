@@ -202,26 +202,28 @@ function ParameterList({
           <em key="text">{t`this`}</em>
         )} filter.`}
       </Text>
-      <Stack gap="md">
-        {compatibleParameters.map(
-          ({ parameter: otherParameter, filteredIds, filteringIds }) => (
-            <ParameterItem
-              key={otherParameter.id}
-              parameter={otherParameter}
-              filteredIds={filteredIds}
-              filteringIds={filteringIds}
-              isFiltered={
-                parameter.filteringParameters != null &&
-                parameter.filteringParameters.includes(otherParameter.id)
-              }
-              isCompatible={true}
-              onFilterChange={handleFilterChange}
-            />
-          ),
-        )}
-      </Stack>
+      {compatibleParameters.length > 0 && (
+        <Stack gap="md" data-testid="compatible-parameters">
+          {compatibleParameters.map(
+            ({ parameter: otherParameter, filteredIds, filteringIds }) => (
+              <ParameterItem
+                key={otherParameter.id}
+                parameter={otherParameter}
+                filteredIds={filteredIds}
+                filteringIds={filteringIds}
+                isFiltered={
+                  parameter.filteringParameters != null &&
+                  parameter.filteringParameters.includes(otherParameter.id)
+                }
+                isCompatible={true}
+                onFilterChange={handleFilterChange}
+              />
+            ),
+          )}
+        </Stack>
+      )}
       {incompatibleParameters.length > 0 && (
-        <Stack gap="md">
+        <Stack gap="md" data-testid="incompatible-parameters">
           <Group gap="sm">
             <Text c="text-secondary" fw="bold">{t`Incompatible filters`}</Text>
             <Tooltip label={t`TBD`}>
@@ -270,7 +272,7 @@ const ParameterItem = ({
     <Box className={S.parameterItem} bg="bg-light">
       <Group justify="space-between" align="center" pr="md">
         <Button
-          c="text-secondary"
+          c={isCompatible ? "text-primary" : undefined}
           variant="subtle"
           rightSection={isCompatible && <Icon name="chevrondown" />}
           disabled={!isCompatible}
