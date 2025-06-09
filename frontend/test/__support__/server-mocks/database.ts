@@ -34,6 +34,13 @@ export function setupDatabaseUsageInfoEndpoint(
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
 }
 
+export function setupDatabaseListEndpoint(databases: Database[]) {
+  fetchMock.get(
+    { url: "path:/api/database", overwriteRoutes: true },
+    { data: databases, total: databases.length },
+  );
+}
+
 export function setupDatabasesEndpoints(
   databases: Database[],
   { hasSavedQuestions = true } = {},
@@ -53,10 +60,7 @@ export function setupDatabasesEndpoints(
       total: databasesWithSavedQuestions.length,
     },
   );
-  fetchMock.get(
-    { url: "path:/api/database", overwriteRoutes: false },
-    { data: databases, total: databases.length },
-  );
+  setupDatabaseListEndpoint(databases);
   fetchMock.post("path:/api/database", async (url) => {
     const lastCall = fetchMock.lastCall(url);
     return await lastCall?.request?.json();
