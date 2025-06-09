@@ -1604,13 +1604,13 @@
    :api #{}
    :uses #{actions
            api
-           enterprise/data-editing
            driver
            events
            lib
            query-processor
            upload
-           util}}
+           util
+           enterprise/data-editing}}
 
   enterprise/database-routing
   {:team "Admin Webapp"
