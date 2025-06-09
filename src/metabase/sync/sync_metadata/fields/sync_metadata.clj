@@ -14,14 +14,14 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- compute-new-visibility-type [db field-metadata]
+(defn- compute-new-visibility-type [db field-metadata visibility-type]
   (if (crufty/name? (:name field-metadata)
                     (some-> db :settings :auto-cruft-columns))
     :details-only
     ;; n.b. if it was auto-crufted in the past, removing it from auto-cruft will NOT make it visible because old
     ;; visibility-type will be :details-only. This only changes things to be hidden. If you want to make it visible
     ;; again, you need to change the visibility-type to :normal via the fields :put api.
-    (:visibility-type field-metadata)))
+    visibility-type))
 
 (mu/defn- update-field-metadata-if-needed! :- [:enum 0 1]
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
@@ -49,7 +49,7 @@
          new-database-is-auto-increment :database-is-auto-increment
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
-        new-visibility-type             (compute-new-visibility-type database field-metadata)
+        new-visibility-type             (compute-new-visibility-type database field-metadata old-visibility-type)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
         new-db-required                 (boolean new-db-required)
         new-database-type               (or new-database-type "NULL")
