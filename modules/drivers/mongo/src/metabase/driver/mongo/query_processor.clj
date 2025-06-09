@@ -1494,8 +1494,7 @@
           ;; we can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
           ;; error. It's also unnecessary, because the parent includes the child. However, we need to list all fields
           ;; we think we want in :projections so that we know to look for them all once we get data back.
-          (assoc :projections (for [field fields]
-                                (field-alias field)))
+          (assoc :projections (map field-alias fields))
           ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
           (update :query conj {$project (into
                                          (ordered-map/ordered-map "_id" false)

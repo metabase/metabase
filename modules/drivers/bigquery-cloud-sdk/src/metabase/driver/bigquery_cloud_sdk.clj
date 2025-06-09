@@ -318,10 +318,10 @@
                                         nested-fields (get-in nested-column-lookup [(:table-name col) new-path])]
                                     (cond-> (assoc col :database-position root-database-position)
                                       (and (= :type/Dictionary (:base-type col)) nested-fields)
-                                      (-> (assoc :nested-fields (into #{}
-                                                                      (map #(maybe-add-nested-fields % new-path root-database-position))
-                                                                      nested-fields))
-                                          (assoc :visibility-type :details-only)))))
+                                      (assoc :nested-fields (into #{}
+                                                                  (map #(maybe-add-nested-fields % new-path root-database-position))
+                                                                  nested-fields)
+                                             :visibility-type :details-only))))
         max-position-per-table (reduce
                                 (fn [accum {table-name :table_name pos :ordinal_position}]
                                   (if (> (or pos 0) (get accum table-name -1))
