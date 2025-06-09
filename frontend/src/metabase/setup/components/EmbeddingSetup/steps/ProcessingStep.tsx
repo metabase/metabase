@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-
 export const ProcessingStep = () => {
+  const dispatch = useDispatch();
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const dispatch = useDispatch();
+  const [updateSettings] = useUpdateSettingsMutation();
+
   const {
     database,
     selectedTables,
@@ -19,14 +21,26 @@ export const ProcessingStep = () => {
     setCreatedDashboardIds,
   } = useEmbeddingSetup();
 
+  const setupSettings = useCallback(async () => {
+    await updateSettings({
+      "embedding-homepage": "visible",
+      "embedding-app-origins-interactive": "*",
+      "enable-embedding-interactive": true,
+    }).unwrap();
+  }, [updateSettings]);
+
   useEffect(() => {
-    const processTables = async () => {
+    const process = async () => {
       if (!database?.id || !selectedTables?.length) {
         setError("No database or tables selected");
         return;
       }
 
       try {
+        setProcessingStatus("Setting up settings...");
+        await setupSettings();
+        setCurrentStep((prev) => prev + 1);
+
         // Create models for each table
         setProcessingStatus("Creating models...");
         const models = [];
@@ -101,13 +115,14 @@ export const ProcessingStep = () => {
       }
     };
 
-    processTables();
+    process();
   }, [
     database?.id,
     selectedTables,
     dispatch,
     setProcessingStatus,
     setCreatedDashboardIds,
+    setupSettings,
   ]);
 
   if (error) {
@@ -118,7 +133,7 @@ export const ProcessingStep = () => {
     );
   }
 
-  const totalSteps = selectedTables?.length * 2 || 0;
+  const totalSteps = selectedTables?.length * 2 + 1 || 0;
   const progress = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
 
   return (
