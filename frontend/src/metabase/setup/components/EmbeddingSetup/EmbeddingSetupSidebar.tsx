@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks/use-docs-url"; // Corrected import
 import LogoIcon from "metabase/components/LogoIcon";
-import { Box, Center, Flex, Icon, Text } from "metabase/ui";
+import { Box, Center, Flex, Icon, type IconName, Text } from "metabase/ui";
 
 const ICON_SIZE = 30;
 const STEP_GAP = 22;
@@ -14,6 +14,7 @@ interface StepType {
   key: string;
   title: string;
   slugs: string[];
+  icon: IconName;
 }
 
 export const EmbeddingSetupSidebar = () => {
@@ -25,16 +26,19 @@ export const EmbeddingSetupSidebar = () => {
         key: "connect_data",
         title: t`Connect to your data`,
         slugs: ["data-connection"],
+        icon: "database",
       },
       {
         key: "generate_starter_content",
         title: t`Generate starter content`,
         slugs: ["table-selection", "processing"],
+        icon: "bolt",
       },
       {
         key: "add_to_app",
         title: t`Add to your app`,
         slugs: ["final"],
+        icon: "snippet",
       },
     ];
   }, []);
@@ -72,6 +76,7 @@ export const EmbeddingSetupSidebar = () => {
         {steps.map((step, index) => (
           <Step
             key={step.key}
+            icon={step.icon}
             title={step.title}
             isLast={index === steps.length - 1}
             status={match(index)
@@ -105,9 +110,10 @@ interface StepProps {
   title: string;
   status: "done" | "active" | "future";
   isLast: boolean;
+  icon: IconName;
 }
 
-const Step = ({ title, status, isLast }: StepProps) => {
+const Step = ({ title, status, isLast, icon }: StepProps) => {
   const { iconName, iconCssColor, circleBgCssColor, circleBorderCss } = match(
     status,
   )
@@ -125,7 +131,7 @@ const Step = ({ title, status, isLast }: StepProps) => {
       "active",
       () =>
         ({
-          iconName: "bolt",
+          iconName: icon,
           iconCssColor: "var(--mb-color-brand)",
           circleBgCssColor: "#fff",
           circleBorderCss: "2px solid var(--mb-color-brand)",
@@ -134,7 +140,7 @@ const Step = ({ title, status, isLast }: StepProps) => {
     .otherwise(
       () =>
         ({
-          iconName: "embed",
+          iconName: icon,
           iconCssColor: "var(--mb-color-text-light)",
           circleBgCssColor: "#fff",
           circleBorderCss: "2px solid var(--mb-color-border)",
@@ -189,7 +195,7 @@ const Step = ({ title, status, isLast }: StepProps) => {
             zIndex: 1,
           }}
         >
-          <Icon name={iconName} color={iconCssColor} size={20} />
+          <Icon name={iconName} color={iconCssColor} size={16} />
         </Box>
       </Box>
       <Text c="text-primary" size="md">
