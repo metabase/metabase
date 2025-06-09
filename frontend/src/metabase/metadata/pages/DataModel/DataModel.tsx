@@ -78,9 +78,6 @@ export const DataModel = ({
           gap={0}
           h="100%"
           w={navWidth}
-          style={{
-            overflow: "hidden",
-          }}
         >
           <RouterTablePicker
             databaseId={databaseId}
