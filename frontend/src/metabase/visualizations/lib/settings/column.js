@@ -45,6 +45,11 @@ import { nestedSettings } from "./nested";
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map((s) => (s.data && s.data.cols) || []));
 
+/**
+ *
+ * @param {Param} param
+ * @param {boolean} param.hidden
+ */
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,

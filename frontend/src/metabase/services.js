@@ -80,6 +80,11 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
+/**
+ *
+ * @param {*} question
+ * @param {object} param
+ */
 export async function runQuestionQuery(
   question,
   {
