@@ -68,9 +68,7 @@ export const DataModel = ({
         minConstraints={[columnSizesConfig.nav.min, height]}
         resizeHandles={["e"]}
         width={navWidth}
-        onResize={(_event, data) => {
-          setNavWidth(data.size.width);
-        }}
+        onResize={(_event, data) => setNavWidth(data.size.width)}
         onResizeStart={() => setIsResizing(true)}
         onResizeStop={() => setIsResizing(false)}
       >
@@ -79,7 +77,7 @@ export const DataModel = ({
           className={cx(S.column, S.rightBorder)}
           gap={0}
           h="100%"
-          w="100%"
+          w={navWidth}
           style={{
             overflow: "hidden",
           }}
