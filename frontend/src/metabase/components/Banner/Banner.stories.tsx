@@ -33,3 +33,17 @@ export const Default = {
     },
   },
 };
+
+export const NonClosable = {
+  render: (args: BannerProps) => <Banner {...args} />,
+  args: {
+    closable: false,
+    bg: "var(--mb-color-success)",
+    body: (
+      <Text lh="inherit" c="text-white">
+        This is a banner
+      </Text>
+    ),
+    py: "md",
+  },
+};
