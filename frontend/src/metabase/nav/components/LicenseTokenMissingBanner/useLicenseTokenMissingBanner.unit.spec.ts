@@ -137,7 +137,7 @@ describe("useLicenseTokenMissingBanner", () => {
     it("is true when conditions are met", () => {
       const { result } = setup();
 
-      expect(result.current.shouldShow).toBe(true);
+      expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(true);
     });
 
     it("is false when token status is valid", () => {
@@ -145,7 +145,7 @@ describe("useLicenseTokenMissingBanner", () => {
         tokenStatus: { status: "valid", valid: true },
       });
 
-      expect(result.current.shouldShow).toBe(false);
+      expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(false);
     });
   });
 
@@ -154,7 +154,7 @@ describe("useLicenseTokenMissingBanner", () => {
       const { result } = setup();
       fetchMock.putOnce(SETTINGS_ENDPOINT, 204);
 
-      expect(result.current.shouldShow).toBe(true);
+      expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(true);
 
       act(() => {
         result.current.dismissBanner();
@@ -164,7 +164,7 @@ describe("useLicenseTokenMissingBanner", () => {
         expect(fetchMock.called(SETTINGS_ENDPOINT)).toBe(true);
       });
       await waitFor(() => {
-        expect(result.current.shouldShow).toBe(false);
+        expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(false);
       });
     });
 
