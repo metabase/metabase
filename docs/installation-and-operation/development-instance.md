@@ -10,7 +10,7 @@ summary: Create development instances of Metabase for testing without paying per
 On Pro and Enterprise plans, you can purchase a development instance or development token as an add-on to your plan. 
 
 - **Self-hosted**: you can purchase a dev token that you can use for one or more self-hosted development instances (meaning: you can reuse the same token for multiple dev instances at no additional cost).
-- **Cloud**: you can purchase a development instance hosted on Metabase Cloud.
+- **Cloud**: you can purchase a development instance hosted on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 Dev instances are only available to Pro and Enterprise plans, but they're not included in the base plans; dev instances must be purchased as an add-on to your plan.
 
