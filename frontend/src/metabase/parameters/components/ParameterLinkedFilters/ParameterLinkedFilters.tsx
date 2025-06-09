@@ -7,7 +7,6 @@ import {
   useGetValidDashboardFilterFieldsQuery,
 } from "metabase/api";
 import { useLearnUrl } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
@@ -59,29 +58,28 @@ export const ParameterLinkedFilters = ({
   );
 };
 
+type ContentProps = {
+  parameter: UiParameter;
+  usableParameters: UiParameter[];
+  onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
+};
+
 function Content({
   parameter,
   usableParameters,
   onChangeFilteringParameters,
-}: {
-  parameter: UiParameter;
-  usableParameters: UiParameter[];
-  onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
-}) {
-  const {
-    data: filteringIdsByFilteredId = {},
-    isLoading,
-    error,
-  } = useGetValidDashboardFilterFieldsQuery(
-    getFilterFieldsRequest(parameter, usableParameters) ?? skipToken,
-  );
+}: ContentProps) {
+  const { data: filteringIdsByFilteredId = {}, isLoading } =
+    useGetValidDashboardFilterFieldsQuery(
+      getFilterFieldsRequest(parameter, usableParameters) ?? skipToken,
+    );
   const otherParameters = getParametersInfo(
     usableParameters,
     filteringIdsByFilteredId,
   );
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading) {
+    return <Skeleton height="2.5rem" />;
   }
 
   if (usableParameters.length === 0) {
@@ -112,7 +110,7 @@ function NoUsableParameters() {
   };
 
   return (
-    <div>
+    <Stack gap="md">
       <Text>
         {t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}
       </Text>
@@ -130,7 +128,7 @@ function NoUsableParameters() {
           </Box>
         )}.`}
       </Text>
-    </div>
+    </Stack>
   );
 }
 
@@ -148,7 +146,7 @@ function ParametersFromOtherSource() {
   );
 
   return (
-    <div>
+    <Stack gap="md">
       <Text>
         {t`If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.`}
       </Text>
@@ -161,7 +159,7 @@ function ParametersFromOtherSource() {
           )} to make Linked Filters available here.`}
         </Text>
       )}
-    </div>
+    </Stack>
   );
 }
 
@@ -323,7 +321,7 @@ type FieldItemProps = {
 const FieldItem = ({ fieldId }: FieldItemProps) => {
   const { data: field, isLoading } = useGetFieldQuery({ id: fieldId });
   if (!field || isLoading) {
-    return <Skeleton height="3rem" />;
+    return <Skeleton height="1.8125rem" />;
   }
 
   return (
