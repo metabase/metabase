@@ -267,7 +267,6 @@ export function DashboardSidebars({
       return (
         <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar
           dashcardId={sidebar.props?.dashcardId}
-          dashboard={dashboard}
           onClose={closeSidebar}
         />
       );
