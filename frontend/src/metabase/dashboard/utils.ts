@@ -137,6 +137,29 @@ export function supportsInlineParameters(
   return isHeadingDashCard(dashcard);
 }
 
+export function findDashCardForInlineParameter(
+  parameterId: ParameterId,
+  dashcards: DashboardCard[],
+): (VirtualDashboardCard & { inline_parameters: ParameterId[] }) | undefined {
+  return dashcards.find((dashcard) => {
+    if (
+      isVirtualDashCard(dashcard) &&
+      Array.isArray(dashcard.inline_parameters)
+    ) {
+      return dashcard.inline_parameters.some((id) => id === parameterId);
+    }
+  }) as
+    | (VirtualDashboardCard & { inline_parameters: ParameterId[] })
+    | undefined;
+}
+
+export function isDashcardInlineParameter(
+  parameterId: ParameterId,
+  dashcards: DashboardCard[],
+) {
+  return !!findDashCardForInlineParameter(parameterId, dashcards);
+}
+
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
   return dashcard.card.dataset_query?.type === "native";
