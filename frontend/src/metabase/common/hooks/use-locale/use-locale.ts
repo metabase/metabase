@@ -21,7 +21,10 @@ export const useLocale = () => {
     useSelector(getCurrentUser)?.locale || undefined;
 
   // locale used in the sdk and in public/static from the #locale parameter
-  const frontendLocale = useContext(FrontendLocaleContext);
+  const { locale: frontendLocale, ...rest } = useContext(FrontendLocaleContext);
 
-  return frontendLocale || userLocale || instanceLocale;
+  return {
+    locale: frontendLocale || userLocale || instanceLocale,
+    ...rest,
+  };
 };

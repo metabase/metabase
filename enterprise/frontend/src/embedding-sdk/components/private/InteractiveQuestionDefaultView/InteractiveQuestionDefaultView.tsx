@@ -62,6 +62,7 @@ export const InteractiveQuestionDefaultView = ({
     originalId,
     question,
     queryResults,
+    isLocaleLoading,
     isQuestionLoading,
     originalQuestion,
     isSaveEnabled,
@@ -81,7 +82,10 @@ export const InteractiveQuestionDefaultView = ({
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
 
-  if (!isEditorOpen && (isQuestionLoading || isQueryResultLoading)) {
+  if (
+    !isEditorOpen &&
+    (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
+  ) {
     return <SdkLoader />;
   }
 

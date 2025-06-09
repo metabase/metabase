@@ -6,6 +6,7 @@ import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
@@ -47,6 +48,8 @@ export const InteractiveQuestionProvider = ({
   withDownloads,
   variant,
 }: InteractiveQuestionProviderProps) => {
+  const { isLocaleLoading } = useLocale();
+
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
 
@@ -121,7 +124,8 @@ export const InteractiveQuestionProvider = ({
 
   const questionContext: InteractiveQuestionContextType = {
     originalId: questionId,
-    isQuestionLoading: isQuestionLoading,
+    isLocaleLoading,
+    isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
     onReset: loadAndQueryQuestion,

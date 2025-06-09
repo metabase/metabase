@@ -39,6 +39,7 @@ export const QuestionVisualization = ({
     question,
     queryResults,
     mode,
+    isLocaleLoading,
     isQuestionLoading,
     isQueryRunning,
     navigateToNewCard,
@@ -52,7 +53,7 @@ export const QuestionVisualization = ({
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
 
-  if (isQuestionLoading || isQueryResultLoading) {
+  if (isLocaleLoading || isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
