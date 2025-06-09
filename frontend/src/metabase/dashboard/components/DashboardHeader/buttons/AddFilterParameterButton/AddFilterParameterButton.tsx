@@ -17,7 +17,7 @@ export const AddFilterParameterButton = () => {
   const dispatch = useDispatch();
 
   const handleSelectOption = (option: ParameterMappingOptions) => {
-    dispatch(addParameter(option));
+    dispatch(addParameter({ option }));
   };
 
   useRegisterShortcut(
