@@ -12,6 +12,7 @@ import {
   assertOnlyTheseTranslationsAreStored,
   generateLargeCSV,
   uploadTranslationDictionary,
+  uploadTranslationDictionaryViaAPI,
 } from "./helpers/e2e-content-translation-helpers";
 
 const { H } = cy;
@@ -48,8 +49,8 @@ describe("scenarios > admin > localization > content translation", () => {
     });
 
     describe("The translation download button", () => {
-      it("downloads the uploaded translations", () => {
-        uploadTranslationDictionary(germanFieldNames);
+      it("downloads the stored translations", () => {
+        uploadTranslationDictionaryViaAPI(germanFieldNames);
         cy.visit("/admin/settings/localization");
         cy.findByTestId("content-translation-configuration")
           .button(/Download translation dictionary/i)
