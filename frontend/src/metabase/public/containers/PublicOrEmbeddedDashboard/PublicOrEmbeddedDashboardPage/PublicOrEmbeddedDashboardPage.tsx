@@ -44,6 +44,8 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
+      <DashboardUrlSync router={router} location={location} />
+
       <DashboardContextProvider
         dashboardId={dashboardId}
         hideParameters={hide_parameters}
@@ -65,7 +67,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         }}
       >
         <DashboardLocationSync location={location} />
-        <DashboardUrlSync router={router} location={location} />
         <PublicOrEmbeddedDashboardView />
       </DashboardContextProvider>
     </LocaleProvider>

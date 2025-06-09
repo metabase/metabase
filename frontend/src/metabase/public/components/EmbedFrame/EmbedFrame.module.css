@@ -30,6 +30,35 @@ body:where(:global(.mb-wrapper)) {
   background-color: var(--mb-color-bg-dashboard);
 }
 
+.EmbedFrameHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "DashboardTitle HeaderButtons"
+    "DashboardTabs DashboardTabs";
+
+  &.WithoutTitle {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "DashboardTabs HeaderButtons";
+    & .DashboardTitle {
+      display: none;
+    }
+  }
+
+  & .DashboardTitle {
+    grid-area: DashboardTitle;
+  }
+
+  & .DashboardTabs {
+    grid-area: DashboardTabs;
+  }
+
+  & .HeaderButtons {
+    grid-area: HeaderButtons;
+  }
+}
+
 .EmbedFrame,
 .EmbedFrame .DashCard .Card,
 .EmbedFrame .ContentContainer,

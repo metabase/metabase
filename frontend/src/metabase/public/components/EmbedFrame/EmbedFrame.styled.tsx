@@ -3,10 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
-import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
-  breakpointMaxSmall,
   breakpointMinLarge,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
@@ -60,32 +57,6 @@ export const Header = styled.header`
   display: flex;
   flex-direction: column;
 `;
-
-export const TitleAndDescriptionContainer = styled(FullWidthContainer, {
-  shouldForwardProp: (prop) => prop !== "hasTitle",
-})<{ hasTitle?: boolean }>`
-  margin-top: 0.5rem;
-
-  ${({ hasTitle }) =>
-    hasTitle &&
-    css`
-      ${breakpointMinSmall} {
-        margin-top: 1rem;
-      }
-
-      ${breakpointMinLarge} {
-        margin-top: 1.5rem;
-      }
-    `}
-`;
-
-export const DashboardTabsContainer = styled(FullWidthContainer)`
-  ${breakpointMaxSmall} {
-    padding-left: 0;
-    padding-right: 0;
-  }
-`;
-
 export const Separator = styled.div`
   border-bottom: 1px solid var(--mb-color-border);
 `;
@@ -137,11 +108,4 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
     height: calc(80 / 16 * 1rem);
     padding: 0 2rem;
   }
-`;
-
-export const TitleAndButtonsContainer = styled(FixedWidthContainer)`
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
 `;

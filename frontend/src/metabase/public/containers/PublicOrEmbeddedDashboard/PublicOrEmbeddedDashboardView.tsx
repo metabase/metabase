@@ -10,6 +10,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
+import { ExportDashboardAsPdf } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/ExportDashboardAsPdf";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -58,7 +59,6 @@ export function PublicOrEmbeddedDashboardView() {
     cardTitled,
     downloadsEnabled,
   } = useDashboardContext();
-
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}
@@ -126,6 +126,7 @@ export function PublicOrEmbeddedDashboardView() {
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
+      headerButtons={downloadsEnabled.pdf ? <ExportDashboardAsPdf /> : null}
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
         dashboardId &&
