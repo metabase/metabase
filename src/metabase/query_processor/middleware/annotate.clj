@@ -15,6 +15,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.debug :as qp.debug]
@@ -69,9 +70,9 @@
   [:map
    [:cols {:optional true} ::cols]])
 
-(mu/defn- first-stage-type :- [:enum :mbql.stage/native :mbql.stage/mbql]
+(mu/defn- last-stage-type :- [:enum :mbql.stage/native :mbql.stage/mbql]
   [query :- ::lib.schema/query]
-  (get-in query [:stages 0 :lib/type]))
+  (:lib/type (lib.util/query-stage query -1)))
 
 (defmulti expected-cols
   "Return metadata for columns returned by a pMBQL `query`.
@@ -83,15 +84,15 @@
   {:arglists '([query] [query initial-cols])}
   (fn
     ([query]
-     (first-stage-type query))
+     (last-stage-type query))
     ([query _initial-cols]
-     (first-stage-type query))))
+     (last-stage-type query))))
 
 (defmulti add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   {:arglists '([query rff])}
   (fn [query _rff]
-    (first-stage-type query)))
+    (last-stage-type query)))
 
 ;;; TODO -- move into lib, deduplicate with [[metabase.lib.remove-replace/rename-join]]
 (mu/defn- rename-join :- ::lib.schema/query
@@ -185,7 +186,7 @@
                      :type         qp.error-type/driver}))))
 
 (mu/defn- source->legacy-source :- ::legacy-source
-  [source :- ::lib.schema.metadata/column-source]
+  [source :- [:maybe ::lib.schema.metadata/column-source]]
   (case source
     :source/card                :fields
     :source/native              :native
@@ -196,7 +197,9 @@
     :source/breakouts           :breakout
     :source/joins               :fields
     :source/expressions         :fields
-    :source/implicitly-joinable :fields))
+    :source/implicitly-joinable :fields
+    ;; ???? Not clear why some columns don't have a `:lib/source` at all. But in that case just fall back to `:fields`
+    :fields))
 
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
@@ -431,7 +434,7 @@
                                   :type/*)]
                 {:lib/type       :metadata/column
                  :lib/source     :source/native
-                 :display-name   (:name col)
+                 :display-name   (:name col) #_(humanization/name->human-readable-name (:name col))
                  :base-type      base-type
                  :effective-type base-type})
               col))
