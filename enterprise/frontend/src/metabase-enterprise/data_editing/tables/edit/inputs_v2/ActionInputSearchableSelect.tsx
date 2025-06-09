@@ -82,12 +82,20 @@ export const ActionInputSearchableSelect = ({
     }
 
     if (value) {
+      // If searchFieldId is provided, display the label instead of the value
+      if (searchFieldId) {
+        const option = options.find((item) => item.value === value);
+        if (option) {
+          return <Text truncate="end">{option.label}</Text>;
+        }
+      }
+
       // Fallback to the raw value instead of a label
       return <Text truncate="end">{value}</Text>;
     }
 
     return null;
-  }, [isLoading, value, inputProps?.placeholder]);
+  }, [isLoading, value, inputProps?.placeholder, options, searchFieldId]);
 
   const shouldDisplayClearButton =
     isNullable && !!value && !inputProps?.disabled;
@@ -146,6 +154,7 @@ export const ActionInputSearchableSelect = ({
                 key={item.value}
               >
                 {item.label}
+                {searchFieldId ? ` [${item.value}]` : ""}
               </Combobox.Option>
             ))
           ) : isLoading ? (

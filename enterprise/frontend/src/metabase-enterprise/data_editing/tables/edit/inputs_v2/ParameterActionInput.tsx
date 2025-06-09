@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { ActionFormParameter } from "../../types";
-import { ActionFormParameterType } from "../../types";
+import { ActionFormInputType } from "../../types";
 
 import { ActionInputDateTime } from "./ActionInputDateTime";
 import { ActionInputSearchableSelect } from "./ActionInputSearchableSelect";
@@ -26,46 +26,27 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
     disabled,
   };
 
-  if (parameter.type === ActionFormParameterType.Date) {
-    return <ActionInputDateTime {...rest} inputProps={inputProps} />;
-  }
-
-  if (parameter.type === ActionFormParameterType.DateTime) {
-    return <ActionInputDateTime {...rest} inputProps={inputProps} isDateTime />;
-  }
-
-  if (parameter.semantic_type === "type/Description") {
-    return <ActionInputTextarea {...rest} inputProps={inputProps} />;
-  }
-
-  if (
-    parameter.semantic_type === "type/State" ||
-    parameter.semantic_type === "type/Country" ||
-    parameter.semantic_type === "type/Category"
-  ) {
-    if (parameter.field_id) {
+  switch (parameter.input_type) {
+    case ActionFormInputType.Date:
+      return <ActionInputDateTime {...rest} inputProps={inputProps} />;
+    case ActionFormInputType.DateTime:
       return (
-        <ActionInputSearchableSelect
-          {...rest}
-          inputProps={inputProps}
-          fieldId={parameter.field_id}
-          withCreateNew
-        />
+        <ActionInputDateTime {...rest} inputProps={inputProps} isDateTime />
       );
-    }
-  }
-
-  if (parameter.semantic_type === "type/FK") {
-    if (parameter.field_id) {
-      return (
-        <ActionInputSearchableSelect
-          {...rest}
-          inputProps={inputProps}
-          fieldId={parameter.field_id}
-          searchFieldId={parameter.fk_target_field_id}
-        />
-      );
-    }
+    case ActionFormInputType.Textarea:
+      return <ActionInputTextarea {...rest} inputProps={inputProps} />;
+    case ActionFormInputType.Dropdown:
+      if (parameter.field_id) {
+        return (
+          <ActionInputSearchableSelect
+            {...rest}
+            inputProps={inputProps}
+            fieldId={parameter.field_id}
+            searchFieldId={parameter.human_readable_field_id}
+            withCreateNew
+          />
+        );
+      }
   }
 
   return <ActionInputText {...rest} inputProps={inputProps} />;

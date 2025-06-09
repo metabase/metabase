@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import { Group, Icon, type IconName, Text } from "metabase/ui";
 
-import { type ActionFormParameter, ActionFormParameterType } from "../../types";
+import { ActionFormInputType, type ActionFormParameter } from "../../types";
 
 import S from "./EditingBaseRowModal.module.css";
 
@@ -12,13 +12,12 @@ type ActionFormModalParameterProps = PropsWithChildren<{
 }>;
 
 const DEFAULT_PARAMETER_ICON = "string";
-const PARAMETER_ICON_MAP: Record<ActionFormParameterType, IconName> = {
-  [ActionFormParameterType.Text]: "string",
-  [ActionFormParameterType.Number]: "number",
-  [ActionFormParameterType.Date]: "calendar",
-  [ActionFormParameterType.DateTime]: "calendar",
-  [ActionFormParameterType.Integer]: "number",
-  [ActionFormParameterType.BigInteger]: "number",
+const PARAMETER_ICON_MAP: Record<ActionFormInputType, IconName> = {
+  [ActionFormInputType.Text]: "string",
+  [ActionFormInputType.Textarea]: "string",
+  [ActionFormInputType.Date]: "calendar",
+  [ActionFormInputType.DateTime]: "calendar",
+  [ActionFormInputType.Dropdown]: "string",
 };
 
 export function ActionFormModalParameter({
@@ -27,7 +26,7 @@ export function ActionFormModalParameter({
 }: ActionFormModalParameterProps) {
   const iconName = parameter.semantic_type
     ? FIELD_SEMANTIC_TYPES_MAP[parameter.semantic_type].icon
-    : PARAMETER_ICON_MAP[parameter.type];
+    : PARAMETER_ICON_MAP[parameter.input_type];
 
   return (
     <>
