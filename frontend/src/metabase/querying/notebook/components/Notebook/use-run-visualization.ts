@@ -1,4 +1,4 @@
-import * as Lib from "metabase-lib";
+import { cleanQuestion } from "metabase/query_builder/utils/question";
 import type Question from "metabase-lib/v1/Question";
 
 type UseVisualizationProps = {
@@ -22,14 +22,7 @@ export const useRunVisualization = ({
     if (!question) {
       return;
     }
-    // Converting a query to MLv2 and back performs a clean-up
-    let cleanQuestion = question.setQuery(
-      Lib.dropEmptyStages(question.query()),
-    );
-    if (cleanQuestion.display() === "table") {
-      cleanQuestion = cleanQuestion.setDefaultDisplay();
-    }
-    await updateQuestion(cleanQuestion);
+    await updateQuestion(cleanQuestion(question));
   };
 
   // visualize switches the view to the question's visualization.

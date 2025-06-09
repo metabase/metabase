@@ -14,13 +14,11 @@ export const VisualizationButton = () => {
   const { question, originalQuestion } = useInteractiveQuestionContext();
   const { visualizeQuestion } = useRunVisualization();
 
-  const isDirty = useMemo(() => {
-    return isQuestionDirty(question, originalQuestion);
-  }, [question, originalQuestion]);
-
-  const isRunnable = useMemo(() => {
-    return isQuestionRunnable(question, isDirty);
-  }, [question, isDirty]);
+  const isRunnable = useMemo(
+    () =>
+      isQuestionRunnable(question, isQuestionDirty(question, originalQuestion)),
+    [question, originalQuestion],
+  );
 
   if (!isRunnable) {
     return null;
