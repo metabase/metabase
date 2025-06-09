@@ -1,10 +1,10 @@
-import type { Query } from "history";
 import { pick } from "underscore";
 
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { isNotNull } from "metabase/lib/types";
 
 export type SdkDashboardDisplayProps = {
@@ -26,7 +26,7 @@ export type SdkDashboardDisplayProps = {
    * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    */
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
 
   /**
    * Whether the dashboard should display a title.

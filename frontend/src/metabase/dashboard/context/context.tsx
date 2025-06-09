@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import {
   type PropsWithChildren,
   createContext,
@@ -10,6 +9,7 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { useDispatch } from "metabase/lib/redux";
 import type { Dashboard, DashboardId } from "metabase-types/api";
@@ -41,7 +41,7 @@ export type DashboardContextErrorState = {
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams?: Query;
+  parameterQueryParams?: ParameterValues;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
