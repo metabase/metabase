@@ -13,8 +13,10 @@ export const EmbeddingSetupWrapper = ({
   return (
     <EmbeddingSetupProvider>
       <Center>
-        <Flex style={{ height: "100vh", overflow: "auto" }}>
-          <EmbeddingSetupSidebar />
+        <Flex style={{ minHeight: "100vh" }}>
+          <Flex h="100vh" style={{ position: "sticky", top: 0 }}>
+            <EmbeddingSetupSidebar />
+          </Flex>
           <Box p="xl" pl="0" style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
             <Box
               p="xl"
