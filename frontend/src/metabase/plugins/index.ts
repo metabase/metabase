@@ -111,7 +111,8 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 export const PLUGIN_WHITELABEL = {
-  WhiteLabelSettingsPage: PluginPlaceholder,
+  WhiteLabelBrandingSettingsPage: PluginPlaceholder,
+  WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
