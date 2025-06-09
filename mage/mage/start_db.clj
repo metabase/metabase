@@ -108,6 +108,10 @@
   [database db-info]
   "29.0.0")
 
+(defmethod fetch-latest-supported-version :sqlserver
+  [database db-info]
+  "2022-latest")
+
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database db-info)
