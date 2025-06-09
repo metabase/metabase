@@ -8,13 +8,18 @@ import { useSelector } from "metabase/lib/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
 import { Switch, Title } from "metabase/ui";
 
-import { getIsStepActive, getUserEmail } from "../../selectors";
+import {
+  getIsEmbeddingUseCase,
+  getIsStepActive,
+  getUserEmail,
+} from "../../selectors";
 
 import { StepBody, StepFooter, StepRoot } from "./CompletedStep.styled";
 
 export const CompletedStep = (): JSX.Element | null => {
   const [checkboxValue, setCheckboxValue] = useState(false);
   const email = useSelector(getUserEmail);
+  const isEmbeddingUseCase = useSelector(getIsEmbeddingUseCase);
 
   const isStepActive = useSelector((state) =>
     getIsStepActive(state, "completed"),
@@ -58,7 +63,7 @@ export const CompletedStep = (): JSX.Element | null => {
             ButtonsS.ButtonPrimary,
             ButtonsS.ButtonLarge,
           )}
-          href={baseUrl}
+          href={isEmbeddingUseCase ? `${baseUrl}setup/embedding` : baseUrl}
         >
           {t`Take me to Metabase`}
         </a>
