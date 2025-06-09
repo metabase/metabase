@@ -67,8 +67,8 @@
       (do (let [pretty-column (str/join "." (map #(str "'" % "'")
                                                  (drop-while nil? namespaced-col)))]
             (log/debugf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
-                       database-type
-                       pretty-column))
+                        database-type
+                        pretty-column))
           :type/*)))
 
 (defn- calculated-semantic-type
