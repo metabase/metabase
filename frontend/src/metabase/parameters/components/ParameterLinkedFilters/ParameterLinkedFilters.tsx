@@ -299,9 +299,9 @@ type FieldListProps = {
 
 const FieldList = ({ filteredIds, filteringIds }: FieldListProps) => {
   return (
-    <SimpleGrid cols={2} px="md" pb="md" spacing="sm">
-      <Text c="brand">{t`Filtering column`}</Text>
-      <Text c="brand">{t`Filtered column`}</Text>
+    <SimpleGrid cols={2} px="md" pb="md" spacing="sm" fz="sm">
+      <Box c="brand">{t`Filtering column`}</Box>
+      <Box c="brand">{t`Filtered column`}</Box>
       {filteringIds.map((filteringId) => (
         <Fragment key={filteringId}>
           {filteredIds.map((filteredId) => (
@@ -328,12 +328,8 @@ const FieldItem = ({ fieldId }: FieldItemProps) => {
 
   return (
     <Box>
-      {field.table && (
-        <Text c="text-secondary" lh="1rem">
-          {field.table.display_name}
-        </Text>
-      )}
-      <Text lh="1rem">{field.display_name}</Text>
+      {field.table && <Box c="text-secondary">{field.table.display_name}</Box>}
+      <Box>{field.display_name}</Box>
     </Box>
   );
 };
