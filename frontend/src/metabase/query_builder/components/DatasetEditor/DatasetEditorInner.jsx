@@ -81,7 +81,7 @@ const propTypes = {
   toggleTemplateTagsEditor: PropTypes.func.isRequired,
   toggleDataReference: PropTypes.func.isRequired,
   toggleSnippetSidebar: PropTypes.func.isRequired,
-  forwardedRef: PropTypes.oneOf([PropTypes.func, PropTypes.object]),
+  forwardedRef: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
