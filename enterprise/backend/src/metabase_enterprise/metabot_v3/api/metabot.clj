@@ -85,9 +85,9 @@
       (update :fields #(map column-input %))))
 
 (defn- generate-sample-prompts
-  [metabot-entities]
+  [metabot-entity-ids]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (let [scope (metabot-v3.tools.u/metabot-scope metabot-entities)
+    (let [scope (metabot-v3.tools.u/metabot-scope metabot-entity-ids)
           {metrics :metric, models :model}
           (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) (keys scope))
                      detail (map (fn [detail card] (assoc detail ::origin card))
@@ -122,22 +122,18 @@
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/with-transaction [_conn]
-    (let [new-entities (into []
-                             (keep (fn [{model-id :id model :model}]
-                                     (when-not (t2/exists? :model/MetabotEntity
-                                                           :metabot_id id
-                                                           :model model
-                                                           :model_id model-id)
-                                       (let [entity-id (t2/insert-returning-pk! :model/MetabotEntity
-                                                                                {:metabot_id id
-                                                                                 :model model
-                                                                                 :model_id model-id})]
-                                         {:metabot-id id
-                                          :metabot-entity-id entity-id
-                                          :model (keyword model)
-                                          :model-id model-id}))))
-                             items)]
-      (generate-sample-prompts new-entities)))
+    (let [new-entity-ids (into []
+                               (keep (fn [{model-id :id model :model}]
+                                       (when-not (t2/exists? :model/MetabotEntity
+                                                             :metabot_id id
+                                                             :model model
+                                                             :model_id model-id)
+                                         (t2/insert-returning-pk! :model/MetabotEntity
+                                                                  {:metabot_id id
+                                                                   :model model
+                                                                   :model_id model-id}))))
+                               items)]
+      (generate-sample-prompts new-entity-ids)))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete ["/:id/entities/:model/:model-id" :model #"dataset|metric|collection"]
@@ -165,10 +161,15 @@
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)
-        base-query (cond-> {:join     [[:metabot_entity :mbe] [:= :mbe.id :metabot_entity_id]
-                                       [:report_card :card]   [:= :card.id :card_id]]
+        base-query (cond-> {:join     [[{:select [:id :name :type :collection_id :metabot_entity_id]
+                                         :from   (metabot-v3.tools.u/metabot-scope-query
+                                                  [:= :mbe.metabot_id id])}
+                                        :card]
+                                       [:and
+                                        [:= :card.id                :metabot_prompt.card_id]
+                                        [:= :card.metabot_entity_id :metabot_prompt.metabot_entity_id]]]
                             :where    [:and
-                                       [:= :mbe.metabot_id id]
+                                       ;; check that the current user can see the card
                                        (collection/visible-collection-filter-clause :card.collection_id)]}
                      model    (update :where conj [:= :card.type model])
                      model_id (update :where conj [:= :card.id model_id]))

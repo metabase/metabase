@@ -141,38 +141,55 @@
       (map #(dissoc % :result_metadata :creator :collection) (get-metrics-and-models collection-name))))
   -)
 
+(defn metabot-scope-query
+  "Return the cards in metabot scope.
+
+  If provided, the filter clause `metabot-entity-condition` is used to filter the metabot_entity table. The clause can
+  refer to that table using the :mbe alias. The cards are returned with an additional field called :metabot_entity_id
+  containing the ID of the metabot entity that brought the card in scope. (Situations in which several metabot
+  entities can bring a card into scope is not supported. It is expected that at some point this query will be extended
+  to deal with tables as well.)
+
+  For example,
+    [:in [:mbe.id [1 7 42]]] can be used to consider only specific entities,
+    [:= :mbe.metabot_id 1]   can be used to consider only entities of metabot 1."
+  ([]
+   (metabot-scope-query nil))
+  ([metabot-entity-condition]
+   {:union-all
+    [{:select [:card.* [:mbe.id :metabot_entity_id]]
+      :from   [[:report_card :card]]
+      :join   [[:metabot_entity :mbe] (cond-> [:and [:= :mbe.model [:inline "collection"]]]
+                                        metabot-entity-condition (conj metabot-entity-condition))
+               [:collection :ecoll]   [:= :ecoll.id :mbe.model_id]
+               [:collection :coll]    [:or
+                                       [:= :coll.id :ecoll.id]
+                                       [:like :coll.location [:concat :ecoll.location :ecoll.id [:inline "/%"]]]]]
+      :where  [:= :card.collection_id :coll.id]}
+     {:select [:card.* [:mbe.id :metabot_entity_id]]
+      :from   [[:report_card :card]]
+      :join   [[:metabot_entity :mbe] (cond-> [:and
+                                               [:in :mbe.model [[:inline "dataset"] [:inline "metric"]]]]
+                                        metabot-entity-condition (conj metabot-entity-condition))]
+      :where  [:= :card.id :mbe.model_id]}]}))
+
+(comment
+  (t2/select-fn-vec #(select-keys % [:id :name :type :metabot_entity_id])
+                    :model/Card
+                    (metabot-scope-query [:= :mbe.metabot_id 1]))
+  -)
+
 (defn metabot-scope
   "Return a map from cards (models or metrics) to the ID of metabot entity they belong to.
 
   Warning: this function assumes that each card is bought by one entity into scope. This assumption holds
   in the known special cases when there is but one collection entity, or when there are only dataset (model)
   and metric type entities."
-  [entities]
-  (let [{collection-entities true, other-entities false} (group-by #(= (:model %) :collection) entities)
-        card-id->card (if (seq other-entities)
-                        (t2/select-pk->fn identity :model/Card
-                                          :id [:in (map :model-id other-entities)]
-                                          :type [:in [:model :metric]]
-                                          :archived false)
-                        {})]
-    (reduce (fn [scope coll-entity]
-              (let [coll-id (:model-id coll-entity)]
-                (if-let [coll (t2/select-one [:model/Collection :id :location] coll-id)]
-                  (let [all-coll-ids (conj (set (collection/descendant-ids coll)) coll-id)
-                        cards (t2/select :model/Card
-                                         :collection_id [:in all-coll-ids]
-                                         :type [:in [:model :metric]]
-                                         :archived false)
-                        coll-entity-id (:metabot-entity-id coll-entity)]
-                    (reduce (fn [scope card]
-                              (assoc scope card coll-entity-id))
-                            scope
-                            cards))
-                  scope)))
-            (reduce (fn [m e]
-                      (let [card (card-id->card (:model-id e))]
-                        (cond-> m
-                          card (assoc card (:metabot-entity-id e)))))
-                    {}
-                    other-entities)
-            collection-entities)))
+  [entity-ids]
+  (when (seq entity-ids)
+    (let [cards (t2/select :model/Card
+                           (metabot-scope-query [:in :mbe.id entity-ids]))]
+      (reduce (fn [m c]
+                (assoc m (dissoc c :metabot_entity_id) (:metabot_entity_id c)))
+              {}
+              cards))))

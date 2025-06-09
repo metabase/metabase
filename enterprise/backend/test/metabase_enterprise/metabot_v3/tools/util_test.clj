@@ -1,11 +1,9 @@
 (ns metabase-enterprise.metabot-v3.tools.util-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.util]
    [metabase.collections.models.collection :as collection]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (deftest metabot-scope-test
   (mt/dataset test-data
@@ -32,25 +30,21 @@
                    :model/Card mb-metric4 {:type :metric, :collection_id (:id non-mb-coll)}
                    :model/Card _          {:type :metric, :collection_id (:id non-mb-coll)}
                    :model/Metabot metabot {:name "metabot"}
-                   :model/MetabotEntity mb-coll-entity   {:metabot_id (:id metabot)
-                                                          :model :collection
-                                                          :model_id (:id metabot-coll)}
-                   :model/MetabotEntity mb-model-entity  {:metabot_id (:id metabot)
-                                                          :model :dataset
-                                                          :model_id (:id mb-model4)}
-                   :model/MetabotEntity mb-metric-entity {:metabot_id (:id metabot)
-                                                          :model :metric
-                                                          :model_id (:id mb-metric4)}]
-      (is (= {mb-model1 (:id mb-coll-entity)
-              mb-model2 (:id mb-coll-entity)
-              mb-model3 (:id mb-coll-entity)
-              mb-model4 (:id mb-model-entity)
-              mb-metric1 (:id mb-coll-entity)
-              mb-metric2 (:id mb-coll-entity)
-              mb-metric3 (:id mb-coll-entity)
-              mb-metric4 (:id mb-metric-entity)}
-             (->> [mb-coll-entity mb-model-entity mb-metric-entity]
-                  (map #(-> %
-                            (update-keys u/->kebab-case-en)
-                            (set/rename-keys {:id :metabot-entity-id})))
-                  metabot-v3.tools.util/metabot-scope))))))
+                   :model/MetabotEntity {mb-coll-entity-id :id}   {:metabot_id (:id metabot)
+                                                                   :model :collection
+                                                                   :model_id (:id metabot-coll)}
+                   :model/MetabotEntity {mb-model-entity-id :id}  {:metabot_id (:id metabot)
+                                                                   :model :dataset
+                                                                   :model_id (:id mb-model4)}
+                   :model/MetabotEntity {mb-metric-entity-id :id} {:metabot_id (:id metabot)
+                                                                   :model :metric
+                                                                   :model_id (:id mb-metric4)}]
+      (is (= {mb-model1 mb-coll-entity-id
+              mb-model2 mb-coll-entity-id
+              mb-model3 mb-coll-entity-id
+              mb-model4 mb-model-entity-id
+              mb-metric1 mb-coll-entity-id
+              mb-metric2 mb-coll-entity-id
+              mb-metric3 mb-coll-entity-id
+              mb-metric4 mb-metric-entity-id}
+             (metabot-v3.tools.util/metabot-scope [mb-coll-entity-id mb-model-entity-id mb-metric-entity-id]))))))
