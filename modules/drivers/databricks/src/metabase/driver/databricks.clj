@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -115,7 +116,7 @@
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
            included? (fn [schema]
-                       (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+                       (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
        (into
         #{}
         (filter (comp included? :schema))

@@ -32,7 +32,7 @@
               :email            email
               :sso_source       :jwt
               :login_attributes user-attributes}]
-    (or (sso-utils/fetch-and-update-login-attributes! user)
+    (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
 

@@ -198,7 +198,7 @@ export const hasAdvancedFilterOptionsHidden = (screen: Screen) => {
 export const hasBasicFilterOptions = (screen: Screen) => {
   expect(
     screen.getByText(
-      /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
+      /If a dashboard filter has a default value, it'll be applied when your subscription is sent./i,
     ),
   ).toBeVisible();
 
