@@ -77,6 +77,11 @@ export const CodeMirrorEditor = forwardRef<
 
   const handleUpdate = useCallback(
     (update: ViewUpdate) => {
+      if (update.geometryChanged) {
+        // handle editor resize, do nothing
+        return;
+      }
+
       // handle selection changes
       if (onSelectionChange) {
         const beforeRanges = getSelectedRanges(update.startState);

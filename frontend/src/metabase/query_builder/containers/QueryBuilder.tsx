@@ -291,15 +291,13 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     [setUIControls],
   );
 
-  const onClickBookmark = () => {
-    const {
-      card: { id },
-    } = props;
+  const onClickBookmark = useCallback(() => {
+    const id = props.card?.id;
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
     toggleBookmark(id);
-  };
+  }, [createBookmark, deleteBookmark, isBookmarked, props.card?.id]);
 
   /**
    * Navigation is scheduled so that LeaveRouteConfirmModal's isEnabled

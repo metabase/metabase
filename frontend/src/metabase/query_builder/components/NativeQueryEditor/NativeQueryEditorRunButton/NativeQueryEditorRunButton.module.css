@@ -4,3 +4,12 @@
   height: 40px;
   width: 40px;
 }
+
+.disappear {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition:
+    opacity 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}

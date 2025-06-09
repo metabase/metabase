@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import cx from "classnames";
-import { forwardRef } from "react";
+import { forwardRef, memo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -293,4 +293,4 @@ const mapDispatchToProps = (dispatch) => ({
 export const View = _.compose(
   ExplicitSize({ refreshMode: "debounceLeading" }),
   connect(null, mapDispatchToProps, null, { forwardRef: true }),
-)(ViewInner);
+)(memo(ViewInner));

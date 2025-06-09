@@ -12,6 +12,7 @@ interface NativeQueryEditorRunButtonProps {
   isRunning: boolean;
   nativeEditorSelectedText?: string;
   runQuery?: () => void;
+  disappear?: boolean;
 }
 
 const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
@@ -22,6 +23,7 @@ const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
     isRunning,
     nativeEditorSelectedText,
     runQuery,
+    disappear = false,
   } = props;
 
   const getTooltip = () => {
@@ -40,7 +42,11 @@ const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
 
   return (
     <RunButtonWithTooltip
-      className={S.RunButtonWithTooltipStyled}
+      className={
+        disappear
+          ? `${S.RunButtonWithTooltipStyled} ${S.disappear}`
+          : S.RunButtonWithTooltipStyled
+      }
       disabled={!isRunnable}
       isRunning={isRunning}
       isDirty={isResultDirty}
