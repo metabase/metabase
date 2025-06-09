@@ -63,7 +63,7 @@
      :limit limit
      :offset offset}))
 
-(defn column-input
+(defn- column-input
   [answer-source-column]
   (some-> answer-source-column (select-keys [:name :type :description :table-reference])))
 
@@ -161,16 +161,17 @@
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)
-        base-query (cond-> {:join     [[{:select [:id :name :type :collection_id :metabot_entity_id]
-                                         :from   (metabot-v3.tools.u/metabot-scope-query
-                                                  [:= :mbe.metabot_id id])}
-                                        :card]
-                                       [:and
-                                        [:= :card.id                :metabot_prompt.card_id]
-                                        [:= :card.metabot_entity_id :metabot_prompt.metabot_entity_id]]]
-                            :where    [:and
-                                       ;; check that the current user can see the card
-                                       (collection/visible-collection-filter-clause :card.collection_id)]}
+        base-query (cond-> {:join  [[{:select [:id :name :type :collection_id :metabot_entity_id]
+                                      :from   [(metabot-v3.tools.u/metabot-scope-query
+                                                [:= :mbe.metabot_id id])
+                                               :scope]}
+                                     :card]
+                                    [:and
+                                     [:= :card.id                :metabot_prompt.card_id]
+                                     [:= :card.metabot_entity_id :metabot_prompt.metabot_entity_id]]]
+                            :where [:and
+                                    ;; check that the current user can see the card
+                                    (collection/visible-collection-filter-clause :card.collection_id)]}
                      model    (update :where conj [:= :card.type model])
                      model_id (update :where conj [:= :card.id model_id]))
         total (t2/count :model/MetabotPrompt base-query)
