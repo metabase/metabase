@@ -1,22 +1,38 @@
-import type { Query } from "history";
-
 import type {
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk";
+import type { MetabaseError } from "embedding-sdk/errors";
+import type { MetabaseAuthMethod } from "embedding-sdk/types";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
-export type SdkIframeEmbedTagMessage = {
-  type: "metabase.embed.iframeReady";
-};
+export type SdkIframeEmbedTagMessage =
+  | { type: "metabase.embed.iframeReady" }
+  | { type: "metabase.embed.requestSessionToken" };
 
 /** Events that the sdk embed route listens for */
-export type SdkIframeEmbedMessage = {
-  type: "metabase.embed.setSettings";
-  data: SdkIframeEmbedSettings;
-};
+export type SdkIframeEmbedMessage =
+  | {
+      type: "metabase.embed.setSettings";
+      data: SdkIframeEmbedSettings;
+    }
+  | {
+      type: "metabase.embed.submitSessionToken";
+      data: {
+        authMethod: MetabaseAuthMethod;
+        sessionToken: MetabaseEmbeddingSessionToken;
+      };
+    }
+  | {
+      type: "metabase.embed.reportAuthenticationError";
+      data: {
+        error: MetabaseError<string, unknown>;
+      };
+    };
 
 // --- Embed Option Interfaces ---
 
@@ -28,7 +44,7 @@ export interface DashboardEmbedOptions {
   withDownloads?: boolean;
 
   // parameters
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
   hiddenParameters?: string[];
 
   // incompatible options
@@ -94,7 +110,7 @@ type SdkIframeEmbedBaseSettings = {
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
-
+  preferredAuthMethod?: MetabaseAuthMethod;
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 };
