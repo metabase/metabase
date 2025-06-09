@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -71,6 +72,11 @@ function setup({
   databases.forEach((db) => {
     setupSchemaEndpoints(db);
   });
+
+  fetchMock.get(
+    { url: "path:/api/database", overwriteRoutes: true },
+    { data: databases, total: databases.length },
+  );
 
   const updateSpy = jest.fn(() => Promise.resolve({ error: "" }));
 
@@ -294,6 +300,10 @@ describe("Admin > Settings > UploadSettingsForm", () => {
         schema_name: null,
         table_prefix: null,
       },
+    });
+
+    await waitFor(() => {
+      expect(fetchMock.calls("path:/api/database")).toHaveLength(2);
     });
   });
 
