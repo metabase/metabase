@@ -487,3 +487,37 @@
               "Q__PRODUCT_ID"
               "Q__count"]
              (map :lib/desired-column-alias (lib/returned-columns query)))))))
+
+(deftest ^:parallel calculate-names-without-truncation-test
+  (testing "QUE-1341"
+    (let [query {:lib/type     :mbql/query
+                 :lib/metadata meta/metadata-provider
+                 :stages       [{:lib/type           :mbql.stage/native
+                                 :native             "SELECT * FROM whatever"
+                                 :lib/stage-metadata {:columns
+                                                      [{:database-type  "CHARACTER VARYING"
+                                                        :name           "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                        :effective-type :type/Text
+                                                        :display-name   "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                        :base-type      :type/Text
+                                                        :lib/type       :metadata/column}
+                                                       {:database-type  "BIGINT"
+                                                        :name           "coun"
+                                                        :effective-type :type/BigInteger
+                                                        :display-name   "coun"
+                                                        :base-type      :type/BigInteger
+                                                        :lib/type       :metadata/column}]
+                                                      :lib/type :metadata/results}}
+                                {:lib/type :mbql.stage/mbql
+                                 :fields   [[:field
+                                             {:base-type :type/Text, :lib/uuid "48208564-d2f2-462c-9794-1feaed36867a"}
+                                             "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"]
+                                            [:field
+                                             {:base-type :type/BigInteger, :lib/uuid "0f8df0f0-1244-4ca9-aa7f-9134b58e4ea3"}
+                                             "coun"]]}]
+                 :database     (meta/id)}]
+      (doseq [stage-number [0 1]]
+        (testing (str "Stage number = " stage-number)
+          (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+                   {:name "coun"}]
+                  (lib/returned-columns query stage-number (lib/query-stage query stage-number) {:unique-name-fn identity}))))))))

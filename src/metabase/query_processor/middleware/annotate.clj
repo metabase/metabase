@@ -74,20 +74,6 @@
   [query :- ::lib.schema/query]
   (:lib/type (lib.util/query-stage query -1)))
 
-(defmulti expected-cols
-  "Return metadata for columns returned by a pMBQL `query`.
-
-  `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
-  name and base type). If provided these are merged with the columns the query is expected to return.
-
-  Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-  {:arglists '([query] [query initial-cols])}
-  (fn
-    ([query]
-     (last-stage-type query))
-    ([query _initial-cols]
-     (last-stage-type query))))
-
 (defmulti add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   {:arglists '([query rff])}
@@ -150,7 +136,7 @@
              (when-let [lib-base-type (:base-type lib-col)]
                {:base-type lib-base-type}))
            ;; Prefer our `:name` if it's something different that what's returned by the driver (e.g. for named
-           ;; aggregations)
+           ;; aggregations). Same for `:lib/source`
            (u/select-non-nil-keys lib-col [:name :lib/source])
            ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
            ;; type calculated by MLv2
@@ -201,17 +187,17 @@
     ;; ???? Not clear why some columns don't have a `:lib/source` at all. But in that case just fall back to `:fields`
     :fields))
 
-(mu/defn- add-legacy-source :- [:sequential
-                                [:merge
-                                 ::kebab-cased-col
-                                 [:map
-                                  [:source ::legacy-source]]]]
-  "Add `:source` to result columns. Needed for legacy FE code. See
-  https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
-  [cols :- [:sequential ::kebab-cased-col]]
-  (mapv (fn [col]
-          (assoc col :source (source->legacy-source (:lib/source col))))
-        cols))
+(mu/defn- basic-native-col :- ::kebab-cased-col
+  "Generate basic column metadata for a column coming back from a native query for which we have only barebones metadata
+  coming back from the driver like name and base type."
+  [col :- ::col]
+  (let [base-type (or ((some-fn :base-type :base_type) col)
+                      :type/*)]
+    {:lib/type       :metadata/column
+     :lib/source     :source/native
+     :display-name   (:name col)
+     :base-type      base-type
+     :effective-type base-type}))
 
 (mu/defn- add-converted-timezone :- [:sequential ::kebab-cased-col]
   "Add `:converted-timezone` to columns that are from `:convert-timezone` expressions (or expressions wrapping them) --
@@ -225,13 +211,25 @@
                                      (when-let [expr (try
                                                        (lib/resolve-expression query expression-name)
                                                        (catch Throwable e
-                                                         (log/error e "Warning: column metadata has invalid :lib/expression-name")
+                                                         (log/error e "Warning: column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
                                                          nil))]
                                        (lib.util.match/match-one expr
                                          [:convert-timezone _opts _expr source-tz _dest-tz]
                                          source-tz)))]
             (cond-> col
               converted-timezone (assoc :converted-timezone converted-timezone))))
+        cols))
+
+(mu/defn- add-legacy-source :- [:sequential
+                                [:merge
+                                 ::kebab-cased-col
+                                 [:map
+                                  [:source ::legacy-source]]]]
+  "Add `:source` to result columns. Needed for legacy FE code. See
+  https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
+  [cols :- [:sequential ::kebab-cased-col]]
+  (mapv (fn [col]
+          (assoc col :source (source->legacy-source (:lib/source col))))
         cols))
 
 (mu/defn- fe-friendly-expression-ref :- ::super-broken-legacy-field-ref
@@ -284,7 +282,9 @@
 
 (mu/defn- deduplicate-names :- [:sequential ::kebab-cased-col]
   "Needed for legacy FE viz settings purposes for the time being. See
-  https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81"
+  https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81
+
+  These should just get `_2` and what not appended to them as needed -- they should not get truncated."
   [cols :- [:sequential ::kebab-cased-col]]
   (map (fn [col unique-name]
          (assoc col :name unique-name))
@@ -314,7 +314,11 @@
                            ;; TODO -- this is supposed to mean `:inherited-temporal-unit` is included in the output
                            ;; but doesn't seem to be working?
                            lib.metadata.calculation/*propagate-binning-and-bucketing* true]
-                   (doall (lib/returned-columns query -1 (lib/query-stage query -1) {} #_{:unique-name-fn identity})))]
+                   (doall (lib/returned-columns query -1 (lib/query-stage query -1) {:unique-name-fn (mbql.u/unique-name-generator)})))
+        ;; generate barebones cols if lib was unable to calculate metadata here.
+        lib-cols (if (empty? lib-cols)
+                   (mapv basic-native-col initial-cols)
+                   lib-cols)]
     (as-> initial-cols cols
       (map (fn [col]
              (update-keys col u/->kebab-case-en))
@@ -368,7 +372,13 @@
   [cols :- [:sequential ::kebab-cased-col]]
   (mapv col->legacy-metadata cols))
 
-(mu/defmethod expected-cols :mbql.stage/mbql :- [:sequential ::snake_cased-col]
+(mu/defn expected-cols :- [:sequential ::snake_cased-col]
+  "Return metadata for columns returned by a pMBQL `query`.
+
+  `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
+  name and base type). If provided these are merged with the columns the query is expected to return.
+
+  Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
   ([query]
    (expected-cols query []))
 
@@ -421,25 +431,6 @@
        (rf (cond-> result
              (map? result)
              (assoc-in [:data :cols] cols')))))))
-
-(mu/defmethod expected-cols :mbql.stage/native :- [:sequential ::snake_cased-col]
-  ([query]
-   (expected-cols query []))
-
-  ([query        :- ::lib.schema/query
-    initial-cols :- ::cols]
-   (as-> initial-cols cols
-     (for [col cols]
-       (merge (let [base-type (or ((some-fn :base-type :base_type) col)
-                                  :type/*)]
-                {:lib/type       :metadata/column
-                 :lib/source     :source/native
-                 :display-name   (:name col) #_(humanization/name->human-readable-name (:name col))
-                 :base-type      base-type
-                 :effective-type base-type})
-              col))
-     (add-extra-metadata query cols)
-     (cols->legacy-metadata cols))))
 
 (mu/defmethod add-column-info :mbql.stage/native :- ::qp.schema/rff
   [query :- ::lib.schema/query

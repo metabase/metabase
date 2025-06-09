@@ -72,7 +72,7 @@
                ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
                :cols (mapv (fn [col-name]
                              (-> (qp.test-util/native-query-col :venues col-name)
-                                 (dissoc :database_type)))
+                                 (dissoc :database_type :lib/type :lib/source)))
                            [:id :longitude :category_id :price :name :latitude])}
               (mt/format-rows-by
                [int 4.0 int int str 4.0]
