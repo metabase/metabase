@@ -1,7 +1,7 @@
-(ns metabase.queries.models.parameter-card-test
+(ns metabase.models.parameter-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.queries.models.parameter-card :as parameter-card]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
