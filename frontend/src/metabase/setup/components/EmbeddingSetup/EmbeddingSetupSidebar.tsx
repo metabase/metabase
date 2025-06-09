@@ -51,14 +51,13 @@ export const EmbeddingSetupSidebar = () => {
   return (
     <Box
       aria-label="Embedding Setup Sidebar"
-      w="320px"
+      w="250px"
       pt="xl"
       p="md"
       style={{
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
-        background: "#fafbfc",
       }}
     >
       <Flex mb="xl" direction="column" align="center">

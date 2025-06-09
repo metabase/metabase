@@ -11,8 +11,7 @@ export const WelcomeStep = () => {
   return (
     <Box
       p="2xl"
-      style={{ maxWidth: 580, borderRadius: 16, boxShadow: "var(--shadow-md)" }}
-      // mx="auto"
+      style={{ borderRadius: 16, boxShadow: "var(--shadow-md)" }}
       my="xxl"
       bg="white"
     >
