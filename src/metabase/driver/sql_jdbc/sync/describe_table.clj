@@ -648,7 +648,7 @@
 (defn- table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
   [driver conn table]
-  (let [existing-fields-by-name
+  (let [fields-with-json-unfolding-disabled
         (->> (t2/select-fn-set :name [:model/Field :name]
                                :table_id (u/the-id table)
                                :json_unfolding false)
@@ -656,7 +656,7 @@
              (delay))]
     (into #{}
           (comp
-           (remove #(contains? @existing-fields-by-name (:name %)))
+           (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
            (filter #(isa? (:base-type %) :type/JSON))
            (describe-table-fields-xf driver table))
           (describe-table-fields driver conn table nil))))
