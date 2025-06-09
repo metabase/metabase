@@ -34,8 +34,17 @@ export function processCommit(commitLine: string): CommitInfo {
 
 const issueLink = (issueNumber: string) => `https://github.com/metabase/metabase/issues/${issueNumber}`;
 
+function escapeHtml(unsafe: string) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function linkifyIssueNumbers(message: string) {
-  return message?.replace(issueNumberRegex, (_, issueNumber) => {
+  return escapeHtml(message)?.replace(issueNumberRegex, (_, issueNumber) => {
     return `<a href="${issueLink(issueNumber)}" target="_blank">(#${issueNumber})</a>`;
   }) ?? message ?? '';
 }
