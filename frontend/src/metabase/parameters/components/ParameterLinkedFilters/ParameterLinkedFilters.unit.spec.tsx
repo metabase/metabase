@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import * as dashboardActions from "metabase/dashboard/actions/parameters";
 import { checkNotNull } from "metabase/lib/types";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
@@ -99,6 +99,11 @@ describe("ParameterLinkedFilters", () => {
     const incompatibleSection = screen.getByTestId("incompatible-parameters");
     expect(within(compatibleSection).getByText("P2")).toBeInTheDocument();
     expect(within(incompatibleSection).getByText("P3")).toBeInTheDocument();
+
+    await userEvent.hover(getIcon("info_filled"));
+    expect(
+      await screen.findByText(/foreign-key relationship/),
+    ).toBeInTheDocument();
   });
 
   it.each(["static-list", "card"])(

@@ -207,7 +207,7 @@ function ParameterList({
     <Stack gap="lg">
       <Text lh="1.25rem">
         {jt`If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for ${(
-          <em key="text">{t`this`}</em>
+          <Box key="text" component="em" mr="xs">{t`this`}</Box>
         )} filter.`}
       </Text>
       {compatibleParameters.length > 0 && (
