@@ -137,9 +137,13 @@ export function supportsInlineParameters(
   return isHeadingDashCard(dashcard);
 }
 
+type VirtualDashboardCardWithInlineFilters = VirtualDashboardCard & {
+  inline_parameters: ParameterId[];
+};
+
 export function hasInlineParameters(
   dashcard: BaseDashboardCard,
-): dashcard is VirtualDashboardCard & { inline_parameters: ParameterId[] } {
+): dashcard is VirtualDashboardCardWithInlineFilters {
   return (
     supportsInlineParameters(dashcard) &&
     Array.isArray(dashcard.inline_parameters)
@@ -149,17 +153,12 @@ export function hasInlineParameters(
 export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: DashboardCard[],
-): (VirtualDashboardCard & { inline_parameters: ParameterId[] }) | undefined {
+): VirtualDashboardCardWithInlineFilters | undefined {
   return dashcards.find((dashcard) => {
-    if (
-      isVirtualDashCard(dashcard) &&
-      Array.isArray(dashcard.inline_parameters)
-    ) {
+    if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
     }
-  }) as
-    | (VirtualDashboardCard & { inline_parameters: ParameterId[] })
-    | undefined;
+  }) as VirtualDashboardCardWithInlineFilters | undefined;
 }
 
 export function isDashcardInlineParameter(
