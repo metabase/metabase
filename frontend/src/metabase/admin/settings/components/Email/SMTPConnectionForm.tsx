@@ -28,7 +28,16 @@ import {
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Group, Radio, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Radio,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import type {
   EmailSMTPSettings,
   SettingDefinitionMap,
@@ -164,7 +173,8 @@ export const SMTPConnectionForm = () => {
   }, [settingsDetails]);
 
   return (
-    <Flex justify="space-between" pl="lg" maw="30rem">
+    <Stack data-testid="settings-updates">
+      <Title order={1}>{t`SMTP`}</Title>
       <SettingsSection>
         <Stack gap="sm" w="25rem">
           {isEmailConfigured && (
@@ -332,10 +342,10 @@ export const SMTPConnectionForm = () => {
           </FormProvider>
         </Stack>
       </SettingsSection>
-      <Box>
+      <Box pos="absolute" right="2rem">
         <UpsellHosting source="settings-email-migrate_to_cloud" />
       </Box>
-    </Flex>
+    </Stack>
   );
 };
 
