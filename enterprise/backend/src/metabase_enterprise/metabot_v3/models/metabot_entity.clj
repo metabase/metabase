@@ -27,6 +27,14 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
+(defmethod serdes/dependencies "MetabotEntity"
+  [{:keys [model model_id prompts]}]
+  (into #{[{:model (case model
+                     "collection" "Collection"
+                     ("dataset" "metric") "Card")
+            :id model_id}]}
+        (mapcat serdes/dependencies prompts)))
+
 (defmethod serdes/generate-path "MetabotEntity" [_ entity]
   [(serdes/infer-self-path "Metabot" (t2/select-one :model/Metabot :id (:metabot_id entity)))
    (serdes/infer-self-path "MetabotEntity" entity)])
@@ -38,7 +46,7 @@
                :model_id   {::fk true
                             :export-with-context (fn [{:keys [model model_id]} _ _]
                                                    (serdes/*export-fk* model_id (case model
-                                                                                  :collection         :model/Collection
+                                                                                  :collection        :model/Collection
                                                                                   (:dataset :metric) :model/Card)))
                             :import-with-context (fn [{:keys [model model_id]} _ _]
                                                    (serdes/*import-fk* model_id (case model
