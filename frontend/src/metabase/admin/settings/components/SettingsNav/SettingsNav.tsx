@@ -17,6 +17,8 @@ import {
 } from "metabase/ui";
 import type { TokenFeature } from "metabase-types/api";
 
+const NavDivider = () => <Divider my="sm" />;
+
 export function SettingsNav() {
   const hasHosting = useHasTokenFeature("hosting");
   const hasEmbedding = useHasTokenFeature("embedding");
@@ -32,6 +34,7 @@ export function SettingsNav() {
         label={t`Authentication`}
         icon="lock"
       >
+        <SettingsNavItem path="authentication" label={t`Overview`} />
         <SettingsNavItem
           path="authentication/user-provisioning"
           label={t`User Provisioning`}
@@ -54,21 +57,17 @@ export function SettingsNav() {
           />
         )}
       </SettingsNavItem>
-      <Divider />
-      <SettingsNavItem path="email" label={t`Email`} icon="mail">
-        <SettingsNavItem path="email/smtp" label="SMTP" />
-      </SettingsNavItem>
+      <NavDivider />
+      <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem
         path="notifications"
         label={t`Notification channels`}
         icon="bell"
-      >
-        <SettingsNavItem path="notifications/slack" label="Slack" />
-      </SettingsNavItem>
+      />
       {!hasHosting && (
         <SettingsNavItem path="updates" label={t`Updates`} icon="sparkles" />
       )}
-      <Divider />
+      <NavDivider />
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path="localization"
@@ -100,7 +99,7 @@ export function SettingsNav() {
           </>
         )}
       </SettingsNavItem>
-      <Divider />
+      <NavDivider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
       <SettingsNavItem
         path="public-sharing"
@@ -112,6 +111,10 @@ export function SettingsNav() {
         label={t`Embedding`}
         icon="embed"
       >
+        <SettingsNavItem
+          path="embedding-in-other-applications"
+          label={t`Overview`}
+        />
         <SettingsNavItem
           path="embedding-in-other-applications/standalone"
           label={t`Static Embedding`}
@@ -128,7 +131,7 @@ export function SettingsNav() {
           label={t`Embedding SDK`}
         />
       </SettingsNavItem>
-      <Divider />
+      <NavDivider />
       <SettingsNavItem path="license" label={t`License`} icon="store" />
       <SettingsNavItem
         path="cloud"
@@ -156,6 +159,8 @@ function SettingsNavItem({
 >) {
   const location = useSelector(getLocation);
   const subpath = location?.pathname?.replace?.("/admin/settings/", "");
+
+  // TODO: render active if collapsed and child is active
 
   return (
     <NavLink

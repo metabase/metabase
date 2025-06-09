@@ -22,7 +22,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
-import { Group, Radio, Stack, Title } from "metabase/ui";
+import { Box, Divider, Flex, Group, Radio, Stack, Title } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 import { SettingsSection } from "./SettingsSection";
@@ -81,7 +81,7 @@ export const SettingsLdapForm = () => {
   return (
     <Stack>
       <Title order={1}>{t`LDAP`}</Title>
-
+      <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
       <FormProvider
         initialValues={getFormValues(settingValues)}
         onSubmit={handleSubmit}
@@ -89,10 +89,9 @@ export const SettingsLdapForm = () => {
         enableReinitialize
       >
         {({ dirty }) => (
-          <Form maw="32.5rem">
-            <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
-            <FormSection title={"Server Settings"}>
-              <SettingsSection>
+          <Form>
+            <SettingsSection>
+              <FormSection title={"Server Settings"}>
                 <Stack gap="md">
                   <FormTextInput
                     name="ldap-host"
@@ -145,9 +144,8 @@ export const SettingsLdapForm = () => {
                     )}
                   />
                 </Stack>
-              </SettingsSection>
-            </FormSection>
-            <SettingsSection>
+              </FormSection>
+              <Divider />
               <FormSection title={"User Schema"}>
                 <Stack gap="md">
                   <FormTextInput
@@ -169,8 +167,7 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </FormSection>
-            </SettingsSection>
-            <SettingsSection>
+              <Divider />
               <FormSection title={"Attributes"}>
                 <Stack gap="md">
                   <FormTextInput
@@ -199,8 +196,7 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </FormSection>
-            </SettingsSection>
-            <SettingsSection>
+              <Divider />
               <FormSection title={"Group Schema"}>
                 <Stack gap="md">
                   <GroupMappingsWidget
@@ -223,16 +219,17 @@ export const SettingsLdapForm = () => {
                   <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
                 </Stack>
               </FormSection>
+              <Flex justify="end" gap="1rem">
+                <Box>
+                  <FormErrorMessage />
+                </Box>
+                <FormSubmitButton
+                  disabled={!dirty}
+                  label={isEnabled ? t`Save changes` : t`Save and enable`}
+                  variant="filled"
+                />
+              </Flex>
             </SettingsSection>
-
-            <Stack align="start" gap="1rem" mb="1rem">
-              <FormErrorMessage />
-              <FormSubmitButton
-                disabled={!dirty}
-                label={isEnabled ? t`Save changes` : t`Save and enable`}
-                variant="filled"
-              />
-            </Stack>
           </Form>
         )}
       </FormProvider>

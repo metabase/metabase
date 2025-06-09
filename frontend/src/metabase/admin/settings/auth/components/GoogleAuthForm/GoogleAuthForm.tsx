@@ -20,7 +20,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Stack, Text, Title } from "metabase/ui";
+import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 
 import { GOOGLE_SCHEMA } from "../../constants";
@@ -78,7 +78,7 @@ export const GoogleAuthForm = (): JSX.Element => {
         >
           {({ dirty }) => (
             <Form disabled={!dirty}>
-              <Stack gap="md" maw="32.5rem">
+              <Stack gap="md">
                 <Title order={2}>{t`Sign in with Google`}</Title>
                 <Text c="text-medium">
                   {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
@@ -112,7 +112,7 @@ export const GoogleAuthForm = (): JSX.Element => {
                   nullable
                   {...getEnvSettingProps(settingDetails?.[DOMAIN_KEY])}
                 />
-                <Box>
+                <Flex justify="end">
                   <FormSubmitButton
                     label={
                       isGoogleAuthEnabled ? t`Save changes` : t`Save and enable`
@@ -120,7 +120,7 @@ export const GoogleAuthForm = (): JSX.Element => {
                     variant="filled"
                     disabled={!dirty}
                   />
-                </Box>
+                </Flex>
                 <FormErrorMessage />
               </Stack>
             </Form>

@@ -9,7 +9,7 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/lib/formatting";
-import { Radio, Select, Stack, Switch, Text } from "metabase/ui";
+import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SettingsSection } from "../SettingsSection";
@@ -239,8 +239,8 @@ function FormattingInput({
   };
 
   return (
-    <Stack gap="md" data-testid={`${id}-formatting-setting`}>
-      <Text htmlFor={id} component="label" fw="bold" display="block">
+    <Box data-testid={`${id}-formatting-setting`}>
+      <Text htmlFor={id} component="label" fw="bold" display="block" mb="xs">
         {label}
       </Text>
       {inputType === "select" && (
@@ -269,6 +269,6 @@ function FormattingInput({
           </Stack>
         </Radio.Group>
       )}
-    </Stack>
+    </Box>
   );
 }

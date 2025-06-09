@@ -15,7 +15,7 @@ export const SlackSetup = () => {
   const botToken = useSetting("slack-token");
   const isValid = useSetting("slack-token-valid?");
   return (
-    <Stack maw="40rem">
+    <Stack>
       <SetupHeader isBot={!!botToken} isValid={isValid} />
       <SetupSection
         title={t`1. Click the button below and create your Slack App`}

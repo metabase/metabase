@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { Stack, Text, Title } from "metabase/ui";
+import { Stack, Title } from "metabase/ui";
 
 import { SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -14,7 +14,7 @@ import {
 export function PublicSharingSettingsPage() {
   const publicSharingEnabled = useSetting("enable-public-sharing");
   return (
-    <Stack gap="xl" p="0 2rem 2rem 1rem">
+    <Stack gap="xl">
       <Title order={1}>{t`Public Sharing`}</Title>
       <SettingsSection>
         <AdminSettingInput
@@ -22,31 +22,20 @@ export function PublicSharingSettingsPage() {
           title={t`Enable Public Sharing`}
           inputType="boolean"
         />
-        {publicSharingEnabled && (
-          <Stack gap="xl">
-            <Stack gap="sm">
-              <Text c="text-medium" fw="bold" tt="uppercase" display="block">
-                {t`Shared Dashboards`}
-              </Text>
-
-              <PublicLinksDashboardListing />
-            </Stack>
-            <Stack gap="sm">
-              <Text c="text-medium" fw="bold" tt="uppercase" display="block">
-                {t`Shared Questions`}
-              </Text>
-
-              <PublicLinksQuestionListing />
-            </Stack>
-            <Stack gap="sm">
-              <Text c="text-medium" fw="bold" tt="uppercase" display="block">
-                {t`Shared Action Forms`}
-              </Text>
-              <PublicLinksActionListing />
-            </Stack>
-          </Stack>
-        )}
       </SettingsSection>
+      {publicSharingEnabled && (
+        <>
+          <SettingsSection title={t`Shared dashboards`}>
+            <PublicLinksDashboardListing />
+          </SettingsSection>
+          <SettingsSection title={t`Shared questions`}>
+            <PublicLinksQuestionListing />
+          </SettingsSection>
+          <SettingsSection title={t`Shared action forms`}>
+            <PublicLinksActionListing />
+          </SettingsSection>
+        </>
+      )}
     </Stack>
   );
 }

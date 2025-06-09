@@ -17,9 +17,9 @@ export function GeneralSettingsPage() {
   });
 
   return (
-    <Stack gap="lg" maw="42rem">
+    <Stack gap="lg">
       <Title order={1}>{t`General`}</Title>
-      <SettingsSection title={t`Site Config`}>
+      <SettingsSection title={t`Site config`}>
         <AdminSettingInput
           name="site-name"
           title={t`Site Name`}
@@ -35,7 +35,7 @@ export function GeneralSettingsPage() {
         <PLUGIN_LANDING_PAGE.LandingPageWidget />
       </SettingsSection>
 
-      <SettingsSection title={t`Email and Tracking`}>
+      <SettingsSection title={t`Email and tracking`}>
         <AdminSettingInput
           name="admin-email"
           title={t`Email Address for Help Requests`}

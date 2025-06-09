@@ -11,7 +11,7 @@ import { MetabotToggleWidget } from "./MetabotToggleWidget";
 
 export function WhiteLabelConcealSettingsPage() {
   return (
-    <Stack gap="xl" maw="40rem" py="lg" data-testid="conceal-metabase-settings">
+    <Stack gap="xl" data-testid="conceal-metabase-settings">
       <Box>
         <Title order={1}>{t`Conceal Metabase`}</Title>
         <Text>

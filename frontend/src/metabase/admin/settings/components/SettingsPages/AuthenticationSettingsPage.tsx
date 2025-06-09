@@ -33,7 +33,7 @@ export function AuthenticationSettingsPage({ tab }: { tab: string }) {
 
   return (
     <Flex justify={"space-between"}>
-      <Stack gap="sm" maw="42rem" px="lg" py="sm">
+      <Stack gap="xl" maw="42rem" px="lg" py="sm">
         <GoogleAuthCard />
         <LdapAuthCard />
         <ApiKeysAuthCard />

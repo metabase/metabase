@@ -7,7 +7,7 @@ import { SettingsSection } from "metabase/admin/settings/components/SettingsSect
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
-import { Stack } from "metabase/ui";
+import { Stack, Title } from "metabase/ui";
 
 import { JwtAuthCard } from "../containers/JwtAuthCard";
 import { SamlAuthCard } from "../containers/SamlAuthCard";
@@ -33,7 +33,8 @@ function AuthenticationTab() {
   const canDisablePasswordLogin = useHasTokenFeature("disable_password_login");
   const hasAnySsoProviderEnabled = useHasSsoEnabled();
   return (
-    <Stack gap="sm" pb="xl">
+    <Stack gap="xl" pb="xl">
+      <Title order={1}>{t`Authentication`}</Title>
       <GoogleAuthCard />
       <LdapAuthCard />
       <SamlAuthCard />
