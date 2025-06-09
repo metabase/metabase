@@ -5,6 +5,8 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]

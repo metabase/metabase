@@ -651,6 +651,7 @@
     [_driver _feature _database]
     true))
 
+;;; see also [[metabase.query-processor.middleware.annotate-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::breakout-year-test)
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "

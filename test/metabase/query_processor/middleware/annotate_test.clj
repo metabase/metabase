@@ -6,6 +6,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -1113,3 +1114,28 @@
                                   [:value {:effective-type :type/Integer} 1337]]]}]
              :info {:alias/escaped->original {old-alias new-alias}}}
             (#'annotate/rename-join query old-alias new-alias)))))
+
+;;; adapted from [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
+(deftest ^:parallel breakout-year-test
+  (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
+                "break out a *YEAR*")
+    (let [source-query (lib.tu.macros/mbql-query checkins
+                         {:aggregation  [[:count]]
+                          :breakout     [!year.date]})
+          metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                             meta/metadata-provider
+                             [source-query])]
+      (let [[date-col count-col] (for [col (annotate/expected-cols (lib/query meta/metadata-provider source-query))]
+                                   (as-> col col
+                                     (assoc col :source :fields)
+                                     (dissoc col :position :aggregation_index :ident)
+                                     (m/filter-keys simple-keyword? col)))]
+        ;; since the bucketing is happening in the source query rather than at this level, the field ref should
+        ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
+        ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
+        ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
+        ;; display values of the column.
+        (is (=? [(assoc date-col  :field_ref [:field "DATE" {:base-type :type/Date}], :unit :year)
+                 (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
+                (annotate/expected-cols
+                 (lib/query metadata-provider (lib.metadata/card metadata-provider 1)))))))))

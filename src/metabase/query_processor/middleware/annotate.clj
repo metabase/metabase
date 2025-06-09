@@ -244,6 +244,9 @@
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)))]
 
+      [:field (field-name :guard string?) opts]
+      [:field field-name (not-empty (dissoc opts :inherited-temporal-unit))]
+
       [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
@@ -340,7 +343,7 @@
              ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
             ;; formatting to display values of the column" according
             ;; to [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
-             (when-let [temporal-unit (:metabase.lib.field/temporal-unit col)]
+             (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
                {:unit temporal-unit})
              col))
           (add-binning-info [col]

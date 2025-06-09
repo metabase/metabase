@@ -133,8 +133,19 @@
                                                                           opts))]
                     {:options external-namespaced-options})
                   (when (integer? id-or-name)
-                    (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                        {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")}))
+                    (merge
+                     (or (lib.equality/resolve-field-id query stage-number id-or-name)
+                         {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
+                     ;; propagate stuff like display-name from the previous stage metadata if it exists.
+                     (when-let [previous-stage (lib.util/previous-stage query stage-number)]
+                       (when-let [previous-stage-cols (or (:metabase.lib.stage/cached-metadata previous-stage)
+                                                          (get-in previous-stage [:lib/stage-metadata :columns]))]
+                         (when-let [previous-stage-col (m/find-first (fn [col]
+                                                                       (and (= (:id col) id-or-name)
+                                                                            (= (lib.join.util/current-join-alias col)
+                                                                               join-alias)))
+                                                                     previous-stage-cols)]
+                           (select-keys previous-stage-col [:display-name]))))))
                   (when (string? id-or-name)
                     (let [resolved (or (resolve-column-name query stage-number id-or-name)
                                        {:lib/type :metadata/column, :name (str id-or-name)})]
