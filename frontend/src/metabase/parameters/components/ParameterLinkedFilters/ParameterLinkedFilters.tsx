@@ -12,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Switch } from "metabase/ui";
+import { Box, Button, Group, Icon, Switch } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId, ParameterId } from "metabase-types/api";
 
@@ -25,8 +25,6 @@ import {
   FieldListRoot,
   FieldListTitle,
   FieldRoot,
-  ParameterBody,
-  ParameterName,
   ParameterRoot,
   SectionHeader,
   SectionMessage,
@@ -255,16 +253,21 @@ const LinkedParameter = ({
 
   return (
     <ParameterRoot>
-      <ParameterBody>
-        <ParameterName onClick={handleExpandedChange}>
+      <Group justify="space-between" align="center" pr="md">
+        <Button
+          c="text-dark"
+          variant="subtle"
+          rightSection={<Icon name="chevrondown" />}
+          onClick={handleExpandedChange}
+        >
           {linkedParameter.name}
-        </ParameterName>
+        </Button>
         <Switch
           role="switch"
           checked={isFiltered}
           onChange={handleFilterToggle}
         />
-      </ParameterBody>
+      </Group>
       {isExpanded && (
         <LinkedFieldList
           filteredIds={filteredIds}

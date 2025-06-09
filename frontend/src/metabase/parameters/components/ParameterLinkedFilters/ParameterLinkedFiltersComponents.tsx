@@ -26,16 +26,6 @@ export const ParameterRoot = (props: BoxPropsWithChildren) => {
   return <Box mb="md" className={S.ParameterRoot} {...props} />;
 };
 
-export const ParameterBody = (props: FlexProps) => {
-  return <Flex justify="space-between" align="center" p="md" {...props} />;
-};
-
-export const ParameterName = (
-  props: BoxPropsWithChildren & { onClick?: MouseEventHandler },
-) => {
-  return <Box className={S.ParameterName} {...props} />;
-};
-
 export const FieldListRoot = (props: BoxPropsWithChildren) => {
   return <Box fz="0.765rem" {...props} />;
 };
