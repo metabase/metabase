@@ -17,33 +17,22 @@ export const InputContainer = styled.div<InputContainerProps>`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding-left: 0.75rem;
   pointer-events: auto;
-  border-radius: 8px;
-
-  &:hover {
-    /* adjust for border on hover */
-    padding-left: calc(0.75rem - 1px);
-  }
+  border-radius: 6px;
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid var(--mb-color-brand);
+    box-shadow: inset 0 0 0 1px var(--mb-color-brand);
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid var(--mb-color-brand);
+    box-shadow: inset 0 0 0 1px var(--mb-color-brand);
   }
 
-  ${({ isPreviewing, isEmpty }) =>
-    (!isPreviewing || isEmpty) &&
-    css`
-      padding-left: calc(0.75rem - 1px);
-    `} /* adjust for border on preview/no entered content */
   ${({ isEmpty }) =>
     isEmpty &&
     css`
-      border: 1px solid var(--mb-color-brand);
+      box-shadow: inset 0 0 0 1px var(--mb-color-brand);
       color: var(--mb-color-text-light);
     `}
 `;
