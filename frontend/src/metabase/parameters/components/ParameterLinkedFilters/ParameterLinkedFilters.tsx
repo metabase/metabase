@@ -6,7 +6,7 @@ import {
   useGetFieldQuery,
   useGetValidDashboardFilterFieldsQuery,
 } from "metabase/api";
-import { useLearnUrl } from "metabase/common/hooks";
+import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
@@ -14,13 +14,13 @@ import {
   Box,
   Button,
   Group,
+  HoverCard,
   Icon,
   SimpleGrid,
   Skeleton,
   Stack,
   Switch,
   Text,
-  Tooltip,
 } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId, ParameterId } from "metabase-types/api";
@@ -226,9 +226,7 @@ function ParameterList({
         <Stack gap="md" data-testid="incompatible-parameters">
           <Group gap="sm">
             <Text c="text-secondary" fw="bold">{t`Incompatible filters`}</Text>
-            <Tooltip label={t`TBD`}>
-              <Icon c="text-secondary" name="info_filled" />
-            </Tooltip>
+            <ParameterHelpInfo />
           </Group>
           {incompatibleParameters.map(
             ({ parameter: otherParameter, filteredIds, filteringIds }) => (
@@ -246,6 +244,35 @@ function ParameterList({
         </Stack>
       )}
     </Stack>
+  );
+}
+
+function ParameterHelpInfo() {
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
+    "dashboards/linked-filters",
+    {
+      anchor: "set-up-tables-for-linked-filters",
+    },
+  );
+
+  return (
+    <HoverCard>
+      <HoverCard.Target>
+        <Icon c="text-secondary" name="info_filled" />
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Stack p="md" maw="20rem">
+          <Text>
+            {t`There needs to be a foreign-key relationship between the fields connected to these filters.`}
+          </Text>
+          {showMetabaseLinks && (
+            <ExternalLink href={docsUrl} target="_blank">
+              {t`Learn more`}
+            </ExternalLink>
+          )}
+        </Stack>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 }
 
@@ -280,13 +307,16 @@ const ParameterItem = ({
         >
           {parameter.name}
         </Button>
-        <Switch
-          size="sm"
-          role="switch"
-          checked={isFiltered}
-          disabled={!isCompatible}
-          onChange={(event) => onFilterChange(parameter, event.target.checked)}
-        />
+        {isCompatible && (
+          <Switch
+            size="sm"
+            role="switch"
+            checked={isFiltered}
+            onChange={(event) =>
+              onFilterChange(parameter, event.target.checked)
+            }
+          />
+        )}
       </Group>
       {isExpanded && (
         <FieldList filteredIds={filteredIds} filteringIds={filteringIds} />
