@@ -215,7 +215,9 @@ export function addHeadingWhileEditing(
 ) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Heading").click();
-  cy.findByPlaceholderText("Heading").type(string, options);
+  cy.findByPlaceholderText(
+    "You can connect widgets to {{variables}} in heading cards",
+  ).type(string, options);
 }
 
 export function openQuestionsSidebar() {
