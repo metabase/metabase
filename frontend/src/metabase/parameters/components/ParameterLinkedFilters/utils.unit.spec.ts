@@ -9,7 +9,7 @@ import {
   REVIEWS,
 } from "metabase-types/api/mocks/presets";
 
-import { getFilterFieldsRequest, getLinkedParametersInfo } from "./utils";
+import { getFilterFieldsRequest, getParametersInfo } from "./utils";
 
 function fieldById(fieldId: FieldId) {
   return checkNotNull(SAMPLE_METADATA.field(fieldId));
@@ -135,8 +135,8 @@ describe("getLinkedParametersInfo", () => {
       },
     ];
 
-    expect(
-      getLinkedParametersInfo(parameters, filteringIdsByFilteredId),
-    ).toEqual(expectedParameters);
+    expect(getParametersInfo(parameters, filteringIdsByFilteredId)).toEqual(
+      expectedParameters,
+    );
   });
 });

@@ -1,4 +1,3 @@
-import type { ChangeEventHandler } from "react";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
@@ -12,29 +11,25 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Group, Icon, Switch } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  Switch,
+  Text,
+} from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId, ParameterId } from "metabase-types/api";
 
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 
-import {
-  FieldLabel,
-  FieldListHeader,
-  FieldListItem,
-  FieldListRoot,
-  FieldListTitle,
-  FieldRoot,
-  ParameterRoot,
-  SectionHeader,
-  SectionMessage,
-  SectionMessageLink,
-} from "./ParameterLinkedFiltersComponents";
-import {
-  type LinkedParameterInfo,
-  getFilterFieldsRequest,
-  getLinkedParametersInfo,
-} from "./utils";
+import S from "./ParameterLinkedFilters.module.css";
+import type { ParameterInfo } from "./types";
+import { getFilterFieldsRequest, getParametersInfo } from "./utils";
 
 export interface ParameterLinkedFiltersProps {
   parameter: UiParameter;
@@ -46,7 +41,7 @@ export const ParameterLinkedFilters = ({
   parameter,
   otherParameters,
   onChangeFilteringParameters,
-}: ParameterLinkedFiltersProps): JSX.Element => {
+}: ParameterLinkedFiltersProps) => {
   const usableParameters = useMemo(
     () => otherParameters.filter(usableAsLinkedFilter),
     [otherParameters],
@@ -54,7 +49,7 @@ export const ParameterLinkedFilters = ({
 
   return (
     <Box p="1.5rem 1rem">
-      <SectionHeader>{t`Limit this filter's choices`}</SectionHeader>
+      <Text fw="bold" mb="sm">{t`Limit this filter's choices`}</Text>
       <Content
         usableParameters={usableParameters}
         parameter={parameter}
@@ -80,7 +75,7 @@ function Content({
   } = useGetValidDashboardFilterFieldsQuery(
     getFilterFieldsRequest(parameter, usableParameters) ?? skipToken,
   );
-  const linkedParametersInfo = getLinkedParametersInfo(
+  const otherParameters = getParametersInfo(
     usableParameters,
     filteringIdsByFilteredId,
   );
@@ -102,15 +97,15 @@ function Content({
   }
 
   return (
-    <LinkedParameterList
+    <ParameterList
       parameter={parameter}
-      linkedParametersInfo={linkedParametersInfo}
+      otherParameters={otherParameters}
       onChangeFilteringParameters={onChangeFilteringParameters}
     />
   );
 }
 
-function NoUsableParameters(): JSX.Element {
+function NoUsableParameters() {
   const dispatch = useDispatch();
   const onShowAddParameterPopover = () => {
     dispatch(showAddParameterPopover());
@@ -118,61 +113,75 @@ function NoUsableParameters(): JSX.Element {
 
   return (
     <div>
-      <SectionMessage>
+      <Text>
         {t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}
-      </SectionMessage>
-      <SectionMessage>
+      </Text>
+      <Text>
         {jt`So first, ${(
-          <SectionMessageLink key="link" onClick={onShowAddParameterPopover}>
+          <Box
+            className={S.buttonLink}
+            key="link"
+            component="span"
+            c="brand"
+            role="button"
+            onClick={onShowAddParameterPopover}
+          >
             {t`add another dashboard filter`}
-          </SectionMessageLink>
+          </Box>
         )}.`}
-      </SectionMessage>
+      </Text>
     </div>
   );
 }
 
-function ParameterIsInputBoxType(): JSX.Element {
+function ParameterIsInputBoxType() {
   return (
-    <SectionMessage>
+    <Text>
       {t`This filter can't be limited by another dashboard filter because its widget type is an input box.`}
-    </SectionMessage>
+    </Text>
   );
 }
 
-function ParametersFromOtherSource(): JSX.Element {
+function ParametersFromOtherSource() {
   const { url: docsUrl, showMetabaseLinks } = useLearnUrl(
     "metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters",
   );
 
   return (
     <div>
-      <SectionMessage>
+      <Text>
         {t`If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.`}
-      </SectionMessage>
+      </Text>
       {showMetabaseLinks && (
-        <SectionMessage>
+        <Text>
           {jt`For Native Questions use ${(
             <ExternalLink key="field-filters" role="link" href={docsUrl}>
               {t`Field Filters`}
             </ExternalLink>
           )} to make Linked Filters available here.`}
-        </SectionMessage>
+        </Text>
       )}
     </div>
   );
 }
 
-function LinkedParameterList({
-  parameter,
-  linkedParametersInfo,
-  onChangeFilteringParameters,
-}: {
+type ParameterListProps = {
   parameter: UiParameter;
-  linkedParametersInfo: LinkedParameterInfo[];
+  otherParameters: ParameterInfo[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
-}): JSX.Element {
-  const [expandedParameterId, setExpandedParameterId] = useState<ParameterId>();
+};
+
+function ParameterList({
+  parameter,
+  otherParameters,
+  onChangeFilteringParameters,
+}: ParameterListProps) {
+  const compatibleParameters = otherParameters.filter(
+    ({ isCompatible }) => isCompatible,
+  );
+  const incompatibleParameters = otherParameters.filter(
+    ({ isCompatible }) => !isCompatible,
+  );
 
   const handleFilterChange = useCallback(
     (linkedParameter: UiParameter, isFiltered: boolean) => {
@@ -187,142 +196,144 @@ function LinkedParameterList({
     [parameter.filteringParameters, onChangeFilteringParameters],
   );
 
-  const handleExpandedChange = useCallback(
-    (linkedParameter: UiParameter, isExpanded: boolean) => {
-      setExpandedParameterId(isExpanded ? linkedParameter.id : undefined);
-    },
-    [],
-  );
-
   return (
-    <div>
-      <SectionMessage>
+    <Stack gap="lg">
+      <Text lh="1.25rem">
         {jt`If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for ${(
           <em key="text">{t`this`}</em>
         )} filter.`}
-      </SectionMessage>
-      {linkedParametersInfo.map(
-        ({ parameter: linkedParameter, filteredIds, filteringIds }) => (
-          <LinkedParameter
-            key={parameter.id}
-            linkedParameter={linkedParameter}
-            filteredIds={filteredIds}
-            filteringIds={filteringIds}
-            isFiltered={
-              !!parameter.filteringParameters?.includes(linkedParameter.id)
-            }
-            isExpanded={linkedParameter.id === expandedParameterId}
-            onFilterChange={handleFilterChange}
-            onExpandedChange={handleExpandedChange}
-          />
-        ),
+      </Text>
+      <Stack gap="md">
+        {compatibleParameters.map(
+          ({ parameter: otherParameter, filteredIds, filteringIds }) => (
+            <ParameterItem
+              key={otherParameter.id}
+              parameter={otherParameter}
+              filteredIds={filteredIds}
+              filteringIds={filteringIds}
+              isFiltered={
+                parameter.filteringParameters != null &&
+                parameter.filteringParameters.includes(otherParameter.id)
+              }
+              isCompatible={true}
+              onFilterChange={handleFilterChange}
+            />
+          ),
+        )}
+      </Stack>
+      {incompatibleParameters.length > 0 && (
+        <Stack gap="md">
+          <Group gap="sm">
+            <Text c="text-secondary" fw="bold">{t`Incompatible filters`}</Text>
+            <Icon c="text-secondary" name="info_filled" />
+          </Group>
+          {incompatibleParameters.map(
+            ({ parameter: otherParameter, filteredIds, filteringIds }) => (
+              <ParameterItem
+                key={otherParameter.id}
+                parameter={otherParameter}
+                filteredIds={filteredIds}
+                filteringIds={filteringIds}
+                isFiltered={false}
+                isCompatible={false}
+                onFilterChange={handleFilterChange}
+              />
+            ),
+          )}
+        </Stack>
       )}
-    </div>
+    </Stack>
   );
 }
 
-interface LinkedParameterProps {
-  linkedParameter: UiParameter;
+type ParameterItemProps = {
+  parameter: UiParameter;
   filteredIds: FieldId[];
   filteringIds: FieldId[];
   isFiltered: boolean;
-  isExpanded: boolean;
-  onFilterChange: (linkedParameter: UiParameter, isFiltered: boolean) => void;
-  onExpandedChange: (linkedParameter: UiParameter, isExpanded: boolean) => void;
-}
+  isCompatible: boolean;
+  onFilterChange: (parameter: UiParameter, isFiltered: boolean) => void;
+};
 
-const LinkedParameter = ({
-  linkedParameter,
+const ParameterItem = ({
+  parameter,
   filteredIds,
   filteringIds,
   isFiltered,
-  isExpanded,
+  isCompatible,
   onFilterChange,
-  onExpandedChange,
-}: LinkedParameterProps): JSX.Element => {
-  const handleFilterToggle: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onFilterChange(linkedParameter, e.target.checked);
-    },
-    [linkedParameter, onFilterChange],
-  );
-
-  const handleExpandedChange = useCallback(() => {
-    onExpandedChange(linkedParameter, !isExpanded);
-  }, [isExpanded, linkedParameter, onExpandedChange]);
+}: ParameterItemProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <ParameterRoot>
+    <Box className={S.parameterItem} bg="bg-light">
       <Group justify="space-between" align="center" pr="md">
         <Button
-          c="text-dark"
+          c="text-secondary"
           variant="subtle"
-          rightSection={<Icon name="chevrondown" />}
-          onClick={handleExpandedChange}
+          rightSection={isCompatible && <Icon name="chevrondown" />}
+          disabled={!isCompatible}
+          onClick={() => setIsExpanded(!isExpanded)}
         >
-          {linkedParameter.name}
+          {parameter.name}
         </Button>
         <Switch
+          size="sm"
           role="switch"
           checked={isFiltered}
-          onChange={handleFilterToggle}
+          disabled={!isCompatible}
+          onChange={(event) => onFilterChange(parameter, event.target.checked)}
         />
       </Group>
       {isExpanded && (
-        <LinkedFieldList
-          filteredIds={filteredIds}
-          filteringIds={filteringIds}
-        />
+        <FieldList filteredIds={filteredIds} filteringIds={filteringIds} />
       )}
-    </ParameterRoot>
+    </Box>
   );
 };
 
-interface LinkedFieldListProps {
+type FieldListProps = {
   filteredIds: FieldId[];
   filteringIds: FieldId[];
-}
+};
 
-const LinkedFieldList = ({
-  filteredIds,
-  filteringIds,
-}: LinkedFieldListProps) => {
+const FieldList = ({ filteredIds, filteringIds }: FieldListProps) => {
   return (
-    <FieldListRoot>
-      <FieldListHeader>
-        <FieldListTitle>{t`Filtering column`}</FieldListTitle>
-        <FieldListTitle>{t`Filtered column`}</FieldListTitle>
-      </FieldListHeader>
+    <SimpleGrid cols={2} px="md" pb="md" spacing="sm">
+      <Text c="brand">{t`Filtering column`}</Text>
+      <Text c="brand">{t`Filtered column`}</Text>
       {filteringIds.map((filteringId) => (
         <Fragment key={filteringId}>
           {filteredIds.map((filteredId) => (
-            <FieldListItem key={filteredId}>
-              <LinkedField fieldId={filteringId} />
-              <LinkedField fieldId={filteredId} />
-            </FieldListItem>
+            <Fragment key={filteredId}>
+              <FieldItem fieldId={filteringId} />
+              <FieldItem fieldId={filteredId} />
+            </Fragment>
           ))}
         </Fragment>
       ))}
-    </FieldListRoot>
+    </SimpleGrid>
   );
 };
 
-interface LinkedFieldProps {
+type FieldItemProps = {
   fieldId: FieldId;
-}
+};
 
-const LinkedField = ({ fieldId }: LinkedFieldProps) => {
-  const { data: field, isLoading, error } = useGetFieldQuery({ id: fieldId });
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+const FieldItem = ({ fieldId }: FieldItemProps) => {
+  const { data: field, isLoading } = useGetFieldQuery({ id: fieldId });
+  if (!field || isLoading) {
+    return <Skeleton height="3rem" />;
   }
 
   return (
-    <FieldRoot>
-      <FieldLabel>
-        {field?.table && <span>{field.table.display_name}</span>}
-      </FieldLabel>
-      {field && <div>{field.display_name}</div>}
-    </FieldRoot>
+    <Box>
+      {field.table && (
+        <Text c="text-secondary" lh="1rem">
+          {field.table.display_name}
+        </Text>
+      )}
+      <Text lh="1rem">{field.display_name}</Text>
+    </Box>
   );
 };
