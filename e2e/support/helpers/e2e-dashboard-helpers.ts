@@ -128,7 +128,7 @@ function _setFilter(type: string, subType?: string, name?: string) {
 }
 
 export function setFilter(type: string, subType?: string, name?: string) {
-  cy.icon("filter").click();
+  dashboardHeader().findByLabelText("Add a filter or parameter").click();
   _setFilter(type, subType, name);
 }
 
