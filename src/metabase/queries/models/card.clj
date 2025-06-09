@@ -28,7 +28,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -37,6 +36,7 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.query-analysis.core :as query-analysis]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -241,9 +241,9 @@
         (prefetch-tables-for-cards! dataset-cards)
         (catch Throwable t
           (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
-    (binding [query-perms/*card-instances*
-              (when (seq source-card-ids)
-                (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema] :id [:in source-card-ids]))]
+    (query-perms/with-card-instances (when (seq source-card-ids)
+                                       (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema]
+                                                         :id [:in source-card-ids]))
       (mi/instances-with-hydrated-data
        cards :can_run_adhoc_query
        (fn []

@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
@@ -99,6 +100,12 @@ export const ColumnsList = (props: ColumnListProps) => {
                   aria-label={t`Remove`}
                   cursor="pointer"
                   onClick={() => {
+                    trackSimpleEvent({
+                      event: "visualizer_data_changed",
+                      event_detail: "visualizer_datasource_removed",
+                      triggered_from: "visualizer-modal",
+                      event_data: source.id,
+                    });
                     onRemoveDataSource(source);
                   }}
                 />
@@ -133,12 +140,28 @@ export const ColumnsList = (props: ColumnListProps) => {
                       isSelected={isSelected}
                       onClick={() => {
                         if (!isSelected) {
+                          trackSimpleEvent({
+                            event: "visualizer_data_changed",
+                            event_detail: "visualizer_column_added",
+                            triggered_from: "visualizer-modal",
+                            event_data: `source: ${source.id}, column: ${column.name}`,
+                          });
+
                           handleAddColumn(source, column);
                         }
                       }}
                       onRemove={
                         isSelected
-                          ? () => handleRemoveColumn(columnReference.name)
+                          ? () => {
+                              trackSimpleEvent({
+                                event: "visualizer_data_changed",
+                                event_detail: "visualizer_column_removed",
+                                triggered_from: "visualizer-modal",
+                                event_data: `source: ${source.id}, column: ${column.name}`,
+                              });
+
+                              handleRemoveColumn(columnReference.name);
+                            }
                           : undefined
                       }
                     />

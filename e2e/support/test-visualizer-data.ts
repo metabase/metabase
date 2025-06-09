@@ -394,7 +394,7 @@ export function createDashboardWithVisualizerDashcards(
       viewsColumnQuestionId,
     } = this;
 
-    H.createDashboard({ enable_embedding }).then(
+    H.createDashboard({ enable_embedding }, { wrapId: true }).then(
       ({ body: { id: dashboardId } }) => {
         const dc1 = createVisualizerDashcardWithTimeseriesBreakout(
           ordersCountByCreatedAtQuestionId,
@@ -626,6 +626,7 @@ export function createVisualizerPieChartDashcard(
           ],
         },
         settings: {
+          "card.title": "My pie chart",
           "pie.metric": "COLUMN_2",
           "pie.dimension": ["COLUMN_1"],
         },

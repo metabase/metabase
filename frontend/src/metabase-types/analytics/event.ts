@@ -25,7 +25,7 @@ type CSVUploadClickedEvent = ValidateEvent<{
 
 export type DatabaseAddClickedEvent = ValidateEvent<{
   event: "database_add_clicked";
-  triggered_from: "left-nav" | "db-list";
+  triggered_from: "db-list";
 }>;
 
 type OnboardingChecklistOpenedEvent = ValidateEvent<{
@@ -112,6 +112,49 @@ export type NewButtonItemClickedEvent = ValidateEvent<{
   triggered_from: "question" | "native-query" | "dashboard";
 }>;
 
+export type VisualizeAnotherWayClickedEvent = ValidateEvent<{
+  event: "visualize_another_way_clicked";
+  triggered_from: "question-list" | "dashcard-actions-panel";
+}>;
+
+export type VisualizerModalEvent = ValidateEvent<
+  | {
+      event:
+        | "visualizer_add_more_data_clicked"
+        | "visualizer_show_columns_clicked"
+        | "visualizer_settings_clicked"
+        | "visualizer_save_clicked"
+        | "visualizer_close_clicked"
+        | "visualizer_view_as_table_clicked";
+      triggered_from: "visualizer-modal";
+    }
+  | {
+      event: "visualizer_data_changed";
+      event_detail:
+        | "visualizer_viz_type_changed"
+        | "visualizer_datasource_removed"
+        | "visualizer_datasource_added"
+        | "visualizer_datasource_replaced"
+        | "visualizer_column_removed"
+        | "visualizer_column_added";
+      event_data: string | null;
+      triggered_from: "visualizer-modal";
+    }
+>;
+
+export type AddDataModalEvent = ValidateEvent<{
+  event:
+    | "csv_upload_clicked"
+    | "sheets_connection_clicked"
+    | "database_setup_clicked";
+  triggered_from: "add-data-modal";
+}>;
+
+export type AddDataButtonClickedEvent = ValidateEvent<{
+  event: "data_add_clicked";
+  triggered_from: "getting-started" | "left-nav";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -128,4 +171,8 @@ export type SimpleEvent =
   | KeyboardShortcutPerformEvent
   | NewEntityInitiatedEvent
   | NewButtonClickedEvent
-  | NewButtonItemClickedEvent;
+  | NewButtonItemClickedEvent
+  | VisualizeAnotherWayClickedEvent
+  | VisualizerModalEvent
+  | AddDataButtonClickedEvent
+  | AddDataModalEvent;

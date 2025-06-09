@@ -6,7 +6,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 /** These tests are about the `downloads` flag for static embeds, both dashboards and questions.
  *  Unless the product changes, these should test the same things as `public-resource-downloads.cy.spec.ts`
@@ -297,6 +297,8 @@ H.describeWithSnowplowEE(
       });
 
       describe("with native question parameters", () => {
+        const FILTER_VALUES = ["NY", "NH"];
+
         beforeEach(() => {
           cy.signInAsAdmin();
 
@@ -308,29 +310,37 @@ H.describeWithSnowplowEE(
               name: "Native question with a parameter",
               native: {
                 "template-tags": {
-                  num: {
+                  state: {
                     id: "f7672b4d-1e84-1fa8-bf02-b5e584cd4535",
-                    name: "num",
-                    "display-name": "Num",
-                    type: "number",
+                    name: "state",
+                    "display-name": "State",
+                    type: "dimension",
+                    options: {
+                      "case-sensitive": false,
+                    },
+                    dimension: ["field", PEOPLE.STATE, null],
                     default: null,
+                    "widget-type": "string/contains",
                   },
                 },
-                query: "select {{num}}",
+                query: "select id, email, state from people where {{state}}",
               },
               parameters: [
                 {
                   id: "f7672b4d-1e84-1fa8-bf02-b5e584cd4535",
-                  type: "number/=",
-                  target: ["variable", ["template-tag", "num"]],
-                  name: "Num",
-                  slug: "num",
+                  type: "string/contains",
+                  options: {
+                    "case-sensitive": false,
+                  },
+                  target: ["dimension", ["template-tag", "state"]],
+                  name: "State",
+                  slug: "state",
                   default: null,
                 },
               ],
               enable_embedding: true,
               embedding_params: {
-                num: "enabled",
+                state: "enabled",
               },
             },
             {
@@ -338,18 +348,16 @@ H.describeWithSnowplowEE(
               wrapId: true,
             },
           );
-
           cy.signOut();
         });
 
-        it("should be able to download a static embedded dashcard as CSV", () => {
-          const value = 9999;
+        it("should be able to download a static embedded question as CSV with correct parameters when field filters has multiple values (metabase#52430)", () => {
           cy.get("@questionId").then((questionId) => {
             H.visitEmbeddedPage(
               {
                 resource: { question: Number(questionId) },
                 params: {
-                  num: value,
+                  state: FILTER_VALUES,
                 },
               },
               {
@@ -362,16 +370,32 @@ H.describeWithSnowplowEE(
 
           waitLoading();
 
-          H.main().findByText(value).should("exist");
+          const FIRST_ROW = [
+            5,
+            "leffler.dominique@hotmail.com",
+            FILTER_VALUES[0],
+          ];
 
-          cy.findByRole("button", { name: "Download results" }).click();
-
-          H.popover().within(() => {
-            cy.findByText(".csv").click();
-            cy.findByTestId("download-results-button").click();
+          H.assertTableData({
+            columns: ["ID", "EMAIL", "STATE"],
+            firstRows: [FIRST_ROW],
           });
 
-          cy.verifyDownload(".csv", { contains: true });
+          H.downloadAndAssert(
+            {
+              isDashboard: false,
+              isEmbed: true,
+              enableFormatting: true,
+              fileType: "csv",
+              downloadUrl: "/api/embed/card/*/query/csv*",
+              downloadMethod: "GET",
+            },
+            (sheet) => {
+              expect(sheet["A2"].v).to.eq(FIRST_ROW[0]);
+              expect(sheet["B2"].v).to.eq(FIRST_ROW[1]);
+              expect(sheet["C2"].v).to.eq(FIRST_ROW[2]);
+            },
+          );
 
           H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",

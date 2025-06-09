@@ -11,6 +11,7 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
@@ -90,7 +91,7 @@
 
 (defn- list-datasets
   "Fetch all datasets given database `details`, applying dataset filters if specified."
-  [{:keys [dataset-filters-type dataset-filters-patterns] :as details}]
+  [{:keys [dataset-filters-type dataset-filters-patterns] :as details} & {:keys [logging-schema-exclusions?]}]
   (let [client (database-details->client details)
         project-id (get-project-id details)
         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
@@ -98,9 +99,11 @@
         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
     (for [^Dataset dataset (.iterateAll datasets)
           :let [dataset-id (.. dataset getDatasetId getDataset)]
-          :when (driver.s/include-schema? inclusion-patterns
-                                          exclusion-patterns
-                                          dataset-id)]
+          :when ((if logging-schema-exclusions?
+                   sql-jdbc.describe-database/include-schema-logging-exclusion
+                   driver.s/include-schema?) inclusion-patterns
+                                             exclusion-patterns
+                                             dataset-id)]
       dataset-id)))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
@@ -160,7 +163,7 @@
 (defn- describe-database-tables
   [driver database]
   (set
-   (for [dataset-id (list-datasets (:details database))
+   (for [dataset-id (list-datasets (:details database) :logging-schema-exclusions? true)
          :let [project-id (get-project-id (:details database))
                results (query-honeysql
                         driver

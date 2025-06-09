@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EditableText from "metabase/core/components/EditableText";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
@@ -46,6 +47,11 @@ export function Header({
   const dispatch = useDispatch();
 
   const handleSave = () => {
+    trackSimpleEvent({
+      event: "visualizer_save_clicked",
+      triggered_from: "visualizer-modal",
+    });
+
     onSave(
       _.pick(visualizerState, ["display", "columnValuesMapping", "settings"]),
     );
@@ -121,7 +127,16 @@ export function Header({
       >
         {saveLabel ?? t`Add to dashboard`}
       </Button>
-      <ActionIcon onClick={onClose}>
+      <ActionIcon
+        data-testid="visualizer-close-button"
+        onClick={() => {
+          trackSimpleEvent({
+            event: "visualizer_close_clicked",
+            triggered_from: "visualizer-modal",
+          });
+          onClose();
+        }}
+      >
         <Icon name="close" />
       </ActionIcon>
     </Flex>

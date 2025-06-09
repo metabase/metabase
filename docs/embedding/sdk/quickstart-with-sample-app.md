@@ -29,9 +29,9 @@ This quick setup will run a Docker container with the sample app and a sample Me
 1. Copy `.env.docker.example` to `.env.docker`.
 2. In the `.env.docker` file, replace `<your_enterprise_token>` with your premium embedding token.
 3. In the top-level directory, run:
-    ```bash
-    yarn start
-    ```
+   ```bash
+   yarn start
+   ```
 
 This script will:
 
@@ -109,6 +109,8 @@ Otherwise, this whole thing is hopeless.
 
 ## Enable SSO with JWT
 
+We'll also need to update our JWT Provider URI in Metabase. By default, this URI is where the SDK will redirect login requests.
+
 From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Settings** > **Authentication**.
 
 On the card that says **JWT**, click the **Setup** button.
@@ -171,7 +173,6 @@ Your `.env` will look something like:
 # FRONTEND
 CLIENT_PORT=3100
 VITE_METABASE_INSTANCE_URL="http://localhost:3000"
-VITE_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
 AUTH_PROVIDER_PORT=9090

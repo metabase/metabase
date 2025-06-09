@@ -3,11 +3,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
+   [metabase.permissions.validation :as validation]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))

@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -37,7 +38,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
         handlers.open();
       }
 
-      dispatch(removeDataSource(source));
+      dispatch(removeDataSource({ source }));
     },
     [dataSources.length, handlers, dispatch],
   );
@@ -69,7 +70,16 @@ export const DataImporter = ({ className }: { className?: string }) => {
           size="xs"
           variant="transparent"
           ml="auto"
-          onClick={handlers.toggle}
+          onClick={() => {
+            trackSimpleEvent({
+              event: showDatasets
+                ? "visualizer_show_columns_clicked"
+                : "visualizer_add_more_data_clicked",
+              triggered_from: "visualizer-modal",
+            });
+
+            handlers.toggle();
+          }}
           className={S.ToggleButton}
           aria-label={showDatasets ? t`Done` : t`Add more data`}
         >
@@ -85,23 +95,22 @@ export const DataImporter = ({ className }: { className?: string }) => {
             height: "100%",
           }}
         >
-          <Box>
-            <TextInput
-              m="xs"
-              variant="filled"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder={t`Search for something`}
-              leftSection={<Icon name="search" />}
-              autoFocus
-            />
-          </Box>
+          <TextInput
+            m="xs"
+            variant="filled"
+            value={search}
+            onChange={handleSearchChange}
+            placeholder={t`Search for something`}
+            leftSection={<Icon name="search" />}
+            autoFocus
+          />
           <Flex
             direction="column"
             pt="sm"
             px="sm"
             style={{
               overflowY: "auto",
+              flex: 1,
             }}
           >
             <DatasetsList
