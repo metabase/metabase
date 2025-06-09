@@ -1,5 +1,3 @@
-import type { Query } from "history";
-
 import type {
   EntityTypeFilterKeys,
   MetabaseTheme,
@@ -8,6 +6,7 @@ import type {
 import type { MetabaseError } from "embedding-sdk/errors";
 import type { MetabaseAuthMethod } from "embedding-sdk/types";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
@@ -45,7 +44,7 @@ export interface DashboardEmbedOptions {
   withDownloads?: boolean;
 
   // parameters
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
   hiddenParameters?: string[];
 
   // incompatible options

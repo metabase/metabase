@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import {
   type PropsWithChildren,
   createContext,
@@ -10,6 +9,7 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -33,7 +33,7 @@ export type DashboardContextErrorState = {
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams?: Query;
+  parameterQueryParams?: ParameterValues;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: FailedFetchDashboardResult) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
