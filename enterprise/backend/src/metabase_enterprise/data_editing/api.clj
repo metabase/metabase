@@ -555,10 +555,15 @@
         (fn [field field-values]
           (case (:type field-values)
             (:list :auto-list :search) "dropdown"
-            (condp #(isa? %2 %1) (:semantic_type field)
+            (case (:semantic_type field)
               :type/Description "textarea"
-              :type/Category    "dropdown"
-              :type/FK          "dropdown"
+
+              ;; isa? category causes more surprises like :type/Name being a :type/Category and therefore dropdown
+              ;; copying the same case statement from the FE to be safe until we can figure out the correct
+              ;; expression
+              (:type/State :type/Country :type/Category :type/FK)
+              "dropdown"
+
               (condp #(isa? %2 %1) (:base_type field)
                 :type/Date     "date"
                 :type/DateTime "datetime"
