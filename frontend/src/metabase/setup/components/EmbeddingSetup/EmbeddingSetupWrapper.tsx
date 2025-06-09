@@ -1,4 +1,4 @@
-import { Box, Flex } from "metabase/ui";
+import { Box, Center, Flex } from "metabase/ui";
 
 import { EmbeddingSetupProvider } from "./EmbeddingSetupContext";
 import { EmbeddingSetupSidebar } from "./EmbeddingSetupSidebar";
@@ -12,22 +12,25 @@ export const EmbeddingSetupWrapper = ({
 }: EmbeddingSetupWrapperProps) => {
   return (
     <EmbeddingSetupProvider>
-      <Flex style={{ height: "100vh", overflow: "auto" }}>
-        <EmbeddingSetupSidebar />
-        <Box p="xl" pl="0" style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
-          <Box
-            p="xl"
-            flex={1} /* The main content area takes remaining space */
-            bg="bg-white"
-            bd="1px solid var(--mb-color-border)"
-            style={{
-              borderRadius: "0.5rem",
-            }}
-          >
-            {children}
+      <Center>
+        <Flex style={{ height: "100vh", overflow: "auto" }}>
+          <EmbeddingSetupSidebar />
+          <Box p="xl" pl="0" style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
+            <Box
+              p="xl"
+              flex={1} /* The main content area takes remaining space */
+              bg="bg-white"
+              bd="1px solid var(--mb-color-border)"
+              maw="53rem"
+              style={{
+                borderRadius: "0.5rem",
+              }}
+            >
+              {children}
+            </Box>
           </Box>
-        </Box>
-      </Flex>
+        </Flex>
+      </Center>
     </EmbeddingSetupProvider>
   );
 };
