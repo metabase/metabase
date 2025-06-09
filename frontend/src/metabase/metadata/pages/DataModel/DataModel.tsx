@@ -52,6 +52,7 @@ export const DataModel = ({
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isResizing, setIsResizing] = useState(false);
   const [navWidth, setNavWidth] = useState(columnSizesConfig.nav.initial);
+  const [tableWidth, setTableWidth] = useState(columnSizesConfig.table.initial);
   const { height, ref } = useElementSize();
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
@@ -114,27 +115,39 @@ export const DataModel = ({
       {!isSegments && (
         <>
           {tableId && (
-            <Box
-              bg="bg-white"
-              className={cx(S.column, S.rightBorder)}
-              flex="0 0 25%"
-              h="100%"
-              miw={rem(400)}
+            <ResizableBox
+              axis="x"
+              handle={<ResizeHandle />}
+              height={height}
+              maxConstraints={[columnSizesConfig.table.max, height]}
+              minConstraints={[columnSizesConfig.table.min, height]}
+              resizeHandles={["e"]}
+              width={tableWidth}
+              onResize={(_event, data) => setTableWidth(data.size.width)}
+              onResizeStart={() => setIsResizing(true)}
+              onResizeStop={() => setIsResizing(false)}
             >
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {table && (
-                  <TableSection
-                    /**
-                     * Make sure internal component state is reset when changing tables.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={table.id}
-                    params={params}
-                    table={table}
-                  />
-                )}
-              </LoadingAndErrorWrapper>
-            </Box>
+              <Box
+                bg="bg-white"
+                className={cx(S.column, S.rightBorder)}
+                h="100%"
+                w={tableWidth}
+              >
+                <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                  {table && (
+                    <TableSection
+                      /**
+                       * Make sure internal component state is reset when changing tables.
+                       * This is to avoid state mix-up with optimistic updates.
+                       */
+                      key={table.id}
+                      params={params}
+                      table={table}
+                    />
+                  )}
+                </LoadingAndErrorWrapper>
+              </Box>
+            </ResizableBox>
           )}
 
           {isEmptyStateShown && (
