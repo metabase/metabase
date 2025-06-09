@@ -263,10 +263,9 @@
      ctx
      (let [card-id (:card_id param-mapping)
            card (if card-id
-                  (some #(and (= (:id %) card-id)
-                              %)
-                        (cons (get-in param-dashcard-info [:dashcard :card])
-                              (get-in param-dashcard-info [:dashcard :series])))
+                  (m/find-first #(= (:id %) card-id)
+                                (cons (get-in param-dashcard-info [:dashcard :card])
+                                      (get-in param-dashcard-info [:dashcard :series])))
                   (get-in param-dashcard-info [:dashcard :card]))
            param-id (:parameter_id param-mapping)
            stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
