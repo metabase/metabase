@@ -134,7 +134,7 @@ describe("Snowplow tracking", () => {
       });
 
       // save the card
-      H.saveDashcardVisualizerModal("create");
+      H.saveDashcardVisualizerModal({ mode: "create" });
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_save_clicked",
         triggered_from: "visualizer-modal",

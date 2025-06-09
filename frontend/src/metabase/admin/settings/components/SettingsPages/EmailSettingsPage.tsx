@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useGetSettingsQuery } from "metabase/api";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
@@ -11,8 +12,10 @@ import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
 
 export function EmailSettingsPage() {
-  const isHosted = useSetting("is-hosted?");
-  const isEmailConfigured = useSetting("email-configured?");
+  const { data: settingValues, isFetching: settingsLoading } =
+    useGetSettingsQuery();
+  const isHosted = settingValues?.["is-hosted?"];
+  const isEmailConfigured = settingValues?.["email-configured?"];
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
     "email_restrict_recipients",
@@ -20,10 +23,13 @@ export function EmailSettingsPage() {
 
   const dispatch = useDispatch();
   useEffect(() => {
-    if (!isHosted && !isEmailConfigured) {
+    // it's important to check for settingsLoading to ensure isEmailConfigured is fresh.
+    // Otherwise, /email/smtp form will navigate to /email but isEmailConfigured will still be false
+    // and it'll redirect straight back to /email/smtp
+    if (!isHosted && !isEmailConfigured && !settingsLoading) {
       dispatch(push("/admin/settings/email/smtp"));
     }
-  }, [dispatch, isHosted, isEmailConfigured]);
+  }, [dispatch, isHosted, isEmailConfigured, settingsLoading]);
   return (
     <Stack gap="xl" maw="42rem" px="lg" py="sm">
       {!isHosted && <SMTPConnectionCard />}
