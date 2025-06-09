@@ -374,11 +374,12 @@
     (let [provider (lib.tu/merged-mock-metadata-provider
                     meta/metadata-provider
                     {:fields [{:id            (meta/id :products :vendor)
+                               :base-type     :type/Text
                                :semantic-type :type/SerializedJSON} ; text-based JSON (base type = text)
                               {:id             (meta/id :products :category)
                                :base-type      :type/JSON ; native JSON type
                                :effective-type :type/JSON
-                               :semantic-type  :type/JSON}]})
+                               :semantic-type  nil}]})
           query (lib/query provider (meta/table-metadata :products))
           columns (lib/returned-columns query)
 
@@ -411,17 +412,16 @@
       :query-table    "PRODUCTS"
       :column-name    "VENDOR"
       :drill-type     :drill-thru/column-filter
-      :expected       {:type :drill-thru/column-filter
+      :expected       {:type       :drill-thru/column-filter
                        :initial-op {:short :=}
-                       :column {:lib/type :metadata/column
-                                :name "VENDOR"}}
+                       :column     {:lib/type :metadata/column
+                                    :name "VENDOR"}}
       :drill-args     ["contains" "Acme"]
-      :custom-query   (fn [_base-query]
-                        (-> (lib.tu/merged-mock-metadata-provider
-                             meta/metadata-provider
-                             {:fields [{:id (meta/id :products :vendor)
-                                        :semantic-type :type/SerializedJSON}]})
-                            (lib/query (meta/table-metadata :products))))
+      :custom-query   (-> (lib.tu/merged-mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [{:id (meta/id :products :vendor)
+                                      :semantic-type :type/SerializedJSON}]})
+                          (lib/query (meta/table-metadata :products)))
       :expected-query {:stages
                        [{:filters
                          [[:contains {}
