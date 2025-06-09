@@ -7,23 +7,25 @@ interface Props
   extends BoxProps,
     Omit<ResizableBoxProps, "style" | "onResize"> {
   handleAxis?: string; // undocumented prop https://github.com/react-grid-layout/react-resizable/issues/175
+  handlePosition: "left" | "right";
 }
 
 export const ResizeHandle = forwardRef<HTMLDivElement, Props>(function Handle(
-  { handleAxis, ...props },
+  { handleAxis, handlePosition, ...props },
   ref,
 ) {
   const handleWidth = 10;
   const borderWidth = 1;
-  const right = -((handleWidth + borderWidth) / 2);
+  const offset = -((handleWidth + borderWidth) / 2);
 
   return (
     <Box
       bottom={0}
+      left={handlePosition === "left" ? rem(offset) : undefined}
       m="auto 0"
       pos="absolute"
       ref={ref}
-      right={rem(right)}
+      right={handlePosition === "right" ? rem(offset) : undefined}
       style={{
         cursor: "ew-resize",
         zIndex: 5,

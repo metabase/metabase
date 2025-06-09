@@ -10,6 +10,7 @@ interface Props
   > {
   children: ReactNode;
   constraints: { min: number; max: number };
+  handlePosition?: "left" | "right";
   height: number;
   width: number;
 }
@@ -17,6 +18,7 @@ interface Props
 export const ResizableColumn = ({
   children,
   constraints,
+  handlePosition = "right",
   height,
   width,
   onResize,
@@ -26,11 +28,11 @@ export const ResizableColumn = ({
   return (
     <ResizableBox
       axis="x"
-      handle={<ResizeHandle />}
+      handle={<ResizeHandle handlePosition={handlePosition} />}
       height={height}
       maxConstraints={[constraints.max, height]}
       minConstraints={[constraints.min, height]}
-      resizeHandles={["e"]}
+      resizeHandles={handlePosition === "left" ? ["w"] : ["e"]}
       width={width}
       onResize={onResize}
       onResizeStart={onResizeStart}
