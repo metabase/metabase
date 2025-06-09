@@ -87,15 +87,15 @@
   (h2x/with-database-type-info [:to_timestamp
                                 [:concat
                                  [:substr expr 1 4]
-                                 "-"
+                                 (h2x/literal "-")
                                  [:substr expr 5 2]
-                                 "-"
+                                 (h2x/literal "-")
                                  [:substr expr 7 2]
-                                 " "
+                                 (h2x/literal " ")
                                  [:substr expr 9 2]
-                                 ":"
+                                 (h2x/literal ":")
                                  [:substr expr 11 2]
-                                 ":"
+                                 (h2x/literal ":")
                                  [:substr expr 13 2]]]
                                "timestamp"))
 
