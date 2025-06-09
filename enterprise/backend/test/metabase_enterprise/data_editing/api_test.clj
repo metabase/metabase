@@ -230,10 +230,10 @@
                    (set (table-rows table-id)))))
 
           (testing "PUT can also do bulk updates"
-            (is (= #{{:id_1 1, :id_2 1, :name "Pidgey",     :song "The Star-Spangled Banner"}
-                     {:id_1 2, :id_2 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}
+            (is (= #{{:op "updated", :table-id table-id, :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "The Star-Spangled Banner"}}
+                     {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                    (set
-                    (:updated
+                    (:outputs
                      (mt/user-http-request :crowberto :post 200 url
                                            {:action_id "data-grid.row/update"
                                             :scope     {:table-id table-id}
@@ -247,8 +247,8 @@
                    (set (table-rows table-id)))))
 
           (testing "DELETE should remove the corresponding rows"
-            (is (= #{{:op "deleted", :table-id table-id, :row {:id 1}}
-                     {:op "deleted", :table-id table-id, :row {:id 2}}}
+            (is (= #{{:op "deleted", :table-id table-id, :row {:id_1 1, :id_2 1}}
+                     {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 2}}}
                    (set
                     (:outputs
                      (mt/user-http-request :crowberto :post 200 url
@@ -256,7 +256,7 @@
                                             :scope     {:table-id table-id}
                                             :inputs    [{:id_1 1, :id_2 1}
                                                         {:id_1 2, :id_2 2}]})))))
-            (is (= [[3 "Farfetch'd" "The land of lisp"]]
+            (is (= [[3 3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
 
 (deftest simple-delete-with-children-test

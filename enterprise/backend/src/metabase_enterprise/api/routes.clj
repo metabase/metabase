@@ -43,6 +43,7 @@
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :etl-connections            (deferred-tru "ETL Connections")
+   :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :query-reference-validation (deferred-tru "Query Reference Validation")
