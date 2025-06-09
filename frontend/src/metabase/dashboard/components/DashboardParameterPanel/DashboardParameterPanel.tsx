@@ -6,9 +6,9 @@ import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/cons
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import {
   getDashboardComplete,
+  getDashboardHeaderValuePopulatedParameters,
   getIsEditing,
   getIsNightMode,
-  getParameters,
   getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/env";
@@ -32,7 +32,7 @@ export function DashboardParameterPanel({
   isFullscreen,
 }: DashboardParameterPanelProps) {
   const dashboard = useSelector(getDashboardComplete);
-  const parameters = useSelector(getParameters);
+  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
   const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
   const isEditing = useSelector(getIsEditing);
   const isNightMode = useSelector(getIsNightMode);
@@ -77,7 +77,10 @@ export function DashboardParameterPanel({
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <DashboardParameterList isFullscreen={isFullscreen} />
+            <DashboardParameterList
+              parameters={parameters}
+              isFullscreen={isFullscreen}
+            />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -102,7 +105,10 @@ export function DashboardParameterPanel({
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <DashboardParameterList isFullscreen={isFullscreen} />
+          <DashboardParameterList
+            parameters={parameters}
+            isFullscreen={isFullscreen}
+          />
 
           <FilterApplyButton />
         </FixedWidthContainer>
