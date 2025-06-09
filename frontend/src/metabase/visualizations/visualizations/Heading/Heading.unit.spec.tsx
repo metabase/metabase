@@ -103,7 +103,9 @@ describe("Text", () => {
 
         expect(
           screen.getByTestId("editing-dashboard-heading-preview"),
-        ).toHaveTextContent("Heading");
+        ).toHaveTextContent(
+          "You can connect widgets to {{variables}} in heading cards",
+        );
         expect(screen.getByTestId("editing-dashboard-heading-container"))
           .toHaveStyle(`border: 1px solid var(--mb-color-brand);
                         color: var(--mb-color-text-light);`);
@@ -171,7 +173,11 @@ describe("Text", () => {
         await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
-        expect(screen.getByPlaceholderText("Heading")).toBeInTheDocument();
+        expect(
+          screen.getByPlaceholderText(
+            "You can connect widgets to {{variables}} in heading cards",
+          ),
+        ).toBeInTheDocument();
       });
 
       it("should render input text when it has content", async () => {
