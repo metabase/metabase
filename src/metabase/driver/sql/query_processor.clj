@@ -779,7 +779,7 @@
         coercion-strategy (case (or mode :iso)
                             ;; String
                             :iso              :Coercion/ISO8601->DateTime
-                            :simple           :Coercion/YYYYMMDDHHMMSSString->DateTime
+                            :simple           :Coercion/YYYYMMDDHHMMSSString->Temporal
                             ;; Number
                             :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
                             :unixseconds      :Coercion/UNIXSeconds->DateTime
