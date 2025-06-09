@@ -35,11 +35,11 @@
 
 (defn- map-inputs [inputs]
   (let [input->coerced (u/for-map [[table-id inputs] (group-by :table-id inputs)
-                                   :let [coerced]    (data-editing/apply-coercions table-id (map :row inputs))
-                                   input+row         (map vector inputs coerced)]
+                                   :let [coerced (data-editing/apply-coercions table-id (map :row inputs))
+                                         input+row         (map vector inputs coerced)]]
                          input+row)]
     (for [input inputs]
-      (assoc input row (input->coerced input)))))
+      (assoc input :row (input->coerced input)))))
 
 (defn- perform-table-row-action!
   "Perform an action directly, skipping permissions checks etc, and generate outputs based on the table modifications."
@@ -56,8 +56,7 @@
 
 (defn- perform! [action-kw context inputs]
   ;; We could enhance this in future to work more richly with multi-table editable models.
-  (let [table-id     (scope->table-id context)
-        next-inputs  (map-inputs table-id inputs)]
+  (let [next-inputs  (map-inputs inputs)]
     (perform-table-row-action! action-kw context next-inputs
                                (if (= :table.row/delete action-kw)
                                  identity
