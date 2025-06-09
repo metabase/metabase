@@ -60,7 +60,7 @@ export function useLicenseTokenMissingBanner() {
   }
 
   const tokenStatus = useSetting("token-status");
-  const shouldShow = shouldShowBanner({
+  const shouldShowLicenseTokenMissingBanner = shouldShowBanner({
     tokenStatus,
     lastDismissed,
     isEEBuild: isEEBuild(),
@@ -68,6 +68,6 @@ export function useLicenseTokenMissingBanner() {
 
   return {
     dismissBanner,
-    shouldShow,
+    shouldShowLicenseTokenMissingBanner,
   };
 }

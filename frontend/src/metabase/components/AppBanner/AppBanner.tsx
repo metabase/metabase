@@ -20,7 +20,8 @@ export const AppBanner = () => {
     "trial-banner-dismissal-timestamp",
   );
 
-  const { shouldShow, dismissBanner } = useLicenseTokenMissingBanner();
+  const { shouldShowLicenseTokenMissingBanner, dismissBanner } =
+    useLicenseTokenMissingBanner();
 
   const isAdmin = useSelector(getUserIsAdmin);
   const isHosted = useSelector(getIsHosted);
@@ -46,7 +47,7 @@ export const AppBanner = () => {
     return <ReadOnlyBanner />;
   }
 
-  if (shouldShow) {
+  if (shouldShowLicenseTokenMissingBanner) {
     return <LicenseTokenMissingBanner onClose={dismissBanner} />;
   }
 
