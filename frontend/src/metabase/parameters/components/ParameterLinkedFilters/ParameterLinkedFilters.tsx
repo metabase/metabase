@@ -7,6 +7,7 @@ import {
   useGetValidDashboardFilterFieldsQuery,
 } from "metabase/api";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
@@ -70,10 +71,13 @@ function Content({
   usableParameters,
   onChangeFilteringParameters,
 }: ContentProps) {
-  const { data: filteringIdsByFilteredId = {}, isLoading } =
-    useGetValidDashboardFilterFieldsQuery(
-      getFilterFieldsRequest(parameter, usableParameters) ?? skipToken,
-    );
+  const {
+    data: filteringIdsByFilteredId = {},
+    isLoading,
+    error,
+  } = useGetValidDashboardFilterFieldsQuery(
+    getFilterFieldsRequest(parameter, usableParameters) ?? skipToken,
+  );
   const otherParameters = getParametersInfo(
     usableParameters,
     filteringIdsByFilteredId,
@@ -81,6 +85,10 @@ function Content({
 
   if (isLoading) {
     return <Skeleton height="2.5rem" />;
+  }
+
+  if (error != null) {
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   if (usableParameters.length === 0) {
@@ -352,7 +360,12 @@ type FieldItemProps = {
 };
 
 const FieldItem = ({ fieldId }: FieldItemProps) => {
-  const { data: field, isLoading } = useGetFieldQuery({ id: fieldId });
+  const { data: field, isLoading, error } = useGetFieldQuery({ id: fieldId });
+
+  if (error != null) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
   if (!field || isLoading) {
     return <Skeleton height="1.8125rem" />;
   }

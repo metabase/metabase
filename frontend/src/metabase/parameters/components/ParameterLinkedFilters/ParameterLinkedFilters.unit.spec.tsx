@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import * as dashboardActions from "metabase/dashboard/actions/parameters";
 import { checkNotNull } from "metabase/lib/types";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
@@ -63,7 +63,7 @@ describe("ParameterLinkedFilters", () => {
     expect(onChangeFilteringParameters).toHaveBeenCalledWith(["p2"]);
   });
 
-  it("should not display parameters that cannot be linked", async () => {
+  it("should display parameters that cannot be linked in a separate section", async () => {
     setup({
       parameter: createMockUiParameter({
         id: "p1",
@@ -93,8 +93,12 @@ describe("ParameterLinkedFilters", () => {
       },
     });
 
-    expect(await screen.findByText("P2")).toBeInTheDocument();
-    expect(screen.queryByText("P3")).not.toBeInTheDocument();
+    const compatibleSection = await screen.findByTestId(
+      "compatible-parameters",
+    );
+    const incompatibleSection = screen.getByTestId("incompatible-parameters");
+    expect(within(compatibleSection).getByText("P2")).toBeInTheDocument();
+    expect(within(incompatibleSection).getByText("P3")).toBeInTheDocument();
   });
 
   it.each(["static-list", "card"])(
