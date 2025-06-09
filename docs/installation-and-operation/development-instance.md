@@ -7,10 +7,10 @@ summary: Create development instances of Metabase for testing without paying per
 
 {% include plans-blockquote.html feature="Development instances" %}
 
-On Pro and Enterprise plans, you can purchase a development instance or development token as an add-on to your plan. 
+On Pro and Enterprise plans, you can purchase a development instance or development token as an add-on to your plan.
 
-- **Self-hosted**: you can purchase a dev token that you can use for one or more self-hosted development instances (meaning: you can reuse the same token for multiple dev instances at no additional cost).
-- **Cloud**: you can purchase a development instance hosted on [Metabase Cloud](https://www.metabase.com/cloud/).
+- **Self-hosted**: you can purchase a dev token that you can use for one or more self-hosted development instances (meaning: you can reuse the same token for multiple dev instances at no additional cost). The development token will have access to the same set of paid features as your production token.
+- **Cloud**: you can purchase a development instance hosted on [Metabase Cloud](https://www.metabase.com/cloud/). The development instance will have access to the same set of paid features as your production token.
 
 Dev instances are only available to Pro and Enterprise plans, but they're not included in the base plans; dev instances must be purchased as an add-on to your plan.
 
@@ -42,3 +42,5 @@ You can choose a Cloud instance or get a token for a self-hosted development ins
 ## Downgrading with development instances
 
 If you're on a Pro Cloud plan and downgrade to a Starter plan, we'll delete any development instances you've created. All of your production instances will remain intact (minus the Pro features).
+
+If you downgrade and you're on a self-hosted plan, the token will no longer be valid, and you'll lose access to the paid features.
