@@ -269,12 +269,16 @@ export const EmbedFrame = ({
         ) : (
           // This doesn't render anything, but the component will take care of location.search by trimming unused parameters.
           <ParametersListComponent
-            parameters={getValuePopulatedParameters({
-              parameters,
-              values: _.isEmpty(draftParameterValues)
-                ? parameterValues
-                : draftParameterValues,
-            })}
+            parameters={
+              parameters
+                ? getValuePopulatedParameters({
+                    parameters,
+                    values: _.isEmpty(draftParameterValues)
+                      ? parameterValues
+                      : draftParameterValues,
+                  })
+                : []
+            }
             hideParameters={hideParameters}
           />
         )}
