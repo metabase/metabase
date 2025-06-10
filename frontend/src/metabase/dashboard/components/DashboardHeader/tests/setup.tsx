@@ -5,14 +5,19 @@ import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
+  setupDashboardEndpoints,
+  setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
+import { DashboardContextProvider } from "metabase/dashboard/context";
 import {
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardQueryMetadata,
+  createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -111,10 +116,27 @@ export const setup = async ({
     parameterQueryParams: {},
   };
 
+  setupDashboardEndpoints(dashboard);
+
+  const database = createMockDatabase();
+  setupDashboardQueryMetadataEndpoint(
+    dashboard,
+    createMockDashboardQueryMetadata({
+      databases: [database],
+    }),
+  );
+
   renderWithProviders(
     <Route
       path="*"
-      component={() => <DashboardHeader {...dashboardHeaderProps} />}
+      component={() => (
+        <DashboardContextProvider
+          dashboardId={dashboard.id}
+          navigateToNewCardFromDashboard={null}
+        >
+          <DashboardHeader {...dashboardHeaderProps} />
+        </DashboardContextProvider>
+      )}
     ></Route>,
     {
       withRouter: true,

@@ -2,7 +2,6 @@ import type { WithRouterProps } from "react-router";
 
 import { DashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/DashboardLocationSync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
-import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -34,9 +33,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     hide_parameters,
   } = useEmbedFrameOptions({ location });
 
-  const { hasNightModeToggle, isNightMode, onNightModeChange, theme } =
-    useEmbedTheme();
-
   const canWhitelabel = useSelector(getCanWhitelabel);
 
   return (
@@ -49,13 +45,9 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       <DashboardContextProvider
         dashboardId={dashboardId}
         hideParameters={hide_parameters}
-        isNightMode={isNightMode}
-        hasNightModeToggle={hasNightModeToggle}
-        onNightModeChange={onNightModeChange}
         background={background}
         bordered={bordered}
         downloadsEnabled={downloadsEnabled}
-        theme={theme}
         titled={titled}
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
