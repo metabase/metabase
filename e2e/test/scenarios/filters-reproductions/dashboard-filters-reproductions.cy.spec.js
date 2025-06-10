@@ -4472,3 +4472,68 @@ describe("issue 55678", () => {
     H.assertQueryBuilderRowCount(1);
   });
 });
+
+describe("issue 44090", () => {
+  const parameterDetails = {
+    name: "p1",
+    slug: "string",
+    id: "f8ec7c71",
+    type: "string/=",
+  };
+
+  const questionDetails = {
+    name: "Orders",
+    query: {
+      "source-table": REVIEWS_ID,
+    },
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  const LONG_VALUE =
+    "Minima non hic doloribus ipsa dolore ratione in numquam. Minima eos vel harum velit. Consequatur consequuntur culpa sed eum";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(questionDetails).then(({ body: { id: card_id } }) => {
+      H.createDashboard(dashboardDetails).then(
+        ({ body: { id: dashboard_id } }) => {
+          H.addOrUpdateDashboardCard({
+            dashboard_id,
+            card_id,
+            card: {
+              parameter_mappings: [
+                {
+                  card_id,
+                  parameter_id: parameterDetails.id,
+                  target: ["dimension", ["field", REVIEWS.BODY, {}]],
+                },
+              ],
+            },
+          });
+          H.visitDashboard(dashboard_id);
+        },
+      );
+    });
+  });
+
+  it("should not overflow the dashboard header when a filter contains a long value (metabase#44090)", () => {
+    H.filterWidget().click();
+    H.popover()
+      .first()
+      .within(() => {
+        cy.findByPlaceholderText("Search the list").type(LONG_VALUE);
+        cy.button("Add filter").click();
+      });
+
+    H.filterWidget().then(($el) => {
+      const { width } = $el[0].getBoundingClientRect();
+      cy.wrap(width).should("be.lt", 300);
+    });
+  });
+});
