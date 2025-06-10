@@ -119,6 +119,7 @@ export type ActionFormParameter = {
   readonly?: boolean;
   field_id?: number;
   human_readable_field_id?: number;
+  database_default?: string;
 };
 
 export type DescribeActionFormResponse = {
