@@ -11,6 +11,13 @@ import DatabaseStatusSmall from "../DatabaseStatusSmall";
 export interface DatabaseStatusProps {
   user?: User;
   databases?: Database[];
+  /**
+   * If true, the component will bot be visible, but the logic with the timeout
+   * will start. This is needed because if we just conditionally not render the
+   * component from outside, when the condition becomes true and the component is rendered,
+   * the component would show up.
+   */
+  hidden?: boolean;
 }
 
 const DatabaseStatus = (props: DatabaseStatusProps): JSX.Element | null => {
@@ -18,7 +25,7 @@ const DatabaseStatus = (props: DatabaseStatusProps): JSX.Element | null => {
   const isActive = databases.some(isSyncInProgress);
   const isVisible = useStatusVisibility(isActive);
 
-  if (isVisible) {
+  if (isVisible && !props.hidden) {
     return <DatabaseStatusContent databases={databases} />;
   } else {
     return null;
