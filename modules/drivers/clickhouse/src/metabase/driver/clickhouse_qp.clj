@@ -481,19 +481,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:'parseDateTimeBestEffort
-   [:concat
-    [:substring expr 1 4]
-    "-"
-    [:substring expr 5 2]
-    "-"
-    [:substring expr 7 2]
-    " "
-    [:substring expr 9 2]
-    ":"
-    [:substring expr 11 2]
-    ":"
-    [:substring expr 13 2]]])
+  [:to_timestamp expr (h2x/literal "%Y%m%d%H%i%S")])
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
