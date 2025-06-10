@@ -1119,7 +1119,7 @@
   [{:keys [id param-key]}      :- [:map
                                    [:id ms/PositiveInt]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (let [dashboard (api/read-check :model/Dashboard id)]
+  (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))
