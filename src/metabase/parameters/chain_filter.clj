@@ -509,7 +509,8 @@
 
 (def ^:dynamic *allow-implicit-remapping*
   "Should implicit remapping be allowed? Not eg. for `GET /dashboard/:id/params/:param-key/search/:query`
-  to search on actual field that was picked for filtering (#59020)."
+  to search on actual field that was picked for filtering (#59020). But only for the UUID fields, hence potentially
+  adjusted in [[chain-filter-search]]!"
   true)
 
 (defn- remapped-field-id-query [field-id]
@@ -733,7 +734,13 @@
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))
-        the-remapped-field-id (delay (remapped-field-id field-id))]
+        the-remapped-field-id (delay (let [{:keys [base_type effective_type]} (memoized-field-by-id field-id)]
+                                       (binding [*allow-implicit-remapping*
+                                                 ;; For the details on following condition see the dynamic var's
+                                                 ;; docstring.
+                                                 (or *allow-implicit-remapping*
+                                                     (not (isa? (or effective_type base_type) :type/UUID)))]
+                                         (remapped-field-id field-id))))]
     (cond
       (str/blank? query)
       (apply chain-filter field-id constraints options)
