@@ -1,13 +1,13 @@
 import cx from "classnames";
-import { useEffect, useMemo } from "react";
+import { type PropsWithChildren, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
-  PublicComponentWrapper,
   SdkError,
   SdkLoader,
+  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
@@ -119,102 +119,94 @@ export const SdkDashboardInner = ({
   );
 };
 
-export const SdkDashboard = ({
-  dashboardId,
-  className,
-  style,
-  dashboardId: initialDashboardId,
-  onLoad,
-  onLoadWithoutCards,
-  initialParameters,
-  hiddenParameters,
-  plugins,
-  withDownloads,
-  withTitle,
-  withCardTitle,
-  renderDrillThroughQuestion,
-  drillThroughQuestionHeight,
-  drillThroughQuestionProps,
-  dashboardActions,
-  getClickActionMode,
-}: SdkDashboardProps &
-  Pick<InteractiveDashboardContextType, "dashboardActions">) => {
-  const dispatch = useSdkDispatch();
-
-  const { displayOptions } = useSdkDashboardParams({
+export const SdkDashboard = withPublicComponentWrapper(
+  ({
+    dashboardId,
+    className,
+    style,
+    dashboardId: initialDashboardId,
+    onLoad,
+    onLoadWithoutCards,
+    initialParameters,
+    hiddenParameters,
+    plugins,
     withDownloads,
     withTitle,
     withCardTitle,
-    hiddenParameters,
-  });
+    renderDrillThroughQuestion,
+    drillThroughQuestionHeight,
+    drillThroughQuestionProps,
+    dashboardActions,
+    getClickActionMode,
+  }: SdkDashboardProps &
+    Pick<InteractiveDashboardContextType, "dashboardActions">) => {
+    const dispatch = useSdkDispatch();
 
-  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
-    onLoad,
-    onLoadWithoutCards,
-  });
+    const { displayOptions } = useSdkDashboardParams({
+      withDownloads,
+      withTitle,
+      withCardTitle,
+      hiddenParameters,
+    });
 
-  const {
-    onNavigateToNewCardFromDashboard,
-    adhocQuestionUrl,
-    onNavigateBackToDashboard,
-    onEditQuestion,
-  } = useCommonDashboardParams({
-    dashboardId,
-  });
-  return (
-    <DashboardContextProvider
-      dashboardId={dashboardId}
-      parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
-      downloadsEnabled={displayOptions.downloadsEnabled}
-      background={displayOptions.background}
-      bordered={displayOptions.bordered}
-      hideParameters={displayOptions.hideParameters}
-      titled={displayOptions.titled}
-      cardTitled={displayOptions.cardTitled}
-      theme={displayOptions.theme}
-      onLoad={handleLoad}
-      onLoadWithoutCards={handleLoadWithoutCards}
-      onError={(error) => dispatch(setErrorPage(error))}
-      getClickActionMode={getClickActionMode}
-    >
-      <WrappedSdkDashboardInner
-        className={className}
-        style={style}
-        initialDashboardId={initialDashboardId}
+    const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
+      onLoad,
+      onLoadWithoutCards,
+    });
+
+    const {
+      onNavigateToNewCardFromDashboard,
+      adhocQuestionUrl,
+      onNavigateBackToDashboard,
+      onEditQuestion,
+    } = useCommonDashboardParams({
+      dashboardId,
+    });
+    return (
+      <DashboardContextProvider
         dashboardId={dashboardId}
-        adhocQuestionUrl={adhocQuestionUrl}
-        onNavigateBackToDashboard={onNavigateBackToDashboard}
-        onEditQuestion={onEditQuestion}
-        renderDrillThroughQuestion={renderDrillThroughQuestion}
-        plugins={plugins}
-        drillThroughQuestionHeight={drillThroughQuestionHeight}
-        drillThroughQuestionProps={drillThroughQuestionProps}
-        dashboardActions={dashboardActions}
-      />
-    </DashboardContextProvider>
-  );
-};
-function WrappedSdkDashboardInner({
+        parameterQueryParams={initialParameters}
+        navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+        downloadsEnabled={displayOptions.downloadsEnabled}
+        background={displayOptions.background}
+        bordered={displayOptions.bordered}
+        hideParameters={displayOptions.hideParameters}
+        titled={displayOptions.titled}
+        cardTitled={displayOptions.cardTitled}
+        theme={displayOptions.theme}
+        onLoad={handleLoad}
+        onLoadWithoutCards={handleLoadWithoutCards}
+        onError={(error) => dispatch(setErrorPage(error))}
+        getClickActionMode={getClickActionMode}
+      >
+        <SdkDashboardInnerWrapper className={className} style={style}>
+          <SdkDashboardInner
+            initialDashboardId={initialDashboardId}
+            dashboardId={dashboardId}
+            adhocQuestionUrl={adhocQuestionUrl}
+            onNavigateBackToDashboard={onNavigateBackToDashboard}
+            onEditQuestion={onEditQuestion}
+            renderDrillThroughQuestion={renderDrillThroughQuestion}
+            plugins={plugins}
+            drillThroughQuestionHeight={drillThroughQuestionHeight}
+            drillThroughQuestionProps={drillThroughQuestionProps}
+            dashboardActions={dashboardActions}
+          />
+        </SdkDashboardInnerWrapper>
+      </DashboardContextProvider>
+    );
+  },
+);
+
+function SdkDashboardInnerWrapper({
   className,
   style,
-  initialDashboardId,
-  dashboardId,
-  adhocQuestionUrl,
-  onNavigateBackToDashboard,
-  onEditQuestion,
-  renderDrillThroughQuestion,
-  plugins,
-  drillThroughQuestionHeight,
-  drillThroughQuestionProps,
-  dashboardActions,
-}: Pick<SdkDashboardDisplayProps, "className" | "style"> &
-  SdkDashboardInternalProps) {
+  children,
+}: PropsWithChildren<Pick<SdkDashboardDisplayProps, "className" | "style">>) {
   const { fullscreenRef } = useDashboardContext();
 
   return (
     <Flex
-      component={PublicComponentWrapper}
       mih="100vh"
       bg="bg-dashboard"
       direction="column"
@@ -224,18 +216,7 @@ function WrappedSdkDashboardInner({
       style={style}
       ref={fullscreenRef}
     >
-      <SdkDashboardInner
-        initialDashboardId={initialDashboardId}
-        dashboardId={dashboardId}
-        adhocQuestionUrl={adhocQuestionUrl}
-        onNavigateBackToDashboard={onNavigateBackToDashboard}
-        onEditQuestion={onEditQuestion}
-        renderDrillThroughQuestion={renderDrillThroughQuestion}
-        plugins={plugins}
-        drillThroughQuestionHeight={drillThroughQuestionHeight}
-        drillThroughQuestionProps={drillThroughQuestionProps}
-        dashboardActions={dashboardActions}
-      />
+      {children}
     </Flex>
   );
 }
