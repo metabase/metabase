@@ -51,6 +51,7 @@
   ;; Is worth considering when adding entries here, whether they shouldn't just be skipped in extraction.
   #{:cache_field_values_schedule
     :metadata_sync_schedule
+    :visibility_type_is_user_set
     :metabase_version})
 
 (defn- strip-base-path [base file]

@@ -35,7 +35,8 @@
           :database-position         (:database_position field)
           :database-partitioned      (:database_partitioned field)
           :database-required         (:database_required field)
-          :visibility-type           (:visibility_type field)})
+          :visibility-type           (:visibility_type field)
+          :visibility-type-is-user-set (:visibility_type_is_user_set field)})
        ;; make a map of parent-id -> set of child Fields
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
@@ -70,7 +71,7 @@
   [table :- i/TableInstance]
   (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
               :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required
-              :database_partitioned :json_unfolding :position :visibility_type]
+              :database_partitioned :json_unfolding :position :visibility_type :visibility_type_is_user_set]
              :table_id  (u/the-id table)
              :active    true
              {:order-by table/field-order-rule}))

@@ -51,7 +51,8 @@
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} :boolean]
-   [:visibility-type            {:optional true} [:maybe :keyword]]])
+   [:visibility-type            {:optional true} [:maybe :keyword]]
+   [:visibility-type-is-user-set {:optional true} [:maybe :boolean]]])
 
 (def TableMetadataField
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."

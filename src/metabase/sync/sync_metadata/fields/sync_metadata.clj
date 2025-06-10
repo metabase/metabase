@@ -14,14 +14,14 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- compute-new-visibility-type [db field-metadata visibility-type]
+(defn- compute-new-visibility-type [db field-metadata]
   (if (crufty/name? (:name field-metadata)
                     (some-> db :settings :auto-cruft-columns))
     :details-only
     ;; n.b. if it was auto-crufted in the past, removing it from auto-cruft will NOT make it visible because old
     ;; visibility-type will be :details-only. This only changes things to be hidden. If you want to make it visible
     ;; again, you need to change the visibility-type to :normal via the fields :put api.
-    visibility-type))
+    (:visibility-type field-metadata)))
 
 (mu/defn- update-field-metadata-if-needed! :- [:enum 0 1]
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
@@ -49,7 +49,7 @@
          new-database-is-auto-increment :database-is-auto-increment
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
-        new-visibility-type             (compute-new-visibility-type database field-metadata old-visibility-type)
+        new-visibility-type             (compute-new-visibility-type database field-metadata)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
         new-db-required                 (boolean new-db-required)
         new-database-type               (or new-database-type "NULL")
@@ -61,11 +61,12 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
-        ;; only sync comment if old value was blank so we don't overwrite user-set values
+        ;; only sync semantic_type if old value was null so we don't overwrite user-set values
         new-semantic-type?
         (and (nil? old-semantic-type)
              (not= old-semantic-type new-semantic-type))
 
+        ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-comment?
         (and (str/blank? old-field-comment)
              (not (str/blank? new-field-comment)))
@@ -80,7 +81,11 @@
         new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
         new-db-required?         (not= old-db-required new-db-required)
-        new-visibility-type?     (not= old-visibility-type new-visibility-type)
+
+        ;; only sync visibility_type if value wasn't user-set
+        new-visibility-type?     (and new-visibility-type
+                                      (not (:visibility-type-is-user-set metabase-field))
+                                      (not= old-visibility-type new-visibility-type))
 
         ;; calculate combined updates
         updates

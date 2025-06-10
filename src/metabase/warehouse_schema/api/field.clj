@@ -147,10 +147,11 @@
                    (u/select-keys-when (assoc body
                                               :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                               :effective_type effective-type
-                                              :coercion_strategy coercion-strategy)
+                                              :coercion_strategy coercion-strategy
+                                              :visibility_type_is_user_set (when (:visibility_type body) true))
                                        :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
                                                   :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                                       :non-nil #{:display_name :settings}))))
+                                       :non-nil #{:display_name :settings :visibility_type_is_user_set}))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them

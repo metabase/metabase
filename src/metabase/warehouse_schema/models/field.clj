@@ -396,7 +396,7 @@
                :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
-               :unique_field_helper :visibility_type]
+               :unique_field_helper :visibility_type :visibility_type_is_user_set]
    :skip      [:fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
                :table_id           (serdes/fk :model/Table)
