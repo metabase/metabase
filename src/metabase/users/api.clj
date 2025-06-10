@@ -362,6 +362,19 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
+(defn- add-can-write-any-collection
+  "Adds a key to the user reflecting whether they have permission to write *any* collection in the instance so that the
+  FE can appropriately hide/show elements (e.g., we shouldn't try to let them save a new question if they don't have
+  anywhere to save *to*)"
+  [{:keys [id] :as user}]
+  (assoc user :can_write_any_collection
+         (or (:is_superuser user)
+             (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
+                                                    :id
+                                                    {:include-trash-collection? false
+                                                     :include-archived-items :exclude
+                                                     :permission-level :write})}))))
+
 (api.macros/defendpoint :get "/current"
   "Fetch the current `User`."
   []
@@ -371,7 +384,8 @@
       add-first-login
       maybe-add-advanced-permissions
       maybe-add-sso-source
-      add-custom-homepage-info))
+      add-custom-homepage-info
+      add-can-write-any-collection))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."

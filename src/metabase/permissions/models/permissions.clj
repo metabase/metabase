@@ -172,7 +172,6 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -450,11 +449,15 @@
     (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
+;; TODO: We really have to figure out a better solution to these circular dependencies than this
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))
 
 (defn- is-trash-or-descendant? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
+
+(defn- is-tenant-collection? [collection]
+  ((requiring-resolve 'metabase.collections.models.collection/is-tenant-collection?) collection))
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
@@ -500,7 +503,7 @@
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (let [collection (collection-or-id->collection collection-or-id)]
-    (when (and (not (collection/is-tenant-collection? collection))
+    (when (and (not (is-tenant-collection? collection))
                (perms-group/is-tenant-group? group-or-id))
       (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
