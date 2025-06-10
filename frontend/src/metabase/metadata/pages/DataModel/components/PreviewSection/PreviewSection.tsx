@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  Box,
   Card,
   Flex,
   Group,
@@ -20,6 +21,7 @@ import type {
 
 import { FilteringPreview } from "./FilteringPreview";
 import { ObjectDetailPreview } from "./ObjectDetailPreview";
+import S from "./PreviewSection.module.css";
 import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
 import { getPreviewTypeData } from "./utils";
@@ -68,37 +70,39 @@ export const PreviewSection = ({
         />
       </Flex>
 
-      {previewType === "table" && (
-        <TablePreview
-          databaseId={databaseId}
-          field={field}
-          fieldId={fieldId}
-          tableId={tableId}
-        />
-      )}
+      <Box className={S.tabContent} h="100%">
+        {previewType === "table" && (
+          <TablePreview
+            databaseId={databaseId}
+            field={field}
+            fieldId={fieldId}
+            tableId={tableId}
+          />
+        )}
 
-      {previewType === "detail" && (
-        <ObjectDetailPreview
-          databaseId={databaseId}
-          field={field}
-          fieldId={fieldId}
-          tableId={tableId}
-        />
-      )}
+        {previewType === "detail" && (
+          <ObjectDetailPreview
+            databaseId={databaseId}
+            field={field}
+            fieldId={fieldId}
+            tableId={tableId}
+          />
+        )}
 
-      {previewType === "filtering" && (
-        <FilteringPreview
-          databaseId={databaseId}
-          fieldId={fieldId}
-          /**
-           * Make sure internal component state is reset when changing any field settings.
-           * This is because use***Filter hooks cache some parts of state internally on mount
-           * and do not account for all prop changes during their lifecycle.
-           */
-          key={JSON.stringify(field)}
-          table={table}
-        />
-      )}
+        {previewType === "filtering" && (
+          <FilteringPreview
+            databaseId={databaseId}
+            fieldId={fieldId}
+            /**
+             * Make sure internal component state is reset when changing any field settings.
+             * This is because use***Filter hooks cache some parts of state internally on mount
+             * and do not account for all prop changes during their lifecycle.
+             */
+            key={JSON.stringify(field)}
+            table={table}
+          />
+        )}
+      </Box>
     </Card>
   );
 };
