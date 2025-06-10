@@ -114,12 +114,12 @@ export function Heading({
           />
         )}
         {inlineParameters.length > 0 && (
-          <div>
+          <Flex style={{ flex: "0 0 auto" }}>
             <DashboardParameterList
               parameters={inlineParameters}
               isFullscreen={isFullscreen}
             />
-          </div>
+          </Flex>
         )}
       </InputContainer>
     );
