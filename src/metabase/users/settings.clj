@@ -102,11 +102,10 @@
   :type       :string)
 
 (defsetting license-token-missing-banner-dismissal-timestamp
-  (deferred-tru "The array of last two ISO8601 dates when a user dismissed the license token missing banner.")
-  :user-local :only
+  (deferred-tru "The array of last two ISO8601 dates when an admin dismissed the license token missing banner.")
   :encryption :no
   :export?    false
-  :visibility :authenticated
+  :visibility :admin
   :type       :csv
   :default    [])
 
