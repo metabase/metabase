@@ -2,9 +2,11 @@ import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import {
   getDashCardInlineValuePopulatedParameters,
+  getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -23,6 +25,7 @@ import { HeadingContent, InputContainer, TextInput } from "./Heading.styled";
 interface HeadingProps {
   isEditing: boolean;
   isFullscreen: boolean;
+  isMobile: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
   dashcard: VirtualDashboardCard;
   settings: VisualizationSettings;
@@ -35,12 +38,15 @@ export function Heading({
   settings,
   isEditing,
   isFullscreen,
+  isMobile,
   onUpdateVisualizationSettings,
 }: HeadingProps) {
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard?.id),
   );
   const parameterValues = useSelector(getParameterValues);
+
+  const isEditingParameter = useSelector(getIsEditingParameter);
 
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
@@ -79,7 +85,9 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
-        {isPreviewing ? (
+        {isEditingParameter ? (
+          <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
+        ) : isPreviewing ? (
           <HeadingContent
             data-testid="editing-dashboard-heading-preview"
             isEditing={isEditing}
@@ -105,11 +113,13 @@ export function Heading({
             }}
           />
         )}
-        {isPreviewing && inlineParameters.length > 0 && (
-          <DashboardParameterList
-            parameters={inlineParameters}
-            isFullscreen={isFullscreen}
-          />
+        {inlineParameters.length > 0 && (
+          <div>
+            <DashboardParameterList
+              parameters={inlineParameters}
+              isFullscreen={isFullscreen}
+            />
+          </div>
         )}
       </InputContainer>
     );

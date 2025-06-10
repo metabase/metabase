@@ -38,6 +38,7 @@ const defaultProps = {
   dashboard: createMockDashboard(),
   isEditing: false,
   isFullscreen: false,
+  isMobile: false,
   isEditingParameter: false,
   onUpdateVisualizationSettings: () => {
     return;
