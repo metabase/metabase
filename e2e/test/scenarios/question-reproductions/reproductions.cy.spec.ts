@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
@@ -465,5 +466,43 @@ describe("issue 46845", () => {
     cy.log("assert query results");
     H.visualize();
     H.assertQueryBuilderRowCount(91);
+  });
+});
+
+describe("issue 55631", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      cy.findByText("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    cy.intercept("POST", "/api/card").as("cardCreate");
+  });
+
+  it("should not flash the default title when saving the question (metabase#55631)", () => {
+    H.visualize();
+    cy.findByTestId("qb-header").button("Save").click();
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("Custom");
+      cy.findByLabelText("Where do you want to save this?").click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("First collection").click();
+      cy.button("Select this collection").click();
+    });
+
+    H.modal().within(() => {
+      cy.button("Save").click();
+      cy.wait("@cardCreate");
+
+      // It is important to have extremely short timeout in order to catch the issue
+      // before the dialog closes.
+      cy.findByDisplayValue("Orders", { timeout: 10 }).should("not.exist");
+    });
   });
 });
