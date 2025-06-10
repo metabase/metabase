@@ -293,26 +293,24 @@
     (throw (ex-info "Cannot specify both model-id and table-id parameters"
                     {:status-code 400})))
   (cond
-    model-id
-    (do (api/read-check :model/Card model-id)
-        {:actions (t2/select [:model/Action :id :name :description]
-                             :model_id model-id
-                             :archived false
-                             {:order-by :id})})
+    model-id (do (api/read-check :model/Card model-id)
+                 {:actions (t2/select [:model/Action :id :name :description]
+                                      :model_id model-id
+                                      :archived false
+                                      {:order-by :id})})
 
-    table-id
-    (let [table    (api/read-check :model/Table table-id)
-          database (t2/select-one :model/Database :id (:db_id table))
-          _        (when-not (get-in database [:settings :database-enable-table-editing])
-                     (throw (ex-info "Table editing is not enabled for this database"
-                                     {:status-code 400})))
-          ;; Fields are used to calculate the parameters.
-          ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
-          ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
-          fields   nil
-          actions  (for [op [:table.row/create :table.row/update :table.row/delete]
-                         :let [action (action/table-primitive-action table fields op)]]
-                     {:id          (:id action)
-                      :name        (:name action)
-                      :description (get-in action [:visualization_settings :description] "")})]
-      {:actions actions})))
+    table-id (let [table    (api/read-check :model/Table table-id)
+                   database (t2/select-one :model/Database :id (:db_id table))
+                   _        (when-not (get-in database [:settings :database-enable-table-editing])
+                              (throw (ex-info "Table editing is not enabled for this database"
+                                              {:status-code 400})))
+                   ;; Fields are used to calculate the parameters.
+                   ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
+                   ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
+                   fields   nil
+                   actions  (for [op [:table.row/create :table.row/update :table.row/create-or-update :table.row/delete]
+                                  :let [action (action/table-primitive-action table fields op)]]
+                              {:id          (:id action)
+                               :name        (:name action)
+                               :description (get-in action [:visualization_settings :description] "")})]
+               {:actions actions})))

@@ -339,9 +339,10 @@
 ;; we will use an integer with an op (15 bits) and param (32 bits)
 ;; to start with table actions, the param is the table-id.
 (def ^:private primitive-action->int
-  {:table.row/create 0
-   :table.row/update 1
-   :table.row/delete 2})
+  {:table.row/create           0
+   :table.row/update           1
+   :table.row/delete           2
+   :table.row/create-or-update 3})
 
 (def ^:private int->primitive-action (set/map-invert primitive-action->int))
 
@@ -363,10 +364,8 @@
   Such an action is only valid if data editing is enabled for the database."
   [table fields action-kw]
   (let [field-param? (case action-kw
-                       :table.row/create
-                       #(not (:database_is_auto_increment %))
-                       :table.row/delete
-                       #(= :type/PK (:semantic_type %))
+                       :table.row/create #(not (:database_is_auto_increment %))
+                       :table.row/delete #(= :type/PK (:semantic_type %))
                        (constantly true))
         field-params (->> fields
                           (filter field-param?)
