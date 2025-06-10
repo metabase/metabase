@@ -479,20 +479,21 @@
   [_driver _special_type expr]
   expr)
 
-(defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
+(defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:concat
-   [:substring expr 1 4]
-   "-"
-   [:substring expr 5 2]
-   "-"
-   [:substring expr 7 2]
-   " "
-   [:substring expr 9 2]
-   ":"
-   [:substring expr 11 2]
-   ":"
-   [:substring expr 13 2]])
+  [:'parseDateTimeBestEffort
+   [:concat
+    [:substring expr 1 4]
+    "-"
+    [:substring expr 5 2]
+    "-"
+    [:substring expr 7 2]
+    " "
+    [:substring expr 9 2]
+    ":"
+    [:substring expr 11 2]
+    ":"
+    [:substring expr 13 2]]])
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
