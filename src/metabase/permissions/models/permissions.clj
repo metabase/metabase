@@ -172,6 +172,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -498,11 +499,10 @@
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
-  (let [tenant-group? (perms-group/is-tenant-group? group-or-id)
-        {ttype :type} (collection-or-id->collection collection-or-id)]
-    (when (not= (= ttype "tenant-collection")
-                tenant-group?)
-      (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections and vice versa.") {}))))
+  (let [collection (collection-or-id->collection collection-or-id)]
+    (when (and (not (collection/is-tenant-collection? collection))
+               (perms-group/is-tenant-group? group-or-id))
+      (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?

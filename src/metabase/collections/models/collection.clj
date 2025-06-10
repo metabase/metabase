@@ -69,6 +69,35 @@
        (when-not <>
          (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
 
+(def ^:constant tenant-root-collection-type "tenant")
+
+(def ^{:arglists '([])} tenant-root-collection
+  "Memoized copy of the tenant root collection from the DB"
+  (mdb/memoize-for-application-db
+   (fn []
+     (u/prog1 (t2/select-one :model/Collection :type tenant-root-collection-type)
+       (when-not <>
+         (throw (ex-info "Fatal error: tenant root collection not found." {})))))))
+
+(defn tenant-root-collection-id
+  "The ID representing the Tenant Root collection"
+  []
+  (u/the-id (tenant-root-collection)))
+
+(defn tenant-root-path
+  "The fixed location path for the tenant collection."
+  []
+  (str "/" (tenant-root-collection-id) "/"))
+
+(defn is-tenant-collection?
+  [{:keys [location]}]
+  (str/starts-with? location (tenant-root-path)))
+
+(defn- tenant-collection-where-clause
+  "Returns a clause that will be true if this is a tenant collection, false otherwise."
+  [& [location-column]]
+  [:like location-column (str tenant-root-path "%")])
+
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -630,6 +659,10 @@
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
+            ;; TODO fix this, should be tenants feature
+            (when-not (premium-features/enable-advanced-permissions?)
+              [:not (tenant-collection-where-clause)])
+
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
