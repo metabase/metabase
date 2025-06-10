@@ -80,21 +80,13 @@ export function Heading({
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <Flex align="center" justify="space-between">
-            <HeadingContent
-              data-testid="editing-dashboard-heading-preview"
-              isEditing={isEditing}
-              onMouseDown={preventDragging}
-            >
-              {hasContent ? settings.text : placeholder}
-            </HeadingContent>
-            {inlineParameters.length > 0 && (
-              <DashboardParameterList
-                parameters={inlineParameters}
-                isFullscreen={isFullscreen}
-              />
-            )}
-          </Flex>
+          <HeadingContent
+            data-testid="editing-dashboard-heading-preview"
+            isEditing={isEditing}
+            onMouseDown={preventDragging}
+          >
+            {hasContent ? settings.text : placeholder}
+          </HeadingContent>
         ) : (
           <TextInput
             name="heading"
@@ -111,6 +103,12 @@ export function Heading({
                 onUpdateVisualizationSettings({ text: textValue });
               }
             }}
+          />
+        )}
+        {isPreviewing && inlineParameters.length > 0 && (
+          <DashboardParameterList
+            parameters={inlineParameters}
+            isFullscreen={isFullscreen}
           />
         )}
       </InputContainer>

@@ -12,10 +12,10 @@ interface InputContainerProps {
 
 export const InputContainer = styled.div<InputContainerProps>`
   display: flex;
-  flex-direction: column;
   width: 100%;
   height: 100%;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   overflow: hidden;
   padding-left: 0.75rem;
   pointer-events: auto;
