@@ -146,7 +146,8 @@ export function hasInlineParameters(
 ): dashcard is VirtualDashboardCardWithInlineFilters {
   return (
     supportsInlineParameters(dashcard) &&
-    Array.isArray(dashcard.inline_parameters)
+    Array.isArray(dashcard.inline_parameters) &&
+    dashcard.inline_parameters.length > 0
   );
 }
 

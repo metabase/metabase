@@ -504,14 +504,14 @@ describe("Dashboard utils", () => {
     });
 
     it("should return false for dashcards with empty inline parameters list", () => {
-      const dashcard = createMockTextDashboardCard({
+      const dashcard = createMockHeadingDashboardCard({
         inline_parameters: [],
       });
       expect(hasInlineParameters(dashcard)).toBe(false);
     });
 
     it("should return false for dashcards with null-ish inline parameters", () => {
-      const dashcard = createMockTextDashboardCard({
+      const dashcard = createMockHeadingDashboardCard({
         inline_parameters: null,
       });
       expect(hasInlineParameters(dashcard)).toBe(false);
