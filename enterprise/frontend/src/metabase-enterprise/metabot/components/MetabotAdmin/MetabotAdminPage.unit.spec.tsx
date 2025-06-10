@@ -112,7 +112,7 @@ const setup = async (
   metabots.forEach((mb) =>
     setupMetabotPromptSuggestionsEndpoint(mb.id, [], {
       offset: 0,
-      limit: 3,
+      limit: 10,
       total: 0,
     }),
   );

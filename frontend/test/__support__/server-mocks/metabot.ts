@@ -1,4 +1,4 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type MockOptionsMethodPost } from "fetch-mock";
 
 import type {
   MetabotApiEntity,
@@ -91,9 +91,11 @@ export function setupRemoveMetabotPromptSuggestionEndpoint(
 
 export function setupRegenerateMetabotPromptSuggestionsEndpoint(
   metabotId: MetabotId,
+  options?: MockOptionsMethodPost,
 ) {
   fetchMock.post(
     `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/regenerate`,
     { status: 204 },
+    options,
   );
 }

@@ -187,7 +187,6 @@ describe("suggested prompts", () => {
     const { metabotId } = await setup({ pageSize: 1 });
     const [firstPrompt] = defaultMetabotMockedPrompts;
 
-    setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId);
     setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
     setupMetabotPromptSuggestionsEndpoint(
       metabotId,
@@ -215,6 +214,8 @@ describe("suggested prompts", () => {
         total: defaultMetabotMockedPrompts.length,
       },
     );
+    // add a delay to endpoint so that loading state can be triggered consistently w/o test flakes
+    setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId, { delay: 50 });
 
     const regenerateButton = await screen.findByRole("button", {
       name: /Regenerate suggested prompts/,
