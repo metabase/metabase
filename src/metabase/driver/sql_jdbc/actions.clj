@@ -685,8 +685,8 @@
   [database-id table-id row]
   (let [children-fn (fn [relationship parent-rows]
                       (lookup-children-in-db relationship parent-rows database-id))
-        delete-fn   (fn [items-by-table]
-                      (doseq [[table-id rows] (reverse items-by-table)]
+        delete-fn   (fn [queue]
+                      (doseq [[table-id rows] queue]
                         (log/debugf "Cascade deleting %d rows of table %d" (count rows) table-id)
                         (let [rows-deleted (delete-rows-by-pk! database-id table-id rows)]
                           (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
