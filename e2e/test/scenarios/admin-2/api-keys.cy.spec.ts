@@ -57,7 +57,7 @@ describe("scenarios > admin > settings > API keys", () => {
     H.createApiKey("Test API Key Three", READONLY_GROUP_ID);
 
     H.visitApiKeySettings();
-    cy.findByTestId("api-keys-settings-header").findByText("Manage API Keys");
+    cy.findByTestId("api-keys-settings-header").findByText("API keys");
 
     cy.findByTestId("api-keys-table").within(() => {
       cy.findByText("Test API Key One");
@@ -162,7 +162,7 @@ describe("scenarios > admin > settings > API keys", () => {
       .closest("tr")
       .icon("pencil")
       .click();
-    cy.button("Regenerate API Key").click();
+    cy.button("Regenerate API key").click();
     cy.button("Regenerate").click();
     cy.wait("@regenerateKey");
     cy.findByLabelText("The API key").should("include.value", "mb_");

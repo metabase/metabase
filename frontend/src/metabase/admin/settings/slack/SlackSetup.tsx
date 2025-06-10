@@ -28,7 +28,7 @@ export const SlackSetup = () => {
         <SlackAppsLink />
       </SetupSection>
       <SetupSection
-        title={t`2. Activate the OAuth Token and create a new slack channel`}
+        title={t`2. Activate the OAuth token and create a new slack channel`}
       >
         <Text mb="md">
           <Markdown>

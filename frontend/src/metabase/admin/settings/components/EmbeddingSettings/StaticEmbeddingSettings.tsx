@@ -15,11 +15,11 @@ export function StaticEmbeddingSettings() {
 
   return (
     <Stack>
-      <Title order={1}>{t`Static Embedding`}</Title>
+      <Title order={1}>{t`Static embedding`}</Title>
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-static"
-          label={t`Enable Static embedding`}
+          label={t`Enable static embedding`}
         />
         <EmbeddingSecretKeyWidget />
 

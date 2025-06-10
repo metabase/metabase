@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/ui";
 
 import { SlackSetup } from "./SlackSetup";
@@ -13,7 +14,7 @@ export const SlackSettingsModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const { value: isApp } = useAdminSetting("slack-app-token");
+  const { value: isApp, isLoading } = useAdminSetting("slack-app-token");
 
   return (
     <Modal
@@ -22,7 +23,9 @@ export const SlackSettingsModal = ({
       onClose={onClose}
       padding="xl"
     >
-      {isApp ? <SlackStatus /> : <SlackSetup />}
+      <LoadingAndErrorWrapper loading={isLoading}>
+        {isApp ? <SlackStatus /> : <SlackSetup />}
+      </LoadingAndErrorWrapper>
     </Modal>
   );
 };

@@ -51,7 +51,7 @@ export const SlackSetupForm = ({
         <Stack>
           <FormTextInput
             name="slack-app-token"
-            label={t`Slack Bot User OAuth Token`}
+            label={t`Slack bot user OAuth token`}
             placeholder="xoxb-123..."
           />
           {isBugReportingEnabled && (

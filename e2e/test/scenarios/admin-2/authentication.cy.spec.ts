@@ -26,7 +26,7 @@ describe("scenarios > admin > settings > authentication", () => {
         cy.findByRole("tab").should("not.exist");
         // no tabs on api keys
         cy.visit("/admin/settings/authentication/api-keys");
-        cy.findByTestId("admin-layout-content").findByText("Manage API Keys");
+        cy.findByTestId("admin-layout-content").findByText("API keys");
         cy.findByRole("tab").should("not.exist");
       });
     });

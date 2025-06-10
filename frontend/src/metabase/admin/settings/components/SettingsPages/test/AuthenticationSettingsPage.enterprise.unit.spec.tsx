@@ -47,8 +47,7 @@ describe("AuthenticationSettingsPage (EE)", () => {
 
   it("should render the API keys tab", async () => {
     await setup({}, "api-keys");
-    await screen.findByText("Manage API Keys");
-    await screen.findByText("Create API Key");
+    await screen.findByText("Create API key");
 
     testApiKeys.forEach((apiKey) => {
       expect(screen.getByText(apiKey.name)).toBeInTheDocument();

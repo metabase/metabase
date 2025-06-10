@@ -31,7 +31,7 @@ const setup = async ({
 
   renderWithProviders(<SlackSettingsModal isOpen onClose={() => {}} />);
 
-  await screen.findByText("Notification channels");
+  await screen.findByText("Metabase on Slack");
 };
 
 describe("SlackSettingsModal", () => {
