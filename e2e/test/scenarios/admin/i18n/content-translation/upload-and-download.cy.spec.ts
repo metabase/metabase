@@ -11,6 +11,7 @@ import {
 import {
   assertOnlyTheseTranslationsAreStored,
   generateLargeCSV,
+  getCSVWithHeaderRow,
   uploadTranslationDictionary,
   uploadTranslationDictionaryViaAPI,
 } from "./helpers/e2e-content-translation-helpers";
@@ -196,6 +197,24 @@ describe("scenarios > admin > localization > content translation", () => {
           "The frontend should prevent the upload attempt; the endpoint should not be called",
         );
         cy.get("@uploadDictionarySpy").should("not.have.been.called");
+      });
+
+      it("rejects invalid CSV", () => {
+        cy.visit("/admin/settings/localization");
+        const validCSV = getCSVWithHeaderRow(germanFieldNames);
+        const invalidCSV = validCSV + "!";
+        cy.get("#content-translation-dictionary-upload-input").selectFile(
+          {
+            contents: Cypress.Buffer.from(invalidCSV),
+            fileName: "file.csv",
+            mimeType: "text/csv",
+          },
+          { force: true },
+        );
+        cy.findAllByRole("alert")
+          .contains(/Invalid CSV/)
+          .should("be.visible");
+        cy.wait("@uploadDictionary");
       });
     });
   });
