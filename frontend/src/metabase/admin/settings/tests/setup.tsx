@@ -41,7 +41,7 @@ export const ossRoutes = {
     testPattern: /Sign in with Google/,
   },
   ldap: { path: "/authentication/ldap", testPattern: /Server Settings/ },
-  apiKeys: { path: "/authentication/api-keys", testPattern: /Manage API Keys/ },
+  apiKeys: { path: "/authentication/api-keys", testPattern: /Manage API keys/ },
   maps: { path: "/maps", testPattern: /Map tile server URL/ },
   localization: { path: "/localization", testPattern: /Instance language/ },
   uploads: {

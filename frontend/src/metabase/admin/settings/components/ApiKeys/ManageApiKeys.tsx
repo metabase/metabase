@@ -38,7 +38,7 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
         {t`You can create an API key to make API calls programatically.`}
       </Text>
       <Button key="create-key-button" variant="filled" onClick={onCreate}>
-        {t`Create API Key`}
+        {t`Create API key`}
       </Button>
     </Stack>
   );
@@ -155,7 +155,7 @@ export const ManageApiKeys = () => {
 
   return (
     <Stack>
-      <Title order={1}>{t`API Keys`}</Title>
+      <Title order={1}>{t`API keys`}</Title>
       <SettingsSection>
         <ApiKeyModals
           onClose={handleClose}
@@ -176,7 +176,7 @@ export const ManageApiKeys = () => {
             <Button
               variant="filled"
               onClick={() => setModal("create")}
-            >{t`Create API Key`}</Button>
+            >{t`Create API key`}</Button>
           </Group>
           <ApiKeysTable
             loading={isLoading}

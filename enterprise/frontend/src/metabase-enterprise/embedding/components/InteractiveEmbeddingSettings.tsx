@@ -29,11 +29,11 @@ export function InteractiveEmbeddingSettings() {
 
   return (
     <Stack>
-      <Title order={1}>{t`Interactive Embedding`}</Title>
+      <Title order={1}>{t`Interactive embedding`}</Title>
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-interactive"
-          label={t`Enable Interactive embedding`}
+          label={t`Enable interactive embedding`}
         />
 
         <Box>
