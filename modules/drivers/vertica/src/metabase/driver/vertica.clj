@@ -153,7 +153,7 @@
                    [:concat x y]
                    y)))
    nil
-   args)))
+   args))
 
 (defmethod sql.qp/datetime-diff [:vertica :year]
   [driver _unit x y]
