@@ -117,6 +117,7 @@ export function Heading({
           <Flex style={{ flex: "0 0 auto" }}>
             <DashboardParameterList
               parameters={inlineParameters}
+              isSortable={false}
               isFullscreen={isFullscreen}
             />
           </Flex>
