@@ -1,4 +1,4 @@
-import { useElementSize } from "@mantine/hooks";
+import { useElementSize, useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -82,6 +82,18 @@ export const DataModel = ({ params, location, children }: Props) => {
     setIsPreviewOpen(false);
     setFieldWidth(fieldWidth - previewWidth);
   };
+
+  useWindowEvent("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      isPreviewOpen &&
+      event.target instanceof HTMLElement &&
+      event.target.tagName === "BODY"
+    ) {
+      event.stopPropagation();
+      handlePreviewClose();
+    }
+  });
 
   return (
     <Flex className={cx({ [S.resizing]: isResizing })} h="100%" ref={ref}>
