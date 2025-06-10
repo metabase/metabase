@@ -22,6 +22,115 @@ authConfig: {
 
 For details on SAML authentication with the SDK, see [Authenticating with SAML SSO](#authenticating-with-saml-sso).
 
+## Migration guide (for users of SDK versions below 0.55.x)
+
+If you are migrating from an SDK version below 0.55.x and you are using JWT SSO, you'll need to make the following changes to continue to use the SDK.
+
+### 1. Remove `authProviderUri` from Configuration
+
+The `authProviderUri` parameter has been removed from `defineMetabaseAuthConfig`. The SDK now uses the JWT Identity Provider URI setting configured in your Metabase admin settings (Admin > Settings > Authentication > JWT).
+
+**Before:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase.example.com",
+  authProviderUri: "http://localhost:9090/sso/metabase", // Remove this line
+});
+```
+
+**After:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase.example.com",
+});
+```
+
+### 2. Update fetchRequestToken Function Signature
+
+The `fetchRequestToken` function no longer receives a URL parameter. You must now specify your authentication endpoint directly in the function.
+
+**Before:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  fetchRequestToken: async (url) => {
+    // Remove url parameter
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${yourToken}` },
+    });
+    return await response.json();
+  },
+  metabaseInstanceUrl: "http://localhost:3000",
+  authProviderUri: "http://localhost:9090/sso/metabase", // Remove this line
+});
+```
+
+**After:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  fetchRequestToken: async () => {
+    // No parameters
+    const response = await fetch("http://localhost:9090/sso/metabase", {
+      // Hardcode your endpoint URL
+      method: "GET",
+      headers: { Authorization: `Bearer ${yourToken}` },
+    });
+    return await response.json();
+  },
+  metabaseInstanceUrl: "http://localhost:3000",
+});
+```
+
+### 3. Update Backend Endpoint to Handle SDK Requests
+
+Your JWT endpoint must now handle both SDK requests and interactive embedding requests. The SDK adds a `response=json` query parameter to distinguish its requests. For SDK requests, return a JSON object with the JWT. For interactive embedding, continue redirecting as before.
+
+```jsx
+app.get("/sso/metabase", async (req, res) => {
+  // SDK requests include 'response=json' query parameter
+  const isSdkRequest = req.query.response === "json";
+
+  const user = getCurrentUser(req);
+
+  const token = jwt.sign(
+    {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      groups: [user.group],
+      exp: Math.round(Date.now() / 1000) + 60 * 10,
+    },
+    METABASE_JWT_SHARED_SECRET,
+  );
+
+  if (isSdkRequest) {
+    // For SDK requests, return JSON object with jwt property
+    res.status(200).json({ jwt: token });
+  } else {
+    // For interactive embedding, redirect as before
+    const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
+    res.redirect(ssoUrl);
+  }
+});
+```
+
+## Migration Checklist
+
+### Frontend Changes
+
+- [ ] Remove `authProviderUri` from all `defineMetabaseAuthConfig` calls
+- [ ] **If using custom `fetchRequestToken`:** Update function signature to take no parameters
+- [ ] **If using custom `fetchRequestToken`:** Hardcode authentication endpoint URLs in the fetch call
+
+### Backend Changes
+
+- [ ] Update backend endpoint to return `{ jwt: "token" }` JSON response for SDK requests
+- [ ] **If using custom `fetchRequestToken`:**Update backend endpoints to detect `req.query.response === "json"` for SDK requests
+
 ## Setting up JWT SSO
 
 Prerequisites:
