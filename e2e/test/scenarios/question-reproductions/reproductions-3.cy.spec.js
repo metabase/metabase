@@ -2621,8 +2621,15 @@ describe("issue 23449", () => {
     cy.signInAsAdmin();
   });
 
+  const checkTable = () => {
+    H.assertTableData({
+      columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
+      firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
+    });
+  };
+
   it("Remapped fields should work in a model", () => {
-    // set the metadata for review
+    cy.log("set the metadata for review");
     cy.visit(
       `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
     );
@@ -2631,38 +2638,34 @@ describe("issue 23449", () => {
     cy.findAllByTestId("select-button").contains("Use original value").click();
     cy.findByLabelText("Custom mapping").click();
 
-    const values = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
-    for (const [key, value] of Object.entries(values)) {
-      cy.findByDisplayValue(key).clear().type(value);
-    }
+    cy.findByDisplayValue("1").clear().type("A");
+    cy.findByDisplayValue("2").clear().type("B");
+    cy.findByDisplayValue("3").clear().type("C");
+    cy.findByDisplayValue("4").clear().type("D");
+    cy.findByDisplayValue("5").clear().type("E");
+
     cy.button("Save").click();
 
-    // make a model on Reviews
+    cy.log("make a model on Reviews");
     cy.findByRole("link", { name: "Exit admin" }).click();
     H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByLabelText("Create a new model").click();
     cy.findByRole("link", { name: /Use the notebook editor/ }).click();
     H.entityPickerModal().findByText("Reviews").click();
 
-    // Remove Body column
+    cy.log("Remove Body column");
     cy.findByLabelText("Pick columns").click();
     H.popover().findByText("Body").click();
 
-    // save model
+    cy.log("save model");
     cy.button("Save").click();
     cy.findByTestId("save-question-button").click();
 
-    // check that the data renders
-    const checkTable = () => {
-      H.assertTableData({
-        columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
-        firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
-      });
-    };
+    cy.log("check that the data renders");
     checkTable();
 
-    // reload to flush cached results
-    cy.reload(true);
+    cy.log("reload to flush cached results and check again");
+    cy.findByTestId("qb-header").button("Refresh").click();
     checkTable();
   });
 });
