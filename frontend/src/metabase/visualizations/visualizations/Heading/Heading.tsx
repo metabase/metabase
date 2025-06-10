@@ -6,6 +6,7 @@ import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import {
   getDashCardInlineValuePopulatedParameters,
+  getDashcardParameterMappingOptions,
   getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
@@ -45,8 +46,15 @@ export function Heading({
     getDashCardInlineValuePopulatedParameters(state, dashcard?.id),
   );
   const parameterValues = useSelector(getParameterValues);
-
   const isEditingParameter = useSelector(getIsEditingParameter);
+
+  const mappingOptions = useSelector((state) =>
+    getDashcardParameterMappingOptions(state, {
+      card: dashcard.card,
+      dashcard,
+    }),
+  );
+  const hasVariables = mappingOptions.length > 0;
 
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
@@ -85,7 +93,7 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
-        {isEditingParameter ? (
+        {isEditingParameter && hasVariables ? (
           <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
         ) : isPreviewing ? (
           <HeadingContent
@@ -101,6 +109,7 @@ export function Heading({
             data-testid="editing-dashboard-heading-input"
             placeholder={placeholder}
             value={textValue}
+            disabled={isEditingParameter}
             autoFocus={justAdded || isFocused}
             onChange={(e) => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
