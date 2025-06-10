@@ -267,7 +267,7 @@ export const EmbedFrame = ({
             </FixedWidthContainer>
           </FullWidthContainer>
         ) : (
-          // This
+          // This doesn't render anything, but the component will take care of location.search by trimming unused parameters.
           <ParametersListComponent
             parameters={getValuePopulatedParameters({
               parameters,
