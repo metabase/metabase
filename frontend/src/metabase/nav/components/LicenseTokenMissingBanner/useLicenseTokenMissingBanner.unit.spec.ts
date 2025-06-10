@@ -101,6 +101,8 @@ describe("shouldShowBanner works correctly", () => {
 });
 
 describe("useLicenseTokenMissingBanner", () => {
+  const NOW = new Date("2024-03-20T00:00:00.000Z");
+
   const setup = ({
     tokenStatus,
     dismissals,
@@ -112,11 +114,10 @@ describe("useLicenseTokenMissingBanner", () => {
       }),
     });
     setupEnterprisePlugins();
+    setupUpdateSettingEndpoint();
     setupPropertiesEndpoints(
       createMockSettings({
-        "license-token-missing-banner-dismissal-timestamp": [
-          "2024-03-20T00:00:00.000Z",
-        ],
+        "license-token-missing-banner-dismissal-timestamp": [NOW.toISOString()],
         "token-status": tokenStatus ?? null,
       }),
     );
@@ -125,13 +126,10 @@ describe("useLicenseTokenMissingBanner", () => {
     });
   };
 
-  const NOW = new Date("2024-03-20T00:00:00.000Z");
-
   beforeEach(() => {
     fetchMock.reset();
     jest.useFakeTimers();
     jest.setSystemTime(NOW);
-    setupUpdateSettingEndpoint();
   });
 
   describe("shouldShow", () => {
