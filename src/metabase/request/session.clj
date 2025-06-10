@@ -31,7 +31,6 @@
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
   [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
   (let [current-user-delay (delay (find-user metabase-user-id))]
-    (prn :HOWDY)
     (binding [*current-user-id*               metabase-user-id
               i18n/*user-locale*              user-locale
               *is-group-manager?*             (boolean is-group-manager?)
