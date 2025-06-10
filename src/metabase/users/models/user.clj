@@ -181,14 +181,9 @@
            common-name)
       (assoc :common_name common-name))))
 
-(defn add-attributes [{:keys [login_attributes] :as user}]
-  (assoc user :attributes (merge login_attributes (tenants/login-attributes user))))
-
 (t2/define-after-select :model/User
   [user]
-  (-> user
-      add-common-name
-      add-attributes))
+  (add-common-name user))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
