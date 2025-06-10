@@ -796,6 +796,7 @@ describe("scenarios > dashboard > parameters", () => {
       name: "Category",
       type: "string/=",
       slug: "category",
+      sectionId: "string",
     });
 
     const categoryFieldRef = [
@@ -931,33 +932,38 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.getDashboardCard(0).findByText("Category").click();
 
-      H.dashboardParameterSidebar().within(() => {
-        cy.findByLabelText("Label").clear().type("New Category");
-        cy.findByLabelText("Default value").click();
-      });
+      H.setDashboardParameterName("Count");
+      H.setDashboardParameterType("Number");
+      H.setDashboardParameterOperator("Less than or equal to");
+
+      // Set default value
+      H.dashboardParameterSidebar().findByLabelText("Default value").click();
       H.popover().within(() => {
-        cy.findByText("Gizmo").click();
+        cy.findByPlaceholderText("Enter a number").type("4000");
         cy.button("Add filter").click();
       });
-      H.dashboardParameterSidebar().button("Done").click();
 
+      // Connect to the card
+      H.selectDashboardFilter(H.getDashboardCard(1), "Count");
+
+      H.dashboardParameterSidebar().button("Done").click();
       H.saveDashboard();
 
       H.getDashboardCard(0).within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText("4,000").should("exist");
         cy.findByText("Category").should("not.exist");
-        cy.findByText("New Category").should("exist");
-        cy.findByText("Gizmo").should("exist");
       });
 
       H.getDashboardCard(1).within(() => {
-        cy.findByText("Gizmo").should("be.visible");
+        cy.findByText("Doohickey").should("be.visible");
+        cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
-        cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Widget").should("not.exist");
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?new_category=Gizmo");
+        expect(search).to.eq("?count=4000");
       });
     });
   });

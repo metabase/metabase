@@ -378,6 +378,23 @@ export function dashboardParameterSidebar() {
   return cy.findByTestId("dashboard-parameter-sidebar");
 }
 
+export function setDashboardParameterName(name: string) {
+  dashboardParameterSidebar().findByLabelText("Label").clear().type(name);
+}
+
+export function setDashboardParameterType(type: string) {
+  dashboardParameterSidebar()
+    .findByText("Filter or parameter type")
+    .next()
+    .click();
+  popover().findByText(type).click();
+}
+
+export function setDashboardParameterOperator(operatorName: string) {
+  dashboardParameterSidebar().findByText("Filter operator").next().click();
+  popover().findByText(operatorName).click();
+}
+
 export function dashboardParametersDoneButton() {
   return dashboardParameterSidebar().button("Done");
 }
