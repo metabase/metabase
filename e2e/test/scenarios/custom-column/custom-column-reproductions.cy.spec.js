@@ -1825,15 +1825,18 @@ describe("issue 55300", () => {
       H.CustomExpressionEditor.type("case(now, now(), [Created At])");
 
       cy.log("Move cursor over now()");
-      H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(17));
       H.CustomExpressionEditor.helpTextHeader().should("contain", "now()");
 
       cy.log("Move cursor over now");
-      H.CustomExpressionEditor.type("{leftarrow}".repeat(13));
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(7), { focus: false });
       H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
 
       H.CustomExpressionEditor.format();
-      H.CustomExpressionEditor.value().should("equal", "case([now], now(), 0)");
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "case([now], now(), [Created At])",
+      );
     });
 
     it("should be possible to disambiguate between segments and no-argument aggregations (metabase#55300)", () => {
