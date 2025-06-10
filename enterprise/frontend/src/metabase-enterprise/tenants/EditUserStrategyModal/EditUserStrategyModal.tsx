@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
+import { permissionApi } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
 import { Modal, Select, Stack, Text } from "metabase/ui";
 
 interface EditUserStrategyModalProps {
@@ -11,6 +13,8 @@ interface EditUserStrategyModalProps {
 export const EditUserStrategyModal = ({
   onClose,
 }: EditUserStrategyModalProps) => {
+  const dispatch = useDispatch();
+
   const { isLoading, error, value, updateSetting } =
     useAdminSetting("use-tenants");
 
@@ -21,11 +25,13 @@ export const EditUserStrategyModal = ({
     { label: t`Multi tenant`, value: "multi-tenant" },
   ];
 
-  const handleStrategyChange = (value: string) =>
-    updateSetting({
+  const handleStrategyChange = async (value: string) => {
+    await updateSetting({
       key: "use-tenants",
       value: value === "multi-tenant",
     });
+    await dispatch(permissionApi.util.invalidateTags(["permissions-group"]));
+  };
 
   return (
     <Modal
