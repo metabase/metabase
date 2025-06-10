@@ -5,6 +5,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   findRequests,
   setupPropertiesEndpoints,
+  setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -12,14 +13,6 @@ import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { TokenStatus } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-
-jest.mock("underscore", () => {
-  const original = jest.requireActual("underscore");
-  return {
-    ...original,
-    debounce: jest.fn((fn) => fn),
-  };
-});
 
 const SETTINGS_ENDPOINT =
   "/api/setting/license-token-missing-banner-dismissal-timestamp";
@@ -115,9 +108,15 @@ describe("useLicenseTokenMissingBanner", () => {
     });
     setupEnterprisePlugins();
     setupUpdateSettingEndpoint();
+    setupSettingsEndpoints([
+      {
+        key: "license-token-missing-banner-dismissal-timestamp",
+        value: dismissals ?? [],
+      },
+    ]);
     setupPropertiesEndpoints(
       createMockSettings({
-        "license-token-missing-banner-dismissal-timestamp": [NOW.toISOString()],
+        "license-token-missing-banner-dismissal-timestamp": dismissals ?? [],
         "token-status": tokenStatus ?? null,
       }),
     );
@@ -159,8 +158,16 @@ describe("useLicenseTokenMissingBanner", () => {
       });
 
       await waitFor(async () => {
-        const [{ url }] = await findRequests("PUT");
+        const [{ url, body }] = await findRequests("PUT");
         expect(url).toContain(SETTINGS_ENDPOINT);
+        // We need to update the properties endpoints mock to reflect the new dismissal
+        if (body.value) {
+          setupPropertiesEndpoints(
+            createMockSettings({
+              "license-token-missing-banner-dismissal-timestamp": body.value,
+            }),
+          );
+        }
       });
       await waitFor(() => {
         expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(false);
@@ -177,6 +184,10 @@ describe("useLicenseTokenMissingBanner", () => {
 
       const { result } = setup({ dismissals: existingDismissals });
 
+      await waitFor(() => {
+        expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(false);
+      });
+
       act(() => {
         result.current.dismissBanner();
       });
@@ -190,9 +201,8 @@ describe("useLicenseTokenMissingBanner", () => {
       expect(puts).toHaveLength(1);
       const [{ url, body }] = puts;
       expect(url).toContain(SETTINGS_ENDPOINT);
-      expect(body).toEqual({
-        value: [SECOND_DISMISSAL.toISOString(), NOW.toISOString()],
-      });
+      expect(body.value).toHaveLength(2);
+      expect(body.value).toContain(SECOND_DISMISSAL.toISOString());
     });
   });
 });

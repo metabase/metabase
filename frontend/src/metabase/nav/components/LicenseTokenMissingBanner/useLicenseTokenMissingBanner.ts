@@ -1,7 +1,8 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
-import { useSetting, useUserSetting } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/api/utils";
+import { useSetting } from "metabase/common/hooks";
 import { isEEBuild } from "metabase/lib/utils";
 import type { TokenStatus } from "metabase-types/api";
 
@@ -9,6 +10,7 @@ dayjs.extend(utc);
 
 const DAYS_BEFORE_REPEAT_BANNER = 14;
 const MAX_NUMBER_OF_DISMISSALS = 2;
+const SETTING_NAME = "license-token-missing-banner-dismissal-timestamp";
 
 export const getCurrentUTCTimestamp = () => {
   return dayjs.utc().toISOString();
@@ -52,13 +54,16 @@ export function shouldShowBanner({
 }
 
 export function useLicenseTokenMissingBanner() {
-  const [lastDismissed, setLastDismissed] = useUserSetting(
-    "license-token-missing-banner-dismissal-timestamp",
-  );
+  const { value: lastDismissed = [], updateSetting: setLastDismissed } =
+    useAdminSetting(SETTING_NAME);
 
   function dismissBanner() {
     // Keep only the last 2 dismissals
-    setLastDismissed([...lastDismissed, getCurrentUTCTimestamp()].slice(-2));
+    setLastDismissed({
+      key: SETTING_NAME,
+      value: [...lastDismissed, getCurrentUTCTimestamp()].slice(-2),
+      toast: false,
+    });
   }
 
   const tokenStatus = useSetting("token-status");
