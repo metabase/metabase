@@ -118,7 +118,7 @@ Unlike JWT authentication, you won't be able to implement a custom `fetchRequest
 
 You can override this default behavior to prefer the JWT authentication method by setting `preferredAuthMethod="jwt"` in your authentication config:
 
-```javascript
+```typescript
 authConfig: {
   metabaseInstanceUrl: "...",
   preferredAuthMethod: "jwt",
@@ -162,7 +162,7 @@ In addition to this, we consider shared accounts to be unfair usage. Fair usage 
 
 ## Upgrade guide for JWT SSO setups on SDK version 54 or below
 
-If you're upgrading from an SDK version below 1.55.x and you're using JWT SSO, you'll need to make the following changes.
+If you're upgrading from an SDK version 1.54.x or below and you're using JWT SSO, you'll need to make the following changes.
 
 **Frontend changes**:
 
