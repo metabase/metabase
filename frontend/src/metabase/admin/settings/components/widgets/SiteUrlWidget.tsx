@@ -10,7 +10,8 @@ import { Box, Text } from "metabase/ui";
 import { SettingHeader } from "../SettingHeader";
 
 export function SiteUrlWidget() {
-  const { value, updateSetting, description } = useAdminSetting("site-url");
+  const { value, updateSetting, description, isLoading } =
+    useAdminSetting("site-url");
   const isHosted = useHasTokenFeature("hosting");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -29,7 +30,7 @@ export function SiteUrlWidget() {
     });
   };
 
-  if (isHosted) {
+  if (isHosted || isLoading) {
     return null;
   }
 

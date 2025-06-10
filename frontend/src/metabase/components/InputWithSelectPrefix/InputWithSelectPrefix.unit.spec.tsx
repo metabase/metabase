@@ -14,7 +14,10 @@ describe("InputWithSelectPrefix", () => {
         onChange={jest.fn()}
       />,
     );
-    expect(screen.getAllByDisplayValue("http://")).toHaveLength(2); // mantine puts 2 elements in the dom
+
+    expect(screen.getByRole("textbox", { name: "input-prefix" })).toHaveValue(
+      "http://",
+    );
     expect(screen.getByDisplayValue("example.com")).toBeInTheDocument();
   });
 
