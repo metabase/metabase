@@ -4,6 +4,7 @@
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
   (:require
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -19,7 +20,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.visualization-settings :as viz-settings]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -66,6 +66,11 @@
                        [:column-sort-order     {:optional true} [:maybe [:map-of ::index keyword?]]]
                        [:show-row-totals       {:optional true} [:maybe :boolean]]
                        [:show-column-totals    {:optional true} [:maybe :boolean]]]])
+
+(def ^:private pivot-opts-keys
+  (let [[_maybe [_map & entries]] (mc/form (mr/resolve-schema ::pivot-opts))]
+    (assert (and (= _maybe :maybe) (= _map :map)) (format "Unexpected shape for pivot-opts schema"))
+    (into #{} (map first entries))))
 
 (mu/defn- group-bitmask :- ::bitmask
   "Come up with a display name given a combination of breakout `indexes` e.g.
@@ -765,15 +770,7 @@
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
-                                (not-empty (select-keys query
-                                                        [:pivot-rows
-                                                         :pivot-cols
-                                                         :pivot-measures
-                                                         :native-pivot-rows
-                                                         :native-pivot-cols
-                                                         :native-pivot-measures
-                                                         :show-row-totals
-                                                         :show-column-totals])))
+                                (not-empty (select-keys query pivot-opts-keys)))
              query             (if is-native?
                                  (nest-native-pivot-query query pivot-opts)
                                  query)
