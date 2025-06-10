@@ -4472,3 +4472,118 @@ describe("issue 55678", () => {
     H.assertQueryBuilderRowCount(1);
   });
 });
+
+describe("issue 14595", () => {
+  const dialect = "postgres";
+  const tableName = "many_data_types";
+
+  function createDashboard() {
+    return H.getTableId({ name: tableName }).then((tableId) => {
+      return H.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [
+            createMockParameter({
+              id: "p1",
+              slug: "p1",
+              name: "p1",
+              type: "string/=",
+              sectionId: "string",
+            }),
+            createMockParameter({
+              id: "p2",
+              slug: "p2",
+              name: "p2",
+              type: "string/=",
+              sectionId: "string",
+            }),
+            createMockParameter({
+              id: "p3",
+              slug: "p3",
+              name: "p3",
+              type: "string/=",
+              sectionId: "string",
+            }),
+          ],
+        },
+        questions: [
+          {
+            name: "Orders",
+            query: { "source-table": ORDERS_ID },
+          },
+          {
+            name: "Products",
+            query: { "source-table": PRODUCTS_ID },
+          },
+          {
+            name: "Many data types",
+            query: { "source-table": tableId },
+          },
+        ],
+      }).then(({ dashboard }) => {
+        return dashboard.id;
+      });
+    });
+  }
+
+  function mapParameters() {
+    cy.findByTestId("fixed-width-filters").findByText("p1").click();
+    H.selectDashboardFilter(H.getDashboardCard(0), "Source");
+    cy.findByTestId("fixed-width-filters").findByText("p2").click();
+    H.selectDashboardFilter(H.getDashboardCard(1), "Category");
+    cy.findByTestId("fixed-width-filters").findByText("p3").click();
+    H.selectDashboardFilter(H.getDashboardCard(2), "String");
+  }
+
+  function assertLinkedFilterSettings({
+    parameterName,
+    compatibleParameterNames,
+    incompatibleParameterNames,
+  }) {
+    cy.findByTestId("fixed-width-filters").findByText(parameterName).click();
+    H.sidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      compatibleParameterNames.forEach((compatibleParameterName) => {
+        cy.findByTestId("compatible-parameters")
+          .findByText(compatibleParameterName)
+          .should("be.visible");
+      });
+      incompatibleParameterNames.forEach((incompatibleParameterName) => {
+        cy.findByTestId("incompatible-parameters")
+          .findByText(incompatibleParameterName)
+          .should("be.visible");
+      });
+    });
+  }
+
+  function assertParameterSettings() {
+    assertLinkedFilterSettings({
+      parameterName: "p1",
+      compatibleParameterNames: ["p2"],
+      incompatibleParameterNames: ["p3"],
+    });
+    assertLinkedFilterSettings({
+      parameterName: "p2",
+      compatibleParameterNames: ["p1"],
+      incompatibleParameterNames: ["p3"],
+    });
+    assertLinkedFilterSettings({
+      parameterName: "p3",
+      compatibleParameterNames: [],
+      incompatibleParameterNames: ["p1", "p2"],
+    });
+  }
+
+  beforeEach(() => {
+    H.restore(`${dialect}-writable`);
+    H.resetTestTable({ type: dialect, table: tableName });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
+  });
+
+  it("should not see parameters that cannot be linked to the current parameter in parameter settings (metabase#14595)", () => {
+    createDashboard().then((dashboardId) => H.visitDashboard(dashboardId));
+    H.editDashboard();
+    mapParameters();
+    assertParameterSettings();
+  });
+});

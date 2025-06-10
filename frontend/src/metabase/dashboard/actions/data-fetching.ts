@@ -1,5 +1,4 @@
 import { createAction } from "@reduxjs/toolkit";
-import type { Query } from "history";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { match } from "ts-pattern";
@@ -26,6 +25,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
@@ -630,7 +630,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: Query;
+      queryParams: ParameterValues;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },

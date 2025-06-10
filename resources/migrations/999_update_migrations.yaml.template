@@ -1,5 +1,5 @@
 --------
-THIS IS THE STARTER MIGRATION FILE FOR NEW MAJOR VERSION OF METABASE
+THIS IS THE TEMPLATE MIGRATION FILE FOR NEW MAJOR VERSION OF METABASE
 On each new major version, copy this file to `resources/migrations/###_update_migrations.yaml` where `###` is the major metabase version.
 The file can be empty until migrations need to be added.
 --------

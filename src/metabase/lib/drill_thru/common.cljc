@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -117,6 +118,14 @@
         has-id? (boolean (:id column))]
     (and breakout-sourced? model-sourced? has-id?)))
 
+(mu/defn- possible-expression-breakout-column? :- :boolean
+  [query  :- ::lib.schema/query
+   column :- ::lib.schema.metadata/column]
+  (let [breakout-sourced?   (= :source/breakouts (:lib/source column))
+        has-id?             (boolean (:id column))
+        matching-expression (lib.expression/maybe-resolve-expression query -1 (:name column))]
+    (and breakout-sourced? (boolean matching-expression) (not has-id?))))
+
 (mu/defn- day-bucketed-breakout-column? :- :boolean
   [column :- ::lib.schema.metadata/column]
   (let [breakout-sourced? (= :source/breakouts (:lib/source column))
@@ -181,6 +190,7 @@
   ;; https://github.com/metabase/metabase/issues/53604
   (if-not (or (card-sourced-name-based-breakout-column? query column)
               (possible-model-mapped-breakout-column? query column)
+              (possible-expression-breakout-column? query column)
               (day-bucketed-breakout-column? column))
     column
     (let [filterable-column (matching-filterable-column query stage-number column-ref column)]

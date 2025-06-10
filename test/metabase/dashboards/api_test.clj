@@ -16,6 +16,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -2961,6 +2962,45 @@
                 (chain-filter-test/take-n-values
                  3
                  (mt/user-http-request :rasta :get 200 (chain-filter-values-url dash-id "__ID__")))))))))
+
+(deftest can-filter-on-series-params
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp
+      [:model/Card          _ (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
+                                     {:database_id (mt/id)
+                                      :table_id    (mt/id :categories)})
+       :model/Dashboard     dashboard {:parameters [{:name "Category"
+                                                     :slug "category"
+                                                     :id   "_CATEGORY_"
+                                                     :type "category"}]}
+       :model/Card          card {:database_id   (mt/id)
+                                  :table_id      (mt/id :venues)
+                                  :dataset_query (mt/mbql-query venues)}
+       :model/Card          model {:database_id   (mt/id)
+                                   :table_id      (mt/id :products)
+                                   :dataset_query (mt/mbql-query products)}
+       :model/Card          card2 {:database_id   (mt/id)
+                                   :table_id      (mt/id :venues)
+                                   :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
+                                                      lib.convert/->legacy-MBQL)}
+       :model/DashboardCard dashcard {:card_id            (:id card)
+                                      :dashboard_id       (:id dashboard)
+                                      :parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                            :card_id      (:id card2)
+                                                            :target       [:dimension [:field "CATEGORY" {:base-type :type/Text}] {:stage-number 0}]}]}
+       :model/DashboardCardSeries _ {:card_id (:id card2)
+                                     :dashboardcard_id (:id dashcard)
+                                     :position 0}]
+      ;; make sure we have a clean start
+      (field-values/clear-field-values-for-field! (mt/id :categories :name))
+      (testing "Can get field values for parameters tied to series #58328"
+        (is (= {:values          [["Doohickey"] ["Gadget"] ["Gizmo"]]
+                :has_more_values false}
+               (->> (chain-filter-values-url
+                     (:id dashboard)
+                     "_CATEGORY_")
+                    (mt/user-http-request :rasta :get 200)
+                    (chain-filter-test/take-n-values 3))))))))
 
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"

@@ -9,7 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { invalidateTags, tag } from "./tags";
+import { invalidateTags, listTag, tag } from "./tags";
 
 export const settingsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -51,8 +51,12 @@ export const settingsApi = Api.injectEndpoints({
         url: `/api/setting/${encodeURIComponent(key)}`,
         body: { value },
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
+      invalidatesTags: (_, error, { key }) => {
+        return invalidateTags(error, [
+          tag("session-properties"),
+          ...(key === "uploads-settings" ? [listTag("database")] : []),
+        ]);
+      },
     }),
     updateSettings: builder.mutation<void, Partial<EnterpriseSettings>>({
       query: (settings) => ({

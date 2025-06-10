@@ -6,7 +6,7 @@
   Deprecated method impls should call [[log-deprecation-warning]] to gently nudge driver authors to stop using this
   method."
   (:require
-   [metabase.query-processor.store :as qp.store]
+   [metabase.driver-api.core :as driver-api]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -28,7 +28,7 @@
     ;; effectively memoized for the rest of the QP run for the current query. The goal here is to avoid blasting the
     ;; logs with warnings about deprecated method calls, but still remind people regularly enough that it gets fixed
     ;; sometime in the near future.
-    (if (qp.store/initialized?)
-      (qp.store/cached [driver method-name deprecated-version]
-        (thunk))
+    (if (driver-api/initialized?)
+      (driver-api/cached [driver method-name deprecated-version]
+                         (thunk))
       (thunk))))
