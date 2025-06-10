@@ -2,10 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { germanFieldNames } from "./constants";
-import {
-  interceptContentTranslationRoutes,
-  uploadTranslationDictionaryViaAPI,
-} from "./helpers/e2e-content-translation-helpers";
+import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -14,7 +11,9 @@ const { H } = cy;
 describe("scenarios > content translation > static embedding > questions", () => {
   describe("ee", () => {
     beforeEach(() => {
-      interceptContentTranslationRoutes();
+      cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
+        "uploadDictionary",
+      );
     });
 
     let productsQuestionId = null as unknown as number;
