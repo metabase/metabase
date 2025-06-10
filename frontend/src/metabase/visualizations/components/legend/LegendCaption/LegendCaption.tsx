@@ -6,7 +6,6 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
@@ -48,7 +47,7 @@ interface LegendCaptionProps {
 
 export const LegendCaption = ({
   className,
-  title: untranslatedTitle,
+  title,
   description,
   getHref,
   icon,
@@ -82,9 +81,6 @@ export const LegendCaption = ({
 
   const hasTitleMenuItems =
     titleMenuItems && React.Children.count(titleMenuItems) > 1;
-
-  const tc = useTranslateContent();
-  const title = tc(untranslatedTitle);
 
   const titleElement = (
     <LegendLabel

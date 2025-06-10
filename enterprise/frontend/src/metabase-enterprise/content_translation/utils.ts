@@ -156,6 +156,18 @@ export const translateFieldValuesInSeries = (
   });
 };
 
+export const translateCardNames = (
+  series: Series,
+  tc: ContentTranslationFunction,
+) => {
+  if (!hasTranslations(tc)) {
+    return series;
+  }
+  return series.map((s) =>
+    s.card?.name ? I.setIn(s, ["card", "name"], tc(s.card.name)) : s,
+  );
+};
+
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
   return useMemo(() => {
@@ -164,13 +176,18 @@ export const useTranslateSeries = (series: Series) => {
     }
     const withTranslatedDisplayNames = translateDisplayNames(series, tc);
 
+    const withTranslatedCardNames = translateCardNames(
+      withTranslatedDisplayNames,
+      tc,
+    );
+
     // Do not translate field values here if display is a map, since this can
     // break the map
     if (series?.[0]?.card?.display === "map") {
-      return withTranslatedDisplayNames;
+      return withTranslatedCardNames;
     }
 
-    return translateFieldValuesInSeries(withTranslatedDisplayNames, tc);
+    return translateFieldValuesInSeries(withTranslatedCardNames, tc);
   }, [series, tc]);
 };
 

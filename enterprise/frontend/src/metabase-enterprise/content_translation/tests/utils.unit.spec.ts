@@ -3,6 +3,7 @@ import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
 import {
+  translateCardNames,
   translateContentString,
   translateDisplayNames,
   translateFieldValuesInHoveredObject,
@@ -482,6 +483,20 @@ describe("content translation utils", () => {
 
       expect(result[0].data.rows).toEqual([["mock translation of a", "b"]]);
       expect(mockTC).toHaveBeenCalledWith("a");
+    });
+  });
+
+  describe("translateCardNames", () => {
+    const mockTC = jest.fn((x) => `mock translation of ${x}`);
+
+    beforeEach(() => {
+      jest.clearAllMocks(); // Clear mocks before each test
+    });
+
+    it("translates card names in a series", () => {
+      const series = createMockSeries([{ name: "a" }, { name: "b" }]);
+      const result = translateCardNames(series, mockTC);
+      expect(result[0].card.name).toEqual("mock translation of a");
     });
   });
 });
