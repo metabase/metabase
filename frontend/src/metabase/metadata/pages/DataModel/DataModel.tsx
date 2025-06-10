@@ -210,7 +210,7 @@ export const DataModel = ({ params, location, children }: Props) => {
                         onResizeStart={handleResizeStart}
                         onResizeStop={handleResizeStop}
                       >
-                        <Box flex={`1 1 50%}`} h="100%" miw={0} p="xl" pl={0}>
+                        <Box h="100%" p="xl" pl={0}>
                           <MemoizedPreviewSection
                             className={S.preview}
                             databaseId={databaseId}
