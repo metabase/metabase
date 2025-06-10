@@ -5,7 +5,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockHeadingDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -788,6 +791,28 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   describe("parameters in heading dashcards", () => {
+    const categoryParameter = createMockParameter({
+      id: "1b9cd9f1",
+      name: "Category",
+      type: "string/=",
+      slug: "category",
+      sectionId: "string",
+    });
+
+    const countParameter = createMockParameter({
+      id: "88a1257c",
+      name: "Count",
+      type: "number/<=",
+      slug: "count",
+      sectionId: "number",
+    });
+
+    const categoryFieldRef = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
+    ];
+
     const ordersCountByCategory = {
       display: "bar",
       query: {
@@ -862,6 +887,83 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
+      });
+    });
+
+    it("should remove filters correctly", () => {
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id, countParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Category").should("exist");
+
+        // Verify we're hiding filters that are not linked to any cards
+        cy.findByText("Count").should("not.exist");
+      });
+
+      H.editDashboard();
+
+      H.getDashboardCard(0).findByText("Count").click();
+      H.dashboardParameterSidebar().button("Remove").click();
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByDisplayValue("Heading Text").should("exist");
+        cy.findByText("Count").should("not.exist");
+
+        cy.findByText("Category").click();
+      });
+
+      H.dashboardParameterSidebar().button("Remove").click();
+
+      H.saveDashboard();
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(0);
+          expect(dashcard.parameter_mappings).to.have.length(0);
+        });
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Heading Text").should("exist");
+        cy.findByText("Count").should("not.exist");
+        cy.findByText("Category").should("not.exist");
       });
     });
   });
