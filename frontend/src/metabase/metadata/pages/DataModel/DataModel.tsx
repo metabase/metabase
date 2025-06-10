@@ -4,11 +4,10 @@ import { type ReactNode, memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
+import { useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import S from "./DataModel.module.css";
@@ -22,7 +21,7 @@ import {
   TableSection,
 } from "./components";
 import type { RouteParams } from "./types";
-import { parseRouteParams } from "./utils";
+import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 // memoize components for smooth column resizing experience
 const MemoizedFieldSection = memo(FieldSection);
@@ -68,15 +67,7 @@ export const DataModel = ({ params, location, children }: Props) => {
     data: table,
     error,
     isLoading,
-  } = useGetTableQueryMetadataQuery(
-    tableId == null
-      ? skipToken
-      : {
-          id: tableId,
-          include_sensitive_fields: true,
-          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-        },
-  );
+  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const fieldPreviewConfig: ColumnSizeConfig = {
@@ -89,6 +80,7 @@ export const DataModel = ({ params, location, children }: Props) => {
 
   const handleResizeStart = useCallback(() => setIsResizing(true), []);
   const handleResizeStop = useCallback(() => setIsResizing(false), []);
+
   const handlePreviewClick = () => {
     setIsPreviewOpen(true);
 
@@ -99,6 +91,7 @@ export const DataModel = ({ params, location, children }: Props) => {
       setPreviewWidth(fieldWidth);
     }
   };
+
   const handlePreviewClose = () => {
     setIsPreviewOpen(false);
     setFieldWidth(fieldWidth - previewWidth);
