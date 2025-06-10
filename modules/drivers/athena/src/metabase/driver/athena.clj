@@ -303,6 +303,21 @@
   [_driver _semantic-type expr]
   (h2x/->time expr))
 
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (h2x/->timestamp [:concat
+                    [:substr expr 1 4]
+                    (h2x/literal "-")
+                    [:substr expr 5 2]
+                    (h2x/literal "-")
+                    [:substr expr 7 2]
+                    (h2x/literal " ")
+                    [:substr expr 9 2]
+                    (h2x/literal ":")
+                    [:substr expr 11 2]
+                    (h2x/literal ":")
+                    [:substr expr 13 2]]))
+
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
