@@ -22,22 +22,35 @@
 (defn- comparable-metadata
   "Smooth out any unimportant differences in metadata so we can do an easy equality check."
   [metadata]
-  (mapv #(dissoc % :ident) metadata))
+  (letfn [(standardize-metadata [m]
+            (cond
+              (keyword? m) (str (symbol m))
+              (map? m) (dissoc (reduce-kv
+                                (fn [acc k v]
+                                  (assoc acc k
+                                         (standardize-metadata v))) {} m) :ident :display_name)
+              (sequential? m) (mapv standardize-metadata m)
+              (set? m) (set (map standardize-metadata m))
+              :else m))]
+    (standardize-metadata metadata)))
 
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
-    (when (and metadata
-               driver/*driver*
-               (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
-               card-id
-               ;; don't want to update metadata when we use a Card as a source Card.
-               (not (:qp/source-card-id query))
-               ;; Only update changed metadata
-               (not= (comparable-metadata metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
-      (t2/update! :model/Card card-id {:result_metadata metadata
-                                       :updated_at      :updated_at}))
+    (let [actual-metadata (or (get-in query [:info :pivot/result-metadata]) metadata)]
+      (when (and actual-metadata
+                 driver/*driver*
+                 ;; pivot queries can run multiple queries, only record metadata for the main query
+                 (not= actual-metadata :none)
+                 (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+                 card-id
+                 ;; don't want to update metadata when we use a Card as a source Card.
+                 (not (:qp/source-card-id query))
+                 ;; Only update changed metadata
+                 (not= (comparable-metadata actual-metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
+        (t2/update! :model/Card card-id  {:result_metadata actual-metadata
+                                          :updated_at      :updated_at})))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
