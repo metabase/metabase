@@ -87,11 +87,12 @@
 (deftest embedded-dictionary-test
   (with-static-embedding!
     (ct-utils/with-clean-translations!
-      (with-new-secret-key! [k]
+      (with-new-secret-key!
+        [k]
         (mt/with-premium-features #{:content-translation}
           (testing "GET /api/ee/content-translation/dictionary/:token"
-            (mt/with-temp [:model/ContentTranslation _ {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
-              (testing "provides translations"
+            (testing "provides translations"
+              (mt/with-temp [:model/ContentTranslation _ {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
                 (let [resp (client/client :get 200
                                           (str (embedded-dictionary-url (jwt/sign {} k))
                                                "?locale=sv"))]
@@ -99,18 +100,30 @@
                   (is (=? {:data [{:locale "sv"
                                    :msgid "blueberry"
                                    :msgstr "blåbär"}]}
-                          resp))))
-              (testing "requires content-translation feature"
-                (mt/with-premium-features #{}
-                  (mt/assert-has-premium-feature-error
-                   "Content translation"
-                   (client/client :get 402 (str (embedded-dictionary-url (jwt/sign {} k))
-                                                "?locale=sv")))))
-              (testing "requires locale"
-                (is (= "Locale is required."
-                       (client/client :get 400 (embedded-dictionary-url (jwt/sign {} k))))))
-              (testing "requires valid token"
-                (is (= "Message seems corrupt or manipulated"
-                       (client/client :get 400 (str (embedded-dictionary-url
-                                                     (jwt/sign {} (random-embedding-secret-key)))
-                                                    "?locale=sv"))))))))))))
+                          resp)))))
+            (testing "normalizes locale"
+              (mt/with-temp [:model/ContentTranslation _ {:locale "pt_BR" :msgid "blueberry" :msgstr "mirtilo"}]
+                (let [resp (client/client :get 200
+                                          (str (embedded-dictionary-url (jwt/sign {} k))
+                                               ; The locale has a hyphen here, but it should be normalized to match the
+                                               ; locale in the content-translation table
+                                               "?locale=pt-BR"))]
+                  (is (= 1 (count (:data resp))))
+                  (is (=? {:data [{:locale "pt_BR"
+                                   :msgid "blueberry"
+                                   :msgstr "mirtilo"}]}
+                          resp)))))
+            (testing "requires content-translation feature"
+              (mt/with-premium-features #{}
+                (mt/assert-has-premium-feature-error
+                 "Content translation"
+                 (client/client :get 402 (str (embedded-dictionary-url (jwt/sign {} k))
+                                              "?locale=sv")))))
+            (testing "requires locale"
+              (is (= "Locale is required."
+                     (client/client :get 400 (embedded-dictionary-url (jwt/sign {} k))))))
+            (testing "requires valid token"
+              (is (= "Message seems corrupt or manipulated"
+                     (client/client :get 400 (str (embedded-dictionary-url
+                                                   (jwt/sign {} (random-embedding-secret-key)))
+                                                  "?locale=sv")))))))))))
