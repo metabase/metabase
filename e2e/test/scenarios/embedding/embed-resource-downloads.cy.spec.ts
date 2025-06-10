@@ -367,6 +367,10 @@ H.describeWithSnowplowEE(
                 pageStyle: {
                   downloads: true,
                 },
+                // should ignore `?locale=xx` search parameter when downloading results from questions without parameters (metabase#53037)
+                qs: {
+                  locale: "en",
+                },
               },
             );
           });
@@ -471,6 +475,10 @@ H.describeWithSnowplowEE(
               {
                 pageStyle: {
                   downloads: true,
+                },
+                // should ignore `?locale=xx` search parameter when downloading results from questions with visible parameters (metabase#53037)
+                qs: {
+                  locale: "en",
                 },
               },
             );

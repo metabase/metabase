@@ -229,7 +229,7 @@ export const EmbedFrame = ({
         {headerButtons && !titled ? headerButtons : null}
 
         <span ref={parameterPanelRef} />
-        {hasVisibleParameters && (
+        {hasVisibleParameters ? (
           <FullWidthContainer
             className={cx(EmbedFrameS.ParameterPanel, {
               [TransitionS.transitionThemeChange]:
@@ -266,6 +266,17 @@ export const EmbedFrame = ({
               {dashboard && <FilterApplyButton />}
             </FixedWidthContainer>
           </FullWidthContainer>
+        ) : (
+          // This
+          <ParametersListComponent
+            parameters={getValuePopulatedParameters({
+              parameters,
+              values: _.isEmpty(draftParameterValues)
+                ? parameterValues
+                : draftParameterValues,
+            })}
+            hideParameters={hideParameters}
+          />
         )}
         <Body>{children}</Body>
       </ContentContainer>

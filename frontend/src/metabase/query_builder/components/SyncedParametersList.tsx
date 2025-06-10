@@ -74,7 +74,7 @@ export const SyncedParametersList = ({
   );
 };
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId", "locale"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
 
 function buildSearchString(object: Record<string, any>) {
   const currentSearchParams = querystring.parse(
