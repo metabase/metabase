@@ -3,13 +3,14 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
    [metabase.embedding.jwt :as embedding.jwt]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -71,7 +72,7 @@
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale
-    {:data (ct/get-translations locale)}
+    {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))}
     (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
 
 (defn- +require-content-translation [handler]
