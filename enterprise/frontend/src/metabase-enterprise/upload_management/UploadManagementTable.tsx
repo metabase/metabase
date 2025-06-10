@@ -141,9 +141,9 @@ export function UploadManagementTable() {
           </BulkActionButton>
         </BulkActionBar>
       )}
-      <SettingHeader id="upload-tables-list" title={t`Manage Uploads`} />
-      <Text fw="bold" color="text-medium">
-        {t`Uploaded Tables`}
+      <SettingHeader id="upload-tables-list" title={t`Manage uploads`} />
+      <Text fw="bold" c="text-medium">
+        {t`Uploaded tables`}
       </Text>
       <ClientSortableTable
         data-testid="upload-tables-table"

@@ -89,7 +89,7 @@ export function FormattingWidget() {
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <>
-          <SettingsSection title={t`Dates and Times`}>
+          <SettingsSection title={t`Dates and times`}>
             <FormattingInput
               id="date_style"
               label={t`Date style`}

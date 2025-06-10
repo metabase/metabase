@@ -34,10 +34,10 @@ const setup = async () => {
 
 describe("WhiteLabelConcealSettingsPage", () => {
   const concealMetabaseSettings = [
-    "Application Name",
-    "Documentation and References",
+    "Application name",
+    "Documentation and references",
     "Help link",
-    "Metabase Illustrations",
+    "Metabase illustrations",
     "Metabot greeting",
     "Login and unsubscribe pages",
     "Landing Page",

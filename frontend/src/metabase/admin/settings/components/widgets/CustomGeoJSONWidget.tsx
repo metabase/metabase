@@ -114,7 +114,7 @@ export const CustomGeoJSONWidget = () => {
       <div className={cx(CS.flex, CS.justifyBetween)}>
         <SettingHeader
           id={settingDetails.key}
-          title={t`Custom Maps`}
+          title={t`Custom maps`}
           description={t`Add your own GeoJSON files to enable different region map visualizations`}
         />
         {!map && (

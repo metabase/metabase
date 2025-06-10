@@ -91,11 +91,11 @@ export const SettingsLdapForm = () => {
         {({ dirty }) => (
           <Form>
             <SettingsSection>
-              <FormSection title={"Server Settings"}>
+              <FormSection title={"Server settings"}>
                 <Stack gap="md">
                   <FormTextInput
                     name="ldap-host"
-                    label={t`LDAP Host`}
+                    label={t`LDAP host`}
                     placeholder="ldap.yourdomain.org"
                     required
                     autoFocus
@@ -103,7 +103,7 @@ export const SettingsLdapForm = () => {
                   />
                   <FormTextInput
                     name="ldap-port"
-                    label={t`LDAP Port`}
+                    label={t`LDAP port`}
                     placeholder="389"
                     required
                     type="number"
@@ -111,7 +111,7 @@ export const SettingsLdapForm = () => {
                   />
                   <FormRadioGroup
                     name="ldap-security"
-                    label={t`LDAP Security`}
+                    label={t`LDAP security`}
                     {...getExtraFormFieldProps(
                       settingDetails?.["ldap-security"],
                     )}
@@ -146,7 +146,7 @@ export const SettingsLdapForm = () => {
                 </Stack>
               </FormSection>
               <Divider />
-              <FormSection title={"User Schema"}>
+              <FormSection title={"User schema"}>
                 <Stack gap="md">
                   <FormTextInput
                     name="ldap-user-base"
@@ -197,7 +197,7 @@ export const SettingsLdapForm = () => {
                 </Stack>
               </FormSection>
               <Divider />
-              <FormSection title={"Group Schema"}>
+              <FormSection title={"Group schema"}>
                 <Stack gap="md">
                   <GroupMappingsWidget
                     isFormik
@@ -205,8 +205,8 @@ export const SettingsLdapForm = () => {
                     onChange={handleSubmit}
                     settingValues={settingValues}
                     mappingSetting="ldap-group-mappings"
-                    groupHeading={t`Group Name`}
-                    groupPlaceholder={t`Group Name`}
+                    groupHeading={t`Group name`}
+                    groupPlaceholder={t`Group name`}
                   />
                   <FormTextInput
                     name="ldap-group-base"

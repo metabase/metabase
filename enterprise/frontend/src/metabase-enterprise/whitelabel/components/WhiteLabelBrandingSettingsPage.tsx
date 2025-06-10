@@ -25,7 +25,7 @@ export function WhiteLabelBrandingSettingsPage() {
         <Box>
           <SettingHeader
             id="color-palette"
-            title={t`Color Palette`}
+            title={t`Color palette`}
             description={t`Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.`}
           />
         </Box>
@@ -50,7 +50,7 @@ export function WhiteLabelBrandingSettingsPage() {
       <SettingsSection>
         <AdminSettingInput
           name="loading-message"
-          title={t`Loading Message`}
+          title={t`Loading message`}
           inputType="select"
           options={getLoadingMessageOptions()}
         />

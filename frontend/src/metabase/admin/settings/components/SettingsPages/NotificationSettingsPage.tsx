@@ -54,14 +54,14 @@ export const NotificationSettingsPage = () => {
 
         <SettingsSection>
           <Flex justify="space-between" align="center" mb="1.5rem">
-            <Title order={2}>{t`Webhooks for Alerts`}</Title>{" "}
+            <Title order={2}>{t`Webhooks for alerts`}</Title>{" "}
             {hasChannels && (
               <Button
                 variant="subtle"
                 size="compact-md"
                 leftSection={<Icon name="add" />}
                 onClick={() => setWebhookModal("create")}
-              >{c("Short for 'Add another Webhook'").t`Add another`}</Button>
+              >{c("Short for 'Add another webhook'").t`Add another`}</Button>
             )}
           </Flex>
           {hasChannels ? (

@@ -19,7 +19,7 @@ export function LocalizationSettingsPage() {
   return (
     <Stack>
       <Title order={1}>{t`Localization`}</Title>
-      <SettingsSection title={t`Instance Settings`}>
+      <SettingsSection title={t`Instance settings`}>
         <AdminSettingInput
           name="site-locale"
           title={t`Instance language`}
@@ -37,7 +37,7 @@ export function LocalizationSettingsPage() {
         <AdminSettingInput
           name="report-timezone"
           searchable
-          title={t`Report Timezone`}
+          title={t`Report timezone`}
           description={
             <>
               <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
@@ -45,7 +45,7 @@ export function LocalizationSettingsPage() {
             </>
           }
           options={[
-            { label: t`Database Default`, value: "" },
+            { label: t`Database default`, value: "" },
             ...(availableTimezones?.map((tz) => ({
               label: tz,
               value: tz,

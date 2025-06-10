@@ -163,7 +163,7 @@ export function SettingsSAMLForm() {
                 <Stack gap="md">
                   <FormTextInput
                     name="saml-identity-provider-uri"
-                    label={t`SAML Identity Provider URL`}
+                    label={t`SAML identity provider URL`}
                     placeholder="https://your-org-name.yourIDP.com"
                     required
                     {...getExtraFormFieldProps(
@@ -172,7 +172,7 @@ export function SettingsSAMLForm() {
                   />
                   <FormTextarea
                     name="saml-identity-provider-certificate"
-                    label={t`SAML Identity Provider Certificate`}
+                    label={t`SAML identity provider certificate`}
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-identity-provider-certificate"],
                     )}
@@ -180,7 +180,7 @@ export function SettingsSAMLForm() {
                   />
                   <FormTextInput
                     name="saml-application-name"
-                    label={t`SAML Application Name`}
+                    label={t`SAML application name`}
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-application-name"],
@@ -188,7 +188,7 @@ export function SettingsSAMLForm() {
                   />
                   <FormTextInput
                     name="saml-identity-provider-issuer"
-                    label={t`SAML Identity Provider Issuer`}
+                    label={t`SAML identity provider issuer`}
                     required
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-identity-provider-issuer"],
@@ -201,7 +201,7 @@ export function SettingsSAMLForm() {
                 <Stack gap="md">
                   <FormTextInput
                     name="saml-keystore-path"
-                    label={t`SAML Keystore Path`}
+                    label={t`SAML keystore path`}
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-keystore-path"],
@@ -209,7 +209,7 @@ export function SettingsSAMLForm() {
                   />
                   <FormTextInput
                     name="saml-keystore-password"
-                    label={t`SAML Keystore Password`}
+                    label={t`SAML keystore password`}
                     type="password"
                     placeholder={t`Shh...`}
                     nullable
@@ -219,7 +219,7 @@ export function SettingsSAMLForm() {
                   />
                   <FormTextInput
                     name="saml-keystore-alias"
-                    label={t`SAML Keystore Alias`}
+                    label={t`SAML keystore alias`}
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-keystore-alias"],
@@ -244,8 +244,8 @@ export function SettingsSAMLForm() {
                     onChange={handleSubmit}
                     settingValues={settingValues}
                     mappingSetting="saml-group-mappings"
-                    groupHeading={t`Group Name`}
-                    groupPlaceholder={t`Group Name`}
+                    groupHeading={t`Group name`}
+                    groupPlaceholder={t`Group name`}
                   />
                   <FormTextInput
                     name="saml-attribute-group"
