@@ -179,29 +179,37 @@ export const addParameter = createThunkAction(
     },
 );
 
+export function removeParameterAndReferences(
+  dispatch: Dispatch,
+  getState: GetState,
+  parameterId: ParameterId,
+) {
+  updateParameters(dispatch, getState, (parameters) => {
+    return parameters
+      .filter((parameter) => parameter.id !== parameterId)
+      .map((parameter) => {
+        if (parameter.filteringParameters) {
+          const filteringParameters = parameter.filteringParameters.filter(
+            (filteringParameter) => {
+              return filteringParameter !== parameterId;
+            },
+          );
+
+          return { ...parameter, filteringParameters };
+        }
+
+        return parameter;
+      });
+  });
+}
+
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
     dispatch(closeAddCardAutoWireToasts());
 
-    updateParameters(dispatch, getState, (parameters) => {
-      return parameters
-        .filter((parameter) => parameter.id !== parameterId)
-        .map((parameter) => {
-          if (parameter.filteringParameters) {
-            const filteringParameters = parameter.filteringParameters.filter(
-              (filteringParameter) => {
-                return filteringParameter !== parameterId;
-              },
-            );
-
-            return { ...parameter, filteringParameters };
-          }
-
-          return parameter;
-        });
-    });
+    removeParameterAndReferences(dispatch, getState, parameterId);
 
     const dashcards = Object.values(getDashcards(getState()));
     const parameterDashcard = findDashCardForInlineParameter(
