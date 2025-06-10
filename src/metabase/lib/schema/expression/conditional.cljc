@@ -46,8 +46,9 @@
             intersection))
         (set/union x y))))
 
-(defn- compatible? [x y]
+(defn- compatible?
   "Check if `x` is compatible with `y`."
+  [x y]
   (cond
     (set? x) (some #(compatible? % y) x)
     (set? y) (some #(compatible? x %) y)
