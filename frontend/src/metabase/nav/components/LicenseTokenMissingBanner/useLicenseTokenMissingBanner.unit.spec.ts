@@ -192,17 +192,21 @@ describe("useLicenseTokenMissingBanner", () => {
         result.current.dismissBanner();
       });
 
+      let dismissalTimestamp;
+
       await waitFor(async () => {
-        const [{ url }] = await findRequests("PUT");
+        const [{ url, body }] = await findRequests("PUT");
         expect(url).toContain(SETTINGS_ENDPOINT);
+        dismissalTimestamp = body.value[1];
       });
 
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       const [{ url, body }] = puts;
       expect(url).toContain(SETTINGS_ENDPOINT);
-      expect(body.value).toHaveLength(2);
-      expect(body.value).toContain(SECOND_DISMISSAL.toISOString());
+      expect(body).toEqual({
+        value: [SECOND_DISMISSAL.toISOString(), dismissalTimestamp],
+      });
     });
   });
 });
