@@ -24,14 +24,12 @@ import {
   Box,
   Button,
   Center,
-  Flex,
   Group,
   Icon,
   Stack,
   Text,
   Title,
   Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
 import { UploadMode } from "metabase-types/store/upload";
 
@@ -235,25 +233,21 @@ export const CSVPanel = ({
               </Stack>
             </Center>
             <Group>
-              <UnstyledButton
+              <Button
                 onClick={() => setIsCollectionPickerOpen(true)}
-                style={{
-                  flex: 1,
+                rightSection={<Icon name="chevrondown" />}
+                styles={{
+                  inner: {
+                    justifyContent: "space-between",
+                  },
+                  root: { flex: 1 },
                 }}
               >
-                <Flex
-                  align="center"
-                  justify="space-between"
-                  w="100%"
-                  wrap="nowrap"
-                >
-                  <Group gap="xs" flex={1}>
-                    <Icon name="folder" />
-                    <CollectionName id={uploadCollectionId} />
-                  </Group>
-                  <Icon name="chevrondown" style={{ flexShrink: "noshrink" }} />
-                </Flex>
-              </UnstyledButton>
+                <Group gap="sm" flex={1}>
+                  <Icon name="folder" />
+                  <CollectionName id={uploadCollectionId} />
+                </Group>
+              </Button>
               <Button
                 variant="filled"
                 disabled={!uploadedFile}
