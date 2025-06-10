@@ -21,7 +21,7 @@ export const LicenseTokenMissingBanner = ({
       aria-live="polite"
       role="status"
       body={
-        <Flex align="" gap="xs" className={styles.BannerBody}>
+        <Flex gap="xs" className={styles.BannerBody}>
           <Text lh="inherit" c="text-white" ta={{ base: "left", sm: "center" }}>
             {t`Unlock the paid features included in your Pro or Enterprise plan.`}
           </Text>
