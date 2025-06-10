@@ -38,10 +38,10 @@
 
 (deftest ^:parallel process-rows-validation-test
   (testing "Invalid locale generates error"
-    (let [rows [["invalid-locale" "Hello" "Hola"]]
+    (let [rows [["invalidlocale" "Hello" "Hola"]]
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 2.*Invalid locale.*invalid-locale" (first (:errors result))))))
+      (is (re-find #"Row 2.*Invalid locale" (first (:errors result))))))
 
   (testing "Duplicate translation keys generate error"
     (let [rows [["fr" "Hello" "Bonjour"]
@@ -92,15 +92,35 @@
     (is (= 3 (#'dictionary/adjust-index 1)) "Second row becomes row 3")
     (is (= 10 (#'dictionary/adjust-index 8)) "Ninth row becomes row 10")))
 
+(deftest ^:parallel format-row-test
+  (testing "Format function standardizes locale"
+    (is (=
+         ["pt_BR" "msgid" "msgstr"]
+         (#'dictionary/format-row ["pt-br" "msgid" "msgstr"])))
+    (is (=
+         ["pt_BR" "msgid" "msgstr"]
+         (#'dictionary/format-row ["Pt-bR" "msgid" "msgstr"])))
+    (is (=
+         ["pt_BR" "msgid" "msgstr"]
+         (#'dictionary/format-row ["pt_br" "msgid" "msgstr"])))
+    (is (=
+         ["zh_CN" "msgid" "msgstr"]
+         (#'dictionary/format-row ["ZH-cn" "msgid" "msgstr"]))))
+  (testing "Format function trims all fields"
+    (is (=
+         ["pt_BR" "msgid" "msgstr"]
+         (#'dictionary/format-row [" pt-BR " "msgid " " msgstr"])))))
+
 (deftest import-translations-success-test
   (ct-utils/with-clean-translations!
     (testing "Valid translations are imported when content translation feature is present"
       (mt/with-premium-features #{:content-translation}
         (let [rows [["es" "Hello" "Hola"]
                     ["fr" "Goodbye" "Au revoir"]
-                    ["de" "Thank you" "Danke"]]]
+                    ["de" "Thank you" "Danke"]
+                    ["pt-br" "Thank you" "Obrigado"]]]
           (dictionary/import-translations! rows)
-          (is (= 3 (count-translations)) "All translations should be imported")
+          (is (= 4 (count-translations)) "All translations should be imported")
 
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "es")
@@ -111,7 +131,10 @@
                             (= (:msgstr %) "Au revoir")) translations))
             (is (some #(and (= (:locale %) "de")
                             (= (:msgid %) "Thank you")
-                            (= (:msgstr %) "Danke")) translations))))))
+                            (= (:msgstr %) "Danke")) translations))
+            (is (some #(and (= (:locale %) "pt_BR") ; Check that locale was standardized
+                            (= (:msgid %) "Thank you")
+                            (= (:msgstr %) "Obrigado")) translations))))))
     (testing "Unusable translations are filtered out"
       (mt/with-premium-features #{:content-translation}
         (let [rows [["en" "Hello" "Hola"]     ; Usable
@@ -140,19 +163,37 @@
                clojure.lang.ExceptionInfo
                #"The file could not be uploaded due to the following error"
                (dictionary/import-translations! invalid-rows))))))
-    (testing "Error contains multiple validation messages"
+    (testing "Import fails when one row has too many fields"
       (mt/with-premium-features #{:content-translation}
-        (let [invalid-rows [["invalid-locale" "Hello" "Hola"]
-                            ["en" "Test" "Translation" "extra"]]]
+        (let [invalid-rows [["en" "Test" "Translation" "extra"]]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The file could not be uploaded due to the following error"
+               (dictionary/import-translations! invalid-rows))))))
+    (testing "Import fails when two rows have the same msgid and the same standardized locale"
+      (mt/with-premium-features #{:content-translation}
+        (let [invalid-rows [["pt-br" "Test" "Translation"]
+                            ["pt_BR" "Test" "Another translation"]]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The file could not be uploaded due to the following error"
+               (dictionary/import-translations! invalid-rows))))))
+    (testing "Multiple error messages can be returned"
+      (mt/with-premium-features #{:content-translation}
+        (let [invalid-rows [["invalidlocale" "Hello" "Hola"]
+                            ["fr" "Too" "many" "fields"]
+                            ["en" "Test" "Translation1"]
+                            ["en" "Test" "Translation2"]]]
           (try
             (dictionary/import-translations! invalid-rows)
             (is false "Should have thrown exception")
             (catch Exception e
               (let [data (ex-data e)]
                 (is (= 422 (:status-code data)))
-                (is (= 2 (count (:errors data))))
+                (is (= 3 (count (:errors data))))
                 (is (some #(re-find #"Invalid locale" %) (:errors data)))
-                (is (some #(re-find #"Invalid format" %) (:errors data)))))))))
+                (is (some #(re-find #"Invalid format" %) (:errors data)))
+                (is (some #(re-find #"earlier in the file" %) (:errors data)))))))))
     (testing "Existing translations are replaced"
       (mt/with-premium-features #{:content-translation}
         ;; First import

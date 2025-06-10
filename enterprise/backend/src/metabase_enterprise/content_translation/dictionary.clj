@@ -26,7 +26,7 @@
   "Returns an error message if a row does not have a valid locale."
   [_state index {:keys [locale]}]
   (when (not (i18n/available-locale? locale))
-    (tru "Row {0}: Invalid locale: {1}" (adjust-index index) locale)))
+    (tru "Row {0}: Invalid locale" (adjust-index index))))
 
 (defn- collect-duplication-error
   "Returns an error message if this translation key has already been seen in the file. A translation key is a string
@@ -44,6 +44,16 @@
     (str/blank? msgstr)
     (re-matches #"^[,;\s]*$" msgstr))))
 
+(defn- format-row
+  "Formats a row to be inserted into the content translation table. Locales are standardized, and all fields are trimmed. Extra fields are included as well."
+  [row]
+  (let [[locale msgid msgstr & extras] row
+        formatted-locale (i18n/normalized-locale-string (str/trim locale))
+        formatted-msgid (str/trim msgid)
+        formatted-msgstr (str/trim msgstr)]
+    (into [formatted-locale formatted-msgid formatted-msgstr]
+          extras)))
+
 (defn- row-errors
   [state index translation]
   (keep (fn [f] (f state index translation))
@@ -54,27 +64,27 @@
   (tru "Row {0}: Invalid format. Expected exactly 3 columns (Language, String, Translation)"
        (adjust-index index)))
 
-(defn- process-rows
-  "Format, trim, validate rows. Takes the vectors from a csv and returns a map with the shape
-  {:translations [{:locale :msgid :msgstr}]
-   :errors       [string]}.
-  The :seen set is returned but not meant for consumption."
+(defn process-rows
+  "Format, validate, and process rows from a CSV. Takes a collection of vectors and returns a map with the shape
+  {:translations [{:locale :msgid :msgstr}], :errors [string]}, plus the set :seen for internal use."
   [rows]
-  (reduce (fn [state [index row]]
+  (letfn [(collect-translation-and-errors [state index row]
             (let [[locale msgid msgstr & extra] row
-                  translation                   {:locale locale
-                                                 :msgid  (str/trim msgid)
-                                                 :msgstr (str/trim msgstr)}
-                  errors                        (cond-> (row-errors state index translation)
-                                                  (seq extra) (conj (wrong-row-shape index)))]
-              (cond-> (-> state
-                          (update :seen conj (dissoc translation :msgstr))
-                          (update :translations conj translation))
-                (seq errors) (update :errors into errors))))
-          {:seen         #{}
-           :errors       []
-           :translations []}
-          (map-indexed vector rows)))
+                  translation {:locale locale :msgid msgid :msgstr msgstr}
+                  errors (row-errors state index translation)
+                  errors (if (seq extra)
+                           (conj errors (wrong-row-shape index))
+                           errors)]
+              (-> state
+                  (update :seen conj (dissoc translation :msgstr))
+                  (update :translations conj translation)
+                  (update :errors into errors))))]
+    (let [formatted-rows (map format-row rows)]
+      (reduce-kv collect-translation-and-errors
+                 {:seen         #{}
+                  :errors       []
+                  :translations []}
+                 (vec formatted-rows)))))
 
 (defn import-translations!
   "Insert or update rows in the content_translation table."
