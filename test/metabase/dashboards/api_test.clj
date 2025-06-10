@@ -5162,10 +5162,11 @@
         saved   {:id 1337}]
     (mt/with-dynamic-fn-redefs [u/generate-nano-id (fn [] "rAnDoM")]
       (testing "leaves valid ids alone"
-        (is (= 1
-               (f saved 1)))
         (is (= "dashcard:7331:unique"
                (f saved "dashcard:7331:unique"))))
+      (testing "replaces temporary FE ids"
+        (is (= "dashcard:1337:rAnDoM"
+               (f saved (str (random-uuid))))))
       (testing "creates useful and unique ids"
         (is (= "dashcard:1337:rAnDoM"
                (f saved nil))))
