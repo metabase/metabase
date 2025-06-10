@@ -29,7 +29,6 @@ export const AddDataModal = ({
   const [activeTab, setActiveTab] = useState<string | null>("db");
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const adminEmail = useSelector((state) => getSetting(state, "admin-email"));
   // Instances with DWH enabled already have uploads enabled by default.
   // It is not possible to turn the uploads off, nor to delete the attached database.
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
@@ -90,11 +89,10 @@ export const AddDataModal = ({
               onAddDataModalClose={onClose}
             />
             <Tabs.Panel value="db" className={S.panel}>
-              <DatabasesPanel adminEmail={adminEmail} canSeeContent={isAdmin} />
+              <DatabasesPanel canSeeContent={isAdmin} />
             </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>
               <CSVPanel
-                adminEmail={adminEmail}
                 onCloseAddDataModal={onClose}
                 uploadsEnabled={areUploadsEnabled}
                 canUpload={canUploadToDatabase}
