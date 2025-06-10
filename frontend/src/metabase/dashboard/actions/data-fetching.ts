@@ -635,14 +635,6 @@ export const fetchDashboard = createAsyncThunk(
     },
     { getState, dispatch, rejectWithValue },
   ) => {
-    // eslint-disable-next-line no-console
-    console.log("fetchDashboard called:", {
-      dashId,
-      queryParams,
-      preserveParameters,
-      clearCache,
-    });
-
     if (fetchDashboardCancellation) {
       fetchDashboardCancellation.resolve();
     }
@@ -771,13 +763,6 @@ export const fetchDashboard = createAsyncThunk(
         metadata,
       );
 
-      // eslint-disable-next-line no-console
-      console.log("fetchDashboard parameters:", {
-        parameters,
-        queryParams,
-        lastUsedParametersValues,
-      });
-
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(
@@ -785,12 +770,6 @@ export const fetchDashboard = createAsyncThunk(
             queryParams,
             lastUsedParametersValues,
           );
-
-      // eslint-disable-next-line no-console
-      console.log("fetchDashboard parameterValuesById:", {
-        parameterValuesById,
-        preserveParameters,
-      });
 
       entities = entities ?? normalize(result, dashboardSchema).entities;
 
