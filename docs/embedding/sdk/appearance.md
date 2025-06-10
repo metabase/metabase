@@ -26,5 +26,5 @@ You can provide your own components for loading and error states by specifying `
 
 ## Limitations
 
-* CSS variables are not supported. Please upvote this [feature request](https://github.com/metabase/metabase/issues/59237), if you'd like support for this.
-* Colors configured in a question's visualization settings will override theme colors.
+- CSS variables aren't yet supported. If you'd like Metabase to support CSS variables, please upvote this [feature request](https://github.com/metabase/metabase/issues/59237).
+- Colors set in the visualization settings for a question will override theme colors.
