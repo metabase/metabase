@@ -75,10 +75,10 @@
       (throw (ex-info (trs "Error creating new SSO user")
                       {:user user})))))
 
-(defn fetch-and-update-login-attributes!
+(mu/defn fetch-and-update-login-attributes!
   "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
   This call is a no-op if the mentioned key values are equal."
-  [{:keys [email tenant_id] :as user-from-sso :- UserAttributes}
+  [{:keys [email tenant_id] :as user-from-sso} :- UserAttributes
    reactivate? :- ms/BooleanValue]
   (let [;; if the user is not active, we will want to mark them as active if they are actually reactivated.
         new-user-data (merge user-from-sso {:is_active true})
