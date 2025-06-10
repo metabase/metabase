@@ -23,6 +23,12 @@ export const EmbeddingSetupSidebar = () => {
   const steps = useMemo<StepType[]>(() => {
     return [
       {
+        key: "account",
+        title: t`Set up your account`,
+        slugs: ["user"],
+        icon: "person",
+      },
+      {
         key: "connect_data",
         title: t`Connect to your data`,
         slugs: ["data-connection"],

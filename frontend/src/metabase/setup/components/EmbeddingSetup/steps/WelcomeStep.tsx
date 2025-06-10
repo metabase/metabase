@@ -45,7 +45,7 @@ export const WelcomeStep = () => {
 
       <Button
         component={Link}
-        to="/setup/embedding/data-connection"
+        to="/setup/embedding/user"
         variant="filled"
         mb="md"
         miw={"12rem"}
