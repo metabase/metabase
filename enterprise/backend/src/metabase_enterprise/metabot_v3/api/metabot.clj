@@ -159,6 +159,7 @@
                                                               [:= :mbe.metabot_id metabot-id]]}]}))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
+  "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
