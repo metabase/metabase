@@ -26,6 +26,7 @@ export const ParametersList = ({
   dashboard,
   editingParameter,
 
+  isSortable = true,
   isFullscreen,
   hideParameters,
   isEditing,
@@ -79,7 +80,7 @@ export const ParametersList = ({
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
       commitImmediately={commitImmediately}
       dragHandle={
-        isEditing && setParameterIndex ? (
+        isSortable && isEditing && setParameterIndex ? (
           <div
             className={cx(
               CS.flex,
@@ -92,7 +93,7 @@ export const ParametersList = ({
           </div>
         ) : null
       }
-      isSortable
+      isSortable={isSortable}
     />
   );
 
@@ -106,13 +107,24 @@ export const ParametersList = ({
         vertical ? CS.flexColumn : CS.flexRow,
       )}
     >
-      <SortableList
-        items={visibleValuePopulatedParameters}
-        getId={getId}
-        renderItem={renderItem}
-        onSortEnd={handleSortEnd}
-        sensors={[pointerSensor]}
-      />
+      {isSortable ? (
+        <SortableList
+          items={visibleValuePopulatedParameters}
+          getId={getId}
+          renderItem={renderItem}
+          onSortEnd={handleSortEnd}
+          sensors={[pointerSensor]}
+        />
+      ) : (
+        <>
+          {visibleValuePopulatedParameters.map((parameter) =>
+            renderItem({
+              item: parameter,
+              id: getId(parameter),
+            }),
+          )}
+        </>
+      )}
     </div>
   ) : null;
 };
