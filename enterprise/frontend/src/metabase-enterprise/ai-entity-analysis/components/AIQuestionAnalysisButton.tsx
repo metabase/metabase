@@ -1,25 +1,12 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export const AIQuestionAnalysisButton = () => {
-  // Try to use Metabot if available (enterprise), fallback to null (OSS)
-  const metabotAgent = PLUGIN_METABOT.useMetabotAgent?.();
+  const { startNewConversation } = useMetabotAgent();
 
-  const handleClick = () => {
-    if (metabotAgent) {
-      // Enterprise: Clear chat, open Metabot and send "Analyze this chart" message
-      metabotAgent.resetConversation();
-      metabotAgent.setVisible(true);
-      metabotAgent.submitInput("Analyze this chart");
-
-      // Focus the chat input after a brief delay (similar to command palette implementation)
-      setTimeout(() => {
-        document.getElementById("metabot-chat-input")?.focus();
-      }, 100);
-    }
-  };
+  const handleClick = () => startNewConversation("Analyze this chart");
 
   const tooltipLabel = t`Explain this chart`;
 

@@ -63,16 +63,17 @@ export type MetabotRedirectReaction = {
 
 export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 
+export type MetabotColumnType =
+  | "number"
+  | "string"
+  | "date"
+  | "datetime"
+  | "time"
+  | "boolean"
+  | "null";
 export type MetabotColumnInfo = {
   name: string;
-  type?:
-    | "number"
-    | "string"
-    | "date"
-    | "datetime"
-    | "time"
-    | "boolean"
-    | "null";
+  type?: MetabotColumnType;
 };
 
 export type MetabotSeriesConfig = {
@@ -97,7 +98,7 @@ export type MetabotChartConfig = {
   timeline_events?: Array<{
     name: string;
     description?: string;
-    timestamp: Date;
+    timestamp: string;
   }>;
 };
 
