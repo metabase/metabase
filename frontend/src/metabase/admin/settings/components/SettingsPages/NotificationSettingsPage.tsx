@@ -16,7 +16,7 @@ import {
 } from "metabase/ui";
 import type { NotificationChannel } from "metabase-types/api";
 
-import { SlackSettingsModal } from "../../slack/SlackSettingsPage";
+import { SlackSettingsModal } from "../../slack/SlackSettingsModal";
 import { SettingsSection } from "../SettingsSection";
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
