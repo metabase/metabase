@@ -30,7 +30,7 @@ const StatusListing = () => {
 
   return (
     <StatusListingRoot data-testid="status-root-container">
-      {isAdmin && !isNewEmbeddingSetup && <DatabaseStatus />}
+      {isAdmin && <DatabaseStatus hidden={isNewEmbeddingSetup} />}
       <FileUploadStatus />
       <DownloadsStatus />
       {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
