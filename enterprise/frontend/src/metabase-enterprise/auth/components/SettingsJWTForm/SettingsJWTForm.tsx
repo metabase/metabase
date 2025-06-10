@@ -65,14 +65,15 @@ export const SettingsJWTForm = () => {
   return (
     <Stack>
       <Title order={1}>{t`JWT`}</Title>
-      <SettingsSection>
-        <AdminSettingInput
-          name="jwt-user-provisioning-enabled?"
-          title={t`User provisioning`}
-          inputType="boolean"
-          hidden={!jwtEnabled}
-        />
-      </SettingsSection>
+      {jwtEnabled && (
+        <SettingsSection>
+          <AdminSettingInput
+            name="jwt-user-provisioning-enabled?"
+            title={t`User provisioning`}
+            inputType="boolean"
+          />
+        </SettingsSection>
+      )}
       <SettingsSection>
         <FormProvider
           initialValues={getFormValues(settingValues ?? {})}

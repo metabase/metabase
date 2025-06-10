@@ -13,7 +13,7 @@ export function WhiteLabelConcealSettingsPage() {
   return (
     <Stack gap="xl" data-testid="conceal-metabase-settings">
       <Box>
-        <Title order={1}>{t`Conceal Metabase`}</Title>
+        <Title order={1} pb="xs">{t`Conceal Metabase`}</Title>
         <Text>
           {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
         </Text>

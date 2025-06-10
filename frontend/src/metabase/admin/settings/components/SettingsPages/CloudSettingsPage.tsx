@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { ButtonLink } from "metabase/core/components/ExternalLink";
 import { getStoreUrl } from "metabase/selectors/settings";
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, Title } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
 import { SettingHeader } from "../SettingHeader";
@@ -23,6 +23,7 @@ export const SettingsCloudStoreLink = () => {
 
   return (
     <Box maw="30rem">
+      <Title order={1}>{t`Cloud`}</Title>
       <SettingHeader
         id="cloud-settings-header"
         title={t`Cloud settings`}
