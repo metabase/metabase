@@ -667,11 +667,10 @@
                                  byes-processed  (.getTotalBytesProcessed stats)
                                  bytes-billed    (.getTotalBytesBilled stats)
                                  estimated-bytes (.getEstimatedBytesProcessed stats)
-                                 bytes-info {:bytes-processed byes-processed
-                                             :bytes-billed    bytes-billed
-                                             :estimated-bytes estimated-bytes}]
-                             (tap> {:query-bean-stats (bean stats)})
-                             (tap> {:query-bytes-info bytes-info})
+                                 bytes-info {:amount bytes-billed
+                                             :unit :bytes
+                                             :cents-per-unit 0.0000000005
+                                             :total-cents (* 0.0000000005 bytes-billed)}]
                              (deliver result-promise [:ready result bytes-info]))
                            (throw (ex-info "Null response from query" {})))
                          (catch Throwable t
