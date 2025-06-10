@@ -82,21 +82,26 @@
   [_driver _seconds-or-milliseconds honeysql-expr]
   (h2x/with-database-type-info [:to_timestamp honeysql-expr] "timestamp"))
 
+(defn- concatenate
+  ([]
+   nil)
+  ([x & args]
+   (reduce (fn [acc y] [:concat acc y]) x args)))
+
 (defmethod sql.qp/cast-temporal-string [:vertica :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
   (h2x/with-database-type-info [:to_timestamp
-                                [:concat
-                                 [:substr expr 1 4]
-                                 (h2x/literal "-")
-                                 [:substr expr 5 2]
-                                 (h2x/literal "-")
-                                 [:substr expr 7 2]
-                                 (h2x/literal " ")
-                                 [:substr expr 9 2]
-                                 (h2x/literal ":")
-                                 [:substr expr 11 2]
-                                 (h2x/literal ":")
-                                 [:substr expr 13 2]]]
+                                (concatenate [:substr expr 1 4]
+                                             "-"
+                                             [:substr expr 5 2]
+                                             "-"
+                                             [:substr expr 7 2]
+                                             " "
+                                             [:substr expr 9 2]
+                                             ":"
+                                             [:substr expr 11 2]
+                                             ":"
+                                             [:substr expr 13 2])]
                                "timestamp"))
 
 ;; TODO - not sure if needed or not
@@ -159,14 +164,7 @@
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]
-  (transduce
-   (map #(sql.qp/->honeysql driver %))
-   (completing (fn [x y]
-                 (if (some? x)
-                   [:concat x y]
-                   y)))
-   nil
-   args))
+  (apply concatenate (map #(sql.qp/->honeysql driver %) args)))
 
 (defmethod sql.qp/datetime-diff [:vertica :year]
   [driver _unit x y]
