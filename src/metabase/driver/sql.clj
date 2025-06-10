@@ -56,21 +56,16 @@
 
 (mu/defmethod driver/substitute-native-parameters :sql
   [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ::lib.schema.common/non-blank-string}]]]
-  (binding [sql.params.substitute/*optional-params* (set (for [p (:parameters inner-query)
-                                                               :when (not (:required p))
-                                                               :when (and (= :variable (first (:target p)))
-                                                                          (= :template-tag (first (second (:target p)))))]
-                                                           (get-in p [:target 1 1])))]
-    (let [params-map          (params.values/query->params-map inner-query)
-          referenced-card-ids (params.values/referenced-card-ids params-map)
-          [query params] (-> query
-                             params.parse/parse
-                             (sql.params.substitute/substitute params-map))]
-      (cond-> (assoc inner-query
-                     :query query
-                     :params params)
-        (seq referenced-card-ids)
-        (update :query-permissions/referenced-card-ids set/union referenced-card-ids)))))
+  (let [params-map          (params.values/query->params-map inner-query)
+        referenced-card-ids (params.values/referenced-card-ids params-map)
+        [query params]      (-> query
+                                params.parse/parse
+                                (sql.params.substitute/substitute params-map))]
+    (cond-> (assoc inner-query
+                   :query  query
+                   :params params)
+      (seq referenced-card-ids)
+      (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))
 
 (defmulti json-field-length
   "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.
