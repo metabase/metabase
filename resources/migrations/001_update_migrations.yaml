@@ -11735,6 +11735,26 @@ databaseChangeLog:
                     nullable: true
                     unique: true
 
+  - changeSet:
+      id: v55.2025-06-10T14:02:06
+      author: bronsa
+      comment: Added 0.55.0 -- add metabase_field.visibility_type_is_user_set
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  remarks: Boolean flag to know whether visibility_type was set by the user rather than automatically via sync
+                  name: visibility_type_is_user_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: visibility_type_is_user_set
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
