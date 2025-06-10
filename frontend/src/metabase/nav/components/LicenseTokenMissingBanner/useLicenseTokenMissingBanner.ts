@@ -7,6 +7,9 @@ import type { TokenStatus } from "metabase-types/api";
 
 dayjs.extend(utc);
 
+const DAYS_BEFORE_REPEAT_BANNER = 14;
+const MAX_NUMBER_OF_DISMISSALS = 2;
+
 export const getCurrentUTCTimestamp = () => {
   return dayjs.utc().toISOString();
 };
@@ -20,15 +23,14 @@ export function shouldShowBanner({
   lastDismissed: Array<string>;
   isEEBuild: boolean;
 }) {
-  const DAYS_BEFORE_REPEAT_BANNER = 14;
-
   if (!isEEBuild) {
     return false;
   }
   if (tokenStatus !== null) {
     return false;
   }
-  if (lastDismissed.length >= 2) {
+
+  if (lastDismissed.length >= MAX_NUMBER_OF_DISMISSALS) {
     return false;
   }
   if (lastDismissed.length === 0) {
