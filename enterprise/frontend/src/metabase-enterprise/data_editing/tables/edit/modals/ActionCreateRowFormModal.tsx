@@ -18,20 +18,19 @@ import type { RowValue } from "metabase-types/api";
 import type {
   ActionFormParameter,
   DescribeActionFormResponse,
+  RowCellsWithPkValue,
 } from "../../types";
 import { ParameterActionInput } from "../inputs_v2/ParameterActionInput";
 
 import { ActionFormModalParameter } from "./ActionFormModalParameter";
 import S from "./EditingBaseRowModal.module.css";
 
-type CreateRowFormValues = Record<string, RowValue>;
-
 interface ActionCreateRowFormModalProps {
   opened: boolean;
   description?: DescribeActionFormResponse;
   isInserting: boolean;
   onClose: () => void;
-  onRowCreate: (data: CreateRowFormValues) => Promise<boolean>;
+  onRowCreate: (data: RowCellsWithPkValue) => Promise<boolean>;
 }
 
 export function ActionCreateRowFormModal({
@@ -42,7 +41,7 @@ export function ActionCreateRowFormModal({
   onRowCreate,
 }: ActionCreateRowFormModalProps) {
   const validateForm = useCallback(
-    (values: CreateRowFormValues) => {
+    (values: RowCellsWithPkValue) => {
       const errors: Record<string, string> = {};
 
       description?.parameters.forEach((parameter) => {
@@ -58,7 +57,7 @@ export function ActionCreateRowFormModal({
   );
 
   const onSubmit = useCallback(
-    async (values: CreateRowFormValues) => {
+    async (values: RowCellsWithPkValue) => {
       const success = await onRowCreate(values);
       if (success) {
         onClose();
@@ -74,7 +73,7 @@ export function ActionCreateRowFormModal({
     handleSubmit,
     validateForm: revalidateForm,
   } = useFormik({
-    initialValues: {} as CreateRowFormValues,
+    initialValues: {} as RowCellsWithPkValue,
     onSubmit,
     validate: validateForm,
     validateOnMount: true,

@@ -1,7 +1,8 @@
 import { useCallback, useEffect } from "react";
 
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData } from "metabase-types/api";
+
+import { getPkColumns, getRowUniqueKeyByPkIndexes } from "../utils";
 
 import {
   type TableEditingModalController,
@@ -51,12 +52,13 @@ export function useTableEditingModalControllerWithObjectId({
 
       default:
         if (datasetData) {
-          const pkColumnIndex = datasetData.cols.findIndex(isPK);
-          const rowIndex = datasetData.rows.findIndex(
-            (row) =>
-              row[pkColumnIndex] === currentObjectId ||
-              row[pkColumnIndex] === Number(currentObjectId),
-          );
+          const { indexes: pkIndexes } = getPkColumns(datasetData.cols);
+
+          const rowIndex = datasetData.rows.findIndex((row) => {
+            const rowUniqKey = getRowUniqueKeyByPkIndexes(pkIndexes, row);
+
+            return rowUniqKey === currentObjectId;
+          });
 
           if (rowIndex !== -1) {
             openEditRowModal(rowIndex);
@@ -77,9 +79,13 @@ export function useTableEditingModalControllerWithObjectId({
         return;
       }
 
-      const pkColumnIndex = datasetData.cols.findIndex(isPK);
-      const objectId = datasetData.rows[rowIndex][pkColumnIndex];
-      onObjectIdChange(objectId?.toString());
+      const { indexes: pkIndexes } = getPkColumns(datasetData.cols);
+      const objectId = getRowUniqueKeyByPkIndexes(
+        pkIndexes,
+        datasetData.rows[rowIndex],
+      );
+
+      onObjectIdChange(objectId);
     },
     [datasetData, onObjectIdChange],
   );

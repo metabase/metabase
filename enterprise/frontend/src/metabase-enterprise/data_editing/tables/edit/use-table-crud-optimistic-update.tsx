@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
-import type { CellUniqKey, RowPkValue } from "../types";
+import type { CellUniqKey, RowPkValuesKey } from "../types";
 
 import { ErrorUpdateToast } from "./ErrorUpdateToast";
 import type { OptimisticUpdatePatchResult } from "./use-table-state-update-strategy";
@@ -32,14 +32,14 @@ export const useTableCrudOptimisticUpdate = () => {
     (
       error: unknown,
       cellUpdateContext: {
-        rowPkValue: RowPkValue;
+        rowPkValuesKey: RowPkValuesKey;
         columnName: string;
         patchResult: OptimisticUpdatePatchResult | undefined;
       },
     ) => {
-      const { columnName, rowPkValue, patchResult } = cellUpdateContext;
+      const { columnName, rowPkValuesKey, patchResult } = cellUpdateContext;
 
-      const cellUniqKey = getCellUniqKey(rowPkValue, columnName);
+      const cellUniqKey = getCellUniqKey(rowPkValuesKey, columnName);
 
       patchResult?.revert();
 
@@ -96,13 +96,13 @@ export const useTableCrudOptimisticUpdate = () => {
 
   const handleCellValueUpdateSuccess = useCallback(
     ({
-      rowPkValue,
+      rowPkValuesKey,
       columnName,
     }: {
-      rowPkValue: RowPkValue;
+      rowPkValuesKey: RowPkValuesKey;
       columnName: string;
     }) => {
-      const cellUniqKey = getCellUniqKey(rowPkValue, columnName);
+      const cellUniqKey = getCellUniqKey(rowPkValuesKey, columnName);
       setCellsWithFailedUpdatesMap((prevState) => {
         const newMap = { ...prevState };
         delete newMap[cellUniqKey];
