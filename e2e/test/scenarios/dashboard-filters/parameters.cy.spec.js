@@ -5,7 +5,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockHeadingDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -788,16 +791,50 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   describe("parameters in heading dashcards", () => {
+    const categoryParameter = createMockParameter({
+      id: "1b9cd9f1",
+      name: "Category",
+      type: "string/=",
+      slug: "category",
+    });
+
+    const categoryFieldRef = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
+    ];
+
     const ordersCountByCategory = {
       display: "bar",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
+        breakout: [categoryFieldRef],
       },
     };
+
+    function getHeadingAndQuestionDashCards(baseQuestionDashcard) {
+      return [
+        createMockHeadingDashboardCard({
+          inline_parameters: [categoryParameter.id],
+          size_x: 24,
+          size_y: 1,
+        }),
+        {
+          id: baseQuestionDashcard.id,
+          row: 1,
+          size_x: 12,
+          size_y: 6,
+          parameter_mappings: [
+            {
+              parameter_id: categoryParameter.id,
+              card_id: baseQuestionDashcard.card_id,
+              target: ["dimension", categoryFieldRef, { "stage-number": 0 }],
+            },
+          ],
+        },
+      ];
+    }
 
     it("should be able to add and use filters", () => {
       H.createQuestionAndDashboard({
@@ -830,6 +867,10 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("not.exist");
       });
 
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget");
+      });
+
       // Add a second filter
       H.editDashboard();
       H.setDashCardFilter(1, "Number", null, "Count");
@@ -853,6 +894,10 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/No results/)
         .should("exist");
 
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget&count=6000");
+      });
+
       H.getDashboardCard(1).within(() => {
         H.clearFilterWidget(1);
       });
@@ -862,6 +907,57 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget&count=");
+      });
+    });
+
+    it("should be able to edit filters", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: getHeadingAndQuestionDashCards(dashcard),
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      H.getDashboardCard(0).findByText("Category").click();
+
+      H.dashboardParameterSidebar().within(() => {
+        cy.findByLabelText("Label").clear().type("New Category");
+        cy.findByLabelText("Default value").click();
+      });
+      H.popover().within(() => {
+        cy.findByText("Gizmo").click();
+        cy.button("Add filter").click();
+      });
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.saveDashboard();
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Category").should("not.exist");
+        cy.findByText("New Category").should("exist");
+        cy.findByText("Gizmo").should("exist");
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Gizmo").should("be.visible");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?new_category=Gizmo");
       });
     });
   });
