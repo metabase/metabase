@@ -213,6 +213,7 @@ export const DataModel = ({ params, location, children }: Props) => {
 
                     {field && table && isPreviewOpen && (
                       <ResizableColumn
+                        className={S.previewColumn}
                         handlePosition="left"
                         height={height}
                         constraints={columnConfig.preview}
@@ -223,8 +224,9 @@ export const DataModel = ({ params, location, children }: Props) => {
                         onResizeStart={handleResizeStart}
                         onResizeStop={handleResizeStop}
                       >
-                        <Box flex={`1 1 50%}`} miw={0} p="xl">
+                        <Box flex={`1 1 50%}`} h="100%" miw={0} p="xl" pl={0}>
                           <MemoizedPreviewSection
+                            className={S.preview}
                             databaseId={databaseId}
                             field={field}
                             fieldId={fieldId}

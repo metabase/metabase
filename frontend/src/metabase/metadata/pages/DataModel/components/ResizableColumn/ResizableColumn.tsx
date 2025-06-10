@@ -9,6 +9,7 @@ interface Props
     "onResize" | "onResizeStart" | "onResizeStop"
   > {
   children: ReactNode;
+  className?: string;
   constraints: { min: number; max: number };
   handlePosition?: "left" | "right";
   height: number;
@@ -17,6 +18,7 @@ interface Props
 
 export const ResizableColumn = ({
   children,
+  className,
   constraints,
   handlePosition = "right",
   height,
@@ -28,6 +30,7 @@ export const ResizableColumn = ({
   return (
     <ResizableBox
       axis="x"
+      className={className}
       handle={<ResizeHandle handlePosition={handlePosition} />}
       height={height}
       maxConstraints={[constraints.max, height]}

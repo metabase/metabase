@@ -25,6 +25,7 @@ import type { PreviewType } from "./types";
 import { getPreviewTypeData } from "./utils";
 
 interface Props {
+  className?: string;
   databaseId: DatabaseId;
   field: Field;
   fieldId: FieldId;
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export const PreviewSection = ({
+  className,
   databaseId,
   field,
   fieldId,
@@ -48,7 +50,7 @@ export const PreviewSection = ({
   const data = useMemo(() => getPreviewTypeData(), []);
 
   return (
-    <Card bg="white" h="100%" px="lg" py="md" shadow="xs">
+    <Card bg="white" className={className} h="100%" px="lg" py="md">
       <Group justify="space-between">
         <Text fw="bold">{t`Field preview`}</Text>
 
