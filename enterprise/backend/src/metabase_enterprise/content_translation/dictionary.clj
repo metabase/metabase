@@ -5,7 +5,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as util]
    [metabase.util.i18n :as i18n :refer [tru]]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -45,18 +44,6 @@
    (or
     (str/blank? msgstr)
     (re-matches #"^[,;\s]*$" msgstr))))
-
-(defn standardize-locale
-  "For example, pt_BR, pt_br, pt-br, and PT-BR are all standardized as pt-BR."
-  [locale-name]
-  (let [s (str/replace locale-name "_" "-")
-        parts (str/split s #"-")]
-    (str/join "-" (map-indexed
-                   (fn [idx part]
-                     (if (zero? idx)
-                       (util/lower-case-en part)
-                       (when s (str (util/upper-case-en part)))))
-                   parts))))
 
 (defn format-row
   "Formats a row to be inserted into the content translation table. Locales are standardized, and all fields are trimmed. Extra fields are included as well."
