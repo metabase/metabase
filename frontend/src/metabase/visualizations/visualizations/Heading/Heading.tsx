@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -7,7 +8,6 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getParameterValues,
 } from "metabase/dashboard/selectors";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { Flex } from "metabase/ui";
@@ -45,13 +45,14 @@ export function Heading({
 
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
-  const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
-    useToggle(justAdded);
+  const [isFocused, { open: toggleFocusOn, close: toggleFocusOff }] =
+    useDisclosure(justAdded);
   const isPreviewing = !isFocused;
 
   const [textValue, setTextValue] = useState(settings.text);
-  const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
+  const preventDragging = (e: MouseEvent<HTMLInputElement>) => {
     e.stopPropagation();
+  };
 
   // handles a case when settings are updated externally
   useEffect(() => {
@@ -80,8 +81,8 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
-        {isPreviewing ? (
-          <Flex align="center" justify="space-between">
+        <Flex align="center" justify="space-between">
+          {isPreviewing ? (
             <HeadingContent
               data-testid="editing-dashboard-heading-preview"
               isEditing={isEditing}
@@ -89,40 +90,32 @@ export function Heading({
             >
               {hasContent ? settings.text : placeholder}
             </HeadingContent>
-            {inlineParameters.length > 0 && (
-              <DashboardParameterList
-                parameters={inlineParameters}
-                isFullscreen={isFullscreen}
-                widgetsVariant="subtle"
-              />
-            )}
-          </Flex>
-        ) : (
-          <TextInput
-            name="heading"
-            data-testid="editing-dashboard-heading-input"
-            placeholder={placeholder}
-            value={textValue}
-            autoFocus={justAdded || isFocused}
-            onChange={(e) => setTextValue(e.target.value)}
-            onMouseDown={preventDragging}
-            onBlur={() => {
-              toggleFocusOff();
+          ) : (
+            <TextInput
+              name="heading"
+              data-testid="editing-dashboard-heading-input"
+              placeholder={placeholder}
+              value={textValue}
+              autoFocus={justAdded || isFocused}
+              onChange={(e) => setTextValue(e.target.value)}
+              onMouseDown={preventDragging}
+              onBlur={() => {
+                toggleFocusOff();
 
-              if (settings.text !== textValue) {
-                onUpdateVisualizationSettings({ text: textValue });
-              }
-            }}
-          />
-        )}
-        {inlineParameters.length > 0 && (
-          <Flex style={{ flex: "0 0 auto" }}>
+                if (settings.text !== textValue) {
+                  onUpdateVisualizationSettings({ text: textValue });
+                }
+              }}
+            />
+          )}
+          {inlineParameters.length > 0 && (
             <DashboardParameterList
               parameters={inlineParameters}
               isFullscreen={isFullscreen}
+              widgetsVariant="subtle"
             />
-          </Flex>
-        )}
+          )}
+        </Flex>
       </InputContainer>
     );
   }

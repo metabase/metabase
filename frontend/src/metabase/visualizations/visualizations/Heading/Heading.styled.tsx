@@ -21,6 +21,10 @@ export const InputContainer = styled.div<InputContainerProps>`
   pointer-events: auto;
   border-radius: 8px;
 
+  * {
+    pointer-events: auto;
+  }
+
   &:hover {
     /* adjust for border on hover */
     padding-left: calc(0.75rem - 1px);
