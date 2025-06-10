@@ -39,6 +39,11 @@
   cursor: pointer;
   margin: 0.25rem 0.5rem 0.25rem 0;
 
+  &.subtle {
+    height: 32px;
+    margin: 0;
+  }
+
   &.isEditingParameter {
     border-color: var(--mb-color-brand);
     color: var(--mb-color-text-white);

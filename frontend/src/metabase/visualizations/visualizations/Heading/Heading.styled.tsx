@@ -18,16 +18,13 @@ export const InputContainer = styled.div<InputContainerProps>`
   align-items: center;
   overflow: hidden;
   padding-left: 0.75rem;
+  padding-right: 0.75rem;
   pointer-events: auto;
   border-radius: 8px;
+  border: 1px solid transparent;
 
   * {
     pointer-events: auto;
-  }
-
-  &:hover {
-    /* adjust for border on hover */
-    padding-left: calc(0.75rem - 1px);
   }
 
   .${DashboardS.DashCard}:hover &,
@@ -36,7 +33,7 @@ export const InputContainer = styled.div<InputContainerProps>`
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
   }
 
   ${({ isPreviewing, isEmpty }) =>

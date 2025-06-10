@@ -80,6 +80,7 @@ export const ParameterWidget = ({
           fw="bold"
           className={cx(S.EditingParameterContainer, {
             [S.isEditingParameter]: isEditingParameter,
+            [S[variant]]: variant,
           })}
           onClick={() =>
             setEditingParameter?.(isEditingParameter ? null : parameter.id)
