@@ -1,0 +1,9 @@
+.Container {
+  width: 100%;
+  min-height: 17.5rem;
+  background-image: var(--background-url);
+
+  &.hidden {
+    display: none;
+  }
+}

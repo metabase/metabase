@@ -1,8 +1,10 @@
 import cx from "classnames";
+import { match } from "ts-pattern";
 
 import CS from "metabase/css/core/index.css";
 
-import { PreviewPaneContainer } from "./PreviewPane.styled";
+import Style from "./PreviewPane.module.css";
+import { getCheckerBoardDataUri } from "./utils";
 
 export type PreviewBackgroundType =
   | "no-background"
@@ -38,5 +40,43 @@ export function PreviewPane({
         />
       )}
     </PreviewPaneContainer>
+  );
+}
+
+interface PreviewPaneContainerProps {
+  children: React.ReactNode;
+  hidden?: boolean;
+  backgroundType: PreviewBackgroundType;
+  className?: string;
+}
+
+function PreviewPaneContainer({
+  children,
+  hidden,
+  backgroundType,
+  className,
+}: PreviewPaneContainerProps) {
+  const dataUri = match(backgroundType)
+    .returnType<string | null>()
+    .with("checkerboard-light", () => {
+      return getCheckerBoardDataUri("checkerboard-light");
+    })
+    .with("checkerboard-dark", () => {
+      return getCheckerBoardDataUri("checkerboard-dark");
+    })
+    .with("no-background", () => null)
+    .exhaustive();
+
+  return (
+    <div
+      className={cx(Style.Container, className, {
+        [Style.hidden]: hidden,
+      })}
+      style={{
+        ["--background-url" as any]: `url(${dataUri})`,
+      }}
+    >
+      {children}
+    </div>
   );
 }
