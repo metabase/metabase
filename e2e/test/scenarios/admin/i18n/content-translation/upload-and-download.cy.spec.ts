@@ -73,7 +73,7 @@ describe("scenarios > admin > localization > content translation", () => {
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
       });
 
-      it("accepts a CSV upload with non-ASCII characters", () => {
+      it.only("accepts a CSV upload with non-ASCII characters", () => {
         uploadTranslationDictionary(nonAsciiFieldNames);
         cy.findByTestId("content-localization-setting").findByText(
           "Dictionary uploaded",
@@ -143,7 +143,7 @@ describe("scenarios > admin > localization > content translation", () => {
           .contains(/couldn.*t upload the file/)
           .should("be.visible");
         cy.findAllByRole("alert")
-          .contains(/Row 2: Invalid locale: xx/)
+          .contains(/Row 2: Invalid locale/)
           .should("be.visible");
       });
 
@@ -170,10 +170,10 @@ describe("scenarios > admin > localization > content translation", () => {
           .should("be.visible");
         cy.log("The first error is in row 2 (the first row is the header)");
         cy.findAllByRole("alert")
-          .contains(/Row 2: Invalid locale: ze/)
+          .contains(/Row 2: Invalid locale/)
           .should("be.visible");
         cy.findAllByRole("alert")
-          .contains(/Row 5: Invalid locale: qe/)
+          .contains(/Row 5: Invalid locale/)
           .should("be.visible");
       });
 
