@@ -34,9 +34,12 @@ export function setupDatabaseUsageInfoEndpoint(
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
 }
 
-export function setupDatabaseListEndpoint(databases: Database[]) {
+export function setupDatabaseListEndpoint(
+  databases: Database[],
+  { overwriteRoutes = false }: { overwriteRoutes?: boolean } = {},
+) {
   fetchMock.get(
-    { url: "path:/api/database", overwriteRoutes: true },
+    { url: "path:/api/database", overwriteRoutes },
     { data: databases, total: databases.length },
   );
 }
