@@ -13,6 +13,7 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
@@ -73,6 +74,7 @@ export const EditableDashboard = ({
     plugins: plugins,
   },
 }: EditableDashboardProps) => {
+  const { isLocaleLoading } = useLocale();
   const {
     ref,
     isFullscreen,
@@ -112,7 +114,7 @@ export const EditableDashboard = ({
     }
   }, [dispatch, dashboardId]);
 
-  if (isLoading) {
+  if (isLocaleLoading || isLoading) {
     return <SdkLoader />;
   }
 
