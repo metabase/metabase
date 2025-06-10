@@ -481,20 +481,18 @@
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (h2x/with-database-type-info
-   [:'parseDateTimeBestEffort [:concat
-                               [:substring expr 1 4]
-                               "-"
-                               [:substring expr 5 2]
-                               "-"
-                               [:substring expr 7 2]
-                               " "
-                               [:substring expr 9 2]
-                               ":"
-                               [:substring expr 11 2]
-                               ":"
-                               [:substring expr 13 2]]]
-   "timestamp"))
+  [:concat
+   [:substring expr 1 4]
+   "-"
+   [:substring expr 5 2]
+   "-"
+   [:substring expr 7 2]
+   " "
+   [:substring expr 9 2]
+   ":"
+   [:substring expr 11 2]
+   ":"
+   [:substring expr 13 2]])
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
