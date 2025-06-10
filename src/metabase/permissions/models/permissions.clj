@@ -491,7 +491,7 @@
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
-    (throw (ex-info (tru "Tenant Groups cannot have write access to any collections.") {})))
+    (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
@@ -500,7 +500,7 @@
   (check-is-modifiable-collection collection-or-id)
   (let [tenant-group? (perms-group/is-tenant-group? group-or-id)
         {ttype :type} (collection-or-id->collection collection-or-id)]
-    (when (not= (= ttype :tenant-collectionn)
+    (when (not= (= ttype "tenant-collection")
                 tenant-group?)
       (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections and vice versa.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
