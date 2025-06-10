@@ -198,7 +198,7 @@
   [_
    _
    _]
-  (api/check-superuser)
+  (check-permissions)
   (let [databases          (t2/select [:model/Database :id :settings])
         editable-database? (comp boolean :database-enable-table-editing :settings)
         editable-databases (filter editable-database? databases)
