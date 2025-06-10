@@ -120,8 +120,8 @@
                                              [:id pos-int?]
                                              [:model [:enum "dataset" "metric" "collection"]]]]]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/with-transaction [_conn]
+    (api/check-404 (t2/exists? :model/Metabot :id id))
     (let [new-entity-ids (into []
                                (keep (fn [{model-id :id model :model}]
                                        (when-not (t2/exists? :model/MetabotEntity
@@ -148,6 +148,24 @@
               :metabot_id id
               :model model
               :model_id model-id)
+  api/generic-204-no-content)
+
+(defn- delete-all-metabot-prompts
+  [metabot-id]
+  (t2/delete! :model/MetabotPrompt {:where [:exists {:select [:*]
+                                                     :from   [[:metabot_entity :mbe]]
+                                                     :where  [:and
+                                                              [:= :mbe.id :metabot_prompt.metabot_entity_id]
+                                                              [:= :mbe.metabot_id metabot-id]]}]}))
+
+(api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
+  [{:keys [id]} :- [:map [:id pos-int?]]]
+  (api/check-superuser)
+  (t2/with-transaction [_conn]
+    (api/check-404 (t2/exists? :model/Metabot :id id))
+    (when-let [entity-ids (not-empty (t2/select-pks-vec :model/MetabotEntity :metabot_id id))]
+      (delete-all-metabot-prompts id)
+      (generate-sample-prompts entity-ids)))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
@@ -200,11 +218,7 @@
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  (t2/delete! :model/MetabotPrompt {:where [:exists {:select [:*]
-                                                     :from   [[:metabot_entity :mbe]]
-                                                     :where  [:and
-                                                              [:= :mbe.id :metabot_prompt.metabot_entity_id]
-                                                              [:= :mbe.metabot_id id]]}]})
+  (delete-all-metabot-prompts id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"

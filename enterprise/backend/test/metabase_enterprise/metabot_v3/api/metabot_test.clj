@@ -237,16 +237,16 @@
               generate-prompt (fn [promptables]
                                 (map (fn [promptable]
                                        {:questions (-> promptable :name prompts)})
-                                     promptables))]
+                                     promptables))
+              prompt-generator (fn [request]
+                                 (-> request
+                                     (update :metrics generate-prompt)
+                                     (update :tables  generate-prompt)
+                                     (set/rename-keys {:metrics :metric_questions
+                                                       :tables :table_questions})))]
           ;; --------------------------- Generating sample prompts ---------------------------
           (testing "should add entities to metabot access list and generate prompt suggestions"
-            (with-redefs [metabot-v3.client/generate-example-questions
-                          (fn [request]
-                            (-> request
-                                (update :metrics generate-prompt)
-                                (update :tables  generate-prompt)
-                                (set/rename-keys {:metrics :metric_questions
-                                                  :tables :table_questions})))]
+            (with-redefs [metabot-v3.client/generate-example-questions prompt-generator]
               ;; Make the API call to add entities
               (mt/user-http-request :crowberto :put 204
                                     (format "ee/metabot-v3/metabot/%d/entities" metabot-id)
@@ -304,27 +304,41 @@
                 (is (=? {:prompts expected-prompts?
                          :limit limit, :offset nil, :total (:total all-prompts)}
                         sample-prompts))))
-            ;; --------------------------- Deleting sample prompts ---------------------------
-            (testing "can delete a specific prompt"
-              (let [all-prompt-ids (into #{} (map :id) (:prompts all-prompts))
-                    current-prompt-ids #(t2/select-pks-set :model/MetabotPrompt
-                                                           {:join [[:metabot_entity :mbe]
-                                                                   [:= :mbe.id :metabot_prompt.metabot_entity_id]]
-                                                            :where [:= :mbe.metabot_id metabot-id]})
-                    selected-prompt (rand-nth (:prompts all-prompts))
-                    url (format "ee/metabot-v3/metabot/%d/prompt-suggestions/%d" metabot-id (:id selected-prompt))
-                    remaining-prompt-ids (disj all-prompt-ids (:id selected-prompt))]
+            ;; --------------------------- Deleting & regenerating sample prompts ---------------------------
+            (let [all-prompt-ids (into #{} (map :id) (:prompts all-prompts))
+                  current-prompt-ids #(t2/select-pks-set :model/MetabotPrompt
+                                                         {:join [[:metabot_entity :mbe]
+                                                                 [:= :mbe.id :metabot_prompt.metabot_entity_id]]
+                                                          :where [:= :mbe.metabot_id metabot-id]})
+                  selected-prompt (rand-nth (:prompts all-prompts))
+                  url (format "ee/metabot-v3/metabot/%d/prompt-suggestions/%d" metabot-id (:id selected-prompt))
+                  remaining-prompt-ids (disj all-prompt-ids (:id selected-prompt))]
+
+              (testing "deleting a specific prompt"
                 (testing "normal users cannot delete"
                   (mt/user-http-request :rasta :delete 403 url)
                   (is (= all-prompt-ids (current-prompt-ids))))
                 (testing "admins can delete"
                   (mt/user-http-request :crowberto :delete 204 url)
-                  (is (= remaining-prompt-ids (current-prompt-ids))))
-                (testing "and all remaining prompts"
+                  (is (= remaining-prompt-ids (current-prompt-ids)))))
+
+              (testing "generating new prompts"
+                (let [url (format "ee/metabot-v3/metabot/%d/prompt-suggestions/regenerate" metabot-id)]
+                  (testing "normal users are not allowed"
+                    (mt/user-http-request :rasta :post 403 url)
+                    (is (= remaining-prompt-ids (current-prompt-ids))))
+                  (testing "admin users are allowed"
+                    (with-redefs [metabot-v3.client/generate-example-questions prompt-generator]
+                      (mt/user-http-request :crowberto :post 204 url)))))
+
+              (let [new-prompt-ids (current-prompt-ids)]
+                (is (= (count all-prompt-ids) (count new-prompt-ids)))
+                (is (empty? (set/intersection all-prompt-ids new-prompt-ids)))
+                (testing "can delete all prompts"
                   (let [url (format "ee/metabot-v3/metabot/%d/prompt-suggestions" metabot-id)]
                     (testing "normal users cannot delete"
                       (mt/user-http-request :rasta :delete 403 url)
-                      (is (= remaining-prompt-ids (current-prompt-ids))))
+                      (is (= new-prompt-ids (current-prompt-ids))))
                     (testing "admins can delete"
                       (mt/user-http-request :crowberto :delete 204 url)
                       (is (nil? (current-prompt-ids))))))))))))))
