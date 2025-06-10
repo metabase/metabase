@@ -24,7 +24,6 @@ import { NotificationSettingsPage } from "./settings/components/SettingsPages/No
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
-import { SlackSettingsPage } from "./settings/slack/SlackSettingsPage";
 
 export const getSettingsRoutes = () => (
   <Route
@@ -39,7 +38,6 @@ export const getSettingsRoutes = () => (
     <Route path="updates" component={UpdatesSettingsPage} />
     <Route path="email" component={EmailSettingsPage} />
     <Route path="notifications" component={NotificationSettingsPage} />
-    <Route path="notifications/slack" component={SlackSettingsPage} />
     <Route
       path="authentication"
       component={() => <AuthenticationSettingsPage tab="authentication" />}
