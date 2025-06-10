@@ -28,6 +28,9 @@ export type ParametersListProps = {
     ) => void;
     setEditingParameter: (parameterId: ParameterId | null) => void;
     enableParameterRequiredBehavior: boolean;
+    widgetsVariant?: "default" | "subtle";
+    widgetsWithinPortal?: boolean;
+    layout?: "horizontal" | "vertical";
   } & Pick<DashboardFullscreenControls, "isFullscreen"> &
     Pick<DashboardNightModeControls, "isNightMode"> &
     Pick<EmbedHideParametersControls, "hideParameters">
