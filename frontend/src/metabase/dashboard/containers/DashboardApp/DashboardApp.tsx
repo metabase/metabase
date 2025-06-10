@@ -14,7 +14,7 @@ import {
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { DashboardContextProvider } from "metabase/dashboard/context";
-import { useDashboardUrlQuery, useEmbedTheme } from "metabase/dashboard/hooks";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
 import { useFavicon } from "metabase/hooks/use-favicon";
 import { parseHashOptions } from "metabase/lib/browser";
@@ -89,15 +89,6 @@ export const DashboardApp = ({
   };
 
   useSetEmbedFont({ location });
-
-  const {
-    hasNightModeToggle,
-    isNightMode,
-    onNightModeChange,
-    setTheme,
-    theme,
-  } = useEmbedTheme();
-
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
@@ -106,11 +97,6 @@ export const DashboardApp = ({
       <DashboardContextProvider
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
-        theme={theme}
-        setTheme={setTheme}
-        hasNightModeToggle={hasNightModeToggle}
-        onNightModeChange={onNightModeChange}
-        isNightMode={isNightMode}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onLoad={onLoadDashboard}

@@ -18,6 +18,7 @@ import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
+  useEmbedTheme,
   useRefreshDashboard,
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
@@ -57,8 +58,7 @@ export type DashboardContextOwnResult = {
 };
 
 export type DashboardControls = UseAutoScrollToDashcardResult &
-  EmbedDisplayParams &
-  EmbedThemeControls;
+  EmbedDisplayParams;
 
 export type DashboardContextProps = DashboardContextOwnProps &
   Partial<DashboardControls>;
@@ -72,7 +72,8 @@ type ContextReturned = DashboardContextOwnResult &
   DashboardContextErrorState &
   DashboardFullscreenControls & {
     fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
-  } & DashboardRefreshPeriodControls;
+  } & DashboardRefreshPeriodControls &
+  EmbedThemeControls;
 
 export const DashboardContext = createContext<ContextReturned | undefined>(
   undefined,
@@ -88,15 +89,14 @@ const DashboardContextProviderInner = ({
   children,
 
   // url params
-  hasNightModeToggle = false,
-  onNightModeChange = noop,
-  isNightMode = false,
+  // hasNightModeToggle = false,
+  // onNightModeChange = noop,
+  // isNightMode = false,
   background = true,
   bordered = true,
   titled = true,
   font = null,
-  theme = "light",
-  setTheme = noop,
+  // theme = "light",
   hideParameters: hide_parameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
@@ -152,6 +152,14 @@ const DashboardContextProviderInner = ({
     onFullscreenChange,
     ref: fullscreenRef,
   } = useDashboardFullscreen();
+
+  const {
+    hasNightModeToggle,
+    isNightMode,
+    onNightModeChange,
+    theme,
+    setTheme,
+  } = useEmbedTheme();
 
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 

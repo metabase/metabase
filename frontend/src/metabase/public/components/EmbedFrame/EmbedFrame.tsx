@@ -172,9 +172,10 @@ export const EmbedFrame = ({
         })}
       >
         {hasHeader && (
-          <>
+          <Box display="contents" data-testid="embed-frame-header">
             <Space my="sm" />
             <FixedWidthContainer
+              data-testid="fixed-width-dashboard-header"
               component="header"
               className={cx(
                 EmbedFrameS.EmbedFrameHeader,
@@ -185,6 +186,7 @@ export const EmbedFrame = ({
                 },
               )}
               isFixedWidth={dashboard?.width === "fixed"}
+              data-is-fixed-width={dashboard?.width === "fixed"}
               px={{
                 base: 0,
                 sm: "lg",
@@ -201,10 +203,16 @@ export const EmbedFrame = ({
               <Box className={EmbedFrameS.HeaderButtons} mt={titled ? "md" : 0}>
                 {headerButtons}
               </Box>
-              <Box className={EmbedFrameS.DashboardTabs}>{dashboardTabs}</Box>
+              <FixedWidthContainer
+                data-testid="fixed-width-dashboard-tabs"
+                isFixedWidth={dashboard?.width === "fixed"}
+                className={EmbedFrameS.DashboardTabs}
+              >
+                {dashboardTabs}
+              </FixedWidthContainer>
             </FixedWidthContainer>
             {dashboardTabs && <Divider />}
-          </>
+          </Box>
         )}
 
         <span ref={parameterPanelRef} />

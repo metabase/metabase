@@ -12,9 +12,6 @@ import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 export type PublicOrEmbeddedDashboardProps = Pick<
   DashboardContextProps,
   | "dashboardId"
-  | "hasNightModeToggle"
-  | "isNightMode"
-  | "onNightModeChange"
   | "background"
   | "bordered"
   | "titled"

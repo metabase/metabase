@@ -10,8 +10,8 @@ const TitleAndDescriptionInner = ({
   className,
   ...boxProps
 }: {
-  title: string | null;
-  description: string | null;
+  title: string | null | undefined;
+  description: string | null | undefined;
   className?: string;
 } & BoxProps) => (
   <Box className={cx(CS.flex, CS.alignCenter, className)} {...boxProps}>
