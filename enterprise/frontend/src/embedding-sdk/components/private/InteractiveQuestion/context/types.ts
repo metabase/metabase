@@ -88,7 +88,6 @@ export type InteractiveQuestionContextType = Omit<
     "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
   Pick<InteractiveQuestionProviderProps, "variant"> & {
-    isLocaleLoading: boolean;
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
     originalId: SdkQuestionId | null;
