@@ -701,14 +701,6 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
-  useMetabotAgent: undefined as
-    | (() => {
-        visible: boolean;
-        setVisible: (visible: boolean) => void;
-        submitInput: (input: string) => void;
-        resetConversation: () => void;
-      })
-    | undefined,
   adminNavItem: [] as AdminPath[],
   AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
   MetabotAdminPage: () => `placeholder`,

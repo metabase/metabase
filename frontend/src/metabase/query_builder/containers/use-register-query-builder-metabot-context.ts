@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { useEffect, useRef } from "react";
 
 import { useSelector } from "metabase/lib/redux";
@@ -6,6 +7,11 @@ import {
   getBase64ChartImage,
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  MetabotColumnType,
+  MetabotSeriesConfig,
+} from "metabase-types/api";
 
 import {
   getIsLoadingComplete,
@@ -14,11 +20,48 @@ import {
   getTransformedTimelines,
   getVisualizationSettings,
 } from "../selectors";
+
+const RENDER_DELAY_MS = 100;
+
+const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
+  "type/Boolean": "boolean" as const,
+  "type/Float": "number" as const,
+  "type/Integer": "number" as const,
+  "type/Decimal": "number" as const,
+  "type/BigInteger": "number" as const,
+  "type/Number": "number" as const,
+  "type/Date": "date" as const,
+  "type/DateTime": "datetime" as const,
+  "type/DateTimeWithTZ": "datetime" as const,
+  "type/DateTimeWithZoneID": "datetime" as const,
+  "type/Instant": "datetime" as const,
+  "type/Time": "time" as const,
+  "type/TimeWithTZ": "time" as const,
+  "type/Text": "string" as const,
+  "type/UUID": "string" as const,
+  "type/Dictionary": "string" as const,
+  "type/Array": "string" as const,
+  "type/*": "string" as const,
+};
+
+const getMetabotColType = (
+  colBaseType: string | undefined,
+): MetabotColumnType => {
+  return colBaseType
+    ? (colTypeToMetabotColTypeMap[colBaseType] ?? ("string" as const))
+    : ("string" as const);
+};
+
 export const useRegisterQueryBuilderMetabotContext = () => {
   const question = useSelector(getQuestion);
   const isLoadingComplete = useSelector(getIsLoadingComplete);
   const chartImageRef = useRef<string | undefined>();
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>();
 
+  // TODO: I don't think we should be syncing this constantly
+  // - [ ] run some timings on how long it takes
+  // - [ ] can we make the fetching of chat context async and then just move this into the registered context provider
+  //
   // Capture chart image when loading is complete
   useEffect(() => {
     if (!question || !isLoadingComplete) {
@@ -27,18 +70,26 @@ export const useRegisterQueryBuilderMetabotContext = () => {
 
     // Small delay to ensure visualization has rendered
     const timeout = setTimeout(async () => {
+      let imageBase64: string | undefined = undefined;
       try {
-        const imageBase64 = await getBase64ChartImage(
+        imageBase64 = await getBase64ChartImage(
           getChartSelector({ cardId: question.id() }),
         );
-        chartImageRef.current = imageBase64;
       } catch (error) {
         console.warn("Failed to capture chart image:", error);
-        chartImageRef.current = undefined;
       }
-    }, 100);
+      // ensure that no newer timeout has been started in the time
+      // it took the async getBase64ChartImage fn to resolve
+      if (timeoutIdRef.current === timeout) {
+        chartImageRef.current = imageBase64;
+      }
+    }, RENDER_DELAY_MS);
+    timeoutIdRef.current = timeout;
 
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(timeout);
+      timeoutIdRef.current = null;
+    };
   }, [question, isLoadingComplete]);
 
   useRegisterMetabotContextProvider((state) => {
@@ -47,166 +98,87 @@ export const useRegisterQueryBuilderMetabotContext = () => {
       return {};
     }
 
-    // Get real data from Redux state
-    const transformedSeriesData = getTransformedSeries(state);
-    const settings = getVisualizationSettings(state);
+    const vizSettings: ComputedVisualizationSettings =
+      getVisualizationSettings(state);
     const timelines = getTransformedTimelines(state);
+    const transformedSeriesData = getTransformedSeries(state);
 
-    const baseContext = question.isSaved()
-      ? {
-          type: question.type(),
-          id: question.id(),
-          query: question.datasetQuery(),
-        }
-      : { type: "adhoc" as const, query: question.datasetQuery() };
+    const questionCtx = question.isSaved()
+      ? { id: question.id(), type: question.type() }
+      : { type: "adhoc" as const };
 
-    const mapBaseType = (baseType: string | undefined) => {
-      // Map base types to one of Literal["number", "string", "date", "datetime", "time", "boolean"]
-      if (!baseType) {
-        return "string";
-      }
+    const series = !vizSettings
+      ? {}
+      : transformedSeriesData
+          .filter((series) => !!series.data.cols && !!series.data.rows)
+          .reduce(
+            (acc, series, index) => {
+              const { cols, rows } = series.data;
+              const seriesKey = series.card.name || `series_${index}`;
 
-      switch (baseType) {
-        case "type/Boolean":
-          return "boolean";
-        case "type/Float":
-        case "type/Integer":
-        case "type/Decimal":
-        case "type/BigInteger":
-        case "type/Number":
-          return "number";
-        case "type/Date":
-          return "date";
-        case "type/DateTime":
-        case "type/DateTimeWithTZ":
-        case "type/DateTimeWithZoneID":
-        case "type/Instant":
-          return "datetime";
-        case "type/Time":
-        case "type/TimeWithTZ":
-          return "time";
-        case "type/Text":
-        case "type/UUID":
-        case "type/Dictionary":
-        case "type/Array":
-        case "type/*":
-        default:
-          return "string";
-      }
-    };
+              const dimensionCol = cols.find(
+                (col) => !!vizSettings["graph.dimensions"]?.includes(col.name),
+              );
+              const metricCol = cols.find(
+                (col) => !!vizSettings["graph.metrics"]?.includes(col.name),
+              );
+              if (!dimensionCol || !metricCol) {
+                return acc;
+              }
 
-    // Extract series information from transformed series
-    const extractSeriesInfo = () => {
-      if (
-        !transformedSeriesData ||
-        transformedSeriesData.length === 0 ||
-        !settings
-      ) {
-        return {};
-      }
+              const dimensionIndex = cols.findIndex(
+                (col) => col.name === dimensionCol.name,
+              );
+              const metricIndex = cols.findIndex(
+                (col) => col.name === metricCol.name,
+              );
+              if (dimensionIndex < 0 || metricIndex < 0) {
+                return acc;
+              }
 
-      const seriesInfo: Record<string, any> = {};
-
-      transformedSeriesData.forEach((series, index) => {
-        if (!series.data || !series.data.cols || !series.data.rows) {
-          return;
-        }
-
-        const seriesKey = series.card.name || `series_${index}`;
-        const cols = series.data.cols;
-        const rows = series.data.rows; // Find dimension and metric columns
-        const settingsObj = settings as any;
-        const dimensionCol = cols.find(
-          (col) =>
-            settingsObj["graph.dimensions"] &&
-            settingsObj["graph.dimensions"].includes(col.name),
-        );
-        const metricCol = cols.find(
-          (col) =>
-            settingsObj["graph.metrics"] &&
-            settingsObj["graph.metrics"].includes(col.name),
-        );
-
-        if (dimensionCol && metricCol) {
-          const dimensionIndex = cols.findIndex(
-            (col) => col.name === dimensionCol.name,
-          );
-          const metricIndex = cols.findIndex(
-            (col) => col.name === metricCol.name,
+              return Object.assign(acc, {
+                [seriesKey]: {
+                  x: {
+                    name: dimensionCol.name,
+                    type: getMetabotColType(dimensionCol.base_type),
+                  },
+                  y: {
+                    name: metricCol.name,
+                    type: getMetabotColType(metricCol.base_type),
+                  },
+                  x_values: rows.map((row) => row[dimensionIndex]),
+                  y_values: rows.map((row) => row[metricIndex]),
+                  display_name: seriesKey,
+                  chart_type: series.card.display,
+                  stacked: vizSettings["stackable.stack_type"] === "stacked",
+                },
+              });
+            },
+            {} as Record<string, MetabotSeriesConfig>,
           );
 
-          const xValues = rows
-            .map((row) => row[dimensionIndex])
-            .filter((val) => val != null);
-          const yValues = rows
-            .map((row) => row[metricIndex])
-            .filter((val) => val != null);
-
-          seriesInfo[seriesKey] = {
-            x: {
-              name: dimensionCol.name,
-              type: mapBaseType(dimensionCol.base_type) || "string",
-            },
-            y: {
-              name: metricCol.name,
-              type: mapBaseType(metricCol.base_type) || "number",
-            },
-            x_values: xValues,
-            y_values: yValues,
-            display_name: series.card.name || seriesKey,
-            chart_type: series.card.display || "line",
-            stacked: settingsObj["stackable.stack_type"] === "stacked" || false,
-          };
-        }
-      });
-
-      return seriesInfo;
-    };
-
-    // Extract timeline events
-    const extractTimelineEvents = () => {
-      if (!timelines || timelines.length === 0) {
-        return [];
-      }
-
-      const events: Array<{
-        name: string;
-        description: string;
-        timestamp: Date;
-      }> = [];
-
-      timelines.forEach((timeline) => {
-        if (timeline.events) {
-          timeline.events.forEach((event) => {
-            events.push({
-              name: event.name,
-              description: event.description || "",
-              timestamp: new Date(event.timestamp),
-            });
-          });
-        }
-      });
-
-      // Sort by timestamp (most recent first) and limit
-      return events
-        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-        .slice(0, 20);
-    };
-
-    const seriesInfo = extractSeriesInfo();
-    const timelineEvents = extractTimelineEvents();
+    const timeline_events = timelines
+      .flatMap((timeline) => timeline.events ?? [])
+      .map((event) => ({
+        name: event.name,
+        description: event.description ?? "",
+        timestamp: dayjs.tz(dayjs(event.timestamp)).format(),
+      }))
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+      .slice(0, 20);
 
     return {
       user_is_viewing: [
         {
-          ...baseContext,
+          ...questionCtx,
+          query: question.datasetQuery(),
           chart_configs: [
             {
               image_base_64: chartImageRef.current,
               title: question.displayName(),
               description: question.description(),
-              series: seriesInfo,
-              timeline_events: timelineEvents,
+              series,
+              timeline_events,
             },
           ],
         },
