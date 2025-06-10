@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+
 import {
   setEditingParameter,
   setParameterIndex,
@@ -16,7 +18,8 @@ import type { Parameter } from "metabase-types/api";
 
 import { ParametersList } from "../../../parameters/components/ParametersList";
 
-interface DashboardParameterListProps {
+interface DashboardParameterListProps
+  extends Pick<ComponentProps<typeof ParametersList>, "widgetsVariant"> {
   parameters: Array<Parameter & { value: unknown }>;
   isFullscreen: boolean;
 }
@@ -24,6 +27,7 @@ interface DashboardParameterListProps {
 export function DashboardParameterList({
   parameters,
   isFullscreen,
+  widgetsVariant,
 }: DashboardParameterListProps) {
   const dashboard = useSelector(getDashboardComplete);
   const editingParameter = useSelector(getEditingParameter);
@@ -49,6 +53,7 @@ export function DashboardParameterList({
         dispatch(setParameterValueToDefault(id))
       }
       enableParameterRequiredBehavior
+      widgetsVariant={widgetsVariant}
     />
   );
 }

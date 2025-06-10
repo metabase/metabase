@@ -37,6 +37,7 @@ export const ParametersList = ({
   setParameterIndex,
   setEditingParameter,
   enableParameterRequiredBehavior,
+  widgetsVariant = "default",
 }: ParametersListProps) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
@@ -62,6 +63,7 @@ export const ParametersList = ({
   }: RenderItemProps<Parameter>) => (
     <ParameterWidget
       key={`sortable-${id}`}
+      variant={widgetsVariant}
       className={cx({ [CS.mb2]: vertical })}
       isEditing={isEditing}
       isFullscreen={isFullscreen}

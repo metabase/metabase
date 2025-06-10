@@ -2,11 +2,9 @@ import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import {
   getDashCardInlineValuePopulatedParameters,
-  getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -38,15 +36,12 @@ export function Heading({
   settings,
   isEditing,
   isFullscreen,
-  isMobile,
   onUpdateVisualizationSettings,
 }: HeadingProps) {
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard?.id),
   );
   const parameterValues = useSelector(getParameterValues);
-
-  const isEditingParameter = useSelector(getIsEditingParameter);
 
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
@@ -85,16 +80,23 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
-        {isEditingParameter ? (
-          <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
-        ) : isPreviewing ? (
-          <HeadingContent
-            data-testid="editing-dashboard-heading-preview"
-            isEditing={isEditing}
-            onMouseDown={preventDragging}
-          >
-            {hasContent ? settings.text : placeholder}
-          </HeadingContent>
+        {isPreviewing ? (
+          <Flex align="center" justify="space-between">
+            <HeadingContent
+              data-testid="editing-dashboard-heading-preview"
+              isEditing={isEditing}
+              onMouseDown={preventDragging}
+            >
+              {hasContent ? settings.text : placeholder}
+            </HeadingContent>
+            {inlineParameters.length > 0 && (
+              <DashboardParameterList
+                parameters={inlineParameters}
+                isFullscreen={isFullscreen}
+                widgetsVariant="subtle"
+              />
+            )}
+          </Flex>
         ) : (
           <TextInput
             name="heading"
@@ -141,6 +143,7 @@ export function Heading({
         <DashboardParameterList
           parameters={inlineParameters}
           isFullscreen={isFullscreen}
+          widgetsVariant="subtle"
         />
       )}
     </Flex>
