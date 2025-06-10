@@ -647,3 +647,53 @@ describe("issue 57644", () => {
     });
   });
 });
+
+describe("issue 59075", () => {
+  const WINDOW_HEIGHT = 1000;
+  const BUTTON_INDEX = 0;
+  const SLOPPY_CLICK_THRESHOLD = 10;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.startNewNativeQuestion();
+    cy.viewport(1024, WINDOW_HEIGHT);
+  });
+
+  it("should not be possibte to resize the native query editor too far (metabase#59075)", () => {
+    cy.findByTestId("drag-handle").then((handle) => {
+      const coordsDrag = handle[0].getBoundingClientRect();
+      const coordsDrop = { x: coordsDrag.x, y: WINDOW_HEIGHT };
+
+      cy.wrap(handle)
+        .trigger("mousedown", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x,
+          clientY: coordsDrag.y,
+          force: true,
+        })
+        .trigger("mousemove", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x + SLOPPY_CLICK_THRESHOLD,
+          clientY: coordsDrag.y,
+          force: true,
+        });
+
+      cy.get("body")
+        .trigger("mousemove", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrop.x,
+          clientY: coordsDrop.y,
+          force: true,
+        })
+        .trigger("mouseup");
+    });
+
+    H.NativeEditor.get().then((editor) => {
+      const { bottom } = editor.get()[0].getBoundingClientRect();
+
+      cy.wrap(bottom).should("be.lessThan", WINDOW_HEIGHT - 50);
+    });
+  });
+});

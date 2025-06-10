@@ -321,7 +321,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     const parameters = query.question().parameters();
 
     const dragHandle = resizable ? (
-      <div className={S.dragHandleContainer}>
+      <div className={S.dragHandleContainer} data-testid="drag-handle">
         <div className={S.dragHandle} />
       </div>
     ) : null;
