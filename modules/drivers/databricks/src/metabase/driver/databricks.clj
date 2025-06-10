@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,14 +15,23 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
-   [java.sql Connection ResultSet ResultSetMetaData Statement]
-   [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime OffsetTime]))
+   [java.sql
+    Connection
+    ResultSet
+    ResultSetMetaData
+    Statement]
+   [java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime]))
 
 (set! *warn-on-reflection* true)
 
@@ -258,7 +267,7 @@
          :transportMode  "http"
          :ssl            1
          :HttpPath       http-path
-         :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
+         :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
          :UseNativeQuery 1}]
     (merge base-spec
            (when log-level
@@ -337,12 +346,12 @@
     (assert (timestamp-database-type-names database-type-name))
     (if (= "TIMESTAMP" database-type-name)
       (fn []
-        (assert (some? (qp.timezone/results-timezone-id)))
+        (assert (some? (driver-api/results-timezone-id)))
         (when-let [t (.getTimestamp rs i)]
           (t/with-offset-same-instant
             (t/offset-date-time
              (t/zoned-date-time (t/local-date-time t)
-                                (t/zone-id (qp.timezone/results-timezone-id))))
+                                (t/zone-id (driver-api/results-timezone-id))))
             (t/zone-id "Z"))))
       (fn []
         (when-let [t (.getTimestamp rs i)]
@@ -355,10 +364,10 @@
   [dt]
   (if (instance? LocalDateTime dt)
     dt
-    (let [tz-str      (try (qp.timezone/results-timezone-id)
+    (let [tz-str      (try (driver-api/results-timezone-id)
                            (catch Throwable _
                              (log/trace "Failed to get `results-timezone-id`. Using system timezone.")
-                             (qp.timezone/system-timezone-id)))
+                             (driver-api/system-timezone-id)))
           adjusted-dt (t/with-zone-same-instant (t/zoned-date-time dt) (t/zone-id tz-str))]
       (t/local-date-time adjusted-dt))))
 

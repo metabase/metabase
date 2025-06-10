@@ -853,7 +853,8 @@
                                     :database-type "STRING",
                                     :base-type :type/Text,
                                     :nfc-path ["primary"],
-                                    :database-position 2}}}
+                                    :database-position 2}}
+                                 :visibility-type :details-only}
                                 {:name "participants",
                                  :table-name tbl-nm
                                  :table-schema test-db-name

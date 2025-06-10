@@ -8,28 +8,28 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DatabaseMetaData Date ResultSet Time Timestamp Types SQLFeatureNotSupportedException)
+   (java.sql
+    Connection
+    DatabaseMetaData
+    Date
+    ResultSet
+    SQLFeatureNotSupportedException
+    Time
+    Timestamp
+    Types)
    (java.time OffsetDateTime ZonedDateTime)
    [java.util UUID]
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
@@ -79,7 +79,7 @@
         :OutputLocation s3_staging_dir
         :WorkGroup      workgroup
         :Region      region}
-       (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
+       (when (and (not (driver-api/is-hosted?)) (str/blank? access_key))
          {:CredentialsProvider "DefaultChain"})
        (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"
@@ -160,7 +160,7 @@
     ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
     (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
       (let [timestamp-instant (.toInstant timestamp)
-            results-timezone (qp.timezone/results-timezone-id)]
+            results-timezone (driver-api/results-timezone-id)]
         (try
           (t/zoned-date-time timestamp-instant (t/zone-id results-timezone))
           (catch Throwable _

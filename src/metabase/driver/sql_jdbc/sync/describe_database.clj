@@ -3,16 +3,13 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.interface :as mi]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -52,7 +49,7 @@
        (filter #(include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters %)))
       (into #{})))))
 
-(mu/defn simple-select-probe-query :- [:cat ::lib.schema.common/non-blank-string [:* :any]]
+(mu/defn simple-select-probe-query :- [:cat driver-api/schema.common.non-blank-string [:* :any]]
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
   anything useful (only used to check whether we can execute a SELECT query)
 
@@ -243,12 +240,12 @@
 (defn db-or-id-or-spec->database
   "Get database instance from `db-or-id-or-spec`."
   [db-or-id-or-spec]
-  (cond (mi/instance-of? :model/Database db-or-id-or-spec)
+  (cond (driver-api/instance-of? :model/Database db-or-id-or-spec)
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (qp.store/with-metadata-provider db-or-id-or-spec
-          (lib.metadata/database (qp.store/metadata-provider)))
+        (driver-api/with-metadata-provider db-or-id-or-spec
+          (driver-api/database (driver-api/metadata-provider)))
 
         :else
         nil))
