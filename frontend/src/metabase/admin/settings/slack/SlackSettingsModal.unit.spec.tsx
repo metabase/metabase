@@ -7,7 +7,7 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
-import { SlackSettingsPage } from "./SlackSettingsPage";
+import { SlackSettingsModal } from "./SlackSettingsModal";
 
 const setup = async ({
   isApp,
@@ -29,13 +29,13 @@ const setup = async ({
 
   setupSlackManifestEndpoint();
 
-  renderWithProviders(<SlackSettingsPage />);
+  renderWithProviders(<SlackSettingsModal isOpen onClose={() => {}} />);
 
   await screen.findByText("Notification channels");
 };
 
-describe("SlackSettingsPage", () => {
-  it("should render the status page when the app is configured", async () => {
+describe("SlackSettingsModal", () => {
+  it("should render the status display when the app is configured", async () => {
     await setup({ isApp: true, isBot: false, isValid: true });
 
     expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe("SlackSettingsPage", () => {
     expect(manifestRequest).not.toBeDefined();
   });
 
-  it("should render the setup page and load the manifest when the app is not configured", async () => {
+  it("should render the setup display and load the manifest when the app is not configured", async () => {
     await setup({ isApp: false, isBot: false, isValid: false });
 
     expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
