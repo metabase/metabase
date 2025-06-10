@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
-  setupUpdateSettingsEndpoint,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
@@ -130,7 +130,7 @@ describe("useLicenseTokenMissingBanner", () => {
     fetchMock.reset();
     jest.useFakeTimers();
     jest.setSystemTime(NOW);
-    setupUpdateSettingsEndpoint();
+    setupUpdateSettingEndpoint();
   });
 
   describe("shouldShow", () => {
@@ -152,7 +152,6 @@ describe("useLicenseTokenMissingBanner", () => {
   describe("dismissBanner", () => {
     it("updates lastDismissed", async () => {
       const { result } = setup();
-      fetchMock.putOnce(SETTINGS_ENDPOINT, 204);
 
       expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(true);
 
@@ -177,7 +176,6 @@ describe("useLicenseTokenMissingBanner", () => {
       ];
 
       const { result } = setup({ dismissals: existingDismissals });
-      fetchMock.put(SETTINGS_ENDPOINT, 204);
 
       act(() => {
         result.current.dismissBanner();
