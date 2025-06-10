@@ -34,7 +34,9 @@
               :sso_source       :jwt
               :login_attributes user-attributes
               :tenant_id        (when tenant-slug
-                                  (t2/select-one-pk :model/Tenant :slug tenant-slug))}]
+                                  (or (t2/select-one-pk :model/Tenant :slug tenant-slug)
+                                      (throw (ex-info (tru "Cannot find tenant with slug {0}" tenant-slug)
+                                                      {:status-code 400}))))}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
