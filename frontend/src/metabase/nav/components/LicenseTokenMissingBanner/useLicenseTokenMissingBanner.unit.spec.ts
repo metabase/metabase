@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
@@ -21,7 +22,7 @@ jest.mock("underscore", () => {
 });
 
 const SETTINGS_ENDPOINT =
-  "path:/api/setting/license-token-missing-banner-dismissal-timestamp";
+  "/api/setting/license-token-missing-banner-dismissal-timestamp";
 
 import {
   shouldShowBanner,
@@ -159,8 +160,9 @@ describe("useLicenseTokenMissingBanner", () => {
         result.current.dismissBanner();
       });
 
-      await waitFor(() => {
-        expect(fetchMock.called(SETTINGS_ENDPOINT)).toBe(true);
+      await waitFor(async () => {
+        const [{ url }] = await findRequests("PUT");
+        expect(url).toContain(SETTINGS_ENDPOINT);
       });
       await waitFor(() => {
         expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(false);
@@ -181,17 +183,18 @@ describe("useLicenseTokenMissingBanner", () => {
         result.current.dismissBanner();
       });
 
-      await waitFor(() => {
-        expect(fetchMock.called(SETTINGS_ENDPOINT)).toBe(true);
+      await waitFor(async () => {
+        const [{ url }] = await findRequests("PUT");
+        expect(url).toContain(SETTINGS_ENDPOINT);
       });
 
-      const lastBody = await fetchMock
-        .lastCall(SETTINGS_ENDPOINT)
-        ?.request?.json();
-
-      expect(lastBody?.value).not.toContain(FIRST_DISMISSAL.toISOString());
-      expect(lastBody?.value).toContain(SECOND_DISMISSAL.toISOString());
-      expect(lastBody?.value).toContain(NOW.toISOString());
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      const [{ url, body }] = puts;
+      expect(url).toContain(SETTINGS_ENDPOINT);
+      expect(body).toEqual({
+        value: [SECOND_DISMISSAL.toISOString(), NOW.toISOString()],
+      });
     });
   });
 });
