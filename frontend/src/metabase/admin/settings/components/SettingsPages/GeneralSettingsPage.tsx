@@ -19,7 +19,7 @@ export function GeneralSettingsPage() {
   return (
     <Stack gap="lg">
       <Title order={1}>{t`General`}</Title>
-      <SettingsSection title={t`Site config`}>
+      <SettingsSection title={t`App config`}>
         <AdminSettingInput
           name="site-name"
           title={t`Site Name`}
@@ -38,17 +38,17 @@ export function GeneralSettingsPage() {
       <SettingsSection title={t`Email and tracking`}>
         <AdminSettingInput
           name="admin-email"
-          title={t`Email Address for Help Requests`}
+          title={t`Email address for help requests`}
           inputType="text"
         />
 
         <AnonymousTrackingInput />
       </SettingsSection>
 
-      <SettingsSection title={t`Tables, X-Rays and Domains`}>
+      <SettingsSection title={t`Tables, X-Rays and domains`}>
         <AdminSettingInput
           name="humanization-strategy"
-          title={t`Friendly Table and Field Names`}
+          title={t`Friendly table and field names`}
           options={[
             {
               value: "simple",
@@ -61,7 +61,7 @@ export function GeneralSettingsPage() {
 
         <AdminSettingInput
           name="enable-xrays"
-          title={t`Enable X-Ray Features`}
+          title={t`Enable X-Ray features`}
           inputType="boolean"
         />
 
