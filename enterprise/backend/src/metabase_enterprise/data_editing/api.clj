@@ -453,16 +453,12 @@
            :mapping   {:table-id (:table-id input)
                        :row      ::root}}
 
-          (:table-id scope)
-          {:action-kw (keyword action_id)
-           :mapping   {:table-id (:table-id scope)
-                       :row      ::root}}
-
           (:dashcard-id scope)
           (let [{:keys [dashcard-id]} scope
                 {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
             (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-            {:inner-action  {:action-kw (keyword action_id)
+            {:dashcard-viz  visualization_settings
+             :inner-action  {:action-kw (keyword action_id)
                              :mapping   {:table-id (:table_id visualization_settings)
                                          :row      ::root}}
              :param-mapping (->> visualization_settings
@@ -470,6 +466,12 @@
                                  (some (fn [{:keys [id parameterMappings]}]
                                          (when (= id action_id)
                                            parameterMappings))))})
+
+          (:table-id scope)
+          {:action-kw (keyword action_id)
+           :mapping   {:table-id (:table-id scope)
+                       :row      ::root}}
+
           :else
           (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
                           {:status-code 400
@@ -568,20 +570,33 @@
         (fn [& {:keys [action-kw
                        table-id
                        param-mapping
+                       dashcard-viz
                        row-delay]}]
-          (let [table-id            table-id
-                table               (api/read-check (t2/select-one :model/Table :id table-id :active true))
-                field-name->mapping (u/index-by :parameterId param-mapping)
-                fields              (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
-                                        (t2/hydrate :dimensions
-                                                    :has_field_values
-                                                    :values))]
+          (let [table-id                    table-id
+                table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
+                field-name->mapping         (u/index-by :parameterId param-mapping)
+                fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
+                                                (t2/hydrate :dimensions
+                                                            :has_field_values
+                                                            :values))
+                dashcard-column-editable?   (or (some-> dashcard-viz :table.editableColumns set)
+                                                ;; columns are assumed editable if no dashcard-viz specialisation
+                                                (constantly true))
+                dashcard-sort               (zipmap (map :name (:table.columns dashcard-viz)) (range))
+                field-name->dashcard-column (u/index-by :name (:table.columns dashcard-viz))
+                field-sort                  (zipmap (map :name fields) (range))
+                sort-key                    (fn [{:keys [name]}]
+                                              (or (dashcard-sort name) ; prefer user defined sort in the dashcard
+                                                  (+ (inc (count dashcard-sort))
+                                                     (field-sort name))))]
+
             {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
              :parameters
-             (->> (for [field fields
+             (->> (for [field (sort-by sort-key fields)
                         :let [{field-values :values} field
                               pk                     (= :type/PK (:semantic_type field))
-                              param-mapping          (field-name->mapping (:name field))]
+                              param-mapping          (field-name->mapping (:name field))
+                              dashcard-column        (field-name->dashcard-column (:name field))]
                         :when (case action-kw
                                 ;; create does not take pk cols if auto increment, todo generated cols?
                                 :table.row/create (not (:database_is_auto_increment field))
@@ -589,7 +604,10 @@
                                 :table.row/delete pk
                                 ;; update takes both the pk and field (if not a row action)
                                 :table.row/update true)
+                        ;; row-actions can explicitly hide parameters
                         :when (not= "hidden" (:visibility param-mapping))
+                        ;; dashcard column context can hide parameters (if defined)
+                        :when (:enabled dashcard-column true)
                         :let [required (or pk (:database_required field))]]
                     (u/remove-nils
                      {:id                      (:name field)
@@ -601,9 +619,9 @@
                       :optional                (not required)
                       :nullable                (:database_is_nullable field)
                       :database_default        (:database_default field)
-                      :readonly                (= "readonly" (:visibility param-mapping))
+                      :readonly                (or (= "readonly" (:visibility param-mapping))
+                                                   (not (dashcard-column-editable? (:name field))))
                       :value                   (param-value param-mapping row-delay)}))
-
                   vec)}))]
 
     (cond
@@ -620,7 +638,8 @@
         :table-id      (or (:table-id (:mapping (:inner-action unified)))
                            (:table-id (:mapping unified))
                            (:table-id input))
-        :param-mapping (:param-mapping unified)})
+        :param-mapping (:param-mapping unified)
+        :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
 
       (:inner-action unified)
       (let [inner       (:inner-action unified)
@@ -645,16 +664,17 @@
                                 (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
         (cond
           saved-id
-          (describe-saved-action :action-id saved-id
+          (describe-saved-action :action-id              saved-id
                                  :row-action-dashcard-id dashcard-id
-                                 :param-mapping mapping
-                                 :row-delay row-delay)
+                                 :param-mapping          mapping
+                                 :row-delay              row-delay)
 
           action-kw
-          (describe-table-action :action-kw action-kw
-                                 :table-id table-id
+          (describe-table-action :action-kw     action-kw
+                                 :table-id      table-id
                                  :param-mapping mapping
-                                 :row-delay row-delay)
+                                 :dashcard-viz  (:dashcard-viz unified)
+                                 :row-delay     row-delay)
 
           :else (ex-info "Not a supported row action" {:status-code 500, :scope scope, :unified unified})))
       :else
