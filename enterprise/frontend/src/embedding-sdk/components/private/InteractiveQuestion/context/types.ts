@@ -9,9 +9,9 @@ import type {
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk/types/question";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 type InteractiveQuestionConfig = {
   /**

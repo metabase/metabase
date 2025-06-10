@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -61,7 +62,7 @@
 
 (deftest ^:parallel only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
-    (binding [h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (is (thrown-with-msg?
            org.h2.jdbc.JdbcSQLNonTransientConnectionException
            #"Database .+ not found, .+"
@@ -73,7 +74,7 @@
                         (System/getProperty "user.dir")
                         "/toucan_sightings.db"
                         ";TRACE_LEVEL_SYSTEM_OUT=1\\;CREATE TRIGGER IAMPWNED BEFORE SELECT ON INFORMATION_SCHEMA.TABLES AS $$//javascript\nnew java.net.URL('http://localhost:3000/api/health').openConnection().getContentLength()\n$$--=x\\;")
-          result (try (binding [h2/*allow-testing-h2-connections* true]
+          result (try (binding [driver.settings/*allow-testing-h2-connections* true]
                         (driver/can-connect? :h2 {:db conn-str}))
                       ::did-not-throw
                       (catch Exception e e))]
