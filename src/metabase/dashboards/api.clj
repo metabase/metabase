@@ -1139,7 +1139,8 @@
    constraint-param-key->value  :- [:map-of string? any?]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
-    (binding [qp.perms/*param-values-query* true]
+    (binding [qp.perms/*param-values-query* true
+              chain-filter/*allow-implicit-remapping* false]
       (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"

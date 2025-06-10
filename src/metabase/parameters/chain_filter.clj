@@ -117,24 +117,29 @@
 (defn- joined-table-alias [table-id]
   (format "table_%d" table-id))
 
-(def ^:private ^{:arglists '([field-id])} temporal-field?
+(def ^:private ^{:arglists '([field-id])} memoized-field-by-id
   "Whether Field with `field-id` is a temporal Field such as a Date or Datetime. Cached for 10 minutes to avoid hitting
   the DB too much since this is unlike to change often, if ever."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[field-id]]
                          [(mdb/unique-identifier) field-id])}
    (fn [field-id]
-     (types/temporal-field? (t2/select-one [:model/Field :base_type :semantic_type] :id field-id)))
+     (t2/select-one [:model/Field :base_type :semantic_type] :id field-id))
    :ttl/threshold (u/minutes->ms 10)))
 
 (mu/defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id
    {:keys [field-id op value options]} :- Constraint]
-  (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
-                       [:field field-id (when-not (= this-field-table-id source-table-id)
-                                          {:join-alias (joined-table-alias this-field-table-id)})])]
-    (if (and (temporal-field? field-id)
+  (let [{:keys [base_type] :as field-metadata} (memoized-field-by-id field-id)
+        field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
+                       [:field field-id (merge (when base_type
+                                                 ;; This may be prone to eg. coercion errors. However effective in
+                                                 ;; _clause options_ is not standard part of options.
+                                                 {:base-type base_type})
+                                               (when-not (= this-field-table-id source-table-id)
+                                                 {:join-alias (joined-table-alias this-field-table-id)}))])]
+    (if (and (types/temporal-field? field-metadata)
              (string? value))
       (u/ignore-exceptions
         (params.dates/date-string->filter value field-id))
@@ -502,26 +507,32 @@
                (mdb/isa :dest.semantic_type :type/Name)]
    :limit     1})
 
+(def ^:dynamic *allow-implicit-remapping*
+  "Should implicit remapping be allowed? Not eg. for `GET /dashboard/:id/params/:param-key/search/:query`
+  to search on actual field that was picked for filtering (#59020)."
+  true)
+
 (defn- remapped-field-id-query [field-id]
   {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
-   :from   [[{::union [;; Explicit FK Field->Field remapping
-                       {:select [[:dimension.human_readable_field_id :id] [[:inline "fk->field"] :mapping_type]]
-                        :from   [[:dimension :dimension]]
-                        :where  [:and
-                                 [:= :dimension.field_id field-id]
-                                 [:not= :dimension.human_readable_field_id nil]]
-                        :limit  1}
-                       ;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                       (implicit-pk->name-mapping-query
-                        {:select    [:fk_target_field_id]
-                         :from      [:metabase_field]
-                         :where     [:and
-                                     [:= :id field-id]
-                                     (mdb/isa :semantic_type :type/FK)]
-                         :limit     1}
-                        "fk->pk->name")
-                       ;; Implicit PK Field-> [Name] Field remapping
-                       (implicit-pk->name-mapping-query field-id "pk->name")]}
+   :from   [[{::union (into [;; Explicit FK Field->Field remapping
+                             {:select [[:dimension.human_readable_field_id :id] [[:inline "fk->field"] :mapping_type]]
+                              :from   [[:dimension :dimension]]
+                              :where  [:and
+                                       [:= :dimension.field_id field-id]
+                                       [:not= :dimension.human_readable_field_id nil]]
+                              :limit  1}]
+                            (when *allow-implicit-remapping*
+                              [;; Implicit FK Field -> PK Field -> [Name] Field remapping
+                               (implicit-pk->name-mapping-query
+                                {:select    [:fk_target_field_id]
+                                 :from      [:metabase_field]
+                                 :where     [:and
+                                             [:= :id field-id]
+                                             (mdb/isa :semantic_type :type/FK)]
+                                 :limit     1}
+                                "fk->pk->name")
+                               ;; Implicit PK Field-> [Name] Field remapping
+                               (implicit-pk->name-mapping-query field-id "pk->name")]))}
              :mapping]]
    :limit  1})
 
