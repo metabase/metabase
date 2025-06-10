@@ -60,7 +60,11 @@ import {
   getQuestions,
   getSelectedTabId,
 } from "../selectors";
-import { isQuestionDashCard, supportsInlineParameters } from "../utils";
+import {
+  findDashCardForInlineParameter,
+  isQuestionDashCard,
+  supportsInlineParameters,
+} from "../utils";
 
 import {
   type SetDashCardAttributesOpts,
@@ -198,6 +202,23 @@ export const removeParameter = createThunkAction(
           return parameter;
         });
     });
+
+    const dashcards = Object.values(getDashcards(getState()));
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      dashcards,
+    );
+    if (parameterDashcard) {
+      const inline_parameters = parameterDashcard.inline_parameters.filter(
+        (id) => id !== parameterId,
+      );
+      dispatch(
+        setDashCardAttributes({
+          id: parameterDashcard.id,
+          attributes: { inline_parameters },
+        }),
+      );
+    }
 
     return { id: parameterId };
   },
