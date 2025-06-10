@@ -118,7 +118,7 @@
         (let [rows [["es" "Hello" "Hola"]
                     ["fr" "Goodbye" "Au revoir"]
                     ["de" "Thank you" "Danke"]
-                    ["pt_br" "Thank you" "Obrigado"]]]
+                    ["pt-br" "Thank you" "Obrigado"]]]
           (dictionary/import-translations! rows)
           (is (= 4 (count-translations)) "All translations should be imported")
 
