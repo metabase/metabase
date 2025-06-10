@@ -49,6 +49,7 @@ export type ParameterValueWidgetProps = {
   enableRequiredBehavior?: boolean;
   mimicMantine?: boolean;
   isSortable?: boolean;
+  variant?: "default" | "subtle";
 } & Partial<PopoverProps>;
 
 export const ParameterValueWidget = ({
@@ -68,6 +69,7 @@ export const ParameterValueWidget = ({
   setParameterValueToDefault,
   setValue,
   value,
+  variant = "default",
   ...popoverProps
 }: ParameterValueWidgetProps) => {
   const tc = useTranslateContent();
@@ -79,7 +81,8 @@ export const ParameterValueWidget = ({
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
-  const showTypeIcon = !isEditing && !hasValue && !isFocused;
+  const showTypeIcon =
+    !isEditing && !hasValue && !isFocused && !(variant === "subtle");
 
   const [isOpen, { close, toggle }] = useDisclosure();
 
@@ -200,6 +203,7 @@ export const ParameterValueWidget = ({
       >
         <ParameterValueWidgetTrigger
           className={cx(S.noPopover, className)}
+          variant={variant}
           ariaLabel={parameter.name}
           hasValue={hasValue}
         >
@@ -266,6 +270,7 @@ export const ParameterValueWidget = ({
               className={className}
               ariaLabel={placeholder}
               mimicMantine={mimicMantine}
+              variant={variant}
             >
               {showTypeIcon && (
                 <Icon
@@ -275,7 +280,9 @@ export const ParameterValueWidget = ({
                 />
               )}
               <div
-                className={cx(CS.mr1)}
+                className={cx(CS.mr1, {
+                  [S[variant]]: variant,
+                })}
                 style={
                   isStringParameter(parameter) ? { maxWidth: "190px" } : {}
                 }

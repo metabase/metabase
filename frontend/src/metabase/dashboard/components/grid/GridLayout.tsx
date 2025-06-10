@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   type ItemCallback,
-  Layout,
   Responsive as ReactGridLayout,
 } from "react-grid-layout";
 

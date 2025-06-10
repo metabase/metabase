@@ -5,12 +5,16 @@
   min-height: 30px;
   min-width: 150px;
   color: var(--mb-color-text-secondary);
-}
 
-.parameter.selected {
-  font-weight: bold;
-  color: var(--mb-color-brand);
-  border-color: var(--mb-color-brand);
+  &.selected {
+    font-weight: bold;
+    color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
+  }
+
+  &.subtle {
+    font-weight: 400;
+  }
 }
 
 .parameter input {
