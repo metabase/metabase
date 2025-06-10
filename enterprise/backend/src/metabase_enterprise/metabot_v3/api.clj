@@ -33,7 +33,7 @@
         env             (metabot-v3.tools.api/handle-envelope
                          {:context         (metabot-v3.context/create-context context)
                           :metabot-id      metabot_id
-                          :profile-id      (get-in metabot-v3.config/metabot-config [metabot_id :profile-id])
+                          :profile-id      (metabot-v3.config/metabot-profile-id metabot_id)
                           :conversation-id conversation_id
                           :messages        history
                           :state           state})

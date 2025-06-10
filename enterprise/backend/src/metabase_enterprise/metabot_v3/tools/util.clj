@@ -3,11 +3,11 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -98,19 +98,6 @@
   (-> (t2/select-one :model/Card :id id)
       api/read-check))
 
-(defn get-metrics-and-models
-  "Retrieve the metric and model cards from the collection with name `collection-name` from the app DB."
-  [collection-name]
-  (let [collection-query {:select [:id]
-                          :from :collection
-                          :where [:= :name collection-name]}]
-    (-> (t2/select :model/Card
-                   :type [:in [:metric :model]]
-                   :collection_id [:in collection-query]
-                   :archived false
-                   {:order-by [:id]})
-        (->> (filter mi/can-read?)))))
-
 (defn card-query
   "Return a query based on the model with ID `model-id`."
   [card-id]
@@ -134,14 +121,8 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (let [collection-name "__METABOT__"]
-      (map #(dissoc % :result_metadata :creator :collection) (get-metrics-and-models collection-name))))
-  -)
-
 (defn metabot-scope-query
-  "Return the cards in metabot scope.
+  "Return the metric and model cards in metabot scope visible to the current user.
 
   If provided, the filter clause `metabot-entity-condition` is used to filter the metabot_entity table. The clause can
   refer to that table using the :mbe alias. The cards are returned with an additional field called :metabot_entity_id
@@ -155,28 +136,47 @@
   ([]
    (metabot-scope-query nil))
   ([metabot-entity-condition]
-   {:union-all
-    [{:select [:card.* [:mbe.id :metabot_entity_id]]
-      :from   [[:report_card :card]]
-      :join   [[:metabot_entity :mbe] (cond-> [:and [:= :mbe.model [:inline "collection"]]]
-                                        metabot-entity-condition (conj metabot-entity-condition))
-               [:collection :ecoll]   [:= :ecoll.id :mbe.model_id]
-               [:collection :coll]    [:or
-                                       [:= :coll.id :ecoll.id]
-                                       [:like :coll.location [:concat :ecoll.location :ecoll.id [:inline "/%"]]]]]
-      :where  [:= :card.collection_id :coll.id]}
-     {:select [:card.* [:mbe.id :metabot_entity_id]]
-      :from   [[:report_card :card]]
-      :join   [[:metabot_entity :mbe] (cond-> [:and
-                                               [:in :mbe.model [[:inline "dataset"] [:inline "metric"]]]]
-                                        metabot-entity-condition (conj metabot-entity-condition))]
-      :where  [:= :card.id :mbe.model_id]}]}))
+   {:select [:*]
+    :from   [[{:union-all
+               [{:select [:card.* [:mbe.id :metabot_entity_id]]
+                 :from   [[:report_card :card]]
+                 :join   [[:metabot_entity :mbe] (cond-> [:and [:= :mbe.model [:inline "collection"]]]
+                                                   metabot-entity-condition (conj metabot-entity-condition))
+                          [:collection :ecoll]   [:= :ecoll.id :mbe.model_id]
+                          [:collection :coll]    [:or
+                                                  [:= :coll.id :ecoll.id]
+                                                  [:like :coll.location [:concat :ecoll.location :ecoll.id [:inline "/%"]]]]]
+                 :where  [:= :card.collection_id :coll.id]}
+                {:select [:card.* [:mbe.id :metabot_entity_id]]
+                 :from   [[:report_card :card]]
+                 :join   [[:metabot_entity :mbe] (cond-> [:and
+                                                          [:in :mbe.model [:inline ["dataset"  "metric"]]]]
+                                                   metabot-entity-condition (conj metabot-entity-condition))]
+                 :where  [:= :card.id :mbe.model_id]}]}
+              :card]]
+    :where  [:and
+             [:in :card.type [:inline ["metric" "model"]]]
+             [:= :card.archived false]
+             ;; check that the current user can see the card
+             (collection/visible-collection-filter-clause :card.collection_id)]}))
 
 (comment
-  (t2/select-fn-vec #(select-keys % [:id :name :type :metabot_entity_id])
-                    :model/Card
-                    (metabot-scope-query [:= :mbe.metabot_id 1]))
+  (binding [api/*current-user-id* 2
+            api/*is-superuser?* true]
+    (t2/select-fn-vec #(select-keys % [:id :name :type :metabot_entity_id])
+                      :model/Card
+                      (metabot-scope-query [:= :mbe.metabot_id 1])))
   -)
+
+(defn get-metrics-and-models
+  "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
+
+  Only card visible to the current user are returned."
+  [metabot-id]
+  (let [scope-query (metabot-scope-query [:= :mbe.metabot_id metabot-id])]
+    (t2/select :model/Card {:select   [:card.*]
+                            :from     [[scope-query :card]]
+                            :order-by [:card.id]})))
 
 (defn metabot-scope
   "Return a map from cards (models or metrics) to the ID of metabot entity they belong to.
