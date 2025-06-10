@@ -122,7 +122,7 @@ export function useDashboardUrlQuery(
   }, [router, location, selectedTab, dispatch]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId", "locale"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
 
 function parseTabId(location: Location) {
   const slug = location.query?.tab;

@@ -229,7 +229,7 @@ export const EmbedFrame = ({
         {headerButtons && !titled ? headerButtons : null}
 
         <span ref={parameterPanelRef} />
-        {hasVisibleParameters && (
+        {hasVisibleParameters ? (
           <FullWidthContainer
             className={cx(EmbedFrameS.ParameterPanel, {
               [TransitionS.transitionThemeChange]:
@@ -266,6 +266,21 @@ export const EmbedFrame = ({
               {dashboard && <FilterApplyButton />}
             </FixedWidthContainer>
           </FullWidthContainer>
+        ) : (
+          // This doesn't render anything, but the component will take care of location.search by trimming unused parameters.
+          <ParametersListComponent
+            parameters={
+              parameters
+                ? getValuePopulatedParameters({
+                    parameters,
+                    values: _.isEmpty(draftParameterValues)
+                      ? parameterValues
+                      : draftParameterValues,
+                  })
+                : []
+            }
+            hideParameters={hideParameters}
+          />
         )}
         <Body>{children}</Body>
       </ContentContainer>
