@@ -329,7 +329,8 @@
                                       (and (= :type/Dictionary (:base-type col)) nested-fields)
                                       (assoc :nested-fields (into #{}
                                                                   (map #(maybe-add-nested-fields % new-path root-database-position))
-                                                                  nested-fields)))))
+                                                                  nested-fields)
+                                             :visibility-type :details-only))))
         max-position-per-table (reduce
                                 (fn [accum {table-name :table_name pos :ordinal_position}]
                                   (if (> (or pos 0) (get accum table-name -1))

@@ -388,9 +388,12 @@
                   (assoc-in acc (interpose :nested-fields (:path field)) (dissoc field :path)))
                 {}
                 fields)
-        ;; replace maps from name to field with sets of fields
+        ;; replace maps from name to field with sets of fields and set visibility-type for parent fields
         fields (walk/postwalk (fn [x]
                                 (cond-> x
+                                  (and (map? x) (:nested-fields x))
+                                  (assoc :visibility-type :details-only)
+
                                   (map? x)
                                   (m/update-existing :nested-fields #(set (vals %)))))
                               (set (vals fields)))
