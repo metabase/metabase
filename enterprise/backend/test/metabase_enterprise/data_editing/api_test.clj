@@ -1269,13 +1269,94 @@
                            :display_name "ID"
                            :input_type "text"}]
                          (->> (:parameters body)
-                              (map #(select-keys % [:id :display_name :input_type])))))))))
+                              (map #(select-keys % [:id :display_name :input_type]))))))))
+
+            ;; insert a row for the row action
+            (mt/user-http-request :crowberto :post 200
+                                  (data-editing.tu/table-url @test-table)
+                                  {:rows [{:text "a very important string"}]})
+
+            (let [create-id "table.row/create"
+                  update-id "table.row/update"
+                  delete-id "table.row/delete"]
+
+              (testing "using a partially constructed :input"
+                (let [unrelated-table Long/MAX_VALUE
+                      scope           {:table-id unrelated-table}
+                      input           {:table-id @test-table}]
+                  (testing "create"
+                    (is (=? {:status 200
+                             :body   {:parameters [{:id "text" :readonly false}
+                                                   {:id "int" :readonly false}
+                                                   {:id "timestamp" :readonly false}
+                                                   {:id "date" :readonly false}]}}
+                            (req {:action_id create-id
+                                  :scope     scope
+                                  :input     (assoc input :id 1)}))))
+                  (testing "update"
+                    (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))
+                  (testing "delete"
+                    (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))))
+
+              ;; magic scope detection, deprecated
+              (testing "using table-id from scope"
+                (let [scope {:table-id @test-table}]
+                  (testing "create"
+                    (is (=? {:status 200
+                             :body   {:parameters
+                                      [{:id "text" :readonly false}
+                                       {:id "int" :readonly false}
+                                       {:id "timestamp" :readonly false}
+                                       {:id "date" :readonly false}]}}
+                            (req {:scope     scope
+                                  :action_id create-id
+                                  :input     {:id 1}})))
+
+                    (testing "update"
+                      (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
+
+                    (testing "delete"
+                      (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))))
+
+(deftest tmp-modal-table-action-on-dashboard-test
+  (let [req
+        #(mt/user-http-request-full-response
+          (:user % :crowberto)
+          :post
+          "ee/data-editing/tmp-modal"
+          (select-keys % [:action_id
+                          :scope
+                          :input]))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                  :text      [:text]
+                                                                  :int       [:int]
+                                                                  :timestamp [:timestamp]
+                                                                  :date      [:date]}
+                                                                 {:primary-key [:id]})]
 
           (mt/with-temp
             [:model/Dashboard     dashboard {}
              :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
                                              :visualization_settings
                                              {:table_id @test-table
+
+                                              :table.columns
+                                              [{:name "int",      :enabled true}
+                                               {:name "text",     :enabled true}
+                                               {:name "timetamp", :enabled true}
+                                               ;; this signals date should not be shown in the grid
+                                               {:name "date",     :enabled false}]
+
+                                              :editableTable.columns
+                                              ["int"
+                                               ;; this signals text is not editable
+                                               #_"text"
+                                               "timestamp"
+                                               "date"]
+
                                               :editableTable.enabledActions
                                               [{:id                "table.row/create"
                                                 :parameterMappings [{:parameterId "int"
@@ -1296,7 +1377,9 @@
             (testing "table actions on a dashcard"
               (let [create-id "table.row/create"
                     update-id "table.row/update"
-                    delete-id "table.row/delete"]
+                    delete-id "table.row/delete"
+                    ;; magic scope detection, deprecated
+                    scope {:dashcard-id (:id dashcard)}]
 
                 (testing "without a table-id"
                   (let [scope {:dashboard-id (:dashboard_id dashcard)}]
@@ -1304,49 +1387,26 @@
                       (testing action-id
                         (is (=? {:status 400} (req {:action_id action-id, :scope scope})))))))
 
-                (testing "using a partially constructed :input"
-                  (let [unrelated-table Long/MAX_VALUE
-                        scope           {:table-id unrelated-table}
-                        input           {:table-id @test-table}]
-                    (testing "create"
-                      (is (=? {:status 200
-                               :body   {:parameters [{:id "text" :readonly false}
-                                                     {:id "int" :readonly false}
-                                                     {:id "timestamp" :readonly false}
-                                                     {:id "date" :readonly false}]}}
-                              (req {:action_id create-id
-                                    :scope     scope
-                                    :input     (assoc input :id 1)}))))
-                    (testing "update"
-                      (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))
-                    (testing "delete"
-                      (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))))
+                (testing "create"
+                  (is (=? {:status 200
+                           :body   {:parameters
+                                        ;; params are reordered by editable
+                                        ;; column listing (int first)
+                                    [{:id "int" :readonly false}
+                                     {:id "text" :readonly true :value "a very important string"}
+                                         ;; date is hidden from the editable
+                                     #_{:id "date"}
+                                         ;; timestamp is hidden in the row action
+                                     #_{:id "timestamp"}]}}
+                          (req {:scope     scope
+                                :action_id create-id
+                                :input     {:id 1}}))))
 
-                ;; magic scope detection, deprecated
-                (doseq [[testing-msg scope] [["table scope" {:table-id @test-table}]
-                                             ["dashcard scope" {:dashcard-id (:id dashcard)}]]]
-                  (testing testing-msg
-                    (testing "create"
-                      (is (=? {:status 200
-                               :body   {:parameters
-                                        (if (:dashcard-id scope)
-                                          [{:id "text" :readonly true :value "a very important string"}
-                                           {:id "int" :readonly false}
-                                           ;; note that timestamp is now hidden
-                                           {:id "date" :readonly false}]
-                                          [{:id "text" :readonly false}
-                                           {:id "int" :readonly false}
-                                           {:id "timestamp" :readonly false}
-                                           {:id "date" :readonly false}])}}
-                              (req {:scope     scope
-                                    :action_id create-id
-                                    :input     {:id 1}}))))
+                (testing "update"
+                  (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
 
-                    (testing "update"
-                      (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
-
-                    (testing "delete"
-                      (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))))
+                (testing "delete"
+                  (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))
 
 ;; Taken from metabase-enterprise.data-editing.api-test.
 ;; When we deprecate that API, we should move all the sibling tests here as well.
