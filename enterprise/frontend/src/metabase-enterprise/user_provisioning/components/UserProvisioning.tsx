@@ -123,7 +123,7 @@ export const UserProvisioning = () => {
 
   return (
     <Stack>
-      <Title order={1}>{t`User Provisioning`}</Title>
+      <Title order={1}>{t`User provisioning`}</Title>
       <SettingsSection>
         <LoadingAndErrorWrapper
           loading={maskedTokenRequest.isLoading}

@@ -28,7 +28,7 @@ export function WhiteLabelConcealSettingsPage() {
 
         <AdminSettingInput
           name="show-metabase-links"
-          title={t`Documentation and References`}
+          title={t`Documentation and references`}
           switchLabel={
             <Text size="md">
               {t`Show links and references to Metabase` + " "}
@@ -43,7 +43,7 @@ export function WhiteLabelConcealSettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title={t`Metabase Illustrations`}
+        title={t`Metabase illustrations`}
         description={t`Customize each of the illustrations in Metabase`}
       >
         <MetabotToggleWidget />
@@ -54,7 +54,7 @@ export function WhiteLabelConcealSettingsPage() {
         />
         <IllustrationWidget
           name="landing-page-illustration"
-          title={t`Landing Page`}
+          title={t`Landing page`}
         />
         <IllustrationWidget
           name="no-data-illustration"

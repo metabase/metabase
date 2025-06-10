@@ -37,10 +37,10 @@ export function SettingsNav() {
         <SettingsNavItem path="authentication" label={t`Overview`} />
         <SettingsNavItem
           path="authentication/user-provisioning"
-          label={t`User Provisioning`}
+          label={t`User provisioning`}
         />
-        <SettingsNavItem path="authentication/api-keys" label={t`Api Keys`} />
-        <SettingsNavItem path="authentication/google" label={t`Google Auth`} />
+        <SettingsNavItem path="authentication/api-keys" label={t`API keys`} />
+        <SettingsNavItem path="authentication/google" label={t`Google auth`} />
         <SettingsNavItem path="authentication/ldap" label="LDAP" />
         {hasSaml && (
           <SettingsNavItem
@@ -68,12 +68,12 @@ export function SettingsNav() {
         <SettingsNavItem path="updates" label={t`Updates`} icon="sparkles" />
       )}
       <NavDivider />
-      <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path="localization"
         label={t`Localization`}
         icon="globe"
       />
+      <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path="whitelabel"
         label={
@@ -103,7 +103,7 @@ export function SettingsNav() {
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
       <SettingsNavItem
         path="public-sharing"
-        label={t`Public Sharing`}
+        label={t`Public sharing`}
         icon="share"
       />
       <SettingsNavItem
@@ -117,13 +117,13 @@ export function SettingsNav() {
         />
         <SettingsNavItem
           path="embedding-in-other-applications/standalone"
-          label={t`Static Embedding`}
+          label={t`Static embedding`}
         />
         {hasEmbedding && (
           <SettingsNavItem
             path="embedding-in-other-applications/full-app"
             requiresFeature={"embedding"}
-            label={t`Interactive Embedding`}
+            label={t`Interactive embedding`}
           />
         )}
         <SettingsNavItem

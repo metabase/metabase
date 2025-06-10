@@ -775,7 +775,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
 function changeLoadingMessage(message) {
   cy.visit("/admin/settings/whitelabel");
-  cy.findByLabelText("Loading Message").click();
+  cy.findByLabelText("Loading message").click();
   H.selectDropdown().findByText(message).click();
   cy.wait("@putLoadingMessage");
 }

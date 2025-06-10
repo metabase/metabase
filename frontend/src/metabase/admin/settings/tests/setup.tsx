@@ -88,8 +88,8 @@ export const premiumRoutes: RouteMap = {
 };
 
 export const upsellRoutes: RouteMap = {
-  appearance: { path: "/whitelabel", testPattern: /Color Palette/ },
-  branding: { path: "/whitelabel/branding", testPattern: /Color Palette/ },
+  appearance: { path: "/whitelabel", testPattern: /Color palette/ },
+  branding: { path: "/whitelabel/branding", testPattern: /Color palette/ },
   concealMetabase: {
     path: "/whitelabel/conceal-metabase",
     testPattern: /Application Name/,
