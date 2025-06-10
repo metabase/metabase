@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, memo, useCallback, useState } from "react";
+import { type ReactNode, memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -20,28 +20,19 @@ import {
   SegmentsLink,
   TableSection,
 } from "./components";
+import { COLUMN_CONFIG } from "./constants";
 import type { RouteParams } from "./types";
-import { getTableMetadataQuery, parseRouteParams } from "./utils";
+import {
+  getFieldConfig,
+  getPreviewConfig,
+  getTableMetadataQuery,
+  parseRouteParams,
+} from "./utils";
 
 // memoize components for smooth column resizing experience
 const MemoizedFieldSection = memo(FieldSection);
 const MemoizedPreviewSection = memo(PreviewSection);
 const MemoizedTableSection = memo(TableSection);
-
-type Column = "nav" | "table" | "field" | "preview";
-
-interface ColumnSizeConfig {
-  initial: number;
-  min: number;
-  max: number;
-}
-
-const columnConfig: Record<Column, ColumnSizeConfig> = {
-  nav: { initial: 320, min: 240, max: 440 },
-  table: { initial: 320, min: 240, max: 640 },
-  field: { initial: 480, min: 280, max: 640 },
-  preview: { initial: Number.NEGATIVE_INFINITY, min: 400, max: 640 },
-};
 
 interface Props {
   params: RouteParams;
@@ -54,11 +45,11 @@ export const DataModel = ({ params, location, children }: Props) => {
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isResizing, setIsResizing] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [navWidth, setNavWidth] = useState(columnConfig.nav.initial);
-  const [tableWidth, setTableWidth] = useState(columnConfig.table.initial);
-  const [fieldWidth, setFieldWidth] = useState(columnConfig.field.initial);
+  const [navWidth, setNavWidth] = useState(COLUMN_CONFIG.nav.initial);
+  const [tableWidth, setTableWidth] = useState(COLUMN_CONFIG.table.initial);
+  const [fieldWidth, setFieldWidth] = useState(COLUMN_CONFIG.field.initial);
   const [previewWidth, setPreviewWidth] = useState(
-    columnConfig.preview.initial,
+    COLUMN_CONFIG.preview.initial,
   );
   const { height, ref } = useElementSize();
   const isEmptyStateShown =
@@ -70,26 +61,21 @@ export const DataModel = ({ params, location, children }: Props) => {
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const fieldPreviewConfig: ColumnSizeConfig = {
-    initial: fieldWidth + (isPreviewOpen ? previewWidth : 0),
-    max:
-      columnConfig.field.max + (isPreviewOpen ? columnConfig.preview.max : 0),
-    min:
-      columnConfig.field.min + (isPreviewOpen ? columnConfig.preview.min : 0),
-  };
+  const fieldConfig = useMemo(
+    () => getFieldConfig({ isPreviewOpen, fieldWidth, previewWidth }),
+    [isPreviewOpen, fieldWidth, previewWidth],
+  );
+  const previewConfig = useMemo(
+    () => getPreviewConfig({ isPreviewOpen, fieldWidth, previewWidth }),
+    [isPreviewOpen, fieldWidth, previewWidth],
+  );
 
   const handleResizeStart = useCallback(() => setIsResizing(true), []);
   const handleResizeStop = useCallback(() => setIsResizing(false), []);
 
   const handlePreviewClick = () => {
     setIsPreviewOpen(true);
-
-    if (Number.isFinite(previewWidth)) {
-      setFieldWidth(fieldWidth + previewWidth);
-    } else {
-      setFieldWidth(fieldWidth + fieldWidth);
-      setPreviewWidth(fieldWidth);
-    }
+    setFieldWidth(fieldWidth + previewWidth);
   };
 
   const handlePreviewClose = () => {
@@ -101,7 +87,7 @@ export const DataModel = ({ params, location, children }: Props) => {
     <Flex className={cx({ [S.resizing]: isResizing })} h="100%" ref={ref}>
       <ResizableColumn
         height={height}
-        constraints={columnConfig.nav}
+        constraints={COLUMN_CONFIG.nav}
         width={navWidth}
         onResize={(_event, data) => setNavWidth(data.size.width)}
         onResizeStart={handleResizeStart}
@@ -133,7 +119,7 @@ export const DataModel = ({ params, location, children }: Props) => {
           {tableId && (
             <ResizableColumn
               height={height}
-              constraints={columnConfig.table}
+              constraints={COLUMN_CONFIG.table}
               width={tableWidth}
               onResize={(_event, data) => setTableWidth(data.size.width)}
               onResizeStart={handleResizeStart}
@@ -186,7 +172,7 @@ export const DataModel = ({ params, location, children }: Props) => {
           {!isEmptyStateShown && (
             <ResizableColumn
               height={height}
-              constraints={fieldPreviewConfig}
+              constraints={fieldConfig}
               width={fieldWidth}
               onResize={(_event, data) => setFieldWidth(data.size.width)}
               onResizeStart={handleResizeStart}
@@ -196,7 +182,7 @@ export const DataModel = ({ params, location, children }: Props) => {
                 <LoadingAndErrorWrapper error={error} loading={isLoading}>
                   <Flex justify="space-between" w="100%">
                     {field && (
-                      <Box flex="1" h="100%" maw={columnConfig.field.max}>
+                      <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                         <MemoizedFieldSection
                           databaseId={databaseId}
                           field={field}
@@ -216,7 +202,7 @@ export const DataModel = ({ params, location, children }: Props) => {
                         className={S.previewColumn}
                         handlePosition="left"
                         height={height}
-                        constraints={columnConfig.preview}
+                        constraints={previewConfig}
                         width={previewWidth}
                         onResize={(_event, data) =>
                           setPreviewWidth(data.size.width)

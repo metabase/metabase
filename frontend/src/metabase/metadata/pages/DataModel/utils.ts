@@ -3,7 +3,8 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { GetTableQueryMetadataRequest, TableId } from "metabase-types/api";
 
-import type { ParsedRouteParams, RouteParams } from "./types";
+import { COLUMN_CONFIG } from "./constants";
+import type { ColumnSizeConfig, ParsedRouteParams, RouteParams } from "./types";
 
 export function parseRouteParams(params: RouteParams): ParsedRouteParams {
   return {
@@ -52,5 +53,44 @@ export function getTableMetadataQuery(
     id: tableId,
     include_sensitive_fields: true,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  };
+}
+
+export function getFieldConfig({
+  isPreviewOpen,
+  fieldWidth,
+  previewWidth,
+}: {
+  isPreviewOpen: boolean;
+  fieldWidth: number;
+  previewWidth: number;
+}): ColumnSizeConfig {
+  return {
+    initial: fieldWidth + (isPreviewOpen ? previewWidth : 0),
+    max: COLUMN_CONFIG.field.max + (isPreviewOpen ? previewWidth : 0),
+    min:
+      COLUMN_CONFIG.field.min + (isPreviewOpen ? COLUMN_CONFIG.preview.min : 0),
+  };
+}
+
+export function getPreviewConfig({
+  isPreviewOpen,
+  fieldWidth,
+  previewWidth,
+}: {
+  isPreviewOpen: boolean;
+  fieldWidth: number;
+  previewWidth: number;
+}): ColumnSizeConfig {
+  return {
+    initial: isPreviewOpen ? previewWidth : 0,
+    max: Math.min(
+      COLUMN_CONFIG.preview.max,
+      fieldWidth - COLUMN_CONFIG.field.min,
+    ),
+    min: Math.max(
+      COLUMN_CONFIG.preview.min,
+      fieldWidth - COLUMN_CONFIG.field.max,
+    ),
   };
 }
