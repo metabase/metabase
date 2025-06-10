@@ -11,6 +11,7 @@ import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
   DashboardId,
   SearchResultId,
   Table,
@@ -44,7 +45,12 @@ export const useScopedSearchResults = <
 
   const { data: collectionItemsData, isFetching: isFetchingCollectionItems } =
     useListCollectionItemsQuery(
-      shouldUseCollectionItems ? { id: folder.id as CollectionId } : skipToken,
+      shouldUseCollectionItems
+        ? {
+            id: folder.id as CollectionId,
+            models: searchModels as CollectionItemModel[],
+          }
+        : skipToken,
     );
 
   const { data: dashboardItemsData, isFetching: isFetchingDashboardItems } =
