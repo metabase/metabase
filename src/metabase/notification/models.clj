@@ -319,8 +319,8 @@
   [instance]
   (validate-notification-handler instance)
   (when (some #{:channel_id :template_id :channel_type} (-> instance t2/changes keys))
-    (cross-check-channel-type-and-template-type instance)
-    instance))
+    (cross-check-channel-type-and-template-type instance))
+  instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                   :model/NotificationRecipient                                  ;;
