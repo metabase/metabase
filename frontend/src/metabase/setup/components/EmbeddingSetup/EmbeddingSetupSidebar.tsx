@@ -3,9 +3,10 @@ import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useDocsUrl } from "metabase/common/hooks/use-docs-url"; // Corrected import
 import LogoIcon from "metabase/components/LogoIcon";
 import { Box, Center, Flex, Icon, type IconName, Text } from "metabase/ui";
+
+import { LanguageSelector } from "../LanguageSelector";
 
 const ICON_SIZE = 30;
 const STEP_GAP = 22;
@@ -50,8 +51,6 @@ export const EmbeddingSetupSidebar = () => {
     return steps.findIndex((step) => step.slugs.includes(pathname ?? ""));
   }, [steps, pathname]);
 
-  const { url: helpLink } = useDocsUrl("embedding/interactive-embedding");
-
   return (
     <Box
       aria-label="Embedding Setup Sidebar"
@@ -64,6 +63,7 @@ export const EmbeddingSetupSidebar = () => {
         flexDirection: "column",
       }}
     >
+      {t`Show more options`}
       <Flex mb="xl" direction="column" align="center">
         <Box h={39} w={39} mb="md">
           <LogoIcon />
@@ -93,14 +93,7 @@ export const EmbeddingSetupSidebar = () => {
         ))}
       </Box>
       <Center mt="auto" pt="xl" mb="xxl">
-        <a
-          href={helpLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="link"
-        >
-          <Text fw="bold">{t`Need assistance?`}</Text>
-        </a>
+        <LanguageSelector />
       </Center>
     </Box>
   );

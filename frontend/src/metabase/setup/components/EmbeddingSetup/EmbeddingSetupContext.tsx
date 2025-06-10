@@ -1,6 +1,8 @@
 import { createContext, useContext, useState } from "react";
 
 import type { DatabaseData, Table } from "metabase-types/api";
+import { getLocale } from "metabase/setup/selectors";
+import { useSelector } from "metabase/lib/redux";
 
 type EmbeddingSetupContextType = {
   database: DatabaseData | null;
@@ -23,6 +25,7 @@ const EmbeddingSetupContext = createContext<EmbeddingSetupContextType | null>(
 
 export const useEmbeddingSetup = () => {
   const context = useContext(EmbeddingSetupContext);
+  // console.log("useEmbeddingSetup", context?.locale?.code);
   if (!context) {
     throw new Error(
       "useEmbeddingSetup must be used within EmbeddingSetupProvider",
@@ -36,6 +39,7 @@ export const EmbeddingSetupProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  const locale = useSelector(getLocale);
   const [database, setDatabase] = useState<DatabaseData | null>(null);
   const [processingStatus, setProcessingStatus] = useState("");
   const [error, setError] = useState("");
@@ -46,6 +50,7 @@ export const EmbeddingSetupProvider = ({
   return (
     <EmbeddingSetupContext.Provider
       value={{
+        locale,
         database,
         setDatabase,
         processingStatus,

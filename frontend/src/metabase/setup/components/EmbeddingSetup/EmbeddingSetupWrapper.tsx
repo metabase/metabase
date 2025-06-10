@@ -2,6 +2,8 @@ import { Box, Flex } from "metabase/ui";
 
 import { EmbeddingSetupProvider } from "./EmbeddingSetupContext";
 import { EmbeddingSetupSidebar } from "./EmbeddingSetupSidebar";
+import { useSelector } from "metabase/lib/redux";
+import { getLocale } from "metabase/setup/selectors";
 
 type EmbeddingSetupWrapperProps = {
   children: React.ReactNode;
@@ -10,6 +12,7 @@ type EmbeddingSetupWrapperProps = {
 export const EmbeddingSetupWrapper = ({
   children,
 }: EmbeddingSetupWrapperProps) => {
+  const _locale = useSelector(getLocale);
   return (
     <EmbeddingSetupProvider>
       <Flex

@@ -26,6 +26,7 @@ import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import DatabaseNameField from "../DatabaseNameField";
 
 import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
+import { getLocale } from "metabase/setup/selectors";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
@@ -61,6 +62,10 @@ export const DatabaseForm = ({
   setIsDirty,
   config = {},
 }: DatabaseFormProps): JSX.Element => {
+  // const locale = useSelector(getLocale);
+
+  // console.log("database form", { locale: locale?.code });
+
   const isAdvanced = config.isAdvanced || false;
   const engineFieldState = config.engine?.fieldState;
 
