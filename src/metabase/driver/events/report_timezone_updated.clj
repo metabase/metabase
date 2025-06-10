@@ -1,7 +1,7 @@
 (ns metabase.driver.events.report-timezone-updated
   (:require
    [metabase.driver :as driver]
-   [metabase.events.core :as events]
+   [metabase.driver-api.core :as driver-api]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -24,7 +24,7 @@
       (catch Throwable e
         (log/errorf e "Failed to notify %s Database %s updated" driver id)))))
 
-(methodical/defmethod events/publish-event! ::event
+(methodical/defmethod driver-api/publish-event! ::event
   "When the report-timezone Setting is updated, call [[metabase.driver/notify-database-updated]] for all Databases."
   [_topic _event]
   (notify-all-databases-updated))

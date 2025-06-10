@@ -1,14 +1,12 @@
-import { t } from "ttag";
-
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { Box, Button } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { NotebookStepList } from "../NotebookStepList";
 
+import { VisualizeButton } from "./VisualizationButton";
 import { NotebookProvider } from "./context";
 
 export type NotebookProps = {
@@ -40,33 +38,6 @@ export const Notebook = ({
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
-  async function cleanupQuestion() {
-    // Converting a query to MLv2 and back performs a clean-up
-    let cleanQuestion = question.setQuery(
-      Lib.dropEmptyStages(question.query()),
-    );
-
-    if (cleanQuestion.display() === "table") {
-      cleanQuestion = cleanQuestion.setDefaultDisplay();
-    }
-
-    await updateQuestion(cleanQuestion);
-  }
-
-  // visualize switches the view to the question's visualization.
-  async function visualize() {
-    // Only cleanup the question if it's dirty, otherwise Metabase
-    // will incorrectly display the Save button, even though there are no changes to save.
-    if (isDirty) {
-      cleanupQuestion();
-    }
-    // switch mode before running otherwise URL update may cause it to switch back to notebook mode
-    await setQueryBuilderMode?.("view");
-    if (isResultDirty) {
-      await runQuestionQuery();
-    }
-  }
-
   const handleUpdateQuestion = (question: Question): Promise<void> => {
     dispatch(setUIControls({ isModifiedFromNotebook: true }));
     return updateQuestion(question);
@@ -81,14 +52,16 @@ export const Notebook = ({
           reportTimezone={reportTimezone}
           readOnly={readOnly}
         />
-        {hasVisualizeButton && isRunnable && (
-          <Button
-            variant="filled"
-            style={{ minWidth: 220 }}
-            onClick={visualize}
-          >
-            {t`Visualize`}
-          </Button>
+        {hasVisualizeButton && (
+          <VisualizeButton
+            question={question}
+            isDirty={isDirty}
+            isRunnable={isRunnable}
+            isResultDirty={isResultDirty}
+            updateQuestion={updateQuestion}
+            runQuestionQuery={runQuestionQuery}
+            setQueryBuilderMode={setQueryBuilderMode}
+          />
         )}
       </Box>
     </NotebookProvider>
