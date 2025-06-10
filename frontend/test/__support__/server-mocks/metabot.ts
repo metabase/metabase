@@ -94,6 +94,6 @@ export function setupRegenerateMetabotPromptSuggestionsEndpoint(
 ) {
   fetchMock.post(
     `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/regenerate`,
-    { status: 202 },
+    { status: 204 },
   );
 }
