@@ -273,6 +273,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           <NativeQueryEditorTopBar
             isRunnable={this.props.isRunnable}
             isRunning={this.props.isRunning}
+            hasParametersList={this.props.hasParametersList}
             isResultDirty={this.props.isResultDirty}
             isShowingDataReference={this.props.isShowingDataReference}
             onOpenModal={this.props.onOpenModal}
