@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
 import type { ActionFormParameter } from "../../types";
-import { ActionFormParameterType } from "../../types";
+import { ActionFormInputType } from "../../types";
 
 import { ActionInputDateTime } from "./ActionInputDateTime";
+import { ActionInputSearchableSelect } from "./ActionInputSearchableSelect";
 import { ActionInputText } from "./ActionInputText";
+import { ActionInputTextarea } from "./ActionInputTextarea";
 import type { ActionInputSharedProps } from "./types";
 
 type ParameterActionInputProps = ActionInputSharedProps & {
@@ -16,19 +18,36 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
 
   // TOOD: add `Auto populated` label for db-generated values when BE supports it
   const placeholder = parameter.optional ? t`Optional` : undefined;
+  const disabled = parameter.readonly;
+
   const inputProps = {
     ...rest.inputProps,
     placeholder,
+    disabled,
   };
 
-  switch (parameter.type) {
-    case ActionFormParameterType.Date:
+  switch (parameter.input_type) {
+    case ActionFormInputType.Date:
       return <ActionInputDateTime {...rest} inputProps={inputProps} />;
-    case ActionFormParameterType.DateTime:
+    case ActionFormInputType.DateTime:
       return (
         <ActionInputDateTime {...rest} inputProps={inputProps} isDateTime />
       );
-    default:
-      return <ActionInputText {...rest} inputProps={inputProps} />;
+    case ActionFormInputType.Textarea:
+      return <ActionInputTextarea {...rest} inputProps={inputProps} />;
+    case ActionFormInputType.Dropdown:
+      if (parameter.field_id) {
+        return (
+          <ActionInputSearchableSelect
+            {...rest}
+            inputProps={inputProps}
+            fieldId={parameter.field_id}
+            searchFieldId={parameter.human_readable_field_id}
+            withCreateNew
+          />
+        );
+      }
   }
+
+  return <ActionInputText {...rest} inputProps={inputProps} />;
 }

@@ -372,6 +372,7 @@ describe("issue 41785, issue 46756", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/card/*").as("card");
   });
 
   it("does not break the question when removing column with the same mapping as another column (metabase#41785) (metabase#46756)", () => {
@@ -395,8 +396,15 @@ describe("issue 41785, issue 46756", () => {
     cy.button("Save").click();
     H.modal().button("Save").click();
 
-    cy.findByTestId("loading-indicator").should("exist");
-    cy.findByTestId("loading-indicator").should("not.exist");
+    cy.log(
+      "verify that we redirected after saving the model and all card data is loaded",
+    );
+    cy.url().should("contain", "products-products");
+    cy.wait("@card");
+    cy.findByTestId("visualization-root").should(
+      "contain",
+      "Rustic Paper Wallet",
+    );
 
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
@@ -1538,5 +1546,61 @@ describe("issue 56775", () => {
     cy.log("verify that the model definition is visible");
     H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
     H.getNotebookStep("data").findByText("Products").should("be.visible");
+  });
+});
+
+describe("issue 55486", () => {
+  const MODEL_NAME = "Model 55486";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        type: "model",
+        name: MODEL_NAME,
+        query: {
+          "source-table": PRODUCTS_ID,
+          limit: 5,
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  function checkIsShowingMetadataEditorTab() {
+    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+    cy.findByTestId("visualization-root").should("be.visible");
+  }
+
+  function checkIsShowingQueryEditorTab() {
+    cy.findByTestId("editor-tabs-query").should("be.checked");
+    H.getNotebookStep("data").should("be.visible");
+  }
+
+  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
+    H.openQuestionActions("Edit query definition");
+
+    H.datasetEditBar().findByText("Metadata").click();
+    checkIsShowingMetadataEditorTab();
+
+    H.datasetEditBar().findByText("Query").click();
+    checkIsShowingQueryEditorTab();
+
+    cy.log("Back button should show the metadata editor");
+    cy.go("back");
+    checkIsShowingMetadataEditorTab();
+
+    cy.log("Back button should show the query editor");
+    cy.go("back");
+    checkIsShowingQueryEditorTab();
+
+    cy.log("Forward button should show the query editor");
+    cy.go("forward");
+    checkIsShowingMetadataEditorTab();
+
+    cy.log("Forward button should show the query editor");
+    cy.go("forward");
+    checkIsShowingQueryEditorTab();
   });
 });

@@ -251,7 +251,6 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
       footer,
       "data-testid": testId,
     } = this.props;
-
     const sections = this._getSections();
     const selectedNames = sections
       .map((section) =>

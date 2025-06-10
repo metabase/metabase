@@ -28,31 +28,35 @@ export function getCurrencyStyleOptions(currency = "USD") {
     ...(symbol !== code
       ? [
           {
-            label: t`Symbol` + ` ` + `(${symbol})`,
+            name: t`Symbol` + ` ` + `(${symbol})`,
             value: "symbol",
           },
         ]
       : []),
     {
-      label: t`Code` + ` ` + `(${code})`,
+      name: t`Code` + ` ` + `(${code})`,
       value: "code",
     },
     {
-      label: t`Name` + ` ` + `(${name})`,
+      name: t`Name` + ` ` + `(${name})`,
       value: "name",
     },
   ];
 }
 
 export function getCurrency(currency, currencyStyle) {
-  return (0)
-    .toLocaleString("en", {
-      style: "currency",
-      currency: currency,
-      currencyDisplay: currencyStyle,
-    })
-    .replace(/0([.,]0+)?/, "")
-    .trim(); // strip off actual number
+  try {
+    return (0)
+      .toLocaleString("en", {
+        style: "currency",
+        currency: currency,
+        currencyDisplay: currencyStyle,
+      })
+      .replace(/0([.,]0+)?/, "")
+      .trim(); // strip off actual number
+  } catch (e) {
+    return currency;
+  }
 }
 
 export function getCurrencyOptions() {
