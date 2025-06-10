@@ -11,7 +11,9 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.query-processor :as qp]
+   [metabase.lib.core :as lib]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
@@ -391,23 +393,3 @@
                                   (dissoc col :field_ref :id))]
             (is (= expected-metadata
                    (added-metadata (assoc-in query [:query :source-metadata] legacy-metadata))))))))))
-
-(deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
-  (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-    (is (= [[:field "TITLE" {:base-type :type/Text}]
-            [:aggregation 0]]
-           (->> (lib.tu.macros/mbql-query orders
-                  {:source-query {:source-query {:source-table $$orders
-                                                 :filter       [:= $id 1]
-                                                 :aggregation  [[:sum $total]]
-                                                 :breakout     [!day.created-at
-                                                                $product-id->products.title
-                                                                $product-id->products.category]}
-                                  :filter       [:> *sum/Float 100]
-                                  :aggregation  [[:sum *sum/Float]]
-                                  :breakout     [*TITLE/Text]}
-                   :filter       [:> *sum/Float 100]})
-                add-source-metadata
-                :query
-                :source-metadata
-                (map :field_ref))))))

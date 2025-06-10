@@ -518,6 +518,7 @@
           metabase.lib.metadata.calculation
           metabase.lib.metadata.invocation-tracker
           metabase.lib.metadata.protocols
+          metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
           metabase.lib.query

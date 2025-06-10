@@ -107,7 +107,7 @@
                                                        lib.metadata.calculation/*propagate-binning-and-bucketing*
                                                        (conj :temporal-unit))]
                     (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
-                      {:inherited-temporal-unit inherited-temporal-unit}))
+                      {:inherited-temporal-unit (keyword inherited-temporal-unit)}))
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -510,7 +510,6 @@
   (let [inherited-column? (lib.field.util/inherited-column? metadata)
         options           (merge (u/select-non-nil-keys metadata [:base-type
                                                                   :was-binned
-                                                                  :inherited-temporal-unit
                                                                   ::original-effective-type
                                                                   ::original-temporal-unit])
                                  {:lib/uuid       (str (random-uuid))
@@ -536,7 +535,9 @@
                                                          (lib.join.util/current-join-alias metadata))]
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
-                                   {:temporal-unit temporal-unit})
+                                   {:temporal-unit (keyword temporal-unit)})
+                                 (when-let [inherited-temporal-unit (:inherited-temporal-unit metadata)]
+                                   {:inherited-temporal-unit (keyword inherited-temporal-unit)})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (when-not inherited-column?

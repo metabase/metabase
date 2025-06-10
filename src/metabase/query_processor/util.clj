@@ -187,15 +187,13 @@
                               (:base_type field-info))))
                     result-metadata)))))
 
-(def preserved-keys
+(def ^:private preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
   ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
   [:id :description
-   :display_name :semantic_type :fk_target_field_id :settings :visibility_type
-   ;; HACK! Make this work with MLv2-style `kebab-case` metadata as well.
-   :display-name :semantic-type :fk-target-field-id :settings :visibility-type])
+   :display_name :semantic_type :fk_target_field_id :settings :visibility_type])
 
 (defn combine-metadata
   "Blend saved metadata from previous runs into fresh metadata from an actual run of the query.
