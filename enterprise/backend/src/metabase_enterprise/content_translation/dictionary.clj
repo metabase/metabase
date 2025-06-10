@@ -1,9 +1,12 @@
 (ns metabase-enterprise.content-translation.dictionary
   "Implementation of dictionary upload and retrieval logic for content translations"
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -103,3 +106,40 @@
         ;; Insert all usable rows at once
         (when-not (empty? usable-rows)
           (t2/insert! :model/ContentTranslation usable-rows))))))
+
+(defn throw-informative-csv-error
+  "Throw an error that mentions the specific line number that fails"
+  [file original-exception]
+  (with-open [reader (io/reader file)]
+    (let [lines (line-seq reader)]
+      (doseq [[i line] (map-indexed vector lines)]
+        (try
+          (log/info (str "Processing line: " line))
+          (doall (csv/read-csv (java.io.StringReader. line)))
+          (log/info "No problems with that line")
+          (catch Exception e
+            (let [error-message (.getMessage ^Exception e)
+                  error-message (if (zero? i)
+                                  (tru "Header row: {0}" error-message)
+                                  (tru "Row {0}: {1}" i error-message))]
+              (log/info (str "throwing error: " error-message))
+              (throw (ex-info
+                      error-message
+                      {:status-code http-status-unprocessable
+                       :errors [error-message]})))))))
+    (let [error-message (str (.getMessage ^Exception original-exception))]
+      (log/info (str "throwing generic error: " error-message))
+      (throw (ex-info
+              error-message
+              {:status-code http-status-unprocessable
+               :errors [error-message]})))))
+
+(defn read-csv
+  "Read CSV and catch error if the CSV is invalid."
+  [file]
+  (with-open [reader (io/reader file)]
+    (try
+      (doall (csv/read-csv reader))
+      (catch Exception original-exception
+        (log/info "Exception found, attempting to make it more informative")
+        (throw-informative-csv-error file original-exception)))))

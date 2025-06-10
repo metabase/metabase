@@ -3,7 +3,6 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.data.csv :as csv]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase-enterprise.content-translation.utils :as ct-utils]
@@ -13,15 +12,34 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- valid-csv-content
-  "Create valid CSV content for testing with the specified number of rows."
-  [& {:keys [num-rows locale]
-      :or {num-rows 3
-           locale "de"}}]
-  (.getBytes ^String (str "Language,String,Translation\n"
-                          (str/join "\n"
-                                    (for [i (range num-rows)]
-                                      (format "%s,Original %d,Translation %d" locale i i))))))
+(def ^:private valid-csv
+  (.getBytes
+   (str "Language,String,Translation"
+        "\nde,Title,Titel"
+        "\nde,Rating,Bewertung"
+        "\nde,Vendor,Anbieter")))
+
+(def ^:private csv-with-duplicate-translation
+  (.getBytes
+   (str "Language,String,Translation"
+        "\nde,Title,Titel"
+        "\nde,Rating,Bewertung"
+        "\nde,Vendor,Anbieter"
+        "\nde,Vendor,Verkäufer")))
+
+(def ^:private csv-with-invalid-locale
+  (.getBytes
+   (str "Language,String,Translation"
+        "\nde,Title,Titel"
+        "\nde,Rating,Bewertung"
+        "\nXX,Vendor,Anbieter")))
+
+(def ^:private invalid-csv
+  (.getBytes
+   (str "Language,String,Translation"
+        "\nde,Title,Titel"
+        "\nde,Rating,Bewertung"
+        "\nde,Vendor,\"Anbieter\"!"))) ; Trailing character
 
 (defn- count-translations
   "Count the number of translations in the database."
@@ -52,20 +70,41 @@
               (is (seq matches))))))))
   (testing "POST /api/ee/content-translation/upload-dictionary"
     (testing "nonadmin cannot use"
-      (mt/with-premium-features #{:content-translation}
-        (is (=? "You don't have permissions to do that."
-                (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
-                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                      {:file (valid-csv-content)})))))
+      (ct-utils/with-clean-translations!
+        (mt/with-premium-features #{:content-translation}
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :post 403 "ee/content-translation/upload-dictionary"
+                                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                        {:file valid-csv}))))))
     (testing "admin can upload valid file"
       (ct-utils/with-clean-translations!
         (mt/with-premium-features #{:content-translation}
           (is (=? {:success true}
                   (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                        {:file (valid-csv-content)})))
-
-          (is (= 3 (count-translations))))))))
+                                        {:file valid-csv})))
+          (is (= 3 (count-translations))))))
+    (testing "admin sees useful error when uploaded file has invalid csv"
+      (ct-utils/with-clean-translations!
+        (mt/with-premium-features #{:content-translation}
+          (is (=? {:errors ["Row 3: CSV error (unexpected character: !)"]}
+                  (mt/user-http-request :crowberto :post 422 "ee/content-translation/upload-dictionary"
+                                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                        {:file invalid-csv}))))))
+    (testing "admin sees error when file has duplicate translations"
+      (ct-utils/with-clean-translations!
+        (mt/with-premium-features #{:content-translation}
+          (is (=? {:errors ["Row 5: The string \"Vendor\" is translated into locale \"de\" earlier in the file"]}
+                  (mt/user-http-request :crowberto :post 422 "ee/content-translation/upload-dictionary"
+                                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                        {:file csv-with-duplicate-translation}))))))
+    (testing "admin sees error when file has invalid locale"
+      (ct-utils/with-clean-translations!
+        (mt/with-premium-features #{:content-translation}
+          (is (=? {:errors ["Row 4: Invalid locale"]}
+                  (mt/user-http-request :crowberto :post 422 "ee/content-translation/upload-dictionary"
+                                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                        {:file csv-with-invalid-locale}))))))))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 

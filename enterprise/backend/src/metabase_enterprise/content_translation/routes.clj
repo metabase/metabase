@@ -59,9 +59,8 @@
                       {:status-code http-status-content-too-large})))
     (when-not (instance? java.io.File file)
       (throw (ex-info (tru "No file provided") {:status-code 400})))
-    (with-open [rdr (io/reader file)]
-      (let [[_header & rows] (csv/read-csv rdr)]
-        (dictionary/import-translations! rows)))
+    (let [[_header & rows] (dictionary/read-csv file)]
+      (dictionary/import-translations! rows))
     {:success true}))
 
 (api.macros/defendpoint :get "/dictionary/:token"

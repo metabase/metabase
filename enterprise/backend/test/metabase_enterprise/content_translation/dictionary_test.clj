@@ -1,6 +1,7 @@
 (ns metabase-enterprise.content-translation.dictionary-test
   "Tests for content translation dictionary import logic."
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase-enterprise.content-translation.utils :as ct-utils]
@@ -91,6 +92,23 @@
     (is (= 2 (#'dictionary/adjust-index 0)) "First row becomes row 2 (header is row 1)")
     (is (= 3 (#'dictionary/adjust-index 1)) "Second row becomes row 3")
     (is (= 10 (#'dictionary/adjust-index 8)) "Ninth row becomes row 10")))
+
+(deftest ^:parallel read-csv-test
+  (testing "Reads valid CSV without error"
+    (let [file (.getBytes "Language,String,Translation")]
+      (is (=
+           [["Language" "String" "Translation"]]
+           (dictionary/read-csv file)))))
+  (testing "Reads CSV with invalid header row and throws informative error"
+    (let [file (.getBytes "Language,String,\"Translation\"X")] ; character outside quotation marks
+      (is (thrown-with-msg?
+           Exception #"Header row.*CSV error.*unexpected character.*X"
+           (dictionary/read-csv file)))))
+  (testing "Reads CSV with invalid data row and throws informative error"
+    (let [file (.getBytes "Language,String,Translation\nde,Title,Titel\nde,Vendor,\"Anbieter\"X")] ; character outside quotation marks
+      (is (thrown-with-msg?
+           Exception #"Row 2.*CSV error.*unexpected character.*X"
+           (dictionary/read-csv file))))))
 
 (deftest ^:parallel format-row-test
   (testing "Format function standardizes locale"
