@@ -81,11 +81,7 @@ export function useDashboardUrlQuery(
     const nextQueryParams = toLocationQuery(queryParams);
     const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
 
-    if (
-      !_.isEqual(nextQueryParams, currentQueryParams) &&
-      // If this is the first set of query params we don't want to update unnecessarily
-      previousQueryParams !== undefined
-    ) {
+    if (!_.isEqual(nextQueryParams, currentQueryParams)) {
       const otherQueryParams = _.pick(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
       const nextQuery = { ...otherQueryParams, ...nextQueryParams };
 

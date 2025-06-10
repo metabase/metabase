@@ -8,7 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.events.core :as events]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -62,7 +62,7 @@
      request-body
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                     h2/*allow-testing-h2-connections*                       true]
+                     driver.settings/*allow-testing-h2-connections*                       true]
          (testing "API response should return a Session UUID"
            (is (=? {:id string/valid-uuid?}
                    (client/client :post 200 "setup" request-body))))
@@ -327,7 +327,7 @@
          body
          (fn []
            (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                         h2/*allow-testing-h2-connections*                       true
+                         driver.settings/*allow-testing-h2-connections* true
                          api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
                                                          (fn [& args]
                                                            (apply orig args)

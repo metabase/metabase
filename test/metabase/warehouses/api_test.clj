@@ -8,7 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -471,7 +471,7 @@
                         normalize)))))))))
 
 (defn- api-update-database! [expected-status-code db-or-id changes]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" (u/the-id db-or-id))
                           changes)))
 
@@ -1494,11 +1494,11 @@
      :or   {expected-status-code 200
             user                 :crowberto}}
     request-body]
-   (with-redefs [h2/*allow-testing-h2-connections* true]
+   (with-redefs [driver.settings/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
 (defn- test-connection-details! [engine details]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
 (deftest validate-database-test
@@ -2197,7 +2197,7 @@
       (letfn [(settings []
                 (t2/select-one-fn :settings :model/Database :id (mt/id)))
               (set-settings! [m]
-                (with-redefs [h2/*allow-testing-h2-connections* true]
+                (with-redefs [driver.settings/*allow-testing-h2-connections* true]
                   (u/prog1 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                                  {:settings m})
                     (is (=? {:id (mt/id)}
