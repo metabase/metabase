@@ -4,7 +4,7 @@ import { Route } from "react-router";
 import {
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotPromptSuggestionsEndpointError,
-  setupRefreshMetabotPromptSuggestionsEndpoint,
+  setupRegenerateMetabotPromptSuggestionsEndpoint,
   setupRemoveMetabotPromptSuggestionEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -181,21 +181,13 @@ describe("suggested prompts", () => {
 
     expect(await screen.findByText(secondPrompt.prompt)).toBeInTheDocument();
     expect(screen.queryByText(firstPrompt.prompt)).not.toBeInTheDocument();
-
-    // TODO: remove once mocking real endpoints
-    setupRefreshMetabotPromptSuggestionsEndpoint(metabotId);
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: /Refresh prompts suggestions/,
-      }),
-    );
   });
 
-  it("should allow the user to refresh the prompts", async () => {
+  it("should allow the user to regenerate the prompts", async () => {
     const { metabotId } = await setup({ pageSize: 1 });
     const [firstPrompt] = defaultMetabotMockedPrompts;
 
-    setupRefreshMetabotPromptSuggestionsEndpoint(metabotId);
+    setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId);
     setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
     setupMetabotPromptSuggestionsEndpoint(
       metabotId,
@@ -207,7 +199,7 @@ describe("suggested prompts", () => {
       },
     );
 
-    // remove a prompt so when we refresh we can see it came back
+    // remove a prompt so when we regenerate we can see it came back
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
     await userEvent.click(await screen.findByTestId("prompt-remove"));
     await waitFor(() => {
@@ -224,13 +216,13 @@ describe("suggested prompts", () => {
       },
     );
 
-    const refreshButton = await screen.findByRole("button", {
-      name: /Refresh prompts suggestions/,
+    const regenerateButton = await screen.findByRole("button", {
+      name: /Regenerate suggested prompts/,
     });
-    expect(refreshButton).toBeInTheDocument();
-    await userEvent.click(refreshButton);
+    expect(regenerateButton).toBeInTheDocument();
+    await userEvent.click(regenerateButton);
 
-    // should load while refreshing
+    // should load while regenerating
     const [loadingRow] = await screen.findAllByTestId("prompt-loading-row");
     expect(loadingRow).toBeInTheDocument();
 

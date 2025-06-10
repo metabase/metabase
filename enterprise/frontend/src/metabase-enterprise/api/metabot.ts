@@ -112,10 +112,10 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { metabot_id }) =>
         !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
     }),
-    refreshSuggestedMetabotPrompts: builder.mutation<void, MetabotId>({
+    regenerateSuggestedMetabotPrompts: builder.mutation<void, MetabotId>({
       query: (metabot_id) => ({
-        method: "DELETE",
-        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
+        method: "POST",
+        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/regenerate`,
       }),
       invalidatesTags: (_, error, metabot_id) =>
         !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
@@ -132,5 +132,5 @@ export const {
   useDeleteMetabotEntitiesMutation,
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
-  useRefreshSuggestedMetabotPromptsMutation,
+  useRegenerateSuggestedMetabotPromptsMutation,
 } = metabotApi;

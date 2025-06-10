@@ -89,11 +89,11 @@ export function setupRemoveMetabotPromptSuggestionEndpoint(
   );
 }
 
-export function setupRefreshMetabotPromptSuggestionsEndpoint(
+export function setupRegenerateMetabotPromptSuggestionsEndpoint(
   metabotId: MetabotId,
 ) {
-  fetchMock.delete(
-    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
+  fetchMock.post(
+    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/regenerate`,
     { status: 202 },
   );
 }

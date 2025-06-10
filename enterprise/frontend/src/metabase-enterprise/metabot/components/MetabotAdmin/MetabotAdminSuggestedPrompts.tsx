@@ -22,7 +22,7 @@ import {
 import {
   useDeleteSuggestedMetabotPromptMutation,
   useGetSuggestedMetabotPromptsQuery,
-  useRefreshSuggestedMetabotPromptsMutation,
+  useRegenerateSuggestedMetabotPromptsMutation,
 } from "metabase-enterprise/api";
 import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 import * as Urls from "metabase-enterprise/urls";
@@ -48,8 +48,8 @@ export const MetabotPromptSuggestionPane = ({
     offset,
   });
   const [deletePrompt] = useDeleteSuggestedMetabotPromptMutation();
-  const [refreshPrompts, { isLoading: isRefreshing }] =
-    useRefreshSuggestedMetabotPromptsMutation();
+  const [regeneratePrompts, { isLoading: isRegenerating }] =
+    useRegenerateSuggestedMetabotPromptsMutation();
 
   const handleDeletePrompt = async (promptId: SuggestedMetabotPrompt["id"]) => {
     const { error } = await deletePrompt({
@@ -72,11 +72,11 @@ export const MetabotPromptSuggestionPane = ({
     }
   };
 
-  const handleRefreshPrompts = async () => {
-    const { error } = await refreshPrompts(metabotId);
+  const handleRegeneratePrompts = async () => {
+    const { error } = await regeneratePrompts(metabotId);
     if (error) {
       sendToast({
-        message: t`Error refreshing prompts`,
+        message: t`Error regenerate prompts`,
         icon: "warning",
       });
     } else {
@@ -87,7 +87,7 @@ export const MetabotPromptSuggestionPane = ({
   const prompts = useMemo(() => data?.prompts ?? [], [data?.prompts]);
   const total = data?.total ?? 0;
 
-  const showSkeleton = isLoading || isRefreshing;
+  const showSkeleton = isLoading || isRegenerating;
   const rows = useMemo(() => {
     return showSkeleton
       ? new Array(pageSize)
@@ -105,13 +105,13 @@ export const MetabotPromptSuggestionPane = ({
       />
       <Flex gap="md" align="center">
         <Button
-          disabled={isRefreshing}
-          leftSection={isRefreshing && <Loader size="xs" />}
-          onClick={handleRefreshPrompts}
+          disabled={isRegenerating}
+          leftSection={isRegenerating && <Loader size="xs" />}
+          onClick={handleRegeneratePrompts}
         >
-          {isRefreshing
-            ? t`Refreshing suggested prompts...`
-            : t`Refresh suggested prompts`}
+          {isRegenerating
+            ? t`Regenerating suggested prompts...`
+            : t`Regenerate suggested prompts`}
         </Button>
       </Flex>
       <Box maw="80rem">
