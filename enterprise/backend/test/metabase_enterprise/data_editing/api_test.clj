@@ -1330,8 +1330,8 @@
                       (is (=? {:status 200
                                :body   {:parameters
                                         (if (:dashcard-id scope)
-                                          [{:id "text" :readonly true :value "a very important string"}
-                                           {:id "int" :readonly false}
+                                          [{:id "int" :readonly false}
+                                           {:id "text" :readonly true :value "a very important string"}
                                            ;; note that timestamp is now hidden
                                            {:id "date" :readonly false}]
                                           [{:id "text" :readonly false}

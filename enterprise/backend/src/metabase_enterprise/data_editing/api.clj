@@ -527,12 +527,17 @@
                                                                {:where [:not [:= nil :model_id]]})
                                         api/read-check
                                         api/check-404)
+                mapping-order       (zipmap (map :parameterId param-mapping) (range))
                 param-id->viz-field (-> action :visualization_settings (:fields {}))
-                param-id->mapping   (u/index-by :parameterId param-mapping)]
+                param-id->mapping   (u/index-by :parameterId param-mapping)
+                param-order         (zipmap (map :id (:parameters action)) (range))
+                param-sort-key      (fn [param]
+                                      (or (mapping-order (:id param))
+                                          (+ (count mapping-order) (param-order (:id param)))))]
 
             {:title (:name action)
              :parameters
-             (->> (for [param (:parameters action)
+             (->> (for [param (sort-by param-sort-key (:parameters action))
                         ;; query type actions store most stuff in viz settings rather than the
                         ;; parameter
                         :let [viz-field     (param-id->viz-field (:id param))
@@ -571,14 +576,19 @@
                        row-delay]}]
           (let [table-id            table-id
                 table               (api/read-check (t2/select-one :model/Table :id table-id :active true))
+                mapping-order       (zipmap (map :parameterId param-mapping) (range))
                 field-name->mapping (u/index-by :parameterId param-mapping)
                 fields              (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
                                                     :has_field_values
-                                                    :values))]
+                                                    :values))
+                field-order         (zipmap (map :name fields) (range))
+                field-sort-key      (fn [field]
+                                      (or (mapping-order (:name field))
+                                          (+ (count mapping-order) (field-order (:name field)))))]
             {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
              :parameters
-             (->> (for [field fields
+             (->> (for [field (sort-by field-sort-key fields)
                         :let [{field-values :values} field
                               pk                     (= :type/PK (:semantic_type field))
                               param-mapping          (field-name->mapping (:name field))]
@@ -603,7 +613,6 @@
                       :database_default        (:database_default field)
                       :readonly                (= "readonly" (:visibility param-mapping))
                       :value                   (param-value param-mapping row-delay)}))
-
                   vec)}))]
 
     (cond
