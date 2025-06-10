@@ -490,6 +490,12 @@
                                               (or (get user-id->collection-id (u/the-id user))
                                                   (user->personal-collection-id (u/the-id user)))))))))
 
+(mi/define-simple-hydration-method is-tenant-collection
+  :is_tenant_collection
+  "Hydrate the `is_tenant_collection` property of collections - whether or not they're a tenant coll."
+  [collection]
+  (is-tenant-collection? collection))
+
 (mi/define-batched-hydration-method collection-is-personal
   :is_personal
   "Efficiently hydrate the `:is_personal` property of a sequence of Collections.
