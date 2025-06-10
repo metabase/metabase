@@ -29,6 +29,7 @@ export interface User extends BaseUser {
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
+  can_write_any_collection: boolean;
   personal_collection_id: CollectionId;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
