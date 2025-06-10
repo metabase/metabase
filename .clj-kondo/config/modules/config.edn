@@ -497,8 +497,8 @@
            metabase.events.init}
    :uses #{api
            audit-app
-           config
            channel
+           config
            driver
            models
            notification
@@ -706,8 +706,8 @@
            dashboards
            driver
            events
-           models
            lib
+           models
            parameters
            permissions
            premium-features
@@ -1584,11 +1584,11 @@
 
   enterprise/data-editing
   {:team "Workflows"
-   :api  #{metabase-enterprise.data-editing.core
-           metabase-enterprise.data-editing.api
+   :api  #{metabase-enterprise.data-editing.api
+           metabase-enterprise.data-editing.core
            metabase-enterprise.data-editing.init}
-   :uses #{api
-           actions
+   :uses #{actions
+           api
            driver
            events
            lib
@@ -1602,15 +1602,15 @@
   enterprise/data-editing-public
   {:team "Workflows"
    :api #{}
-   :uses #{api
-           actions
-           enterprise/data-editing
+   :uses #{actions
+           api
            driver
            events
            lib
            query-processor
            upload
-           util}}
+           util
+           enterprise/data-editing}}
 
   enterprise/database-routing
   {:team "Admin Webapp"
