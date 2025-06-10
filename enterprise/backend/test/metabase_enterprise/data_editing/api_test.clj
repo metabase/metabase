@@ -250,18 +250,18 @@
                      [3 3 "Farfetch'd" "The land of lisp"]}
                    (set (table-rows table-id)))))
 
-         (testing "DELETE should remove the corresponding rows"
-           (is (= #{{:op "deleted", :table-id table-id, :row {:id_1 1, :id_2 1}}
-                    {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 2}}}
-                  (set
-                   (:outputs
-                    (mt/user-http-request :crowberto :post 200 url
-                                          {:action_id "data-grid.row/delete"
-                                           :scope     {:table-id table-id}
-                                           :inputs    [{:id_1 1, :id_2 1}
-                                                       {:id_1 2, :id_2 2}]})))))
-           (is (= [[3 3 "Farfetch'd" "The land of lisp"]]
-                  (table-rows table-id)))))))))
+          (testing "DELETE should remove the corresponding rows"
+            (is (= #{{:op "deleted", :table-id table-id, :row {:id_1 1, :id_2 1}}
+                     {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 2}}}
+                   (set
+                    (:outputs
+                     (mt/user-http-request :crowberto :post 200 url
+                                           {:action_id "data-grid.row/delete"
+                                            :scope     {:table-id table-id}
+                                            :inputs    [{:id_1 1, :id_2 1}
+                                                        {:id_1 2, :id_2 2}]})))))
+            (is (= [[3 3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id)))))))))
 
 (deftest simple-delete-with-children-test
   (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
@@ -289,18 +289,18 @@
                     (mt/user-http-request :crowberto :post 400 execute-v2-url
                                           body))))
 
-          #_(testing "sucess with delete-children options"
-              (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
-                                 {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
-                      (mt/user-http-request :crowberto :post 200 execute-v2-url
-                                            (assoc body :params {:delete-children true}))))
-              (is (empty? (children-count)))
-              (testing "the change is not undoable"
-                (is (= "Your previous change cannot be undone"
-                       (mt/user-http-request :crowberto :post 405 execute-v2-url
-                                             {:action_id "data-editing/undo"
-                                              :scope     {:table-id (mt/id :products)}
-                                              :inputs    []}))))))))))
+          (testing "sucess with delete-children options"
+            (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
+                               {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
+                    (mt/user-http-request :crowberto :post 200 execute-v2-url
+                                          (assoc body :params {:delete-children true}))))
+            (is (empty? (children-count)))
+            (testing "the change is not undoable"
+              (is (= "Your previous change cannot be undone"
+                     (mt/user-http-request :crowberto :post 405 execute-v2-url
+                                           {:action_id "data-editing/undo"
+                                            :scope     {:table-id (mt/id :products)}
+                                            :inputs    []}))))))))))
 
 (mt/defdataset self-referential-categories
   [["category"
