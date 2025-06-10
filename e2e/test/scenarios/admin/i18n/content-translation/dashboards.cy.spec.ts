@@ -10,10 +10,7 @@ import type {
 import type { DictionaryArray } from "metabase/i18n/types";
 
 import { germanFieldNames, germanFieldValues } from "./constants";
-import {
-  interceptContentTranslationRoutes,
-  uploadTranslationDictionaryViaAPI,
-} from "./helpers/e2e-content-translation-helpers";
+import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -31,7 +28,10 @@ describe("scenarios > content translation > static embedding > dashboards", () =
   describe("filters and field values", () => {
     describe("ee", () => {
       before(() => {
-        interceptContentTranslationRoutes();
+        cy.intercept(
+          "POST",
+          "/api/ee/content-translation/upload-dictionary",
+        ).as("uploadDictionary");
 
         H.restore();
         cy.signInAsAdmin();
