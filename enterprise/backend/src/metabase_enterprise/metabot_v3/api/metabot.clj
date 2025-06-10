@@ -200,10 +200,11 @@
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  (t2/delete! :model/MetabotPrompt :id [:in {:select [:metabot_prompt.id]
-                                             :from   [:metabot_prompt]
-                                             :join   [[:metabot_entity :mbe] [:= :mbe.id :metabot_entity_id]]
-                                             :where  [:= :mbe.metabot_id id]}])
+  (t2/delete! :model/MetabotPrompt {:where [:exists {:select [:*]
+                                                     :from   [[:metabot_entity :mbe]]
+                                                     :where  [:and
+                                                              [:= :mbe.id :metabot_prompt.metabot_entity_id]
+                                                              [:= :mbe.metabot_id id]]}]})
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
@@ -212,12 +213,13 @@
                               [:id pos-int?]
                               [:prompt-id pos-int?]]]
   (api/check-superuser)
-  (t2/delete! :model/MetabotPrompt :id [:in {:select [:metabot_prompt.id]
-                                             :from   [:metabot_prompt]
-                                             :join   [[:metabot_entity :mbe] [:= :mbe.id :metabot_entity_id]]
-                                             :where  [:and
-                                                      [:= :metabot_prompt.id prompt-id]
-                                                      [:= :mbe.metabot_id id]]}])
+  (t2/delete! :model/MetabotPrompt {:where [:and
+                                            [:= :id prompt-id]
+                                            [:exists {:select [:*]
+                                                      :from   [[:metabot_entity :mbe]]
+                                                      :where  [:and
+                                                               [:= :mbe.id :metabot_prompt.metabot_entity_id]
+                                                               [:= :mbe.metabot_id id]]}]]})
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
