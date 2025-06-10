@@ -19,6 +19,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.visualization-settings :as viz-settings]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -47,17 +48,24 @@
 (mr/def ::num-breakouts ::lib.schema.common/int-greater-than-or-equal-to-zero)
 (mr/def ::index         ::lib.schema.common/int-greater-than-or-equal-to-zero)
 
-(mr/def ::pivot-rows     [:sequential ::index])
-(mr/def ::pivot-cols     [:sequential ::index])
-(mr/def ::pivot-measures [:sequential ::index])
+(mr/def ::pivot-rows            [:sequential ::index])
+(mr/def ::pivot-cols            [:sequential ::index])
+(mr/def ::pivot-measures        [:sequential ::index])
+(mr/def ::native-pivot-rows     [:sequential :map])
+(mr/def ::native-pivot-cols     [:sequential :map])
+(mr/def ::native-pivot-measures [:sequential :map])
 
 (mr/def ::pivot-opts [:maybe
                       [:map
-                       [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
-                       [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
-                       [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
-                       [:show-row-totals    {:optional true} [:maybe :boolean]]
-                       [:show-column-totals {:optional true} [:maybe :boolean]]]])
+                       [:pivot-rows            {:optional true} [:maybe ::pivot-rows]]
+                       [:pivot-cols            {:optional true} [:maybe ::pivot-cols]]
+                       [:pivot-measures        {:optional true} [:maybe ::pivot-measures]]
+                       [:native-pivot-rows     {:optional true} [:maybe ::native-pivot-rows]]
+                       [:native-pivot-cols     {:optional true} [:maybe ::native-pivot-cols]]
+                       [:native-pivot-measures {:optional true} [:maybe ::native-pivot-measures]]
+                       [:column-sort-order     {:optional true} [:maybe [:map-of ::index keyword?]]]
+                       [:show-row-totals       {:optional true} [:maybe :boolean]]
+                       [:show-column-totals    {:optional true} [:maybe :boolean]]]])
 
 (mu/defn- group-bitmask :- ::bitmask
   "Come up with a display name given a combination of breakout `indexes` e.g.
@@ -470,21 +478,32 @@
       pivot-opts)))
 
 (mu/defn- pivot-options :- ::pivot-opts
-  "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
-  `pivot-cols` to use for generating subqueries. Supports both column name and field ref-based settings.
+  "Looks at the `pivot_table.column_split` and `pivot_table.native_column_split` keys in the card's visualization
+  settings and generates `pivot-rows` and `pivot-cols` to use for generating subqueries.
 
-  Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
-  questions we need to support both old- and new-style settings until they are fully migrated."
+  Supports both column name and field ref-based settings for MBQL column splits. Field ref-based visualization settings
+  are considered legacy and are not used for new questions. To not break existing questions we need to support both old-
+  and new-style settings until they are fully migrated.
+
+  For native pivots, split settings are always name-based, and include binning/temporal bucketing information so that
+  the breakouts and aggregations can be added to the query in `nest-native-pivot-query`"
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (when viz-settings
-    (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
-      (merge
-       (if (and (every? string? rows) (every? string? columns))
-         (column-name-pivot-options query viz-settings)
-         (field-ref-pivot-options query viz-settings))
-       {:column-sort-order (column-sort-order query viz-settings)}))))
+    (merge
+     {:show-row-totals (get viz-settings :pivot.show_row_totals true)
+      :show-column-totals (get viz-settings :pivot.show_column_totals true)
+      :column-sort-order (column-sort-order query viz-settings)}
+     (if (:is-native (lib/display-info query -1 query))
+       (let [{:keys [rows columns values]} (:pivot_table.native_column_split viz-settings)]
+         {:native-pivot-rows     rows
+          :native-pivot-cols     columns
+          :native-pivot-measures values})
+       (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+         (if (and (every? string? rows) (every? string? columns))
+           (column-name-pivot-options query viz-settings)
+           (field-ref-pivot-options query viz-settings)))))))
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
@@ -742,6 +761,7 @@
      (qp.setup/with-qp-setup [query query]
        (let [rff               (or rff qp.reducible/default-rff)
              query             (lib/query (qp.store/metadata-provider) query)
+             is-native?        (:is-native (lib/display-info query -1 query))
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
@@ -754,10 +774,7 @@
                                                          :native-pivot-measures
                                                          :show-row-totals
                                                          :show-column-totals])))
-             ;; TODO: better way to detect native queries here?
-             query             (if (or (:native-pivot-rows pivot-opts)
-                                       (:native-pivot-cols pivot-opts)
-                                       (:native-pivot-measures pivot-opts))
+             query             (if is-native?
                                  (nest-native-pivot-query query pivot-opts)
                                  query)
              query             (-> query

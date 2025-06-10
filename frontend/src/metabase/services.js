@@ -33,7 +33,6 @@ export const StoreApi = {
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
-
   // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
   // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
