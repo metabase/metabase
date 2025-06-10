@@ -3,7 +3,9 @@
   (:require
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util :as util]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -44,6 +46,28 @@
     (str/blank? msgstr)
     (re-matches #"^[,;\s]*$" msgstr))))
 
+(defn standardize-locale
+  "For example, pt_BR, pt_br, pt-br, and PT-BR are all standardized as pt-BR."
+  [locale-name]
+  (let [s (str/replace locale-name "_" "-")
+        parts (str/split s #"-")]
+    (str/join "-" (map-indexed
+                   (fn [idx part]
+                     (if (zero? idx)
+                       (util/lower-case-en part)
+                       (when s (str (util/upper-case-en part)))))
+                   parts))))
+
+(defn format-row
+  "Formats a row to be inserted into the content translation table. Locales are standardized, and all fields are trimmed. Extra fields are included as well."
+  [row]
+  (let [[locale msgid msgstr & extras] row
+        formatted-locale (i18n/normalized-locale-string (str/trim locale))
+        formatted-msgid (str/trim msgid)
+        formatted-msgstr (str/trim msgstr)]
+    (into [formatted-locale formatted-msgid formatted-msgstr]
+          extras)))
+
 (defn- row-errors
   [state index translation]
   (keep (fn [f] (f state index translation))
@@ -55,26 +79,27 @@
        (adjust-index index)))
 
 (defn- process-rows
-  "Format, trim, validate rows. Takes the vectors from a csv and returns a map with the shape
+  "Format and validate rows. Takes the vectors from a csv and returns a map with the shape
   {:translations [{:locale :msgid :msgstr}]
    :errors       [string]}.
   The :seen set is returned but not meant for consumption."
   [rows]
-  (reduce (fn [state [index row]]
-            (let [[locale msgid msgstr & extra] row
-                  translation                   {:locale locale
-                                                 :msgid  (str/trim msgid)
-                                                 :msgstr (str/trim msgstr)}
-                  errors                        (cond-> (row-errors state index translation)
-                                                  (seq extra) (conj (wrong-row-shape index)))]
-              (cond-> (-> state
-                          (update :seen conj (dissoc translation :msgstr))
-                          (update :translations conj translation))
-                (seq errors) (update :errors into errors))))
-          {:seen         #{}
-           :errors       []
-           :translations []}
-          (map-indexed vector rows)))
+  (let [formatted-rows (map format-row rows)]
+    (reduce (fn [state [index row]]
+              (let [[locale msgid msgstr & extra] row
+                    translation                   {:locale locale
+                                                   :msgid  msgid
+                                                   :msgstr msgstr}
+                    errors                        (cond-> (row-errors state index translation)
+                                                    (seq extra) (conj (wrong-row-shape index)))]
+                (cond-> (-> state
+                            (update :seen conj (dissoc translation :msgstr))
+                            (update :translations conj translation))
+                  (seq errors) (update :errors into errors))))
+            {:seen         #{}
+             :errors       []
+             :translations []}
+            (map-indexed vector formatted-rows))))
 
 (defn import-translations!
   "Insert or update rows in the content_translation table."
