@@ -474,6 +474,30 @@
                                           group-rank-col 301}}
                               second-result)))))))))))))
 
+(deftest create-or-update-action-default-to-pk-test
+  (testing "table.row/create-or-update action without a row-key will default to PK from :row"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.tu/with-actions-temp-db action-error-handling
+        (mt/with-actions-enabled
+          (let [db-id          (mt/id)
+                group-id-col   (field-id->name (mt/id :group :id))
+                group-name-col (field-id->name (mt/id :group :name))
+                group-rank-col (field-id->name (mt/id :group :ranking))]
+            (testing "creates new row when key doesn't exist"
+              (let [result (actions/perform-action-with-single-input-and-output
+                            :table.row/create-or-update
+                            {:database db-id
+                             :table-id (mt/id :group)
+                             :row      {group-id-col   1
+                                        group-name-col "New Group"
+                                        group-rank-col 100}})]
+                (is (=? {:op       :updated
+                         :table-id (mt/id :group)
+                         :row      {group-id-col   (mt/malli=? int?)
+                                    group-name-col "New Group"
+                                    group-rank-col 100}}
+                        result))))))))))
+
 (deftest create-or-update-error-handling-test
   (testing "table.row/create-or-update action"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)

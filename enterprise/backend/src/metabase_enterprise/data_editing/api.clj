@@ -208,14 +208,12 @@
                                         :active true))
         fields             (when (seq editable-tables)
                              (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
-
         fields-by-table    (group-by :table_id fields)
-        table-actions      (for [t editable-tables
-                                 op [:table.row/create :table.row/update :table.row/create-or-update :table.row/delete]
+        table-actions      (for [t            editable-tables
+                                 [op op-name] actions/enabled-table-actions
                                  :let [fields (fields-by-table (:id t))
                                        action (actions/table-primitive-action t fields op)]]
-                             (assoc action :table_name (:name t)))
-
+                             (assoc action :table_name op-name))
         saved-actions      (for [a (actions/select-actions nil :archived false)]
                              (select-keys a [:name
                                              :model_id
@@ -225,10 +223,6 @@
                                              :visualization_settings
                                              :parameters]))]
     {:actions (vec (concat saved-actions table-actions))}))
-
-#_(let [t      (t2/select-one :model/Table 1)
-        fields (t2/select :model/Field :table_id (:id t))]
-    (actions/table-primitive-action t fields :table.row/create-or-update))
 
 (mr/def ::unified-action.base
   [:or
