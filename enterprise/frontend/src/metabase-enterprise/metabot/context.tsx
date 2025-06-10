@@ -9,10 +9,11 @@ import type {
 } from "metabase/metabot";
 
 export const defaultContext = {
-  getChatContext: () => ({
-    user_is_viewing: [],
-    current_time_with_timezone: dayjs.tz(dayjs()).format(),
-  }),
+  getChatContext: () =>
+    Promise.resolve({
+      user_is_viewing: [],
+      current_time_with_timezone: dayjs.tz(dayjs()).format(),
+    }),
   registerChatContextProvider: () => () => {},
 };
 
@@ -26,23 +27,25 @@ export const MetabotProvider = ({
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
 
-  const getChatContext = useCallback(() => {
+  const getChatContext = useCallback(async () => {
     const state = store.getState();
+    const providerFns = [...providerFnsRef.current];
 
-    const baseContext = {
+    const ctx = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
     };
 
-    return [...providerFnsRef.current].reduce((chatContext, providerFn) => {
+    for (const providerFn of providerFns) {
       try {
-        const partialContext = providerFn(state) || {};
-        return Object.assign(chatContext, partialContext);
+        const partialCtx = await providerFn(state);
+        return Object.assign(ctx, partialCtx);
       } catch (err) {
         console.error("A metabot chat context provider failed:", err);
-        return chatContext;
       }
-    }, baseContext);
+    }
+
+    return ctx;
   }, [store]);
 
   const registerChatContextProvider = useCallback(

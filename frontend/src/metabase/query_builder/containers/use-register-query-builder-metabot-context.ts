@@ -56,7 +56,6 @@ export const useRegisterQueryBuilderMetabotContext = () => {
   const question = useSelector(getQuestion);
   const isLoadingComplete = useSelector(getIsLoadingComplete);
   const chartImageRef = useRef<string | undefined>();
-  const timeoutIdRef = useRef<NodeJS.Timeout | null>();
 
   // TODO: I don't think we should be syncing this constantly
   // - [ ] run some timings on how long it takes
@@ -70,119 +69,117 @@ export const useRegisterQueryBuilderMetabotContext = () => {
 
     // Small delay to ensure visualization has rendered
     const timeout = setTimeout(async () => {
-      let imageBase64: string | undefined = undefined;
       try {
-        imageBase64 = await getBase64ChartImage(
+        const imageBase64 = await getBase64ChartImage(
           getChartSelector({ cardId: question.id() }),
         );
+        chartImageRef.current = imageBase64;
       } catch (error) {
         console.warn("Failed to capture chart image:", error);
-      }
-      // ensure that no newer timeout has been started in the time
-      // it took the async getBase64ChartImage fn to resolve
-      if (timeoutIdRef.current === timeout) {
-        chartImageRef.current = imageBase64;
+        chartImageRef.current = undefined;
       }
     }, RENDER_DELAY_MS);
-    timeoutIdRef.current = timeout;
 
-    return () => {
-      clearTimeout(timeout);
-      timeoutIdRef.current = null;
-    };
+    return () => clearTimeout(timeout);
   }, [question, isLoadingComplete]);
 
-  useRegisterMetabotContextProvider((state) => {
-    const question = getQuestion(state);
-    if (!question) {
-      return {};
-    }
+  useRegisterMetabotContextProvider(
+    async (state) => {
+      const question = getQuestion(state);
+      if (!question) {
+        return {};
+      }
 
-    const vizSettings: ComputedVisualizationSettings =
-      getVisualizationSettings(state);
-    const timelines = getTransformedTimelines(state);
-    const transformedSeriesData = getTransformedSeries(state);
+      const vizSettings: ComputedVisualizationSettings =
+        getVisualizationSettings(state);
+      const timelines = getTransformedTimelines(state);
+      const transformedSeriesData = getTransformedSeries(state);
 
-    const questionCtx = question.isSaved()
-      ? { id: question.id(), type: question.type() }
-      : { type: "adhoc" as const };
+      const questionCtx = question.isSaved()
+        ? { id: question.id(), type: question.type() }
+        : { type: "adhoc" as const };
 
-    const series = !vizSettings
-      ? {}
-      : transformedSeriesData
-          .filter((series) => !!series.data.cols && !!series.data.rows)
-          .reduce(
-            (acc, series, index) => {
-              const { cols, rows } = series.data;
-              const seriesKey = series.card.name || `series_${index}`;
+      const series = !vizSettings
+        ? {}
+        : transformedSeriesData
+            .filter((series) => !!series.data.cols && !!series.data.rows)
+            .reduce(
+              (acc, series, index) => {
+                const { cols, rows } = series.data;
+                const seriesKey = series.card.name || `series_${index}`;
 
-              const dimensionCol = cols.find(
-                (col) => !!vizSettings["graph.dimensions"]?.includes(col.name),
-              );
-              const metricCol = cols.find(
-                (col) => !!vizSettings["graph.metrics"]?.includes(col.name),
-              );
-              if (!dimensionCol || !metricCol) {
-                return acc;
-              }
+                const dimensionCol = cols.find(
+                  (col) =>
+                    !!vizSettings["graph.dimensions"]?.includes(col.name),
+                );
+                const metricCol = cols.find(
+                  (col) => !!vizSettings["graph.metrics"]?.includes(col.name),
+                );
+                if (!dimensionCol || !metricCol) {
+                  return acc;
+                }
 
-              const dimensionIndex = cols.findIndex(
-                (col) => col.name === dimensionCol.name,
-              );
-              const metricIndex = cols.findIndex(
-                (col) => col.name === metricCol.name,
-              );
-              if (dimensionIndex < 0 || metricIndex < 0) {
-                return acc;
-              }
+                const dimensionIndex = cols.findIndex(
+                  (col) => col.name === dimensionCol.name,
+                );
+                const metricIndex = cols.findIndex(
+                  (col) => col.name === metricCol.name,
+                );
+                if (dimensionIndex < 0 || metricIndex < 0) {
+                  return acc;
+                }
 
-              return Object.assign(acc, {
-                [seriesKey]: {
-                  x: {
-                    name: dimensionCol.name,
-                    type: getMetabotColType(dimensionCol.base_type),
+                return Object.assign(acc, {
+                  [seriesKey]: {
+                    x: {
+                      name: dimensionCol.name,
+                      type: getMetabotColType(dimensionCol.base_type),
+                    },
+                    y: {
+                      name: metricCol.name,
+                      type: getMetabotColType(metricCol.base_type),
+                    },
+                    x_values: rows.map((row) => row[dimensionIndex]),
+                    y_values: rows.map((row) => row[metricIndex]),
+                    display_name: seriesKey,
+                    chart_type: series.card.display,
+                    stacked: vizSettings["stackable.stack_type"] === "stacked",
                   },
-                  y: {
-                    name: metricCol.name,
-                    type: getMetabotColType(metricCol.base_type),
-                  },
-                  x_values: rows.map((row) => row[dimensionIndex]),
-                  y_values: rows.map((row) => row[metricIndex]),
-                  display_name: seriesKey,
-                  chart_type: series.card.display,
-                  stacked: vizSettings["stackable.stack_type"] === "stacked",
-                },
-              });
-            },
-            {} as Record<string, MetabotSeriesConfig>,
-          );
+                });
+              },
+              {} as Record<string, MetabotSeriesConfig>,
+            );
 
-    const timeline_events = timelines
-      .flatMap((timeline) => timeline.events ?? [])
-      .map((event) => ({
-        name: event.name,
-        description: event.description ?? "",
-        timestamp: dayjs.tz(dayjs(event.timestamp)).format(),
-      }))
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-      .slice(0, 20);
+      const timeline_events = timelines
+        .flatMap((timeline) => timeline.events ?? [])
+        .map((event) => ({
+          name: event.name,
+          description: event.description ?? "",
+          timestamp: dayjs.tz(dayjs(event.timestamp)).format(),
+        }))
+        .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+        .slice(0, 20);
 
-    return {
-      user_is_viewing: [
-        {
-          ...questionCtx,
-          query: question.datasetQuery(),
-          chart_configs: [
-            {
-              image_base_64: chartImageRef.current,
-              title: question.displayName(),
-              description: question.description(),
-              series,
-              timeline_events,
-            },
-          ],
-        },
-      ],
-    };
-  }, []);
+      return {
+        user_is_viewing: [
+          {
+            ...questionCtx,
+            query: question.datasetQuery(),
+            chart_configs: [
+              {
+                image_base_64: chartImageRef.current,
+                title: question.displayName(),
+                description: question.description(),
+                series,
+                timeline_events,
+              },
+            ],
+          },
+        ],
+      };
+    },
+    [
+      /* TODO: deps */
+    ],
+  );
 };

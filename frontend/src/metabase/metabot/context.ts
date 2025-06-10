@@ -6,10 +6,10 @@ import type { State } from "metabase-types/store";
 
 export type ChatContextProviderFn = (
   state: State,
-) => Partial<MetabotChatContext> | void;
+) => Promise<Partial<MetabotChatContext> | void>;
 export type DeregisterChatContextProviderFn = () => void;
 export interface MetabotContext {
-  getChatContext: () => MetabotChatContext;
+  getChatContext: () => Promise<MetabotChatContext>;
   registerChatContextProvider: (
     fn: ChatContextProviderFn,
   ) => DeregisterChatContextProviderFn;

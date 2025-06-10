@@ -377,7 +377,10 @@ describe("metabot", () => {
 
       const TestComponent = () => {
         useRegisterMetabotContextProvider(
-          () => ({ user_is_viewing: [{ type: "question", id: 1 }] }),
+          () =>
+            Promise.resolve({
+              user_is_viewing: [{ type: "dashboard", id: 1 }],
+            }),
           [],
         );
         return null;
@@ -398,7 +401,7 @@ describe("metabot", () => {
         isMatching(
           {
             current_time_with_timezone: P.string,
-            user_is_viewing: [{ type: "question", id: 1 }],
+            user_is_viewing: [{ type: "dashboard", id: 1 }],
           },
           (await lastReqBody())?.context,
         ),
