@@ -16,8 +16,12 @@ type ParameterActionInputProps = ActionInputSharedProps & {
 export function ParameterActionInput(props: ParameterActionInputProps) {
   const { parameter, ...rest } = props;
 
-  // TOOD: add `Auto populated` label for db-generated values when BE supports it
-  const placeholder = parameter.optional ? t`Optional` : undefined;
+  const placeholder = parameter.database_default
+    ? t`Auto populated`
+    : parameter.optional
+      ? t`Optional`
+      : undefined;
+
   const disabled = parameter.readonly;
 
   const inputProps = {
