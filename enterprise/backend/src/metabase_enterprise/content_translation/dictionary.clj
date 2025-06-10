@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util :as util]
    [metabase.util.i18n :as i18n :refer [tru]]
    [toucan2.core :as t2]))
 
