@@ -90,19 +90,17 @@
 
 (defmethod sql.qp/cast-temporal-string [:vertica :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (h2x/with-database-type-info [:to_timestamp
-                                (concatenate [:substr expr 1 4]
-                                             "-"
-                                             [:substr expr 5 2]
-                                             "-"
-                                             [:substr expr 7 2]
-                                             " "
-                                             [:substr expr 9 2]
-                                             ":"
-                                             [:substr expr 11 2]
-                                             ":"
-                                             [:substr expr 13 2])]
-                               "timestamp"))
+  (h2x/->timestamp (concatenate [:substr expr 1 4]
+                                "-"
+                                [:substr expr 5 2]
+                                "-"
+                                [:substr expr 7 2]
+                                " "
+                                [:substr expr 9 2]
+                                ":"
+                                [:substr expr 11 2]
+                                ":"
+                                [:substr expr 13 2])))
 
 ;; TODO - not sure if needed or not
 (defn- cast-timestamp
