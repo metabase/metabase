@@ -48,8 +48,8 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    (message: string, metabotId?: string) => {
-      const context = getChatContext();
+    async (message: string, metabotId?: string) => {
+      const context = await getChatContext();
       const history = sendMessageReq.data?.history || [];
       const state = sendMessageReq.data?.state || {};
       return dispatch(
