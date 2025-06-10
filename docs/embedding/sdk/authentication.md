@@ -6,7 +6,7 @@ title: Embedded analytics SDK - authentication
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-For using the SDK in production, you'll need to set up authentication with JWT SSO.
+For using the SDK in production, you'll need to set up authentication with SSO.
 
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
