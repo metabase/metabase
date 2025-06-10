@@ -41,7 +41,7 @@
     (let [rows [["invalidlocale" "Hello" "Hola"]]
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 2.*Invalid locale.*invalidlocale" (first (:errors result))))))
+      (is (re-find #"Row 2.*Invalid locale" (first (:errors result))))))
 
   (testing "Duplicate translation keys generate error"
     (let [rows [["fr" "Hello" "Bonjour"]

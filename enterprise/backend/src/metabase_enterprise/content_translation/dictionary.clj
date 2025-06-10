@@ -26,7 +26,7 @@
   "Returns an error message if a row does not have a valid locale."
   [_state index {:keys [locale]}]
   (when (not (i18n/available-locale? locale))
-    (tru "Row {0}: Invalid locale: {1}" (adjust-index index) locale)))
+    (tru "Row {0}: Invalid locale" (adjust-index index))))
 
 (defn- collect-duplication-error
   "Returns an error message if this translation key has already been seen in the file. A translation key is a string
