@@ -76,7 +76,17 @@ describe("suggested prompts", () => {
   });
 
   it("should successfully render a list of prompts", async () => {
-    await setup();
+    setupMetabotPromptSuggestionsEndpoint(
+      FIXED_METABOT_IDS.DEFAULT,
+      defaultMetabotMockedPrompts,
+      {
+        offset: 0,
+        limit: 3,
+        total: defaultMetabotMockedPrompts.length,
+      },
+      { delay: 50 },
+    );
+    await setup({ mockInitialPage: false });
     await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(0, 3));
   });
 
@@ -187,7 +197,6 @@ describe("suggested prompts", () => {
     const { metabotId } = await setup({ pageSize: 1 });
     const [firstPrompt] = defaultMetabotMockedPrompts;
 
-    setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId);
     setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
     setupMetabotPromptSuggestionsEndpoint(
       metabotId,
@@ -215,12 +224,18 @@ describe("suggested prompts", () => {
         total: defaultMetabotMockedPrompts.length,
       },
     );
+    // add a delay to endpoint so that loading state can be triggered consistently w/o test flakes
+    setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId, { delay: 50 });
 
     const regenerateButton = await screen.findByRole("button", {
       name: /Regenerate suggested prompts/,
     });
     expect(regenerateButton).toBeInTheDocument();
     await userEvent.click(regenerateButton);
+
+    // should load while regenerating
+    const [loadingRow] = await screen.findAllByTestId("prompt-loading-row");
+    expect(loadingRow).toBeInTheDocument();
 
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
   });

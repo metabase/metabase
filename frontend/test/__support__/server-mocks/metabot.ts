@@ -1,4 +1,7 @@
-import fetchMock, { type MockOptionsMethodPost } from "fetch-mock";
+import fetchMock, {
+  type MockOptionsMethodGet,
+  type MockOptionsMethodPost,
+} from "fetch-mock";
 
 import type {
   MetabotApiEntity,
@@ -59,6 +62,7 @@ export function setupMetabotPromptSuggestionsEndpoint(
     limit: number;
     total: number;
   },
+  options?: MockOptionsMethodGet,
 ) {
   const { total, limit, offset } = paginationContext;
 
@@ -70,7 +74,7 @@ export function setupMetabotPromptSuggestionsEndpoint(
       query: { limit, offset },
     },
     { status: 200, body },
-    { overwriteRoutes: true },
+    { overwriteRoutes: true, ...(options || {}) },
   );
 
   return {
