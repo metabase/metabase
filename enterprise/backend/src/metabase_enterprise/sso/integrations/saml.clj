@@ -98,7 +98,7 @@
                   :email            email
                   :sso_source       :saml
                   :login_attributes user-attributes}]
-    (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
+    (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user (sso-settings/saml-user-provisioning-enabled?))
                         (sso-utils/check-user-provisioning :saml)
                         (sso-utils/create-new-sso-user! new-user))]
       (sync-groups! user group-names)
