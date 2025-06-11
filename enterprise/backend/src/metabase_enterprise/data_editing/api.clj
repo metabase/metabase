@@ -3,6 +3,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -195,36 +196,36 @@
 
 (def tmp-action
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
-(api.macros/defendpoint :get "/tmp-action"
-  "Returns all actions across all tables and models"
-  [_
-   _
-   _]
-  (check-permissions)
-  (let [databases          (t2/select [:model/Database :id :settings])
-        editable-database? (comp boolean :database-enable-table-editing :settings)
-        editable-databases (filter editable-database? databases)
-        editable-tables    (when (seq editable-databases)
-                             (t2/select :model/Table
-                                        :db_id [:in (map :id editable-databases)]
-                                        :active true))
-        fields             (when (seq editable-tables)
-                             (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
-        fields-by-table    (group-by :table_id fields)
-        table-actions      (for [t            editable-tables
-                                 [op op-name] actions/enabled-table-actions
-                                 :let [fields (fields-by-table (:id t))
-                                       action (actions/table-primitive-action t fields op)]]
-                             (assoc action :table_name op-name))
-        saved-actions      (for [a (actions/select-actions nil :archived false)]
-                             (select-keys a [:name
-                                             :model_id
-                                             :type
-                                             :database_id
-                                             :id
-                                             :visualization_settings
-                                             :parameters]))]
-    {:actions (vec (concat saved-actions table-actions))})))
+  (api.macros/defendpoint :get "/tmp-action"
+    "Returns all actions across all tables and models"
+    [_
+     _
+     _]
+    (check-permissions)
+    (let [databases          (t2/select [:model/Database :id :settings])
+          editable-database? (comp boolean :database-enable-table-editing :settings)
+          editable-databases (filter editable-database? databases)
+          editable-tables    (when (seq editable-databases)
+                               (t2/select :model/Table
+                                          :db_id [:in (map :id editable-databases)]
+                                          :active true))
+          fields             (when (seq editable-tables)
+                               (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
+          fields-by-table    (group-by :table_id fields)
+          table-actions      (for [t            editable-tables
+                                   [op op-name] actions.models/enabled-table-actions
+                                   :let [fields (fields-by-table (:id t))
+                                         action (actions/table-primitive-action t fields op)]]
+                               (assoc action :table_name op-name))
+          saved-actions      (for [a (actions/select-actions nil :archived false)]
+                               (select-keys a [:name
+                                               :model_id
+                                               :type
+                                               :database_id
+                                               :id
+                                               :visualization_settings
+                                               :parameters]))]
+      {:actions (vec (concat saved-actions table-actions))})))
 
 (mr/def ::unified-action.base
   [:or
