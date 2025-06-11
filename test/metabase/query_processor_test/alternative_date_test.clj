@@ -456,7 +456,7 @@
 
 ;;; TODO -- it would be better if we just made this feature `true` by default and opted out for the drivers that DO NOT
 ;;; support this feature. That way new drivers get the test automatically without having to opt in.
-(doseq [driver #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}]
+(doseq [driver #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver :databricks :sqlite :vertica}]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-string-timestamps]
     [_driver _feature _database]
     true))
@@ -504,6 +504,10 @@
   [[1 "foo" #t "2019-04-21T16:43"]
    [2 "bar" #t "2020-04-21T16:43"]
    [3 "baz" #t "2021-04-21T16:43"]])
+
+(defmethod yyyymmddhhmmss-dates-expected-rows :default
+  [_driver]
+  [])
 
 (deftest ^:parallel yyyymmddhhmmss-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-string-timestamps)
