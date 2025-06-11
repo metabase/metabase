@@ -11739,6 +11739,12 @@ databaseChangeLog:
       id: v55.2025-06-09T01:00:00
       author: metabase-dev
       comment: Add inline_parameters to report_dashboardcard for card-level parameter display
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: report_dashboardcard
+                columnName: inline_parameters
       changes:
         - addColumn:
             tableName: report_dashboardcard

@@ -393,7 +393,7 @@
            (serdes/infer-self-path "DashboardCard" dashcard)]))
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
-  {:copy      [:col :entity_id :row :size_x :size_y]
+  {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
    :skip      []
    :transform {:created_at             (serdes/date)
                :dashboard_id           (serdes/parent-ref)
