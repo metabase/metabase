@@ -389,37 +389,41 @@
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
 
-(api.macros/defendpoint :post "/action/v2/execute"
-  "The One True API for invoking actions.
-  It doesn't care whether the action is saved or primitive, and whether it has been placed.
-  In particular, it supports:
-  - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
-  - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
-  Since actions are free to return multiple outputs even for a single output, the response is always plural."
-  [{}
-   {}
-   {:keys [action_id scope params input]}
-   :- [:map
-       ;; TODO docstrings for these
-       [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope     ::types/scope.raw]
-       [:params    {:optional true} :map]
-       [:input     :map]]]
-  {:outputs (execute!* action_id scope params [input])})
+(def execute-single
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/action/v2/execute"
+    "The One True API for invoking actions.
+    It doesn't care whether the action is saved or primitive, and whether it has been placed.
+    In particular, it supports:
+    - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
+    - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
+    Since actions are free to return multiple outputs even for a single output, the response is always plural."
+    [{}
+     {}
+     {:keys [action_id scope params input]}
+     :- [:map
+         ;; TODO docstrings for these
+         [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:scope ::types/scope.raw]
+         [:params {:optional true} :map]
+         [:input :map]]]
+    {:outputs (execute!* action_id scope params [input])}))
 
-(api.macros/defendpoint :post "/action/v2/execute-bulk"
-  "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
-  [{}
-   {}
-   {:keys [action_id scope inputs params]}
-   :- [:map
-       [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope                   ::types/scope.raw]
-       [:inputs                  [:sequential :map]]
-       [:params {:optional true} :map]]]
-  ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
-  {:outputs (binding [actions/*params* params]
-              (execute!* action_id scope (dissoc params :delete-children) inputs))})
+(def execute-bulk
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/action/v2/execute-bulk"
+    "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
+    [{}
+     {}
+     {:keys [action_id scope inputs params]}
+     :- [:map
+         [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:scope ::types/scope.raw]
+         [:inputs [:sequential :map]]
+         [:params {:optional true} :map]]]
+    ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
+    {:outputs (binding [actions/*params* params]
+                (execute!* action_id scope (dissoc params :delete-children) inputs))}))
 
 (api.macros/defendpoint :post "/tmp-modal"
   "Temporary endpoint for describing an actions parameters

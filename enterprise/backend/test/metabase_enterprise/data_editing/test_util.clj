@@ -6,6 +6,7 @@
    [metabase.actions.settings :as actions.settings]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -68,10 +69,14 @@
 (defn toggle-data-editing-enabled! [on-or-off]
   (alter-db-settings! assoc :database-enable-table-editing (boolean on-or-off)))
 
-(defmacro with-data-editing-enabled! [on-or-ff & body]
+(defmacro with-data-editing-enabled! [on-or-off & body]
   `(let [before# (actions.settings/database-enable-table-editing)
-         _#      (toggle-data-editing-enabled! ~on-or-ff)
-         result# (do ~@body)]
+         _#      (toggle-data-editing-enabled! ~on-or-off)
+         tokens# (cond-> (token-check/*token-features*)
+                   ~on-or-off (conj "table-data-editing")
+                   (not ~on-or-off) (disj "table-data-editing"))
+         result# (binding [token-check/*token-features* (constantly tokens#)]
+                   ~@body)]
      (toggle-data-editing-enabled! before#)
      result#))
 

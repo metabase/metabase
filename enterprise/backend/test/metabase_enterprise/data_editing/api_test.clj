@@ -890,7 +890,8 @@
                 (is (= 404 (:status (req {:action_id 999999, :input {}}))))))))))))
 
 (deftest unified-execute-test
-  (let [url "ee/data-editing/action/v2/execute"
+  (let [;; Where it's moving to (so basic actions can use it in OSS)
+        url "action/v2/execute" #_"ee/data-editing/action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]

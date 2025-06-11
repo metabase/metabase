@@ -314,3 +314,19 @@
                                :name        action-name
                                :description (get-in action [:visualization_settings :description] "")})]
                {:actions actions})))
+
+(api.macros/defendpoint :post "/v2/execute"
+  "This is where the route ultimately belongs, but for now its in EE.
+   We need to rework it so that certain paid features are skipped when we move it."
+  [route-params query-params body-params request]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (api.macros/call-core-fn @(requiring-resolve 'metabase-enterprise.data-editing.api/execute-single)
+                           route-params query-params body-params request))
+
+(api.macros/defendpoint :post "/v2/execute-bulk"
+  "This is where the route ultimately belongs, but for now its in EE.
+   We need to rework it so that certain paid features are skipped when we move it."
+  [route-params query-params body-params request]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (api.macros/call-core-fn @(requiring-resolve 'metabase-enterprise.data-editing.api/execute-bulk)
+                           route-params query-params body-params request))
