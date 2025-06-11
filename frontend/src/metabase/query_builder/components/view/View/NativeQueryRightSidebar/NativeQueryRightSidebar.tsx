@@ -78,6 +78,7 @@ interface NativeQueryRightSidebarProps {
   insertSnippet: () => void;
   snippets: NativeQuerySnippet[];
   snippetCollection: Collection;
+  snippetCollectionId: CollectionId;
   snippetCollections: Collection[];
   search: Record<string, any>[];
   setSnippetCollectionId: (
@@ -163,6 +164,7 @@ export const NativeQueryRightSidebar = (
         insertSnippet={props.insertSnippet}
         snippets={props.snippets}
         snippetCollection={props.snippetCollection}
+        snippetCollectionId={props.snippetCollectionId}
         snippetCollections={props.snippetCollections}
         search={props.search}
         setSnippetCollectionId={props.setSnippetCollectionId}
