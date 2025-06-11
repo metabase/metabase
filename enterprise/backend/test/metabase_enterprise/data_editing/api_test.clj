@@ -31,7 +31,7 @@
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
 
-(def ^:private execute-v2-url "ee/data-editing/action/v2/execute-bulk")
+(def ^:private execute-v2-url "action/v2/execute-bulk")
 
 (use-fixtures :each
   (fn [f]
