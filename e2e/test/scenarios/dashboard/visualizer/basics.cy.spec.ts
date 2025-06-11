@@ -292,6 +292,21 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     cy.findByLabelText("Back to Test Dashboard").click();
   });
 
+  it("should hide the chevron icon in the title in edit mode (VIZ-1111)", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // The chevron icon should be visible in view mode
+    H.getDashboardCard(0).within(() => {
+      cy.icon("chevrondown").should("exist");
+    });
+
+    // The chevron icon should NOT be visible in edit mode
+    H.editDashboard();
+    H.getDashboardCard(0).within(() => {
+      cy.icon("chevrondown").should("not.exist");
+    });
+  });
+
   it("should open underlying questions in the ellipsis menu if the card has no title", () => {
     createDashboardWithVisualizerDashcards();
 
