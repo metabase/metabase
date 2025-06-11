@@ -14,6 +14,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
@@ -63,6 +64,7 @@
                        [:native-pivot-rows     {:optional true} [:maybe ::native-pivot-rows]]
                        [:native-pivot-cols     {:optional true} [:maybe ::native-pivot-cols]]
                        [:native-pivot-measures {:optional true} [:maybe ::native-pivot-measures]]
+                       [:is-native?            {:optional true} [:maybe :boolean]]
                        [:column-sort-order     {:optional true} [:maybe [:map-of ::index keyword?]]]
                        [:show-row-totals       {:optional true} [:maybe :boolean]]
                        [:show-column-totals    {:optional true} [:maybe :boolean]]]])
@@ -383,6 +385,21 @@
                 qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
         (qp/process-query first-query rff)))))
 
+(mu/defn- native-pivot-options :- ::pivot-opts
+  "Looks at the `pivot_table.native_column_split` key in the card's visualization settings and generates `pivot-rows`,
+  `pivot-cols`, and `pivot-measures` to use for generating subqueries."
+  [query        :- [:map
+                    [:database ::lib.schema.id/database]]
+   viz-settings :- [:maybe :map]]
+  (when (:is-native (lib/display-info query -1 query))
+    (merge
+     {:native-pivot? true}
+     (if-let [{:keys [rows columns values]} (:pivot_table.native_column_split viz-settings)]
+       {:native-pivot-rows     rows
+        :native-pivot-cols     columns
+        :native-pivot-measures values}
+       (select-keys query [:native-pivot-rows :native-pivot-cols :native-pivot-measures])))))
+
 (mu/defn- column-name-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports column name-based settings only."
@@ -498,17 +515,15 @@
   (when viz-settings
     (merge
      {:show-row-totals (get viz-settings :pivot.show_row_totals true)
-      :show-column-totals (get viz-settings :pivot.show_column_totals true)
-      :column-sort-order (column-sort-order query viz-settings)}
+      :show-column-totals (get viz-settings :pivot.show_column_totals true)}
      (if (:is-native (lib/display-info query -1 query))
-       (let [{:keys [rows columns values]} (:pivot_table.native_column_split viz-settings)]
-         {:native-pivot-rows     rows
-          :native-pivot-cols     columns
-          :native-pivot-measures values})
+       (native-pivot-options query viz-settings)
        (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
-         (if (and (every? string? rows) (every? string? columns))
-           (column-name-pivot-options query viz-settings)
-           (field-ref-pivot-options query viz-settings)))))))
+         (merge
+          {:column-sort-order (column-sort-order query viz-settings)}
+          (if (and (every? string? rows) (every? string? columns))
+            (column-name-pivot-options query viz-settings)
+            (field-ref-pivot-options query viz-settings))))))))
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
@@ -641,32 +656,8 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
-(defn- original-cols
-  [query]
-  (or (-> (qp.store/with-metadata-provider (:database query)
-            (lib/query (qp.store/metadata-provider) query))
-          lib/returned-columns
-          seq)
-      (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
-        (-> (qp/process-query (dissoc query :info))
-            :data
-            :results_metadata
-            :columns))))
-
-(defn- add-breakouts
-  [query breakout-cols]
-  (reduce lib/breakout query breakout-cols))
-
-(defn- add-aggregations
-  [query aggregations]
-  (reduce lib/aggregate query aggregations))
-
-(defn- find-col-by-name
-  [cols name]
-  (u/seek #(= (:name %) name) cols))
-
 ;; From metabase.lib.card -- this is used to convert a column from the results metadata into its lib form
-(defn- ->column
+(defn- ->lib-column
   "TODO"
   [col _card-id _field]
   (let [col (-> col
@@ -693,21 +684,33 @@
     ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
     (u/assoc-default col-meta :effective-type (:base-type col-meta))))
 
+(defn- add-breakouts
+  [query breakout-cols]
+  (reduce lib/breakout query breakout-cols))
+
+(defn- add-aggregations
+  [query aggregations]
+  (reduce lib/aggregate query aggregations))
+
+(defn- find-col-by-name
+  [cols name]
+  (u/seek #(= (:name %) name) cols))
+
 (defn- generate-breakouts
   "Generates the breakout columns to add to the query, for a given split setting (row or column)"
   [query cols split-setting]
   (reduce
    (fn [breakouts {:keys [name binning bucket]}]
-     (let [col                (find-col-by-name cols name)
-           binning-strategy   (keyword (:strategy binning))
+     (let [col                        (find-col-by-name cols name)
+           binning-strategy           (keyword (:strategy binning))
            available-temporal-buckets (lib/available-temporal-buckets query 0 col)
-           binning-setting    (when binning-strategy
-                                {:strategy binning-strategy
-                                 :num-bins (:numbins binning)})
-           bucketing-setting (u/seek (fn [available-bucket]
-                                       (= (keyword bucket)
-                                          (keyword (:unit available-bucket))))
-                                     available-temporal-buckets)]
+           binning-setting            (when binning-strategy
+                                        {:strategy binning-strategy
+                                         :num-bins (:numbins binning)})
+           bucketing-setting          (u/seek (fn [available-bucket]
+                                                (= (keyword bucket)
+                                                   (keyword (:unit available-bucket))))
+                                              available-temporal-buckets)]
        (conj breakouts
              (cond
                binning-setting
@@ -734,24 +737,62 @@
      []
      value-split-setting)))
 
+(defn- native-pivot-base-query
+  "Given a nested native pivot query, returns the base query it was built from. Used for reseting a download query to
+  the original query so that a pivoted query can be built consistently.
+
+  (TODO: see if we can re-use the result metadata included in the query passed by the frontend & just run that query
+         directly for downloads)"
+  [query]
+  (-> query
+      (lib/drop-stage)
+      (lib.util/update-query-stage 0 dissoc :lib/stage-metadata)))
+
 (defn- nest-native-pivot-query
-  [base-query pivot-opts]
-  (let [original-cols     (original-cols base-query)
-        result-metadata   (map #(->column % nil nil) original-cols)
-        rows              (:native-pivot-rows pivot-opts)
-        columns           (:native-pivot-cols pivot-opts)
-        measures          (:native-pivot-measures pivot-opts)
-        query             (-> (lib/query (qp.store/metadata-provider) base-query)
-                              (lib.util/update-query-stage -1 assoc :lib/stage-metadata {:columns result-metadata})
+  [base-query cols]
+  (let [rows              (:native-pivot-rows base-query)
+        columns           (:native-pivot-cols base-query)
+        measures          (:native-pivot-measures base-query)
+        lib-query         (lib/query (qp.store/metadata-provider) base-query)
+        cleaned-query     (if (> (lib/stage-count lib-query) 1)
+                            (native-pivot-base-query lib-query)
+                            lib-query)
+        ;; Tratsform the base native query returned column metadata into the format expected by
+        ;; metabase lib for stage metadata
+        ; result-metadata   (map #(->lib-column % nil nil) cols)
+        nested-query      (-> cleaned-query
+                              (lib.util/update-query-stage -1 assoc :lib/stage-metadata {:columns cols})
                               (lib/append-stage))
-        breakoutable-cols (lib/breakoutable-columns query)
-        row-breakouts     (generate-breakouts query breakoutable-cols rows)
-        col-breakouts     (generate-breakouts query breakoutable-cols columns)
-        aggregations      (generate-aggregations query breakoutable-cols measures)]
-    (-> query
+        breakoutable-cols (lib/breakoutable-columns nested-query)
+        row-breakouts     (generate-breakouts nested-query breakoutable-cols rows)
+        col-breakouts     (generate-breakouts nested-query breakoutable-cols columns)
+        aggregations      (generate-aggregations nested-query breakoutable-cols measures)]
+    (-> nested-query
         (add-breakouts row-breakouts)
         (add-breakouts col-breakouts)
         (add-aggregations aggregations))))
+
+(defn- returned-cols
+  [query]
+  (if (:is-native (lib/display-info query -1 query))
+    (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+      (let [cleaned-query     (if (> (lib/stage-count query) 1)
+                                (native-pivot-base-query query)
+                                query)
+            results-metadata-query (-> cleaned-query
+                                       (dissoc :info)
+                                       (assoc-in [:middleware :skip-results-metadata?] false))]
+        (->> (qp/process-query results-metadata-query)
+             :data
+             :results_metadata
+             :columns
+             (map #(->lib-column % nil nil)))))
+    (let [unique-name-fn (lib.util/unique-name-generator)]
+      (qp.store/with-metadata-provider (:database query)
+        (-> (lib/query (qp.store/metadata-provider) query)
+            (->> (lib/returned-columns query)
+                 (mapv #(update % :name unique-name-fn)))
+            seq)))))
 
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
@@ -767,13 +808,15 @@
        (let [rff               (or rff qp.reducible/default-rff)
              query             (lib/query (qp.store/metadata-provider) query)
              is-native?        (:is-native (lib/display-info query -1 query))
+             cols              (returned-cols query)
+             query             (if is-native?
+                                 (nest-native-pivot-query query cols)
+                                 query)
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
+                                (native-pivot-options query (get query :viz-settings))
                                 (not-empty (select-keys query pivot-opts-keys)))
-             query             (if is-native?
-                                 (nest-native-pivot-query query pivot-opts)
-                                 query)
              query             (-> query
                                    (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)
