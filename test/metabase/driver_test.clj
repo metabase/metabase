@@ -431,3 +431,17 @@
                                 :type   :string/contains
                                 :target [:dimension [:template-tag "category_name"]]
                                 :value  ["African"]}]}))))))))
+
+(deftest ^:parallel query-driver-success-metrics-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing ""
+      (mt/with-prometheus-system! [_ system]
+        (qp/process-query (mt/mbql-query venues))
+        (try
+          (qp/process-query (mt/native-query {:query "bad query"}))
+          (catch Exception _))
+        (qp/process-query (mt/mbql-query categories))
+        (try
+          (qp/process-query (mt/native-query {:query "bad query"}))
+          (catch Exception _))
+        (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))))))
