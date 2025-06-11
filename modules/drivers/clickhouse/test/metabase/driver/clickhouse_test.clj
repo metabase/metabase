@@ -230,6 +230,8 @@
 
 (deftest ^:parallel select-question-mark-test
   ;; broken in 0.8.3, fixed in 0.8.4
+  ;; https://github.com/metabase/metabase/issues/56690
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query that selects a question mark and has a variable should work correctly"
       (is (= [[1 "African" "?"]]
@@ -253,6 +255,8 @@
 
 (deftest ^:parallel comment-question-mark-test
   ;; broke in 0.8.3, fixed in 0.8.4
+  ;; https://github.com/metabase/metabase/issues/56690
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query with a question mark in the comment and has a variable should work correctly"
       (is (= [[1 "African"]]
@@ -273,6 +277,8 @@
 
 (deftest ^:parallel line-comment-block-comment-test
   ;; broken in 0.8.4, fixed in 0.8.6
+  ;; https://github.com/metabase/metabase/issues/57149
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2338
   (mt/test-driver :clickhouse
     (testing "a query with a line comment followed by a block comment should work correctly"
       (is (= [[1]]
@@ -285,6 +291,8 @@
 
 (deftest ^:parallel ternary-with-variable-test
   ;; broken in 0.8.4, fixed in 0.8.6
+  ;; https://github.com/metabase/metabase/issues/56690
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2348
   (mt/test-driver :clickhouse
     (testing "a query with a ternary and a variable should work correctly"
       (is (= [[1 "African" 1]]
@@ -303,7 +311,9 @@
                               :value  "African"}]})))))))
 
 #_(deftest ^:parallel subquery-with-cte-test
-  ;; broken in 0.8.6, waiting for fix
+    ;; broken in 0.8.6, waiting for fix
+    ;; https://github.com/metabase/metabase/issues/59166
+    ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
     (mt/test-driver :clickhouse
       (testing "a query with a CTE in a subquery should work correctly"
         (is (= [[9]]
@@ -313,7 +323,10 @@
                    {:query "select * from ( with x as ( select 9 ) select * from x );"}))))))))
 
 #_(deftest ^:parallel casted-params-test
-  ;; broken in 0.8.6, waiting for fix
+    ;; broken in 0.8.6, waiting for fix
+    ;; https://github.com/metabase/metabase/issues/58992
+    ;; https://github.com/metabase/metabase/issues/59002
+    ;; https://github.com/ClickHouse/clickhouse-java/issues/2422
     (mt/test-driver :clickhouse
       (testing "a query with a with multiple params and one of the casted should work correctly"
         (is (= [[1 "African"] [2 "American"]]
