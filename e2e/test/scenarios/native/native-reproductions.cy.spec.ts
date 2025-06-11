@@ -662,7 +662,7 @@ describe("issue 59075", () => {
     cy.viewport(1024, WINDOW_HEIGHT);
   });
 
-  it("should not be possibte to resize the native query editor too far (metabase#59075)", () => {
+  it("should not be possible to resize the native query editor too far (metabase#59075)", () => {
     cy.findByTestId("drag-handle").then((handle) => {
       const coordsDrag = handle[0].getBoundingClientRect();
       const coordsDrop = { x: coordsDrag.x, y: WINDOW_HEIGHT };
