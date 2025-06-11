@@ -14,6 +14,7 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { getEventHandlers } from "embedding-sdk/store/selectors";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
@@ -137,6 +138,7 @@ export const StaticDashboardInner = ({
  */
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {
+    const { isLocaleLoading } = useLocale();
     const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
       type: "dashboard",
       id: initialDashboardId,
@@ -150,7 +152,7 @@ const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
       }
     }, [dispatch, resolvedDashboardId]);
 
-    if (isLoading) {
+    if (isLocaleLoading || isLoading) {
       return <SdkLoader />;
     }
 
