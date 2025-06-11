@@ -35,12 +35,6 @@ export function getItems(table: Table): Item[] {
   });
 }
 
-export function getItemsOrder(items: Item[]): Item["id"][] {
-  return _.sortBy(items, (item) => item.position).map((item) => item.id);
-}
-
-export function sortItems(items: Item[], order: Item["id"][]) {
-  const indexMap = Object.fromEntries(order.map((id, index) => [id, index]));
-
-  return items.sort((a, b) => indexMap[a.id] - indexMap[b.id]);
+export function sortItems(items: Item[]): Item[] {
+  return _.sortBy(items, (item) => item.position);
 }

@@ -10,7 +10,7 @@ import type { FieldId, Table } from "metabase-types/api";
 
 import { SortableFieldItem } from "../SortableFieldItem";
 
-import { getId, getItems, getItemsOrder, sortItems } from "./utils";
+import { getId, getItems, sortItems } from "./utils";
 
 interface Props {
   activeFieldId?: FieldId;
@@ -29,8 +29,7 @@ export const SortableFieldList = ({
     activationConstraint: { distance: 15 },
   });
   const items = useMemo(() => getItems(table), [table]);
-  const order = useMemo(() => getItemsOrder(items), [items]);
-  const sortedItems = useMemo(() => sortItems(items, order), [items, order]);
+  const sortedItems = useMemo(() => sortItems(items), [items]);
   const isDragDisabled = sortedItems.length <= 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {

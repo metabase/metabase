@@ -20,6 +20,7 @@ import type { FieldId, Table } from "metabase-types/api";
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 
+import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 
 interface Props {
@@ -123,23 +124,33 @@ export const TableSection = ({ params, table }: Props) => {
             )}
           </Group>
 
-          <SortableFieldList
-            activeFieldId={fieldId}
-            getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
-            table={table}
-            onChange={async (fieldOrder) => {
-              await updateTableFieldsOrder({
-                id: table.id,
-                // in this context field id will never be a string because it's a raw table field, so it's ok to cast
-                field_order: fieldOrder as FieldId[],
-              });
+          {isSorting && (
+            <SortableFieldList
+              activeFieldId={fieldId}
+              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
+              table={table}
+              onChange={async (fieldOrder) => {
+                await updateTableFieldsOrder({
+                  id: table.id,
+                  // in this context field id will never be a string because it's a raw table field, so it's ok to cast
+                  field_order: fieldOrder as FieldId[],
+                });
 
-              sendToast({
-                icon: "check",
-                message: t`Field order updated`,
-              });
-            }}
-          />
+                sendToast({
+                  icon: "check",
+                  message: t`Field order updated`,
+                });
+              }}
+            />
+          )}
+
+          {!isSorting && (
+            <FieldList
+              activeFieldId={fieldId}
+              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
+              table={table}
+            />
+          )}
         </Stack>
 
         <Stack gap="sm">
