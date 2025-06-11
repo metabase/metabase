@@ -227,3 +227,113 @@
                 ["2016-05-01T00:00:00Z" 81.892]
                 ["2016-06-01T00:00:00Z" 71.954]]
                (mt/rows (qp/process-query q))))))))
+
+(deftest ^:parallel select-question-mark-test
+  ;; broken in 0.8.3, fixed in 0.8.4
+  (mt/test-driver :clickhouse
+    (testing "a query that selects a question mark and has a variable should work correctly"
+      (is (= [[1 "African" "?"]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT *, '?'
+                                 FROM `test_data`.`categories`
+                                 WHERE {{category_name}};"
+                         :template-tags {"category_name" {:name         "category_name"
+                                                          :display_name "Category Name"
+                                                          :type         "dimension"
+                                                          :widget-type  "string/contains"
+                                                          :options {:case-sensitive false}
+                                                          :dimension    [:field (mt/id :categories :name) nil]}}}
+                :parameters [{:options {:case-sensitive false}
+                              :type   :string/contains
+                              :target [:dimension [:template-tag "category_name"]]
+                              :value  ["African"]}]})))))))
+
+(deftest ^:parallel comment-question-mark-test
+  ;; broke in 0.8.3, fixed in 0.8.4
+  (mt/test-driver :clickhouse
+    (testing "a query with a question mark in the comment and has a variable should work correctly"
+      (is (= [[1 "African"]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT *
+                                  -- ?
+                                  FROM test_data.categories
+                                 WHERE name = {{category_name}};"
+                         :template-tags {"category_name" {:type         :text
+                                                          :name         "category_name"
+                                                          :display-name "Category Name"}}}
+                :parameters [{:type   :category
+                              :target [:variable [:template-tag "category_name"]]
+                              :value  "African"}]})))))))
+
+(deftest ^:parallel line-comment-block-comment-test
+  ;; broken in 0.8.4, fixed in 0.8.6
+  (mt/test-driver :clickhouse
+    (testing "a query with a line comment followed by a block comment should work correctly"
+      (is (= [[1]]
+             (mt/rows
+              (qp/process-query
+               (mt/native-query
+                 {:query "--foo
+                          /*comment*/
+                          select 1;"}))))))))
+
+(deftest ^:parallel ternary-with-variable-test
+  ;; broken in 0.8.4, fixed in 0.8.6
+  (mt/test-driver :clickhouse
+    (testing "a query with a ternary and a variable should work correctly"
+      (is (= [[1 "African" 1]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT *, true ? 1 : 0 AS foo
+                                 FROM test_data.categories
+                                 WHERE name = {{category_name}};"
+                         :template-tags {"category_name" {:type         :text
+                                                          :name         "category_name"
+                                                          :display-name "Category Name"}}}
+                :parameters [{:type   :category
+                              :target [:variable [:template-tag "category_name"]]
+                              :value  "African"}]})))))))
+
+#_(deftest ^:parallel subquery-with-cte-test
+  ;; broken in 0.8.6, waiting for fix
+    (mt/test-driver :clickhouse
+      (testing "a query with a CTE in a subquery should work correctly"
+        (is (= [[9]]
+               (mt/rows
+                (qp/process-query
+                 (mt/native-query
+                   {:query "select * from ( with x as ( select 9 ) select * from x );"}))))))))
+
+#_(deftest ^:parallel casted-params-test
+  ;; broken in 0.8.6, waiting for fix
+    (mt/test-driver :clickhouse
+      (testing "a query with a with multiple params and one of the casted should work correctly"
+        (is (= [[1 "African"] [2 "American"]]
+               (mt/rows
+                (qp/process-query
+                 {:database   (mt/id)
+                  :type       :native
+                  :native     {:query         "SELECT *
+                                             FROM `test_data`.`categories`
+                                             WHERE id = {{category_id_1}}::String or id = {{category_id_2}}"
+                               :template-tags {"category_id_1" {:type         :number
+                                                                :name         "category_id_1"
+                                                                :display-name "Category Id 1"}
+                                               "category_id_2" {:type         :text
+                                                                :name         "category_id_2"
+                                                                :display-name "Category Id 2"}}}
+                  :parameters [{:type   :number/=
+                                :target [:variable [:template-tag "category_id_1"]]
+                                :value  ["1"]}
+                               {:type   :category
+                                :target [:variable [:template-tag "category_id_2"]]
+                                :value  "2"}]
+                  :middleware {:format-rows? false}})))))))
