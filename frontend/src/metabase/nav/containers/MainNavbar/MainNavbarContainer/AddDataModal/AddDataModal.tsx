@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 
 import S from "./AddDataModal.module.css";
 import { CSVPanel } from "./Panels/CSVPanel";
@@ -16,22 +16,22 @@ import { trackAddDataEvent } from "./analytics";
 import { isValidTab } from "./utils";
 
 interface AddDataModalProps {
-  databases: Database[];
   opened: boolean;
   onClose: () => void;
 }
 
-export const AddDataModal = ({
-  databases,
-  opened,
-  onClose,
-}: AddDataModalProps) => {
+export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
+  const { data: databaseResponse } = useListDatabasesQuery({
+    include_only_uploadable: true,
+  });
+
   const [activeTab, setActiveTab] = useState<string | null>("db");
 
   const isAdmin = useSelector(getUserIsAdmin);
   const userCanAccessSettings = useSelector(canAccessSettings);
 
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+  const databases = databaseResponse?.data;
   const uploadDB = databases?.find((db) => db.uploads_enabled);
 
   /**
@@ -39,7 +39,7 @@ export const AddDataModal = ({
    * It is not possible to turn the uploads off, nor to delete the attached database.
    */
   const areUploadsEnabled = hasAttachedDWHFeature || !!uploadDB;
-  const canUploadToDatabase = !!uploadDB?.canUpload();
+  const canUploadToDatabase = !!uploadDB?.can_upload;
 
   const canManageUploads =
     isAdmin || (userCanAccessSettings && canUploadToDatabase);

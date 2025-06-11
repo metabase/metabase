@@ -20,7 +20,6 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { getSetting } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Flex,
@@ -29,7 +28,6 @@ import {
   type IconProps,
   Tooltip,
 } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
@@ -62,7 +60,6 @@ type Props = {
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
-  databases: Database[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -81,7 +78,6 @@ export function MainNavbarView({
   isAdmin,
   bookmarks,
   collections,
-  databases,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -252,11 +248,7 @@ export function MainNavbarView({
         <WhatsNewNotification />
       </SidebarContentRoot>
 
-      <AddDataModal
-        databases={databases}
-        opened={addDataModalOpened}
-        onClose={closeAddDataModal}
-      />
+      <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>
   );
 }
