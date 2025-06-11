@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -21,6 +22,7 @@
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -75,15 +77,18 @@
   {:in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
    :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(def ^:private transform-field-effective-type
+(def transform-field-effective-type
+  "Transform effective_type"
   {:in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
    :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(def ^:private transform-field-semantic-type
+(def transform-field-semantic-type
+  "Transform semantic_type"
   {:in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
    :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil)})
 
-(def ^:private transform-field-coercion-strategy
+(def transform-field-coercion-strategy
+  "Transform coercion_strategy"
   {:in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
    :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil)})
 
@@ -131,12 +136,32 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
+(def field-user-settings
+  "Set of user-set values for a Field that are also updated during sync"
+  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id})
+
+(defn- ensure-field-user-settings-exist-for-fk-target-field [field]
+  (let [q {:select [:id]
+           :from [:metabase_field]
+           :where [:and
+                   [:= :fk_target_field_id (:id field)]
+                   [:not [:in :id {:select [:field_id]
+                                   :from [:metabase_field_user_settings]}]]]}
+        sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
+    (t2/insert! :model/FieldUserSettings
+                (map (fn [{:keys [id]}] {:field_id id})
+                     (t2/query sql)))))
+
 (t2/define-before-update :model/Field
   [field]
-  (u/prog1 field
-    (when (false? (:active (t2/changes <>)))
-      (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
-                                                                  :fk_target_field_id nil}))))
+  (when (false? (:active (t2/changes field)))
+    (ensure-field-user-settings-exist-for-fk-target-field field)
+    (t2/update! :model/FieldUserSettings {:fk_target_field_id (:id field)}
+                {:semantic_type      nil
+                 :fk_target_field_id nil}))
+  (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
+        updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
+    (t2.protocols/with-current field updated-field)))
 
 (t2/define-before-delete :model/Field
   [field]
