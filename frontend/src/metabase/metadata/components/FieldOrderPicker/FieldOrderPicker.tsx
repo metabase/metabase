@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Flex,
-  Icon,
-  SegmentedControl,
-  type SegmentedControlProps,
-  Tooltip,
-} from "metabase/ui";
+import { SegmentedControl, type SegmentedControlProps } from "metabase/ui";
 import type { TableFieldOrder } from "metabase-types/api";
+
+import { Label } from "./Label";
 
 interface Props
   extends Omit<
@@ -49,43 +45,19 @@ function getData() {
   return [
     {
       value: "smart" as const,
-      label: (
-        <Tooltip label={t`Smart`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="sparkles" />
-          </Flex>
-        </Tooltip>
-      ),
+      label: <Label icon="sparkles" tooltip={t`Smart`} />,
     },
     {
       value: "database" as const,
-      label: (
-        <Tooltip label={t`Database`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="database" />
-          </Flex>
-        </Tooltip>
-      ),
+      label: <Label icon="database" tooltip={t`Database`} />,
     },
     {
       value: "alphabetical" as const,
-      label: (
-        <Tooltip label={t`Alphabetical`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="string" />
-          </Flex>
-        </Tooltip>
-      ),
+      label: <Label icon="string" tooltip={t`Alphabetical`} />,
     },
     {
       value: "custom" as const,
-      label: (
-        <Tooltip label={t`Custom`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="palette" />
-          </Flex>
-        </Tooltip>
-      ),
+      label: <Label icon="palette" tooltip={t`Custom`} />,
     },
   ];
 }
