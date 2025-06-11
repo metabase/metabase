@@ -1,6 +1,5 @@
 import type { SkipToken } from "@reduxjs/toolkit/query";
 
-import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import type {
   DescribeActionFormRequest,
   DescribeActionFormResponse,
@@ -103,7 +102,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         url: `/api/action/v2/execute`,
         body: {
           input,
-          params: removeNullAndUndefinedValues(params),
+          params,
           // Here we pass a dummy table id, because the BE doesn't allow scope to be optional,
           // but it's not actually used for this case.
           scope: { "table-id": 1 },
