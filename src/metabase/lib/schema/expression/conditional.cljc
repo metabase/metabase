@@ -55,7 +55,8 @@
     :else (or
            (= x ::expression/type.unknown)
            (= y ::expression/type.unknown)
-           (not= (types/most-specific-common-ancestor x y) :type/*))))
+           (types/assignable? x y)
+           (types/assignable? y x))))
 
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 ;;; `:if` is an alias to `:case`
@@ -80,10 +81,7 @@
          (let [expressions (filter some? (concat (map second pred-expr-pairs) [default]))
                expression-types (map expression/type-of expressions)
                [first-type & other-types] expression-types]
-           (every? #(compatible? first-type %) other-types)))
-
-       ;;
-       ]]])
+           (every? #(compatible? first-type %) other-types)))]]])
 
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs _default]]
