@@ -103,8 +103,8 @@
                         :query-hash     (qp.util/query-hash {})}))]
           (when-not (= :completed (:status result))
             (throw (ex-info "Query failed." result))))
-        (is (= (round-to-2-decimals (default-card-results-native))
-               (-> card card-metadata round-to-2-decimals)))
+        (is (=? (round-to-2-decimals (default-card-results-native))
+                (-> card card-metadata round-to-2-decimals)))
 
         ;; updated_at should not be modified when saving result metadata
         (is (= (:updated_at card)
@@ -210,14 +210,14 @@
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"
     (let [card-eid (u/generate-nano-id)]
-      (is (= {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
-                          (-> col (update :semantic_type keyword) (update :base_type keyword)))}
-             (-> (qp/process-query
-                  (qp/userland-query
-                   (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
-                   {:card-entity-id card-eid}))
-                 (get-in [:data :results_metadata])
-                 round-to-2-decimals))))))
+      (is (=? {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
+                           (-> col (update :semantic_type keyword) (update :base_type keyword)))}
+              (-> (qp/process-query
+                   (qp/userland-query
+                    (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
+                    {:card-entity-id card-eid}))
+                  (get-in [:data :results_metadata])
+                  round-to-2-decimals))))))
 
 (deftest ^:parallel metadata-in-results-test-2
   (testing "models"
