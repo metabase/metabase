@@ -1,4 +1,4 @@
-import { useBeforeUnload, useLocation } from "react-use";
+import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -15,9 +15,6 @@ import { StatusListingRoot } from "./StatusListing.styled";
 
 const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
-  const location = useLocation();
-  // In the embedding-specific setup flow, we create a db but we don't want the default sync notification showing up
-  const isNewEmbeddingSetup = location.pathname?.includes("/setup/embedding");
 
   const uploadInProgress = useSelector(hasActiveUploads);
 
@@ -30,7 +27,7 @@ const StatusListing = () => {
 
   return (
     <StatusListingRoot data-testid="status-root-container">
-      {isAdmin && <DatabaseStatus hidden={isNewEmbeddingSetup} />}
+      {isAdmin && <DatabaseStatus />}
       <FileUploadStatus />
       <DownloadsStatus />
       {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
