@@ -148,3 +148,7 @@ export function wrapAdhocNativeQuery(
 ): Query {
   return ML.wrap_adhoc_native_query(query, metadata);
 }
+
+export function uniqueNames(names: string[]): string[] {
+  return ML.unique_names(names);
+}

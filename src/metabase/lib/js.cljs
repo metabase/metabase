@@ -2587,3 +2587,11 @@
   [a-query the-metadata]
   (let [cljs-metadata (into [] (map #(legacy-column->metadata a-query -1 %) the-metadata))]
     (lib.stage/wrap-adhoc-native-query a-query cljs-metadata)))
+
+(defn ^:export unique-names
+  "Takes a sequence of string identifiers and passes it through `lib.util/unique-name-generator`
+  to ensure there are no duplicates, using the same method used to deduplicate column names
+  (adding suffixes like _2, _3, etc)."
+  [names]
+  (let [unique-name-generator (lib.util/unique-name-generator)]
+    (map unique-name-generator names)))
