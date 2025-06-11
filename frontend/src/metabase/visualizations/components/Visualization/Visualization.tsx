@@ -145,15 +145,15 @@ type VisualizationOwnProps = {
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode | null;
   onEditSummary?: () => void;
   query?: NativeQuery;
   rawSeries?: (
     | SingleSeries
     | {
-        card: Card<DatasetQuery>;
-      }
-  )[];
+      card: Card<DatasetQuery>;
+    }
+  )[] | null;
   visualizerRawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
@@ -171,7 +171,7 @@ type VisualizationOwnProps = {
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
   onHeaderColumnReorder?: (columnName: string) => void;
   onChangeLocation?: (location: Location) => void;
-  onUpdateQuestion?: () => void;
+  onUpdateQuestion?: (question: Question) => void;
   onUpdateVisualizationSettings?: (
     settings: VisualizationSettings,
     question?: Question,
@@ -228,8 +228,8 @@ const deriveStateFromProps = (props: VisualizationProps) => {
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
-        extractRemappings(props.rawSeries as RawSeries),
-      )
+      extractRemappings(props.rawSeries as RawSeries),
+    )
     : null;
 
   const series = transformed?.series ?? null;
@@ -352,7 +352,7 @@ class Visualization extends PureComponent<
     let warnings = state.warnings || [];
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
-        rawSeries
+        (rawSeries ?? [])
           .filter(
             (s): s is SingleSeries =>
               "data" in s && s.data && s.data.rows_truncated != null,
@@ -403,7 +403,8 @@ class Visualization extends PureComponent<
       | ClickActionModeGetter
       | Mode
       | QueryClickActionsMode
-      | undefined,
+      | undefined
+      | null,
     question: Question | undefined,
   ) {
     const modeOrQueryMode =
@@ -441,10 +442,10 @@ class Visualization extends PureComponent<
 
     const clicked = isVisualizerDashboardCard(dashcard)
       ? formatVisualizerClickObject(
-          clickedObject,
-          visualizerRawSeries,
-          dashcard.visualization_settings.visualization.columnValuesMapping,
-        )
+        clickedObject,
+        visualizerRawSeries,
+        dashcard.visualization_settings.visualization.columnValuesMapping,
+      )
       : clickedObject;
 
     const card = this.findCardById(clicked.cardId);
@@ -454,15 +455,15 @@ class Visualization extends PureComponent<
 
     return mode
       ? mode.actionsForClick(
-          {
-            ...clicked,
-            extraData: {
-              ...getExtraDataForClick(clicked),
-              isRawTable,
-            },
+        {
+          ...clicked,
+          extraData: {
+            ...getExtraDataForClick(clicked),
+            isRawTable,
           },
-          this.state.computedSettings,
-        )
+        },
+        this.state.computedSettings,
+      )
       : [];
   }
 
@@ -470,9 +471,12 @@ class Visualization extends PureComponent<
     const { dashcard, rawSeries = [], visualizerRawSeries = [] } = this.props;
     const isVisualizerViz = isVisualizerDashboardCard(dashcard);
     const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
+    if (!lookupSeries) {
+      return undefined;
+    }
     return (
       lookupSeries.find((series) => series.card.id === cardId)?.card ??
-      lookupSeries[0].card
+      lookupSeries[0]?.card
     );
   };
 
@@ -529,8 +533,13 @@ class Visualization extends PureComponent<
     nextCard,
     objectId,
   }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
+    const previousCard = this.findCardById(nextCard?.id);
+    if (!previousCard) {
+      return;
+    }
+
     this.props.onChangeCardAndRun?.({
-      previousCard: this.findCardById(nextCard?.id),
+      previousCard,
       nextCard,
       objectId,
     });
@@ -625,7 +634,7 @@ class Visualization extends PureComponent<
       onOpenTimelines,
       onSelectTimelineEvents,
       onTogglePreviewing,
-      onUpdateVisualizationSettings = () => {},
+      onUpdateVisualizationSettings = () => { },
       onUpdateWarnings,
       titleMenuItems,
     } = this.props;

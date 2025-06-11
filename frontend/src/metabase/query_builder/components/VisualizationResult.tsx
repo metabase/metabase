@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
 import { jt, t } from "ttag";
@@ -8,10 +7,16 @@ import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
+import type { MantineTheme } from "metabase/ui";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { ClickObject, OnChangeCardAndRunOpts } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
+import type Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import type { Card, DatasetColumn, DatasetQuery, RawSeries, SingleSeries, TimelineEvent } from "metabase-types/api";
+import type { QueryBuilderMode } from "metabase-types/store";
 
 const ALLOWED_VISUALIZATION_PROPS = [
   // Table
@@ -25,7 +30,50 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "renderEmptyMessage",
 ];
 
-export default class VisualizationResult extends Component {
+interface VisualizationResultProps {
+  question: Question;
+  isDirty?: boolean;
+  onVisualizationRendered?: () => void;
+  isObjectDetail?: boolean;
+  queryBuilderMode?: QueryBuilderMode;
+  navigateToNewCardInsideQB?: (opts: OnChangeCardAndRunOpts) => Promise<void>;
+  result: any;
+  rawSeries: RawSeries | null;
+  timelineEvents?: TimelineEvent[];
+  selectedTimelineEventIds?: number[];
+  onNavigateBack?: () => void;
+  className?: string;
+  isRunning?: boolean;
+  isShowingSummarySidebar?: boolean;
+  onEditSummary?: () => void;
+  renderEmptyMessage?: boolean;
+  onUpdateVisualizationSettings?: (settings: any) => void;
+  onHeaderColumnReorder?: (columnName: string) => void;
+  onUpdateWarnings?: (warnings: string[]) => void;
+  onOpenChartSettings?: (data: {
+    initialChartSettings: { section: string };
+    showSidebarTitle?: boolean;
+  }) => void;
+  handleVisualizationClick?: (clicked: ClickObject | null) => void;
+  onOpenTimelines?: () => void;
+  selectTimelineEvents?: (events: TimelineEvent[]) => void;
+  deselectTimelineEvents?: () => void;
+  onUpdateQuestion?: (question: Question) => void;
+
+  isShowingDetailsOnlyColumns?: boolean;
+  hasMetadataPopovers?: boolean;
+  tableHeaderHeight?: number;
+  scrollToColumn?: number
+  renderTableHeader?: (
+    column: DatasetColumn,
+    index: number,
+    theme: MantineTheme,
+  ) => React.ReactNode;
+  mode?: Mode | null | undefined;
+}
+
+// eslint-disable-next-line import/no-default-export
+export default class VisualizationResult extends Component<VisualizationResultProps> {
   state = {
     showCreateAlertModal: false,
   };
@@ -38,7 +86,11 @@ export default class VisualizationResult extends Component {
     this.setState({ showCreateAlertModal: false });
   };
 
-  getObjectDetailData = (series) => {
+  getObjectDetailData = (series: RawSeries | null): (SingleSeries | { card: Card<DatasetQuery> })[] => {
+    if (!series) {
+      return [];
+    }
+
     return [
       {
         ...series[0],
@@ -68,6 +120,7 @@ export default class VisualizationResult extends Component {
 
     const noResults = datasetContainsNoResults(result.data);
     if (noResults && !isRunning && !renderEmptyMessage) {
+      // @ts-expect-error - TODO: pass a parameter to alertType
       const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
 
       // successful query but there were 0 rows returned with the result
@@ -122,7 +175,7 @@ export default class VisualizationResult extends Component {
         <>
           <Visualization
             className={className}
-            rawSeries={rawSeries}
+            rawSeries={rawSeries ?? undefined}
             onChangeCardAndRun={
               hasDrills ? navigateToNewCardInsideQB : undefined
             }

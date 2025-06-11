@@ -164,7 +164,15 @@ function getSidebar(
     );
   }
   if (isShowingDataReference) {
-    return <DataReference {...props} onClose={toggleDataReference} />;
+    return (
+      <DataReference
+        dataReferenceStack={props.dataReferenceStack}
+        popDataReferenceStack={props.popDataReferenceStack}
+        pushDataReferenceStack={props.pushDataReferenceStack}
+        onBack={props.onBack}
+        onClose={toggleDataReference}
+      />
+    );
   }
   if (isShowingSnippetSidebar) {
     return <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />;
