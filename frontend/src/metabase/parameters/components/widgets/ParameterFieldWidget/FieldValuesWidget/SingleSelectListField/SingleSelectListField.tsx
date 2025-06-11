@@ -20,7 +20,7 @@ import {
   OptionsList,
 } from "./SingleSelectListField.styled";
 import type { Option, SingleSelectListFieldProps } from "./types";
-import { isEqualOptionItem, isValidOptionItem } from "./utils";
+import { optionItemContainsFilter, optionItemEqualsFilter } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
@@ -71,7 +71,7 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
-  const isFilterInValues = isEqualOptionItem(value, filter);
+  const isFilterInValues = optionItemEqualsFilter(value, filter);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -93,13 +93,13 @@ const SingleSelectListField = ({
       if (
         option.length > 1 &&
         option[1] &&
-        isValidOptionItem(option[1], formattedFilter)
+        optionItemContainsFilter(option[1], formattedFilter)
       ) {
         return true;
       }
 
       // option as: [id]
-      return isValidOptionItem(option[0], formattedFilter);
+      return optionItemContainsFilter(option[0], formattedFilter);
     });
   }, [augmentedOptions, debouncedFilter, sortedOptions, isFilterInValues]);
 
@@ -118,7 +118,9 @@ const SingleSelectListField = ({
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) => isEqualOptionItem(option, filter))
+      !_.find(augmentedOptions, (option) =>
+        optionItemEqualsFilter(option, filter),
+      )
     ) {
       event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);

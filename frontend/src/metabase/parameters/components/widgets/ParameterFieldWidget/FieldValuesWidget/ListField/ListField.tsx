@@ -9,7 +9,7 @@ import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { delay } from "metabase/lib/delay";
-import { isEqualOptionItem } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
+import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
 import { Checkbox, Flex, Text } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
@@ -116,7 +116,7 @@ export const ListField = ({
       event.key === "Enter" &&
       filter.trim().length > 0 &&
       !_.find(augmentedOptions, (option) =>
-        isEqualOptionItem(option[0], filter),
+        optionItemEqualsFilter(option[0], filter),
       )
     ) {
       event.preventDefault();
