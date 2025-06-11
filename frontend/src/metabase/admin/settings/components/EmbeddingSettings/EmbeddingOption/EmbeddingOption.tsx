@@ -22,8 +22,8 @@ export function EmbeddingOption({
 }: EmbeddingOptionProps) {
   const titleId = useUniqueId();
   return (
-    <SettingsSection aria-labelledby={titleId}>
-      <article>
+    <SettingsSection>
+      <article aria-labelledby={titleId}>
         {icon}
         <Flex gap="md" mt="md" mb="sm" direction={"row"} align="center">
           <Title id={titleId} order={3}>

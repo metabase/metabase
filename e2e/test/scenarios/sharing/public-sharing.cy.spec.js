@@ -57,6 +57,9 @@ describe("scenarios > admin > settings > public sharing", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/action/public").as("getPublicActions");
+    cy.intercept("GET", "/api/dashboard/public").as("getPublicDashboards");
+    cy.intercept("GET", "/api/card/public").as("getPublicQuestions");
   });
 
   it("should be able to toggle public sharing", () => {
@@ -96,6 +99,11 @@ describe("scenarios > admin > settings > public sharing", () => {
     );
 
     cy.visit("/admin/settings/public-sharing");
+    cy.wait([
+      "@getPublicActions",
+      "@getPublicQuestions",
+      "@getPublicDashboards",
+    ]);
 
     cy.findByTestId("admin-layout-content")
       .findByText("Shared dashboards")
@@ -157,6 +165,11 @@ describe("scenarios > admin > settings > public sharing", () => {
       });
 
     cy.visit("/admin/settings/public-sharing");
+    cy.wait([
+      "@getPublicActions",
+      "@getPublicQuestions",
+      "@getPublicDashboards",
+    ]);
 
     cy.findByTestId("admin-layout-content")
       .findByText("Shared questions")
@@ -228,12 +241,19 @@ describe("scenarios > admin > settings > public sharing", () => {
       });
 
     cy.visit("/admin/settings/public-sharing");
+    cy.wait([
+      "@getPublicActions",
+      "@getPublicQuestions",
+      "@getPublicDashboards",
+    ]);
 
     cy.findByTestId("admin-layout-content")
       .findByText("Shared action forms")
+      .scrollIntoView()
       .should("be.visible");
     cy.findByTestId("admin-layout-content")
       .findByText(expectedActionName)
+      .scrollIntoView()
       .should("be.visible");
     cy.get("@actionUuid").then((actionUuid) => {
       cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();
