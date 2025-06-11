@@ -2,8 +2,10 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import CS from "metabase/css/core/index.css";
 import { CardApi } from "metabase/services";
+import { Stack, Title } from "metabase/ui";
 
 import AuditParameters from "../audit_app/components/AuditParameters";
 import AuditTable from "../audit_app/containers/AuditTable";
@@ -70,51 +72,53 @@ export default function ErrorOverview(props) {
   };
 
   return (
-    <>
-      <h2>{t`Questions that errored when last run`}</h2>
-      <AuditParameters
-        parameters={[
-          { key: "errorFilter", placeholder: t`Error contents` },
-          { key: "dbFilter", placeholder: t`DB name` },
-          { key: "collectionFilter", placeholder: t`Collection name` },
-        ]}
-        buttons={[
-          {
-            key: "reloadSelected",
-            label: t`Rerun Selected`,
-            disabled: Object.values(rowChecked).every(
-              (isChecked) => !isChecked,
-            ),
-            onClick: handleReloadSelected,
-          },
-        ]}
-        hasResults={hasResults}
-      >
-        {({ errorFilter, dbFilter, collectionFilter }) => (
-          <AuditTable
-            {...props}
-            reloadRef={reloadRef}
-            pageSize={50}
-            isSortable
-            isSelectable
-            rowChecked={rowChecked}
-            sorting={sorting}
-            onSortingChange={handleSortingChange}
-            onAllSelectClick={handleAllSelectClick}
-            onRowSelectClick={handleRowSelectClick}
-            onLoad={handleLoad}
-            mode={ErrorMode}
-            table={Queries.bad_table(
-              errorFilter,
-              dbFilter,
-              collectionFilter,
-              sorting.column,
-              getSortOrder(sorting.isAscending),
-            )}
-            className={CS.mt2}
-          />
-        )}
-      </AuditParameters>
-    </>
+    <Stack gap="xl">
+      <Title order={1}>{t`Questions that errored when last run`}</Title>
+      <SettingsSection>
+        <AuditParameters
+          parameters={[
+            { key: "errorFilter", placeholder: t`Error contents` },
+            { key: "dbFilter", placeholder: t`DB name` },
+            { key: "collectionFilter", placeholder: t`Collection name` },
+          ]}
+          buttons={[
+            {
+              key: "reloadSelected",
+              label: t`Rerun Selected`,
+              disabled: Object.values(rowChecked).every(
+                (isChecked) => !isChecked,
+              ),
+              onClick: handleReloadSelected,
+            },
+          ]}
+          hasResults={hasResults}
+        >
+          {({ errorFilter, dbFilter, collectionFilter }) => (
+            <AuditTable
+              {...props}
+              reloadRef={reloadRef}
+              pageSize={50}
+              isSortable
+              isSelectable
+              rowChecked={rowChecked}
+              sorting={sorting}
+              onSortingChange={handleSortingChange}
+              onAllSelectClick={handleAllSelectClick}
+              onRowSelectClick={handleRowSelectClick}
+              onLoad={handleLoad}
+              mode={ErrorMode}
+              table={Queries.bad_table(
+                errorFilter,
+                dbFilter,
+                collectionFilter,
+                sorting.column,
+                getSortOrder(sorting.isAscending),
+              )}
+              className={CS.mt2}
+            />
+          )}
+        </AuditParameters>
+      </SettingsSection>
+    </Stack>
   );
 }
