@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type React from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, MantineTheme } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
   TextHeightMeasurer,
@@ -200,11 +200,11 @@ export type VisualizationPassThroughProps = {
   tableHeaderHeight?: number;
   scrollToColumn?: number;
   renderTableHeader?: (
-    column: number,
+    column: DatasetColumn,
     index: number,
-    theme: unknown,
+    theme: MantineTheme,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode | null;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

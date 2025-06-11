@@ -37,8 +37,6 @@ interface ViewTitleHeaderProps {
   queryBuilderMode: QueryBuilderMode;
   isBookmarked: boolean;
   toggleBookmark: () => void;
-  isSaved: boolean;
-  isModelOrMetric: boolean;
   isRunnable: boolean;
   isRunning: boolean;
   isNativeEditorOpen: boolean;
@@ -62,9 +60,6 @@ interface ViewTitleHeaderProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  areFiltersExpanded: boolean;
-  onExpandFilters: () => void;
-  onCollapseFilters: () => void;
   isShowingQuestionInfoSidebar: boolean;
   onCloseQuestionInfo: () => void;
 
@@ -209,12 +204,12 @@ export function ViewTitleHeader({
         queryBuilderMode,
         isObjectDetail,
       }) && (
-        <QuestionFiltersHeader
-          expanded={areFiltersExpanded}
-          question={question}
-          updateQuestion={updateQuestion}
-        />
-      )}
+          <QuestionFiltersHeader
+            expanded={areFiltersExpanded}
+            question={question}
+            updateQuestion={updateQuestion}
+          />
+        )}
     </>
   );
 }

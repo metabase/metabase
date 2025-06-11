@@ -140,8 +140,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       >
         <QueryVisualization
           {...props}
-          noHeader
           className={CS.spread}
+          // @ts-expect-error - fix mode type
           mode={queryMode}
           onUpdateQuestion={updateQuestion}
         />

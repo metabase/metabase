@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useState } from "react";
 import { useTimeout } from "react-use";
@@ -13,8 +12,12 @@ import { useSelector } from "metabase/lib/redux";
 import { getIsNativeQueryFixApplied } from "metabase/query_builder/selectors";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { Box, Flex, Stack, Text, Title } from "metabase/ui";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type { OnChangeCardAndRunOpts } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset, RawSeries, TimelineEvent, VisualizationSettings } from "metabase-types/api";
+import type { QueryBuilderMode } from "metabase-types/store";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
@@ -23,7 +26,43 @@ import Warnings from "./Warnings";
 
 const SLOW_MESSAGE_TIMEOUT = 4000;
 
-export default function QueryVisualization(props) {
+interface QueryVisualizationProps {
+  question: Question;
+  isDirty?: boolean;
+  queryBuilderMode?: QueryBuilderMode;
+  navigateToNewCardInsideQB?: (opts: OnChangeCardAndRunOpts) => Promise<void>;
+  result: Dataset | null;
+  rawSeries: RawSeries | null;
+  timelineEvents?: TimelineEvent[];
+  selectedTimelineEventIds?: number[];
+  onNavigateBack?: () => void;
+  isShowingSummarySidebar?: boolean;
+  onEditSummary?: () => void;
+  renderEmptyMessage?: boolean | undefined;
+  isRunning: boolean;
+  isResultDirty: boolean;
+  runQuestionQuery: () => void;
+  cancelQuery: () => void;
+
+  className?: string;
+  isRunnable: boolean;
+  isObjectDetail?: boolean;
+  isNativeEditorOpen?: boolean;
+  mode?: Mode | null | undefined;
+  onUpdateQuestion?: (question: Question) => void;
+  onVisualizationRendered?: () => void;
+  onUpdateVisualizationSettings?: (
+    changedSettings: VisualizationSettings,
+    question?: Question,
+  ) => void;
+  selectTimelineEvents?: (events: TimelineEvent[]) => void;
+  deselectTimelineEvents?: () => void;
+  isShowingDetailsOnlyColumns?: boolean;
+  hasMetadataPopovers?: boolean;
+}
+
+// eslint-disable-next-line import/no-default-export
+export default function QueryVisualization(props: QueryVisualizationProps) {
   const {
     className,
     question,
@@ -33,11 +72,10 @@ export default function QueryVisualization(props) {
     isResultDirty,
     isNativeEditorOpen,
     result,
-    maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
-  const [warnings, setWarnings] = useState([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const isNativeQueryFixApplied = useSelector(getIsNativeQueryFixApplied);
 
   return (
@@ -48,14 +86,17 @@ export default function QueryVisualization(props) {
         <VisualizationRunningState className={cx(CS.spread, CS.z2)} />
       ) : null}
       <VisualizationDirtyState
-        {...props}
+        isRunning={props.isRunning}
+        isResultDirty={props.isResultDirty}
+        runQuestionQuery={props.runQuestionQuery}
+        cancelQuery={props.cancelQuery}
         hidden={
           !canRun ||
           !isResultDirty ||
           !isRunnable ||
           isRunning ||
           isNativeEditorOpen ||
-          result?.error
+          Boolean(result?.error)
         }
         className={cx(CS.spread, CS.z2)}
       />
@@ -78,7 +119,7 @@ export default function QueryVisualization(props) {
         data-testid="query-visualization-root"
       >
         {isNativeQueryFixApplied ? (
-          <VisualizationEmptyState className={CS.spread}>
+          <VisualizationEmptyState>
             {t`Fixes applied. Run your query to view results.`}
           </VisualizationEmptyState>
         ) : result?.error ? (
@@ -86,20 +127,41 @@ export default function QueryVisualization(props) {
             className={CS.spread}
             error={result.error}
             errorType={result.error_type}
+            // @ts-expect-error - fix dataset type?
             via={result.via}
             question={question}
+            // @ts-expect-error - fix dataset type?
             duration={result.duration}
           />
         ) : result?.data ? (
           <VisualizationResult
-            {...props}
-            maxTableRows={maxTableRows}
+            question={props.question}
+            isDirty={props.isDirty}
+            queryBuilderMode={props.queryBuilderMode}
+            navigateToNewCardInsideQB={props.navigateToNewCardInsideQB}
+            result={props.result}
+            rawSeries={props.rawSeries}
+            timelineEvents={props.timelineEvents}
+            selectedTimelineEventIds={props.selectedTimelineEventIds}
+            onNavigateBack={props.onNavigateBack}
+            isRunning={props.isRunning}
+            isShowingSummarySidebar={props.isShowingSummarySidebar}
+            onEditSummary={props.onEditSummary}
+            renderEmptyMessage={props.renderEmptyMessage}
             className={CS.spread}
             onUpdateWarnings={setWarnings}
+            mode={props.mode}
+            onUpdateQuestion={props.onUpdateQuestion}
+            onVisualizationRendered={props.onVisualizationRendered}
+            isObjectDetail={props.isObjectDetail}
+            onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
+            selectTimelineEvents={props.selectTimelineEvents}
+            deselectTimelineEvents={props.deselectTimelineEvents}
+            isShowingDetailsOnlyColumns={props.isShowingDetailsOnlyColumns}
+            hasMetadataPopovers={props.hasMetadataPopovers}
           />
         ) : !isRunning ? (
           <VisualizationEmptyState
-            className={CS.spread}
             isCompact={isNativeEditorOpen}
           >
             {t`Here's where your results will appear`}
@@ -110,7 +172,7 @@ export default function QueryVisualization(props) {
   );
 }
 
-const VisualizationEmptyState = ({ isCompact, children }) => {
+const VisualizationEmptyState = ({ isCompact, children }: { isCompact?: boolean, children: React.ReactNode }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
@@ -128,8 +190,8 @@ const VisualizationEmptyState = ({ isCompact, children }) => {
         <Text c="text-medium">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
-            <b key="shortcut">({keyboardShortcut})</b>
-          )}`}
+              <b key="shortcut">({keyboardShortcut})</b>
+            )}`}
         </Text>
         <Text c="text-medium">{children}</Text>
       </Stack>
@@ -137,14 +199,14 @@ const VisualizationEmptyState = ({ isCompact, children }) => {
   );
 };
 
-export function VisualizationRunningState({ className = "" }) {
+export function VisualizationRunningState({ className = "" }: { className?: string }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
 
   const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
 
   // show the slower loading message only when the loadingMessage is
   // not customized
-  const message = getLoadingMessage(isSlow());
+  const message = getLoadingMessage(isSlow() ?? undefined);
 
   return (
     <Flex
@@ -162,15 +224,23 @@ export function VisualizationRunningState({ className = "" }) {
   );
 }
 
+interface VisualizationDirtyStateProps {
+  className?: string;
+  isRunning: boolean;
+  isResultDirty: boolean;
+  runQuestionQuery: () => void;
+  cancelQuery: () => void;
+  hidden: boolean;
+}
+
 export const VisualizationDirtyState = ({
   className,
-  result,
   isRunning,
   isResultDirty,
   runQuestionQuery,
   cancelQuery,
   hidden,
-}) => {
+}: VisualizationDirtyStateProps) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   const handleClick = () => {

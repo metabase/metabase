@@ -85,6 +85,7 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
+        // @ts-expect-error - double check previous card type
         navigateToNewCardInsideQB={
           variant === "static" ? undefined : navigateToNewCard
         }
