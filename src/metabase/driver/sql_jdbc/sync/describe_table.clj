@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
@@ -15,19 +16,19 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
-   (com.fasterxml.jackson.core JsonFactory JsonParser JsonParser$NumberType JsonToken)
+   (com.fasterxml.jackson.core
+    JsonFactory
+    JsonParser
+    JsonParser$NumberType
+    JsonToken)
    (java.sql Connection DatabaseMetaData ResultSet)))
 
 (set! *warn-on-reflection* true)
@@ -66,9 +67,9 @@
   (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
       (do (let [pretty-column (str/join "." (map #(str "'" % "'")
                                                  (drop-while nil? namespaced-col)))]
-            (log/warnf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
-                       database-type
-                       pretty-column))
+            (log/debugf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
+                        database-type
+                        pretty-column))
           :type/*)))
 
 (defn- calculated-semantic-type
@@ -246,7 +247,7 @@
                                   {:table-schema (:schema table)}))]
     (into
      #{}
-     (describe-table-fields-xf driver (table/database table))
+     (describe-table-fields-xf driver (driver-api/table->database table))
      (fields-metadata driver conn table db-name-or-nil))))
 
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
@@ -284,7 +285,7 @@
                          " it does not necessarily correspond to any actual names of anything in the data warehouse"
                          " itself. Make sure you're using the actual physical name (e.g. `test-data`) rather than the "
                          " display name.")
-                    {:driver driver, :db-name db-name, :type qp.error-type/driver}))))
+                    {:driver driver, :db-name db-name, :type driver-api/qp.error-type.driver}))))
 
 (defmethod get-table-pks :sql-jdbc
   [driver ^Connection conn db-name-or-nil table]
@@ -459,7 +460,7 @@
 
 (def ^:private ^{:arglists '([s])} can-parse-datetime?
   "Returns whether a string can be parsed to an ISO 8601 datetime or not."
-  (mr/validator ::lib.schema.literal/string.datetime))
+  (mr/validator driver-api/schema.literal.string.datetime))
 
 (defn- type-by-parsing-string
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
@@ -700,7 +701,7 @@
 
 (defn- describe-json-fields
   [driver jdbc-spec table json-fields pks]
-  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (sync-util/name-for-logging table))
+  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (driver-api/name-for-logging table))
   (let [query       (sample-json-reducible-query driver jdbc-spec table json-fields pks)
         field-types (transduce (map json-map->types) describe-json-rf query)
         fields      (field-types->fields field-types)]

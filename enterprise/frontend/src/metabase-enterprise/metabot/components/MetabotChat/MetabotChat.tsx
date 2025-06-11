@@ -2,9 +2,8 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { c, jt, t } from "ttag";
-import _ from "underscore";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
@@ -20,6 +19,7 @@ import {
   Textarea,
   UnstyledButton,
 } from "metabase/ui";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 
 import { useMetabotAgent } from "../../hooks";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
@@ -39,11 +39,15 @@ export const MetabotChat = () => {
   useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
 
   const hasMessages = metabot.messages.length > 0;
+
+  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
+    metabot_id: metabot.metabotId,
+    limit: 3,
+    sample: true,
+  });
   const suggestedPrompts = useMemo(() => {
-    const prompts = metabot.suggestedPrompts.data?.prompts ?? [];
-    return _.shuffle(prompts).slice(0, 3);
-  }, [metabot.suggestedPrompts]);
-  const hasSuggestions = suggestedPrompts.length > 0;
+    return suggestedPromptsReq.currentData?.prompts ?? [];
+  }, [suggestedPromptsReq.currentData?.prompts]);
 
   const handleSubmitInput = (input: string) => {
     if (metabot.isDoingScience) {
@@ -55,10 +59,8 @@ export const MetabotChat = () => {
       return;
     }
     setMessage("");
-    metabot
-      .submitInput(trimmedInput)
-      .catch((err) => console.error(err))
-      .finally(() => textareaRef.current?.focus());
+    textareaRef.current?.focus();
+    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
   };
 
   const { setVisible } = metabot;
@@ -111,7 +113,7 @@ export const MetabotChat = () => {
           ref={messagesRef}
         >
           {/* empty state with no suggested prompts */}
-          {!hasMessages && !hasSuggestions && (
+          {!hasMessages && (
             <Flex
               h="100%"
               gap="md"
@@ -120,26 +122,23 @@ export const MetabotChat = () => {
               justify="center"
               data-testid="metabot-empty-chat-info"
             >
-              <Box
-                component="img"
-                src={EmptyDashboardBot}
-                w="6rem"
-                alt={t`Empty metabot conversation`}
-              />
+              <Box component={EmptyDashboardBot} w="6rem" />
               <Text
                 c="text-light"
-                maw="18rem"
+                maw="12rem"
                 ta="center"
-              >{t`I can tell you about what you’re looking at, or help you explore your models and metrics.`}</Text>
+              >{t`I can help you explore your metrics and models.`}</Text>
             </Flex>
           )}
 
           {/* empty state with suggested prompts */}
-          {!hasMessages && hasSuggestions && (
-            <Stack gap="sm" data-testid="metabot-prompt-suggestions">
+          {!hasMessages && (
+            <Stack
+              gap="sm"
+              className={Styles.promptSuggestionsContainer}
+              data-testid="metabot-prompt-suggestions"
+            >
               <>
-                <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
-                {metabot.suggestedPrompts.isLoading && <Loader />}
                 {suggestedPrompts.map(({ prompt }, index) => (
                   <Box key={index}>
                     <Button

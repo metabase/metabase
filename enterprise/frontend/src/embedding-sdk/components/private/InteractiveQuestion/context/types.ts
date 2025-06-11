@@ -61,6 +61,11 @@ type InteractiveQuestionConfig = {
   ) => void;
 
   /**
+   * A callback function that triggers when a question is updated, including when a user clicks the `Visualize` button in the question editor
+   */
+  onRun?: (question: MetabaseQuestion | undefined) => void;
+
+  /**
    * A callback function that triggers when a user clicks the back button.
    */
   onNavigateBack?: () => void;
@@ -85,15 +90,18 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
+    | "onRun"
+    | "onNavigateBack"
+    | "isSaveEnabled"
+    | "targetCollection"
+    | "withDownloads"
   > &
   Pick<InteractiveQuestionProviderProps, "variant"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
+    originalId: SdkQuestionId | null;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;
     onSave: (question: Question) => Promise<void>;
-  } & {
-    originalId: SdkQuestionId | null;
   };
