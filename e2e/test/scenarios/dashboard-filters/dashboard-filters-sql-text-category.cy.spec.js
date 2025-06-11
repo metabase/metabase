@@ -33,7 +33,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     () => {
       Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(([filter]) => {
         cy.log(`Make sure we can connect ${filter} filter`);
-        H.setFilter("Text or Category", filter);
+        H.setDashboardHeaderFilter("Text or Category", filter);
 
         cy.findByText("Select…").click();
         H.popover().contains(filter).click();
@@ -60,7 +60,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   );
 
   it("should work when set as the default filter and when that filter is removed (metabase#20493)", () => {
-    H.setFilter("Text or Category", "Is");
+    H.setDashboardHeaderFilter("Text or Category", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();

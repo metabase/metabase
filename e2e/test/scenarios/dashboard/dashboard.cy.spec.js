@@ -752,7 +752,7 @@ describe("scenarios > dashboard", () => {
 
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
-    H.setFilter("Location", "Is");
+    H.setDashboardHeaderFilter("Location", "Is");
 
     H.getDashboardCard().findByText("Select…").click();
 
@@ -806,7 +806,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
-    H.setFilter("Date picker", "All Options");
+    H.setDashboardHeaderFilter("Date picker", "All Options");
 
     // and connect it to the card
     H.selectDashboardFilter(
@@ -815,7 +815,7 @@ describe("scenarios > dashboard", () => {
     );
 
     // add second filter
-    H.setFilter("ID");
+    H.setDashboardHeaderFilter("ID");
 
     // and connect it to the card
     H.selectDashboardFilter(
@@ -824,7 +824,7 @@ describe("scenarios > dashboard", () => {
     );
 
     // add third filter
-    H.setFilter("Text or Category", "Starts with");
+    H.setDashboardHeaderFilter("Text or Category", "Starts with");
     // and connect it to the card
     H.selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 

@@ -184,7 +184,7 @@ describe("issue 8030 + 32444", () => {
 
         cy.get("@getCardQuery.all").should("have.length", 2);
 
-        H.setFilter("Text or Category", "Is");
+        H.setDashboardHeaderFilter("Text or Category", "Is");
         H.selectDashboardFilter(
           cy.findAllByTestId("dashcard").first(),
           "Title",
@@ -963,7 +963,7 @@ describe("issue 16177", () => {
   it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
-    H.setFilter("Date picker", "All Options");
+    H.setDashboardHeaderFilter("Date picker", "All Options");
     H.selectDashboardFilter(H.getDashboardCard(), "Quantity");
     H.dashboardParameterSidebar().findByText("No default").click();
     H.popover().findByText("Yesterday").click();
@@ -1182,7 +1182,7 @@ describe("issue 22482", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     H.editDashboard();
-    H.setFilter("Date picker", "All Options");
+    H.setDashboardHeaderFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -2581,7 +2581,7 @@ describe("issue 43154", () => {
     });
 
     H.editDashboard();
-    H.setFilter("Text or Category", "Is");
+    H.setDashboardHeaderFilter("Text or Category", "Is");
     H.getDashboardCard().findByText("Select…").click();
     H.popover().findByText("People - User → Source").click();
     H.saveDashboard();
@@ -2976,7 +2976,7 @@ describe("issue 27579", () => {
   it("should be able to remove the last exclude hour option (metabase#27579)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
-    H.setFilter("Date picker", "All Options");
+    H.setDashboardHeaderFilter("Date picker", "All Options");
     H.selectDashboardFilter(H.getDashboardCard(), "Created At");
     H.saveDashboard();
     H.filterWidget().click();
@@ -3601,10 +3601,10 @@ describe("issue 34955", () => {
       H.visitDashboard(dashboard_id);
       H.editDashboard();
 
-      H.setFilter("Date picker", "Single Date", "On");
+      H.setDashboardHeaderFilter("Date picker", "Single Date", "On");
       connectFilterToColumn(ccName);
 
-      H.setFilter("Date picker", "Date Range", "Between");
+      H.setDashboardHeaderFilter("Date picker", "Date Range", "Between");
       connectFilterToColumn(ccName);
 
       H.saveDashboard();
@@ -4078,7 +4078,7 @@ describe("issue 52484", () => {
 
     cy.log("setup a dashboard with a click behavior");
     H.editDashboard();
-    H.setFilter("Number", "Equal to");
+    H.setDashboardHeaderFilter("Number", "Equal to");
     H.selectDashboardFilter(H.getDashboardCard(), "Rating");
     H.dashboardParametersDoneButton().click();
     H.showDashboardCardActions();
@@ -4142,7 +4142,7 @@ describe("issue 40396", { tags: "@external " }, () => {
 
     cy.log("verify that a enum field can be mapped to a parameter");
     H.editDashboard();
-    H.setFilter("Text or Category", "Is");
+    H.setDashboardHeaderFilter("Text or Category", "Is");
     H.selectDashboardFilter(H.getDashboardCard(), "Enum");
     H.saveDashboard();
 
@@ -4236,7 +4236,7 @@ describe("issue 52918", () => {
   it("should re-position the parameter dropdown when its size changes (metabase#52918)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
-    H.setFilter("Date picker", "All Options");
+    H.setDashboardHeaderFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
       cy.findByText("Fixed date range…").click();
@@ -4259,7 +4259,7 @@ describe("issue 54236", () => {
   it("should show correct date range in the date picker (metabase#54236)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
-    H.setFilter("Date picker", "All Options");
+    H.setDashboardHeaderFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
       cy.findByText("Relative date range…").click();

@@ -302,7 +302,7 @@ function createAndMapParameter({
   parameterName = PARAMETER_NAME,
 } = {}) {
   cy.log("parameter mapping");
-  H.setFilter("Boolean", undefined, parameterName);
+  H.setDashboardHeaderFilter("Boolean", undefined, parameterName);
   H.selectDashboardFilter(H.getDashboardCard(), columnName);
   H.dashboardParametersDoneButton().click();
 }

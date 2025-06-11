@@ -31,7 +31,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
 
-      H.setFilter("Number", filter);
+      H.setDashboardHeaderFilter("Number", filter);
 
       clickSelect();
       H.popover().contains(filter).click();
@@ -57,7 +57,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   });
 
   it("should work when set as the default filter", () => {
-    H.setFilter("Number", "Equal to");
+    H.setDashboardHeaderFilter("Number", "Equal to");
     H.sidebar().findByText("Default value").next().click();
 
     addWidgetNumberFilter("3.8");

@@ -31,7 +31,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
-    H.setFilter("Text or Category", "Contains");
+    H.setDashboardHeaderFilter("Text or Category", "Contains");
     cy.findAllByRole("radio", { name: "Multiple values" }).should("be.checked");
     cy.findByTestId("visualization-root").findByText("Select…").click();
     H.popover().contains("Source").click();
@@ -58,7 +58,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
   it("should work when set through the filter widget", () => {
     DASHBOARD_TEXT_FILTERS.forEach(({ operator, single }) => {
       cy.log(`Make sure we can connect ${operator} filter`);
-      H.setFilter("Text or Category", operator);
+      H.setDashboardHeaderFilter("Text or Category", operator);
       cy.findAllByRole("radio", { name: "Multiple values" }).should(
         "be.checked",
       );
@@ -105,7 +105,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     const filterValue = "Organic";
 
     cy.log(`Make sure we can connect '${filterType}' filter`);
-    H.setFilter("Text or Category", filterType);
+    H.setDashboardHeaderFilter("Text or Category", filterType);
 
     cy.findByTestId("dashcard").findByText("Select…").click();
     H.popover().contains("Source").click();
@@ -132,7 +132,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it("should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)", () => {
-    H.setFilter("Text or Category", "Is");
+    H.setDashboardHeaderFilter("Text or Category", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -144,7 +144,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     applyFilterByType("Is", "Organic");
 
     // We need to add another filter only to reproduce metabase#13960
-    H.setFilter("ID");
+    H.setDashboardHeaderFilter("ID");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("User ID").click();
@@ -178,7 +178,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it("should support being required", () => {
-    H.setFilter("Text or Category", "Is");
+    H.setDashboardHeaderFilter("Text or Category", "Is");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Source");
 
     // Can't save without a default value
@@ -221,7 +221,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it("should use the list value picker for single-value category filters (metabase#49323)", () => {
-    H.setFilter("Text or Category", "Is");
+    H.setDashboardHeaderFilter("Text or Category", "Is");
 
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
 
@@ -241,7 +241,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it("should use the list value picker for multi-value category filters (metabase#49323)", () => {
-    H.setFilter("Text or Category", "Is");
+    H.setDashboardHeaderFilter("Text or Category", "Is");
 
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
 
