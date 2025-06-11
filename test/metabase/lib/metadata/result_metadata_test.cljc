@@ -6,7 +6,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as result-metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -804,103 +803,18 @@
                           :breakout     [!year.date]})
           metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                              meta/metadata-provider
-                             [source-query])]
-      (let [[date-col count-col] (for [col (result-metadata/expected-cols (lib/query meta/metadata-provider source-query))]
-                                   (as-> col col
-                                     (assoc col :source :fields)
-                                     (dissoc col :position :aggregation_index)
-                                     (m/filter-keys simple-keyword? col)))]
-        ;; since the bucketing is happening in the source query rather than at this level, the field ref should
-        ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
-        ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
-        ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
-        ;; display values of the column.
-        (is (=? [(assoc date-col  :field-ref [:field "DATE" {:base-type :type/Date}], :unit :year)
-                 (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
-                (result-metadata/expected-cols
-                 (lib/query metadata-provider (lib.metadata/card metadata-provider 1)))))))))
-
-;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
-#_(deftest ^:parallel model-self-join-test
-  (testing "Field references from model joined a second time can be resolved (#48639)"
-    (let [mp meta/metadata-provider
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:cards [{:id 1
-                        :name "Products+Reviews"
-                        :database-id (meta/id)
-                        :type :model
-                        :dataset-query (-> (lib/query mp (lib.metadata/table mp (meta/id :products)))
-                                           (lib/join (-> (lib/join-clause (lib.metadata/table mp (meta/id :reviews))
-                                                                          [(lib/=
-                                                                            (lib.metadata/field mp (meta/id :products :id))
-                                                                            (lib.metadata/field mp (meta/id :reviews :product-id)))])
-                                                         (lib/with-join-fields :all))))}]})
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:cards [{:id 2
-                        :database-id (meta/id)
-                        :name "Products+Reviews Summary"
-                        :type :model
-                        :dataset-query (binding [lib.metadata.calculation/*display-name-style* :long]
-                                         (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                                           (lib/aggregate $q (lib/sum (->> $q
-                                                                           lib/available-aggregation-operators
-                                                                           (m/find-first (comp #{:sum} :short))
-                                                                           :columns
-                                                                           (m/find-first #(= (:display-name %) "Price")))))
-                                           (lib/breakout $q (-> (or (m/find-first #(= (:display-name %) "Reviews → Created At")
-                                                                                  (lib/breakoutable-columns $q))
-                                                                    (throw (ex-info "Cannot find 'Reviews → Created At'"
-                                                                                    {:cols (lib/breakoutable-columns $q)})))
-                                                                (lib/with-temporal-bucket :month)))))}]})
-          query (binding [lib.metadata.calculation/*display-name-style* :long]
-                  (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                    (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
-                                                       (lib/breakoutable-columns $q))
-                                         (lib/with-temporal-bucket :month)))
-                    (lib/aggregate $q (lib/avg (->> $q
-                                                    lib/available-aggregation-operators
-                                                    (m/find-first (comp #{:avg} :short))
-                                                    :columns
-                                                    (m/find-first (comp #{"Rating"} :display-name)))))
-                    (lib/append-stage $q)
-                    (letfn [(find-col [query display-name]
-                              (or (m/find-first #(= (:display-name %) display-name)
-                                                (lib/breakoutable-columns query))
-                                  (throw (ex-info "Failed to find column with display name"
-                                                  {:display-name display-name
-                                                   :found       (map :display-name (lib/breakoutable-columns query))}))))]
-                      (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
-                                                        [(lib/=
-                                                          (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
-                                                            :month)
-                                                          (lib/with-temporal-bucket (find-col
-                                                                                     (lib/query mp (lib.metadata/card mp 2))
-                                                                                     "Reviews → Created At: Month")
-                                                            :month))])
-                                       (lib/with-join-fields :all))))))]
-      (is (=? ["Reviews → Created At: Month"
-               "Average of Rating"
-               "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
-               "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
-              (map :display-name (result-metadata/expected-cols query)))))))
-
-;;; see
-;;; also [[metabase.query-processor.middleware.add-source-metadata-test/add-correct-metadata-fields-for-deeply-nested-source-queries-test]]
-#_(deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
-  (let [query (lib/query
-               meta/metadata-provider
-               (lib.tu.macros/mbql-query orders
-                 {:source-query {:source-table $$orders
-                                 :filter       [:= $id 1]
-                                 :aggregation  [[:sum $total]]
-                                 :breakout     [!day.created-at
-                                                $product-id->products.title
-                                                $product-id->products.category]}
-                  :filter       [:> *sum/Float 100]
-                  :aggregation  [[:sum *sum/Float]]
-                  :breakout     [*TITLE/Text]}))]
-    (is (= [[:field "TITLE" {:base-type :type/Text}]
-            [:aggregation 0]]
-           (map :field-ref (result-metadata/expected-cols query))))))
+                             [source-query])
+          [date-col count-col] (for [col (result-metadata/expected-cols (lib/query meta/metadata-provider source-query))]
+                                 (as-> col col
+                                   (assoc col :source :fields)
+                                   (dissoc col :position :aggregation_index)
+                                   (m/filter-keys simple-keyword? col)))]
+      ;; since the bucketing is happening in the source query rather than at this level, the field ref should
+      ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
+      ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
+      ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
+      ;; display values of the column.
+      (is (=? [(assoc date-col  :field-ref [:field "DATE" {:base-type :type/Date}], :unit :year)
+               (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
+              (result-metadata/expected-cols
+               (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))

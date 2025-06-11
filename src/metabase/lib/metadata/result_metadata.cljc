@@ -124,7 +124,7 @@
   "Merge our column metadata (`:cols`) from MLv2 with the `initial-cols` metadata returned by the driver.
 
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order (matching
-  the order supposed by MLv2). "
+  the order supposed by MLv2)."
   [initial-cols :- [:maybe [:sequential ::kebab-cased-col]]
    lib-cols     :- [:maybe [:sequential ::kebab-cased-col]]]
   (cond
@@ -139,10 +139,10 @@
 
     :else
     (throw (ex-info (lib.util/format (str "column number mismatch between initial metadata columns returned by driver (%d) and"
-                                 " those expected by MLv2 (%d). Did the driver return the wrong number of columns? "
-                                 " Or is there a bug in MLv2 metadata calculation?")
-                            (count initial-cols)
-                            (count lib-cols))
+                                          " those expected by MLv2 (%d). Did the driver return the wrong number of columns? "
+                                          " Or is there a bug in MLv2 metadata calculation?")
+                                     (count initial-cols)
+                                     (count lib-cols))
                     {:initial-cols (map :name initial-cols)
                      :lib-cols     (map (some-fn :lib/desired-column-alias :name) lib-cols)}))))
 
