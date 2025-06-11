@@ -4,10 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import {
   getDashCardInlineValuePopulatedParameters,
+  getDashcardParameterMappingOptions,
   getEditingParameter,
+  getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -44,6 +47,7 @@ export function Heading({
   isEditing,
   isFullscreen,
   onUpdateVisualizationSettings,
+  isMobile,
 }: HeadingProps) {
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard?.id),
@@ -60,6 +64,16 @@ export function Heading({
   const preventDragging = (e: MouseEvent<HTMLInputElement>) => {
     e.stopPropagation();
   };
+
+  const isEditingParameter = useSelector(getIsEditingParameter);
+
+  const mappingOptions = useSelector((state) =>
+    getDashcardParameterMappingOptions(state, {
+      card: dashcard.card,
+      dashcard,
+    }),
+  );
+  const hasVariables = mappingOptions.length > 0;
 
   const container = useRef<HTMLDivElement>(null);
   const [isNarrow, setIsNarrow] = useState(false);
@@ -100,6 +114,43 @@ export function Heading({
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can connect widgets to {{variables}} in heading cards.`;
 
+  let leftContent: JSX.Element | null;
+
+  if (hasVariables && isEditingParameter) {
+    leftContent = (
+      <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
+    );
+  } else if (isPreviewing) {
+    leftContent = (
+      <HeadingContent
+        data-testid="editing-dashboard-heading-preview"
+        isEditing={isEditing}
+        onMouseDown={preventDragging}
+        hasFilters={inlineParameters.length > 0}
+      >
+        {hasContent ? content : placeholder}
+      </HeadingContent>
+    );
+  } else {
+    leftContent = (
+      <HeadingTextInput
+        name="heading"
+        data-testid="editing-dashboard-heading-input"
+        placeholder={placeholder}
+        value={textValue}
+        autoFocus={justAdded || isFocused}
+        onChange={(e) => setTextValue(e.target.value)}
+        onMouseDown={preventDragging}
+        onBlur={() => {
+          toggleFocusOff();
+
+          if (settings.text !== textValue) {
+            onUpdateVisualizationSettings({ text: textValue });
+          }
+        }}
+      />
+    );
+  }
   if (isEditing) {
     return (
       <InputContainer
@@ -109,33 +160,7 @@ export function Heading({
         onClick={toggleFocusOn}
         ref={container}
       >
-        {isPreviewing ? (
-          <HeadingContent
-            data-testid="editing-dashboard-heading-preview"
-            isEditing={isEditing}
-            onMouseDown={preventDragging}
-            hasFilters={inlineParameters.length > 0}
-          >
-            {hasContent ? settings.text : placeholder}
-          </HeadingContent>
-        ) : (
-          <HeadingTextInput
-            name="heading"
-            data-testid="editing-dashboard-heading-input"
-            placeholder={placeholder}
-            value={textValue}
-            autoFocus={justAdded || isFocused}
-            onChange={(e) => setTextValue(e.target.value)}
-            onMouseDown={preventDragging}
-            onBlur={() => {
-              toggleFocusOff();
-
-              if (settings.text !== textValue) {
-                onUpdateVisualizationSettings({ text: textValue });
-              }
-            }}
-          />
-        )}
+        {leftContent}
         {inlineParameters.length > 0 && (
           <ParametersList
             isNarrow={isNarrow}
