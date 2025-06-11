@@ -308,10 +308,10 @@
                    ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
                    ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
                    fields   nil
-                   actions  (for [op actions.models/enabled-table-actions
-                                  :let [[action action-name] (actions.models/table-primitive-action table fields op)]]
+                   actions  (for [[op op-name] actions.models/enabled-table-actions
+                                  :let [action (actions.models/table-primitive-action table fields op)]]
                               {:id          (:id action)
-                               :name        action-name
+                               :name        op-name
                                :description (get-in action [:visualization_settings :description] "")})]
                {:actions actions})))
 
