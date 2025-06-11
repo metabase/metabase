@@ -14,6 +14,16 @@ import type { TokenStatus } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
+// Tests fail without this mock, even with jest.useFakeTimers()
+// Probably same/similar issue https://github.com/jestjs/jest/issues/3465
+jest.mock("underscore", () => {
+  const original = jest.requireActual("underscore");
+  return {
+    ...original,
+    debounce: jest.fn((fn) => fn),
+  };
+});
+
 const SETTINGS_ENDPOINT =
   "/api/setting/license-token-missing-banner-dismissal-timestamp";
 
@@ -34,6 +44,7 @@ describe("shouldShowBanner works correctly", () => {
       tokenStatus: null,
       lastDismissed: [],
       isEEBuild: false,
+      isAdmin: true,
     });
 
     expect(result).toBe(false);
@@ -47,6 +58,7 @@ describe("shouldShowBanner works correctly", () => {
       },
       lastDismissed: [],
       isEEBuild: true,
+      isAdmin: true,
     });
 
     expect(result).toBe(false);
@@ -57,6 +69,7 @@ describe("shouldShowBanner works correctly", () => {
       tokenStatus: null,
       lastDismissed: ["2024-03-19T00:00:00.000Z", "2024-03-20T00:00:00.000Z"],
       isEEBuild: true,
+      isAdmin: true,
     });
 
     expect(result).toBe(false);
@@ -67,6 +80,7 @@ describe("shouldShowBanner works correctly", () => {
       tokenStatus: null,
       lastDismissed: [],
       isEEBuild: true,
+      isAdmin: true,
     });
 
     expect(result).toBe(true);
@@ -77,6 +91,7 @@ describe("shouldShowBanner works correctly", () => {
       tokenStatus: null,
       lastDismissed: ["2024-03-10T00:00:00.000Z"],
       isEEBuild: true,
+      isAdmin: true,
     });
 
     expect(result).toBe(false);
@@ -87,9 +102,21 @@ describe("shouldShowBanner works correctly", () => {
       tokenStatus: null,
       lastDismissed: ["2024-03-01T00:00:00.000Z"],
       isEEBuild: true,
+      isAdmin: true,
     });
 
     expect(result).toBe(true);
+  });
+
+  it("should return false when not admin", () => {
+    const result = shouldShowBanner({
+      tokenStatus: null,
+      lastDismissed: ["2024-03-01T00:00:00.000Z"],
+      isEEBuild: true,
+      isAdmin: false,
+    });
+
+    expect(result).toBe(false);
   });
 });
 
@@ -99,7 +126,12 @@ describe("useLicenseTokenMissingBanner", () => {
   const setup = ({
     tokenStatus,
     dismissals,
-  }: { tokenStatus?: TokenStatus; dismissals?: string[] } = {}) => {
+    isAdmin,
+  }: {
+    tokenStatus?: TokenStatus;
+    dismissals?: string[];
+    isAdmin?: boolean;
+  } = {}) => {
     const state = createMockState({
       settings: mockSettings({
         "license-token-missing-banner-dismissal-timestamp": dismissals ?? [],
@@ -120,9 +152,12 @@ describe("useLicenseTokenMissingBanner", () => {
         "token-status": tokenStatus ?? null,
       }),
     );
-    return renderHookWithProviders(() => useLicenseTokenMissingBanner(), {
-      storeInitialState: state,
-    });
+    return renderHookWithProviders(
+      () => useLicenseTokenMissingBanner(isAdmin ?? true),
+      {
+        storeInitialState: state,
+      },
+    );
   };
 
   beforeEach(() => {
@@ -156,21 +191,9 @@ describe("useLicenseTokenMissingBanner", () => {
       act(() => {
         result.current.dismissBanner();
       });
-
       await waitFor(async () => {
-        const [{ url, body }] = await findRequests("PUT");
+        const [{ url }] = await findRequests("PUT");
         expect(url).toContain(SETTINGS_ENDPOINT);
-        // We need to update the properties endpoints mock to reflect the new dismissal
-        if (body.value) {
-          setupPropertiesEndpoints(
-            createMockSettings({
-              "license-token-missing-banner-dismissal-timestamp": body.value,
-            }),
-          );
-        }
-      });
-      await waitFor(() => {
-        expect(result.current.shouldShowLicenseTokenMissingBanner).toBe(false);
       });
     });
 

@@ -20,14 +20,14 @@ export const AppBanner = () => {
     "trial-banner-dismissal-timestamp",
   );
 
-  const { shouldShowLicenseTokenMissingBanner, dismissBanner } =
-    useLicenseTokenMissingBanner();
-
   const isAdmin = useSelector(getUserIsAdmin);
   const isHosted = useSelector(getIsHosted);
   const tokenStatus = useSetting("token-status");
   const readOnly = useSetting("read-only-mode");
   const isDevMode = useSetting("development-mode?");
+
+  const { shouldShowLicenseTokenMissingBanner, dismissBanner } =
+    useLicenseTokenMissingBanner(isAdmin);
 
   const tokenExpiryTimestamp = tokenStatus?.["valid-thru"];
   const isValidTrial = tokenExpiryTimestamp && tokenStatus?.trial && isHosted;

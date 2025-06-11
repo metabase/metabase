@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useUpdateSettingMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { isEEBuild } from "metabase/lib/utils";
 import type { TokenStatus } from "metabase-types/api";
@@ -20,11 +20,17 @@ export function shouldShowBanner({
   tokenStatus,
   lastDismissed,
   isEEBuild,
+  isAdmin,
 }: {
   tokenStatus: TokenStatus | null;
   lastDismissed: Array<string>;
   isEEBuild: boolean;
+  isAdmin: boolean;
 }) {
+  if (!isAdmin) {
+    return false;
+  }
+
   if (!isEEBuild) {
     return false;
   }
@@ -53,16 +59,16 @@ export function shouldShowBanner({
   return true;
 }
 
-export function useLicenseTokenMissingBanner() {
-  const { value: lastDismissed = [], updateSetting: setLastDismissed } =
-    useAdminSetting(SETTING_NAME);
+export function useLicenseTokenMissingBanner(isAdmin: boolean = false) {
+  // This is an admin setting, but it's accessed in a common context
+  const lastDismissed =
+    useSetting("license-token-missing-banner-dismissal-timestamp") ?? [];
+  const [updateSetting] = useUpdateSettingMutation();
 
   function dismissBanner() {
-    // Keep only the last 2 dismissals
-    setLastDismissed({
+    updateSetting({
       key: SETTING_NAME,
       value: [...lastDismissed, getCurrentUTCTimestamp()].slice(-2),
-      toast: false,
     });
   }
 
@@ -71,6 +77,7 @@ export function useLicenseTokenMissingBanner() {
     tokenStatus,
     lastDismissed,
     isEEBuild: isEEBuild(),
+    isAdmin,
   });
 
   return {
