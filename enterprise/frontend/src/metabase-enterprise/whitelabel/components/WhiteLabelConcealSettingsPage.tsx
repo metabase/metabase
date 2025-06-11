@@ -22,7 +22,7 @@ export function WhiteLabelConcealSettingsPage() {
       <SettingsSection title={t`Names`}>
         <AdminSettingInput
           name="application-name"
-          title={t`Application Name`}
+          title={t`Application name`}
           inputType="text"
         />
 

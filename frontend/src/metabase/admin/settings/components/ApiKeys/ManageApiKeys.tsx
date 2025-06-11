@@ -1,4 +1,3 @@
-/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -34,8 +33,8 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
       data-testid="empty-table-warning"
     >
       <Title order={2}>{t`No API keys here yet`}</Title>
-      <Text color="text.1" mb="md">
-        {t`You can create an API key to make API calls programatically.`}
+      <Text mb="md">
+        {t`You can create an API key to make API calls programmatically.`}
       </Text>
       <Button key="create-key-button" variant="filled" onClick={onCreate}>
         {t`Create API key`}
@@ -43,15 +42,6 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
     </Stack>
   );
 }
-
-const columns = [
-  { key: "name", name: t`Key name` },
-  { key: "group_name", name: t`Group` },
-  { key: "masked_key", name: t`Key` },
-  { key: "updated_by_name", name: t`Last modified by` },
-  { key: "updated_at", name: t`Last modified on` },
-  { key: "actions", name: "", sortable: false },
-];
 
 function ApiKeysTable({
   apiKeys,
@@ -75,6 +65,15 @@ function ApiKeysTable({
   if (apiKeys?.length === 0 || !apiKeys || !flatApiKeys) {
     return <EmptyTableWarning onCreate={() => setModal("create")} />;
   }
+
+  const columns = [
+    { key: "name", name: t`Key name` },
+    { key: "group_name", name: t`Group` },
+    { key: "masked_key", name: t`Key` },
+    { key: "updated_by_name", name: t`Last modified by` },
+    { key: "updated_at", name: t`Last modified on` },
+    { key: "actions", name: "", sortable: false },
+  ];
 
   return (
     <ClientSortableTable
@@ -151,8 +150,6 @@ export const ManageApiKeys = () => {
 
   const handleClose = () => setModal(null);
 
-  const tableIsEmpty = !isLoading && !error && apiKeys?.length === 0;
-
   return (
     <Stack>
       <Title order={1}>{t`API keys`}</Title>
@@ -168,11 +165,9 @@ export const ManageApiKeys = () => {
             align="center"
             data-testid="api-keys-settings-header"
           >
-            <Stack>
-              {!tableIsEmpty && (
-                <Text color="text-medium">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
-              )}
-            </Stack>
+            <Text c="text-medium">
+              {t`Allow users to use API keys to authenticate their API calls.`}
+            </Text>
             <Button
               variant="filled"
               onClick={() => setModal("create")}

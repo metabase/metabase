@@ -67,7 +67,7 @@ export const GoogleAuthForm = (): JSX.Element => {
 
   return (
     <Stack>
-      <Title order={1}>{t`Google Auth`}</Title>
+      <Title order={1}>{t`Google auth`}</Title>
       <SettingsSection>
         <FormProvider
           initialValues={initialValues}

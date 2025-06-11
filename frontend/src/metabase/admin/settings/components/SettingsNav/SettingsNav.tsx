@@ -25,6 +25,7 @@ export function SettingsNav() {
   const hasWhitelabel = useHasTokenFeature("whitelabel");
   const hasSaml = useHasTokenFeature("sso_saml");
   const hasJwt = useHasTokenFeature("sso_jwt");
+  const hasScim = useHasTokenFeature("scim");
 
   return (
     <Stack w="16rem" gap="xs" bg="white" p="md" h="100%">
@@ -35,10 +36,12 @@ export function SettingsNav() {
         icon="lock"
       >
         <SettingsNavItem path="authentication" label={t`Overview`} />
-        <SettingsNavItem
-          path="authentication/user-provisioning"
-          label={t`User provisioning`}
-        />
+        {hasScim && (
+          <SettingsNavItem
+            path="authentication/user-provisioning"
+            label={t`User provisioning`}
+          />
+        )}
         <SettingsNavItem path="authentication/api-keys" label={t`API keys`} />
         <SettingsNavItem path="authentication/google" label={t`Google auth`} />
         <SettingsNavItem path="authentication/ldap" label="LDAP" />

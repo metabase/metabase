@@ -40,7 +40,7 @@ describe("WhiteLabelConcealSettingsPage", () => {
     "Metabase illustrations",
     "Metabot greeting",
     "Login and unsubscribe pages",
-    "Landing Page",
+    "Landing page",
     "When calculations return no results",
     "When no objects can be found",
   ];
