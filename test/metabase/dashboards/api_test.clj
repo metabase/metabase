@@ -491,7 +491,7 @@
                :model/DashboardCard {dashcard-b-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
                                                          :card_id            card-id
                                                          :dashboard_id       dashboard-b-id}]
-              (testing "User's set parameter is saved and sent back in the dashboard response, unique per dashboard."
+              (testing "User's set parameter is not saved when saving is disabled"
                 ;; api request mimicking a user setting a parameter value
                 (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
                                                  {:parameters [{:id "a" :value ["initial value"]}]})))
