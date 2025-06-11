@@ -1,6 +1,6 @@
 import { useElementSize, useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, memo, useCallback, useMemo, useState } from "react";
+import { type ReactNode, memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -22,12 +22,7 @@ import {
 } from "./components";
 import { COLUMN_CONFIG } from "./constants";
 import type { RouteParams } from "./types";
-import {
-  getFieldConfig,
-  getPreviewConfig,
-  getTableMetadataQuery,
-  parseRouteParams,
-} from "./utils";
+import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 // memoize components for smooth column resizing experience
 const MemoizedFieldSection = memo(FieldSection);
@@ -48,9 +43,6 @@ export const DataModel = ({ params, location, children }: Props) => {
   const [navWidth, setNavWidth] = useState(COLUMN_CONFIG.nav.initial);
   const [tableWidth, setTableWidth] = useState(COLUMN_CONFIG.table.initial);
   const [fieldWidth, setFieldWidth] = useState(COLUMN_CONFIG.field.initial);
-  const [previewWidth, setPreviewWidth] = useState(
-    COLUMN_CONFIG.preview.initial,
-  );
   const { height, ref } = useElementSize();
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
@@ -61,27 +53,9 @@ export const DataModel = ({ params, location, children }: Props) => {
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const fieldConfig = useMemo(
-    () => getFieldConfig({ isPreviewOpen, fieldWidth, previewWidth }),
-    [isPreviewOpen, fieldWidth, previewWidth],
-  );
-  const previewConfig = useMemo(
-    () => getPreviewConfig({ isPreviewOpen, fieldWidth, previewWidth }),
-    [isPreviewOpen, fieldWidth, previewWidth],
-  );
 
   const handleResizeStart = useCallback(() => setIsResizing(true), []);
   const handleResizeStop = useCallback(() => setIsResizing(false), []);
-
-  const handlePreviewClick = () => {
-    setIsPreviewOpen(true);
-    setFieldWidth(fieldWidth + previewWidth);
-  };
-
-  const handlePreviewClose = () => {
-    setIsPreviewOpen(false);
-    setFieldWidth(fieldWidth - previewWidth);
-  };
 
   useWindowEvent("keydown", (event) => {
     if (
@@ -91,7 +65,7 @@ export const DataModel = ({ params, location, children }: Props) => {
       event.target.tagName === "BODY"
     ) {
       event.stopPropagation();
-      handlePreviewClose();
+      setIsPreviewOpen(false);
     }
   });
 
@@ -155,6 +129,61 @@ export const DataModel = ({ params, location, children }: Props) => {
             </ResizableColumn>
           )}
 
+          {!isEmptyStateShown && (
+            <ResizableColumn
+              height={height}
+              constraints={COLUMN_CONFIG.field}
+              width={fieldWidth}
+              onResize={(_event, data) => setFieldWidth(data.size.width)}
+              onResizeStart={handleResizeStart}
+              onResizeStop={handleResizeStop}
+            >
+              <Box bg="bg-white" className={S.column} h="100%" w={fieldWidth}>
+                <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                  <Flex justify="space-between" w="100%">
+                    {field && (
+                      <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                        <MemoizedFieldSection
+                          databaseId={databaseId}
+                          field={field}
+                          isPreviewOpen={isPreviewOpen}
+                          /**
+                           * Make sure internal component state is reset when changing fields.
+                           * This is to avoid state mix-up with optimistic updates.
+                           */
+                          key={getRawTableFieldId(field)}
+                          onPreviewClick={() => setIsPreviewOpen(true)}
+                        />
+                      </Box>
+                    )}
+                  </Flex>
+                </LoadingAndErrorWrapper>
+              </Box>
+            </ResizableColumn>
+          )}
+
+          {!isEmptyStateShown && field && table && isPreviewOpen && (
+            <Box flex="1" h="100%" p="xl">
+              <Box
+                h="100%"
+                maw={COLUMN_CONFIG.preview.max}
+                miw={COLUMN_CONFIG.preview.min}
+              >
+                <MemoizedPreviewSection
+                  className={S.preview}
+                  databaseId={databaseId}
+                  field={field}
+                  fieldId={fieldId}
+                  previewType={previewType}
+                  table={table}
+                  tableId={tableId}
+                  onClose={() => setIsPreviewOpen(false)}
+                  onPreviewTypeChange={setPreviewType}
+                />
+              </Box>
+            </Box>
+          )}
+
           {isEmptyStateShown && (
             <Flex
               align="center"
@@ -179,68 +208,6 @@ export const DataModel = ({ params, location, children }: Props) => {
                 />
               </Box>
             </Flex>
-          )}
-
-          {!isEmptyStateShown && (
-            <ResizableColumn
-              height={height}
-              constraints={fieldConfig}
-              width={fieldWidth}
-              onResize={(_event, data) => setFieldWidth(data.size.width)}
-              onResizeStart={handleResizeStart}
-              onResizeStop={handleResizeStop}
-            >
-              <Box bg="bg-white" className={S.column} h="100%" w={fieldWidth}>
-                <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                  <Flex justify="space-between" w="100%">
-                    {field && (
-                      <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                        <MemoizedFieldSection
-                          databaseId={databaseId}
-                          field={field}
-                          isPreviewOpen={isPreviewOpen}
-                          /**
-                           * Make sure internal component state is reset when changing fields.
-                           * This is to avoid state mix-up with optimistic updates.
-                           */
-                          key={getRawTableFieldId(field)}
-                          onPreviewClick={handlePreviewClick}
-                        />
-                      </Box>
-                    )}
-
-                    {field && table && isPreviewOpen && (
-                      <ResizableColumn
-                        className={S.previewColumn}
-                        handlePosition="left"
-                        height={height}
-                        constraints={previewConfig}
-                        width={previewWidth}
-                        onResize={(_event, data) =>
-                          setPreviewWidth(data.size.width)
-                        }
-                        onResizeStart={handleResizeStart}
-                        onResizeStop={handleResizeStop}
-                      >
-                        <Box h="100%" p="xl" pl={0}>
-                          <MemoizedPreviewSection
-                            className={S.preview}
-                            databaseId={databaseId}
-                            field={field}
-                            fieldId={fieldId}
-                            previewType={previewType}
-                            table={table}
-                            tableId={tableId}
-                            onClose={handlePreviewClose}
-                            onPreviewTypeChange={setPreviewType}
-                          />
-                        </Box>
-                      </ResizableColumn>
-                    )}
-                  </Flex>
-                </LoadingAndErrorWrapper>
-              </Box>
-            </ResizableColumn>
           )}
         </>
       )}
