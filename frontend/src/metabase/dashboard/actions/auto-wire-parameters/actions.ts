@@ -13,6 +13,7 @@ import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import {
   getDashCardById,
   getDashboard,
+  getDashboardHeaderParameters,
   getParameters,
   getQuestions,
   getSelectedTabId,
@@ -126,8 +127,10 @@ export function showAutoWireToastNewCard({
     }
 
     const questions = getQuestions(getState());
-    const parameters = getParameters(getState());
     const selectedTabId = getSelectedTabId(getState());
+
+    // Inline dashcard parameters should not be used for auto-wiring
+    const parameters = getDashboardHeaderParameters(getState());
 
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,
