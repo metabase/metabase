@@ -490,7 +490,7 @@ describe("content translation utils", () => {
     const mockTC = jest.fn((x) => `mock translation of ${x}`);
 
     beforeEach(() => {
-      jest.clearAllMocks(); // Clear mocks before each test
+      jest.clearAllMocks();
     });
 
     it("translates card names in a series", () => {
