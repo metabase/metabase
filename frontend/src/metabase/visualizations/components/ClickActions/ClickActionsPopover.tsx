@@ -56,20 +56,6 @@ export class ClickActionsPopover extends Component<
     }
   }
 
-  componentDidMount(): void {
-    window.addEventListener("keydown", this.handleKeyDown, { capture: true });
-  }
-
-  componentWillUnmount(): void {
-    window.removeEventListener("keydown", this.handleKeyDown);
-  }
-
-  handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Escape") {
-      this.close();
-    }
-  };
-
   close = () => {
     this.setState({ popoverAction: null });
     if (this.props.onClose) {
