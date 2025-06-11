@@ -346,7 +346,7 @@
    :table.row/create-or-update 3})
 
 (def enabled-table-actions
-  "List of table actions that are enabled for questions/editables on a dasbhoard."
+  "List of table actions that are enabled for questions/editables on a dashboard."
   [[:table.row/create "Create"]
    [:table.row/update "Update"]
    [:table.row/create-or-update "Create or Update"]

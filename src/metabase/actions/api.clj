@@ -308,9 +308,22 @@
                    ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
                    ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
                    fields   nil
-                   actions  (for [op actions.models/enabled-table-actions
-                                  :let [[action action-name] (actions.models/table-primitive-action table fields op)]]
+                   actions  (for [[op op-name] actions.models/enabled-table-actions
+                                  :let [action (actions.models/table-primitive-action table fields op)]]
                               {:id          (:id action)
-                               :name        action-name
+                               :name        op-name
                                :description (get-in action [:visualization_settings :description] "")})]
                {:actions actions})))
+
+(defmacro ^:private evil-proxy [verb route var-sym]
+  `(api.macros/defendpoint ~verb ~route
+     "This is where the route ultimately belongs, but for now its in EE.
+      We need to rework it so that certain paid features are skipped when we move it."
+     [~'route-params ~'query-params ~'body-params ~'request]
+     #_{:clj-kondo/ignore [:metabase/modules]}
+     (api.macros/call-core-fn @(requiring-resolve ~var-sym) ~'route-params ~'query-params ~'body-params ~'request)))
+
+(evil-proxy :get  "/v2/tmp-action" 'metabase-enterprise.data-editing.api/tmp-action)
+(evil-proxy :post "/v2/execute" 'metabase-enterprise.data-editing.api/execute-single)
+(evil-proxy :post "/v2/execute-bulk" 'metabase-enterprise.data-editing.api/execute-bulk)
+(evil-proxy :post "/v2/tmp-modal" 'metabase-enterprise.data-editing.api/tmp-modal)

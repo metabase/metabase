@@ -31,7 +31,7 @@
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
 
-(def ^:private execute-v2-url "ee/data-editing/action/v2/execute-bulk")
+(def ^:private execute-v2-url "action/v2/execute-bulk")
 
 (use-fixtures :each
   (fn [f]
@@ -115,7 +115,7 @@
     (mt/test-drivers #{:h2 :postgres}
       (with-open [table-ref (data-editing.tu/open-test-table!)]
         (let [table-id @table-ref
-              url      "ee/data-editing/action/v2/execute-bulk"]
+              url      "action/v2/execute-bulk"]
           (data-editing.tu/toggle-data-editing-enabled! true)
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
@@ -194,7 +194,7 @@
                               :song  [:text]}
                              {:primary-key [:id_1 :id_2]})]
         (let [table-id @table-ref
-              url      "ee/data-editing/action/v2/execute-bulk"]
+              url      "action/v2/execute-bulk"]
           (data-editing.tu/toggle-data-editing-enabled! true)
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
@@ -868,7 +868,7 @@
           (is (= ["a" "c" "d" "e"] (expect-field-values ["a" "c" "d" "e"]))))))))
 
 (deftest unified-execute-not-found-test
-  (let [url "ee/data-editing/action/v2/execute"
+  (let [url "action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]
@@ -890,13 +890,12 @@
                 (is (= 404 (:status (req {:action_id 999999, :input {}}))))))))))))
 
 (deftest unified-execute-test
-  (let [url "ee/data-editing/action/v2/execute"
+  (let [url "action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]
     (mt/with-premium-features #{:table-data-editing}
       (mt/test-drivers #{:h2 :postgres}
-        (data-editing.tu/toggle-data-editing-enabled! true)
         (mt/with-actions-enabled
           (mt/with-non-admin-groups-no-root-collection-perms
             (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
@@ -957,39 +956,45 @@
                                             :scope     {:dashcard-id (:id dashcard)}
                                             :input     {:id 1}
                                             :params    {:status "approved"}})))))
-                (testing "non-row action modifying a row"
-                  (testing "underlying row does not exist, action not executed"
-                    (is (= 400 (:status (req {:action_id (:id action)
-                                              :scope     {:dashcard-id (:id dashcard)}
-                                              :input     {:id 1}
-                                              :params    {:status "approved"}})))))
-                  (testing "underlying row exists, action executed"
-                    (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
-                                          {:rows [{:name "Widgets", :status "waiting"}]})
-                    (is (= {:status 200
-                            :body   {:outputs [{:rows-updated 1}]}}
-                           (-> (req {:action_id (:id action)
-                                     :scope     {:dashcard-id (:id dashcard)}
-                                     :input     {:id 1}
-                                     :params    {:status "approved"}})
-                               (select-keys [:status :body]))))))
-                (testing "dashcard row action modifying a row - implicit action"
-                  (let [action-id "dashcard:unknown:abcdef"]
+                ;; should not need this permission for model actions
+                (data-editing.tu/with-data-editing-enabled! false
+                  (testing "non-row action modifying a row"
                     (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action_id action-id
+                      (is (= 400 (:status (req {:action_id (:id action)
                                                 :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id 2}
+                                                :input     {:id 1}
                                                 :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
-                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
-                                            {:rows [{:name "Sprockets", :status "waiting"}]})
+                      (data-editing.tu/with-data-editing-enabled! true
+                        (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                              {:rows [{:name "Widgets", :status "waiting"}]}))
                       (is (= {:status 200
                               :body   {:outputs [{:rows-updated 1}]}}
-                             (-> (req {:action_id action-id
+                             (-> (req {:action_id (:id action)
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id 2}
+                                       :input     {:id 1}
                                        :params    {:status "approved"}})
-                                 (select-keys [:status :body])))))))
+                                 (select-keys [:status :body]))))))
+                  (testing "dashcard row action modifying a row - implicit action"
+                    (let [action-id "dashcard:unknown:abcdef"]
+                      (testing "underlying row does not exist, action not executed"
+                        (is (= 404 (:status (req {:action_id action-id
+                                                  :scope     {:dashcard-id (:id dashcard)}
+                                                  :input     {:id 2}
+                                                  :params    {:status "approved"}})))))
+                      (testing "underlying row exists, action executed"
+                        (data-editing.tu/with-data-editing-enabled! true
+                          (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                                {:rows [{:name "Sprockets", :status "waiting"}]}))
+                        (is (= {:status 200
+                                :body   {:outputs [{:rows-updated 1}]}}
+                               (-> (req {:action_id action-id
+                                         :scope     {:dashcard-id (:id dashcard)}
+                                         :input     {:id 2}
+                                         :params    {:status "approved"}})
+                                   (select-keys [:status :body]))))))))
+                ;; but it is necessary for the primitives
+                (data-editing.tu/toggle-data-editing-enabled! true)
                 (testing "dashcard row action modifying a row - primitive action"
                   (let [action-id "dashcard:unknown:fedcba"]
                     (testing "underlying row does not exist, action not executed"
@@ -1031,7 +1036,7 @@
                                  (select-keys [:status :body])))))))))))))))
 
 (deftest unified-execute-server-side-mapping-test
-  (let [url "ee/data-editing/action/v2/execute"
+  (let [url "action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]
@@ -1149,7 +1154,7 @@
   (let [list-req #(mt/user-http-request-full-response
                    (:user % :crowberto)
                    :get
-                   "ee/data-editing/tmp-action")]
+                   "action/v2/tmp-action")]
     (mt/with-premium-features #{:table-data-editing}
       (mt/test-drivers #{:h2 :postgres}
         (data-editing.tu/toggle-data-editing-enabled! true)
@@ -1167,9 +1172,10 @@
             (testing "table actions have neg ids"
               (is (every? neg? (map :id table-actions))))
             (testing "one action for each crud op"
-              (is (= {"table.row/create" 1
-                      "table.row/update" 1
-                      "table.row/delete" 1}
+              (is (= {"table.row/create"           1
+                      "table.row/create-or-update" 1
+                      "table.row/update"           1
+                      "table.row/delete"           1}
                      (frequencies (map :kind table-actions)))))
             (mt/with-temp [:model/Dashboard dash {}]
               (let [{create-action "table.row/create"
@@ -1255,7 +1261,7 @@
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :post
-          "ee/data-editing/tmp-modal"
+          "action/v2/tmp-modal"
           (select-keys % [:action_id
                           :scope
                           :input]))]
@@ -1317,12 +1323,12 @@
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :get
-          "ee/data-editing/tmp-action")
+          "action/v2/tmp-action")
         req
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :post
-          "ee/data-editing/tmp-modal"
+          "action/v2/tmp-modal"
           (select-keys % [:action_id
                           :scope
                           :input]))]
@@ -1430,7 +1436,7 @@
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :post
-          "ee/data-editing/tmp-modal"
+          "action/v2/tmp-modal"
           (select-keys % [:action_id
                           :scope
                           :input]))]
@@ -1527,7 +1533,7 @@
                            :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
                                                                     :card_id      model-id
                                                                     :action_id    action-id}]
-              (let [execute-path "/ee/data-editing/action/v2/execute"
+              (let [execute-path "/action/v2/execute"
                     body         {:action_id (str "dashcard:" dashcard-id)
                                   :scope     {:dashboard-id dashboard-id}
                                   :input     {"name" "Birds"}}
