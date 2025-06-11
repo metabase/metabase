@@ -10,16 +10,14 @@ import {
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
 } from "metabase-enterprise/api";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   DatasetData,
   FieldWithMetadata,
-  RowValue,
 } from "metabase-types/api";
 
 import type {
-  RowPkValue,
+  RowCellsWithPkValue,
   TableEditingScope,
   UpdateCellValueHandlerParams,
   UpdatedRowBulkHandlerParams,
@@ -28,7 +26,11 @@ import type {
 
 import { useTableCrudOptimisticUpdate } from "./use-table-crud-optimistic-update";
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
-import { getRowPkKeyValue } from "./utils";
+import {
+  getPkColumns,
+  getRowPkValues,
+  getRowUniqueKeyByPkIndexes,
+} from "./utils";
 
 export const useTableCRUD = ({
   tableId,
@@ -89,13 +91,15 @@ export const useTableCRUD = ({
         return false;
       }
 
-      const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
+      const rowData = datasetData.rows[rowIndex];
+      const pkRecord = getRowPkValues(datasetData.cols, rowData);
       const updatedRowWithPk = {
         ...updatedData,
         ...pkRecord,
       };
 
-      const rowPkValue = Object.values(pkRecord)[0] as RowPkValue;
+      const { indexes: pkIndexes } = getPkColumns(datasetData.cols);
+      const rowPkValuesKey = getRowUniqueKeyByPkIndexes(pkIndexes, rowData);
 
       const patchResult = stateUpdateStrategy.onRowsUpdated([updatedRowWithPk]);
 
@@ -109,7 +113,7 @@ export const useTableCRUD = ({
         if (response.error) {
           handleCellValueUpdateError(response.error, {
             columnName,
-            rowPkValue,
+            rowPkValuesKey,
             patchResult: patchResult || undefined,
           });
         }
@@ -120,7 +124,7 @@ export const useTableCRUD = ({
           );
           handleCellValueUpdateSuccess({
             columnName,
-            rowPkValue,
+            rowPkValuesKey,
           });
           dispatch(
             addUndo({
@@ -133,7 +137,7 @@ export const useTableCRUD = ({
       } catch (e) {
         handleCellValueUpdateError(e, {
           columnName,
-          rowPkValue,
+          rowPkValuesKey,
           patchResult: patchResult || undefined,
         });
 
@@ -160,9 +164,11 @@ export const useTableCRUD = ({
         return false;
       }
 
-      const inputs = rowIndices.map((rowIndex) =>
-        getRowPkKeyValue(datasetData, rowIndex),
-      );
+      const inputs = rowIndices.map((rowIndex) => {
+        const rowData = datasetData.rows[rowIndex];
+
+        return getRowPkValues(datasetData.cols, rowData);
+      });
 
       const response = await updateTableRows({
         inputs,
@@ -203,7 +209,7 @@ export const useTableCRUD = ({
   );
 
   const handleRowCreate = useCallback(
-    async (data: Record<string, RowValue>): Promise<boolean> => {
+    async (data: RowCellsWithPkValue): Promise<boolean> => {
       const response = await insertTableRows({
         rows: [data],
         scope,
@@ -246,11 +252,7 @@ export const useTableCRUD = ({
       const rows = rowIndices.map((rowIndex) => {
         const rowData = datasetData.rows[rowIndex];
 
-        const pkColumnIndex = columns.findIndex(isPK);
-        const pkColumn = columns[pkColumnIndex];
-        const rowPkValue = rowData[pkColumnIndex];
-
-        return { [pkColumn.name]: rowPkValue };
+        return getRowPkValues(columns, rowData);
       });
 
       const requestParams = cascadeDelete

@@ -9,7 +9,7 @@ import type {
 
 export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
 
-export type RowPkValue = string | number;
+export type RowPkValuesKey = string;
 
 export type CellUniqKey = string;
 
@@ -72,8 +72,6 @@ export type TableUndoRedoRequest = {
   tableId: ConcreteTableId;
   scope?: TableEditingScope;
 };
-
-export type TableOperation = [string, Record<string, RowValue>];
 
 export type TableUndoRedoResponse = {
   outputs?: ExecuteOutput<"created" | "updated" | "deleted">[];

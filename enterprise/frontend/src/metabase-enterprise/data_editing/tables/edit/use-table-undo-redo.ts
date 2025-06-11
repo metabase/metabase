@@ -8,9 +8,9 @@ import {
   useTableRedoMutation,
   useTableUndoMutation,
 } from "metabase-enterprise/api/table-data-edit";
-import type { ConcreteTableId, RowValue } from "metabase-types/api";
+import type { ConcreteTableId } from "metabase-types/api";
 
-import type { TableEditingScope } from "../types";
+import type { RowCellsWithPkValue, TableEditingScope } from "../types";
 
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 
@@ -69,9 +69,9 @@ export function useTableEditingUndoRedo({
             return acc;
           },
           {
-            created: [] as Record<string, RowValue>[],
-            updated: [] as Record<string, RowValue>[],
-            deleted: [] as Record<string, RowValue>[],
+            created: [] as RowCellsWithPkValue[],
+            updated: [] as RowCellsWithPkValue[],
+            deleted: [] as RowCellsWithPkValue[],
           },
         );
 
