@@ -311,8 +311,6 @@
   [driver conn table-id query]
   (correct-columns-name table-id (query-rows driver conn query)))
 
-(declare count-row-descendants)
-
 (defn- row-delete!* [action database query]
   (let [db-id      (u/the-id database)
         table-id   (-> query :query :source-table)
@@ -687,8 +685,8 @@
   [database-id table-id row]
   (let [children-fn (fn [relationship parent-rows]
                       (lookup-children-in-db relationship parent-rows database-id))
-        delete-fn   (fn [items-by-table]
-                      (doseq [[table-id rows] (reverse items-by-table)]
+        delete-fn   (fn [queue]
+                      (doseq [[table-id rows] queue]
                         (log/debugf "Cascade deleting %d rows of table %d" (count rows) table-id)
                         (let [rows-deleted (delete-rows-by-pk! database-id table-id rows)]
                           (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
@@ -766,7 +764,6 @@
           (throw (ex-info (tru "Sorry, the row you''re trying to delete doesn''t exist")
                           {:status-code 400})))
         (let [table-id->deleted-children (delete-row-with-children! database-id table-id row-before)]
-
           {:table-id         table-id
            :db-id            database-id
            :before           row-before
