@@ -96,20 +96,20 @@
   (testing "Format function standardizes locale"
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (dictionary/format-row ["pt-br" "msgid" "msgstr"])))
+         (#'dictionary/format-row ["pt-br" "msgid" "msgstr"])))
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (dictionary/format-row ["Pt-bR" "msgid" "msgstr"])))
+         (#'dictionary/format-row ["Pt-bR" "msgid" "msgstr"])))
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (dictionary/format-row ["pt_br" "msgid" "msgstr"])))
+         (#'dictionary/format-row ["pt_br" "msgid" "msgstr"])))
     (is (=
          ["zh_CN" "msgid" "msgstr"]
-         (dictionary/format-row ["ZH-cn" "msgid" "msgstr"]))))
+         (#'dictionary/format-row ["ZH-cn" "msgid" "msgstr"]))))
   (testing "Format function trims all fields"
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (dictionary/format-row [" pt-BR " "msgid " " msgstr"])))))
+         (#'dictionary/format-row [" pt-BR " "msgid " " msgstr"])))))
 
 (deftest import-translations-success-test
   (ct-utils/with-clean-translations!

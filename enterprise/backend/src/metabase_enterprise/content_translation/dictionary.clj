@@ -64,28 +64,27 @@
   (tru "Row {0}: Invalid format. Expected exactly 3 columns (Language, String, Translation)"
        (adjust-index index)))
 
-(defn- process-rows
-  "Format and validate rows. Takes the vectors from a csv and returns a map with the shape
-  {:translations [{:locale :msgid :msgstr}]
-   :errors       [string]}.
-  The :seen set is returned but not meant for consumption."
+(defn process-rows
+  "Format, validate, and process rows from a CSV. Takes a collection of vectors and returns a map with the shape
+  {:translations [{:locale :msgid :msgstr}], :errors [string]}, plus the set :seen for internal use."
   [rows]
-  (let [formatted-rows (map format-row rows)]
-    (reduce (fn [state [index row]]
-              (let [[locale msgid msgstr & extra] row
-                    translation                   {:locale locale
-                                                   :msgid  msgid
-                                                   :msgstr msgstr}
-                    errors                        (cond-> (row-errors state index translation)
-                                                    (seq extra) (conj (wrong-row-shape index)))]
-                (cond-> (-> state
-                            (update :seen conj (dissoc translation :msgstr))
-                            (update :translations conj translation))
-                  (seq errors) (update :errors into errors))))
-            {:seen         #{}
-             :errors       []
-             :translations []}
-            (map-indexed vector formatted-rows))))
+  (letfn [(collect-translation-and-errors [state index row]
+            (let [[locale msgid msgstr & extra] row
+                  translation {:locale locale :msgid msgid :msgstr msgstr}
+                  errors (row-errors state index translation)
+                  errors (if (seq extra)
+                           (conj errors (wrong-row-shape index))
+                           errors)]
+              (-> state
+                  (update :seen conj (dissoc translation :msgstr))
+                  (update :translations conj translation)
+                  (update :errors into errors))))]
+    (let [formatted-rows (map format-row rows)]
+      (reduce-kv collect-translation-and-errors
+                 {:seen         #{}
+                  :errors       []
+                  :translations []}
+                 (vec formatted-rows)))))
 
 (defn import-translations!
   "Insert or update rows in the content_translation table."
