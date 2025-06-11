@@ -134,6 +134,7 @@ interface NativeQueryEditorState {
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
   editor = createRef<CodeMirrorEditorRef>();
+  wrapper = createRef<HTMLDivElement>();
 
   constructor(props: Props) {
     super(props);
@@ -192,14 +193,17 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     }
 
     if (
-      prevProps.query.question().parameters().length <
+      prevProps.query.question().parameters().length !==
       this.props.query.question().parameters().length
     ) {
       // rezise the editor to make it fit the constraints again
       this.setState({
         height: Math.min(
           this.state.height,
-          getEditorMaxHeight(this.props.viewHeight, this.editor),
+          getEditorMaxHeight(
+            this.props.viewHeight,
+            this.wrapper.current?.getBoundingClientRect().top ?? 0,
+          ),
         ),
       });
     }
@@ -386,7 +390,10 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           maxConstraints={[
             Infinity,
-            getEditorMaxHeight(viewHeight, this.editor),
+            getEditorMaxHeight(
+              viewHeight,
+              this.wrapper.current?.getBoundingClientRect().top ?? 0,
+            ),
           ]}
           axis="y"
           handle={dragHandle}
@@ -402,7 +409,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             }
           }}
         >
-          <>
+          <div ref={this.wrapper}>
             <CodeMirrorEditor
               ref={this.editor}
               query={question.query()}
@@ -425,7 +432,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 runQuery={this.props.runQuery}
               />
             )}
-          </>
+          </div>
         </ResizableBox>
 
         <RightClickPopover
