@@ -57,7 +57,7 @@
       (for [col cols
             :when (not (:remapped_from col))]
         (select-keys col [:name :id :ident :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id])))
+                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
     (catch Throwable e
       (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
@@ -73,7 +73,7 @@
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 
-(defn- legacy-source-metadata-without-field-ref?
+(defn- legacy-source-metadata?
   "Whether this source metadata is *legacy* source metadata from < 0.38.0. Legacy source metadata did not include
   `:field_ref` or `:id`, which made it hard to correctly construct queries with. For MBQL queries, we're better off
   ignoring legacy source metadata and using [[metabase.query-processor.preprocess/query->expected-cols]] to infer the
@@ -98,7 +98,7 @@
     :keys                                            [source-metadata]}]
   (and source-query
        (or (not source-metadata)
-           (legacy-source-metadata-without-field-ref? source-metadata))
+           (legacy-source-metadata? source-metadata))
        (or (not native-source-query?)
            source-query-has-source-metadata?)))
 

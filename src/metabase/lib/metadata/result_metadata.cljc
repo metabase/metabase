@@ -14,6 +14,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -194,6 +195,21 @@
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))
 
+(mu/defn- add-source-alias :- [:sequential ::kebab-cased-col]
+  "`:source-alias` (`:source_alias`) is still needed
+  for [[metabase.query-processor.middleware.remove-inactive-field-refs]]
+  and [[metabase.lib.equality/column-join-alias]] to work correctly. Why? Not 100% sure -- we should theoretically be
+  able to use `:metabase.lib.join/join-alias` for this purpose -- but that doesn't seem to work. Until I figure that
+  out, include the `:source-alias` key.
+
+  Note that this is no longer used on the FE -- see QUE-1355"
+  [cols :- [:sequential ::kebab-cased-col]]
+  (for [col cols]
+    (merge
+     (when-let [join-alias (lib.join.util/current-join-alias col)]
+       {:source-alias join-alias})
+     col)))
+
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
                                  ::kebab-cased-col
@@ -324,6 +340,7 @@
       (cond-> cols
         (seq lib-cols) (merge-cols lib-cols))
       (add-converted-timezone query cols)
+      (add-source-alias cols)
       (add-legacy-source cols)
       (add-legacy-field-refs query cols)
       (deduplicate-names cols)

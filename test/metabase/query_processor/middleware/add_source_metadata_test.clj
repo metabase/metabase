@@ -11,9 +11,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.query-processor :as qp]
-   [metabase.lib.core :as lib]))
+   [metabase.util :as u]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
@@ -380,8 +378,8 @@
       (letfn [(added-metadata [query]
                 (get-in (add-source-metadata query) [:query :source-metadata]))]
         (testing "\nShould add source metadata if there's none already"
-          (is (= expected-metadata
-                 (added-metadata query))))
+          (is (=? expected-metadata
+                  (added-metadata query))))
         (testing "\nShould use existing metadata if it's already there"
           ;; since it's using the existing metadata, it should have all the extra keys instead of the subset in
           ;; `expected-metadata`
@@ -391,5 +389,5 @@
           ;; pre-0.38.0 metadata didn't have `field_ref` or `id.`
           (let [legacy-metadata (for [col metadata]
                                   (dissoc col :field_ref :id))]
-            (is (= expected-metadata
-                   (added-metadata (assoc-in query [:query :source-metadata] legacy-metadata))))))))))
+            (is (=? expected-metadata
+                    (added-metadata (assoc-in query [:query :source-metadata] legacy-metadata))))))))))
