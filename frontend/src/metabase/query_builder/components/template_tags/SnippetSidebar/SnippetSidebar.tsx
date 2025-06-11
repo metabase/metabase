@@ -1,6 +1,4 @@
-/* eslint-disable react/prop-types */
-import PropTypes from "prop-types";
-import * as React from "react";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +17,12 @@ import {
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
+import type {
+  Collection,
+  CollectionId,
+  NativeQuerySnippet,
+} from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { SnippetRow } from "../SnippetRow";
 
@@ -27,21 +31,28 @@ import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const MIN_SNIPPETS_FOR_SEARCH = 1;
 
-class SnippetSidebarInner extends React.Component {
+interface SnippetSidebarProps {
+  onClose: () => void;
+  setModalSnippet: () => void;
+  openSnippetModalWithSelectedText: () => void;
+  insertSnippet: () => void;
+  snippets: NativeQuerySnippet[];
+  snippetCollection: Collection;
+  snippetCollections: Collection[];
+  search: Record<string, any>[];
+  setSnippetCollectionId: (
+    collectionId: CollectionId | null | undefined,
+  ) => void;
+}
+
+class SnippetSidebarInner extends Component<SnippetSidebarProps> {
   state = {
     showSearch: false,
     searchString: "",
     showArchived: false,
   };
 
-  static propTypes = {
-    onClose: PropTypes.func.isRequired,
-    setModalSnippet: PropTypes.func.isRequired,
-    openSnippetModalWithSelectedText: PropTypes.func.isRequired,
-    insertSnippet: PropTypes.func.isRequired,
-  };
-
-  searchBox = React.createRef();
+  searchBox = createRef<HTMLInputElement>();
 
   componentDidUpdate() {
     if (this.state.showSearch) {
@@ -164,7 +175,7 @@ class SnippetSidebarInner extends React.Component {
                   >
                     {[
                       ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
-                        f(this, { className: S.HeaderButton }),
+                        (f as any)(this, { className: S.HeaderButton }),
                       ),
                     ]}
 
@@ -196,7 +207,7 @@ class SnippetSidebarInner extends React.Component {
                               onClick: openSnippetModalWithSelectedText,
                             },
                             ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(
-                              (f) => f(this),
+                              (f) => (f as any)(this),
                             ),
                           ].map(({ icon, name, onClick }) => (
                             <Menu.Item
@@ -218,9 +229,9 @@ class SnippetSidebarInner extends React.Component {
             <Flex direction="column">
               {displayedItems.map((item) => (
                 <Row
-                  key={`${item.model || "snippet"}-${item.id}`}
+                  key={`${("model" in item && item.model) || "snippet"}-${item.id}`}
                   item={item}
-                  type={item.model || "snippet"}
+                  type={("model" in item && item.model) || "snippet"}
                   setSidebarState={this.setState.bind(this)}
                   canWrite={snippetCollection.can_write}
                   {...this.props}
@@ -229,7 +240,7 @@ class SnippetSidebarInner extends React.Component {
             </Flex>
           </>
         )}
-        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map((f) => f(this))}
+        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map((f) => (f as any)(this))}
       </SidebarContent>
     );
   }
@@ -239,12 +250,12 @@ export const SnippetSidebar = _.compose(
   Snippets.loadList(),
   SnippetCollections.loadList(),
   SnippetCollections.load({
-    id: (state, props) =>
+    id: (state: State, props: { snippetCollectionId: CollectionId }) =>
       props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
     wrapped: true,
   }),
   Search.loadList({
-    query: (state, props) => ({
+    query: (state: State, props: { snippetCollectionId: CollectionId }) => ({
       collection:
         props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
       namespace: "snippets",
@@ -252,11 +263,17 @@ export const SnippetSidebar = _.compose(
   }),
 )(SnippetSidebarInner);
 
-function ArchivedSnippetsInner(props) {
+function ArchivedSnippetsInner(props: {
+  onBack: () => void;
+  snippets: NativeQuerySnippet[];
+  snippetCollections: Collection[];
+  archivedSnippetCollections: Collection[];
+}) {
   const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
     props;
   const collectionsById = _.indexBy(
     snippetCollections.concat(archivedSnippetCollections),
+    // @ts-expect-error -- collection id can be nullable
     (c) => canonicalCollectionId(c.id),
   );
 
@@ -292,15 +309,24 @@ function ArchivedSnippetsInner(props) {
 
 const ArchivedSnippets = _.compose(
   SnippetCollections.loadList({ query: { archived: true }, wrapped: true }),
-  connect((state, { list }) => ({ archivedSnippetCollections: list })),
+  connect((_state, { list }: { list: Collection[] }) => ({
+    archivedSnippetCollections: list,
+  })),
   SnippetCollections.loadList(),
   Snippets.loadList({ query: { archived: true }, wrapped: true }),
 )(ArchivedSnippetsInner);
 
-function Row(props) {
+interface RowProps {
+  type: string;
+  item: Record<string, any>;
+  canWrite?: boolean;
+  setSidebarState?: (state: { showArchived: boolean }) => void;
+}
+
+function Row(props: RowProps) {
   const Component = {
     snippet: SnippetRow,
     ...PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  }[props.type];
+  }[props.type] as React.ComponentType<RowProps>;
   return Component ? <Component {...props} /> : null;
 }
