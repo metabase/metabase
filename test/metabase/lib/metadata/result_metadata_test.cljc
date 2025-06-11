@@ -5,8 +5,10 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.metadata.result-metadata :as result-metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -804,24 +806,24 @@
                           :breakout     [!year.date]})
           metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                              meta/metadata-provider
-                             [source-query])]
-      (let [[date-col count-col] (for [col (result-metadata/expected-cols (lib/query meta/metadata-provider source-query))]
-                                   (as-> col col
-                                     (assoc col :source :fields)
-                                     (dissoc col :position :aggregation_index)
-                                     (m/filter-keys simple-keyword? col)))]
-        ;; since the bucketing is happening in the source query rather than at this level, the field ref should
-        ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
-        ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
-        ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
-        ;; display values of the column.
-        (is (=? [(assoc date-col  :field-ref [:field "DATE" {:base-type :type/Date}], :unit :year)
-                 (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
-                (result-metadata/expected-cols
-                 (lib/query metadata-provider (lib.metadata/card metadata-provider 1)))))))))
+                             [source-query])
+          [date-col count-col] (for [col (result-metadata/expected-cols (lib/query meta/metadata-provider source-query))]
+                                 (as-> col col
+                                   (assoc col :source :fields)
+                                   (dissoc col :position :aggregation_index)
+                                   (m/filter-keys simple-keyword? col)))]
+      ;; since the bucketing is happening in the source query rather than at this level, the field ref should return
+      ;; temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply the `:year`
+      ;; bucketing if you used this query in another subsequent query, so the field ref doesn't include the unit;
+      ;; however `:unit` is still `:year` so the frontend can use the correct formatting to display values of the
+      ;; column.
+      (is (=? [(assoc date-col  :field-ref [:field "DATE" {:base-type :type/Date}], :unit :year)
+               (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
+              (result-metadata/expected-cols
+               (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
 
 ;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
-#_(deftest ^:parallel model-self-join-test
+(deftest ^:parallel model-self-join-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
     (let [mp meta/metadata-provider
           mp (lib.tu/mock-metadata-provider
@@ -882,25 +884,131 @@
                                        (lib/with-join-fields :all))))))]
       (is (=? ["Reviews → Created At: Month"
                "Average of Rating"
-               "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
-               "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
+               "Reviews → Created At: Month"
+               #_"Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
+               "Products+Reviews Summary - Reviews → Created At: Month → Sum of Price"
+               #_"Products+Reviews Summary - Reviews → Created At: Month → Sum"]
               (map :display-name (result-metadata/expected-cols query)))))))
 
 ;;; see
 ;;; also [[metabase.query-processor.middleware.add-source-metadata-test/add-correct-metadata-fields-for-deeply-nested-source-queries-test]]
 #_(deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
-  (let [query (lib/query
-               meta/metadata-provider
-               (lib.tu.macros/mbql-query orders
-                 {:source-query {:source-table $$orders
-                                 :filter       [:= $id 1]
-                                 :aggregation  [[:sum $total]]
-                                 :breakout     [!day.created-at
-                                                $product-id->products.title
-                                                $product-id->products.category]}
-                  :filter       [:> *sum/Float 100]
-                  :aggregation  [[:sum *sum/Float]]
-                  :breakout     [*TITLE/Text]}))]
-    (is (= [[:field "TITLE" {:base-type :type/Text}]
-            [:aggregation 0]]
-           (map :field-ref (result-metadata/expected-cols query))))))
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :filter       [:= $id 1]
+                                   :aggregation  [[:sum $total]]
+                                   :breakout     [!day.created-at
+                                                  $product-id->products.title
+                                                  $product-id->products.category]}
+                    :filter       [:> *sum/Float 100]
+                    :aggregation  [[:sum *sum/Float]]
+                    :breakout     [*TITLE/Text]}))]
+      (is (= [[:field "TITLE" {:base-type :type/Text}]
+              [:aggregation 0]]
+             (map :field-ref (result-metadata/expected-cols query))))))
+
+(defn test-metadata-provider []
+  (lib.tu/metadata-provider-with-cards-for-queries
+   meta/metadata-provider
+   [ ;; Card 1
+    ;; Returns orders   [6 columns] id, subtotal, tax, total, created-at, quantity
+    ;; and     products [5 columns] id (AKA id_2), title, vendor, price, rating
+    ;;         total:   [11 columns]
+    (lib.tu.macros/mbql-query orders
+      {:fields [$id $subtotal $tax $total $created-at $quantity]
+       :joins [{:source-table $$products
+                :alias "Product"
+                :condition
+                [:= $orders.product-id
+                 [:field %products.id {:join-alias "Product"}]]
+                :fields
+                [[:field %products.id {:join-alias "Product"}]
+                 [:field %products.title {:join-alias "Product"}]
+                 [:field %products.vendor {:join-alias "Product"}]
+                 [:field %products.price {:join-alias "Product"}]
+                 [:field %products.rating {:join-alias "Product"}]]}]})
+    ;; Card 2 -- 5 columns: ID, TAX, TOTAL, ID_2, RATING
+    ;;
+    ;; AFTER INACTIVE: ID, TOTAL, ID_2, RATING.
+    (lib.tu.macros/mbql-query orders
+      {:source-table "card__1"
+       :fields [[:field "ID" {:base-type :type/BigInteger}]
+                [:field "TAX" {:base-type :type/Float}]
+                [:field "TOTAL" {:base-type :type/Float}]
+                [:field "ID_2" {:base-type :type/BigInteger}]
+                [:field "RATING" {:base-type :type/Float}]]
+       :filter [:> [:field "TOTAL" {:base-type :type/Float}] 3]})]))
+
+(defn join-query
+  "Should return 12 columns BEFORE deletion:
+
+    [\"ID\" \"Ean\" \"Title\" \"Category\" \"Vendor\" \"Price\" \"Rating\" \"Created At\"
+     \"Card → ID 2\" \"Card → Total\" \"Card → Tax\" \"Card → Vendor\"]
+
+  and 8 columns AFTER:
+
+    [\"ID\" \"Title\" \"Category\" \"Price\" \"Rating\" \"Created At\"
+     \"Card → ID 2\" \"Card → Total\"]"
+  []
+  (lib.tu.macros/mbql-query orders
+    {:source-table (meta/id :products)
+     :joins        [{:source-table "card__1"
+                     :alias        "Card"
+                     :condition
+                     [:= $products.id
+                      [:field "ID_2" {:join-alias "Card"
+                                      :base-type  :type/BigInteger}]]
+                     :fields
+                     [[:field "ID_2" {:join-alias "Card"
+                                      :base-type  :type/BigInteger}]
+                      [:field "TOTAL" {:join-alias "Card"
+                                       :base-type  :type/Float}]
+                      [:field "TAX" {:join-alias "Card"
+                                     :base-type  :type/Float}]
+                      [:field "VENDOR" {:join-alias "Card"
+                                        :base-type  :type/Text}]]}]}))
+
+;;; see also [[metabase.query-processor.middleware.remove-inactive-field-refs-test/deleted-columns-before-deletion-test-3]]
+(deftest ^:parallel join-query-columns-test
+  (is (= ["ID" "Ean" "Title" "Category" "Vendor" "Price" "Rating" "Created At"
+          "Card → ID" "Card → Total" "Card → Tax" "Product → Vendor"]
+         (map :display-name
+              (binding [lib.metadata.calculation/*display-name-style* :long]
+                (doall
+                 (lib.metadata.result-metadata/expected-cols
+                  (lib/query
+                   (test-metadata-provider)
+                   (join-query)))))))))
+
+(defn inactive-columns-test-metadata-provider []
+  (lib.tu/merged-mock-metadata-provider
+   (test-metadata-provider)
+   {:fields (for [id [(meta/id :orders :tax)
+                      (meta/id :products :ean)
+                      (meta/id :products :vendor)]]
+              {:id id, :active false})}))
+
+(deftest ^:parallel deleted-columns-test
+  (is (= ["ID" "Title" "Category" "Price" "Rating" "Created At"
+          "Card → ID" "Card → Total"]
+         (map :display-name
+              (binding [lib.metadata.calculation/*display-name-style* :long]
+                (doall
+                 (lib.metadata.result-metadata/expected-cols
+                  (lib/query
+                   (inactive-columns-test-metadata-provider)
+                   (join-query)))))))))
+
+(deftest ^:parallel deleted-columns-test-2
+  (testing "Questions return the same columns except the ones deleted"
+    (let [fields ["ID"      ; Card__1.ID, from ORDERS.ID
+                  "TOTAL"   ; Card__1.TOTAL, from ORDERS.TOTAL
+                  "ID_2"    ; Card__1.ID_2, from PRODUCTS.ID
+                  "RATING"] ; Card__1.RATING, from PRODUCTS.RATING
+          query (lib/query
+                 (inactive-columns-test-metadata-provider)
+                 (lib.tu.macros/mbql-query nil {:source-table "card__2"}))]
+      (is (=? fields
+              (map :name (lib.metadata.result-metadata/expected-cols query)))))))

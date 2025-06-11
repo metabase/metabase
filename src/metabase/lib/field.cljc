@@ -19,6 +19,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -32,19 +33,61 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
+(def name-match-keys
+  "Keys to use, in order, for matching two columns by name."
+  [#_:lib/source-column-alias
+   :lib/desired-column-alias
+   :lib/deduplicated-name
+   :lib/original-name
+   :name])
+
+(defn- MEGA-HACK-unsuffix-name [s]
+  (when-let [[_ unsuffixed] (re-find #"(^.*)_\d+$" s)]
+    unsuffixed))
+
+(defn MEGA-HACK-simulated-deduplicated-name
+  "MEGA SUPER DUPER HACK! If the metadata is missing the `:lib/deduplicated-name` (not sure why but it appears to be
+  missing in some cases) then 'simulate' it and use that for comparison purposes."
+  [col]
+  (or
+   (:lib/deduplicated-name col)
+   (MEGA-HACK-unsuffix-name (:name col))))
+
 (mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
    column-metadatas :- [:sequential ::lib.schema.metadata/column]]
-  (or (some (fn [k]
-              (m/find-first #(= (get % k) column-name)
-                            column-metadatas))
-            [:lib/desired-column-alias :name])
+  (or (some (fn [column-name]
+              (some (fn [f]
+                      (m/find-first #(= (f %) column-name)
+                                    column-metadatas))
+                    (conj name-match-keys MEGA-HACK-simulated-deduplicated-name)))
+            [column-name (MEGA-HACK-unsuffix-name column-name)])
       (do
         (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
                    (pr-str column-name)
-                   (pr-str (mapv :lib/desired-column-alias column-metadatas)))
+                   (pr-str (mapv #(select-keys % name-match-keys) column-metadatas)))
         nil)))
+
+(mu/defn- resolve-column-name-in-join :- [:maybe
+                                          [:merge
+                                           ::lib.schema.metadata/column
+                                           [:map
+                                            [:lib/deduplicated-name ::lib.schema.metadata/deduplicated-name]]]]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-alias   :- ::lib.schema.join/alias
+   column-name  :- ::lib.schema.common/non-blank-string]
+  (if-let [join (try
+                  (lib.join/resolve-join query stage-number join-alias)
+                  (catch #?(:clj Throwable :cljs :default) e
+                    nil))]
+    (let [join-columns (lib.metadata.calculation/returned-columns query stage-number join)]
+      (resolve-column-name-in-metadata column-name join-columns))
+    (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+      (resolve-column-name-in-join query previous-stage-number join-alias column-name)
+      (throw (ex-info (lib.util/format "Cannot find join %s" (pr-str join-alias))
+                      {:query query, :join-name join-alias})))))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
   "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
@@ -56,7 +99,10 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    column-name  :- ::lib.schema.common/non-blank-string]
-  (when-not *recursive-column-resolution-by-name*
+  (if *recursive-column-resolution-by-name*
+    {:lib/type  :metadata/column
+     :name      column-name
+     :base-type :type/*}
     (binding [*recursive-column-resolution-by-name* true]
       (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
             stage                 (if previous-stage-number
@@ -80,7 +126,6 @@
             previous-stage-number (-> (dissoc :table-id
                                               ::binning ::temporal-unit)
                                       (lib.join/with-join-alias nil)
-                                      #_(assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                       (assoc :lib/source :source/previous-stage))))))))
 
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
@@ -93,7 +138,9 @@
                   (u/select-non-nil-keys opts [:base-type
                                                :metabase.lib.query/transformation-added-base-type
                                                ::original-effective-type
-                                               ::original-temporal-unit])
+                                               ::original-temporal-unit
+                                               :lib/original-name
+                                               :lib/deduplicated-name])
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
                   ;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
@@ -135,7 +182,9 @@
                   (when (integer? id-or-name)
                     (merge
                      (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                         {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
+                         {:lib/type     :metadata/column
+                          :name         (str id-or-name)
+                          :display-name (i18n/tru "Unknown Field")})
                      ;; propagate stuff like display-name from the previous stage metadata if it exists.
                      (when-let [previous-stage (lib.util/previous-stage query stage-number)]
                        (when-let [previous-stage-cols (or (:metabase.lib.stage/cached-metadata previous-stage)
@@ -147,15 +196,19 @@
                                                                      previous-stage-cols)]
                            (select-keys previous-stage-col [:display-name]))))))
                   (when (string? id-or-name)
-                    (let [resolved (or (resolve-column-name query stage-number id-or-name)
-                                       {:lib/type :metadata/column, :name (str id-or-name)})]
+                    (let [resolved (or (if join-alias
+                                         (resolve-column-name-in-join query stage-number join-alias id-or-name)
+                                         (resolve-column-name query stage-number id-or-name))
+                                       {:lib/type :metadata/column
+                                        :name     (str id-or-name)
+                                        ::invalid? true})]
                       ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
                       ;; forward anything else? No idea. Waiting for an answer in
                       ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
                       (if join-alias
                         (merge
                          {:lib/type :metadata/column, :name (str id-or-name)}
-                         (select-keys resolved [:semantic-type]))
+                         (select-keys resolved [:semantic-type ::invalid?]))
                         resolved))))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
@@ -199,8 +252,8 @@
     (lib.metadata.calculation/type-of query stage-number metadata)))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/column
-  [_query _stage-number {field-name :name, :as field-metadata}]
-  (assoc field-metadata :name field-name))
+  [_query _stage-number col]
+  col)
 
 (defn extend-column-metadata-from-ref
   "Extend column metadata `metadata` with information specific to `field-ref` in `query` at stage `stage-number`.
@@ -357,8 +410,8 @@
     (i18n/tru "[Unknown Field]")))
 
 (defmethod lib.metadata.calculation/column-name-method :metadata/column
-  [_query _stage-number {field-name :name}]
-  field-name)
+  [_query _stage-number col]
+  ((some-fn :lib/original-name :name) col))
 
 (defmethod lib.metadata.calculation/column-name-method :field
   [query stage-number [_tag _id-or-name, :as field-clause]]
@@ -511,7 +564,9 @@
         options           (merge (u/select-non-nil-keys metadata [:base-type
                                                                   :was-binned
                                                                   ::original-effective-type
-                                                                  ::original-temporal-unit])
+                                                                  ::original-temporal-unit
+                                                                  :lib/original-name
+                                                                  :lib/deduplicated-name])
                                  {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
                                  ;; include `:metabase.lib.query/transformation-added-base-type` if this is going to

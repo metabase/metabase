@@ -112,6 +112,7 @@
        (can-run query card-type)
        (boolean (can-save-method query card-type))))
 
+;;; TODO FIXME -- `can-preview?`
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
 

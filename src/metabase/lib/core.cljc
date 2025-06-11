@@ -348,6 +348,7 @@
  [lib.query
   ->query
   can-preview
+  ;; FIXME -- these should clearly be named `can-run?` and `can-save?`
   can-run
   can-save
   check-overwrite

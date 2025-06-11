@@ -88,7 +88,7 @@
     x]
    (or
     ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
-    (:name (lib.options/options x))
+    ((some-fn :lib/original-name :name) (lib.options/options x))
     (try
       (column-name-method query stage-number x)
       (catch #?(:clj Throwable :cljs js/Error) e
@@ -427,7 +427,7 @@
       [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
    [:fn
     ;; should be dev-facing only, so don't need to i18n
-    {:error/message "Column :lib/desired-column-alias values must be distinct, regardless of case, for each stage!"
+    {:error/message "Column :lib/desired-column-alias values must be distinct for each stage!"
      :error/fn      (fn [{:keys [value]} _]
                       (str "Column :lib/desired-column-alias values must be distinct, got: "
                            (pr-str (mapv :lib/desired-column-alias value))))}

@@ -41,7 +41,10 @@
                                            :query       x}))))]
     (cons first-stage more)))
 
-(mu/defn normalize-card-query :- ::lib.schema.metadata/card
+(mu/defn normalize-card-query :- [:merge
+                                  ::lib.schema.metadata/card
+                                  [:map
+                                   [:dataset-query ::lib.schema/query]]]
   "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
    {card-id :id, :as card} :- ::lib.schema.metadata/card]
@@ -58,10 +61,12 @@
                                     ;; This is for detecting circular refs below, and is later used as part of
                                     ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
-                    card-metadata (into [] (remove :remapped-from)
+                    card-metadata (into []
+                                        (remove :remapped-from)
                                         (lib.card/card-metadata-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
-                                    (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
+                                    (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results
+                                                                                    :columns  card-metadata})
                                     ;; This will be applied, if still appropriate, by
                                     ;; the [[metabase.query-processor.middleware.persistence]] middleware
                                     ;;
@@ -76,7 +81,10 @@
                   (update :stages update-stages)))]
       (update card :dataset-query update-query))))
 
-(mu/defn- card :- ::lib.schema.metadata/card
+(mu/defn- card :- [:merge
+                   ::lib.schema.metadata/card
+                   [:map
+                    [:dataset-query ::lib.schema/query]]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   (let [card (or (lib.metadata/card metadata-providerable card-id)

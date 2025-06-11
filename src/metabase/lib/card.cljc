@@ -65,9 +65,7 @@
   (when (some? card-query)
     (let [cols      (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
           model-eid (when (= (:type card) :model)
-                      (or (:entity-id card)
-                          (throw (ex-info "Cannot infer columns for a model with no :entity-id!"
-                                          {:card card}))))]
+                      (:entity-id card))]
       (cond->> cols
         model-eid (map #(lib.metadata.ident/add-model-ident % model-eid))))))
 

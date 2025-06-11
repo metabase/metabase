@@ -124,12 +124,36 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
+;;; `:lib/source-column-alias` and `:lib/desired-column-alias` are adapted
+;;; from [[metabase.query-processor.util.add-alias-info]]. It is included in
+;;; the [[metabase.lib.metadata.calculation/metadata]]
+
 (mr/def ::source-column-alias
-  [:maybe ::lib.schema.common/non-blank-string])
+  "The alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the name of
+  this clause as exported by the previous stage, source table, or join."
+  [:maybe :string])
 
 (mr/def ::desired-column-alias
+  "The name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is guaranteed
+  to be unique and non-empty in each stage of the query."
   [:maybe [:string {:min 1}]])
 
+(mr/def ::original-name
+  "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
+  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first
+  usage of the column.
+
+  Allowed to be blank because some databases like SQL Server allow blank column names."
+  [:maybe :string])
+
+(mr/def ::deduplicated-name
+  "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by
+  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated
+  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become
+  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
+  [:maybe :string])
+
+;;; TODO -- also assert that this has no `snake_case` keys?
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -147,6 +171,10 @@
    {:error/message "Valid column metadata"}
    [:lib/type  [:= :metadata/column]]
    ;; column names are allowed to be empty strings in SQL Server :/
+   ;;
+   ;; In almost EVERY circumstance you should try to avoid using `:name`, because it's not well-defined whether it's
+   ;; the `:lib/original-name` or `:lib/deduplicated-name`, and it might be either one depending on where the metadata
+   ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
    [:name      :string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
    [:base-type ::lib.schema.common/base-type]
@@ -185,16 +213,13 @@
    [:lib/source {:optional true} [:ref ::column-source]]
    ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
    [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
-   ;;
-   ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
-   ;; the [[metabase.lib.metadata.calculation/metadata]]
-   ;;
-   ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
-   ;; name of this clause as exported by the previous stage, source table, or join.
-   [:lib/source-column-alias {:optional true} ::source-column-alias]
-   ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
-   ;; guaranteed to be unique in each stage of the query.
+   ;; see docstrings for the schema for more about what they mean
+   [:lib/source-column-alias  {:optional true} ::source-column-alias]
    [:lib/desired-column-alias {:optional true} ::desired-column-alias]
+   ;; TODO -- make this REQUIRED since there should never be a situation where we don't have the ORIGINAL name of a
+   ;; column. It should come out of the metadata provider with this info.
+   [:lib/original-name        {:optional true} ::original-name]
+   [:lib/deduplicated-name    {:optional true} ::deduplicated-name]
    ;; when column metadata is returned by certain things
    ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
    ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.

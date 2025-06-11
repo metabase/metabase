@@ -165,6 +165,8 @@
   The above conditions must hold for every joined source too."
   [query :- ::lib.schema/query]
   (let [stages (:stages query)]
+    ;; TODO -- WHY is this disabled? Just don't put Malli schemas on stuff if you don't want to use it? Or fix broken
+    ;; input???? -- Cam
     (mu/disable-enforcement
       (editable-stages? query stages))))
 

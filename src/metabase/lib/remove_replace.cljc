@@ -330,6 +330,7 @@
   [query next-stage-number [col replaced-col]]
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
+    (assert (string? target-ref-id))
     (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
          (lib.util.match/match (lib.util/query-stage query next-stage-number)
            [:field _ target-ref-id] &match))))
@@ -572,14 +573,18 @@
                                   query-after
                                   query-before
                                   stage-number
-                                  (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
+                                  (fn [{field-id :id, :as column}]
+                                    (assert (pos-int? field-id))
+                                    [:field {:join-alias (::lib.join/join-alias column)} field-id]))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at the next stage as well
     (if-let [stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
       (remove-matching-missing-columns
        query-without-local-refs
        query-before
        stage-number
-       (fn [column] [:field {} (:lib/desired-column-alias column)]))
+       (fn [column]
+         (assert (:lib/desired-column-alias column))
+         [:field {} (:lib/desired-column-alias column)]))
       query-without-local-refs)))
 
 (defn- join-spec->alias

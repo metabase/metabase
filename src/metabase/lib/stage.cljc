@@ -2,7 +2,6 @@
   "Method implementations for a stage of a query."
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -14,8 +13,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -23,7 +20,12 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.binning :as lib.binning]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.util.log :as log]
+   [medley.core :as m]))
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
@@ -71,8 +73,8 @@
               (not-empty
                (for [col (:columns metadata)]
                  (-> (merge
-                      {:lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (:name col)}
+                      {:lib/source-column-alias  ((some-fn :lib/original-name :name) col)
+                       :lib/desired-column-alias ((some-fn :lib/original-name :name) col)}
                       col
                       {:lib/source source-type})
                      (update :lib/desired-column-alias unique-name-fn))))))))))
@@ -84,7 +86,7 @@
   (let [cols (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
                (assoc breakout
                       :lib/source               :source/breakouts
-                      :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
+                      :lib/source-column-alias  ((some-fn :lib/source-column-alias :lib/original-name :name) breakout)
                       :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) breakout)
                       :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout))))]
     (not-empty (concat cols
@@ -98,9 +100,9 @@
    (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
      (assoc ag
             :lib/source               :source/aggregations
-            :lib/source-column-alias  (:name ag)
+            :lib/source-column-alias  ((some-fn :lib/original-name :name) ag)
             :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) ag)
-            :lib/desired-column-alias (unique-name-fn (:name ag))))))
+            :lib/desired-column-alias (unique-name-fn ((some-fn :lib/original-name :name) ag))))))
 
 ;;; TODO -- maybe the bulk of this logic should be moved into [[metabase.lib.field]], like we did for breakouts and
 ;;; aggregations above.
@@ -202,8 +204,8 @@
      (let [base-type (:base-type metadata)]
        (-> (assoc metadata
                   :lib/source               :source/expressions
-                  :lib/source-column-alias  (:name metadata)
-                  :lib/desired-column-alias (unique-name-fn (:name metadata)))
+                  :lib/source-column-alias  ((some-fn :lib/original-name :name) metadata)
+                  :lib/desired-column-alias (unique-name-fn ((some-fn :lib/original-name :name) metadata)))
            (u/assoc-default :effective-type (or base-type :type/*)))))))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
@@ -258,12 +260,12 @@
              (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
            (for [col (:columns (:lib/stage-metadata this-stage))]
-             (assoc col
-                    :lib/source :source/native
-                    :lib/source-column-alias  (:name col)
-                    ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                    ;; that gets added later gets deduplicated from these.
-                    :lib/desired-column-alias (unique-name-fn (:name col))))))))
+             (-> col
+                 (assoc :lib/source :source/native
+                        :lib/source-column-alias  ((some-fn :lib/original-name :name) col)
+                        ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure
+                        ;; anything that gets added later gets deduplicated from these.
+                        :lib/desired-column-alias (unique-name-fn ((some-fn :lib/original-name :name) col)))))))))
 
 (mu/defn- existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
@@ -295,26 +297,79 @@
             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
-(defn- deduplicate-cols-from-joins
-  "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
-  to make sure not to include them twice! We de-duplicate them here.
+(defn- matching-col?
+  "Whether two columns are the same thing for purposes of [[add-columns-from-join]]."
+  [col1 col2]
+  (let [match-fns (concat
+                   [:id]
+                   (map (fn [k]
+                          ;; only match on `:name` if none of the other keys are present.
+                          (if (= k :name)
+                            (fn [col]
+                              (when-not ((some-fn :lib/desired-column-alias :lib/deduplicated-name :lib/original-name) col)
+                                (:name col)))
+                            k))
+                        lib.field/name-match-keys)
+                   [lib.field/MEGA-HACK-simulated-deduplicated-name])]
+    (and (some (fn [f]
+                 (when-let [v1 (f col1)]
+                   (when-let [v2 (f col2)]
+                     (= v1 v2))))
+               match-fns)
+         (every? (fn [f]
+                   (= (f col1)
+                      (f col2)))
+                 [lib.temporal-bucket/temporal-bucket
+                  lib.binning/binning]))))
 
-  This matches the logic in [[metabase.query-processor.middleware.resolve-joins/append-join-fields]] -- important to
-  have the exact same behavior in both places."
-  [cols]
-  (letfn [(identity-ref [col]
-            (-> (lib.ref/ref col)
-                ;; remove stuff that is not relevant for determining whether two columns are the same or not.
-                ;; Basically the only things that are really important are name/ID, join alias, and bucketing/binning
-                ;; -- the sort of things that would go in 'classic' legacy field refs.
-                (lib.options/update-options (fn [opts]
-                                              (not-empty
-                                               (into {}
-                                                     (remove (fn [[k _]]
-                                                               (or (#{:base-type :effective-type :inherited-temporal-unit} k)
-                                                                   (qualified-keyword? k))))
-                                                     opts))))))]
-    (m/distinct-by identity-ref cols)))
+(mu/defn- add-columns-from-join :- [:sequential ::lib.schema.metadata/column]
+  "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
+  to make sure not to include them twice! We de-duplicate them here. This should match the result of the logic
+  in [[metabase.query-processor.middleware.resolve-joins/append-join-fields]] -- important to have the exact same
+  behavior in both places."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   field-cols   :- [:sequential ::lib.schema.metadata/column]
+   join         :- ::lib.schema.join/join
+   options]
+  (let [join-cols     (lib.metadata.calculation/returned-columns query stage-number join options)
+        join-alias    (lib.join.util/current-join-alias join)
+        existing-cols (filter #(= (lib.join.util/current-join-alias %) join-alias)
+                              field-cols)]
+    (cond
+      (empty? existing-cols)
+      (do
+        (log/debugf "Adding all %d fields from join %s" (count join-cols) (pr-str join-alias))
+        (concat field-cols join-cols))
+
+      (let [unbucketed? #(and (nil? (lib.temporal-bucket/temporal-bucket %))
+                              (nil? (lib.binning/binning %)))]
+        (= (count (filter unbucketed? join-cols))
+           (count (filter unbucketed? existing-cols))))
+      (do
+        (log/debugf "Query :fields already contains all %s fields from join %s, not adding any more fields"
+                    (count join-cols)
+                    (pr-str join-alias))
+        field-cols)
+
+      ;; otherwise attempt to do broken/complicated splicing.
+      :else
+      (let [join-cols     (lib.metadata.calculation/returned-columns query stage-number join options)
+            join-alias    (lib.join.util/current-join-alias join)
+            existing-cols (filter #(= (lib.join.util/current-join-alias %) join-alias)
+                                  field-cols)
+
+            duplicate-column? (fn [join-col]
+                                (some (fn [existing-col]
+                                        (u/prog1 (matching-col? existing-col join-col)
+                                          (when <>
+                                            (log/debugf "Not including duplicate column from join\n%smatch:\n%s"
+                                                       (u/pprint-to-str (select-keys join-col     (into [:id] lib.field/name-match-keys)))
+                                                       (u/pprint-to-str (select-keys existing-col (into [:id] lib.field/name-match-keys)))))))
+                                      existing-cols))]
+        (into (vec field-cols)
+              (remove duplicate-column?)
+              join-cols)))))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
@@ -332,11 +387,11 @@
        (into summary-cols field-cols)
 
        field-cols
-       (let [_          (doall field-cols) ; force generation of unique names before join columns
-             join-cols  (lib.join/all-joins-expected-columns query stage-number options)]
-         (if (empty? join-cols)
-           field-cols
-           (deduplicate-cols-from-joins (concat field-cols join-cols))))
+       (reduce
+        (fn [field-cols join]
+          (add-columns-from-join query stage-number field-cols join options))
+        (doall field-cols) ; force generation of unique names before join columns
+        (lib.join/joins query stage-number))
 
        :else
        ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
