@@ -799,6 +799,14 @@ describe("scenarios > dashboard > parameters", () => {
       sectionId: "string",
     });
 
+    const countParameter = createMockParameter({
+      id: "88a1257c",
+      name: "Count",
+      type: "number/<=",
+      slug: "count",
+      sectionId: "number",
+    });
+
     const categoryFieldRef = [
       "field",
       PRODUCTS.CATEGORY,
@@ -964,6 +972,137 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.location().should(({ search }) => {
         expect(search).to.eq("?count=4000");
+      });
+    });
+
+    it("should remove filters correctly", () => {
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id, countParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Category").should("exist");
+
+        // Verify we're hiding filters that are not linked to any cards
+        cy.findByText("Count").should("not.exist");
+      });
+
+      H.editDashboard();
+
+      H.getDashboardCard(0).findByText("Count").click();
+      H.dashboardParameterSidebar().button("Remove").click();
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByDisplayValue("Heading Text").should("exist");
+        cy.findByText("Count").should("not.exist");
+
+        cy.findByText("Category").click();
+      });
+
+      H.dashboardParameterSidebar().button("Remove").click();
+
+      H.saveDashboard();
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(0);
+          expect(dashcard.parameter_mappings).to.have.length(0);
+        });
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Heading Text").should("exist");
+        cy.findByText("Count").should("not.exist");
+        cy.findByText("Category").should("not.exist");
+      });
+    });
+
+    it("should remove filters when removing a dashcard", () => {
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      H.getDashboardCard(0).findByText("Heading Text").should("exist");
+      H.removeDashboardCard(0);
+      H.saveDashboard();
+
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(0);
+          expect(dashcard.parameter_mappings).to.have.length(0);
+        });
       });
     });
   });

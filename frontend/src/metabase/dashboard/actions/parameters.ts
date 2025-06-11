@@ -60,7 +60,11 @@ import {
   getQuestions,
   getSelectedTabId,
 } from "../selectors";
-import { isQuestionDashCard, supportsInlineParameters } from "../utils";
+import {
+  findDashCardForInlineParameter,
+  isQuestionDashCard,
+  supportsInlineParameters,
+} from "../utils";
 
 import {
   type SetDashCardAttributesOpts,
@@ -175,29 +179,54 @@ export const addParameter = createThunkAction(
     },
 );
 
+export function removeParameterAndReferences(
+  dispatch: Dispatch,
+  getState: GetState,
+  parameterId: ParameterId,
+) {
+  updateParameters(dispatch, getState, (parameters) => {
+    return parameters
+      .filter((parameter) => parameter.id !== parameterId)
+      .map((parameter) => {
+        if (parameter.filteringParameters) {
+          const filteringParameters = parameter.filteringParameters.filter(
+            (filteringParameter) => {
+              return filteringParameter !== parameterId;
+            },
+          );
+
+          return { ...parameter, filteringParameters };
+        }
+
+        return parameter;
+      });
+  });
+}
+
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
     dispatch(closeAddCardAutoWireToasts());
 
-    updateParameters(dispatch, getState, (parameters) => {
-      return parameters
-        .filter((parameter) => parameter.id !== parameterId)
-        .map((parameter) => {
-          if (parameter.filteringParameters) {
-            const filteringParameters = parameter.filteringParameters.filter(
-              (filteringParameter) => {
-                return filteringParameter !== parameterId;
-              },
-            );
+    removeParameterAndReferences(dispatch, getState, parameterId);
 
-            return { ...parameter, filteringParameters };
-          }
-
-          return parameter;
-        });
-    });
+    const dashcards = Object.values(getDashcards(getState()));
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      dashcards,
+    );
+    if (parameterDashcard) {
+      const inline_parameters = parameterDashcard.inline_parameters.filter(
+        (id) => id !== parameterId,
+      );
+      dispatch(
+        setDashCardAttributes({
+          id: parameterDashcard.id,
+          attributes: { inline_parameters },
+        }),
+      );
+    }
 
     return { id: parameterId };
   },

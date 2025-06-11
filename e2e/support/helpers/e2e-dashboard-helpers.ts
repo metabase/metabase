@@ -64,7 +64,7 @@ export function removeDashboardCard(index = 0) {
     .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")
-    .click();
+    .click({ force: true });
 }
 
 export function showDashcardVisualizationSettings(index = 0) {
