@@ -80,25 +80,21 @@
 
 (deftest walk-test
   (is (= {:complete? true
-          :items     {:order-items #{{:id 1338} {:id 1337}}}}
-         (fks/walk :orders [{:id 42}] metadata-fn lookup-children)))
+          :items     [[:order-items [{:id 1337} {:id 1338}]]]}
+         (#'fks/walk :orders [{:id 42}] metadata-fn lookup-children)))
   (is (= {:complete? true
-          :items     {:people #{{:id 5} {:id 4} {:id 3}}}}
-         (fks/walk :people [{:id 1}] metadata-fn lookup-children)))
+          :items     [[:people [{:id 5}]] [:people [{:id 3} {:id 4}]]]}
+         (#'fks/walk :people [{:id 1}] metadata-fn lookup-children)))
   (is (= {:complete? true
-          :items     {:users      #{{:id :user/cto}
-                                    {:id :user/cpo}
-                                    {:id :user/em}
-                                    {:id :user/pm}
-                                    {:id :user/bob}
-                                    {:id :user/clarence}
-                                    {:id :user/alice}}
-                      :teams      #{{:id :team/alpha}
-                                    {:id :team/bravo}}
-                      :programmes #{{:id :programme/skunk-works}}
-                      :projects   #{{:id :project/gamma}}
-                      :tasks      #{{:id :task/foo}}}}
-         (fks/walk :users [{:id :user/ceo}] metadata-fn lookup-children))))
+          :items     [[:tasks [{:id :task/foo}]]
+                      [:projects [{:id :project/gamma}]]
+                      [:users [{:id :user/pm} {:id :user/alice} {:id :user/bob} {:id :user/clarence}]]
+                      [:teams [{:id :team/alpha}]]
+                      [:programmes [{:id :programme/skunk-works}]]
+                      [:users [{:id :user/em}]]
+                      [:teams [{:id :team/bravo}]]
+                      [:users [{:id :user/cto} {:id :user/cpo}]]]}
+         (#'fks/walk :users [{:id :user/ceo}] metadata-fn lookup-children))))
 
 (deftest count-descendants-test
   (is (= {:complete? true
@@ -119,7 +115,7 @@
   (reduce
    (fn [db [item-type items]]
      (update db item-type (fn [existing]
-                            (filterv #(not (items (select-keys % (keys (first items)))))
+                            (filterv #(not ((set items) (select-keys % (keys (first items)))))
                                      existing))))
    db
    items))
