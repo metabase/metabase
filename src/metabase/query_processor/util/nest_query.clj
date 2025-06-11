@@ -11,7 +11,6 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -146,7 +145,7 @@
    expression  :- [:maybe ::mbql.s/FieldOrExpressionDef]]
   (when expression
     (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
-      (lib/type-of mlv2-query (lib.convert/->pMBQL expression)))))
+      (lib/type-of mlv2-query (lib/->pMBQL expression)))))
 
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
