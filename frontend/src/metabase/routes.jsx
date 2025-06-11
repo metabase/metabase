@@ -163,8 +163,9 @@ export const getRoutes = (store) => {
 
           {/* MAIN */}
           <Route component={IsAuthenticated}>
-            {/* The global all hands routes, things in here are for all the folks */}
             {PLUGIN_METABOT.getMetabotRoutes()}
+
+            {/* The global all hands routes, things in here are for all the folks */}
             <Route
               path="/"
               component={HomePage}
