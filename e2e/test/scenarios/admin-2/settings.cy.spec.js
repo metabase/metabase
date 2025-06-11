@@ -312,7 +312,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   it("should show the store link when running Metabase OSS", () => {
     cy.visit("/admin/settings/general");
 
-    cy.findByTestId("navbar-root").findByLabelText("store icon");
+    cy.findByLabelText("Navigation bar").findByLabelText("store icon");
   });
 });
 
