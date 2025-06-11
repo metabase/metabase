@@ -115,7 +115,7 @@
                                                                :where [:and
                                                                        [:= :self_table.db_id :table.db_id]
                                                                        [:or
-                                                                        [:= :self_table.schema :table.schema]
+                                                                        [:= :self_table.schema [:lower :table.schema]]
                                                                         [:and
                                                                          [:= :self_table.schema [:inline "public"]]
                                                                          [:= :table.schema nil]]]
@@ -136,7 +136,7 @@
                                                                :where [:and
                                                                        [:= :self_table.db_id :table.db_id]
                                                                        [:or
-                                                                        [:= :self_table.schema :table.schema]
+                                                                        [:= :self_table.schema [:lower :table.schema]]
                                                                         [:and
                                                                          [:= :self_table.schema [:inline "public"]]
                                                                          [:= :table.schema nil]]]
