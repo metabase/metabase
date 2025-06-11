@@ -70,7 +70,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     value={settings.title}
-                    subtitle={
+                    description={
                       seriesCardName === settings.title ? "" : seriesCardName
                     }
                     onBlurChange={(e) =>

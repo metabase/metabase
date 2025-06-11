@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -2608,5 +2612,62 @@ describe("issue 32499", () => {
     for (const { modified } of columns) {
       H.tableHeaderColumn(modified).should("exist");
     }
+  });
+});
+
+describe("issue 23449", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const checkTable = () => {
+    H.assertTableData({
+      columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
+      firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
+    });
+  };
+
+  it("Remapped fields should work in a model (metabase#23449)", () => {
+    cy.log("set the metadata for review");
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
+    );
+
+    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
+    cy.findAllByTestId("select-button").contains("Use original value").click();
+    cy.findByLabelText("Custom mapping").click();
+
+    cy.findByDisplayValue("1").clear().type("A");
+    cy.findByDisplayValue("2").clear().type("B");
+    cy.findByDisplayValue("3").clear().type("C");
+    cy.findByDisplayValue("4").clear().type("D");
+    cy.findByDisplayValue("5").clear().type("E");
+
+    cy.button("Save").click();
+
+    cy.log("make a model on Reviews");
+    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByLabelText("Create a new model").click();
+    cy.findByRole("link", { name: /Use the notebook editor/ }).click();
+    H.entityPickerModal().findByText("Reviews").click();
+
+    cy.log("Remove Body column");
+    cy.findByLabelText("Pick columns").click();
+    H.popover().findByText("Body").click();
+
+    cy.log("save model");
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+
+    cy.log("confirm save in a modal");
+    H.modal().button("Save").click();
+
+    cy.log("check that the data renders");
+    checkTable();
+
+    cy.log("reload to flush cached results and check again");
+    cy.findByTestId("qb-header").button("Refresh").click();
+    checkTable();
   });
 });

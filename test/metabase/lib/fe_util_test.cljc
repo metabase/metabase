@@ -147,7 +147,7 @@
                 (lib/expression-parts query stage-number (lib.ref/ref col))))))
 
     (testing "unknown column reference"
-      (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 100]]
+      (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 12345678]]
         (mu/disable-enforcement
           (is (=? {:lib/type :metadata/column
                    :display-name "Unknown Field"}

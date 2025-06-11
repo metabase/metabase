@@ -36,6 +36,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotEntity"
+   "MetabotPrompt"
    "TimelineEvent"])
 
 (def excluded-models

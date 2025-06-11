@@ -35,7 +35,6 @@ const DATA_COLUMN_KEYS: (keyof DatasetColumn)[] = [
   "semantic_type",
   "settings",
   "source",
-  "source_alias",
   "table_id",
   "visibility_type",
 ];

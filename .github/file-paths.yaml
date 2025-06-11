@@ -40,6 +40,7 @@ frontend_specs: &frontend_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
+  - "enterprise/frontend/**/*.unit.*"
   - ".github/**/*.unit.spec.*"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"

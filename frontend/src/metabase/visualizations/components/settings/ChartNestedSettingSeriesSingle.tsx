@@ -49,7 +49,7 @@ const ChartNestedSettingsSeriesSingle = ({
         <SeriesNameInput
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
           value={computedSettings.title}
-          subtitle={
+          description={
             seriesCardName === computedSettings.title ? "" : seriesCardName
           }
           onBlurChange={(e) =>

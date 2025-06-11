@@ -7,6 +7,8 @@ summary: Create development instances of Metabase for testing without paying per
 
 {% include plans-blockquote.html feature="Development instances" %}
 
+> A development instance **can't be used in production** and must be on **Metabase version 55 or above**.
+
 On Pro and Enterprise plans, you can purchase a development instance or development token as an add-on to your plan.
 
 - **Self-hosted**: you can purchase a dev token that you can use for one or more self-hosted development instances (meaning: you can reuse the same token for multiple dev instances at no additional cost). The development token will have access to the same set of paid features as your production token.

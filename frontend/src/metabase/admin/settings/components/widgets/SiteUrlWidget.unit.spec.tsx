@@ -45,7 +45,9 @@ describe("siteUrlWidget", () => {
 
   it("should load existing value", async () => {
     setup();
-    const selectInput = await screen.findByLabelText("input-prefix");
+    const selectInput = await screen.findByRole("textbox", {
+      name: "input-prefix",
+    });
     expect(selectInput).toHaveValue("http://");
 
     const textInput = await screen.findByDisplayValue("mysite.biz");
@@ -67,7 +69,9 @@ describe("siteUrlWidget", () => {
 
   it("can change from http to https", async () => {
     setup();
-    await userEvent.click(await screen.findByLabelText("input-prefix"));
+    await userEvent.click(
+      await screen.findByRole("textbox", { name: "input-prefix" }),
+    );
     await userEvent.click(await screen.findByText("https://"));
 
     const [putUrl, putDetails] = await findPut();
