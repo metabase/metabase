@@ -376,14 +376,12 @@ function setDashboardEndpoints(prefix) {
 }
 
 export const ActionsApi = {
-  execute: POST("/api/action/:id/execute"),
+  execute: POST("/api/ee/data-editing/action/v2/execute"),
   prefetchValues: GET("/api/action/:id/execute"),
   prefetchDashcardValues: GET(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-  executeDashcardAction: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
-  ),
+  executeDashcardAction: POST("/api/ee/data-editing/action/v2/execute"),
 };
 
 export const CacheConfigApi = {
