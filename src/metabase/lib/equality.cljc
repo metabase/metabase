@@ -142,7 +142,7 @@
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
-                               (matching-join? a-ref %))
+                               #_(matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
                     ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join

@@ -7,6 +7,7 @@
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -14,6 +15,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -232,13 +234,6 @@
   [col :- ::kebab-cased-col]
   (when (= (:lib/type col) :metadata/column)
     (->> col
-         ;; MEGA HACK!!! APPARENTLY THE GENERATED FIELD REFS ALWAYS USE THE ORIGINAL NAME OF THE COLUMN, EVEN IF IT'S NOT
-         ;; EVEN THE NAME WE ACTUALLY USE IN THE SOURCE QUERY!! BARF!
-         #_(merge
-            col
-            (when-let [source-column-alias (:lib/source-column-alias col)]
-              {:name source-column-alias}))
-         #_(dissoc col :lib/desired-column-alias :lib/source-column-alias)
          lib.ref/ref
          lib.convert/->legacy-MBQL
          fe-friendly-expression-ref)))
@@ -262,11 +257,18 @@
   https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81
 
   These should just get `_2` and what not appended to them as needed -- they should not get truncated."
-  [cols :- [:sequential ::kebab-cased-col]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   cols                  :- [:sequential ::kebab-cased-col]]
   (map (fn [col unique-name]
-         (assoc col :name unique-name))
+
+         (assoc col
+                :name                     unique-name
+                :lib/desired-column-alias (or (:lib/desired-column-alias col)
+                                              (lib.join.util/desired-alias metadata-providerable col))
+                :lib/deduplicated-name    unique-name
+                :lib/original-name        ((some-fn :lib/original-name :name) col)))
        cols
-       (mbql.u/uniquify-names (map :name cols))))
+       (mbql.u/uniquify-names (map (some-fn :lib/original-name :name) cols))))
 
 (def ^:private preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
@@ -326,7 +328,15 @@
       (add-converted-timezone query cols)
       (add-legacy-source cols)
       (add-legacy-field-refs query cols)
-      (deduplicate-names cols)
+      ;; rename old (no longer used) `:source-alias` key to the MLv2 equivalent.
+      (map (fn [col]
+             (assoc col :metabase.lib.join/pretty-neat 1000))
+           cols)
+      (map (fn [col]
+             (cond-> col
+               (:source-alias col) (assoc :metabase.lib.join/join-alias (:source-alias col))))
+           cols)
+      (deduplicate-names query cols)
       (merge-model-metadata query cols))))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-col

@@ -2,11 +2,12 @@
   (:require
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.core :as lib]
+   [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.request.core :as request]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -26,7 +27,7 @@
                   (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(mu/defn- native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn- native-source-query->metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
@@ -43,21 +44,15 @@
                   {:source-query source-query}))
       nil)))
 
-(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
-    (let [cols (request/as-admin
-                 ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
-                  {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
-                   :type     :query
-                   ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
-                   ;; to end up adding it again when the middleware runs at the top level
-                   :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
-      (for [col cols
-            :when (not (:remapped_from col))]
-        (select-keys col [:name :id :ident :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id])))
+    (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query source-query)]
+      (for [col (lib/returned-columns mlv2-query)]
+        (-> col
+            (assoc ::super-neat 1234)
+            (update :lib/desired-column-alias #(or % (lib.join.util/desired-alias mlv2-query col))))))
     (catch Throwable e
       (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
@@ -65,7 +60,7 @@
 (mu/defn- add-source-metadata :- [:map
                                   [:source-metadata
                                    {:optional true}
-                                   [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+                                   [:maybe [:sequential ::lib.schema.metadata/column]]]]
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                     native-source-query->metadata

@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -68,7 +69,8 @@
     (qp.store/with-metadata-provider mock-metadata-provider
       (is (=? (assoc (default-result-with-inner-query
                       {:source-query {:source-table (meta/id :venues)}}
-                      (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
+                      (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
+                        (m/filter-keys simple-keyword? col)))
                      :info {:card-id 1}
                      :qp/source-card-id 1)
               (resolve-source-cards
@@ -83,7 +85,8 @@
                         {:aggregation  [[:count]]
                          :breakout     [[:field "price" {:base-type :type/Integer}]]
                          :source-query {:source-table (meta/id :venues)}}
-                        (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
+                        (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
+                          (m/filter-keys simple-keyword? col)))
                        :info {:card-id 1}
                        :qp/source-card-id 1)
                 (resolve-source-cards
@@ -99,7 +102,8 @@
         (is (=? (assoc (default-result-with-inner-query
                         {:source-query {:source-table (meta/id :checkins)}
                          :filter       [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
-                        (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query checkins)))
+                        (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query checkins))]
+                          (m/filter-keys simple-keyword? col)))
                        :info {:card-id 2}
                        :qp/source-card-id 2)
                 (resolve-source-cards
@@ -168,10 +172,13 @@
                                    :source-query    {:source-table (meta/id :venues)
                                                      :limit        100}
                                    :source-metadata nil}}
-                   (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
+                   (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
+                     (m/filter-keys simple-keyword? col)))
                   (assoc-in [:query :source-query :source-metadata]
                             (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                              (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)))
+                              (as-> col col
+                                (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)
+                                (m/filter-keys simple-keyword? col))))
                   (assoc :info {:card-id 2}
                          :qp/source-card-id 2))
               (resolve-source-cards
@@ -377,7 +384,9 @@
         (is (=? (assoc (lib.tu.macros/mbql-query nil
                          {:source-query    {:source-table (meta/id :venues)}
                           :source-metadata (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                                             (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type))})
+                                             (as-> col col
+                                                 (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)
+                                                 (m/filter-keys simple-keyword? col)))})
                        :info {:card-id Integer/MAX_VALUE}
                        :qp/source-card-id 1)
                 (resolve-source-cards query)))))))
