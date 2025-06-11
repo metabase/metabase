@@ -19,11 +19,6 @@ body:where(:global(.mb-wrapper)) {
   border-color: var(--mb-color-border);
 }
 
-.EmbedFrame .DashCard .Card {
-  /* this is for proper transitions from the `transparent` value to other values if set */
-  border: 1px solid transparent;
-}
-
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-primary);
