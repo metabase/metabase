@@ -1105,6 +1105,71 @@ describe("scenarios > dashboard > parameters", () => {
         });
       });
     });
+
+    it("should not use inline filters for auto-wiring", () => {
+      H.createQuestion({
+        name: "Average total by category",
+        display: "bar",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["avg", ["field", ORDERS.TOTAL, null]]],
+          breakout: [categoryFieldRef],
+        },
+      });
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id, countParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      // Connect Category filter to first card
+      H.getDashboardCard(0).findByText("Category").click();
+      H.selectDashboardFilter(H.getDashboardCard(1), "Category");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      // Add the second card with category dimension
+      H.openQuestionsSidebar();
+      H.sidebar().findByText("Average total by category").click();
+      H.getDashboardCard(2).findByText("Average of Total").should("exist");
+
+      // Verify filter isn't auto-wired and there's no auto-wiring toast
+      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(2)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("not.exist");
+      H.undoToast().should("not.exist");
+
+      // Verify filter isn't auto-wired after mapping it to a card
+      H.disconnectDashboardFilter(H.getDashboardCard(1), "Category");
+      H.selectDashboardFilter(H.getDashboardCard(1), "Category");
+      H.getDashboardCard(2)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("not.exist");
+      H.undoToast().should("not.exist");
+    });
   });
 });
 
