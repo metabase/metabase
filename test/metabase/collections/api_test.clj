@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections :row-lock))
 
 (defmacro ^:private with-collection-hierarchy!
   "Totally-rad macro that creates a Collection hierarchy and grants the All Users group perms for all the Collections
