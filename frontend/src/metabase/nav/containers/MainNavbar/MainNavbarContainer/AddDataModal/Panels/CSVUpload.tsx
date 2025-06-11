@@ -1,5 +1,11 @@
 import cx from "classnames";
-import { type ChangeEvent, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
 import { c, t } from "ttag";
 
@@ -41,9 +47,12 @@ export const CSVUpload = ({
     useState(initialCollectionId);
 
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const triggerUploadInput = () => uploadInputRef?.current?.click();
+  const triggerUploadInput = useCallback(
+    () => uploadInputRef?.current?.click(),
+    [],
+  );
 
-  const handleCollectionChange = (item: CollectionPickerItem) => {
+  const handleCollectionChange = useCallback((item: CollectionPickerItem) => {
     // The model should always be a collection since we explicitly set it in the CollectionPickerModal.
     // In case anything ever changes in the picker, we want to ignore it in this handler.
     if (item.model !== "collection") {
@@ -55,9 +64,9 @@ export const CSVUpload = ({
       setUploadCollectionId(id);
       setIsCollectionPickerOpen(false);
     }
-  };
+  }, []);
 
-  const handleFileRejections = (rejected: FileRejection[]) => {
+  const handleFileRejections = useCallback((rejected: FileRejection[]) => {
     if (!rejected.length) {
       return;
     }
@@ -84,79 +93,91 @@ export const CSVUpload = ({
           break;
       }
     }
-  };
+  }, []);
 
-  const onDrop = (acceptedFiles: File[], fileRejections: FileRejection[]) => {
-    if (acceptedFiles.length === 1) {
-      setFileUploadError(null);
-      setUploadedFile(acceptedFiles[0]);
-    }
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+      if (acceptedFiles.length === 1) {
+        setFileUploadError(null);
+        setUploadedFile(acceptedFiles[0]);
+      }
 
-    handleFileRejections(fileRejections);
-  };
+      handleFileRejections(fileRejections);
+    },
+    [handleFileRejections],
+  );
 
-  const { getRootProps, isDragActive } = useDropzone({
-    onDrop,
-    maxFiles: 1,
-    maxSize: MAX_UPLOAD_SIZE,
-    noClick: true,
-    noDragEventsBubbling: true,
-    accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
-  });
+  const dropZoneConfig = useMemo(
+    () => ({
+      onDrop,
+      maxFiles: 1,
+      maxSize: MAX_UPLOAD_SIZE,
+      noClick: true,
+      noDragEventsBubbling: true,
+      accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
+    }),
+    [onDrop],
+  );
+
+  const { getRootProps, isDragActive } = useDropzone(dropZoneConfig);
 
   const dropzoneProps = getComposedDragProps(getRootProps());
 
-  const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileInput = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
 
-    if (!file) {
-      return;
-    }
+      if (!file) {
+        return;
+      }
 
-    if (file.size > MAX_UPLOAD_SIZE) {
-      setFileUploadError(t`Sorry, this file is too large`);
-      return;
-    }
+      if (file.size > MAX_UPLOAD_SIZE) {
+        setFileUploadError(t`Sorry, this file is too large`);
+        return;
+      }
 
-    setFileUploadError(null);
-    setUploadedFile(file);
+      setFileUploadError(null);
+      setUploadedFile(file);
 
-    // reset the input so that the same file can be uploaded again
-    if (uploadInputRef.current) {
-      uploadInputRef.current.value = "";
-    }
-  };
+      // reset the input so that the same file can be uploaded again
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = "";
+      }
+    },
+    [],
+  );
 
-  const handleFileUpload = (uploadedFile: File | null) => {
-    if (!uploadedFile) {
-      return;
-    }
+  const handleFileUpload = useCallback(
+    (uploadedFile: File | null) => {
+      if (!uploadedFile) {
+        return;
+      }
 
-    dispatch(
-      uploadFile({
-        uploadMode: UploadMode.create,
-        collectionId: uploadCollectionId,
-        file: uploadedFile,
-      }),
-    );
+      dispatch(
+        uploadFile({
+          uploadMode: UploadMode.create,
+          collectionId: uploadCollectionId,
+          file: uploadedFile,
+        }),
+      );
 
-    setUploadedFile(null);
-    onCloseAddDataModal();
-  };
+      setUploadedFile(null);
+      onCloseAddDataModal();
+    },
+    [dispatch, onCloseAddDataModal, uploadCollectionId],
+  );
 
-  const getPrimaryText = (
-    uploadedFile: File | null,
-    fileUploadError: string | null,
-  ) => {
+  const primaryText = useMemo(() => {
     if (uploadedFile) {
       return uploadedFile.name;
     }
+
     if (fileUploadError) {
       return fileUploadError;
     }
 
     return t`Drag and drop a file here`;
-  };
+  }, [uploadedFile, fileUploadError]);
 
   return (
     <>
@@ -178,9 +199,7 @@ export const CSVUpload = ({
             )}
 
             <div>
-              <Text fw={700}>
-                {getPrimaryText(uploadedFile, fileUploadError)}
-              </Text>
+              <Text fw={700}>{primaryText}</Text>
               {!uploadedFile && (
                 <Text c="text-light">
                   {c("The allowed MB size of a file")
