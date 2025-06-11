@@ -18,7 +18,11 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { HeadingContent, InputContainer, TextInput } from "./Heading.styled";
+import {
+  HeadingContent,
+  HeadingTextInput,
+  InputContainer,
+} from "./Heading.styled";
 
 interface HeadingProps {
   isEditing: boolean;
@@ -91,7 +95,7 @@ export function Heading({
               {hasContent ? settings.text : placeholder}
             </HeadingContent>
           ) : (
-            <TextInput
+            <HeadingTextInput
               name="heading"
               data-testid="editing-dashboard-heading-input"
               placeholder={placeholder}

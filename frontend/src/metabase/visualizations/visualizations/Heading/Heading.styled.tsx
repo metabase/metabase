@@ -71,8 +71,10 @@ interface HeadingContentProps {
 }
 
 export const HeadingContent = styled.h2<HeadingContentProps>`
+  flex: 1;
   max-height: 100%;
-  max-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   overflow-x: hidden;
   overflow-y: auto;
   font-size: 1.375rem;
@@ -85,4 +87,9 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
     css`
       cursor: text;
     `}
+`;
+
+export const HeadingTextInput = styled(TextInput)`
+  flex: 1;
+  text-overflow: ellipsis;
 `;
