@@ -6,22 +6,21 @@ import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_FORMATTING_SETTING,
   COLUMN_SHOW_TOTALS,
-  COLUMN_SORT_ORDER,
-  COLUMN_SORT_ORDER_ASC,
-  COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
   NATIVE_COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
-import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
+import { ChartSettingColumnBinning } from "metabase/visualizations/components/settings/ChartSettingColumnBinning";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
+  ColumnSettings,
   DatasetColumn,
   DatasetData,
   PivotTableColumnSplitSetting,
@@ -83,10 +82,7 @@ export const settings = {
       const isNative = card.dataset_query?.type === "native";
       return !data || !isNative;
     },
-    getProps: (
-      [{ data }]: [{ data: DatasetData }],
-      settings: VisualizationSettings,
-    ) => ({
+    getProps: ([{ data }]: RawSeries, settings: VisualizationSettings) => ({
       value: settings[NATIVE_COLUMN_SPLIT_SETTING] ?? {
         rows: [],
         columns: [],
@@ -290,27 +286,23 @@ export const settings = {
 };
 
 export const _columnSettings = {
-  [COLUMN_SORT_ORDER]: {
+  column_binning: {
     get title() {
-      return t`Sort order`;
+      return t`Binning`;
     },
-    widget: ChartSettingIconRadio,
-    inline: true,
-    borderBottom: true,
-    props: {
-      options: [
-        {
-          iconName: "arrow_up",
-          value: COLUMN_SORT_ORDER_ASC,
-        },
-        {
-          iconName: "arrow_down",
-          value: COLUMN_SORT_ORDER_DESC,
-        },
-      ],
+    widget: ChartSettingColumnBinning,
+    getProps: (
+      column: DatasetColumn,
+      _columnSettings: ColumnSettings,
+      _onChange: (settings: ColumnSettings) => void,
+      extra: { question: Question },
+    ) => {
+      return {
+        column,
+        question: extra?.question,
+      };
     },
-    getHidden: ({ source }: { source: DatasetColumn["source"] }) =>
-      source === "aggregation",
+    getDefault: "decimal",
   },
   [COLUMN_SHOW_TOTALS]: {
     get title() {

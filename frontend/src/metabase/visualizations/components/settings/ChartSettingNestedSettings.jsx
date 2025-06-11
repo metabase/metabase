@@ -101,7 +101,11 @@ const chartSettingNestedSettings =
                 onChangeObjectSettings={this.handleChangeSettingsForObject}
                 object={editingObject}
                 objectSettingsWidgets={objectSettingsWidgets.map((widget) => (
-                  <ChartSettingsWidget key={widget.id} {...widget} />
+                  <ChartSettingsWidget
+                    key={widget.id}
+                    {...widget}
+                    onChangeRootSettings={this.props.onChangeSettings}
+                  />
                 ))}
               />
             );

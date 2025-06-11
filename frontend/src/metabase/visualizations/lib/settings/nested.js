@@ -99,7 +99,7 @@ export function nestedSettings(
           settings,
           objects,
           allComputedSettings,
-          extra: { series, settings },
+          extra: { series, settings, ...extra },
           ...def.getExtraProps?.(series, settings, onChange, extra),
           ...extra,
         };
