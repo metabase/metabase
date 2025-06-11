@@ -20,32 +20,32 @@ import {
 } from "../selectors";
 
 const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
-  "type/Boolean": "boolean" as const,
-  "type/Float": "number" as const,
-  "type/Integer": "number" as const,
-  "type/Decimal": "number" as const,
-  "type/BigInteger": "number" as const,
-  "type/Number": "number" as const,
-  "type/Date": "date" as const,
-  "type/DateTime": "datetime" as const,
-  "type/DateTimeWithTZ": "datetime" as const,
-  "type/DateTimeWithZoneID": "datetime" as const,
-  "type/Instant": "datetime" as const,
-  "type/Time": "time" as const,
-  "type/TimeWithTZ": "time" as const,
-  "type/Text": "string" as const,
-  "type/UUID": "string" as const,
-  "type/Dictionary": "string" as const,
-  "type/Array": "string" as const,
-  "type/*": "string" as const,
+  "type/*": "string",
+  "type/Array": "string",
+  "type/BigInteger": "number",
+  "type/Boolean": "boolean",
+  "type/Date": "date",
+  "type/DateTime": "datetime",
+  "type/DateTimeWithTZ": "datetime",
+  "type/DateTimeWithZoneID": "datetime",
+  "type/Decimal": "number",
+  "type/Dictionary": "string",
+  "type/Float": "number",
+  "type/Instant": "datetime",
+  "type/Integer": "number",
+  "type/Number": "number",
+  "type/Text": "string",
+  "type/Time": "time",
+  "type/TimeWithTZ": "time",
+  "type/UUID": "string",
 };
 
 const getMetabotColType = (
   colBaseType: string | undefined,
 ): MetabotColumnType => {
   return colBaseType
-    ? (colTypeToMetabotColTypeMap[colBaseType] ?? ("string" as const))
-    : ("string" as const);
+    ? (colTypeToMetabotColTypeMap[colBaseType] ?? "string")
+    : "string";
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
