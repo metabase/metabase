@@ -21,6 +21,7 @@
    [metabase.cloud-migration.init]
    [metabase.config.core :as config]
    [metabase.content-verification.init]
+   [metabase.dashboards.init]
    [metabase.driver.init]
    [metabase.eid-translation.init]
    [metabase.embedding.init]
