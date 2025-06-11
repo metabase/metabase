@@ -6,8 +6,10 @@
    [clojure.set :as set]
    [malli.core :as mc]
    [malli.error :as me]
+   [medley.core :as m]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.legacy-mbql.schema.macros :refer [defclause one-of]]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -17,6 +19,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
@@ -1499,9 +1502,16 @@
     #(helpers/empty-or-distinct? (filter some? (map :alias %)))]])
 
 (mr/def ::Fields
-  [:schema
-   {:error/message "Distinct, non-empty sequence of Field clauses"}
-   (helpers/distinct [:sequential {:min 1} Field])])
+  [:and
+   [:sequential {:min 1} Field]
+   [:fn
+    {:error/message "Distinct, non-empty sequence of Field clauses"}
+    (fn [fields]
+      (distinct? (map (fn [a-ref]
+                        (lib.util.match/replace a-ref
+                          [:field id-or-name opts]
+                          [:field id-or-name (not-empty (select-keys opts [:source-field :join-alias :binning :temporal-unit]))]))
+                      fields)))]])
 
 (mr/def ::Page
   "`page` = page num, starting with 1. `items` = number of items per page.

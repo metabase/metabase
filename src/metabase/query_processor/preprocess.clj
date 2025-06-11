@@ -89,16 +89,20 @@
   (-> (fn [query]
         (as-> query query
           ;; convert to MBQL 5 as needed
-          (mu/disable-enforcement
+          (letfn [(convert [query]
+                    (lib/without-cleaning
+                     (^:once fn* []
+                      (mu/disable-enforcement
+                        (lib/query (qp.store/metadata-provider) query)))))]
             (-> (cond->> query
-                  (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
+                  (not (:lib/type query)) convert)
                 (copy-unconverted-properties query)))
           ;; apply the middleware WITH MALLI ENFORCEMENT ENABLED!
           (middleware-fn query)
           ;; now convert back to legacy without cleaning
           (mu/disable-enforcement
             (lib/without-cleaning
-             (fn [] (->legacy query))))))
+             (^:once fn* [] (->legacy query))))))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
