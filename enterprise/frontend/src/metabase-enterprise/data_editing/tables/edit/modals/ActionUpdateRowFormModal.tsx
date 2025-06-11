@@ -1,6 +1,5 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Group, Icon, Loader, Modal, rem } from "metabase/ui";
@@ -28,6 +27,12 @@ interface ActionUpdateRowFormModalProps {
   withDelete?: boolean;
 }
 
+enum ModalState {
+  Opened,
+  DeleteRequested,
+  Closed,
+}
+
 export function ActionUpdateRowFormModal({
   opened,
   rowIndex,
@@ -38,10 +43,21 @@ export function ActionUpdateRowFormModal({
   onRowDelete,
   withDelete = false,
 }: ActionUpdateRowFormModalProps) {
-  const [
-    isDeleteRequested,
-    { open: requestDeletion, close: closeDeletionModal },
-  ] = useDisclosure();
+  const [modalState, setModalState] = useState<ModalState>(ModalState.Closed);
+
+  useEffect(() => {
+    setModalState(opened ? ModalState.Opened : ModalState.Closed);
+  }, [opened]);
+
+  const requestDeletion = useCallback(
+    () => setModalState(ModalState.DeleteRequested),
+    [],
+  );
+
+  const closeDeletionModal = useCallback(
+    () => setModalState(ModalState.Opened),
+    [],
+  );
 
   const handleValueUpdated = useCallback(
     (field: string, value: RowValue) => {
@@ -54,14 +70,12 @@ export function ActionUpdateRowFormModal({
 
   const handleDeleteConfirmation = useCallback(async () => {
     if (rowIndex !== null) {
-      closeDeletionModal();
       onClose();
-
       await onRowDelete(rowIndex);
     }
-  }, [closeDeletionModal, onRowDelete, rowIndex, onClose]);
+  }, [onRowDelete, rowIndex, onClose]);
 
-  if (isDeleteRequested) {
+  if (modalState === ModalState.DeleteRequested) {
     return (
       <DeleteRowConfirmationModal
         onCancel={closeDeletionModal}
@@ -71,11 +85,11 @@ export function ActionUpdateRowFormModal({
   }
 
   return (
-    <Modal.Root opened={opened} onClose={onClose}>
+    <Modal.Root opened={modalState === ModalState.Opened} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header px="xl" pb="0" className={S.modalHeader}>
-          <Modal.Title>{t`Create a new record`}</Modal.Title>
+          <Modal.Title>{t`Edit record`}</Modal.Title>
           <Group
             gap="xs"
             mr={rem(-5) /* aligns cross with modal right padding */}
