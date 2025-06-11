@@ -53,7 +53,7 @@
                                                       ::add/source-alias  "PRICE"
                                                       ::add/desired-alias "PRICE"
                                                       ::add/position      0}]
-                                      [:field "double_price" {:base-type          :type/Float
+                                      [:field "double_price" {:base-type          :type/Integer
                                                               ::add/source-table  ::add/source
                                                               ::add/source-alias  "double_price"
                                                               ::add/desired-alias "double_price"
@@ -91,7 +91,7 @@
                                                                              ::add/position      0}]
                                                        [:expression "double_price" {::add/desired-alias "double_price"
                                                                                     ::add/position      1}]]}
-                         :order-by     [[:asc *double_price/Float]]})
+                         :order-by     [[:asc *double_price/Integer]]})
                       (-> (lib.tu.macros/mbql-query venues
                             {:expressions {"double_price" [:* $price 2]}
                              :fields      [$price
@@ -216,7 +216,7 @@
                                                            :breakout [[:field %id #::add{:source-table  ::add/source
                                                                                          :source-alias  "ID"
                                                                                          :desired-alias "ID"}]
-                                                                      [:field "x" {:base-type          :type/Float
+                                                                      [:field "x" {:base-type          :type/Integer
                                                                                    ::add/source-table  ::add/source
                                                                                    ::add/source-alias  "x"
                                                                                    ::add/desired-alias "x"}]]}
@@ -236,7 +236,7 @@
                                                            :source-alias  "ID"
                                                            :desired-alias "ID"
                                                            :position      0}]
-                                        [:field "x_2" {:base-type          :type/Float
+                                        [:field "x_2" {:base-type          :type/Integer
                                                        ::add/source-table  ::add/source
                                                        ::add/source-alias  "x_2"
                                                        ::add/desired-alias "x_2"
@@ -552,7 +552,7 @@
                                                         ::add/source-alias        "PRICE"
                                                         ::add/desired-alias       "PRICE"
                                                         ::add/position            0}]
-                                        [:field "test" {:base-type          :type/Float
+                                        [:field "test" {:base-type          :type/Integer
                                                         ::add/source-table  ::add/source
                                                         ::add/source-alias  "test"
                                                         ::add/desired-alias "test"
