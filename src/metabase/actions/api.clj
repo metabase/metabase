@@ -315,18 +315,15 @@
                                :description (get-in action [:visualization_settings :description] "")})]
                {:actions actions})))
 
-(api.macros/defendpoint :post "/v2/execute"
-  "This is where the route ultimately belongs, but for now its in EE.
-   We need to rework it so that certain paid features are skipped when we move it."
-  [route-params query-params body-params request]
-  #_{:clj-kondo/ignore [:metabase/modules]}
-  (api.macros/call-core-fn @(requiring-resolve 'metabase-enterprise.data-editing.api/execute-single)
-                           route-params query-params body-params request))
+(defmacro ^:private evil-proxy [route var-sym]
+  `(api.macros/defendpoint :post ~route
+     "This is where the route ultimately belongs, but for now its in EE.
+      We need to rework it so that certain paid features are skipped when we move it."
+     [~'route-params ~'query-params ~'body-params ~'request]
+     #_{:clj-kondo/ignore [:metabase/modules]}
+     (api.macros/call-core-fn @(requiring-resolve ~var-sym) ~'route-params ~'query-params ~'body-params ~'request)))
 
-(api.macros/defendpoint :post "/v2/execute-bulk"
-  "This is where the route ultimately belongs, but for now its in EE.
-   We need to rework it so that certain paid features are skipped when we move it."
-  [route-params query-params body-params request]
-  #_{:clj-kondo/ignore [:metabase/modules]}
-  (api.macros/call-core-fn @(requiring-resolve 'metabase-enterprise.data-editing.api/execute-bulk)
-                           route-params query-params body-params request))
+(evil-proxy "/v2/tmp-action" 'metabase-enterprise.data-editing.api/tmp-action)
+(evil-proxy "/v2/execute" 'metabase-enterprise.data-editing.api/execute-single)
+(evil-proxy "/v2/execute-bulk" 'metabase-enterprise.data-editing.api/execute-bulk)
+(evil-proxy "/v2/tmp-modal" 'metabase-enterprise.data-editing.api/tmp-action)
