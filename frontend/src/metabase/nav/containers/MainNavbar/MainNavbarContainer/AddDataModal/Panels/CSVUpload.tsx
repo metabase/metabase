@@ -58,9 +58,11 @@ export const CSVUpload = ({
   };
 
   const handleFileRejections = (rejected: FileRejection[]) => {
-    if (!rejected) {
+    if (!rejected.length) {
       return;
     }
+
+    setUploadedFile(null);
 
     if (rejected.length > 1) {
       setFileUploadError(t`Please upload files individually`);
@@ -118,6 +120,11 @@ export const CSVUpload = ({
 
     setFileUploadError(null);
     setUploadedFile(file);
+
+    // reset the input so that the same file can be uploaded again
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = "";
+    }
   };
 
   const handleFileUpload = (uploadedFile: File | null) => {
@@ -132,11 +139,6 @@ export const CSVUpload = ({
         file: uploadedFile,
       }),
     );
-
-    // reset the input so that the same file can be uploaded again
-    if (uploadInputRef.current) {
-      uploadInputRef.current.value = "";
-    }
 
     setUploadedFile(null);
     onCloseAddDataModal();
