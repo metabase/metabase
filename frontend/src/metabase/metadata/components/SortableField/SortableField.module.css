@@ -17,17 +17,14 @@
     }
   }
 
-  &.active {
-    background-color: var(--mb-color-brand-lighter);
-
-    .label {
-      color: var(--mb-color-brand);
-    }
-  }
-
+  &.active,
   &:hover {
     background-color: var(--mb-color-brand-lighter);
   }
+}
+
+.icon {
+  color: var(--mb-color-brand);
 }
 
 .label {

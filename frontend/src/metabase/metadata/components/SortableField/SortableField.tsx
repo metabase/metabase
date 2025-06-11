@@ -45,6 +45,7 @@ export const SortableField = ({
         component={href ? Link : undefined}
         draggable={draggable}
         gap="md"
+        justify="space-between"
         mih={rem(40)}
         pos="relative"
         px="sm"
@@ -56,14 +57,14 @@ export const SortableField = ({
         w="100%"
       >
         <Group flex="0 0 auto" gap="sm" ml="xs" wrap="nowrap">
-          {draggable && <Icon className={S.grabber} name="grabber" />}
+          <Icon className={S.icon} name={icon} />
 
-          <Icon name={icon} />
+          <Text flex="1" fw="bold" lh="normal" mr="xs">
+            {label}
+          </Text>
         </Group>
 
-        <Text className={S.label} flex="1" fw="bold" lh="normal" mr="xs">
-          {label}
-        </Text>
+        {draggable && <Icon className={S.grabber} name="grabber" />}
       </Flex>
     </Sortable>
   );
