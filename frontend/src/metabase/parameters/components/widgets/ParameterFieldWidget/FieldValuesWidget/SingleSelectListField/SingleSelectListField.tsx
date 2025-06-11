@@ -20,7 +20,7 @@ import {
   OptionsList,
 } from "./SingleSelectListField.styled";
 import type { Option, SingleSelectListFieldProps } from "./types";
-import { isValidOptionItem } from "./utils";
+import { isEqualOptionItem, isValidOptionItem } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
@@ -30,7 +30,7 @@ function createOptionsFromValuesWithoutOptions(
 ): Option {
   const optionsMap = _.indexBy(options, "0");
   return values
-    .filter((value) => typeof value !== "string" || !optionsMap[value])
+    .filter((value) => !optionsMap[String(value)])
     .map((value) => [value]);
 }
 
@@ -71,7 +71,7 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
-  const isFilterInValues = value[0] === filter;
+  const isFilterInValues = isEqualOptionItem(value, filter);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -118,7 +118,7 @@ const SingleSelectListField = ({
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) => option[0] === filter)
+      !_.find(augmentedOptions, (option) => isEqualOptionItem(option, filter))
     ) {
       event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);
