@@ -10,6 +10,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
@@ -125,6 +126,8 @@
   group-columns]
  [lib.common
   external-op]
+ [lib.content-translation
+  set-content-translations]
  [lib.convert
   ->legacy-MBQL
   ->pMBQL

@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -252,6 +253,7 @@
                        source-uuid         :lib/source-uuid
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
+        humanized-name (lib.content-translation/get-content-translation humanized-name)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
@@ -323,7 +325,9 @@
                             temporal-unit (assoc :unit temporal-unit)
                             binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
-    (lib.metadata.calculation/display-name query stage-number field-metadata style)
+    (lib.content-translation/get-content-translation
+     (lib.metadata.calculation/display-name query stage-number field-metadata
+                                            style))
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
