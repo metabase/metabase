@@ -168,15 +168,13 @@
                                  :name          (mt/format-name "name_2")
                                  :remapped_from (mt/format-name "category_id")
                                  :field_ref     $category_id->categories.name))]}
-                (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                                    (mt/format-rows-by
-                                     [str int str str]
-                                     (mt/run-mbql-query venues
-                                       {:fields   [$name $price $category_id]
-                                        :order-by [[:asc $name]]
-                                        :limit    4})))
-                    (update :cols (fn [[c1 c2 c3]]
-                                    [c1 c2 (dissoc c3 :source_alias)])))))))))
+                (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                                (mt/format-rows-by
+                                 [str int str str]
+                                 (mt/run-mbql-query venues
+                                   {:fields   [$name $price $category_id]
+                                    :order-by [[:asc $name]]
+                                    :limit    4})))))))))
 
 (deftest ^:parallel remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
