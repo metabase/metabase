@@ -347,7 +347,7 @@ function DashCardInner({
           EmbedFrameS.Card,
           CS.relative,
           CS.roundedSm,
-          CS.bordered,
+          !isAction && CS.bordered,
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,
