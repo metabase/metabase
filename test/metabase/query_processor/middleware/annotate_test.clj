@@ -223,7 +223,7 @@
                            (ean-metadata (add-column-info nested-query {:cols []}))))))))))))))
 
 (deftest ^:parallel col-info-for-fields-from-card-test
-  (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side (#14787)"
+  (testing "#14787"
     (let [card-1-query (lib.tu.macros/mbql-query orders
                          {:joins [{:fields       :all
                                    :source-table $$products
@@ -233,30 +233,28 @@
                                         meta/metadata-provider
                                         [card-1-query
                                          (lib.tu.macros/mbql-query people)])
-        (lib.tu.macros/$ids nil
-          (let [base-query (lib/query
-                            (qp.store/metadata-provider)
-                            (qp.preprocess/preprocess
-                             (lib.tu.macros/mbql-query nil
-                               {:source-table "card__1"
-                                :joins        [{:fields       :all
-                                                :source-table "card__2"
-                                                :condition    [:= $orders.user-id &Products.products.id]
-                                                :alias        "Q"}]
-                                :limit        1})))
-                field-ids  #{%orders.discount %products.title %people.source}]
-            (is (= [{:display_name "Discount"
-                     :field_ref    [:field %orders.discount nil]}
-                    {:display_name "Products → Title"
-                     ;; this field comes from a join in the source card (previous stage) and thus SHOULD NOT include the
-                     ;; join alias. TODO -- shouldn't we be referring to it by name and not ID? I think we're using ID
-                     ;; for broken/legacy purposes -- Cam
-                     :field_ref    [:field %products.title nil]}
-                    {:display_name "Q → Source"
-                     :field_ref    [:field %people.source {:join-alias "Q"}]}]
-                   (->> (:cols (add-column-info base-query {:cols []}))
-                        (filter #(field-ids (:id %)))
-                        (map #(select-keys % [:display_name :field_ref])))))))))))
+        (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
+          (lib.tu.macros/$ids nil
+            (let [base-query (lib/query
+                              (qp.store/metadata-provider)
+                              (qp.preprocess/preprocess
+                               (lib.tu.macros/mbql-query nil
+                                 {:source-table "card__1"
+                                  :joins        [{:fields       :all
+                                                  :source-table "card__2"
+                                                  :condition    [:= $orders.user-id &Products.products.id]
+                                                  :alias        "Q"}]
+                                  :limit        1})))
+                  fields     #{%orders.discount %products.title %people.source}]
+              (is (= [{:display_name "Discount"
+                       :field_ref    [:field %orders.discount nil]}
+                      {:display_name "Products → Title"
+                       :field_ref    [:field %products.title nil]}
+                      {:display_name "Q → Source"
+                       :field_ref    [:field %people.source {:join-alias "Q"}]}]
+                     (->> (:cols (add-column-info base-query {}))
+                          (filter #(fields (:id %)))
+                          (map #(select-keys % [:display_name :field_ref]))))))))))))
 
 (deftest ^:parallel col-info-for-joined-fields-from-card-test
   (testing "Has the correct display names for joined fields from cards (#14787)"
