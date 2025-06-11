@@ -5,7 +5,7 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import type {
   SelectionRange,
-  Features as SidebarFeatures,
+  SidebarFeatures,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";

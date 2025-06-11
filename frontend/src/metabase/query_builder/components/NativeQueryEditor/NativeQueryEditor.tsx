@@ -43,7 +43,7 @@ import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQ
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
 import { RightClickPopover } from "./RightClickPopover";
 import { MIN_HEIGHT_LINES } from "./constants";
-import type { SelectionRange, Features as SidebarFeatures } from "./types";
+import type { SelectionRange, SidebarFeatures } from "./types";
 import { calcInitialEditorHeight, getEditorLineHeight } from "./utils";
 
 type OwnProps = {

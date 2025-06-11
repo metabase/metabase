@@ -8,7 +8,7 @@ export type SelectionRange = {
   end: Location;
 };
 
-export type Features = {
+export type SidebarFeatures = {
   dataReference?: boolean;
   variables?: boolean;
   snippets?: boolean;
