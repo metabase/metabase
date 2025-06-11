@@ -1,6 +1,8 @@
 import dayjs from "dayjs";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import * as Lib from "metabase-lib";
+
 import {
   getBase64ChartImage,
   getChartSelector,
@@ -12,12 +14,14 @@ import type {
 } from "metabase-types/api";
 
 import {
+  getFirstQueryResult,
   getIsLoadingComplete,
   getQuestion,
   getTransformedSeries,
   getTransformedTimelines,
   getVisualizationSettings,
 } from "../selectors";
+import { get } from "underscore";
 
 const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
   "type/Boolean": "boolean" as const,
@@ -56,6 +60,15 @@ export const useRegisterQueryBuilderMetabotContext = () => {
       return {};
     }
 
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+    const queryResult = getFirstQueryResult(state);
+    const getQuestionType = (question) => {
+      if (question.isSaved()) {
+        return question.type();
+      }
+      return isNative ? ("native" as const) : ("adhoc" as const);
+    };
+
     let image_base_64 = undefined;
     try {
       image_base_64 = await getBase64ChartImage(
@@ -70,9 +83,10 @@ export const useRegisterQueryBuilderMetabotContext = () => {
     const timelines = getTransformedTimelines(state);
     const transformedSeriesData = getTransformedSeries(state);
 
-    const questionCtx = question.isSaved()
-      ? { id: question.id(), type: question.type() }
-      : { type: "adhoc" as const };
+    const questionCtx = {
+      id: question.isSaved() ? question.id() : undefined,
+      type: getQuestionType(question)
+    };
 
     const series = !vizSettings
       ? {}
@@ -139,6 +153,7 @@ export const useRegisterQueryBuilderMetabotContext = () => {
         {
           ...questionCtx,
           query: question.datasetQuery(),
+          sql_dialect: null, // TODO
           chart_configs: [
             {
               image_base_64,
@@ -148,6 +163,7 @@ export const useRegisterQueryBuilderMetabotContext = () => {
               timeline_events,
             },
           ],
+          error: queryResult?.error
         },
       ],
     };
