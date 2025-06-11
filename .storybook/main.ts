@@ -28,7 +28,7 @@ const config: StorybookConfig = {
     reactDocgen: "react-docgen-typescript",
   },
 
-  webpackFinal: config => {
+  webpackFinal: (config) => {
     return {
       ...config,
       resolve: {
@@ -55,10 +55,10 @@ const config: StorybookConfig = {
         ...config.module,
         rules: [
           ...(config.module?.rules ?? []).filter(
-            rule => !isCSSRule(rule) && !isSvgRule(rule),
+            (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),
           ...appConfig.module.rules.filter(
-            rule => isCSSRule(rule) || isSvgRule(rule),
+            (rule) => isCSSRule(rule) || isSvgRule(rule),
           ),
         ],
       },
@@ -67,5 +67,5 @@ const config: StorybookConfig = {
 };
 export default config;
 
-const isCSSRule = rule => rule.test?.toString() === "/\\.css$/";
-const isSvgRule = rule => rule.test?.test(".svg");
+const isCSSRule = (rule) => rule.test?.toString() === "/\\.css$/";
+const isSvgRule = (rule) => rule.test?.test(".svg");

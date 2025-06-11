@@ -11,7 +11,8 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import type { ScheduleProps } from "./Schedule";
 import { Schedule } from "./Schedule";
-export interface SetupOpts {
+
+interface SetupOpts {
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
 }
