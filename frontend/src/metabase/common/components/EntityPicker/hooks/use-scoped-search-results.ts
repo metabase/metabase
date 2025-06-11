@@ -27,30 +27,15 @@ import { isSchemaItem } from "../utils";
 const searchModelsToCollectionItemModels = (
   searchModels: string[],
 ): CollectionItemModel[] => {
-  const output: CollectionItemModel[] = [];
-  for (const model of searchModels) {
-    switch (model) {
-      case "card":
-        output.push("card" as const);
-        break;
-      case "collection":
-        output.push("collection" as const);
-        break;
-      case "dataset":
-        output.push("dataset" as const);
-        break;
-      case "dashboard":
-        output.push("dashboard" as const);
-        break;
-      case "snippet":
-        output.push("snippet" as const);
-        break;
-      case "metric":
-        output.push("metric" as const);
-        break;
-    }
-  }
-  return output;
+  const validModels = [
+    "card",
+    "collection",
+    "dataset",
+    "dashboard",
+    "snippet",
+    "metric",
+  ] as const;
+  return validModels.filter((model) => searchModels.includes(model));
 };
 
 export const useScopedSearchResults = <
