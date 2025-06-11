@@ -406,8 +406,7 @@
                               (qp.preprocess/query->expected-cols query))
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
           ;; `qp.preprocess/query->expected-cols`
-          expected-metadata (for [col metadata]
-                              (merge (results-col col) (select-keys col [:source_alias])))]
+          expected-metadata (map results-col metadata)]
       (letfn [(added-metadata [query]
                 (get-in (add-source-metadata query) [:query :source-metadata]))]
         (testing "\nShould add source metadata if there's none already"
