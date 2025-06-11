@@ -62,7 +62,6 @@
                                        (cond-> join
                                          (and (not (keyword? fields)) (empty? fields))
                                          (dissoc :fields))))}
-
    [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
