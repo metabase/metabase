@@ -85,41 +85,39 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
-        <Flex align="center" justify="space-between">
-          {isPreviewing ? (
-            <HeadingContent
-              data-testid="editing-dashboard-heading-preview"
-              isEditing={isEditing}
-              onMouseDown={preventDragging}
-            >
-              {hasContent ? settings.text : placeholder}
-            </HeadingContent>
-          ) : (
-            <HeadingTextInput
-              name="heading"
-              data-testid="editing-dashboard-heading-input"
-              placeholder={placeholder}
-              value={textValue}
-              autoFocus={justAdded || isFocused}
-              onChange={(e) => setTextValue(e.target.value)}
-              onMouseDown={preventDragging}
-              onBlur={() => {
-                toggleFocusOff();
+        {isPreviewing ? (
+          <HeadingContent
+            data-testid="editing-dashboard-heading-preview"
+            isEditing={isEditing}
+            onMouseDown={preventDragging}
+          >
+            {hasContent ? settings.text : placeholder}
+          </HeadingContent>
+        ) : (
+          <HeadingTextInput
+            name="heading"
+            data-testid="editing-dashboard-heading-input"
+            placeholder={placeholder}
+            value={textValue}
+            autoFocus={justAdded || isFocused}
+            onChange={(e) => setTextValue(e.target.value)}
+            onMouseDown={preventDragging}
+            onBlur={() => {
+              toggleFocusOff();
 
-                if (settings.text !== textValue) {
-                  onUpdateVisualizationSettings({ text: textValue });
-                }
-              }}
-            />
-          )}
-          {inlineParameters.length > 0 && (
-            <DashboardParameterList
-              parameters={inlineParameters}
-              isFullscreen={isFullscreen}
-              widgetsVariant="subtle"
-            />
-          )}
-        </Flex>
+              if (settings.text !== textValue) {
+                onUpdateVisualizationSettings({ text: textValue });
+              }
+            }}
+          />
+        )}
+        {inlineParameters.length > 0 && (
+          <DashboardParameterList
+            parameters={inlineParameters}
+            isFullscreen={isFullscreen}
+            widgetsVariant="subtle"
+          />
+        )}
       </InputContainer>
     );
   }
