@@ -132,6 +132,7 @@ export interface TableAction
   > {
   table_id: number;
   table_name: string;
+  name: string;
   database_id?: DatabaseId;
   database_enabled_actions: boolean;
   kind: string;

@@ -14,13 +14,13 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
 import type {
+  DataGridWritebackAction,
   DatasetColumn,
   DatasetData,
   Field,
   FieldWithMetadata,
   RowValue,
   RowValues,
-  WritebackAction,
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
@@ -50,8 +50,8 @@ type EditTableDataGridProps = {
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
   cellsWithFailedUpdatesMap?: Record<CellUniqKey, true>;
-  rowActions?: WritebackAction[];
-  onActionRun?: (action: WritebackAction, row: Row<RowValues>) => void;
+  rowActions?: DataGridWritebackAction[];
+  onActionRun?: (action: DataGridWritebackAction, row: Row<RowValues>) => void;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   onColumnSort?: (field: Field) => void;
