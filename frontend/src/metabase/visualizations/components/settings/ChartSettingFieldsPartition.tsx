@@ -50,7 +50,7 @@ const AddAggregationPopover = ({
     <Popover
       opened={opened}
       onClose={close}
-      position={"right-start"}
+      position="right-start"
       onDismiss={close}
     >
       <Popover.Target>
@@ -185,7 +185,7 @@ export const ChartSettingFieldsPartition = ({
       _.mapObject(value || {}, (splitVal: SplitSettingValue[]) => {
         if (isNativeQuery) {
           const aggDetails = splitVal as NativeColumnSplit[];
-          return aggDetails.map(({ name, _column }) => {
+          return aggDetails.map(({ name }) => {
             const col = columns.find((c) => c.name === name);
             if (!col) {
               console.warn(`Column ${name} not found in columns list`);
@@ -205,6 +205,7 @@ export const ChartSettingFieldsPartition = ({
     [columns, value, isNativeQuery],
   );
 
+  // Check for permissions to query metadata
   // TODO: figure out the right way to do this API call
   const [baseMetadataResults, setMetadataResults] = useState(null);
   useEffect(() => {

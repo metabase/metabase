@@ -26,8 +26,9 @@ export const QuestionChartSettings = ({
         transformedSeries,
         handleChangeSettings,
         false,
+        { question },
       ),
-    [propWidgets, transformedSeries, handleChangeSettings],
+    [propWidgets, transformedSeries, handleChangeSettings, question],
   );
 
   return (
