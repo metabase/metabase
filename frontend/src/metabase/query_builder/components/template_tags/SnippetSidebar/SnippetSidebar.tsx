@@ -31,7 +31,7 @@ import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const MIN_SNIPPETS_FOR_SEARCH = 1;
 
-interface SnippetSidebarProps {
+export interface SnippetSidebarProps {
   onClose: () => void;
   setModalSnippet: () => void;
   openSnippetModalWithSelectedText: () => void;
@@ -40,6 +40,7 @@ interface SnippetSidebarProps {
   snippetCollection: Collection;
   snippetCollections: Collection[];
   search: Record<string, any>[];
+  snippetCollectionId?: CollectionId | null;
   setSnippetCollectionId: (
     collectionId: CollectionId | null | undefined,
   ) => void;
@@ -246,7 +247,7 @@ class SnippetSidebarInner extends Component<SnippetSidebarProps> {
   }
 }
 
-export const SnippetSidebar = _.compose(
+export const SnippetSidebar: typeof SnippetSidebarInner = _.compose(
   Snippets.loadList(),
   SnippetCollections.loadList(),
   SnippetCollections.load({
@@ -309,7 +310,7 @@ function ArchivedSnippetsInner(props: {
 
 const ArchivedSnippets = _.compose(
   SnippetCollections.loadList({ query: { archived: true }, wrapped: true }),
-  connect((_state, { list }: { list: Collection[] }) => ({
+  connect((state: State, { list }: { list: Collection[] }) => ({
     archivedSnippetCollections: list,
   })),
   SnippetCollections.loadList(),
