@@ -22,7 +22,7 @@ export function GeneralSettingsPage() {
       <SettingsSection title={t`App config`}>
         <AdminSettingInput
           name="site-name"
-          title={t`Site Name`}
+          title={t`Site name`}
           inputType="text"
         />
 

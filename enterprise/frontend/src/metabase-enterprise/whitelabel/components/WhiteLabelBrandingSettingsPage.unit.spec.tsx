@@ -34,7 +34,7 @@ const setup = async () => {
 
 describe("branding settings", () => {
   const brandingSettings = [
-    "Color Palette",
+    "Color palette",
     "User interface colors",
     "Chart colors",
     "Logo",

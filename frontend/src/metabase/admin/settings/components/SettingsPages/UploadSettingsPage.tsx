@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { UpsellUploads } from "metabase/admin/upsells";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
-import { Flex, Stack, Title } from "metabase/ui";
+import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import { SettingsSection } from "../SettingsSection";
 import { UploadSettingsForm } from "../UploadSettings/UploadSettingsForm";
@@ -11,13 +11,15 @@ export function UploadSettingsPage() {
   return (
     <Stack>
       <Title order={1}>{t`Uploads`}</Title>
-      <SettingsSection>
-        <Flex justify="space-between" align="flex-start" gap="md">
+      <Flex justify="space-between" gap="lg">
+        <SettingsSection>
           <UploadSettingsForm />
+          <PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable />
+        </SettingsSection>
+        <Box>
           <UpsellUploads source="settings-uploads" />
-        </Flex>
-        <PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable />
-      </SettingsSection>
+        </Box>
+      </Flex>
     </Stack>
   );
 }

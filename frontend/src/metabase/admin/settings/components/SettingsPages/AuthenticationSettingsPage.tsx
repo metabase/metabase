@@ -1,9 +1,10 @@
+import { t } from "ttag";
+
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
 import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthCard";
@@ -18,30 +19,23 @@ export function AuthenticationSettingsPage({ tab }: { tab: string }) {
   }
 
   if (tab === "api-keys") {
-    return (
-      <Stack gap="lg" mx="md">
-        <Breadcrumbs
-          crumbs={[
-            ["Authentication", "/admin/settings/authentication"],
-            ["API Keys", "/admin/settings/authentication/api-keys"],
-          ]}
-        />
-        <ManageApiKeys />
-      </Stack>
-    );
+    return <ManageApiKeys />;
   }
 
   return (
-    <Flex justify={"space-between"}>
-      <Stack gap="xl" maw="42rem" px="lg" py="sm">
-        <GoogleAuthCard />
-        <LdapAuthCard />
-        <ApiKeysAuthCard />
-      </Stack>
-      <Box style={{ flexShrink: 0 }}>
-        <UpsellSSO source="authentication-sidebar" />
-      </Box>
-    </Flex>
+    <Box>
+      <Title order={1} mb="md">{t`Authentication`}</Title>
+      <Flex justify={"space-between"} gap="lg">
+        <Stack gap="xl">
+          <GoogleAuthCard />
+          <LdapAuthCard />
+          <ApiKeysAuthCard />
+        </Stack>
+        <Box style={{ flexShrink: 0 }}>
+          <UpsellSSO source="authentication-sidebar" />
+        </Box>
+      </Flex>
+    </Box>
   );
 }
 
