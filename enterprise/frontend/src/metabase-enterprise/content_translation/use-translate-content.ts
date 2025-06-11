@@ -46,6 +46,11 @@ export const useListContentTranslations = () => {
       : skipToken,
   );
   const dictionary = data?.data;
-  Lib.setContentTranslations(dictionary);
+
+  const localeSpecificDictionary = Object.fromEntries(
+    dictionary?.map(({ msgid, msgstr }) => [msgid, msgstr]) || [],
+  );
+
+  Lib.setContentTranslations(localeSpecificDictionary);
   return dictionary;
 };
