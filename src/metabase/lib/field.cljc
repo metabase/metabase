@@ -80,7 +80,7 @@
             previous-stage-number (-> (dissoc :table-id
                                               ::binning ::temporal-unit)
                                       (lib.join/with-join-alias nil)
-                                      (assoc :name (or (:lib/desired-column-alias column) (:name column)))
+                                      #_(assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                       (assoc :lib/source :source/previous-stage))))))))
 
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
@@ -90,26 +90,24 @@
    stage-number                                                          :- :int
    [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (let [metadata (merge
-                  (when-let [base-type (:base-type opts)]
-                    {:base-type base-type})
+                  (u/select-non-nil-keys opts [:base-type
+                                               :metabase.lib.query/transformation-added-base-type
+                                               ::original-effective-type
+                                               ::original-temporal-unit])
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
-                  (when-let [original-effective-type (::original-effective-type opts)]
-                    {::original-effective-type original-effective-type})
-                  (when-let [original-temporal-unit (::original-temporal-unit opts)]
-                    {::original-temporal-unit original-temporal-unit})
-                  ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
-                  ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is thruthy, ie. bound. Intent
-                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
+                  ;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+                  ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound. Intent
+                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise e.g.
                   ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
                   ;; contained `:temporal-unit` contains no `:inherited-temporal-unit`. If the column like this was used
                   ;; to generate ref for eg. order by it would contain the `:inherited-temporal-unit`, while
                   ;; the original column (eg. in breakout) would not.
-                  (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
+                  (let [inherited-temporal-unit-keys (cond-> [:inherited-temporal-unit]
                                                        lib.metadata.calculation/*propagate-binning-and-bucketing*
                                                        (conj :temporal-unit))]
                     (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
-                      {:inherited-temporal-unit inherited-temporal-unit}))
+                      {:inherited-temporal-unit (keyword inherited-temporal-unit)}))
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -122,12 +120,43 @@
                       {:was-binned (boolean was-binned)}))
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
-                  (cond
-                    (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
-                    join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
-                    :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name)})))]
+                  ;; Preserve additional information that may have been added by QP middleware. Sometimes pre-processing
+                  ;; middleware needs to add extra info to track things that it did (e.g. the
+                  ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds
+                  ;; keys to track which Fields it adds or needs to remap, and then the post-processing middleware
+                  ;; does the actual remapping based on that info)
+                  (when-let [external-namespaced-options (not-empty (into {}
+                                                                          (filter (fn [[k _v]]
+                                                                                    (and (qualified-keyword? k)
+                                                                                         (not= (namespace k) "lib")
+                                                                                         (not (str/starts-with? (namespace k) "metabase.lib")))))
+                                                                          opts))]
+                    {:options external-namespaced-options})
+                  (when (integer? id-or-name)
+                    (merge
+                     (or (lib.equality/resolve-field-id query stage-number id-or-name)
+                         {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
+                     ;; propagate stuff like display-name from the previous stage metadata if it exists.
+                     (when-let [previous-stage (lib.util/previous-stage query stage-number)]
+                       (when-let [previous-stage-cols (or (:metabase.lib.stage/cached-metadata previous-stage)
+                                                          (get-in previous-stage [:lib/stage-metadata :columns]))]
+                         (when-let [previous-stage-col (m/find-first (fn [col]
+                                                                       (and (= (:id col) id-or-name)
+                                                                            (= (lib.join.util/current-join-alias col)
+                                                                               join-alias)))
+                                                                     previous-stage-cols)]
+                           (select-keys previous-stage-col [:display-name]))))))
+                  (when (string? id-or-name)
+                    (let [resolved (or (resolve-column-name query stage-number id-or-name)
+                                       {:lib/type :metadata/column, :name (str id-or-name)})]
+                      ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
+                      ;; forward anything else? No idea. Waiting for an answer in
+                      ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
+                      (if join-alias
+                        (merge
+                         {:lib/type :metadata/column, :name (str id-or-name)}
+                         (select-keys resolved [:semantic-type]))
+                        resolved))))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
@@ -479,9 +508,21 @@
 (defn- column-metadata->field-ref
   [metadata]
   (let [inherited-column? (lib.field.util/inherited-column? metadata)
-        options           (merge {:lib/uuid       (str (random-uuid))
-                                  :base-type      (:base-type metadata)
+        options           (merge (u/select-non-nil-keys metadata [:base-type
+                                                                  :was-binned
+                                                                  ::original-effective-type
+                                                                  ::original-temporal-unit])
+                                 {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
+                                 ;; include `:metabase.lib.query/transformation-added-base-type` if this is going to
+                                 ;; be a field ID ref, so we can remove `:base-type` if it wasn't included in the
+                                 ;; original query if we convert this ref back to legacy (mostly important
+                                 ;; for [[metabase.query-processor.middleware.annotate/super-broken-legacy-field-ref]]
+                                 ;; purposes). But if this will have a Field name then don't include the key because
+                                 ;; we don't want the convert code to strip out base types -- they're required for
+                                 ;; field name refs.
+                                 (when-not (lib.field.util/inherited-column? metadata)
+                                   (select-keys metadata [:metabase.lib.query/transformation-added-base-type]))
                                  ;; This one deliberately comes first so it will be overwritten by current-join-alias.
                                  ;; We don't want both :source-field and :join-alias, though.
                                  (when-let [source-alias (and (not inherited-column?)
@@ -494,17 +535,11 @@
                                                          (lib.join.util/current-join-alias metadata))]
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
-                                   {:temporal-unit temporal-unit})
-                                 (when-let [original-effective-type (::original-effective-type metadata)]
-                                   {::original-effective-type original-effective-type})
-                                 (when-let [original-temporal-unit (::original-temporal-unit metadata)]
-                                   {::original-temporal-unit original-temporal-unit})
+                                   {:temporal-unit (keyword temporal-unit)})
                                  (when-let [inherited-temporal-unit (:inherited-temporal-unit metadata)]
-                                   {:inherited-temporal-unit inherited-temporal-unit})
+                                   {:inherited-temporal-unit (keyword inherited-temporal-unit)})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
-                                 (when-let [was-binned (:was-binned metadata)]
-                                   {:was-binned was-binned})
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id})

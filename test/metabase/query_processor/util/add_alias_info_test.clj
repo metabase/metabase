@@ -585,7 +585,7 @@
                                       ::add/position      1
                                       ::add/source-alias  "CC"
                                       ::add/source-table  ::add/source
-                                      :base-type          :type/Float}]]
+                                      :base-type          :type/Integer}]]
                      :limit        1})
                   (-> (lib.tu.macros/mbql-query orders
                         {:source-query {:source-table $$orders
@@ -638,12 +638,10 @@
                     :display_name "Created At"}
                    {:name         "ID"
                     :field_ref    [:field (meta/id :orders :id) {:join-alias "Question 54"}]
-                    :display_name "Question 54 → ID"
-                    :source_alias "Question 54"}
+                    :display_name "Question 54 → ID"}
                    {:name         "ADDRESS"
                     :field_ref    [:field (meta/id :people :address) {:join-alias "Question 54"}]
-                    :display_name "Question 54 → Address"
-                    :source_alias "Question 54"}]
+                    :display_name "Question 54 → Address"}]
                   (qp.preprocess/query->expected-cols query))))))))
 
 (deftest ^:parallel use-source-unique-aliases-test
