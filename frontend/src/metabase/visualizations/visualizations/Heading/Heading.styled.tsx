@@ -12,10 +12,10 @@ interface InputContainerProps {
 
 export const InputContainer = styled.div<InputContainerProps>`
   display: flex;
-  flex-direction: column;
   width: 100%;
   height: 100%;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   overflow: hidden;
   padding-left: 0.75rem;
   pointer-events: auto;
@@ -62,16 +62,6 @@ export const TextInput = styled.input`
   margin: 0.25rem 0;
   pointer-events: all;
   resize: none;
-  width: 100%;
-`;
-
-export const HeadingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  justify-content: center;
-  overflow: hidden;
-  padding-left: 0.75rem;
   width: 100%;
 `;
 

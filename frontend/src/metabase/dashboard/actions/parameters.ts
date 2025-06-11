@@ -60,7 +60,7 @@ import {
   getQuestions,
   getSelectedTabId,
 } from "../selectors";
-import { isQuestionDashCard } from "../utils";
+import { isQuestionDashCard, supportsInlineParameters } from "../utils";
 
 import {
   type SetDashCardAttributesOpts,
@@ -128,29 +128,51 @@ export const setEditingParameter =
     }
   };
 
+interface AddParameterPayload {
+  option: ParameterMappingOptions;
+  dashcardId?: DashCardId;
+}
+
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  (option: ParameterMappingOptions) => (dispatch, getState) => {
-    let newId: undefined | ParameterId = undefined;
+  ({ option, dashcardId }: AddParameterPayload) =>
+    (dispatch, getState) => {
+      let newId: undefined | ParameterId = undefined;
 
-    updateParameters(dispatch, getState, (parameters) => {
-      const parameter = createParameter(option, parameters);
-      newId = parameter.id;
-      return [...parameters, parameter];
-    });
+      updateParameters(dispatch, getState, (parameters) => {
+        const parameter = createParameter(option, parameters);
+        newId = parameter.id;
+        return [...parameters, parameter];
+      });
 
-    if (newId) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId: newId,
-          },
-        }),
-      );
-    }
-  },
+      if (newId) {
+        const dashcard = dashcardId
+          ? getDashCardById(getState(), dashcardId)
+          : null;
+
+        if (dashcard && supportsInlineParameters(dashcard)) {
+          const currentParameters = dashcard.inline_parameters ?? [];
+          dispatch(
+            setDashCardAttributes({
+              id: dashcard.id,
+              attributes: {
+                inline_parameters: [...currentParameters, newId],
+              },
+            }),
+          );
+        }
+
+        dispatch(
+          setSidebar({
+            name: SIDEBAR_NAME.editParameter,
+            props: {
+              parameterId: newId,
+            },
+          }),
+        );
+      }
+    },
 );
 
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";

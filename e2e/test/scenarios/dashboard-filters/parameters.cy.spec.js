@@ -786,6 +786,85 @@ describe("scenarios > dashboard > parameters", () => {
         .should("be.visible");
     });
   });
+
+  describe("parameters in heading dashcards", () => {
+    const ordersCountByCategory = {
+      display: "bar",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+      },
+    };
+
+    it("should be able to add and use filters", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+      });
+
+      H.addHeadingWhileEditing("Heading");
+      H.setDashCardFilter(1, "Text or Category", null, "Category");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.saveDashboard();
+
+      // Verify the filter doesn't appear in the dashboard header
+      H.dashboardParametersContainer().should("not.exist");
+
+      // Verify filtering works
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget().contains("Category").click();
+      });
+      H.dashboardParametersPopover().within(() => {
+        cy.findByLabelText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      // Add a second filter
+      H.editDashboard();
+      H.setDashCardFilter(1, "Number", null, "Count");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Count");
+      H.saveDashboard();
+
+      // Verify the filter doesn't appear in the dashboard header
+      H.dashboardParametersContainer().should("not.exist");
+
+      // Verify filtering works
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget().contains("Category").should("exist");
+        H.filterWidget().contains("Count").click();
+      });
+      H.dashboardParametersPopover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("6000");
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(0)
+        .findByText(/No results/)
+        .should("exist");
+
+      H.getDashboardCard(1).within(() => {
+        H.clearFilterWidget(1);
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+    });
+  });
 });
 
 function isFilterSelected(filter, bool) {

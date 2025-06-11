@@ -2,40 +2,52 @@ import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getParameterValues } from "metabase/dashboard/selectors";
+import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
+import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
+import {
+  getDashCardInlineValuePopulatedParameters,
+  getIsEditingParameter,
+  getParameterValues,
+} from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
+import { Flex } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
-  QuestionDashboardCard,
+  VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  HeadingContainer,
-  HeadingContent,
-  InputContainer,
-  TextInput,
-} from "./Heading.styled";
+import { HeadingContent, InputContainer, TextInput } from "./Heading.styled";
 
 interface HeadingProps {
   isEditing: boolean;
+  isFullscreen: boolean;
+  isMobile: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: QuestionDashboardCard;
+  dashcard: VirtualDashboardCard;
   settings: VisualizationSettings;
   dashboard: Dashboard;
 }
 
 export function Heading({
+  dashboard,
+  dashcard,
   settings,
   isEditing,
+  isFullscreen,
+  isMobile,
   onUpdateVisualizationSettings,
-  dashcard,
-  dashboard,
 }: HeadingProps) {
+  const inlineParameters = useSelector((state) =>
+    getDashCardInlineValuePopulatedParameters(state, dashcard?.id),
+  );
   const parameterValues = useSelector(getParameterValues);
+
+  const isEditingParameter = useSelector(getIsEditingParameter);
+
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
@@ -63,7 +75,7 @@ export function Heading({
   );
 
   const hasContent = !isEmpty(settings.text);
-  const placeholder = t`Heading`;
+  const placeholder = t`You can connect widgets to {{variables}} in heading cards.`;
 
   if (isEditing) {
     return (
@@ -73,7 +85,9 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
-        {isPreviewing ? (
+        {isEditingParameter ? (
+          <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
+        ) : isPreviewing ? (
           <HeadingContent
             data-testid="editing-dashboard-heading-preview"
             isEditing={isEditing}
@@ -99,15 +113,36 @@ export function Heading({
             }}
           />
         )}
+        {inlineParameters.length > 0 && (
+          <Flex style={{ flex: "0 0 auto" }}>
+            <DashboardParameterList
+              parameters={inlineParameters}
+              isFullscreen={isFullscreen}
+            />
+          </Flex>
+        )}
       </InputContainer>
     );
   }
 
   return (
-    <HeadingContainer>
+    <Flex
+      w="100%"
+      h="100%"
+      align="center"
+      justify="space-between"
+      pl="0.75rem"
+      style={{ overflow: "hidden" }}
+    >
       <HeadingContent data-testid="saved-dashboard-heading-content">
         {content}
       </HeadingContent>
-    </HeadingContainer>
+      {inlineParameters.length > 0 && (
+        <DashboardParameterList
+          parameters={inlineParameters}
+          isFullscreen={isFullscreen}
+        />
+      )}
+    </Flex>
   );
 }

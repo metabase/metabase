@@ -50,6 +50,8 @@ import {
   canResetFilter,
   getMappedParametersIds,
   hasDatabaseActionsEnabled,
+  hasInlineParameters,
+  isDashcardInlineParameter,
   isQuestionCard,
   isQuestionDashCard,
 } from "./utils";
@@ -259,6 +261,12 @@ export const getHasUnappliedParameterValues = createSelector(
   },
 );
 
+export const getEffectiveParameterValues = createSelector(
+  [getParameterValues, getDraftParameterValues, getIsAutoApplyFilters],
+  (values, draftValues, isAutoApplyFilters) =>
+    isAutoApplyFilters ? values : draftValues,
+);
+
 const getIsParameterValuesEmpty = createSelector(
   [getParameterValues],
   (parameterValues) => {
@@ -410,19 +418,46 @@ export const getParameters = createSelector(
   },
 );
 
-export const getValuePopulatedParameters = createSelector(
+export const getDashboardHeaderParameters = createSelector(
+  [getDashcards, getParameters],
+  (dashcards, parameters) => {
+    const dashcardList = Object.values(dashcards);
+    return parameters.filter(
+      (parameter) => !isDashcardInlineParameter(parameter.id, dashcardList),
+    );
+  },
+);
+
+export const getDashboardHeaderValuePopulatedParameters = createSelector(
+  [getDashboardHeaderParameters, getEffectiveParameterValues],
+  (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
+);
+
+export const getDashCardInlineValuePopulatedParameters = createSelector(
   [
+    getDashcards,
     getParameters,
-    getParameterValues,
-    getDraftParameterValues,
-    getIsAutoApplyFilters,
+    getEffectiveParameterValues,
+    (_, dashcardId: number) => dashcardId,
   ],
-  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+  (dashcards, parameters, parameterValues, dashcardId) => {
+    const dashcard = dashcards[dashcardId];
+    if (!dashcard || !hasInlineParameters(dashcard)) {
+      return [];
+    }
+    const inlineParameters = dashcard.inline_parameters.map((parameterId) =>
+      parameters.find((p) => p.id === parameterId),
+    );
     return _getValuePopulatedParameters({
-      parameters,
-      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+      parameters: inlineParameters,
+      values: parameterValues,
     });
   },
+);
+
+export const getValuePopulatedParameters = createSelector(
+  [getParameters, getEffectiveParameterValues],
+  (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
 );
 
 export const getMissingRequiredParameters = createSelector(
@@ -651,14 +686,15 @@ export const getHasModelActionsEnabled = createSelector(
   },
 );
 
-export const getVisibleValuePopulatedParameters = createSelector(
-  [getValuePopulatedParameters, getHiddenParameterSlugs],
-  getVisibleParameters,
-);
-
 export const getFiltersToReset = createSelector(
-  [getVisibleValuePopulatedParameters],
-  (parameters) => parameters.filter(canResetFilter),
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  (parameters, hiddenParameterSlugs) => {
+    const visibleParameters = getVisibleParameters(
+      parameters,
+      hiddenParameterSlugs,
+    );
+    return visibleParameters.filter(canResetFilter);
+  },
 );
 
 export const getCanResetFilters = createSelector(

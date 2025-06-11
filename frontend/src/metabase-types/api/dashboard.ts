@@ -186,6 +186,7 @@ export type VisualizerDashboardCard = QuestionDashboardCard & {
 export type VirtualDashboardCard = BaseDashboardCard & {
   card_id: null;
   card: VirtualCard;
+  inline_parameters: ParameterId[] | null;
   parameter_mappings?: VirtualDashCardParameterMapping[] | null;
   visualization_settings: BaseDashboardCard["visualization_settings"] & {
     virtual_card: VirtualCard;
