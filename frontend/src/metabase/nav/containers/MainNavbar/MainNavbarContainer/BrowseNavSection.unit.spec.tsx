@@ -71,10 +71,10 @@ describe("BrowseNavSection", () => {
   });
 
   it("clicking the 'Add data' button triggers the modal", async () => {
-    const { onAddDataModalOpen } = setup();
+    const { onModalOpen } = setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Add data" }));
-    expect(onAddDataModalOpen).toHaveBeenCalledTimes(1);
+    expect(onModalOpen).toHaveBeenCalledTimes(1);
   });
 
   it("should render Models, Databases, and Metrics when not embedding in iframe", () => {
@@ -156,7 +156,7 @@ interface SetupOpts {
 }
 
 function setup({ isEmbeddingIframe, entityTypes }: SetupOpts = {}) {
-  const onAddDataModalOpen = jest.fn();
+  const onModalOpen = jest.fn();
 
   if (isEmbeddingIframe) {
     jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
@@ -184,10 +184,10 @@ function setup({ isEmbeddingIframe, entityTypes }: SetupOpts = {}) {
        */
       nonEntityItem={{ type: "non-entity", url: "/" }}
       onItemSelect={jest.fn()}
-      onAddDataModalOpen={onAddDataModalOpen}
+      onModalOpen={onModalOpen}
     />,
     maybeInitialState,
   );
 
-  return { onAddDataModalOpen };
+  return { onModalOpen };
 }

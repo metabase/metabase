@@ -10,19 +10,19 @@ const setup = ({
 }: {
   hasChildren?: boolean;
 } = {}) => {
-  const onAddDataModalOpen = jest.fn();
+  const onModalOpen = jest.fn();
 
   renderWithProviders(
     <GettingStartedSection
       nonEntityItem={{ type: "collection" }}
-      onAddDataModalOpen={onAddDataModalOpen}
+      onModalOpen={onModalOpen}
     >
       {hasChildren && "Child"}
     </GettingStartedSection>,
     { storeInitialState: createMockState() },
   );
 
-  return { onAddDataModalOpen };
+  return { onModalOpen };
 };
 
 describe("GettingStartedSection", () => {
@@ -54,8 +54,8 @@ describe("GettingStartedSection", () => {
   });
 
   it("should trigger the modal on 'Add data' click", async () => {
-    const { onAddDataModalOpen } = setup();
+    const { onModalOpen } = setup();
     await userEvent.click(screen.getByText("Add data"));
-    expect(onAddDataModalOpen).toHaveBeenCalledTimes(1);
+    expect(onModalOpen).toHaveBeenCalledTimes(1);
   });
 });
