@@ -46,8 +46,6 @@
   ([m boolean-types]
    (and (map? m)
         (some-isa? ((some-fn :base-type :effective-type)
-                    ;; :value clauses have snake keys like :base_type, but field metadata is a snake-hating-map and
-                    ;; will throw if you try to access snake keys, so normalize them first.
                     (update-keys m mbql.u/normalize-token))
                    boolean-types))))
 

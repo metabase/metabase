@@ -50,12 +50,13 @@
   (mapv
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
-      (select-keys final-col [:id :ident :description :display_name :semantic_type :fk_target_field_id
-                              :settings :field_ref :base_type :effective_type :database_type
-                              :remapped_from :remapped_to :coercion_strategy :visibility_type
-                              :was_binned :table_id])
+      final-col
+      #_(select-keys final-col [:id :ident :description :display_name :semantic_type :fk_target_field_id
+                                :settings :field_ref :base_type :effective_type :database_type
+                                :remapped_from :remapped_to :coercion_strategy :visibility_type
+                                :was_binned :table_id])
       insights-col
-      {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
+      {:name (:name final-col)}   ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))
    final-col-metadata

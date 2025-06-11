@@ -87,13 +87,13 @@
 (defn- ensure-pmbql-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
-        (mu/disable-enforcement
-          (lib/without-cleaning
-           (fn []
-             (let [query' (-> (cond->> query
+        (let [query' (mu/disable-enforcement
+                       (lib/without-cleaning
+                        (fn []
+                          (-> (cond->> query
                                 (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
-                              (copy-unconverted-properties query))]
-               (-> query' middleware-fn ->legacy))))))
+                              (copy-unconverted-properties query)))))]
+          (-> query' middleware-fn ->legacy)))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
@@ -203,8 +203,4 @@
       ;; check where this is used.
       (->> (annotate/expected-cols
             (lib/query (qp.store/metadata-provider) preprocessed))
-           ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
-           ;; directly we can stop stripping these out
-           (mapv (fn [col]
-                   (m/remove-keys #(= "lib" (namespace %)) col)))
            not-empty))))

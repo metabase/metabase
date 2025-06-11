@@ -301,7 +301,9 @@
                         (->> (column-from-join-fields query stage-number field-metadata join-alias)
                              (adjust-ident join)
                              (add-source-and-desired-aliases join unique-name-fn)))
-                      field-metadatas)]
+                      field-metadatas)
+          cols (for [col cols]
+                 (with-join-alias col join-alias))]
       (concat cols (lib.metadata.calculation/remapped-columns join-query -1 cols options)))))
 
 (defmethod lib.metadata.calculation/visible-columns-method :mbql/join

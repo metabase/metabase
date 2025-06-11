@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -42,8 +41,7 @@
   [instance metadata-type]
   (-> instance
       (update-keys memoized-kebab-key)
-      (assoc :lib/type metadata-type)
-      u.snake-hating-map/snake-hating-map))
+      (assoc :lib/type metadata-type)))
 
 ;;;
 ;;; Database

@@ -333,7 +333,7 @@
                                                            (meta/field-metadata :products :id))])))
           columns   (lib/returned-columns query)
           category  (-> (m/find-first #(= (:name %) "CATEGORY") columns)
-                        (dissoc :join-alias :metabase.lib.join/join-alias)
+                        (dissoc :metabase.lib.join/join-alias)
                         (assoc :lib/source :source/fields))
           context   {:column     category
                      :column-ref (lib/ref category)

@@ -6,6 +6,7 @@
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -72,11 +73,23 @@
       (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
                       {:field field-name})))
     ;; try to find field in source-metadata with matching name
-    (let [mlv2-metadatas (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)]
+    (let [mlv2-metadatas (if (every? #(= (:lib/type %) :metadata/column) source-metadata)
+                           source-metadata
+                           (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata))
+          mlv2-metadatas (for [col mlv2-metadatas]
+                           (let [col (merge col
+                                            (when-not (:metabase.lib.join/join-alias col)
+                                              (when-let [join-alias (lib.util.match/match-one (:field-ref col)
+                                                                      [:field _id-or-name opts]
+                                                                      (:join-alias opts))]
+                                                {:metabase.lib.join/join-alias join-alias})))]
+                             (update col :lib/desired-column-alias #(or % (lib.join.util/desired-alias (qp.store/metadata-provider) col)))))]
       (or
        (lib.equality/find-matching-column
         [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]
         mlv2-metadatas)
+       (println "(pr-str field-name):" (pr-str field-name))                                       ; NOCOMMIT
+       (println "(u/pprint-to-str mlv2-metadatas):" (metabase.util/pprint-to-str mlv2-metadatas)) ; NOCOMMIT
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
                             (pr-str field-name))
                        {:field field-name, :resolved-metadata mlv2-metadatas}))))))

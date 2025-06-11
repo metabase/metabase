@@ -16,6 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
@@ -1342,15 +1343,17 @@
   This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
   form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
   `:source-query`s."
-  [:map
-   [:name         ::lib.schema.common/non-blank-string]
-   [:base_type    ::lib.schema.common/base-type]
-   ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
-   ;; able to remove this as a requirement
-   [:display_name ::lib.schema.common/non-blank-string]
-   [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   ;; you'll need to provide this in order to use BINNING
-   [:fingerprint   {:optional true} [:maybe :map]]])
+  [:or
+   [:ref ::lib.schema.metadata/column]
+   [:map
+    [:name         ::lib.schema.common/non-blank-string]
+    [:base_type    ::lib.schema.common/base-type]
+    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
+    ;; able to remove this as a requirement
+    [:display_name ::lib.schema.common/non-blank-string]
+    [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+    ;; you'll need to provide this in order to use BINNING
+    [:fingerprint   {:optional true} [:maybe :map]]]])
 
 (def SourceQueryMetadata
   "Alias for ::SourceQueryMetadata -- prefer that instead."

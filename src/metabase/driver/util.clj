@@ -20,8 +20,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
-   [metabase.util.snake-hating-map :refer [snake-hating-map?]])
+   [metabase.util.performance :as perf])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -218,9 +217,7 @@
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver feature database]]
                     [driver feature (mdb/unique-identifier) (:id database)
-                     (if (snake-hating-map? database)
-                       (:updated-at database)
-                       (:updated_at database))])))))
+                     ((some-fn :updated-at :updated_at) database)])))))
 
 (defn supports?
   "A defensive wrapper around [[database-supports?]]. It adds logging, caching, and error handling to avoid crashing the app
@@ -242,9 +239,7 @@
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver database]]
                     [driver (mdb/unique-identifier) (:id database)
-                     (if (snake-hating-map? database)
-                       (:updated-at database)
-                       (:updated_at database))])))))
+                     ((some-fn :updated-at :updated_at) database)])))))
 
 (defn features
   "Return a set of all features supported by `driver` with respect to `database`."

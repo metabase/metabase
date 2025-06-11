@@ -54,24 +54,24 @@
 
 (deftest ^:parallel basic-test
   (testing "Can we automatically add source metadata to the parent level of a query? If the source query has `:fields`"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-table $$venues
-                                :fields       [$id $name]}
-              :source-metadata (venues-source-metadata :id :name)})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :fields       [$id $name]}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-table $$venues
+                                 :fields       [$id $name]}
+               :source-metadata (venues-source-metadata :id :name)})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-table $$venues
+                               :fields       [$id $name]}}))))))
 
 (deftest ^:parallel basic-parent-level-test
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query does not "
                 "have `:fields`")
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-table $$venues}
-              :source-metadata (venues-source-metadata)})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-table $$venues}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-table $$venues}
+               :source-metadata (venues-source-metadata)})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-table $$venues}}))))))
 
 (deftest ^:parallel basic-summary-columns-test
   (testing "Can we add source metadata for a source query that has breakouts/aggregations?"
@@ -171,56 +171,56 @@
 (deftest ^:parallel nested-sources-test
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query has a "
                 "source query with source metadata")
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-query    {:source-table $$venues
-                                                  :fields       [$id $name]}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-query    {:source-table $$venues
-                                                :fields       [$id $name]}
-                              :source-metadata (venues-source-metadata :id :name)}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-query    {:source-table $$venues
+                                                   :fields       [$id $name]}
+                                 :source-metadata (venues-source-metadata :id :name)}
+               :source-metadata (venues-source-metadata :id :name)})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-query    {:source-table $$venues
+                                                 :fields       [$id $name]}
+                               :source-metadata (venues-source-metadata :id :name)}}))))))
 
 (deftest ^:parallel nested-sources-3-levels-with-source-metadata-test
   (testing "Can we automatically add source metadata if a source-query nested 3 levels has `:source-metadata`?"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-query    {:source-query    {:source-table $$venues
-                                                                    :fields       [$id $name]}
-                                                  :source-metadata (venues-source-metadata :id :name)}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-query    {:source-query    {:source-table $$venues
+                                                                     :fields       [$id $name]}
+                                                   :source-metadata (venues-source-metadata :id :name)}
+                                 :source-metadata (venues-source-metadata :id :name)}
+               :source-metadata (venues-source-metadata :id :name)})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
                {:source-query
-                {:source-query    {:source-table $$venues
-                                   :fields       [$id $name]}
-                 :source-metadata (venues-source-metadata :id :name)}}}))))))
+                {:source-query
+                 {:source-query    {:source-table $$venues
+                                    :fields       [$id $name]}
+                  :source-metadata (venues-source-metadata :id :name)}}}))))))
 
 (deftest ^:parallel nested-sources-3-levels-with-no-source-metadata-test
   (testing "Ok, how about a source query nested 3 levels with no `source-metadata`?"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-query    {:source-query    {:source-table $$venues}
-                                                  :source-metadata (venues-source-metadata)}
-                                :source-metadata (venues-source-metadata)}
-              :source-metadata (venues-source-metadata)})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-query {:source-query {:source-table $$venues}}}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-query    {:source-query    {:source-table $$venues}
+                                                   :source-metadata (venues-source-metadata)}
+                                 :source-metadata (venues-source-metadata)}
+               :source-metadata (venues-source-metadata)})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-query {:source-query {:source-table $$venues}}}}))))))
 
 (deftest ^:parallel nested-sources-3-levels-with-fields-test
   (testing "nested 3 levels with `fields`"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-query    {:source-query    {:source-table $$venues
-                                                                    :fields       [$id $name]}
-                                                  :source-metadata (venues-source-metadata :id :name)}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-query {:source-query {:source-table $$venues
-                                                            :fields       [$id $name]}}}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-query    {:source-query    {:source-table $$venues
+                                                                     :fields       [$id $name]}
+                                                   :source-metadata (venues-source-metadata :id :name)}
+                                 :source-metadata (venues-source-metadata :id :name)}
+               :source-metadata (venues-source-metadata :id :name)})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-query {:source-query {:source-table $$venues
+                                                             :fields       [$id $name]}}}}))))))
 
 (deftest ^:parallel nested-sources-3-levels-with-summary-columns-test
   (testing "nested 3 levels with breakouts/aggregations"
@@ -380,8 +380,8 @@
       (letfn [(added-metadata [query]
                 (get-in (add-source-metadata query) [:query :source-metadata]))]
         (testing "\nShould add source metadata if there's none already"
-          (is (= expected-metadata
-                 (added-metadata query))))
+          (is (=? expected-metadata
+                  (added-metadata query))))
         (testing "\nShould use existing metadata if it's already there"
           ;; since it's using the existing metadata, it should have all the extra keys instead of the subset in
           ;; `expected-metadata`
@@ -391,5 +391,5 @@
           ;; pre-0.38.0 metadata didn't have `field_ref` or `id.`
           (let [legacy-metadata (for [col metadata]
                                   (dissoc col :field_ref :id))]
-            (is (= expected-metadata
-                   (added-metadata (assoc-in query [:query :source-metadata] legacy-metadata))))))))))
+            (is (=? expected-metadata
+                    (added-metadata (assoc-in query [:query :source-metadata] legacy-metadata))))))))))

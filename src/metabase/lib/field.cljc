@@ -79,7 +79,7 @@
           (cond-> column
             previous-stage-number (-> (dissoc :table-id
                                               ::binning ::temporal-unit)
-                                      (lib.join/with-join-alias nil)
+                                      #_(lib.join/with-join-alias nil)
                                       #_(assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                       (assoc :lib/source :source/previous-stage))))))))
 

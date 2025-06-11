@@ -33,14 +33,15 @@
    [:source    {:optional true} ::legacy-source]
    [:field-ref {:optional true} ::super-broken-legacy-field-ref]])
 
-(mr/def ::snake_cased-col
+(mr/def ::col-with-snake-cased-unqualified-keys
   [:and
    ::col
    [:fn
-    {:error/message "column with all snake-cased keys"}
+    {:error/message "column where all unqualified keys are snake-cased"}
     (fn [m]
       (every? (fn [k]
-                (not (str/includes? k "-")))
+                (or (qualified-keyword? k)
+                    (not (str/includes? k "-"))))
               (keys m)))]])
 
 (mr/def ::cols
@@ -60,12 +61,17 @@
   (fn [query _rff]
     (last-stage-type query)))
 
-(defn- ->snake_case [col]
-  (as-> col col
-    (update-keys col u/->snake_case_en)
-    (m/update-existing col :binning_info update-keys u/->snake_case_en)))
+(defn- snake-case-unqualified-keys [m]
+  (as-> m m
+    (update-keys m (fn [k]
+                     ;; only convert unqualified keywords to snake_case
+                     (cond-> k
+                       (simple-keyword? k) u/->snake_case_en)))
+    (m/update-existing m :binning_info snake-case-unqualified-keys)
+    ;; don't call this a `:metadata/column` since it's now in psuedo-legacy format
+    (dissoc m :lib/type)))
 
-(mu/defn expected-cols :- [:sequential ::snake_cased-col]
+(mu/defn expected-cols :- [:sequential ::col-with-snake-cased-unqualified-keys]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
@@ -78,7 +84,8 @@
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
    (for [col (lib.metadata.result-metadata/expected-cols query initial-cols)]
-     (->snake_case col))))
+     (-> col
+         snake-case-unqualified-keys))))
 
 (mu/defmethod add-column-info :mbql.stage/mbql :- ::qp.schema/rff
   [query :- ::lib.schema/query
