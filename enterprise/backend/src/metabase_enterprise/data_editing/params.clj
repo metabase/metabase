@@ -1,18 +1,9 @@
 (ns metabase-enterprise.data-editing.params
   (:require
-   [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
-   [metabase.actions.types :as types]
    [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
-   [metabase.driver :as driver]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- param-value
@@ -35,25 +26,6 @@
         :type/DateTime "datetime"
         "text"))))
 
-(defn- saved-param-base-type
-  [saved-param viz-field]
-  (let [{param-type :type} saved-param]
-    (case param-type
-      :string/= :type/Text
-      :number/= :type/Number
-      :date/single (case (:inputType viz-field)
-                              ;; formatting needs thought
-                     "datetime" :type/DateTime
-                     :type/Date)
-      (if (= "type" (namespace param-type))
-        type
-        (throw
-         (ex-info "Unsupported query action parameter type"
-                  {:status-code 500
-                   :param-type  param-type
-                   #_:scope       #_scope
-                   #_:unified     #_unified}))))))
-
 (defn- describe-table-action
   [& {:keys [action-kw
              table-id
@@ -67,6 +39,7 @@
                                         (t2/hydrate :dimensions
                                                     :has_field_values
                                                     :values))
+        ;; TODO: this should lives in our configuration
         dashcard-column-editable?   (or (some-> dashcard-viz :table.editableColumns set)
                                         ;; columns are assumed editable if no dashcard-viz specialisation
                                         (constantly true))
@@ -110,10 +83,26 @@
                           :value                   (param-value param-mapping row-delay)}))
                       vec)}))
 
+(defn- saved-param-base-type
+  [param-type viz-field]
+  (case param-type
+    :string/= :type/Text
+    :number/= :type/Number
+    :date/single (case (:inputType viz-field)
+                     ;; formatting needs thought
+                   "datetime" :type/DateTime
+                   :type/Date)
+    (if (= "type" (namespace param-type))
+      param-type
+      (throw
+       (ex-info "Unsupported query action parameter type"
+                {:status-code 500
+                 :param-type  param-type})))))
+
 (defn- saved-param-input-type
-  [saved-param viz-field]
+  [param-type viz-field]
   (cond
-             ;; we could distinguish between inline-select and dropdown (which are both options for model action params)
+    ;; we could distinguish between inline-select and dropdown (which are both options for model action params)
     (seq (:valueOptions viz-field))
     "dropdown"
 
@@ -121,7 +110,7 @@
     "textarea"
 
     :else
-    (condp #(isa? %2 %1) (saved-param-base-type saved-param viz-field)
+    (condp #(isa? %2 %1) (saved-param-base-type param-type viz-field)
       :type/Date     "date"
       :type/DateTime "datetime"
       "text")))
@@ -149,9 +138,9 @@
                          {:id            (:id param)
                           :display_name  (or (:display-name param) (:name param))
                           :param-mapping param-mapping
-                          :input_type    (saved-param-input-type param viz-field)
+                          :input_type    (saved-param-input-type (:type param) viz-field)
                           :optional      (and (not (:required param)) (not (:required viz-field)))
-                          :nullable      true             ; is there a way to know this?
+                          :nullable      true ; is there a way to know this?
                           :readonly      (= "readonly" (:visibility param-mapping))
                           :value         (param-value param-mapping row-delay)
                           :value_options (:valueOptions viz-field)}))
@@ -161,38 +150,40 @@
   "Describe parameters of an unified action."
   [unified scope input]
   (let [scope (actions/hydrate-scope scope)]
+    ;; TODO: we didn't handle dashboard-action
     (cond
-     ;; saved action
+      ;; saved action
+      ;; hmm, having checked like this makes me insecure, what makes having an action-id enforces that this
+      ;; is an saved question? what if put an aciton-id on a row action for some reasons?
       (:action-id unified)
       (describe-saved-action :action-id (:action-id unified))
 
-     ;; table action
+      ;; table action
       (:action-kw unified)
       (describe-table-action
        {:action-kw     (:action-kw unified)
-       ;; todo this should come from applying the (arbitrarily nested) mappings to the input
-       ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
+        ;; todo this should come from applying the (arbitrarily nested) mappings to the input
+        ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
         :table-id      (or (:table-id (:mapping (:inner-action unified)))
-                           (:table-id (:mapping unified))
-                           (:table-id input))
+                           (:table-id (:mapping unified)))
+        ;; ASK: can basic table action has these params and dash-viz?
         :param-mapping (:param-mapping unified)
+        ;; TODO is it really 2 layers deep?
         :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
-
       (:inner-action unified)
       (let [inner       (:inner-action unified)
-            mapping     (:param-mapping unified)
+            mapping     (:param-map unified)
             dashcard-id (:dashcard-id unified)
             saved-id    (:action-id inner)
             action-kw   (:action-kw inner)
             table-id    (or (:table-id mapping)
                             (:table-id (:mapping inner))
-                            (:table-id input)
                             (:table-id scope))
             _           (when-not table-id
                           (throw (ex-info "Must provide table-id" {:status-code 400})))
             row-delay   (delay
-                        ;; TODO this is incorrect - in general the row will not come from the table we are acting
-                        ;;      upon - this is not even true for our first use case!
+                         ;; TODO this is incorrect - in general the row will not come from the table we are acting
+                         ;;      upon - this is not even true for our first use case!
                           (when table-id
                             (let [pk-fields    (data-editing/select-table-pk-fields table-id)
                                   pk           (select-keys input (mapv (comp keyword :name) pk-fields))
@@ -205,14 +196,12 @@
                                  :row-action-dashcard-id dashcard-id
                                  :param-mapping          mapping
                                  :row-delay              row-delay)
-
           action-kw
           (describe-table-action :action-kw     action-kw
                                  :table-id      table-id
                                  :param-mapping mapping
                                  :dashcard-viz  (:dashcard-viz unified)
                                  :row-delay     row-delay)
-
-          :else (ex-info "Not a supported row action" {:status-code 500, :scope scope, :unified unified})))
+          :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified unified})))
       :else
-      (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
+      (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :unified unified})))))

@@ -275,6 +275,7 @@
     (string? raw-id) (if-let [[_ dashcard-id _nested-id] (re-matches #"^dashcard:([^:]+):(.*)$" raw-id)]
                        (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) (parse-long dashcard-id))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
+                             ;; TODO: this should belongs to our configuration
                              actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
                              viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
                              inner-id    (:actionId viz-action)
@@ -441,16 +442,12 @@
    ;; TODO support for bulk actions
    {:keys [action_id scope input]}]
   (let [scope   (actions/hydrate-scope scope)
+        ;; TODO consolidate this with [[fetch-unified-action]]
         unified (cond
                   (not (#{"table.row/create"
                           "table.row/update"
                           "table.row/delete"} action_id))
                   (fetch-unified-action scope action_id)
-
-                  (:table-id input)
-                  {:action-kw (keyword action_id)
-                   :mapping   {:table-id (:table-id input)
-                               :row      ::root}}
 
                   (:dashcard-id scope)
                   (let [{:keys [dashcard-id]} scope
@@ -460,6 +457,7 @@
                      :inner-action  {:action-kw (keyword action_id)
                                      :mapping   {:table-id (:table_id visualization_settings)
                                                  :row      ::root}}
+                     ;; TODO: this should belongs to our configuration
                      :param-mapping (->> visualization_settings
                                          :editableTable.enabledActions
                                          (some (fn [{:keys [id parameterMappings]}]
