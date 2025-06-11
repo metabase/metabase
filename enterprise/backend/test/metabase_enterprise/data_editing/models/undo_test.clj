@@ -39,13 +39,13 @@
   (undo/next-batch-num undo-or-redo user-id scope))
 
 (defn- undo-via-api! [user-id scope]
-  (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
+  (mt/user-http-request user-id :post "/action/v2/execute"
                         {:action_id "data-editing/undo"
                          :scope     scope
                          :input     {}}))
 
 (defn- redo-via-api! [user-id scope]
-  (mt/user-http-request user-id :post "/ee/data-editing/action/v2/execute"
+  (mt/user-http-request user-id :post "/action/v2/execute"
                         {:action_id "data-editing/redo"
                          :scope     scope
                          :input     {}}))

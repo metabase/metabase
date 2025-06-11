@@ -857,9 +857,10 @@
                                :model/Table {other-table-id :id} {:name "coffee_table" :db_id (mt/id)}]
                   (let [resp (mt/user-http-request :crowberto :get 200 (str "action/v2/?table-id=" table-id))]
                     (testing "Returns table actions with id, name, and description"
-                      (is (=? {:actions [{:id neg-int? :name "create" :description string?}
-                                         {:id neg-int? :name "update" :description string?}
-                                         {:id neg-int? :name "delete" :description string?}]}
+                      (is (=? {:actions [{:id neg-int? :name "Create" :description string?}
+                                         {:id neg-int? :name "Update" :description string?}
+                                         {:id neg-int? :name "Create or Update" :description string?}
+                                         {:id neg-int? :name "Delete" :description string?}]}
                               resp)))
                     (testing "Returns different action IDs for the different tables"
                       (let [actions-1 (:actions resp)
