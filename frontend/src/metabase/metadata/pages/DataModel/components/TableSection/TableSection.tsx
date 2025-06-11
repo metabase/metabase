@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,13 +8,22 @@ import {
 import { useToast } from "metabase/common/hooks";
 import {
   DiscardTableFieldValuesButton,
-  FieldOrderPicker,
   NameDescriptionInput,
   RescanTableFieldsButton,
   SortableFieldList,
   SyncTableSchemaButton,
 } from "metabase/metadata/components";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  SegmentedControl,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -31,6 +41,7 @@ export const TableSection = ({ params, table }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
+  const [isSorting, setIsSorting] = useState(false);
 
   return (
     <Stack gap={0} p="xl" pt={0}>
@@ -69,24 +80,59 @@ export const TableSection = ({ params, table }: Props) => {
 
       <Stack gap="lg">
         <Stack gap="sm">
-          <Flex align="flex-end" gap="md" justify="space-between">
-            <Text fw="bold" size="sm">{t`Fields`}</Text>
+          <Group
+            align="center"
+            gap="md"
+            h={48}
+            justify="space-between"
+            wrap="nowrap"
+          >
+            <Group align="center" gap="md" h="100%" wrap="nowrap">
+              <Text
+                flex="0 0 auto"
+                fw="bold"
+                size="sm"
+              >{t`Field sorting`}</Text>
 
-            <FieldOrderPicker
-              value={table.field_order}
-              onChange={async (fieldOrder) => {
-                await updateTable({
-                  id: table.id,
-                  field_order: fieldOrder,
-                });
+              {isSorting && (
+                <SegmentedControl
+                  data={getData()}
+                  size="sm"
+                  value={table.field_order}
+                  onChange={async (fieldOrder) => {
+                    await updateTable({
+                      id: table.id,
+                      field_order: fieldOrder,
+                    });
 
-                sendToast({
-                  icon: "check",
-                  message: t`Field order updated`,
-                });
-              }}
-            />
-          </Flex>
+                    sendToast({
+                      icon: "check",
+                      message: t`Field order updated`,
+                    });
+                  }}
+                />
+              )}
+            </Group>
+
+            {!isSorting && (
+              <Button
+                leftSection={<Icon name="sort_arrows" />}
+                px="sm"
+                py="xs"
+                size="xs"
+                onClick={() => setIsSorting(true)}
+              >{t`Sorting`}</Button>
+            )}
+
+            {isSorting && (
+              <Button
+                px="md"
+                py="xs"
+                size="xs"
+                onClick={() => setIsSorting(false)}
+              >{t`Done`}</Button>
+            )}
+          </Group>
 
           <SortableFieldList
             activeFieldId={fieldId}
@@ -122,3 +168,48 @@ export const TableSection = ({ params, table }: Props) => {
     </Stack>
   );
 };
+
+function getData() {
+  return [
+    {
+      value: "smart" as const,
+      label: (
+        <Tooltip label={t`Smart`}>
+          <Flex align="center" justify="center" w={24}>
+            <Icon name="sparkles" />
+          </Flex>
+        </Tooltip>
+      ),
+    },
+    {
+      value: "database" as const,
+      label: (
+        <Tooltip label={t`Database`}>
+          <Flex align="center" justify="center" w={24}>
+            <Icon name="database" />
+          </Flex>
+        </Tooltip>
+      ),
+    },
+    {
+      value: "alphabetical" as const,
+      label: (
+        <Tooltip label={t`Alphabetical`}>
+          <Flex align="center" justify="center" w={24}>
+            <Icon name="string" />
+          </Flex>
+        </Tooltip>
+      ),
+    },
+    {
+      value: "custom" as const,
+      label: (
+        <Tooltip label={t`Custom`}>
+          <Flex align="center" justify="center" w={24}>
+            <Icon name="palette" />
+          </Flex>
+        </Tooltip>
+      ),
+    },
+  ];
+}
