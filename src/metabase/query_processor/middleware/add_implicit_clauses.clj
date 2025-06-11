@@ -22,7 +22,6 @@
   "Return a sequence of all Fields for table that we'd normally include in the equivalent of a `SELECT *`."
   [table-id]
   (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
-       (remove :parent-id)
        (remove #(#{:sensitive :retired} (:visibility-type %)))
        (sort-by (juxt :position (comp u/lower-case-en :name)))))
 

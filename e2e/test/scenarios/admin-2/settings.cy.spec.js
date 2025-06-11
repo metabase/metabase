@@ -290,13 +290,12 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/notifications/slack");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metabase on Slack");
+      cy.findByTestId("admin-layout-content").findByText("Metabase on Slack");
+
       cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
       cy.button("Save changes").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(": invalid token");
+      cy.findByTestId("admin-layout-content").findByText(/invalid token/);
     });
   });
 });

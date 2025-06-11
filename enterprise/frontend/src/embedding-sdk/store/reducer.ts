@@ -1,6 +1,6 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import { samlTokenStorage } from "embedding/auth-common/saml-token-storage";
+import { samlTokenStorage } from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
   MetabaseFetchRequestTokenFn,
@@ -37,7 +37,10 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
-    authConfig: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "authMethod">,
+    authConfig: Pick<
+      MetabaseAuthConfig,
+      "metabaseInstanceUrl" | "preferredAuthMethod"
+    >,
     { dispatch, getState },
   ) => {
     // necessary to ensure that we don't use a popup every time the user

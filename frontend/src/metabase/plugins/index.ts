@@ -21,8 +21,6 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
-import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
-import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
@@ -121,14 +119,9 @@ export const PLUGIN_ADMIN_TROUBLESHOOTING = {
 };
 
 export const PLUGIN_ADMIN_SETTINGS = {
-  InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
+  InteractiveEmbeddingSettings: NotFoundPlaceholder,
   LicenseAndBillingSettings: PluginPlaceholder,
 };
-
-// functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
-  sections: typeof ADMIN_SETTINGS_SECTIONS,
-) => void)[] = [];
 
 // admin permissions
 export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
@@ -704,6 +697,7 @@ export const PLUGIN_METABOT = {
     useMemo(() => [] as PaletteAction[], []),
   adminNavItem: [] as AdminPath[],
   AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
