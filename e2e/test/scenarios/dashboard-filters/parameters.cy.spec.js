@@ -5,7 +5,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockHeadingDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -788,14 +791,26 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   describe("parameters in heading dashcards", () => {
+    const categoryParameter = createMockParameter({
+      id: "1b9cd9f1",
+      name: "Category",
+      type: "string/=",
+      slug: "category",
+      sectionId: "string",
+    });
+
+    const categoryFieldRef = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
+    ];
+
     const ordersCountByCategory = {
       display: "bar",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
+        breakout: [categoryFieldRef],
       },
     };
 
@@ -830,6 +845,10 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("not.exist");
       });
 
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget");
+      });
+
       // Add a second filter
       H.editDashboard();
       H.setDashCardFilter(1, "Number", null, "Count");
@@ -853,6 +872,10 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/No results/)
         .should("exist");
 
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget&count=6000");
+      });
+
       H.getDashboardCard(1).within(() => {
         H.clearFilterWidget(1);
       });
@@ -862,6 +885,85 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget&count=");
+      });
+    });
+
+    it("should be able to edit filters", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      H.getDashboardCard(0).findByText("Category").click();
+
+      H.setDashboardParameterName("Count");
+      H.setDashboardParameterType("Number");
+      H.setDashboardParameterOperator("Less than or equal to");
+
+      // Set default value
+      H.dashboardParameterSidebar().findByLabelText("Default value").click();
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("4000");
+        cy.button("Add filter").click();
+      });
+
+      // Connect to the card
+      H.selectDashboardFilter(H.getDashboardCard(1), "Count");
+
+      H.dashboardParameterSidebar().button("Done").click();
+      H.saveDashboard();
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText("4,000").should("exist");
+        cy.findByText("Category").should("not.exist");
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Doohickey").should("be.visible");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?count=4000");
       });
     });
   });
