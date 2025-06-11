@@ -9,7 +9,6 @@ import {
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -114,18 +113,12 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   onSetDatabaseId?: (id: DatabaseId) => void;
 };
 
-interface ExplicitSizeProps {
-  width: number;
-  height: number;
-}
-
 interface EntityLoaderProps {
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
 }
 
 type Props = OwnProps &
-  ExplicitSizeProps &
   EntityLoaderProps &
   Omit<CodeMirrorEditorProps, "query"> & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
@@ -202,6 +195,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       prevProps.query.question().parameters().length <
       this.props.query.question().parameters().length
     ) {
+      // rezise the editor to make it fit the constraints again
       this.setState({
         height: Math.min(
           this.state.height,
@@ -499,5 +493,4 @@ export default _.compose(
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  ExplicitSize(),
 )(NativeQueryEditorWrapper);
