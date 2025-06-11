@@ -132,7 +132,7 @@ type Props = OwnProps &
   };
 
 interface NativeQueryEditorState {
-  initialHeight: number;
+  height: number;
   isSelectedTextPopoverOpen: boolean;
   mobileShowParameterList: boolean;
   isPromptInputVisible: boolean;
@@ -147,7 +147,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
     const { query, viewHeight } = props;
     this.state = {
-      initialHeight: calcInitialEditorHeight({ query, viewHeight }),
+      height: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
       mobileShowParameterList: false,
       isPromptInputVisible: false,
@@ -375,7 +375,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         )}
         <ResizableBox
           ref={this.resizeBox}
-          height={this.state.initialHeight}
+          height={this.state.height}
           className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           maxConstraints={[
@@ -386,6 +386,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           handle={dragHandle}
           resizeHandles={["s"]}
           {...resizableBoxProps}
+          onResize={(_, { size }) => {
+            this.setState({ height: size.height });
+          }}
           onResizeStop={(e, data) => {
             this.props.handleResize();
             if (typeof resizableBoxProps?.onResizeStop === "function") {
