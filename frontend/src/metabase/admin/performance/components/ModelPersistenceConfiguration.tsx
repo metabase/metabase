@@ -14,7 +14,7 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { PersistedModelsApi } from "metabase/services";
-import { Box, Stack, Switch, Text } from "metabase/ui";
+import { Box, Stack, Switch, Text, Title } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
 
@@ -110,15 +110,16 @@ export const ModelPersistenceConfiguration = () => {
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
 
   return (
-    <Stack gap="xl" maw="40rem">
+    <Stack gap="xl">
       <Box
         mb="sm"
         lh="1.5rem"
         className={ModelPersistenceConfigurationS.Explanation}
       >
-        <p>
+        <Title order={1}>{t`Model persistence`}</Title>
+        <Text>
           {t`Enable model persistence to make your models (and the queries that use them) load faster.`}
-        </p>
+        </Text>
         <p>
           {c(
             '{0} is either "Metabase" or the customized name of the application.',

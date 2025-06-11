@@ -23,6 +23,7 @@ import {
   Skeleton,
   Stack,
   Text,
+  Title,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type { CacheableModel } from "metabase-types/api";
@@ -261,21 +262,20 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       }}
     >
       <Stack
-        gap="sm"
-        lh="1.5rem"
-        pt="md"
-        pb="md"
-        px="2.5rem"
+        gap="xl"
         style={{
           flex: 1,
           overflowY: "auto",
         }}
       >
-        <Box component="aside" maw="32rem" id={explanatoryAsideId}>
-          {t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set.`}
+        <Box component="aside" id={explanatoryAsideId}>
+          <Title order={1}>{t`Caching for dashboards and questions`}</Title>
+          <Text>
+            {t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set.`}
+          </Text>
         </Box>
         {confirmationModal}
-        <Flex maw="60rem">
+        <Flex>
           <DelayedLoadingAndErrorWrapper
             error={error}
             loading={loading}
