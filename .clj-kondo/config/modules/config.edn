@@ -1469,7 +1469,6 @@
    :api  #{metabase-enterprise.ai-sql-fixer.api}
    :uses #{api
            driver
-           enterprise/metabot-v3
            query-processor
            util
            enterprise/metabot-v3
