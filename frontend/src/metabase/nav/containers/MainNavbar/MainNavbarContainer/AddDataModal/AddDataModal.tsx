@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -29,19 +28,18 @@ export const AddDataModal = ({
   const [activeTab, setActiveTab] = useState<string | null>("db");
 
   const isAdmin = useSelector(getUserIsAdmin);
-  // Instances with DWH enabled already have uploads enabled by default.
-  // It is not possible to turn the uploads off, nor to delete the attached database.
+  const userCanAccessSettings = useSelector(canAccessSettings);
+
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+  const uploadDB = databases?.find((db) => db.uploads_enabled);
 
-  const uploadDbId = useSelector(
-    (state) => getSetting(state, "uploads-settings")?.db_id,
-  );
-  const areUploadsEnabled = !!uploadDbId || hasAttachedDWHFeature;
-
-  const uploadDB = databases?.find((db) => db.id === uploadDbId);
+  /**
+   * Uploads are always enabled for instances with the attached DWH.
+   * It is not possible to turn the uploads off, nor to delete the attached database.
+   */
+  const areUploadsEnabled = hasAttachedDWHFeature || !!uploadDB;
   const canUploadToDatabase = !!uploadDB?.canUpload();
 
-  const userCanAccessSettings = useSelector(canAccessSettings);
   const canManageUploads =
     isAdmin || (userCanAccessSettings && canUploadToDatabase);
   const canManageDatabases = isAdmin;
