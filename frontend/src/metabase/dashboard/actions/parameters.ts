@@ -62,6 +62,7 @@ import {
 } from "../selectors";
 import {
   findDashCardForInlineParameter,
+  isDashcardInlineParameter,
   isQuestionDashCard,
   supportsInlineParameters,
 } from "../utils";
@@ -245,9 +246,14 @@ export const setParameterMapping = createThunkAction(
     return (dispatch, getState) => {
       dispatch(closeAutoWireParameterToast());
 
+      const dashcards = Object.values(getDashcards(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (target !== null && isQuestionDashCard(dashcard)) {
+      if (
+        target !== null &&
+        isQuestionDashCard(dashcard) &&
+        !isDashcardInlineParameter(parameterId, dashcards)
+      ) {
         const selectedTabId = getSelectedTabId(getState());
 
         dispatch(
