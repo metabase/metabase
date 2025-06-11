@@ -1,8 +1,9 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-import { skipToken, useListActionsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   ActionFormInitialValues,
   DatasetData,
@@ -29,8 +30,8 @@ export const useTableActionsExecute = ({
 
   const hasAddedActions = actionsVizSettings && actionsVizSettings.length > 0;
 
-  const { data: actions } = useListActionsQuery(
-    hasAddedActions ? {} : skipToken,
+  const { data: actions } = useGetActionsQuery(
+    hasAddedActions ? null : skipToken,
   );
 
   const { tableActions, tableActionsVizSettingsSet } = useMemo(() => {
