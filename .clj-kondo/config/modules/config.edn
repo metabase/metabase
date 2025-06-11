@@ -394,6 +394,7 @@
            request
            revisions
            search
+           settings
            util
            warehouse-schema
            xrays}}
