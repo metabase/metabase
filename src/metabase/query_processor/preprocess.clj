@@ -93,11 +93,12 @@
             (-> (cond->> query
                   (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
                 (copy-unconverted-properties query)))
-          ;; apply the middleware
+          ;; apply the middleware WITH MALLI ENFORCEMENT ENABLED!
           (middleware-fn query)
           ;; now convert back to legacy without cleaning
-          (lib/without-cleaning
-           (fn [] (->legacy query)))))
+          (mu/disable-enforcement
+            (lib/without-cleaning
+             (fn [] (->legacy query))))))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
