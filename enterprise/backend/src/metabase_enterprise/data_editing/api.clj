@@ -3,7 +3,6 @@
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
-   [metabase.actions.models :as actions.models]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -213,7 +212,7 @@
                                (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
           fields-by-table    (group-by :table_id fields)
           table-actions      (for [t            editable-tables
-                                   [op op-name] actions.models/enabled-table-actions
+                                   [op op-name] actions/enabled-table-actions
                                    :let [fields (fields-by-table (:id t))
                                          action (actions/table-primitive-action t fields op)]]
                                (assoc action :table_name op-name))
@@ -407,9 +406,9 @@
      :- [:map
        ;; TODO docstrings for these
          [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
-         [:scope ::types/scope.raw]
-         [:params {:optional true} :map]
-         [:input :map]]]
+         [:scope     ::types/scope.raw]
+         [:params    {:optional true} :map]
+         [:input     :map]]]
     {:outputs (execute!* action_id scope params [input])}))
 
 (def execute-bulk
@@ -420,9 +419,9 @@
      {}
      {:keys [action_id scope inputs params]}
      :- [:map
-         [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
-         [:scope ::types/scope.raw]
-         [:inputs [:sequential :map]]
+         [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:scope                   ::types/scope.raw]
+         [:inputs                  [:sequential :map]]
          [:params {:optional true} :map]]]
   ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
     {:outputs (binding [actions/*params* params]
