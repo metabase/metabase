@@ -11876,6 +11876,74 @@ databaseChangeLog:
             constraintName: fk_metabot_prompt_card_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v55.2025-06-11T10:28:00
+      author: bronsa
+      comment: Added 0.55.0 -- add metabase_field_user_settings
+      changes:
+        - createTable:
+            tableName: metabase_field_user_settings
+            remarks: Mirror table of metabase_field to keep track of user-set values that are also updated during sync
+            columns:
+              - column:
+                  remarks: The related Field
+                  name: field_id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_user_setting_field_id
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the user setting was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the user setting was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: User-set semantic_type for the Field
+                  name: semantic_type
+                  type: varchar(254)
+              - column:
+                  remarks: User-set description for the Field
+                  name: description
+                  type: longtext
+              - column:
+                  remarks: User-set display_name for the Field
+                  name: display_name
+                  type: varchar(254)
+              - column:
+                  remarks: User-set visibility_type for the Field
+                  name: visibility_type
+                  type: varchar(32)
+              - column:
+                  remarks: User-set fk_target_field_id for the Field
+                  name: fk_target_field_id
+                  type: int
+              - column:
+                  remarks: User-set has_field_values for the Field
+                  name: has_field_values
+                  type: longtext
+              - column:
+                  remarks: User-set effective_type for the Field
+                  name: effective_type
+                  type: varchar(255)
+              - column:
+                  remarks: User-set coercion_strategy for the Field
+                  name: coercion_strategy
+                  type: varchar(255)
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
