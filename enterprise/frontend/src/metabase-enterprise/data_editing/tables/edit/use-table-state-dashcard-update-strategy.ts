@@ -3,14 +3,20 @@ import { useCallback, useMemo } from "react";
 import { updateCardData } from "metabase/dashboard/actions/data-fetching";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { RowValue } from "metabase-types/api";
+
+import type { RowCellsWithPkValue } from "../types";
 
 import {
   type TableEditingStateUpdateStrategy,
   createPrimaryKeyToUpdatedRowObjectMap,
   mapDataEditingRowObjectsToRowValues,
 } from "./use-table-state-update-strategy";
+import {
+  getPkColumns,
+  getRowObjectPkUniqueKeyByColumnNames,
+  getRowUniqueKeyByPkIndexes,
+} from "./utils";
 
 export function useTableEditingStateDashcardUpdateStrategy(
   dashcardId: number,
@@ -23,7 +29,7 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsCreated = useCallback(
-    (rows: Record<string, RowValue>[]) => {
+    (rows: RowCellsWithPkValue[]) => {
       if (!cardData) {
         return;
       }
@@ -45,15 +51,17 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsUpdated = useCallback(
-    (rows: Record<string, RowValue>[]) => {
+    (rows: RowCellsWithPkValue[]) => {
       if (!cardData) {
         return;
       }
 
-      const pkColumnIndex = cardData.data.cols.findIndex(isPK);
-      const pkColumnName = cardData.data.cols[pkColumnIndex].name;
+      const { indexes: pkIndexes, names: pkNames } = getPkColumns(
+        cardData.data.cols,
+      );
+
       const primaryKeyToUpdatedRowObjectMap =
-        createPrimaryKeyToUpdatedRowObjectMap(pkColumnName, rows);
+        createPrimaryKeyToUpdatedRowObjectMap(pkNames, rows);
 
       const originalRowsPkMap: Map<RowValue, RowValue[]> = new Map();
 
@@ -63,12 +71,12 @@ export function useTableEditingStateDashcardUpdateStrategy(
           data: {
             ...cardData.data,
             rows: cardData.data.rows.map((row) => {
-              const rowPkValue = row[pkColumnIndex];
+              const rowPkValuesKey = getRowUniqueKeyByPkIndexes(pkIndexes, row);
               const updatedRowObject =
-                primaryKeyToUpdatedRowObjectMap.get(rowPkValue);
+                primaryKeyToUpdatedRowObjectMap.get(rowPkValuesKey);
 
               if (updatedRowObject) {
-                originalRowsPkMap.set(rowPkValue, row);
+                originalRowsPkMap.set(rowPkValuesKey, row);
 
                 const updatedRow = row.map((value, index) => {
                   const columnName = cardData.data.cols[index].name;
@@ -80,7 +88,7 @@ export function useTableEditingStateDashcardUpdateStrategy(
                   return value;
                 });
 
-                primaryKeyToUpdatedRowObjectMap.delete(rowPkValue);
+                primaryKeyToUpdatedRowObjectMap.delete(rowPkValuesKey);
 
                 return updatedRow;
               }
@@ -99,8 +107,12 @@ export function useTableEditingStateDashcardUpdateStrategy(
               data: {
                 ...cardData.data,
                 rows: cardData.data.rows.map((row) => {
-                  const rowPkValue = row[pkColumnIndex];
-                  const originalRowObject = originalRowsPkMap.get(rowPkValue);
+                  const rowPkValuesKey = getRowUniqueKeyByPkIndexes(
+                    pkIndexes,
+                    row,
+                  );
+                  const originalRowObject =
+                    originalRowsPkMap.get(rowPkValuesKey);
                   return originalRowObject || row;
                 }),
               },
@@ -112,14 +124,18 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsDeleted = useCallback(
-    (rows: Record<string, RowValue>[]) => {
+    (rows: RowCellsWithPkValue[]) => {
       if (!cardData) {
         return;
       }
 
-      const pkColumnIndex = cardData.data.cols.findIndex(isPK);
-      const pkColumnName = cardData.data.cols[pkColumnIndex].name;
-      const deletedPKs = new Set(rows.map((row) => row[pkColumnName]));
+      const { indexes: pkIndexes, names: pkNames } = getPkColumns(
+        cardData.data.cols,
+      );
+
+      const deletedPKsSet = new Set(
+        rows.map((row) => getRowObjectPkUniqueKeyByColumnNames(pkNames, row)),
+      );
 
       dispatch(
         updateCardData(cardId, dashcardId, {
@@ -127,7 +143,8 @@ export function useTableEditingStateDashcardUpdateStrategy(
           data: {
             ...cardData.data,
             rows: cardData.data.rows.filter(
-              (row) => !deletedPKs.has(row[pkColumnIndex]),
+              (row) =>
+                !deletedPKsSet.has(getRowUniqueKeyByPkIndexes(pkIndexes, row)),
             ),
           },
         }),

@@ -1,27 +1,39 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
-type DataEditingRow = Record<string, RowValue>;
+import type { RowCellsWithPkValue } from "../types";
+
+import { getRowObjectPkUniqueKeyByColumnNames } from "./utils";
 
 export type OptimisticUpdatePatchResult = {
   revert: () => void;
 };
 
 export interface TableEditingStateUpdateStrategy {
-  onRowsCreated: (rows: DataEditingRow[]) => void;
-  onRowsUpdated: (rows: DataEditingRow[]) => OptimisticUpdatePatchResult | void;
-  onRowsDeleted: (rows: DataEditingRow[]) => void;
+  onRowsCreated: (rows: RowCellsWithPkValue[]) => void;
+  onRowsUpdated: (
+    rows: RowCellsWithPkValue[],
+  ) => OptimisticUpdatePatchResult | void;
+  onRowsDeleted: (rows: RowCellsWithPkValue[]) => void;
 }
 
 export function mapDataEditingRowObjectsToRowValues(
-  rows: Record<string, RowValue>[],
+  rows: RowCellsWithPkValue[],
   columns: DatasetColumn[],
 ) {
   return rows.map((row) => columns.map((column) => row[column.name]));
 }
 
 export function createPrimaryKeyToUpdatedRowObjectMap(
-  pkColumnName: string,
-  rows: Record<string, RowValue>[],
+  pkColumnNames: string[],
+  rows: RowCellsWithPkValue[],
 ) {
-  return new Map(rows.map((row) => [row[pkColumnName], row]));
+  return new Map(
+    rows.map((row) => {
+      const pkUniqueKey = getRowObjectPkUniqueKeyByColumnNames(
+        pkColumnNames,
+        row,
+      );
+      return [pkUniqueKey, row];
+    }),
+  );
 }

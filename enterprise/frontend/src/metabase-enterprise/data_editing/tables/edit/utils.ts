@@ -3,9 +3,19 @@ import { t } from "ttag";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, Filter, OrderBy } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Filter,
+  OrderBy,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
-import type { CellUniqKey, RowPkValue } from "../types";
+import type {
+  CellUniqKey,
+  RowCellsWithPkValue,
+  RowPkValuesKey,
+} from "../types";
 
 export const serializeMbqlParam = (filterMbql: Array<any>): string => {
   return utf8_to_b64url(JSON.stringify(filterMbql));
@@ -33,20 +43,6 @@ export const deserializeTableSorting = (
     : null;
 };
 
-export const getRowPkKeyValue = (
-  datasetData: DatasetData,
-  rowIndex: number,
-) => {
-  const columns = datasetData.cols;
-  const rowData = datasetData.rows[rowIndex];
-
-  const pkColumnIndex = columns.findIndex(isPK);
-  const pkColumn = columns[pkColumnIndex];
-  const rowPkValue = rowData[pkColumnIndex];
-
-  return { [pkColumn.name]: rowPkValue };
-};
-
 export const getUpdateApiErrorMessage = (
   error: GenericErrorResponse | unknown,
 ): string => {
@@ -70,10 +66,67 @@ export const getUpdateApiErrorMessage = (
   return t`Unknown error`;
 };
 
+export const getPkColumns = (
+  columns: DatasetColumn[],
+): { indexes: number[]; names: string[] } => {
+  const pkColumnIndexes: number[] = [];
+  const pkColumnNames: string[] = [];
+
+  columns.forEach((col, index) => {
+    if (isPK(col)) {
+      pkColumnIndexes.push(index);
+      pkColumnNames.push(col.name);
+    }
+  });
+
+  return {
+    indexes: pkColumnIndexes,
+    names: pkColumnNames,
+  };
+};
+
+const getPkValuesKeyString = (pkValues: RowValue[]) => pkValues.join("-");
+
+export const getRowUniqueKeyByPkIndexes = (
+  pkColumnIndexes: number[],
+  rowData: RowValues,
+): string => {
+  const resultValues = pkColumnIndexes.map((pkIndex) => rowData[pkIndex]);
+
+  return getPkValuesKeyString(resultValues);
+};
+
 export const getCellUniqKey = (
-  rowPkValue: RowPkValue,
+  rowPkValuesKey: RowPkValuesKey,
   columnName: string,
 ): CellUniqKey => {
   // DataGrid uses rowIndex + column name key, which is not unique, so we have to use pk value
-  return `${rowPkValue}_${columnName}`;
+  return `${rowPkValuesKey}_${columnName}`;
+};
+
+export const getRowPkValues = (
+  columns: DatasetColumn[],
+  rowData: RowValues,
+): RowCellsWithPkValue => {
+  const { indexes: pkColumnIndexes } = getPkColumns(columns);
+
+  const result: RowCellsWithPkValue = {};
+
+  pkColumnIndexes.forEach((pkColumnIndex) => {
+    const pkColumn = columns[pkColumnIndex];
+    result[pkColumn.name] = rowData[pkColumnIndex];
+  });
+
+  return result;
+};
+
+export const getRowObjectPkUniqueKeyByColumnNames = (
+  pkColumnNames: string[],
+  rowObject: RowCellsWithPkValue,
+): string => {
+  const pkValues: RowValue[] = pkColumnNames.map(
+    (colName) => rowObject[colName],
+  );
+
+  return getPkValuesKeyString(pkValues);
 };

@@ -15,7 +15,10 @@ import type {
   Table,
 } from "metabase-types/api";
 
-import type { UpdatedRowBulkHandlerParams } from "../../types";
+import type {
+  RowCellsWithPkValue,
+  UpdatedRowBulkHandlerParams,
+} from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
@@ -52,9 +55,7 @@ export function EditBulkRowsModal({
   setRowSelection,
 }: EditBulkRowsModalProps) {
   // We need editing state to track null values for columns that were cleared
-  const [editingState, setEditingState] = useState<Record<string, RowValue>>(
-    {},
-  );
+  const [editingState, setEditingState] = useState<RowCellsWithPkValue>({});
 
   // Clear editing state on modal close
   useEffect(() => {

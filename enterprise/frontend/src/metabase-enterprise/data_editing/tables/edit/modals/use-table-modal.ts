@@ -25,7 +25,7 @@ export type TableEditingModalController = {
 export function useTableEditingModalController(): TableEditingModalController {
   const [modalState, setModalState] = useState<TableEditingModalState>({
     action: null,
-    rowIndex: undefined, // TODO: replace with row: Record<string, RowValue>
+    rowIndex: undefined, // TODO: replace with row: RowCellsWithPkValue
   });
 
   const handleOpenCreateRowModal = useCallback(() => {
