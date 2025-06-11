@@ -35,9 +35,12 @@ import type {
   TableActionDisplaySettings,
 } from "metabase-types/api";
 
+import { BuiltInTableAction } from "../types";
+
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { ActionCreateRowFormModal } from "./modals/ActionCreateRowFormModal";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
@@ -47,6 +50,7 @@ import { useForeignKeyConstraintHandling } from "./modals/use-foreign-key-constr
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
+import { useActionFormDescription } from "./use-table-action-form-description";
 import { useTableCRUD } from "./use-table-crud";
 import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableSorting } from "./use-table-sorting";
@@ -119,7 +123,6 @@ export const EditTableDashcardVisualization = memo(
 
     const {
       state: modalState,
-      openCreateRowModal,
       openEditRowModal,
       closeModal,
     } = useTableEditingModalControllerWithObjectId({
@@ -232,6 +235,17 @@ export const EditTableDashcardVisualization = memo(
       isBulkEditingRequested,
       { open: requestBulkEditing, close: closeBulkEditing },
     ] = useDisclosure();
+
+    const [
+      isCreateRowModalOpen,
+      { open: openCreateRowModal, close: closeCreateRowModal },
+    ] = useDisclosure(false);
+
+    const { data: createRowFormDescription } = useActionFormDescription({
+      actionId: BuiltInTableAction.Create,
+      scope: editingScope,
+      skip: !hasCreateAction,
+    });
 
     const shouldDisableActions = isUndoLoading || isRedoLoading;
 
@@ -369,6 +383,13 @@ export const EditTableDashcardVisualization = memo(
             </Flex>
           </>
         )}
+        <ActionCreateRowFormModal
+          description={createRowFormDescription}
+          opened={isCreateRowModalOpen}
+          onClose={closeCreateRowModal}
+          isInserting={isInserting}
+          onRowCreate={handleRowCreate}
+        />
         <EditingBaseRowModal
           modalState={modalState}
           onClose={closeModal}
