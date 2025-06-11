@@ -41,6 +41,9 @@
                                    [:= :t.visibility_type nil]]})
         fk-field-id-query (field-id-query db-id fk-table-schema fk-table-name fk-column-name)
         pk-field-id-query (field-id-query db-id pk-table-schema pk-table-name pk-column-name)
+
+        ;;TODO: careful with field user settings
+
         q (case (mdb/db-type)
             :mysql
             {:update [:metabase_field :f]
