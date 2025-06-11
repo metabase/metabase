@@ -36,6 +36,18 @@
                    {:temporal-unit unit}))]
     [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
+(mu/defn maybe-resolve-expression :- ::lib.schema.expression/expression
+  "Find the expression with `expression-name` in a given stage of a `query`, or nil if it doesn't exist."
+  ([query expression-name]
+   (maybe-resolve-expression query -1 expression-name))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- :int
+    expression-name :- ::lib.schema.common/non-blank-string]
+   (let [stage (lib.util/query-stage query stage-number)]
+     (m/find-first (comp #{expression-name} lib.util/expression-name)
+                   (:expressions stage)))))
+
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
@@ -45,13 +57,11 @@
   ([query           :- ::lib.schema/query
     stage-number    :- :int
     expression-name :- ::lib.schema.common/non-blank-string]
-   (let [stage (lib.util/query-stage query stage-number)]
-     (or (m/find-first (comp #{expression-name} lib.util/expression-name)
-                       (:expressions stage))
-         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
-                         {:expression-name expression-name
-                          :query           query
-                          :stage-number    stage-number}))))))
+   (or (maybe-resolve-expression query stage-number expression-name)
+       (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
+                       {:expression-name expression-name
+                        :query           query
+                        :stage-number    stage-number})))))
 
 (defmethod lib.metadata.calculation/type-of-method :expression
   [query stage-number [_expression _opts expression-name, :as _expression-ref]]

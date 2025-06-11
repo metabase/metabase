@@ -116,7 +116,9 @@
 
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
-(def ^:private ^:dynamic *query-caching-min-ttl* 1)
+(def ^:private ^:dynamic *query-caching-min-ttl*
+  "Set this to zero to prevent flakes - we don't want a query to slip under the wire here."
+  0)
 
 (defn ^:private ttl-strategy []
   {:type             :ttl

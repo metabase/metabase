@@ -8,7 +8,7 @@
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel-test :as ssh-test]
@@ -39,7 +39,7 @@
 (deftest ^:parallel can-connect-with-details?-test
   (testing "Should not be able to connect without setting h2/*allow-testing-h2-connections*"
     (is (not (driver.u/can-connect-with-details? :h2 (:details (data/db))))))
-  (binding [h2/*allow-testing-h2-connections* true]
+  (binding [driver.settings/*allow-testing-h2-connections* true]
     (is (driver.u/can-connect-with-details? :h2 (:details (data/db))))
     (testing "Lie and say Test DB is Postgres. `can-connect?` should fail"
       (is (not (driver.u/can-connect-with-details? :postgres (:details (data/db))))))
