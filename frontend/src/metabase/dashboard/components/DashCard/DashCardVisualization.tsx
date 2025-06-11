@@ -172,7 +172,6 @@ export function DashCardVisualization({
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
-
     const { display, columnValuesMapping, settings } = visualizerEntity;
 
     const cards = [dashcard.card];
@@ -408,7 +407,6 @@ export function DashCardVisualization({
     const settings = getComputedSettingsForSeries(
       series,
     ) as ComputedVisualizationSettings;
-
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
