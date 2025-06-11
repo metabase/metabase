@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { ComponentProps, MouseEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -81,22 +81,30 @@ export function Heading({
   const container = useRef<HTMLDivElement>(null);
   const [isNarrow, setIsNarrow] = useState(false);
 
+  const handleResize = useCallback(() => {
+    if (!container.current) {
+      return;
+    }
+
+    const { width } = container.current.getBoundingClientRect();
+    setIsNarrow(width < 600); // Adjust the threshold as needed
+  }, []);
+
   useEffect(() => {
     const element = container.current;
     if (!element) {
       return;
     }
 
-    const handleResize = (e: ResizeObserverEntry) => {
-      const { width } = e.contentRect;
-      setIsNarrow(width < 600); // Adjust the threshold as needed
-    };
-
     resizeObserver.subscribe(element, handleResize);
     return () => {
       resizeObserver.unsubscribe(element, handleResize);
     };
-  }, []);
+  }, [handleResize]);
+
+  useEffect(() => {
+    handleResize();
+  }, [isEditing, handleResize]);
 
   const translatedText = useMemo(() => tc(settings.text), [settings.text, tc]);
 
