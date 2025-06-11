@@ -18,7 +18,7 @@ export function SettingsSection({
   return (
     <Box {...boxProps}>
       {children && (
-        <Stack gap="lg" className={S.SettingsSection} {...boxProps}>
+        <Stack gap="lg" className={S.SettingsSection}>
           {(title || description) && (
             <Box mb="sm">
               {title && <Title order={2}>{title}</Title>}

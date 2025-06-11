@@ -46,7 +46,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     it("should display the embedding page correctly", () => {
       cy.visit("/admin/settings/setup");
       sidebar().within(() => {
-        cy.findByRole("link", { name: "Embedding" }).click();
+        cy.findAllByText("Overview").should("have.length", 2).last().click();
       });
 
       cy.location("pathname").should("eq", embeddingPage);
@@ -75,7 +75,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         value: true,
       });
       mainPage().within(() => {
-        cy.findByLabelText("Enable Static embedding")
+        cy.findByLabelText("Enable  embedding")
           .click({ force: true })
           .should("be.checked");
         cy.findByTestId("embedding-secret-key-setting").within(() => {

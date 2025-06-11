@@ -11,7 +11,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Box, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type { SlackSettings } from "metabase-types/api";
 
 const SLACK_SCHEMA = Yup.object({
@@ -62,10 +62,10 @@ export const SlackSetupForm = ({
               placeholder="metabase-bugs"
             />
           )}
-          <Box>
+          <Flex justify="end">
             <FormSubmitButton label={t`Save changes`} />
-            <FormErrorMessage />
-          </Box>
+          </Flex>
+          <FormErrorMessage />
         </Stack>
       </Form>
     </FormProvider>

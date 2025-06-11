@@ -167,15 +167,17 @@ describe("(metabase#45042)", () => {
     //ensure that hamburger is visible and functional
     cy.findByRole("navigation").within(() => {
       cy.findByRole("button", { name: /burger/ })
-        .should("exist")
+        .should("be.visible")
         .click();
       cy.findByRole("list", { name: "Navigation links" }).should("exist");
       cy.findByRole("link", { name: "Settings" }).should("exist");
       cy.findByRole("link", { name: "Exit admin" }).should("exist");
     });
 
-    //Click something to dismiss nav list
-    cy.findByRole("link", { name: "General" }).click();
+    // dismiss nav list
+    cy.findByRole("button", { name: /burger/ })
+      .should("be.visible")
+      .click();
     cy.findByRole("list", { name: "Navigation links" }).should("not.exist");
   });
 });

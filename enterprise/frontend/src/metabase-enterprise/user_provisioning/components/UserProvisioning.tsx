@@ -3,7 +3,10 @@ import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import {
+  AdminSettingInput,
+  BasicAdminSettingInput,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -193,26 +196,12 @@ export const UserProvisioning = () => {
             {isAdminNotificationInputVisisble && (
               <>
                 <Divider my="lg" />
-
-                <Stack gap="md">
-                  <Title order={2}>
-                    {t`Notify admins of new users provisioned from SSO`}
-                  </Title>
-                  <Text>
-                    {t`Send an email to admins whenever someone signs into SSO for the first time.`}
-                  </Text>
-                  <BasicAdminSettingInput
-                    inputType="boolean"
-                    name="send-new-sso-user-admin-email?"
-                    value={!!settingValues?.["send-new-sso-user-admin-email?"]}
-                    onChange={(value) =>
-                      updateSetting({
-                        key: "send-new-sso-user-admin-email?",
-                        value,
-                      })
-                    }
-                  />
-                </Stack>
+                <AdminSettingInput
+                  name="send-new-sso-user-admin-email?"
+                  title={t`Notify admins of new users provisioned from SSO`}
+                  description={t`Send an email to admins whenever someone signs into SSO for the first time.`}
+                  inputType="boolean"
+                />
               </>
             )}
           </Stack>
