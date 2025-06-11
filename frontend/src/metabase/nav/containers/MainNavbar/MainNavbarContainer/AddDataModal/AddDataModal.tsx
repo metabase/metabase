@@ -13,6 +13,7 @@ import { CSVPanel } from "./Panels/CSVPanel";
 import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
+import { isValidTab } from "./utils";
 
 interface AddDataModalProps {
   databases: Database[];
@@ -44,13 +45,28 @@ export const AddDataModal = ({
     isAdmin || (userCanAccessSettings && canUploadToDatabase);
   const canManageDatabases = isAdmin;
 
+  const handleTabChange = (v: string | null) => {
+    if (v === activeTab || !isValidTab(v)) {
+      return;
+    }
+
+    const eventMapping = {
+      db: "database_setup_clicked",
+      csv: "csv_upload_clicked",
+      gsheet: "sheets_connection_clicked",
+    } as const;
+
+    trackAddDataEvent(eventMapping[v]);
+    setActiveTab(v);
+  };
+
   return (
     <Modal.Root opened={opened} onClose={onClose} size="auto">
       <Modal.Overlay />
       <Modal.Content h="30rem">
         <Tabs
           value={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           variant="none"
           orientation="vertical"
           classNames={{
@@ -64,18 +80,10 @@ export const AddDataModal = ({
               <Modal.Title fz="lg">{t`Add data`}</Modal.Title>
             </Box>
             <Tabs.List px="md" pb="lg">
-              <Tabs.Tab
-                value="db"
-                leftSection={<Icon name="database" />}
-                onClick={() => trackAddDataEvent("database_setup_clicked")}
-              >
+              <Tabs.Tab value="db" leftSection={<Icon name="database" />}>
                 {t`Database`}
               </Tabs.Tab>
-              <Tabs.Tab
-                value="csv"
-                leftSection={<Icon name="table2" />}
-                onClick={() => trackAddDataEvent("csv_upload_clicked")}
-              >
+              <Tabs.Tab value="csv" leftSection={<Icon name="table2" />}>
                 {t`CSV`}
               </Tabs.Tab>
             </Tabs.List>
