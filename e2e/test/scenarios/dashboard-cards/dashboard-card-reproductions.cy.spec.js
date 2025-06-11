@@ -1453,6 +1453,8 @@ describe("issue 48878", () => {
     H.restore();
     cy.signInAsAdmin();
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    // TODO: Remove when tmp-action is moved from EE to OSS
+    H.setTokenFeatures("all");
 
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
