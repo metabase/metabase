@@ -85,7 +85,7 @@ describe("ManageApiKeys", () => {
     expect(screen.getByText("No API keys here yet")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "You can create an API key to make API calls programatically.",
+        "You can create an API key to make API calls programmatically.",
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Create API key")).toHaveLength(2);
