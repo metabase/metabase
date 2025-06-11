@@ -24,7 +24,7 @@ describe("scenarios > dashboard > filters > location", () => {
   it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
-      H.setDashboardHeaderFilter("Location", filter);
+      H.setFilter("Location", filter);
 
       cy.findByText("Select…").click();
       H.popover().contains("City").click();
@@ -49,7 +49,7 @@ describe("scenarios > dashboard > filters > location", () => {
   });
 
   it("should work when set as the default filter", () => {
-    H.setDashboardHeaderFilter("Location", "Is");
+    H.setFilter("Location", "Is");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("City").click();

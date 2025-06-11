@@ -11,7 +11,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     H.editDashboard();
-    H.setDashboardHeaderFilter("ID");
+    H.setFilter("ID");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();

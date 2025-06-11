@@ -1213,7 +1213,7 @@ describe(
 
         H.editDashboard();
 
-        H.setDashboardHeaderFilter("ID");
+        H.setFilter("ID");
         H.sidebar().within(() => {
           cy.button("Done").click();
         });
@@ -1274,7 +1274,7 @@ function createDashboardWithActionButton({
   H.editDashboard();
 
   if (idFilter) {
-    H.setDashboardHeaderFilter("ID");
+    H.setFilter("ID");
     H.sidebar().within(() => {
       cy.button("Done").click();
     });

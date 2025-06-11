@@ -98,7 +98,7 @@ function prepareDashboardWithFilterConnectedTo(rowId) {
   );
 
   H.editDashboard();
-  H.setDashboardHeaderFilter("ID");
+  H.setFilter("ID");
 
   cy.findByText("Select…").click();
   H.popover().contains("Filter").click();

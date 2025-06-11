@@ -48,7 +48,7 @@ describe("scenarios > dashboard > visualizer > filters", () => {
 
     H.saveDashcardVisualizerModal({ mode: "create" });
 
-    H.setDashboardHeaderFilter("Text or Category", "Is");
+    H.setFilter("Text or Category", "Is");
 
     // Doing it twice to populate the two filters
     H.selectDashboardFilter(H.getDashboardCard(0), "Category");

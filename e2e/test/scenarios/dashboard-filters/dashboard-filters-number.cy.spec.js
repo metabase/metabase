@@ -32,7 +32,7 @@ describe("scenarios > dashboard > filters > number", () => {
   it("should work when set through the filter widget", () => {
     DASHBOARD_NUMBER_FILTERS.forEach(({ operator, single }) => {
       cy.log(`Make sure we can connect ${operator} filter`);
-      H.setDashboardHeaderFilter("Number", operator);
+      H.setFilter("Number", operator);
 
       if (single) {
         cy.findAllByRole("radio", { name: "A single value" })
@@ -64,7 +64,7 @@ describe("scenarios > dashboard > filters > number", () => {
   });
 
   it("should work when set as the default filter", () => {
-    H.setDashboardHeaderFilter("Number", "Equal to");
+    H.setFilter("Number", "Equal to");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
@@ -91,7 +91,7 @@ describe("scenarios > dashboard > filters > number", () => {
   });
 
   it("should support being required", () => {
-    H.setDashboardHeaderFilter("Number", "Equal to", "Equal to");
+    H.setFilter("Number", "Equal to", "Equal to");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
 
     // Can't save without a default value
