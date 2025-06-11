@@ -17,7 +17,7 @@ import { ResponsiveParametersList } from "../../ResponsiveParametersList";
 import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
-import type { Features as SidebarFeatures } from "../types";
+import type { SidebarFeatures } from "../types";
 import { formatQuery } from "../utils";
 
 interface NativeQueryEditorTopBarProps {
