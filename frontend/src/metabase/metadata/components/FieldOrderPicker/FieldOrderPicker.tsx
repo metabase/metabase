@@ -45,19 +45,19 @@ function getData() {
   return [
     {
       value: "smart" as const,
-      label: <Label icon="sparkles" tooltip={t`Smart`} />,
+      label: <Label icon="sparkles" tooltip={t`Auto order`} />,
     },
     {
       value: "database" as const,
-      label: <Label icon="database" tooltip={t`Database`} />,
+      label: <Label icon="database" tooltip={t`Database order`} />,
     },
     {
       value: "alphabetical" as const,
-      label: <Label icon="string" tooltip={t`Alphabetical`} />,
+      label: <Label icon="string" tooltip={t`Alphabetical order`} />,
     },
     {
       value: "custom" as const,
-      label: <Label icon="palette" tooltip={t`Custom`} />,
+      label: <Label icon="palette" tooltip={t`Custom order`} />,
     },
   ];
 }
