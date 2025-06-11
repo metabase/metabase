@@ -58,12 +58,13 @@ export const DataModel = ({ params, location, children }: Props) => {
   const handleResizeStop = useCallback(() => setIsResizing(false), []);
 
   useWindowEvent("keydown", (event) => {
-    if (
-      event.key === "Escape" &&
-      isPreviewOpen &&
-      event.target instanceof HTMLElement &&
-      event.target.tagName === "BODY"
-    ) {
+    const activeElement = document.activeElement;
+    const isInputFocused =
+      activeElement instanceof HTMLElement &&
+      (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
+        activeElement.isContentEditable);
+
+    if (event.key === "Escape" && isPreviewOpen && !isInputFocused) {
       event.stopPropagation();
       setIsPreviewOpen(false);
     }
