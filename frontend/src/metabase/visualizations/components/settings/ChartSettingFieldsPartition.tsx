@@ -12,6 +12,7 @@ import _ from "underscore";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
+import { isNotNull } from "metabase/lib/types";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { MetabaseApi } from "metabase/services";
 import { Box, Button, Flex, Icon, Popover, Text } from "metabase/ui";
@@ -185,7 +186,7 @@ export const ChartSettingFieldsPartition = ({
       _.mapObject(value || {}, (splitVal: SplitSettingValue[]) => {
         if (isNativeQuery) {
           const aggDetails = splitVal as NativeColumnSplit[];
-          return aggDetails.map(({ name, _column }) => {
+          return aggDetails.map(({ name }) => {
             const col = columns.find((c) => c.name === name);
             if (!col) {
               console.warn(`Column ${name} not found in columns list`);
@@ -222,31 +223,32 @@ export const ChartSettingFieldsPartition = ({
 
   const wrappedQuery = Lib.wrapAdhocNativeQuery(query, baseMetadataResults);
 
-  const onAddAggregation = (query: Lib.Query) => {
+  const handleAddAggregation = (query: Lib.Query) => {
     const aggs = Lib.aggregations(query, -1);
-    const aggDetails = aggs.map((agg) => {
-      const aggDisplay = Lib.displayInfo(query, -1, agg);
-      const column = Lib.aggregationColumn(query, -1, agg);
-      const bucket = column ? Lib.temporalBucket(column) : undefined;
-      const bucketName = bucket
-        ? Lib.displayInfo(query, 0, bucket)?.shortName
-        : undefined;
-      const columnName = column ? Lib.columnKey(column) : undefined;
+    const aggDetails = aggs
+      .map((agg) => {
+        const aggDisplay = Lib.displayInfo(query, -1, agg);
+        const column = Lib.aggregationColumn(query, -1, agg);
 
-      return {
-        name: aggDisplay.name,
-        column: columnName,
-        bucket: bucketName,
-      };
-    });
+        if (!column) {
+          return null;
+        }
+        const columnName = Lib.columnKey(column);
+
+        return {
+          name: aggDisplay.name,
+          column: columnName,
+        };
+      })
+      .filter(isNotNull);
 
     onChange({
       ...value,
-      values: aggDetails,
+      values: [...value.values, ...aggDetails] as NativeColumnSplit[],
     });
   };
 
-  const onAddBreakout = (
+  const handleAddBreakout = (
     partition: "rows" | "columns",
     column: Lib.ColumnMetadata,
   ) => {
@@ -275,7 +277,7 @@ export const ChartSettingFieldsPartition = ({
     });
   };
 
-  const onRemove = (partition: PartitionName, index: number) => {
+  const handleRemove = (partition: PartitionName, index: number) => {
     onChange({
       ...value,
       [partition]: columnRemove(value[partition], index),
@@ -361,13 +363,13 @@ export const ChartSettingFieldsPartition = ({
           partitionType === "metric" ? (
             <AddAggregationPopover
               query={wrappedQuery}
-              onAddAggregation={onAddAggregation}
+              onAddAggregation={handleAddAggregation}
             />
           ) : (
             <AddBreakoutPopover
               query={wrappedQuery}
               onAddBreakout={(col) =>
-                onAddBreakout(partitionName as "rows" | "columns", col)
+                handleAddBreakout(partitionName as "rows" | "columns", col)
               }
             />
           );
@@ -449,7 +451,7 @@ export const ChartSettingFieldsPartition = ({
                                   onRemove={
                                     canEditColumns
                                       ? () =>
-                                          onRemove(
+                                          handleRemove(
                                             partitionName as "rows" | "columns",
                                             index,
                                           )
