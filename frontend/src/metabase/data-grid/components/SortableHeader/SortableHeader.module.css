@@ -1,13 +1,24 @@
 .root {
   display: flex;
   align-items: center;
-  height: 36px;
+  height: 40px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   position: relative;
   user-select: none;
   outline: none;
+  border-right: 1px solid #FAFAFB;
+  border-left: 1px solid #FAFAFB;
+}
+
+.root:hover {
+  border-right: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border);
+}
+
+.headerContent:hover {
+  background-color: #FAFAFB;
 }
 
 .headerContent {
