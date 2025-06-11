@@ -44,7 +44,7 @@
     (str/blank? msgstr)
     (re-matches #"^[,;\s]*$" msgstr))))
 
-(defn format-row
+(defn- format-row
   "Formats a row to be inserted into the content translation table. Locales are standardized, and all fields are trimmed. Extra fields are included as well."
   [row]
   (let [[locale msgid msgstr & extras] row
