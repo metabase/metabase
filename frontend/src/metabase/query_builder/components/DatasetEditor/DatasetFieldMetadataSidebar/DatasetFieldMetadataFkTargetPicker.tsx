@@ -6,8 +6,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { FkTargetPicker } from "metabase/metadata/components";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 
-interface Props {
-  databaseId: DatabaseId;
+interface DatasetFieldMetadataFkTargetPickerProps {
+  databaseId: DatabaseId | null;
   field: Field;
   onChange: (value: FieldId | null) => void;
 }
@@ -16,7 +16,7 @@ export const DatasetFieldMetadataFkTargetPicker = ({
   databaseId,
   field,
   onChange,
-}: Props) => {
+}: DatasetFieldMetadataFkTargetPickerProps) => {
   const dispatch = useDispatch();
   const [formField, _meta, { setValue }] = useField("fk_target_field_id");
   const idFields = useSelector((state) => {

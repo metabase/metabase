@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -24,7 +23,16 @@ import ColumnSettings, {
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type FieldEntity from "metabase-lib/v1/metadata/Field";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Field,
+  FieldFormattingSettings,
+  FieldId,
+  FieldVisibilityType,
+  ModelIndex,
+} from "metabase-types/api";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
@@ -33,17 +41,11 @@ import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSe
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
 
-const propTypes = {
-  dataset: PropTypes.object.isRequired,
-  field: PropTypes.object.isRequired,
-  isLastField: PropTypes.bool.isRequired,
-  handleFirstFieldFocus: PropTypes.func.isRequired,
-  onFieldMetadataChange: PropTypes.func.isRequired,
-  onMappedDatabaseColumnChange: PropTypes.func.isRequired,
-  modelIndexes: PropTypes.array,
-};
-
-function getVisibilityTypeName(visibilityType) {
+function getVisibilityTypeName(visibilityType: {
+  id: string;
+  name: string;
+  description: string;
+}) {
   if (visibilityType.id === "normal") {
     return t`Table and details views`;
   }
@@ -89,7 +91,17 @@ const TAB_OPTIONS = [
   },
 ];
 
-function DatasetFieldMetadataSidebar({
+interface DatasetFieldMetadataSidebarProps {
+  dataset: Question;
+  field: Field;
+  isLastField: boolean;
+  handleFirstFieldFocus: () => void;
+  onFieldMetadataChange: (values: Record<string, any>) => void;
+  onMappedDatabaseColumnChange: (value: FieldId | null) => void;
+  modelIndexes: ModelIndex[];
+}
+
+function DatasetFieldMetadataSidebarInner({
   dataset,
   field,
   isLastField,
@@ -97,18 +109,21 @@ function DatasetFieldMetadataSidebar({
   onFieldMetadataChange,
   onMappedDatabaseColumnChange,
   modelIndexes,
-}) {
-  const displayNameInputRef = useRef();
+}: DatasetFieldMetadataSidebarProps) {
+  const displayNameInputRef = useRef<HTMLInputElement>(null);
 
-  const canIndex = dataset.isSaved() && canIndexField(field, dataset);
+  const canIndex =
+    dataset.isSaved() &&
+    canIndexField(field as unknown as FieldEntity, dataset);
 
   const initialValues = useMemo(() => {
-    const values = {
+    const values: Record<string, any> = {
       display_name: field.display_name,
       description: field.description,
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
+      // @ts-expect-error -- should_index is not defined in the field type
       should_index: field.should_index ?? fieldHasIndex(modelIndexes, field),
     };
     const { isNative } = Lib.queryDisplayInfo(dataset.query());
@@ -122,7 +137,7 @@ function DatasetFieldMetadataSidebar({
   const [tab, setTab] = useState(TAB.SETTINGS);
 
   const handleFormattingSettingsChange = useCallback(
-    (settings) => {
+    (settings: FieldFormattingSettings) => {
       onFieldMetadataChange({ settings });
     },
     [onFieldMetadataChange],
@@ -155,7 +170,7 @@ function DatasetFieldMetadataSidebar({
   }, [tab, hasColumnFormattingOptions]);
 
   const onLastEssentialFieldKeyDown = useCallback(
-    (e) => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       const isNextFieldAction = !e.shiftKey && e.key === "Tab";
       if (isNextFieldAction && isLastField) {
         e.preventDefault();
@@ -171,7 +186,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleDisplayNameChange = useCallback(
-    (e) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
       onFieldMetadataChangeDebounced({
         display_name: e.target.value,
       }),
@@ -179,7 +194,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleDescriptionChange = useCallback(
-    (e) =>
+    (e: React.ChangeEvent<HTMLTextAreaElement>) =>
       onFieldMetadataChangeDebounced({
         description: e.target.value,
       }),
@@ -187,7 +202,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleSemanticTypeChange = useCallback(
-    (value) =>
+    (value: string | null) =>
       onFieldMetadataChange({
         semantic_type: value,
       }),
@@ -195,7 +210,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleFkTargetChange = useCallback(
-    (value) =>
+    (value: FieldId | null) =>
       onFieldMetadataChange({
         fk_target_field_id: value,
       }),
@@ -203,7 +218,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleVisibilityTypeChange = useCallback(
-    (value) =>
+    (value: FieldVisibilityType) =>
       onFieldMetadataChange({
         visibility_type: value,
       }),
@@ -211,7 +226,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleShouldIndexChange = useCallback(
-    (e) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
       onFieldMetadataChange({
         should_index: e.target.checked,
       }),
@@ -222,6 +237,7 @@ function DatasetFieldMetadataSidebar({
 
   return (
     <SidebarContent>
+      {/* @ts-expect-error -- onSubmit is not specified, fix it */}
       <FormProvider initialValues={initialValues} enableReinitialize>
         {({ values: formFieldValues }) => {
           return (
@@ -231,7 +247,7 @@ function DatasetFieldMetadataSidebar({
                   name="display_name"
                   onChange={handleDisplayNameChange}
                   label={t`Display name`}
-                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                  tabIndex={Number(EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD)}
                   ref={displayNameInputRef}
                   mb="1.5rem"
                   styles={{
@@ -258,7 +274,7 @@ function DatasetFieldMetadataSidebar({
                 <FormTextarea
                   name="description"
                   label={t`Description`}
-                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                  tabIndex={Number(EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD)}
                   mb="1.5rem"
                   onChange={handleDescriptionChange}
                 />
@@ -268,7 +284,7 @@ function DatasetFieldMetadataSidebar({
                       className={DatasetFieldMetadataSidebarS.SelectButton}
                       name="id"
                       label={t`Database column this maps to`}
-                      tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                      tabIndex={Number(EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD)}
                       databaseId={dataset.databaseId()}
                       onChange={onMappedDatabaseColumnChange}
                     />
@@ -278,7 +294,7 @@ function DatasetFieldMetadataSidebar({
                   <DatasetFieldMetadataSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
                     field={field}
-                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                    tabIndex={Number(EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD)}
                     onChange={handleSemanticTypeChange}
                     onKeyDown={onLastEssentialFieldKeyDown}
                   />
@@ -294,7 +310,10 @@ function DatasetFieldMetadataSidebar({
                 )}
               </div>
 
-              <Tabs value={tab} onChange={setTab}>
+              <Tabs
+                value={tab}
+                onChange={(value) => setTab(value as typeof tab)}
+              >
                 {hasColumnFormattingOptions ? (
                   <Tabs.List px="1rem">
                     {TAB_OPTIONS.map((option) => (
@@ -317,7 +336,9 @@ function DatasetFieldMetadataSidebar({
                       labelProps={{
                         mb: "0.5rem",
                       }}
-                      onChange={handleVisibilityTypeChange}
+                      onChange={(value) =>
+                        handleVisibilityTypeChange(value as FieldVisibilityType)
+                      }
                     >
                       {visibilityTypeOptions.map((option) => (
                         <Radio
@@ -366,6 +387,6 @@ function DatasetFieldMetadataSidebar({
   );
 }
 
-DatasetFieldMetadataSidebar.propTypes = propTypes;
-
-export default memo(DatasetFieldMetadataSidebar);
+export const DatasetFieldMetadataSidebar = memo(
+  DatasetFieldMetadataSidebarInner,
+);

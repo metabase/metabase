@@ -43,7 +43,7 @@ import {
 } from "metabase-lib/v1/metadata/utils/models";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
+import { DatasetFieldMetadataSidebar } from "./DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
