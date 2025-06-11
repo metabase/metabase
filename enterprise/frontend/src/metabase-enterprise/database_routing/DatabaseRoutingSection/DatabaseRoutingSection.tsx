@@ -34,6 +34,7 @@ import type { Database } from "metabase-types/api";
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
+import { getSelectDataForUserAttributes } from "metabase-enterprise/sandboxes/utils";
 
 export const DatabaseRoutingSection = ({
   database,
@@ -161,7 +162,7 @@ export const DatabaseRoutingSection = ({
                   data-testid="db-routing-user-attribute"
                   name="db-routing-user-attribute"
                   placeholder={t`Choose an attribute`}
-                  data={userAttributeOptions}
+                  data={getSelectDataForUserAttributes(userAttributeOptions)}
                   disabled={!isAdmin || !!disabledFeatMsg}
                   value={userAttribute}
                   onChange={handleUserAttributeChange}

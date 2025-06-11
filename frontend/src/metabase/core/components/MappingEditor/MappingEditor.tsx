@@ -6,12 +6,15 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Button, type ButtonProps, Icon, TextInput } from "metabase/ui";
+//TODO: Fix Me
+import { formatUserAttribute } from "metabase-enterprise/sandboxes/utils";
 
 type DefaultRenderInputProps = {
   value: MappingValue;
-  onChange: (val: string) => void;
-  placeholder: string;
+  onChange?: (val: string) => void;
+  placeholder?: string;
   error?: boolean | string;
+  disabled?: boolean;
 };
 
 const DefaultRenderInput = ({
@@ -19,12 +22,14 @@ const DefaultRenderInput = ({
   onChange,
   placeholder,
   error = false,
+  disabled = false,
 }: DefaultRenderInputProps) => (
   <TextInput
     value={value || ""}
     placeholder={placeholder}
-    onChange={(e) => onChange(e.target.value)}
+    onChange={(e) => onChange?.(e.target.value)}
     error={error}
+    disabled={disabled}
   />
 );
 
@@ -32,6 +37,7 @@ type MappingValue = string;
 type MappingType = Record<string, MappingValue>;
 
 export interface MappingEditorProps {
+  disabledValues?: MappingType;
   value: MappingType;
   onChange: (val: MappingType) => void;
   onError?: (val: boolean) => void;
@@ -67,19 +73,22 @@ const buildMapping = (entries: Entry[]): MappingType =>
     return memo;
   }, {});
 
-const entryError = (entries: Entry[], key: string) =>
-  entries.filter((e) => e.key === key).length > 1
-    ? t`Attribute keys can't have the same name`
-    : false;
+const entryError = (entries: Entry[], key: string) => {
+  if (entries.filter((e) => e.key === key).length > 1) {
+    return t`Attribute keys can't have the same name`;
+  }
+  if (formatUserAttribute(key) !== key) {
+    return t`This is restricted key`;
+  }
+  return false;
+};
 
 const hasError = (entries: Entry[]) => {
-  const entryKeys = entries.map(({ key }) => key);
-  const entrySet = new Set(entryKeys);
-
-  return entryKeys.length !== entrySet.size;
+  return entries.some(({ key }) => entryError(entries, key));
 };
 
 export const MappingEditor = ({
+  disabledValues: disabledMapping = {},
   value: mapping,
   onChange,
   onError,
@@ -99,6 +108,7 @@ export const MappingEditor = ({
   swapKeyAndValue,
 }: MappingEditorProps) => {
   const [entries, setEntries] = useState<Entry[]>(buildEntries(mapping));
+  const disabledEntries = buildEntries(disabledMapping);
 
   const handleChange = (newEntries: Entry[]) => {
     setEntries(newEntries);
@@ -121,6 +131,33 @@ export const MappingEditor = ({
         </thead>
       ) : null}
       <tbody>
+        {disabledEntries.map(({ key, value }, index) => {
+          const keyInput = renderKeyInput({
+            value: key,
+            disabled: true,
+          });
+          const valueInput = renderValueInput({
+            value: value,
+            disabled: true,
+          });
+
+          return (
+            <tr key={index}>
+              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
+                {!swapKeyAndValue ? keyInput : valueInput}
+              </td>
+              <td
+                className={cx(CS.pb1, CS.px1)}
+                style={{ verticalAlign: "middle" }}
+              >
+                {divider}
+              </td>
+              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
+                {!swapKeyAndValue ? valueInput : keyInput}
+              </td>
+            </tr>
+          );
+        })}
         {entries.map(({ key, value }, index) => {
           const keyInput = renderKeyInput({
             value: key,
@@ -137,7 +174,7 @@ export const MappingEditor = ({
           });
           return (
             <tr key={index}>
-              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
+              <td className={CS.pb1} style={{ verticalAlign: "top" }}>
                 {!swapKeyAndValue ? keyInput : valueInput}
               </td>
               <td
@@ -146,11 +183,11 @@ export const MappingEditor = ({
               >
                 {divider}
               </td>
-              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
+              <td className={CS.pb1} style={{ verticalAlign: "top" }}>
                 {!swapKeyAndValue ? valueInput : keyInput}
               </td>
               {canDelete && (
-                <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
+                <td className={CS.pb1} style={{ verticalAlign: "top" }}>
                   <Button
                     leftSection={<Icon name="close" />}
                     variant="subtle"

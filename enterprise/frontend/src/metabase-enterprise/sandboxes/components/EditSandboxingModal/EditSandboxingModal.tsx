@@ -23,7 +23,10 @@ import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import {
+  formatUserAttribute,
+  getRawDataQuestionForTable,
+} from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -360,7 +363,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
                     />
                   )} equals ${(
                     <span key="attr" className={CS.textCode}>
-                      {attribute}
+                      {formatUserAttribute(attribute)}
                     </span>
                   )}`
                 : jt`and ${(
@@ -372,7 +375,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
                     />
                   )} equals ${(
                     <span key="attr" className={CS.textCode}>
-                      {attribute}
+                      {formatUserAttribute(attribute)}
                     </span>
                   )}`
             }
