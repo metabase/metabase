@@ -304,6 +304,27 @@ describe("metabot", () => {
         screen.queryByTestId("metabot-prompt-suggestions"),
       ).not.toBeInTheDocument();
     });
+
+    it("should make a request for new suggested prompts when the conversation is reset", async () => {
+      setup({ promptSuggestions: [] });
+      await waitFor(async () => {
+        expect(
+          fetchMock.calls(
+            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+          ),
+        ).toHaveLength(1);
+      });
+
+      await userEvent.click(await resetChatButton());
+
+      await waitFor(async () => {
+        expect(
+          fetchMock.calls(
+            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+          ),
+        ).toHaveLength(2);
+      });
+    });
   });
 
   describe("message", () => {
