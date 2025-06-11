@@ -16,7 +16,7 @@ import type Question from "metabase-lib/v1/Question";
 export type InteractiveDashboardContextType = Partial<{
   plugins: MetabasePluginsConfig;
   dashboardActions: DashboardActionKey[];
-  onEditQuestion?: (question: Question) => void;
+  onEditQuestion: (question: Question) => void;
 }>;
 const InteractiveDashboardContext =
   createContext<InteractiveDashboardContextType>({});

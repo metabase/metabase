@@ -2,9 +2,8 @@ import type * as React from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import type { InputProps } from "metabase/core/components/Input";
-import Input from "metabase/core/components/Input";
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
+import { TextInput, type TextInputProps } from "metabase/ui";
 
 /**
  * A small wrapper around <input>, primarily should be used for the
@@ -15,7 +14,7 @@ type Value = string | number | null;
 type HTMLInputValue = string | number | undefined;
 
 export interface InputBlurChangeProps
-  extends Omit<InputProps, "inputRef" | "value" | "onBlur"> {
+  extends Omit<TextInputProps, "inputRef" | "value" | "onBlur"> {
   value: string | undefined;
   onBlurChange?: (event: { target: HTMLInputElement }) => void;
   normalize?: (value: Value) => Value;
@@ -72,13 +71,13 @@ const InputBlurChange = (props: InputBlurChangeProps) => {
   const inputProps = _.omit(restProps, "onBlur", "onBlurChange", "onChange");
 
   return (
-    <Input
+    <TextInput
       {...inputProps}
-      inputRef={inputRef}
+      ref={inputRef}
       value={internalValue}
       onBlur={handleBlur}
       onChange={handleChange}
-      fullWidth
+      w="100%"
     />
   );
 };
