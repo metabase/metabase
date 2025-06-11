@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
