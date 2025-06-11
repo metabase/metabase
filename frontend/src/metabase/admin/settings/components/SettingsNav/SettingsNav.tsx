@@ -2,20 +2,13 @@ import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import Link from "metabase/core/components/Link";
-import { useSelector } from "metabase/lib/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { Divider, Flex, Text } from "metabase/ui";
+
 import {
-  Divider,
-  Flex,
-  Icon,
-  type IconName,
-  NavLink,
-  type NavLinkProps,
-  Stack,
-  Text,
-} from "metabase/ui";
-import type { TokenFeature } from "metabase-types/api";
+  AdminNavItem,
+  type AdminNavItemProps,
+  AdminNavWrapper,
+} from "../AdminNav";
 
 const NavDivider = () => <Divider my="sm" />;
 
@@ -28,7 +21,7 @@ export function SettingsNav() {
   const hasScim = useHasTokenFeature("scim");
 
   return (
-    <Stack w="16rem" gap="xs" bg="white" p="md" h="100%">
+    <AdminNavWrapper>
       <SettingsNavItem path="general" label={t`General`} icon="gear" />
       <SettingsNavItem
         path="authentication"
@@ -45,20 +38,8 @@ export function SettingsNav() {
         <SettingsNavItem path="authentication/api-keys" label={t`API keys`} />
         <SettingsNavItem path="authentication/google" label={t`Google auth`} />
         <SettingsNavItem path="authentication/ldap" label="LDAP" />
-        {hasSaml && (
-          <SettingsNavItem
-            path="authentication/saml"
-            label="SAML"
-            requiresFeature="sso_saml"
-          />
-        )}
-        {hasJwt && (
-          <SettingsNavItem
-            path="authentication/jwt"
-            label="JWT"
-            requiresFeature="sso_jwt"
-          />
-        )}
+        {hasSaml && <SettingsNavItem path="authentication/saml" label="SAML" />}
+        {hasJwt && <SettingsNavItem path="authentication/jwt" label="JWT" />}
       </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
@@ -89,15 +70,10 @@ export function SettingsNav() {
       >
         {hasWhitelabel && (
           <>
-            <SettingsNavItem
-              path="whitelabel/branding"
-              label={t`Branding`}
-              requiresFeature="whitelabel"
-            />
+            <SettingsNavItem path="whitelabel/branding" label={t`Branding`} />
             <SettingsNavItem
               path="whitelabel/conceal-metabase"
               label={t`Conceal Metabase`}
-              requiresFeature="whitelabel"
             />
           </>
         )}
@@ -125,7 +101,6 @@ export function SettingsNav() {
         {hasEmbedding && (
           <SettingsNavItem
             path="embedding-in-other-applications/full-app"
-            requiresFeature={"embedding"}
             label={t`Interactive embedding`}
           />
         )}
@@ -146,36 +121,12 @@ export function SettingsNav() {
         }
         icon="cloud"
       />
-    </Stack>
+    </AdminNavWrapper>
   );
 }
 
-function SettingsNavItem({
-  path,
-  label,
-  icon,
-  requiresFeature,
-  ...navLinkProps
-}: { path: string; icon?: IconName; requiresFeature?: TokenFeature } & Omit<
-  NavLinkProps,
-  "href"
->) {
-  const location = useSelector(getLocation);
-  const subpath = location?.pathname?.replace?.("/admin/settings/", "");
-
+function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
   // TODO: render active if collapsed and child is active
 
-  return (
-    <NavLink
-      data-testid={`settings-sidebar-link`}
-      component={Link}
-      to={`/admin/settings/${path}`}
-      defaultOpened={subpath.includes(path)}
-      active={path === subpath}
-      variant="admin-nav"
-      label={label}
-      {...(icon ? { leftSection: <Icon name={icon} /> } : undefined)}
-      {...navLinkProps}
-    />
-  );
+  return <AdminNavItem path={`/admin/settings/${path}`} {...navItemProps} />;
 }
