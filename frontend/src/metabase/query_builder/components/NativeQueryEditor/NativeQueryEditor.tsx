@@ -57,7 +57,6 @@ import {
   formatQuery,
   getEditorLineHeight,
   getEditorMaxHeight,
-  getMaxAutoSizeLines,
 } from "./utils";
 
 type OwnProps = typeof NativeQueryEditor.defaultProps & {
@@ -379,7 +378,10 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           height={this.state.initialHeight}
           className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
-          maxConstraints={[Infinity, getEditorMaxHeight(viewHeight)]}
+          maxConstraints={[
+            Infinity,
+            getEditorMaxHeight(viewHeight, this.editor),
+          ]}
           axis="y"
           handle={dragHandle}
           resizeHandles={["s"]}

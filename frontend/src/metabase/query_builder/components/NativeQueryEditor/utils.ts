@@ -1,9 +1,11 @@
+import type { RefObject } from "react";
 import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
 
 import { getEngineNativeType } from "metabase/lib/engine";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
-import { MIN_HEIGHT_LINES, SCROLL_MARGIN, TOOLBARS_HEIGHT } from "./constants";
+import type { CodeMirrorEditorRef } from "./CodeMirrorEditor";
+import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 
 const LINE_HEIGHT = 16;
 
@@ -15,8 +17,16 @@ function getLinesForHeight(height: number) {
   return (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 }
 
-export function getEditorMaxHeight(viewHeight: number) {
-  return (viewHeight - TOOLBARS_HEIGHT) * 0.8;
+export function getEditorMaxHeight(
+  viewHeight: number,
+  ref: RefObject<CodeMirrorEditorRef>,
+) {
+  if (!ref.current?.element) {
+    return Infinity;
+  }
+
+  const { top } = ref.current.element.getBoundingClientRect();
+  return viewHeight - top - 100;
 }
 
 const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
