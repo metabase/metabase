@@ -417,8 +417,8 @@
   [column-type default-unit selected-unit]
   (let [options       (cond
                         (isa? column-type :type/DateTime) datetime-bucket-options
-                        (isa? column-type :type/HasDate)  date-bucket-options
-                        (isa? column-type :type/HasTime)  time-bucket-options
+                        (isa? column-type :type/Date)     date-bucket-options
+                        (isa? column-type :type/Time)     time-bucket-options
                         :else                             [])
         fallback-unit (if (isa? column-type :type/Time)
                         :hour
