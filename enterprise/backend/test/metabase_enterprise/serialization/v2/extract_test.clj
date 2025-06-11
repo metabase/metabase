@@ -1698,7 +1698,7 @@
                 (by-model "Dashboard" extraction)))))))
 
 (deftest metabot-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Card {model-id :id
                     model-eid :entity_id} {:name "AI Model"
@@ -1747,7 +1747,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest metabot-collection-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Collection {model-id :id
                           model-eid :entity_id} {:name "AI Model"}
