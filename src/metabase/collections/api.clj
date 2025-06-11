@@ -516,18 +516,25 @@
       true)))
 
 (defn- post-process-card-row [row]
-  (-> (update row :collection_preview api/bit->boolean)
+  (-> (t2/instance :model/Card row)
+      (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
-      (update :archived_directly api/bit->boolean)
-      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
+      (update :archived_directly api/bit->boolean)))
+
+(defn- post-process-card-row-after-hydrate [row]
+  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
   [_ _options _ rows]
-  (as-> (map #(t2/instance :model/Card %) rows) $
-    (t2/hydrate $ :can_write :can_restore :can_delete :dashboard_count [:dashboard :moderation_status])
-    (map post-process-card-row $)))
+  (map post-process-card-row-after-hydrate
+       (t2/hydrate (map post-process-card-row rows)
+                   :can_write
+                   :can_restore
+                   :can_delete
+                   :dashboard_count
+                   [:dashboard :moderation_status])))
 
 (defmethod post-process-collection-children :metric
   [_ _options _ rows]
