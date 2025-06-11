@@ -13,6 +13,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
@@ -712,3 +713,39 @@
                                "600")]
           (into [:if] args))
         :type/*))))
+
+(deftest ^:parallel case-type-of-test-47887
+  (testing "Case expression with type/Date default value and type/DateTime case value has Date filter popover enabled (#47887)"
+    ;; see
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749678607860649?thread_ts=1749678551.101819&cid=C0645JP1W81
+    ;; for more discussion
+    (let [clause [:case
+                  {:lib/uuid "1b4825a5-1a9a-4a25-9800-2f8ad9c5b0ae"}
+                  [[[:=
+                     {:lib/uuid "7b33102c-6491-4408-869a-d174df220cc2"}
+                     [:field
+                      {:base-type :type/Text, :lib/uuid "db8d2931-9433-4b6f-ac85-baa284cda8ac"}
+                      (meta/id :people :name)]
+                     "Won"]
+                    [:datetime-add
+                     {:lib/uuid "db28e60b-f3be-49e3-aaa8-45311a0a87cf"}
+                     [:field
+                      {:base-type :type/DateTimeWithLocalTZ, :lib/uuid "ef3590f6-e1ec-4ff2-a6eb-70b561abb3b3"}
+                      (meta/id :people :created-at)]
+                     0
+                     :month]]]
+                  [:datetime-add
+                   {:lib/uuid "54e8da9f-257f-49c2-b891-472e5c303a5e"}
+                   [:field
+                    {:base-type :type/Date, :lib/uuid "4231b718-baae-4a6a-8bc0-63cf8e183b62"}
+                    (meta/id :people :birth-date)]
+                   0
+                   :month]]
+          query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                    (lib/expression "expr" clause))]
+      (is (= :type/HasDate
+             (lib/type-of query clause)))
+      (let [col (m/find-first #(= (:name %) "expr")
+                              (lib/filterable-columns query))]
+        (assert (some? col))
+        (is (lib.types.isa/date-or-datetime? col))))))
