@@ -109,6 +109,9 @@ export const getRoutes = (store) => {
         path="/setup/embedding"
         component={EmbeddingSetupWrapper}
         onEnter={async (nextState, replace, done) => {
+          if (hasUserSetup) {
+            replace("/");
+          }
           trackPageView(nextState.location.pathname);
           done();
         }}
