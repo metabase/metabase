@@ -18,7 +18,7 @@ import type { VirtualItem } from "@tanstack/react-virtual";
 import type React from "react";
 import type { RefObject } from "react";
 
-import type { WritebackAction } from "metabase-types/api";
+import type { DataGridWritebackAction } from "metabase-types/api";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
 import type { VirtualGrid } from "./hooks/use-virtual-grid";
@@ -134,10 +134,10 @@ export interface RowIdColumnOptions {
 }
 
 export interface RowActionsColumnConfig<TData> {
-  actions: WritebackAction[];
-  onActionRun: (action: WritebackAction, row: Row<TData>) => void;
+  actions: DataGridWritebackAction[];
+  onActionRun: (action: DataGridWritebackAction, row: Row<TData>) => void;
   renderCell?: (
-    actions: WritebackAction[],
+    actions: DataGridWritebackAction[],
     rowIndex: number,
   ) => React.ReactNode;
 }

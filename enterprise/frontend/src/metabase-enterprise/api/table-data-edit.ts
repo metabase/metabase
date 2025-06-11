@@ -1,3 +1,5 @@
+import type { SkipToken } from "@reduxjs/toolkit/query";
+
 import type {
   DescribeActionFormRequest,
   DescribeActionFormResponse,
@@ -79,10 +81,14 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         },
       }),
     }),
-    getActions: builder.query<DataGridWritebackAction[], void>({
-      query: () => ({
+    getActions: builder.query<
+      DataGridWritebackAction[],
+      null | SkipToken | void
+    >({
+      query: (params) => ({
         method: "GET",
         url: `/api/action/v2/tmp-action`,
+        params,
       }),
       transformResponse: (response: { actions: DataGridWritebackAction[] }) =>
         response?.actions,
