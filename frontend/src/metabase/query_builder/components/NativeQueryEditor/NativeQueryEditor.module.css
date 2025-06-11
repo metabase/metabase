@@ -24,10 +24,23 @@
 .resizableBox {
   display: none;
   border-top: 1px solid var(--mb-color-border);
+  will-change: height;
 
   &.open {
     display: flex;
+    overflow: hidden;
   }
+
+  &.collapsed {
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+}
+
+.collapsing {
+  transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .actionButtons {

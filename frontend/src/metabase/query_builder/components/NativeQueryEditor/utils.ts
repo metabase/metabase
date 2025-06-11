@@ -8,7 +8,7 @@ import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 const LINE_HEIGHT = 16;
 
 export function getEditorLineHeight(lines: number) {
-  return lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
+  return lines * LINE_HEIGHT + (lines > 0 ? 2 * SCROLL_MARGIN : 0);
 }
 
 function getLinesForHeight(height: number) {

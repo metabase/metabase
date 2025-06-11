@@ -10,6 +10,7 @@ interface VisibilityTogglerProps {
   readOnly: boolean;
   toggleEditor: () => void;
   className?: string;
+  isCollapsed?: boolean;
 }
 
 export const VisibilityToggler = ({
@@ -17,9 +18,10 @@ export const VisibilityToggler = ({
   readOnly,
   toggleEditor,
   className = "",
+  isCollapsed = false,
 }: VisibilityTogglerProps) => {
-  const text = isOpen ? null : t`Open Editor`;
-  const icon = isOpen ? "contract" : "expand";
+  const text = isOpen && !isCollapsed ? null : t`Open Editor`;
+  const icon = isCollapsed ? "expand" : isOpen ? "contract" : "expand";
 
   return (
     <Flex
