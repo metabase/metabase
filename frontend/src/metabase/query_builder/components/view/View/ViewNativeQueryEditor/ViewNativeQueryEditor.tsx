@@ -3,8 +3,8 @@ import type { ResizableBoxProps } from "react-resizable";
 import { useSelector } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import type {
-  Features,
   SelectionRange,
+  SidebarFeatures,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
@@ -49,7 +49,7 @@ interface ViewNativeQueryEditorProps {
   hasTopBar?: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar?: boolean;
-  sidebarFeatures?: Features;
+  sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
   resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
