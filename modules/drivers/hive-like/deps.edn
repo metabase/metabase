@@ -2,17 +2,4 @@
  ["src" "resources"]
 
  :deps
- {org.apache.hive/hive-jdbc {:mvn/version "4.0.1"}
-  org.apache.hive/hive-service {:mvn/version "4.0.1"
-                                :exclusions [org.apache.hadoop.thirdparty/hadoop-shaded-protobuf_3_7
-                                             org.apache.hadoop/hadoop-client-api
-                                             org.pac4j/pac4j-saml-opensamlv3
-                                             org.apache.hive/hive-exec
-                                             org.eclipse.jetty/jetty-runner]}
-  org.apache.zookeeper/zookeeper {:mvn/version "3.9.3"}
-  com.cedarsoftware/json-io {:mvn/version "4.54.0"}
-  commons-beanutils/commons-beanutils {:mvn/version "1.11.0"}
-  io.netty/netty-codec-haproxy {:mvn/version "4.2.1.Final"}
-  io.netty/netty-codec-http2 {:mvn/version "4.2.1.Final"}
-  org.apache.avro/avro {:mvn/version "1.12.0"}
-  org.apache.hadoop/hadoop-common {:mvn/version "3.4.1"}}}
+ {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.0.1"}}}

@@ -167,7 +167,6 @@ const MetadataTableColumn = ({
               value={field.description ?? ""}
               onBlurChange={handleChangeDescription}
               placeholder={t`No column description yet`}
-              fullWidth
             />
           </div>
         </div>
