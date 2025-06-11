@@ -501,9 +501,9 @@
 
 (defmethod yyyymmddhhmmss-dates-expected-rows :snowflake
   [_driver]
-  [[1 "foo" #t "2609-10-23T10:19:24.300"]
-   [2 "bar" #t "2610-02-16T04:06:04.300"]
-   [3 "baz" #t "2610-06-11T21:52:44.300"]])
+  [[1 "foo" #t "2019-04-21T16:43"]
+   [2 "bar" #t "2020-04-21T16:43"]
+   [3 "baz" #t "2021-04-21T16:43"]])
 
 (deftest ^:parallel yyyymmddhhmmss-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-string-timestamps)
