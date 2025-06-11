@@ -350,3 +350,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; End tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest ^:parallel line-comment-block-comment-test
+  ;; clickhouse: broken in  0.8.4, fixed in 0.8.6
+  ;; https://github.com/metabase/metabase/issues/57149
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2338
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql})
+    (testing "a query with a line comment followed by a block comment should work correctly"
+      (is (= [[1]]
+             (mt/rows
+              (qp/process-query
+               (mt/native-query
+                 {:query "-- foo
+                          /* comment */
+                          select 1;"}))))))))

@@ -275,20 +275,6 @@
                               :target [:variable [:template-tag "category_name"]]
                               :value  "African"}]})))))))
 
-(deftest ^:parallel line-comment-block-comment-test
-  ;; broken in 0.8.4, fixed in 0.8.6
-  ;; https://github.com/metabase/metabase/issues/57149
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2338
-  (mt/test-driver :clickhouse
-    (testing "a query with a line comment followed by a block comment should work correctly"
-      (is (= [[1]]
-             (mt/rows
-              (qp/process-query
-               (mt/native-query
-                 {:query "--foo
-                          /*comment*/
-                          select 1;"}))))))))
-
 (deftest ^:parallel ternary-with-variable-test
   ;; broken in 0.8.4, fixed in 0.8.6
   ;; https://github.com/metabase/metabase/issues/56690
@@ -311,6 +297,7 @@
                               :value  "African"}]})))))))
 
 #_(deftest ^:parallel subquery-with-cte-test
+    ;; TODO: enable these tests once the jdbc driver has been fixed
     ;; broken in 0.8.6, waiting for fix
     ;; https://github.com/metabase/metabase/issues/59166
     ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
@@ -323,6 +310,7 @@
                    {:query "select * from ( with x as ( select 9 ) select * from x );"}))))))))
 
 #_(deftest ^:parallel casted-params-test
+    ;; TODO: enable these tests once the jdbc driver has been fixed
     ;; broken in 0.8.6, waiting for fix
     ;; https://github.com/metabase/metabase/issues/58992
     ;; https://github.com/metabase/metabase/issues/59002
