@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -289,6 +290,34 @@
       (is (= [[:field 33 {:join-alias "Question 4918"}]
               [:field "count" {:join-alias "Question 4918"}]]
              (#'nest-query/joined-fields query))))))
+
+(deftest ^:parallel idempotence-test
+  (testing "A nested query should return the same set of columns as the original"
+    (mt/with-temp [:model/Card base {:dataset_query
+                                     (mt/mbql-query
+                                       reviews
+                                       {:breakout [$product_id]
+                                        :aggregation [[:count]]
+                                        ;; filter on an implicit join
+                                        :filter [:= $product_id->products.category "Doohickey"]})}]
+      (let [query   (mt/mbql-query orders
+                      {:joins [{:source-table (str "card__" (:id base))
+                                :alias (str "Question " (:id base))
+                                :condition [:=
+                                            $product_id
+                                            [:field
+                                             %reviews.product_id
+                                             {:join-alias (str "Question " (:id base))}]]
+                                :fields :all}]
+                       :expressions {"CC" [:+ 1 1]}
+                       :limit 2})
+            nested  (assoc query :query (nest-expressions query))
+            query*  (qp.store/with-metadata-provider (mt/id)
+                      (lib/query (qp.store/metadata-provider) query))
+            nested* (qp.store/with-metadata-provider (mt/id)
+                      (lib/query (qp.store/metadata-provider) nested))]
+        (is (= (map :lib/desired-column-alias (lib/returned-columns query*))
+               (map :lib/desired-column-alias (lib/returned-columns nested*))))))))
 
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
@@ -839,33 +868,33 @@
                  {:fields
                   [[:field
                     (meta/id :orders :user-id)
-                    {::add/source-table (meta/id :orders),
-                     ::add/source-alias "USER_ID",
-                     ::add/desired-alias "USER_ID",
+                    {::add/source-table (meta/id :orders)
+                     ::add/source-alias "USER_ID"
+                     ::add/desired-alias "USER_ID"
                      ::add/position 0}]
                    [:field
                     (meta/id :orders :total)
-                    {::add/source-table (meta/id :orders),
-                     ::add/source-alias "TOTAL",
-                     ::add/desired-alias "TOTAL",
+                    {::add/source-table (meta/id :orders)
+                     ::add/source-alias "TOTAL"
+                     ::add/desired-alias "TOTAL"
                      ::add/position 1}]
                    [:expression
                     "double_total"
                     {::add/desired-alias "double_total", ::add/position 2}]
                    [:field
                     (meta/id :people :id)
-                    {:join-alias "p",
-                     ::add/source-table "p",
-                     ::add/source-alias "ID",
-                     ::add/desired-alias "p__ID",
+                    {:join-alias "p"
+                     ::add/source-table "p"
+                     ::add/source-alias "ID"
+                     ::add/desired-alias "p__ID"
                      ::add/position 3}]
                    [:field
                     (meta/id :people :created-at)
                     {:temporal-unit (symbol "nil #_\"key is not present.\"")
-                     ::add/source-alias "CREATED_AT",
-                     :join-alias "p",
-                     ::add/desired-alias "p__CREATED_AT",
-                     ::add/position 4,
+                     ::add/source-alias "CREATED_AT"
+                     :join-alias "p"
+                     ::add/desired-alias "p__CREATED_AT"
+                     ::add/position 4
                      ::add/source-table "p"}]]}}
                 (->> (lib.tu.macros/mbql-query orders
                        {:expressions {"double_total" [:* $total 2]}
