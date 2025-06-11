@@ -18,11 +18,13 @@ import { ParametersList } from "../../../parameters/components/ParametersList";
 
 interface DashboardParameterListProps {
   parameters: Array<Parameter & { value: unknown }>;
+  isSortable?: boolean;
   isFullscreen: boolean;
 }
 
 export function DashboardParameterList({
   parameters,
+  isSortable = true,
   isFullscreen,
 }: DashboardParameterListProps) {
   const dashboard = useSelector(getDashboardComplete);
@@ -39,6 +41,7 @@ export function DashboardParameterList({
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}
       dashboard={dashboard}
+      isSortable={isSortable}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}

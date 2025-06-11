@@ -37,6 +37,7 @@ import type {
   DashboardId,
   DashboardParameterMapping,
   ParameterId,
+  VirtualCard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -363,7 +364,7 @@ export const getEditingParameter = createSelector(
   },
 );
 
-const getCard = (state: State, { card }: { card: Card }) => card;
+const getCard = (state: State, { card }: { card: Card | VirtualCard }) => card;
 const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
   dashcard;
 
@@ -474,7 +475,10 @@ export const getMissingRequiredParameters = createSelector(
  * It's a memoized version, it uses LRU cache per card identified by id
  */
 export const getQuestionByCard = createCachedSelector(
-  [(_state: State, props: { card: Card }) => props.card, getMetadata],
+  [
+    (_state: State, props: { card: Card | VirtualCard }) => props.card,
+    getMetadata,
+  ],
   (card, metadata) => {
     return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },

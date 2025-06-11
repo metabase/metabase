@@ -17,6 +17,7 @@ export type ParametersListProps = {
     editingParameter: Parameter | null | undefined;
 
     isEditing: boolean;
+    isSortable?: boolean;
     vertical: boolean;
     commitImmediately: boolean;
     setParameterValue: (parameterId: ParameterId, value: any) => void;
