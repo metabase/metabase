@@ -248,28 +248,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     this.setState({ isSelectedTextPopoverOpen: true });
   };
 
-  _updateSize(doc: string) {
-    const { viewHeight } = this.props;
-
-    const element = this.resizeBox.current;
-
-    if (!doc || !element) {
-      return;
-    }
-
-    const lines = doc.split("\n").length;
-    const newHeight = getEditorLineHeight(
-      Math.max(
-        Math.min(lines, getMaxAutoSizeLines(viewHeight)),
-        MIN_HEIGHT_LINES,
-      ),
-    );
-
-    if (newHeight > element.offsetHeight) {
-      element.style.height = `${newHeight}px`;
-    }
-  }
-
   handleQueryGenerated = (queryText: string) => {
     this.onChange(queryText);
     this.focus();
