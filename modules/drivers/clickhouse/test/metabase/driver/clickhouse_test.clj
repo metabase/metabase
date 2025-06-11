@@ -253,28 +253,6 @@
                               :target [:dimension [:template-tag "category_name"]]
                               :value  ["African"]}]})))))))
 
-(deftest ^:parallel comment-question-mark-test
-  ;; broke in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
-  (mt/test-driver :clickhouse
-    (testing "a query with a question mark in the comment and has a variable should work correctly"
-      (is (= [[1 "African"]]
-             (mt/rows
-              (qp/process-query
-               {:database (mt/id)
-                :type :native
-                :native {:query "SELECT *
-                                  -- ?
-                                  FROM test_data.categories
-                                 WHERE name = {{category_name}};"
-                         :template-tags {"category_name" {:type         :text
-                                                          :name         "category_name"
-                                                          :display-name "Category Name"}}}
-                :parameters [{:type   :category
-                              :target [:variable [:template-tag "category_name"]]
-                              :value  "African"}]})))))))
-
 (deftest ^:parallel ternary-with-variable-test
   ;; broken in 0.8.4, fixed in 0.8.6
   ;; https://github.com/metabase/metabase/issues/56690
@@ -295,19 +273,6 @@
                 :parameters [{:type   :category
                               :target [:variable [:template-tag "category_name"]]
                               :value  "African"}]})))))))
-
-#_(deftest ^:parallel subquery-with-cte-test
-    ;; TODO: enable these tests once the jdbc driver has been fixed
-    ;; broken in 0.8.6, waiting for fix
-    ;; https://github.com/metabase/metabase/issues/59166
-    ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
-    (mt/test-driver :clickhouse
-      (testing "a query with a CTE in a subquery should work correctly"
-        (is (= [[9]]
-               (mt/rows
-                (qp/process-query
-                 (mt/native-query
-                   {:query "select * from ( with x as ( select 9 ) select * from x );"}))))))))
 
 #_(deftest ^:parallel casted-params-test
     ;; TODO: enable these tests once the jdbc driver has been fixed

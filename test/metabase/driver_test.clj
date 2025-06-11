@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -364,3 +365,42 @@
                  {:query "-- foo
                           /* comment */
                           select 1;"}))))))))
+
+(deftest ^:parallel subquery-with-cte-test
+  ;; broken in 0.8.6, waiting for fix
+  ;; https://github.com/metabase/metabase/issues/59166
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
+  (mt/test-drivers (disj (mt/normal-driver-select {:+parent :sql})
+                         :clickhouse ;; TODO: enable once jdbc driver is fixed
+                         :sqlserver)
+    (testing "a query with a CTE in a subquery should work correctly"
+      (is (= [[9]]
+             (mt/rows
+              (qp/process-query
+               (mt/native-query
+                 {:query "select * from ( with x as ( select 9 ) select * from x ) as y;"}))))))))
+
+(deftest ^:parallel comment-question-mark-test
+  ;; clickhouse: broke in 0.8.3, fixed in 0.8.4
+  ;; https://github.com/metabase/metabase/issues/56690
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql})
+    (testing "a query with a question mark in the comment and has a variable should work correctly"
+      (let [query (format "SELECT *
+                                          -- ?
+                                          FROM %s
+                                          WHERE %s = {{category_name}};"
+                          (sql.tx/qualify-and-quote driver/*driver* "test-data" "categories")
+                          (sql.tx/qualify-and-quote driver/*driver* "test-data" "categories" "name"))]
+        (is (= [[1 "African"]]
+               (mt/rows
+                (qp/process-query
+                 {:database (mt/id)
+                  :type :native
+                  :native {:query query
+                           :template-tags {"category_name" {:type         :text
+                                                            :name         "category_name"
+                                                            :display-name "Category Name"}}}
+                  :parameters [{:type   :category
+                                :target [:variable [:template-tag "category_name"]]
+                                :value  "African"}]}))))))))
