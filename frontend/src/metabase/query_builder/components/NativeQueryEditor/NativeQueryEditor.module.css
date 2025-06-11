@@ -27,6 +27,7 @@
 
   &.open {
     display: flex;
+    overflow: hidden;
   }
 }
 

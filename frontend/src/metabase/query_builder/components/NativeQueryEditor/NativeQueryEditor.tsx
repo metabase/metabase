@@ -43,7 +43,11 @@ import type { Features as SidebarFeatures } from "./NativeQueryEditorActionButto
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
 import { RightClickPopover } from "./RightClickPopover";
-import { MIN_HEIGHT_LINES } from "./constants";
+import {
+  MIN_EDITOR_HEIGHT_AFTER_DRAGGING,
+  MIN_HEIGHT_LINES,
+  THRESHOLD_FOR_AUTO_CLOSE,
+} from "./constants";
 import type { SelectionRange } from "./types";
 import {
   calcInitialEditorHeight,
@@ -127,6 +131,7 @@ interface NativeQueryEditorState {
   initialHeight: number;
   isSelectedTextPopoverOpen: boolean;
   mobileShowParameterList: boolean;
+  isVisibilityTogglerOpen: boolean;
 }
 
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
@@ -141,6 +146,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
       mobileShowParameterList: false,
+      isVisibilityTogglerOpen: props.isNativeEditorOpen,
     };
   }
 
@@ -186,6 +192,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     ) {
       // close selected text popover if text is deselected
       this.setState({ isSelectedTextPopoverOpen: false });
+    }
+
+    if (this.props.isNativeEditorOpen && !prevProps.isNativeEditorOpen) {
+      const { query, viewHeight } = this.props;
+      const newHeight = calcInitialEditorHeight({ query, viewHeight });
+      this.setState({ initialHeight: newHeight });
     }
   }
 
@@ -294,6 +306,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             query={query}
             isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
             isNativeEditorOpen={this.props.isNativeEditorOpen}
+            isVisibilityTogglerOpen={this.props.isNativeEditorOpen}
             sidebarFeatures={this.props.sidebarFeatures}
             toggleEditor={this.props.toggleEditor}
             setParameterValueToDefault={this.props.setParameterValueToDefault}
@@ -305,7 +318,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           ref={this.resizeBox}
           height={this.state.initialHeight}
           className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
-          minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
+          minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
           axis="y"
           handle={dragHandle}
           resizeHandles={["s"]}
@@ -314,6 +327,15 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             this.props.handleResize();
             if (typeof resizableBoxProps?.onResizeStop === "function") {
               resizableBoxProps.onResizeStop(e, data);
+            }
+            const size = data.size;
+
+            if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
+              // collapsed
+              this.props.setIsNativeEditorOpen?.(false);
+              this.setState({
+                initialHeight: MIN_EDITOR_HEIGHT_AFTER_DRAGGING,
+              });
             }
           }}
         >
