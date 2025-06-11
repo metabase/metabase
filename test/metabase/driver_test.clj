@@ -404,3 +404,30 @@
                   :parameters [{:type   :category
                                 :target [:variable [:template-tag "category_name"]]
                                 :value  "African"}]}))))))))
+
+(deftest ^:parallel select-question-mark-test
+  ;; broken in 0.8.3, fixed in 0.8.4
+  ;; https://github.com/metabase/metabase/issues/56690
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql})
+    (testing "a query that selects a question mark and has a variable should work correctly"
+      (let [query (format "SELECT *, '?'
+                           FROM %s
+                           WHERE {{category_name}};"
+                          (sql.tx/qualify-and-quote driver/*driver* "test-data" "categories"))]
+        (is (= [[1 "African" "?"]]
+               (mt/rows
+                (qp/process-query
+                 {:database (mt/id)
+                  :type :native
+                  :native {:query query
+                           :template-tags {"category_name" {:name         "category_name"
+                                                            :display_name "Category Name"
+                                                            :type         "dimension"
+                                                            :widget-type  "string/contains"
+                                                            :options {:case-sensitive false}
+                                                            :dimension    [:field (mt/id :categories :name) nil]}}}
+                  :parameters [{:options {:case-sensitive false}
+                                :type   :string/contains
+                                :target [:dimension [:template-tag "category_name"]]
+                                :value  ["African"]}]}))))))))

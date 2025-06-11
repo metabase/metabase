@@ -228,31 +228,6 @@
                 ["2016-06-01T00:00:00Z" 71.954]]
                (mt/rows (qp/process-query q))))))))
 
-(deftest ^:parallel select-question-mark-test
-  ;; broken in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
-  (mt/test-driver :clickhouse
-    (testing "a query that selects a question mark and has a variable should work correctly"
-      (is (= [[1 "African" "?"]]
-             (mt/rows
-              (qp/process-query
-               {:database (mt/id)
-                :type :native
-                :native {:query "SELECT *, '?'
-                                 FROM `test_data`.`categories`
-                                 WHERE {{category_name}};"
-                         :template-tags {"category_name" {:name         "category_name"
-                                                          :display_name "Category Name"
-                                                          :type         "dimension"
-                                                          :widget-type  "string/contains"
-                                                          :options {:case-sensitive false}
-                                                          :dimension    [:field (mt/id :categories :name) nil]}}}
-                :parameters [{:options {:case-sensitive false}
-                              :type   :string/contains
-                              :target [:dimension [:template-tag "category_name"]]
-                              :value  ["African"]}]})))))))
-
 (deftest ^:parallel ternary-with-variable-test
   ;; broken in 0.8.4, fixed in 0.8.6
   ;; https://github.com/metabase/metabase/issues/56690
