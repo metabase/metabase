@@ -22,7 +22,9 @@ describe(
   () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
-      cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+      cy.intercept("POST", "/api/ee/data-editing/action/v2/execute").as(
+        "executeAction",
+      );
       cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
         "prefetchValues",
       );

@@ -27,7 +27,7 @@ const MODEL_NAME = "Test Action Model";
           "/api/dashboard/*/dashcard/*/execute?parameters=*",
         ).as("prefetchValues");
 
-        cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
+        cy.intercept("POST", "/api/ee/data-editing/action/v2/execute").as(
           "executeAction",
         );
       });
@@ -1061,7 +1061,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
       "prefetchValues",
     );
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
+    cy.intercept("POST", "/api/ee/data-editing/action/v2/execute").as(
       "executeAction",
     );
   });

@@ -430,7 +430,9 @@ describe("issue 32840", () => {
       H.visitModel(modelId);
     });
 
-    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+    cy.intercept("POST", "/api/ee/data-editing/action/v2/execute").as(
+      "executeAction",
+    );
   });
 
   it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {
