@@ -2658,8 +2658,10 @@ describe("issue 23449", () => {
     H.popover().findByText("Body").click();
 
     cy.log("save model");
-    cy.button("Save").click();
-    cy.findByTestId("save-question-button").click();
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    
+    cy.log("confirm save in a modal");
+    H.modal().button("Save").click();
 
     cy.log("check that the data renders");
     checkTable();
