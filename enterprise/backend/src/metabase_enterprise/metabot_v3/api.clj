@@ -33,7 +33,7 @@
         env             (metabot-v3.tools.api/handle-envelope
                          {:context         (metabot-v3.context/create-context context)
                           :metabot-id      metabot_id
-                          :profile-id      (get-in metabot-v3.config/metabot-config [metabot_id :profile-id])
+                          :profile-id      (metabot-v3.config/metabot-profile-id metabot_id)
                           :conversation-id conversation_id
                           :messages        history
                           :state           state})
@@ -58,14 +58,6 @@
          (request body)
          :conversation_id conversation_id)
     (metabot-v3.context/log :llm.log/be->fe)))
-
-(api.macros/defendpoint :get "/v2/prompt-suggestions"
-  "Get a set of suggested LLM prompts for the current user."
-  [_route-params
-   _query-params
-   _body]
-  (metabot-v3.context/log {:api :get-prompts} :llm.log/fe->be)
-  {:prompts []})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
