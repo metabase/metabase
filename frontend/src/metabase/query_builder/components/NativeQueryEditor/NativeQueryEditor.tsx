@@ -197,6 +197,18 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       // close selected text popover if text is deselected
       this.setState({ isSelectedTextPopoverOpen: false });
     }
+
+    if (
+      prevProps.query.question().parameters().length <
+      this.props.query.question().parameters().length
+    ) {
+      this.setState({
+        height: Math.min(
+          this.state.height,
+          getEditorMaxHeight(this.props.viewHeight, this.editor),
+        ),
+      });
+    }
   }
 
   focus() {
