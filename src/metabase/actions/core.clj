@@ -52,6 +52,7 @@
  [metabase.actions.http-action
   apply-json-query]
  [metabase.actions.models
+  enabled-table-actions
   dashcard->action
   select-action
   select-actions

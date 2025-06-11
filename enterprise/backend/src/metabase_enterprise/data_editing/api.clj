@@ -202,36 +202,26 @@
   (let [databases          (t2/select [:model/Database :id :settings])
         editable-database? (comp boolean :database-enable-table-editing :settings)
         editable-databases (filter editable-database? databases)
-
-        editable-tables
-        (when (seq editable-databases)
-          (t2/select :model/Table
-                     :db_id [:in (map :id editable-databases)]
-                     :active true))
-
-        fields
-        (when (seq editable-tables)
-          (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
-
-        fields-by-table
-        (group-by :table_id fields)
-
-        table-actions
-        (for [t editable-tables
-              op [:table.row/create :table.row/update :table.row/delete]
-              :let [fields (fields-by-table (:id t))
-                    action (actions/table-primitive-action t fields op)]]
-          (assoc action :table_name (:name t)))
-
-        saved-actions
-        (for [a (actions/select-actions nil :archived false)]
-          (select-keys a [:name
-                          :model_id
-                          :type
-                          :database_id
-                          :id
-                          :visualization_settings
-                          :parameters]))]
+        editable-tables    (when (seq editable-databases)
+                             (t2/select :model/Table
+                                        :db_id [:in (map :id editable-databases)]
+                                        :active true))
+        fields             (when (seq editable-tables)
+                             (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
+        fields-by-table    (group-by :table_id fields)
+        table-actions      (for [t            editable-tables
+                                 [op op-name] actions/enabled-table-actions
+                                 :let [fields (fields-by-table (:id t))
+                                       action (actions/table-primitive-action t fields op)]]
+                             (assoc action :table_name op-name))
+        saved-actions      (for [a (actions/select-actions nil :archived false)]
+                             (select-keys a [:name
+                                             :model_id
+                                             :type
+                                             :database_id
+                                             :id
+                                             :visualization_settings
+                                             :parameters]))]
     {:actions (vec (concat saved-actions table-actions))}))
 
 (mr/def ::unified-action.base
