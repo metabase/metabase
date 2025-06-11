@@ -131,7 +131,7 @@ export const LightThemeDownload = {
 
   args: {
     ...LightThemeDefault.args,
-    downloadsEnabled: true,
+    downloadsEnabled: { pdf: true, results: true },
   },
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
@@ -164,7 +164,7 @@ export const DarkThemeDownload = {
 
   args: {
     ...DarkThemeDefault.args,
-    downloadsEnabled: true,
+    downloadsEnabled: { pdf: true, results: true },
   },
 
   play: LightThemeDownload.play,
