@@ -896,7 +896,6 @@
                                                         (dissoc % :user-id)))]
     (mt/with-premium-features #{:table-data-editing}
       (mt/test-drivers #{:h2 :postgres}
-        (data-editing.tu/toggle-data-editing-enabled! true)
         (mt/with-actions-enabled
           (mt/with-non-admin-groups-no-root-collection-perms
             (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
@@ -957,39 +956,45 @@
                                             :scope     {:dashcard-id (:id dashcard)}
                                             :input     {:id 1}
                                             :params    {:status "approved"}})))))
-                (testing "non-row action modifying a row"
-                  (testing "underlying row does not exist, action not executed"
-                    (is (= 400 (:status (req {:action_id (:id action)
-                                              :scope     {:dashcard-id (:id dashcard)}
-                                              :input     {:id 1}
-                                              :params    {:status "approved"}})))))
-                  (testing "underlying row exists, action executed"
-                    (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
-                                          {:rows [{:name "Widgets", :status "waiting"}]})
-                    (is (= {:status 200
-                            :body   {:outputs [{:rows-updated 1}]}}
-                           (-> (req {:action_id (:id action)
-                                     :scope     {:dashcard-id (:id dashcard)}
-                                     :input     {:id 1}
-                                     :params    {:status "approved"}})
-                               (select-keys [:status :body]))))))
-                (testing "dashcard row action modifying a row - implicit action"
-                  (let [action-id "dashcard:unknown:abcdef"]
+                ;; should not need this permission for model actions
+                (data-editing.tu/with-data-editing-enabled! false
+                  (testing "non-row action modifying a row"
                     (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action_id action-id
+                      (is (= 400 (:status (req {:action_id (:id action)
                                                 :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id 2}
+                                                :input     {:id 1}
                                                 :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
-                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
-                                            {:rows [{:name "Sprockets", :status "waiting"}]})
+                      (data-editing.tu/with-data-editing-enabled! true
+                        (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                              {:rows [{:name "Widgets", :status "waiting"}]}))
                       (is (= {:status 200
                               :body   {:outputs [{:rows-updated 1}]}}
-                             (-> (req {:action_id action-id
+                             (-> (req {:action_id (:id action)
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id 2}
+                                       :input     {:id 1}
                                        :params    {:status "approved"}})
-                                 (select-keys [:status :body])))))))
+                                 (select-keys [:status :body]))))))
+                  (testing "dashcard row action modifying a row - implicit action"
+                    (let [action-id "dashcard:unknown:abcdef"]
+                      (testing "underlying row does not exist, action not executed"
+                        (is (= 404 (:status (req {:action_id action-id
+                                                  :scope     {:dashcard-id (:id dashcard)}
+                                                  :input     {:id 2}
+                                                  :params    {:status "approved"}})))))
+                      (testing "underlying row exists, action executed"
+                        (data-editing.tu/with-data-editing-enabled! true
+                          (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                                {:rows [{:name "Sprockets", :status "waiting"}]}))
+                        (is (= {:status 200
+                                :body   {:outputs [{:rows-updated 1}]}}
+                               (-> (req {:action_id action-id
+                                         :scope     {:dashcard-id (:id dashcard)}
+                                         :input     {:id 2}
+                                         :params    {:status "approved"}})
+                                   (select-keys [:status :body]))))))))
+                ;; but it is necessary for the primitives
+                (data-editing.tu/toggle-data-editing-enabled! true)
                 (testing "dashcard row action modifying a row - primitive action"
                   (let [action-id "dashcard:unknown:fedcba"]
                     (testing "underlying row does not exist, action not executed"

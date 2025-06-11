@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.actions.settings :as actions.settings]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.sync.core :as sync]
@@ -66,6 +67,13 @@
 
 (defn toggle-data-editing-enabled! [on-or-off]
   (alter-db-settings! assoc :database-enable-table-editing (boolean on-or-off)))
+
+(defmacro with-data-editing-enabled! [on-or-ff & body]
+  `(let [before# (actions.settings/database-enable-table-editing)
+         _#      (toggle-data-editing-enabled! ~on-or-ff)
+         result# (do ~@body)]
+     (toggle-data-editing-enabled! before#)
+     result#))
 
 (defn open-test-table!
   "Sets up an anonymous table in the test db (mt/id). Return a box that can be deref'd for the table-id.
