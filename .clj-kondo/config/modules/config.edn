@@ -429,6 +429,13 @@
           metabase.driver.sql.util
           metabase.driver.sync
           metabase.driver.util}
+   :uses #{driver-api
+           util}}
+
+  driver-api
+  {:team "Drivers"
+   :api #{metabase.driver-api.core
+          metabase.driver-api.init}
    :uses #{actions
            api
            app-db

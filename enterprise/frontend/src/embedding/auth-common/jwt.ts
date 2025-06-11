@@ -11,12 +11,14 @@ export async function jwtDefaultRefreshTokenFunction(
     customFetchRequestToken,
   );
 
-  const mbAuthUrl = new URL(`${instanceUrl}/auth/sso`);
-  mbAuthUrl.searchParams.set("jwt", jwtTokenResponse);
+  const mbAuthUrl = `${instanceUrl}/auth/sso`;
+
+  const mbAuthUrlWithJwt = new URL(mbAuthUrl);
+  mbAuthUrlWithJwt.searchParams.set("jwt", jwtTokenResponse);
 
   let authSsoResponse;
   try {
-    authSsoResponse = await fetch(mbAuthUrl.toString(), {
+    authSsoResponse = await fetch(mbAuthUrlWithJwt.toString(), {
       headers: requestHeaders,
     });
   } catch (e) {
