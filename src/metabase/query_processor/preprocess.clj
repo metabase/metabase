@@ -184,7 +184,8 @@
      query
      middleware)))
 
-(defn- restore-join-aliases [preprocessed-query]
+(mu/defn- restore-join-aliases :- :map
+  [preprocessed-query :- :map]
   (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
     (escape-join-aliases/restore-aliases preprocessed-query replacement)))
 
