@@ -136,6 +136,12 @@
                     (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
    :task       (task! (jar-download/jar-download parsed))}
 
+  alias
+  {:doc      "Installs the alias for ./bin/mage"
+   :examples [["./bin/mage alias" "Interactively installs the alias for ./bin/mage"]]
+   :requires [[mage.alias :as alias]]
+   :task     (task! (alias/install parsed))}
+
   setup-stats-repl
   {:doc "Connect to the stats repl"
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
