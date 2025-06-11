@@ -8,7 +8,9 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.metadata.result-metadata-test]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -1569,3 +1571,15 @@
                 (-> base
                     (bad-fields [0 1 2 3])
                     lib/returned-columns)))))))
+
+(deftest ^:parallel calculate-metadata-for-deduplicated-field-refs-test
+  (testing "returned-columns should attempt to figure out what is meant by broken field refs using `:lib/deduplicated-name`s in join :fields"
+    (let [query (lib/query
+                 (metabase.lib.metadata.result-metadata-test/test-metadata-provider)
+                 (metabase.lib.metadata.result-metadata-test/join-query))]
+      (is (= [{:name "ID"}
+              {:name "TOTAL"}
+              {:name "TAX"}
+              {:name "VENDOR"}]
+             (map #(select-keys % [:name])
+                  (lib.metadata.calculation/returned-columns query -1 (lib.join/resolve-join query -1 "Card"))))))))

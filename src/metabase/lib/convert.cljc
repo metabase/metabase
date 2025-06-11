@@ -99,9 +99,9 @@
   "Runs the provided function with cleaning of queries disabled.
 
   This is preferred over directly cleaning the query."
-  [f]
+  [thunk]
   (binding [*clean-query* false]
-    (f)))
+    (thunk)))
 
 (defn- clean [almost-query]
   (if-not *clean-query*
@@ -481,9 +481,10 @@
   (aggregation->legacy-MBQL input))
 
 (defn- stage-metadata->legacy-metadata [stage-metadata]
-  (into []
-        (comp (map #(update-keys % u/->snake_case_en))
-              (map ->legacy-MBQL))
+  ;; only convert unqualified keywords to snake_case
+  (mapv #(update-keys % (fn [k]
+                          (cond-> k
+                            (simple-keyword? k) u/->snake_case_en)))
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]

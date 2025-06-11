@@ -218,8 +218,7 @@
         (update :columns (fn [columns]
                            (mapv (fn [column]
                                    (-> column
-                                       (update-keys u/->kebab-case-en)
-                                       (assoc :lib/type :metadata/column)))
+                                       (update-keys u/->kebab-case-en)))
                                  columns)))
         (assoc :lib/type :metadata/results))))
 
@@ -274,17 +273,18 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(def LegacyOrPMBQLQuery
+(def ^:private LegacyOrPMBQLQuery
   "Schema for a map that is either a legacy query OR a pMBQL query."
   [:or
    [:map
-    {:error/message "legacy query"}
+    {:error/message "legacy (MBQL <= 4) query"}
     [:type [:enum :native :query]]]
    [:map
-    {:error/message "pMBQL query"}
+    {:error/message "pMBQL (MBQL 5) query"}
     [:lib/type [:= :mbql/query]]]])
 
-(mu/defn pipeline
+(mu/defn pipeline :- [:map
+                      [:lib/type [:= :mbql/query]]]
   "Ensure that a `query` is in the general shape of a pMBQL query. This doesn't walk the query and fix everything! The
   goal here is just to make sure we have `:stages` in the correct place and the like. See [[metabase.lib.convert]] for
   functions that actually ensure all parts of the query match the pMBQL schema (they use this function as part of that
@@ -535,7 +535,7 @@
              truncate-alias
              (uniqify id))))))
 
-  ([existing-names    :- [:sequential :string]]
+  ([existing-names :- [:sequential :string]]
    (let [f (unique-name-generator)]
      (doseq [existing existing-names]
        (f existing))

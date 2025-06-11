@@ -130,6 +130,11 @@
     (or (and (nil? effective_type) base_type)
         (isa? base_type effective_type))      (assoc :effective_type base_type)))
 
+(defn- remove-lib-keys [col]
+  (apply dissoc col (filter #(and (qualified-keyword? %)
+                                  (str/includes? (namespace %) "lib"))
+                            (keys col))))
+
 (defn aggregate-col
   "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to
   pass the `Field` in question as well.
@@ -138,16 +143,19 @@
     (aggregate-col :avg (col :venues :id))
     (aggregate-col :avg :venues :id)"
   ([ag-type]
-   (backfill-effective-type
-    (tx/aggregate-column-info (tx/driver) ag-type)))
+   (-> (tx/aggregate-column-info (tx/driver) ag-type)
+       backfill-effective-type
+       remove-lib-keys))
 
   ([ag-type field]
-   (backfill-effective-type
-    (tx/aggregate-column-info (tx/driver) ag-type field)))
+   (-> (tx/aggregate-column-info (tx/driver) ag-type field)
+       backfill-effective-type
+       remove-lib-keys))
 
   ([ag-type table-kw field-kw]
-   (backfill-effective-type
-    (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw)))))
+   (-> (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw))
+       backfill-effective-type
+       remove-lib-keys)))
 
 (defn breakout-col
   "Return expected `:cols` info for a Field used as a breakout.

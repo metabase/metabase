@@ -105,7 +105,7 @@
 
 (defn- stage-with-joins-and-namespaced-keys-removed
   "For ref validation purposes we should ignore `:joins` and any namespaced keys that might be used to record additional
-  info e.g. `:lib/metadata`."
+  info e.g. `:lib/stage-metadata`."
   [stage]
   (reduce-kv (fn [acc k _]
                (if (or (qualified-keyword? k)
@@ -182,7 +182,10 @@
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    [:page         {:optional true} [:ref ::page]]]
+    [:page         {:optional true} [:ref ::page]]
+    ;; metadata attached (or not) at various points by lib and the QP.
+    [:lib/stage-metadata                 {:optional true} [:maybe :metabase.lib.schema.metadata/stage]]
+    [:metabase.lib.stage/cached-metadata {:optional true} [:maybe [:sequential :metabase.lib.schema.metadata/column]]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
@@ -214,6 +217,7 @@
                                :params
                                :parameters
                                :lib/stage-metadata
+                               :metabase.lib.stage/cached-metadata
                                :middleware)}
    [:map
     [:lib/type [:ref ::stage.type]]]

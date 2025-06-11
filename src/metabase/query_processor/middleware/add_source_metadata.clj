@@ -3,6 +3,7 @@
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.store :as qp.store]
@@ -43,21 +44,24 @@
                   {:source-query source-query}))
       nil)))
 
-(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential [:merge
+                                                              mbql.s/SourceQueryMetadata
+                                                              [:map
+                                                               [:lib/original-name     ::lib.schema.metadata/original-name]
+                                                               [:lib/deduplicated-name ::lib.schema.metadata/deduplicated-name]]]]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
     (let [cols (request/as-admin
+                 ;; TODO -- update this to use [[metabase.lib.metadata.result-metadata/expected-cols]] directly
                  ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                   {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
                    ;; to end up adding it again when the middleware runs at the top level
                    :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
-      (for [col cols
-            :when (not (:remapped_from col))]
-        (select-keys col [:name :id :ident :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id])))
+      (->> cols
+           (remove :remapped_from)))
     (catch Throwable e
       (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))

@@ -45,7 +45,7 @@
 
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/table
   [query _stage-number table-metadata {:keys [unique-name-fn], :as _options}]
-  (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
+  (when-let [field-metadatas ( lib.metadata/fields query (:id table-metadata))]
     (->> field-metadatas
          remove-hidden-default-fields
          sort-default-fields

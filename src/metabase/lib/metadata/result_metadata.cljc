@@ -51,10 +51,6 @@
 (mr/def ::cols
   [:maybe [:sequential ::col]])
 
-(mr/def ::metadata
-  [:map
-   [:cols {:optional true} ::cols]])
-
 ;;; TODO -- move into lib, deduplicate with [[metabase.lib.remove-replace/rename-join]]
 (mu/defn- rename-join :- ::lib.schema/query
   "Rename all joins with `old-alias` in a query to `new-alias`. Does not currently different between multiple join
@@ -138,12 +134,20 @@
 
     :else
     (throw (ex-info (lib.util/format (str "column number mismatch between initial metadata columns returned by driver (%d) and"
-                                 " those expected by MLv2 (%d). Did the driver return the wrong number of columns? "
-                                 " Or is there a bug in MLv2 metadata calculation?")
-                            (count initial-cols)
-                            (count lib-cols))
-                    {:initial-cols (map :name initial-cols)
-                     :lib-cols     (map (some-fn :lib/desired-column-alias :name) lib-cols)}))))
+                                          " those expected by MLv2 (%d). Did the driver return the wrong number of columns? "
+                                          " Or is there a bug in MLv2 metadata calculation?")
+                                     (count initial-cols)
+                                     (count lib-cols))
+                    (let [select-relevant-keys #(select-keys % [:name
+                                                                :lib/source-column-alias
+                                                                :lib/deduplicated-name
+                                                                :lib/original-name
+                                                                :lib/desired-column-alias
+                                                                :metabase.lib.join/join-alias
+                                                                :alias
+                                                                :source-alias])]
+                      {:initial-cols (map select-relevant-keys initial-cols)
+                       :lib-cols     (map select-relevant-keys lib-cols)})))))
 
 (mu/defn- source->legacy-source :- ::legacy-source
   [source :- [:maybe ::lib.schema.metadata/column-source]]
@@ -232,13 +236,6 @@
   [col :- ::kebab-cased-col]
   (when (= (:lib/type col) :metadata/column)
     (->> col
-         ;; MEGA HACK!!! APPARENTLY THE GENERATED FIELD REFS ALWAYS USE THE ORIGINAL NAME OF THE COLUMN, EVEN IF IT'S NOT
-         ;; EVEN THE NAME WE ACTUALLY USE IN THE SOURCE QUERY!! BARF!
-         #_(merge
-            col
-            (when-let [source-column-alias (:lib/source-column-alias col)]
-              {:name source-column-alias}))
-         #_(dissoc col :lib/desired-column-alias :lib/source-column-alias)
          lib.ref/ref
          lib.convert/->legacy-MBQL
          fe-friendly-expression-ref)))
@@ -257,14 +254,17 @@
                  field-ref (assoc :field-ref field-ref))))
            cols))))
 
-(mu/defn- deduplicate-names :- [:sequential ::kebab-cased-col]
+(mu/defn deduplicate-names :- [:sequential ::kebab-cased-col]
   "Needed for legacy FE viz settings purposes for the time being. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81
 
   These should just get `_2` and what not appended to them as needed -- they should not get truncated."
   [cols :- [:sequential ::kebab-cased-col]]
   (map (fn [col unique-name]
-         (assoc col :name unique-name))
+         (assoc col
+                :name                  unique-name
+                :lib/deduplicated-name unique-name
+                :lib/original-name     ((some-fn :lib/original-name :name) col)))
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
@@ -312,7 +312,12 @@
                            ;; TODO -- this is supposed to mean `:inherited-temporal-unit` is included in the output
                            ;; but doesn't seem to be working?
                            lib.metadata.calculation/*propagate-binning-and-bucketing* true]
-                   (doall (lib.metadata.calculation/returned-columns query -1 (lib.util/query-stage query -1) {:unique-name-fn (mbql.u/unique-name-generator)})))
+                   (doall (->> (lib.metadata.calculation/returned-columns query
+                                                                          -1
+                                                                          (lib.util/query-stage query -1)
+                                                                          {:unique-name-fn (mbql.u/unique-name-generator)})
+                               (filter (fn [col]
+                                         (:active col true))))))
         ;; generate barebones cols if lib was unable to calculate metadata here.
         lib-cols (if (empty? lib-cols)
                    (mapv basic-native-col initial-cols)
@@ -348,15 +353,10 @@
                                (when-let [strategy (:strategy binning-info)]
                                  {:binning-strategy strategy})
                                binning-info)})
-             col))
-          ;; remove `:lib/uuid` because it causes way to many test failures. Probably would be better to keep it around
-          ;; but I don't have time to update a million tests.
-          (remove-lib-uuids [col]
-            (dissoc col :lib/uuid :lib/source-uuid))]
+             col))]
     (-> col
         add-unit
-        add-binning-info
-        remove-lib-uuids)))
+        add-binning-info)))
 
 (mu/defn- cols->legacy-metadata :- [:sequential ::kebab-cased-col]
   "Convert MLv2-style `kebab-case` metadata to legacy QP metadata results `snake_case`-style metadata. Keys are slightly
@@ -365,7 +365,11 @@
   [cols :- [:sequential ::kebab-cased-col]]
   (mapv col->legacy-metadata cols))
 
-(mu/defn expected-cols :- [:sequential ::kebab-cased-col]
+(mu/defn expected-cols :- [:sequential [:merge
+                                        ::kebab-cased-col
+                                        [:map
+                                         [:lib/original-name     ::lib.schema.metadata/original-name]
+                                         [:lib/deduplicated-name ::lib.schema.metadata/deduplicated-name]]]]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column

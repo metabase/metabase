@@ -78,7 +78,7 @@
   (when (and fk-field-id table-id)
     (when-let [table (lib.metadata/table-or-card query table-id)]
       (let [table-name    (:name table)
-            fk-field-name (or fk-field-name (:name (lib.metadata/field query fk-field-id)))]
+            fk-field-name (or fk-field-name ((some-fn :lib/original-name :name) (lib.metadata/field query fk-field-id)))]
         (format-implicit-join-name table-name fk-field-name fk-join-alias)))))
 
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
@@ -95,5 +95,5 @@
    field-metadata :- ::lib.schema.metadata/column]
   (if-let [join-alias (or (current-join-alias field-metadata)
                           (implicit-join-name query field-metadata))]
-    (joined-field-desired-alias join-alias (:name field-metadata))
-    (:name field-metadata)))
+    (joined-field-desired-alias join-alias ((some-fn :lib/original-name :name) field-metadata))
+    ((some-fn :lib/original-name :name) field-metadata)))

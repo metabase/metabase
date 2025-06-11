@@ -195,9 +195,9 @@
    A join path will return `0` for `stage-number`
 
    Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination with [[walk-stages]]."
-  [query      :- ::lib.schema/query
-   stage-path :- ::path]
-  (let [[_stages stage-number & more] stage-path]
+  [query :- ::lib.schema/query
+   path  :- ::path]
+  (let [[_stages stage-number & more] path]
     (if (empty? more)
       {:query query, :stage-number stage-number}
       (let [[_joins join-number & more] more
@@ -207,17 +207,17 @@
 
 (mu/defn apply-f-for-stage-at-path
   "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,
-  via [[query-for-stage-at-path]]. Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in
-  combination with [[walk-stages]].
+  via [[query-for-path]]. Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination
+  with [[walk-stages]].
 
     (lib.walk/apply-f-for-stage-at-path f query path x y)
 
     =>
 
     (f <query> <stage-number> x y)"
-  [f          :- fn?
-   query      :- ::lib.schema/query
-   stage-path :- ::path
+  [f     :- fn?
+   query :- ::lib.schema/query
+   path  :- ::path
    & args]
-  (let [{:keys [query stage-number]} (query-for-path query stage-path)]
+  (let [{:keys [query stage-number]} (query-for-path query path)]
     (apply f query stage-number args)))
