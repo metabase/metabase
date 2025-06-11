@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import { groupBy } from "underscore";
 
 import { databaseApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
@@ -9,6 +10,7 @@ import {
   Button,
   Checkbox,
   Group,
+  Icon,
   Loader,
   Stack,
   Text,
@@ -99,6 +101,11 @@ export const TableSelectionStep = () => {
     });
   }, [tables, search, selectedTables]);
 
+  const tablesBySchema = useMemo(
+    () => groupBy(filteredTables, "schema"),
+    [filteredTables],
+  );
+
   if (loading) {
     return (
       <Box ta="center" py="xl">
@@ -145,6 +152,7 @@ export const TableSelectionStep = () => {
       </Text>
 
       <TextInput
+        leftSection={<Icon name="search" />}
         placeholder={t`Search tables`}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -153,17 +161,25 @@ export const TableSelectionStep = () => {
       />
 
       <Stack gap="md">
-        {filteredTables.map((table) => (
-          <Checkbox
-            key={table.id}
-            label={table.name}
-            checked={selectedTables.some((t) => t.id === table.id)}
-            onChange={() => handleTableToggle(table)}
-            disabled={
-              selectedTables.length >= 3 &&
-              !selectedTables.some((t) => t.id === table.id)
-            }
-          />
+        {Object.entries(tablesBySchema).map(([schema, tables]) => (
+          <Box key={schema}>
+            <Text fw={600} mb="md">
+              {schema.charAt(0).toUpperCase() + schema.slice(1)}
+            </Text>
+            {tables.map((table) => (
+              <Checkbox
+                mb="md"
+                key={table.id}
+                label={table.name}
+                checked={selectedTables.some((t) => t.id === table.id)}
+                onChange={() => handleTableToggle(table)}
+                disabled={
+                  selectedTables.length >= 3 &&
+                  !selectedTables.some((t) => t.id === table.id)
+                }
+              />
+            ))}
+          </Box>
         ))}
       </Stack>
 
