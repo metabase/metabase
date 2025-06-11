@@ -149,18 +149,18 @@
     (and
      ;; Current must have at least one dimension
      (or (seq current-temporal) (seq current-non-temporal))
-     
+
      ;; Bidirectional temporal compatibility
      (or (empty? current-temporal)
          (seq target-temporal))
-     
+
      (or (empty? target-temporal)
          (seq current-temporal))
-     
+
      ;; Non-temporal dimensions must match by ID
      (or (empty? current-non-temporal)
          (every? (set target-non-temporal) current-non-temporal))
-     
+
      (or (empty? target-non-temporal)
          (every? (set current-non-temporal) target-non-temporal)))))
 
@@ -183,17 +183,16 @@
   Test endpoint for visualization-specific search filtering."
   [_route-params
    _query-params
-   {:keys [q limit models include_dashboard_questions include_metadata
-           visualization_context]
-    :as params}
+   {:keys                       [q limit models display include_dashboard_questions visualization_context include_metadata]}
    :- [:map
        [:q                            {:optional true} [:maybe ms/NonBlankString]]
        [:limit                        {:default 10} ms/PositiveInt]
        [:models                       {:default ["card" "dataset" "metric"]}
         [:vector [:enum "card" "dataset" "metric"]]]
+       [:display                      {:optional true} [:maybe [:vector ms/NonBlankString]]]
        [:include_dashboard_questions  {:default true} :boolean]
-       [:include_metadata            {:default true} :boolean]
-       [:visualization_context       {:optional true}
+       [:include_metadata             {:default true} :boolean]
+       [:visualization_context        {:optional true}
         [:map
          [:display string?]
          [:dimensions [:map
@@ -210,6 +209,7 @@
                      :models                       (set models)
                      :offset                       0
                      :search-string                q
+                     :display                      (set display)
                      :include-dashboard-questions? include_dashboard_questions
                      :include-metadata?            include_metadata})]
 
@@ -240,6 +240,7 @@
   - `filters_items_in_personal_collection`: only search for items in personal collections
   - `created_at`: search for items created at a specific timestamp
   - `created_by`: search for items created by a specific user
+  - `display`: search for cards/models with specific display types
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
@@ -252,7 +253,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys                               [q context archived models verified ids]
+   {:keys                               [q context archived models verified ids display]
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
@@ -274,6 +275,7 @@
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
        [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:display                             {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
@@ -293,6 +295,7 @@
                 :created-at                          created-at
                 :created-by                          (set created-by)
                 :current-user-id                     api/*current-user-id*
+                :display                             (set display)
                 :is-impersonated-user?               (perms/impersonated-user?)
                 :is-sandboxed-user?                  (perms/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*

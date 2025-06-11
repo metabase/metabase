@@ -267,7 +267,8 @@
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
-   [:include-metadata?                   {:optional true} [:maybe boolean?]]])
+   [:include-metadata?                   {:optional true} [:maybe boolean?]]
+   [:display                             {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -278,6 +279,7 @@
            created-by
            current-user-id
            current-user-perms
+           display
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -320,6 +322,7 @@
                         :search-engine                       engine
                         :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
+                 (seq display)                               (assoc :display display)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
                  (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
