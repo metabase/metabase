@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import { Sortable } from "metabase/core/components/Sortable";
 import { Flex, Group, Icon, type IconName, Text, rem } from "metabase/ui";
 
-import S from "./SortableField.module.css";
+import S from "./SortableFieldItem.module.css";
 
 interface Props {
   active?: boolean;
@@ -16,7 +16,7 @@ interface Props {
   label: string;
 }
 
-export const SortableField = ({
+export const SortableFieldItem = ({
   active,
   disabled,
   href,

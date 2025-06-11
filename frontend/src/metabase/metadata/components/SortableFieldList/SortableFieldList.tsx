@@ -8,7 +8,7 @@ import {
 import { Flex } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
-import { SortableField } from "../SortableField";
+import { SortableFieldItem } from "../SortableFieldItem";
 
 import { getId, getItems, getItemsOrder, sortItems } from "./utils";
 
@@ -43,7 +43,7 @@ export const SortableFieldList = ({
         getId={getId}
         items={sortedItems}
         renderItem={({ item, id }) => (
-          <SortableField
+          <SortableFieldItem
             active={item.id === activeFieldId}
             disabled={isDragDisabled}
             href={getFieldHref?.(item.id)}
