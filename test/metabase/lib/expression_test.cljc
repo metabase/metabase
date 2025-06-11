@@ -677,8 +677,13 @@
         ;; so apparently `:type/Float` is the common ancestor of `:type/Integer` and `:type/Float` as of #36558... I'm
         ;; certain this is wrong but I can't fix every single querying bug all at once. See Slack thread for more
         ;; discussion https://metaboat.slack.com/archives/C0645JP1W81/p1749169799757029
+        (lib/coalesce price 1.01)
+        :type/Float
+
+        ;; this is still Integer on JS because Integers are stored as floats and thus 1.0 === 1
         (lib/coalesce price 1.0)
-        :type/Float))))
+        #?(:clj  :type/Float
+           :cljs :type/Integer)))))
 
 (deftest ^:parallel case-type-test
   (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
@@ -696,7 +701,7 @@
         ;; see explanation in test above
         (lib/case
          [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
-          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.0]]
+          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.01]]
           600)
         :type/Float
 
