@@ -9,7 +9,7 @@ summary: Configure how much information Metabase displays in its logs.
 
 Metabase logs quite a bit of information by default. Metabase uses [Log4j 2][https://logging.apache.org/log4j/2.x/] under the hood, so you can configure how much information Metabase logs.
 
-## See and download Metabase logs
+## View and download Metabase logs
 
 You can find Metabase logs in **Admin settings** > **Troubleshooting** > **Logs**. You can filter the logs by keywords (for example, "sync") and download them as a text file.
 
@@ -21,7 +21,7 @@ See [How to read logs][../troubleshooting-guide/server-logs.md].
 
 ## Configuring logging Level
 
-Metabase uses [log4j][https://logging.apache.org/log4j/2.x/] for logging configuration. Here is Metabase's [default logging configuration][https://github.com/metabase/metabase/blob/master/resources/log4j2.xml]. Some troubleshooting tasks might require you to override this logging configuration - for example, to see more details about errors. See Log4j's docs for info on [log levels][https://logging.apache.org/log4j/2.x/manual/customloglevels.html].
+Metabase uses [log4j](https://logging.apache.org/log4j/2.x/)for logging configuration. Here is Metabase's [default logging configuration](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml). Some troubleshooting tasks might require you to override this logging configuration (for example, to see more details about errors). See Log4j's docs for info on [log levels](https://logging.apache.org/log4j/2.x/manual/customloglevels.html).
 
 ### Temporary override logging configuration
 
@@ -36,13 +36,13 @@ You can select from log level presets for common troubleshooting tasks (for exam
 }
 ```
 
-The override from Admin settings will be temporary. You can select for how long the override should be in place (e.g. 60 minutes). After that, the logging configuration will revert to the default logging configuration (or a custom configuration if you're using a [custom log file](#use-a-custom-log-configuration-file)).
+The override from Admin settings will be temporary. You can select for how long the override should be in place (e.g., 60 minutes). When the override times out, the logging configuration will revert to the default logging configuration (or a custom configuration if you're using a [custom log file](#use-a-custom-log-configuration-file)).
 
 ### Use a custom log configuration file
 
-You can specify custom log configuration by telling Metabase to use a different log configuration file.
+You can point Metabase to a custom log configuration file.
 
-1. Make a [copy of the default `log4j2.xml` file][https://github.com/metabase/metabase/blob/master/resources/log4j2.xml]
+1. Make a [copy of the default `log4j2.xml` file](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml)
 2. Adjust it to meet your needs.
 
    You can set different log levels for different areas of the application, e.g.,:
@@ -66,7 +66,7 @@ You can specify custom log configuration by telling Metabase to use a different 
 
 3. Stop your Metabase and start it again using the custom log configuration file:
 
-- If you're running Metabase in Docker, add a `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml` to the environment variables of the container using the path to your custom log file, like this:
+- If you're running Metabase in Docker, you can point Metabase to your custom log file using an environment variable, `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml`:
 
 ```
 docker run -p 3000:3000 -v $PWD/my_log4j2.xml:/tmp/my_log4j2.xml -e JAVA_OPTS=-Dlog4j.configurationFile=file:/tmp/my_log4j2.xml metabase/metabase`
@@ -92,7 +92,7 @@ To get Jetty logs, add the following lines to the Log4J2 XML file in the <Logger
 
 ### Turn off emojis in logs
 
-By default Metabase will include emoji characters in logs, for example:
+By default Metabase will include emoji characters in logs, like this:
 
 ```
 2025-06-10 21:43:00,243 INFO sync.analyze :: classify-tables Analyzed [*****************************************·········] 😊   84% Table 6 ''PUBLIC.ACCOUNTS'' {mb-quartz-job-type=SyncAndAnalyzeDatabase}
