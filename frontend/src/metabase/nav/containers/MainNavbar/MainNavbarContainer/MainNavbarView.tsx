@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -12,14 +11,12 @@ import {
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
-import {
-  getCanAccessOnboardingPage,
-  getIsNewInstance,
-} from "metabase/home/selectors";
+import { getIsNewInstance } from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import {
   ActionIcon,
@@ -40,14 +37,11 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink } from "../SidebarItems";
+import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
-import {
-  trackAddDataModalOpened,
-  trackNewCollectionFromNavInitiated,
-} from "../analytics";
+import { trackNewCollectionFromNavInitiated } from "../analytics";
 import type { SelectedItem } from "../types";
 
-import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
@@ -94,9 +88,6 @@ export function MainNavbarView({
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
-  const [modalOpened, { open: openModal, close: closeModal }] =
-    useDisclosure(false);
-
   const {
     card: cardItem,
     collection: collectionItem,
@@ -133,16 +124,11 @@ export function MainNavbarView({
       ];
     }, [collections]);
 
+  const isNewInstance = useSelector(getIsNewInstance);
+
   // Instances with DWH enabled already have uploads enabled by default.
   // It is not possible to turn the uploads off, nor to delete the attached database.
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
-
-  const isNewInstance = useSelector(getIsNewInstance);
-  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
-  // We need to only temporarily include the`hasAttachedDWHFeature` in this condition because of the PR sequencing!
-  // As soon as we move the CSV and GSheets uploads to the new "Add data" modal, this condition will move elsewhere.
-  const shouldDisplayGettingStarted =
-    isNewInstance && canAccessOnboarding && !hasAttachedDWHFeature;
 
   const uploadDbId = useSelector(
     (state) => getSetting(state, "uploads-settings")?.db_id,
@@ -164,6 +150,9 @@ export function MainNavbarView({
   const canUpload = canCurateRootCollection && canUploadToDatabase;
   const showUploadMenu = hasAttachedDWHFeature && canUpload;
 
+  const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
+  const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -181,16 +170,10 @@ export function MainNavbarView({
             {showUploadMenu && <DwhUploadMenu />}
           </SidebarSection>
 
-          {shouldDisplayGettingStarted && (
+          {isNewInstance && (
             <SidebarSection>
               <ErrorBoundary>
-                <GettingStartedSection
-                  nonEntityItem={nonEntityItem}
-                  onModalOpen={() => {
-                    trackAddDataModalOpened("getting-started");
-                    openModal();
-                  }}
-                >
+                <GettingStartedSection nonEntityItem={nonEntityItem}>
                   {examplesCollection && (
                     <Tree
                       data={[examplesCollection]}
@@ -252,7 +235,6 @@ export function MainNavbarView({
                 nonEntityItem={nonEntityItem}
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
-                onModalOpen={openModal}
               />
             </ErrorBoundary>
           </SidebarSection>
@@ -270,11 +252,16 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
+          {showAddDatabaseButton && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <AddDatabase />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
         </div>
         <WhatsNewNotification />
       </SidebarContentRoot>
-
-      <AddDataModal opened={modalOpened} onClose={closeModal} />
     </ErrorBoundary>
   );
 }
