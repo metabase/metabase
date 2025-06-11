@@ -4493,9 +4493,6 @@ describe("issue 44090", () => {
     parameters: [parameterDetails],
   };
 
-  const LONG_VALUE =
-    "Minima non hic doloribus ipsa dolore ratione in numquam. Minima eos vel harum velit. Consequatur consequuntur culpa sed eum";
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -4522,7 +4519,28 @@ describe("issue 44090", () => {
     });
   });
 
-  it("should not overflow the dashboard header when a filter contains a long value (metabase#44090)", () => {
+  it("should not overflow the dashboard header when a filter contains a long value that contains spaces (metabase#44090)", () => {
+    const LONG_VALUE =
+      "Minima non hic doloribus ipsa dolore ratione in numquam. Minima eos vel harum velit. Consequatur consequuntur culpa sed eum";
+
+    H.filterWidget().click();
+    H.popover()
+      .first()
+      .within(() => {
+        cy.findByPlaceholderText("Search the list").type(LONG_VALUE);
+        cy.button("Add filter").click();
+      });
+
+    H.filterWidget().then(($el) => {
+      const { width } = $el[0].getBoundingClientRect();
+      cy.wrap(width).should("be.lt", 300);
+    });
+  });
+
+  it("should not overflow the dashboard header when a filter contains a long value that does not contain spaces (metabase#44090)", () => {
+    const LONG_VALUE =
+      "MinimanonhicdoloribusipsadolorerationeinnumquamMinimaeosvelharumvelitConsequaturconsequunturculpasedeum";
+
     H.filterWidget().click();
     H.popover()
       .first()
