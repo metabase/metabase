@@ -2,9 +2,11 @@
   (:require
    [clojure.java.io :as io]
    [metabase.config.core :as config]
+   [metabase.models.interface :as mi]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -39,6 +41,55 @@
 (mr/def ::context
   [:map-of :keyword :any])
 
+;; some arbitrary limits (copied from ai-sql-generation/api.clj) - TODO: Make this a single method
+(def ^:private max-database-tables
+  "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
+  400)
+
+(defn- database-tables-for-context
+  "Get database tables formatted for metabot context, similar to ai-sql-generation but optimized for context size.
+  Returns tables in the format expected by metabot context."
+  ([database-id]
+   (database-tables-for-context database-id nil))
+  ([database-id {:keys [all-tables-limit] :or {all-tables-limit max-database-tables}}]
+   (when database-id
+     (try
+       (let [tables (t2/select [:model/Table :id :db_id :name :schema :description]
+                               :db_id database-id
+                               :active true
+                               :visibility_type nil
+                               {:limit all-tables-limit})
+             tables (filter mi/can-read? tables)
+             tables (t2/hydrate tables :fields)]
+         (mapv (fn [{:keys [fields] :as table}]
+                 (merge (select-keys table [:name :schema :description])
+                        {:columns (mapv (fn [{:keys [database_type] :as field}]
+                                          (merge (select-keys field [:name :description])
+                                                 {:data_type database_type}))
+                                        fields)}))
+               tables))
+       (catch Exception _e
+         ;; If we can't get table info, just return empty - don't break the context
+         [])))))
+
+(defn- enhance-context-with-schema
+  "Enhance context by adding table schema information for native queries"
+  [context]
+  (if-let [user-viewing (get context :user_is_viewing)]
+    (let [enhanced-viewing
+          (mapv (fn [item]
+                  (if (and (= "native" (:type item))
+                           (get-in item [:query :database]))
+                    (let [database-id (get-in item [:query :database])
+                          tables (database-tables-for-context database-id)]
+                      (if (seq tables)
+                        (assoc item :database_schema tables)
+                        item))
+                    item))
+                user-viewing)]
+      (assoc context :user_is_viewing enhanced-viewing))
+    context))
+
 (defn- set-user-time
   [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
@@ -53,4 +104,6 @@
    (create-context context nil))
   ([context :- ::context
     opts    :- [:maybe [:map-of :keyword :any]]]
-   (set-user-time context opts)))
+   (-> context
+       enhance-context-with-schema
+       (set-user-time opts))))
