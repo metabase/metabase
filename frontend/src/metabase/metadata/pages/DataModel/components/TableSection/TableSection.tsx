@@ -8,22 +8,13 @@ import {
 import { useToast } from "metabase/common/hooks";
 import {
   DiscardTableFieldValuesButton,
+  FieldOrderPicker,
   NameDescriptionInput,
   RescanTableFieldsButton,
   SortableFieldList,
   SyncTableSchemaButton,
 } from "metabase/metadata/components";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  SegmentedControl,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -95,9 +86,7 @@ export const TableSection = ({ params, table }: Props) => {
               >{t`Field sorting`}</Text>
 
               {isSorting && (
-                <SegmentedControl
-                  data={getData()}
-                  size="sm"
+                <FieldOrderPicker
                   value={table.field_order}
                   onChange={async (fieldOrder) => {
                     await updateTable({
@@ -168,48 +157,3 @@ export const TableSection = ({ params, table }: Props) => {
     </Stack>
   );
 };
-
-function getData() {
-  return [
-    {
-      value: "smart" as const,
-      label: (
-        <Tooltip label={t`Smart`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="sparkles" />
-          </Flex>
-        </Tooltip>
-      ),
-    },
-    {
-      value: "database" as const,
-      label: (
-        <Tooltip label={t`Database`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="database" />
-          </Flex>
-        </Tooltip>
-      ),
-    },
-    {
-      value: "alphabetical" as const,
-      label: (
-        <Tooltip label={t`Alphabetical`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="string" />
-          </Flex>
-        </Tooltip>
-      ),
-    },
-    {
-      value: "custom" as const,
-      label: (
-        <Tooltip label={t`Custom`}>
-          <Flex align="center" justify="center" w={24}>
-            <Icon name="palette" />
-          </Flex>
-        </Tooltip>
-      ),
-    },
-  ];
-}
