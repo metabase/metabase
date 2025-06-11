@@ -626,8 +626,7 @@
 
   Returns a map with keys:
   - :to-delete - sequence of DataPermissions models to delete
-  - :to-insert - sequence of DataPermissions models to insert
-  - :recursive-calls - sequence of maps representing recursive calls to handle related permissions"
+  - :to-insert - sequence of DataPermissions models to insert "
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
    perm-type   :- PermissionType
