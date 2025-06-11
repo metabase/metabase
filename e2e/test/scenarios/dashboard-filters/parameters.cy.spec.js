@@ -806,7 +806,7 @@ describe("scenarios > dashboard > parameters", () => {
       slug: "count",
       sectionId: "number",
     });
-    
+
     const categoryFieldRef = [
       "field",
       PRODUCTS.CATEGORY,
