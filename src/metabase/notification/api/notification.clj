@@ -187,19 +187,21 @@
     notification))
 
 (defn- sample-payload
-  "Generate a sample payload for a notification."
-  [notification channel-type]
+  [notification]
   (case (:payload_type notification)
     :notification/system-event
-    (channel/template-context (:payload_type notification)
-                              channel-type
-                              (notification.system-event/sample-payload notification))
+    (notification.system-event/sample-payload notification)
 
     ;; else
     (binding [notification.payload.execute/*query-max-bare-rows* 2]
-      (channel/template-context channel-type
-                                (:payload_type notification)
-                                (notification/notification-payload notification)))))
+      (notification/notification-payload notification))))
+
+(defn- sample-template-context
+  "Generate a sample template context (FE payload) for a notification.
+  The template context is technically what we pass to handlebars or render. It can vary from the payload
+  when the channel/template-context function is specialised for a channel / payload_type."
+  [notification channel-type]
+  (channel/template-context channel-type (:payload_type notification) (sample-payload notification)))
 
 (api.macros/defendpoint :post "/payload"
   "Return the payload of a notification"
@@ -210,7 +212,7 @@
   (let [channel_types (map keyword channel_types)]
     (zipmap channel_types
             (map (fn [channel-type]
-                   {:payload (sample-payload notification channel-type)
+                   {:payload (sample-template-context notification channel-type)
                     :schema  (api.macros/schema->json-schema (notification/notification-payload-schema notification))})
                  channel_types))))
 
@@ -241,7 +243,7 @@
                                        :body
                                        (notification/notification-payload-schema notification)
                                        custom_context)
-                                      (sample-payload notification (:channel_type template)))
+                                      (sample-template-context notification (:channel_type template)))
         rendered                    (try
                                       (first (channel/render-notification
                                               (:channel_type template)
@@ -343,11 +345,20 @@
 
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- [:merge
+                          ::models.notification/FullyHydratedNotification
+                          [:map
+                           [:use_sample_payload {:optional true} :boolean]]]]
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (-> body
       (assoc :creator_id api/*current-user-id*)
+
+      ;; use_sample_payload is used to avoid having to provide the payload/event_info (useful for send-now for system events)
+      (dissoc :use_sample_payload)
+      (cond-> (:use_sample_payload body)
+        (assoc :notification/custom-payload (sample-payload body)))
+
       promote-to-t2-instance
       (notification/send-notification! :notification/sync? true)))
 

@@ -315,7 +315,8 @@
 
 (mu/defmethod notification.payload/notification-payload :notification/system-event :- :map
   [notification-info :- ::notification.payload/Notification]
-  (transform-event-info notification-info))
+  (or (:notification/custom-payload notification-info) ; used to shortcut event_info if the payload has been provided automatically (send-now)
+      (transform-event-info notification-info)))
 
 (defmethod notification.payload/notification-payload-schema :notification/system-event
   [notification-info]
