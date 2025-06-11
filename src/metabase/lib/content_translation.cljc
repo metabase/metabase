@@ -12,22 +12,22 @@
   (log/info "In content_translation.cljc, content translations =" (pr-str @content-translations))
   @content-translations)
 
+;; TODO: Refactor this away
+(defn get-field-value
+  "Retrieve a value from a map-like JavaScript object."
+  [obj field default-value]
+  (if (some? obj)
+    (let [field-str (name field)]
+      (or (aget obj field-str) default-value))
+    default-value))
+
+(defn get-content-translation
+  "Get content translation of the string, if one exists. Otherwise, return the string untranslated."
+  [s]
+  (get-field-value (get-content-translations) s s))
+
 (defn set-content-translations
   "Set the current content-translation dictionary."
   [m]
   (log/info "In content_translation.cljc, setting content translations to" (pr-str m))
   (reset! content-translations m))
-
-; ;; TODO: Refactor this away
-; (defn get-field-value
-;   "Retrieve a value from a map-like JavaScript object."
-;   [obj field default-value]
-;   (if (some? obj)
-;     (let [field-str (name field)]
-;       (or (aget obj field-str) default-value))
-;     default-value))
-
-(defn get-content-translation
-  "Get content translation of the string, if one exists. Otherwise, return the string untranslated."
-  [s]
-  (get (get-content-translations) s s))
