@@ -30,7 +30,10 @@ import type {
 } from "metabase-types/api";
 
 import { PublicOrEmbeddedQuestionView } from "../PublicOrEmbeddedQuestionView";
-import { useInitializeLibContentTranslation } from "metabase-enterprise/content_translation/use-translate-content";
+import {
+  useInitializeLibContentTranslation,
+  useListContentTranslations,
+} from "metabase-enterprise/content_translation/use-translate-content";
 
 export const PublicOrEmbeddedQuestion = ({
   params: { uuid, token },
@@ -100,7 +103,8 @@ export const PublicOrEmbeddedQuestion = ({
     }
   });
 
-  useInitializeLibContentTranslation();
+  // Initialize content translation for user-generated content in Metabase Lib
+  useListContentTranslations();
 
   const setParameterValue = async (parameterId: ParameterId, value: any) => {
     setParameterValues((prevParameterValues) => ({

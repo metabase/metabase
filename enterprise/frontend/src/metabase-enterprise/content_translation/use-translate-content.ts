@@ -46,17 +46,6 @@ export const useListContentTranslations = () => {
       : skipToken,
   );
   const dictionary = data?.data;
-  Lib.setContentTranslations(translations);
+  Lib.setContentTranslations(dictionary);
   return dictionary;
-};
-
-export const useInitializeLibContentTranslation = () => {
-  const { locale } = useLocale();
-  console.log("useInitialize", "locale", locale);
-
-  const translations = useListContentTranslations();
-  console.log(
-    "in useInitializeLibContentTranslation, translations",
-    translations,
-  );
 };
