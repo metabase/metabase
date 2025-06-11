@@ -83,25 +83,19 @@ export const useRegisterQueryBuilderMetabotContext = () => {
               const { cols, rows } = series.data;
               const seriesKey = series.card.name || `series_${index}`;
 
-              const dimensionCol = cols.find(
+              const dimensionIndex = cols.findIndex(
                 (col) => !!vizSettings["graph.dimensions"]?.includes(col.name),
               );
-              const metricCol = cols.find(
+              const metricIndex = cols.findIndex(
                 (col) => !!vizSettings["graph.metrics"]?.includes(col.name),
               );
-              if (!dimensionCol || !metricCol) {
-                return acc;
-              }
 
-              const dimensionIndex = cols.findIndex(
-                (col) => col.name === dimensionCol.name,
-              );
-              const metricIndex = cols.findIndex(
-                (col) => col.name === metricCol.name,
-              );
               if (dimensionIndex < 0 || metricIndex < 0) {
                 return acc;
               }
+
+              const dimensionCol = cols[dimensionIndex];
+              const metricCol = cols[metricIndex];
 
               return Object.assign(acc, {
                 [seriesKey]: {

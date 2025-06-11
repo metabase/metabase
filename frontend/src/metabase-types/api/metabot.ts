@@ -5,6 +5,7 @@ import type {
   DashboardId,
   DatasetQuery,
   PaginationResponse,
+  RowValue,
   SearchModel,
 } from ".";
 
@@ -79,8 +80,8 @@ export type MetabotColumnInfo = {
 export type MetabotSeriesConfig = {
   x: MetabotColumnInfo;
   y?: MetabotColumnInfo;
-  x_values?: Array<any>;
-  y_values?: Array<any>;
+  x_values?: RowValue[];
+  y_values?: RowValue[];
   display_name: string;
   chart_type: string;
   stacked?: boolean;
