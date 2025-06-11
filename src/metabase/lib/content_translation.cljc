@@ -24,10 +24,14 @@
 (defn get-content-translation
   "Get content translation of the string, if one exists. Otherwise, return the string untranslated."
   [s]
+  (log/info (str "Looking up translation of" s))
   (get-field-value (get-content-translations) s s))
 
 (defn set-content-translations
   "Set the current content-translation dictionary."
   [m]
   (log/info "In content_translation.cljc, setting content translations to" (pr-str m))
-  (reset! content-translations m))
+  (reset! content-translations m)
+  (log/info "get-content-translations= " (pr-str (get-content-translations)))
+  (log/info (str "WHOA translation of Created At: " (get-field-value (get-content-translations) "Created At" "default value"))))
+

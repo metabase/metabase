@@ -309,6 +309,7 @@
         temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
         bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
+    (log/info "hi from display=-name=method")
     (cond
       (and (not= style :long) hide-bin-bucket?) display-name
       (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
