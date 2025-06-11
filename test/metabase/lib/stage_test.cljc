@@ -10,6 +10,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]))
 
 #?(:cljs
@@ -520,4 +521,4 @@
         (testing (str "Stage number = " stage-number)
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
-                  (lib/returned-columns query stage-number (lib/query-stage query stage-number) {:unique-name-fn identity}))))))))
+                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn identity}))))))))
