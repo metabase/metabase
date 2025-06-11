@@ -387,9 +387,9 @@
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql})
     (testing "a query with a question mark in the comment and has a variable should work correctly"
       (let [query (format "SELECT *
-                                          -- ?
-                                          FROM %s
-                                          WHERE %s = {{category_name}};"
+                           -- ?
+                           FROM %s
+                           WHERE %s = {{category_name}};"
                           (sql.tx/qualify-and-quote driver/*driver* "test-data" "categories")
                           (sql.tx/qualify-and-quote driver/*driver* "test-data" "categories" "name"))]
         (is (= [[1 "African"]]
