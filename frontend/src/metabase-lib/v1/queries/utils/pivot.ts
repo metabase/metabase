@@ -102,8 +102,8 @@ export function getPivotOptions(question: Question) {
   if (isNative) {
     // TODO: make this more robust by filtering out invalid breakouts/columns in case the query changed
     return {
-      native_pivot_cols: nativeSetting.rows ?? [],
-      native_pivot_rows: nativeSetting.columns ?? [],
+      native_pivot_rows: nativeSetting.rows ?? [],
+      native_pivot_cols: nativeSetting.columns ?? [],
       native_pivot_measures: nativeSetting.values ?? [],
       show_row_totals: showRowTotals,
       show_column_totals: showColumnTotals,
