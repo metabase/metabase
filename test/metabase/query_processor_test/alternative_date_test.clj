@@ -473,7 +473,7 @@
    [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
    [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
 
-(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk]]
+(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
@@ -499,11 +499,11 @@
    [2M "bar" #t "2020-04-21T16:43"]
    [3M "baz" #t "2021-04-21T16:43"]])
 
-(defmethod yyyymmddhhmmss-dates-expected-rows :snowflake
+(defmethod yyyymmddhhmmss-dates-expected-rows :sqlite
   [_driver]
-  [[1 "foo" #t "2019-04-21T16:43"]
-   [2 "bar" #t "2020-04-21T16:43"]
-   [3 "baz" #t "2021-04-21T16:43"]])
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
 
 (defmethod yyyymmddhhmmss-dates-expected-rows :default
   [_driver]
