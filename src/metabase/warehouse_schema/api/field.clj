@@ -148,7 +148,7 @@
                          :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                          :effective_type effective-type
                          :coercion_strategy coercion-strategy)]
-         (schema.field-user-settings/upsert-user-settings id body)
+         (schema.field-user-settings/upsert-user-settings field body)
          (t2/update! :model/Field id
                      (u/select-keys-when body
                                          ;; the rest is updated via `update-user-settings` above

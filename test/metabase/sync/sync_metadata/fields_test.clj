@@ -19,6 +19,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
@@ -449,7 +450,7 @@
 
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
-              (t2/update! :model/FieldUserSettings field-id {:visibility_type :normal})
+              (field-user-settings/upsert-user-settings {:id field-id} {:visibility_type :normal})
               (let [field-after-manual-change (t2/select-one :model/Field :id field-id)]
                 (is (= :normal (:visibility_type field-after-manual-change))
                     "Manual change should set visibility_type to :normal")))

@@ -22,33 +22,23 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defn- reflect-field-settings-in-field [field-settings]
-  (t2/update! :model/Field (:field_id field-settings)
-              (u/select-keys-when field-settings
-                                  {:present
-                                   #{:semantic_type :description :has_field_values :effective_type :coercion_strategy :fk_target_field_id}
-                                   :non-nil #{:display_name :visibility_type}})))
+(defn- reflect-field-settings-in-field [id field-settings]
+  (field/raw-update
+   id
+   (u/select-keys-when field-settings
+                       {:present #{:semantic_type :description :has_field_values :effective_type :coercion_strategy :fk_target_field_id}
+                        :non-nil #{:display_name :visibility_type}})))
 
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
-(t2/define-after-insert :model/FieldUserSettings
-  [instance]
-  (doto instance
-    (reflect-field-settings-in-field)))
-
-(t2/define-after-update :model/FieldUserSettings
-  [instance]
-  (u/prog1 instance
-    (when-let [changes (t2/changes instance)]
-      (reflect-field-settings-in-field changes))))
-
 (defn upsert-user-settings
   "Upsert user settings"
-  [id settings]
+  [{:keys [id]} settings]
   (let [filtered-settings (u/select-keys-when settings :present field/field-user-settings)]
-    (if (t2/exists? :model/FieldUserSettings id)
-      (t2/update! :model/FieldUserSettings id filtered-settings)
-      (t2/insert! :model/FieldUserSettings (merge filtered-settings {:field_id id})))))
+    (when-not (t2/exists? :model/FieldUserSettings id)
+      (t2/insert! :model/FieldUserSettings {:field_id id}))
+    (t2/update! :model/FieldUserSettings id filtered-settings)
+    (reflect-field-settings-in-field id filtered-settings)))
 
 (defmethod serdes/hash-fields :model/FieldUserSettings
   [_field-values]

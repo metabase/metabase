@@ -152,21 +152,38 @@
                 (map (fn [{:keys [id]}] {:field_id id})
                      (t2/query sql)))))
 
-(t2/define-before-update :model/Field
-  [field]
-  (when (false? (:active (t2/changes field)))
-    (ensure-field-user-settings-exist-for-fk-target-field field)
-    (t2/update! :model/FieldUserSettings {:fk_target_field_id (:id field)}
-                {:semantic_type      nil
-                 :fk_target_field_id nil}))
+(def ^:private ^:dynamic *raw-update* false)
+
+(defn- sync-user-settings [field]
+    ;; we transparently prevent updates that would override user-set values
   (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
         updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
     (t2.protocols/with-current field updated-field)))
 
+(t2/define-before-update :model/Field
+  [field]
+  (when (false? (:active (t2/changes field)))
+    (ensure-field-user-settings-exist-for-fk-target-field field)
+    (let [k {:fk_target_field_id (:id field)}
+          upds {:semantic_type      nil
+                :fk_target_field_id nil}]
+      (t2/update! :model/Field k upds)
+      ;; we must explicitely clear user-set fks in this case
+      (t2/update! :model/FieldUserSettings k upds)))
+  (if *raw-update*
+    field
+    (sync-user-settings field)))
+
+(defn raw-update
+  "Update field directly, don't sync with UserSettings"
+  [id m]
+  (binding [*raw-update* true]
+    (t2/update! :model/Field id m)))
+
 (t2/define-before-delete :model/Field
   [field]
-  ; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
-  ; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
+  ;; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
+  ;; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :parent_id (:id field)))
 
