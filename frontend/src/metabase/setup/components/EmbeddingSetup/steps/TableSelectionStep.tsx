@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -12,6 +12,7 @@ import {
   Loader,
   Stack,
   Text,
+  TextInput,
   Title,
 } from "metabase/ui";
 import type { Table } from "metabase-types/api";
@@ -26,6 +27,7 @@ export const TableSelectionStep = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [search, setSearch] = useState("");
   const dispatch = useDispatch();
   const { database, selectedTables, setSelectedTables, setProcessingStatus } =
     useEmbeddingSetup();
@@ -87,6 +89,16 @@ export const TableSelectionStep = () => {
     dispatch(push("/setup/embedding/processing"));
   };
 
+  const filteredTables = useMemo(() => {
+    return tables.filter((table) => {
+      const isSelected = selectedTables.some((t) => t.id === table.id);
+      const isSearchMatch = table.name
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      return isSelected || isSearchMatch;
+    });
+  }, [tables, search, selectedTables]);
+
   if (loading) {
     return (
       <Box ta="center" py="xl">
@@ -132,8 +144,16 @@ export const TableSelectionStep = () => {
         {t`Choose up to 3 tables that you want to turn into models and dashboards. These will be used to create your initial embedded analytics.`}
       </Text>
 
+      <TextInput
+        placeholder={t`Search tables`}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        size="md"
+        mb="md"
+      />
+
       <Stack gap="md">
-        {tables.map((table) => (
+        {filteredTables.map((table) => (
           <Checkbox
             key={table.id}
             label={table.name}
