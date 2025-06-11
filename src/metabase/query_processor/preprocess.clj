@@ -87,13 +87,13 @@
 (defn- ensure-pmbql-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
-        (mu/disable-enforcement
-          (lib/without-cleaning
-           (fn []
-             (let [query' (-> (cond->> query
+        (let [query' (mu/disable-enforcement
+                       (lib/without-cleaning
+                        (fn []
+                          (-> (cond->> query
                                 (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
-                              (copy-unconverted-properties query))]
-               (-> query' middleware-fn ->legacy))))))
+                              (copy-unconverted-properties query)))))]
+          (-> query' middleware-fn ->legacy)))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
