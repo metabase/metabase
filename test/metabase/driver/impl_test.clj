@@ -85,7 +85,8 @@
     (->> (map ns-publics nss)
          (mapcat vals)
          (filter #(instance? clojure.lang.MultiFn (deref %)))
-         (map meta))))
+         (map meta)
+         (filter (comp #(str/starts-with? % "metabase.driver") str :ns)))))
 
 (defn- older-than-42?
   [version]

@@ -264,6 +264,36 @@
                   (is (nil? (:sync_started_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets)))))))))
+        (testing "when paused and no last sync"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id "never-synced")]
+            (with-redefs [hm.client/make-request (partial mock-make-request
+                                                          (assoc happy-responses
+                                                                 {:method :get, :url "/api/v2/mb/connections/never-synced", :body nil}
+                                                                 [:ok
+                                                                  {:status 200,
+                                                                   :body   {:last-sync-started-at        nil
+                                                                            :hosted-instance-resource-id 15378,
+                                                                            :last-sync-at                nil
+                                                                            :type                        "gdrive"
+                                                                            :status-reason               "DWH quota exceeded."
+                                                                            :updated-at                  "2025-05-29T14:36:26Z"
+                                                                            :hosted-instance-id          "c6633c12-8ed2-4e74-ba7f-3602791d252c"
+                                                                            :status                      "paused"
+                                                                            :id                          "7346e101-fa51-4f1a-9655-810aaea63fe4"
+                                                                            :error                       nil
+                                                                            :sync-callback-token         nil
+                                                                            :created-at                  "2025-05-29T14:36:25Z"
+                                                                            :error-detail                nil}}]))]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2 :error_message "DWH quota exceeded."}
+                              response))
+                (is (pos-int? (:db_id response)))
+                (is (nil? (:sync_started_at response)))
+                (is (nil? (:last_sync_at response)))
+                (testing "current state info doesn't get persisted"
+                  (is (nil? (:sync_started_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets)))))))))
         (testing "when 400 error response"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-400-error-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]

@@ -124,7 +124,7 @@ describe("LocaleProvider", () => {
 
   it("should make useLocale return the correct locale", async () => {
     const TestComponent = () => {
-      const locale = useLocale();
+      const { locale } = useLocale();
       return <div>{locale}</div>;
     };
 

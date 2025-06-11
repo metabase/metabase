@@ -4,37 +4,44 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.table :as table]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
-   (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
-                              BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
-                              Table TableDefinition$Type TableId TableResult)
+   (com.google.cloud.bigquery
+    BigQuery
+    BigQuery$DatasetListOption
+    BigQuery$JobOption
+    BigQuery$TableDataListOption
+    BigQuery$TableOption
+    BigQueryException
+    BigQueryOptions
+    Dataset
+    Field
+    Field$Mode
+    FieldValue
+    FieldValueList
+    QueryJobConfiguration
+    Schema
+    Table
+    TableDefinition$Type
+    TableId
+    TableResult)
    (com.google.common.collect ImmutableMap)
    (java.util Iterator)))
 
@@ -58,8 +65,8 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
-        mb-version (:tag config/mb-version-info)
-        run-mode   (name config/run-mode)
+        mb-version (:tag driver-api/mb-version-info)
+        run-mode   (name driver-api/run-mode)
         user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
@@ -90,7 +97,7 @@
 
 (defn- list-datasets
   "Fetch all datasets given database `details`, applying dataset filters if specified."
-  [{:keys [dataset-filters-type dataset-filters-patterns] :as details}]
+  [{:keys [dataset-filters-type dataset-filters-patterns] :as details} & {:keys [logging-schema-exclusions?]}]
   (let [client (database-details->client details)
         project-id (get-project-id details)
         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
@@ -98,9 +105,11 @@
         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
     (for [^Dataset dataset (.iterateAll datasets)
           :let [dataset-id (.. dataset getDatasetId getDataset)]
-          :when (driver.s/include-schema? inclusion-patterns
-                                          exclusion-patterns
-                                          dataset-id)]
+          :when ((if logging-schema-exclusions?
+                   sql-jdbc.describe-database/include-schema-logging-exclusion
+                   driver.s/include-schema?) inclusion-patterns
+                                             exclusion-patterns
+                                             dataset-id)]
       dataset-id)))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
@@ -124,14 +133,14 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(mu/defn- get-table :- (lib.schema.common/instance-of-class Table)
+(mu/defn- get-table :- (driver-api/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
 
-  (^Table [^BigQuery client :- (lib.schema.common/instance-of-class BigQuery)
-           project-id       :- [:maybe ::lib.schema.common/non-blank-string]
-           dataset-id       :- ::lib.schema.common/non-blank-string
-           table-id         :- ::lib.schema.common/non-blank-string]
+  (^Table [^BigQuery client :- (driver-api/instance-of-class BigQuery)
+           project-id       :- [:maybe driver-api/schema.common.non-blank-string]
+           dataset-id       :- driver-api/schema.common.non-blank-string
+           table-id         :- driver-api/schema.common.non-blank-string]
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
@@ -160,7 +169,7 @@
 (defn- describe-database-tables
   [driver database]
   (set
-   (for [dataset-id (list-datasets (:details database))
+   (for [dataset-id (list-datasets (:details database) :logging-schema-exclusions? true)
          :let [project-id (get-project-id (:details database))
                results (query-honeysql
                         driver
@@ -320,7 +329,8 @@
                                       (and (= :type/Dictionary (:base-type col)) nested-fields)
                                       (assoc :nested-fields (into #{}
                                                                   (map #(maybe-add-nested-fields % new-path root-database-position))
-                                                                  nested-fields)))))
+                                                                  nested-fields)
+                                             :visibility-type :details-only))))
         max-position-per-table (reduce
                                 (fn [accum {table-name :table_name pos :ordinal_position}]
                                   (if (> (or pos 0) (get accum table-name -1))
@@ -430,7 +440,7 @@
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
-  (let [database (table/database table)
+  (let [database (driver-api/table->database table)
         bq-table (get-table database dataset-id table-name)]
     (if (or (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
                ;; We couldn't easily test if the following two can show up as
@@ -481,7 +491,7 @@
 
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                  {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
+                  {:type driver-api/qp.error-type.invalid-query, :sql sql, :parameters parameters}
                   e)))
 
 (defn- throw-cancelled [sql parameters]
@@ -508,7 +518,7 @@
 
 (defn- effective-query-timezone-id [database]
   (if (get-in database [:details :use-jvm-timezone])
-    (qp.timezone/system-timezone-id)
+    (driver-api/system-timezone-id)
     "UTC"))
 
 (defn- build-bigquery-request [^String sql parameters]
@@ -607,7 +617,7 @@
         request (build-bigquery-request sql parameters)
         query-future (future
                        ;; ensure the classloader is available within the future.
-                       (classloader/the-classloader)
+                       (driver-api/the-classloader)
                        (try
                          (*page-callback*)
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
@@ -658,13 +668,13 @@
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
-  (let [database (lib.metadata/database (qp.store/metadata-provider))]
+  (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
-                  (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
+                  (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (*process-native* respond database sql params qp.pipeline/*canceled-chan*)))))
+        (*process-native* respond database sql params (driver-api/canceled-chan))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

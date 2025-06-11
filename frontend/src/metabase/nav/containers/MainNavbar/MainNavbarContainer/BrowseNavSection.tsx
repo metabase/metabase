@@ -22,12 +22,12 @@ import type { SelectedItem } from "../types";
 export const BrowseNavSection = ({
   nonEntityItem,
   onItemSelect,
-  onModalOpen,
+  onAddDataModalOpen,
   hasDataAccess,
 }: {
   nonEntityItem: SelectedItem;
   onItemSelect: () => void;
-  onModalOpen: () => void;
+  onAddDataModalOpen: () => void;
   hasDataAccess: boolean;
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
@@ -73,7 +73,7 @@ export const BrowseNavSection = ({
             p={0}
             onClick={() => {
               trackAddDataModalOpened("left-nav");
-              onModalOpen();
+              onAddDataModalOpen();
             }}
           >
             {t`Add`}
@@ -87,18 +87,6 @@ export const BrowseNavSection = ({
         role="tabpanel"
         aria-expanded={opened}
       >
-        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
-          <PaddedSidebarLink
-            icon="model"
-            url={BROWSE_MODELS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse models`}
-          >
-            {t`Models`}
-          </PaddedSidebarLink>
-        )}
-
         {hasDataAccess &&
           (!isEmbeddingIframe || entityTypes.includes("table")) && (
             <PaddedSidebarLink
@@ -111,6 +99,18 @@ export const BrowseNavSection = ({
               {t`Databases`}
             </PaddedSidebarLink>
           )}
+
+        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
+          <PaddedSidebarLink
+            icon="model"
+            url={BROWSE_MODELS_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse models`}
+          >
+            {t`Models`}
+          </PaddedSidebarLink>
+        )}
 
         {!isEmbeddingIframe && (
           <PaddedSidebarLink

@@ -5,11 +5,13 @@ import {
 } from "@reduxjs/toolkit";
 import { compose, pick } from "underscore";
 
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
 import { parseSearchOptions } from "metabase/lib/browser";
+import {
+  DEFAULT_EMBEDDING_ENTITY_TYPES,
+  setEntityTypes,
+} from "metabase/redux/embedding-data-picker";
 import type { InteractiveEmbeddingOptions } from "metabase-types/store";
-
-import { setEntityTypes } from "../embedding-data-picker";
+import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
 export const createSlice = buildCreateSlice({
   creators: { asyncThunk: asyncThunkCreator },
@@ -27,6 +29,7 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
     header: true,
     additional_info: true,
     action_buttons: true,
+    data_picker: "flat",
   };
 
 const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(
@@ -60,12 +63,7 @@ const interactiveEmbedSlice = createSlice({
   reducers: (create) => ({
     setInitialUrlOptions: create.asyncThunk(
       ({ search }: Location, { dispatch }) => {
-        const { entity_types, ...searchOptions } = compose(
-          normalizeEntityTypes,
-          excludeNonInteractiveEmbeddingOptions,
-          parseSearchOptions,
-          normalizeEntityTypesCommaSeparatedSearchParameter,
-        )(search);
+        const { entity_types, ...searchOptions } = processSearch(search);
 
         dispatch(setEntityTypes(entity_types));
 
@@ -91,6 +89,15 @@ const interactiveEmbedSlice = createSlice({
     ),
   }),
 });
+
+const normalizeProperties = compose(normalizeEntityTypes, normalizeDataPicker);
+
+const processSearch = compose(
+  normalizeProperties,
+  excludeNonInteractiveEmbeddingOptions,
+  parseSearchOptions,
+  normalizeEntityTypesCommaSeparatedSearchParameter,
+);
 
 /**
  * this functions turns a string like `entity_types=value1,value2` into `entity_types=value1&entity_types=value2` that matches the URLSearchParams format
@@ -148,6 +155,28 @@ function normalizeEntityTypes(
   }
 
   return { ...searchOptions, entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES };
+}
+
+/**
+ *
+ * This function normalize the `data_picker` option in the search options to ignore invalid values.
+ * @see {@link EmbeddingDataPicker}
+ */
+function normalizeDataPicker(
+  searchOptions: Partial<InteractiveEmbeddingOptions>,
+): Partial<InteractiveEmbeddingOptions> {
+  const ALLOWED_VALUES: EmbeddingDataPicker[] = ["staged", "flat"];
+
+  const { data_picker: dataPicker, ...restSearchOptions } = searchOptions;
+
+  if (dataPicker && ALLOWED_VALUES.includes(dataPicker)) {
+    return {
+      ...restSearchOptions,
+      data_picker: dataPicker,
+    };
+  }
+
+  return restSearchOptions;
 }
 
 export const { setInitialUrlOptions, setOptions } =
