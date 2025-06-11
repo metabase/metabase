@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import type { IconName } from "metabase/ui";
 import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
@@ -581,5 +582,107 @@ describe("issue 57441", () => {
     H.rightSidebar().icon("add").click();
     H.popover().findByText("New snippet").click();
     H.modal().findByText("Create your new snippet").should("be.visible");
+  });
+});
+
+describe("issue 56905", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.startNewNativeQuestion();
+  });
+
+  it("It should be possible to run the native query when a parameter value input is focused (metabase#56905)", () => {
+    H.NativeEditor.type("select {{ foo }}");
+    cy.findByPlaceholderText("Foo").type("foobar", { delay: 0 });
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("foobar")
+      .should("be.visible");
+  });
+});
+
+describe("issue 57644", () => {
+  describe("with only one database", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+      cy.findByTestId("native-query-top-bar")
+        .findByText("Select a database")
+        .should("be.visible");
+
+      // The popover should not be visible, we give it a timeout here because the
+      // popover disappears immediately and we don't want that to make the test pass.
+      cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
+    });
+  });
+
+  describe("with multiple databases", () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)", () => {
+      H.popover()
+        .should("be.visible")
+        .and("contain", "Sample Database")
+        .and("contain", "QA Postgres12");
+    });
+  });
+});
+
+describe("issue 51679", () => {
+  const questionDetails: NativeQuestionDetails = {
+    native: {
+      query: "SELECT {{var}}",
+      "template-tags": {
+        var: {
+          id: "754ae827-661c-4fc9-b511-c0fb7b6bae2b",
+          name: "var",
+          type: "text",
+          "display-name": "Var",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to change the template tag type when the required field for a field filter is not set (metabase#51679)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderMain().within(() => {
+      cy.findByTestId("visibility-toggler").click();
+      cy.icon("variable").click();
+    });
+    H.rightSidebar().findByTestId("variable-type-select").click();
+    H.popover().findByText("Field Filter").click();
+
+    cy.log("without selecting the field, try to change the type again");
+    H.rightSidebar().findByTestId("variable-type-select").click();
+    H.popover().findByText("Number").click();
+    H.rightSidebar()
+      .findByTestId("variable-type-select")
+      .should("have.value", "Number");
   });
 });

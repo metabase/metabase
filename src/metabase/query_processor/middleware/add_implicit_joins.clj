@@ -43,6 +43,7 @@
 (def ^:private FkFieldInfo
   [:map
    [:fk-field-id   ::lib.schema.id/field]
+   [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def ^:private JoinInfo
@@ -53,6 +54,7 @@
    [:strategy      [:= :left-join]]
    [:condition     mbql.s/=]
    [:fk-field-id   ::lib.schema.id/field]
+   [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mu/defn- fk-field-infos->join-infos :- [:maybe [:sequential JoinInfo]]
@@ -69,24 +71,43 @@
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
         (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table target-table-ids))
-      (for [{:keys [fk-field-id fk-join-alias]} fk-field-infos
+      (for [{:keys [fk-field-id fk-field-name fk-join-alias]} fk-field-infos
             :let [fk-field (lib.metadata.protocols/field (qp.store/metadata-provider) fk-field-id)]
             :when fk-field
-            :let [{pk-id :fk-target-field-id, fk-name :name, fk-ident :ident} fk-field]
+            :let [{pk-id :fk-target-field-id, fk-ident :ident} fk-field]
             :when pk-id]
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
-              alias-for-join           (join-alias table-name fk-name fk-join-alias)]
+              alias-for-join           (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
           (-> (m/assoc-some {:source-table  source-table
                              :alias         alias-for-join
                              :ident         (lib/implicit-join-clause-ident fk-ident)
                              :fields        :none
                              :strategy      :left-join
-                             :condition     [:= [:field fk-field-id (when fk-join-alias {:join-alias fk-join-alias})]
+                             :condition     [:= [:field
+                                                 (or fk-field-name fk-field-id)
+                                                 (m/assoc-some nil
+                                                               :base-type (when fk-field-name (:base-type fk-field))
+                                                               :join-alias fk-join-alias)]
                                              [:field pk-id {:join-alias alias-for-join}]]
                              :fk-field-id   fk-field-id}
+                            :fk-field-name fk-field-name
                             :fk-join-alias fk-join-alias)
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
+
+(mu/defn- field-opts->fk-field-info :- FkFieldInfo
+  "Create a [[FkFieldInfo]] map that identifies the corresponding implicit join.
+
+  For backward compatibility with refs that don't include `:source-field-name` in cases when they should (cards), omit
+  `:fk-field-name` when it matches the raw field name. There should be no difference in the compiled query. The
+  problematic case is when refs with and without `:source-field-name` are mixed, but there should be the same implicit
+  join for all of them."
+  [{:keys [source-field source-field-name source-field-join-alias]}]
+  (let [fk-field (lib.metadata.protocols/field (qp.store/metadata-provider) source-field)]
+    (m/assoc-some {:fk-field-id source-field}
+                  :fk-field-name (when (and (some? source-field-name) (not= source-field-name (:name fk-field)))
+                                   source-field-name)
+                  :fk-join-alias source-field-join-alias)))
 
 (mu/defn- implicitly-joined-fields->joins :- [:sequential JoinInfo]
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
@@ -95,7 +116,7 @@
                            (map (fn [clause]
                                   (lib.util.match/match-one clause
                                     [:field (id :guard integer?) (opts :guard (every-pred :source-field (complement :join-alias)))]
-                                    {:fk-field-id (:source-field opts), :fk-join-alias (:source-field-join-alias opts)})))
+                                    (field-opts->fk-field-info opts))))
                            distinct
                            not-empty)]
     (->> (fk-field-infos->join-infos k-field-infos)
@@ -124,15 +145,13 @@
   [form]
   ;; Build a map of [[FkFieldInfo]] -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
   (into {}
-        (keep (fn [{:keys [fk-field-id fk-join-alias], join-alias :alias}]
+        (keep (fn [{:keys [fk-field-id fk-field-name fk-join-alias], join-alias :alias}]
                 (when fk-field-id
-                  [(m/assoc-some {:fk-field-id fk-field-id} :fk-join-alias fk-join-alias) join-alias])))
+                  [(m/assoc-some {:fk-field-id fk-field-id}
+                                 :fk-field-name fk-field-name
+                                 :fk-join-alias fk-join-alias)
+                   join-alias])))
         (visible-joins form)))
-
-(mu/defn- field-opts->fk-field-info :- FkFieldInfo
-  [{:keys [source-field source-field-join-alias]}]
-  (m/assoc-some {:fk-field-id source-field}
-                :fk-join-alias source-field-join-alias))
 
 (defn- add-implicit-joins-aliases-to-metadata
   "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.

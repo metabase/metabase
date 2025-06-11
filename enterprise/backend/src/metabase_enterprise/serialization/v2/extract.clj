@@ -22,6 +22,9 @@
     (:include-field-values opts)
     (conj "FieldValues")
 
+    (:include-metabot opts)
+    (conj "Metabot")
+
     (not (:no-collections opts))
     (into serdes.models/content)
 

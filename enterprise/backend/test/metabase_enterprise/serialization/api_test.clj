@@ -28,6 +28,7 @@
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
+   #"/collections/metabots/(.*)\.yaml$"        :metabot
    #"/collections/.*/cards/(.*)\.yaml$"        :card
    #"/collections/.*/dashboards/(.*)\.yaml$"   :dashboard
    #"/collections/.*collection/([^/]*)\.yaml$" :collection

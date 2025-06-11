@@ -94,7 +94,7 @@
     (load/load-metabase! (ingest/ingest-yaml input-dir)))
   ;; Use a separate cache to make sure there is no cross-contamination.
   (serdes/with-cache
-    (-> (extract/extract {:include-field-values true})
+    (-> (extract/extract {:include-field-values true :include-metabot true})
         (storage/store! output-dir))))
 
 (defn- delete-dir-contents! [^File dir]
@@ -126,7 +126,7 @@
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
   []
-  (storage/store! (into [] (extract/extract {:include-field-values true})) source-dir))
+  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) source-dir))
 
 ;; If this test is failing, read the docstring at the top of this namespace for what to do B-)
 (deftest baseline-completeness-test

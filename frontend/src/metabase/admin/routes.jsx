@@ -22,7 +22,6 @@ import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPas
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
-import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import { Help } from "metabase/admin/tasks/components/Help";
 import { LogLevelsModal } from "metabase/admin/tasks/components/LogLevelsModal";
 import { Logs } from "metabase/admin/tasks/components/Logs";
@@ -40,16 +39,17 @@ import { createAdminRouteGuard } from "metabase/admin/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import {
-  PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_TROUBLESHOOTING,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
+  PLUGIN_METABOT,
 } from "metabase/plugins";
 
 import { PerformanceTabId } from "./performance/types";
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
+import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
@@ -149,10 +149,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
-        <IndexRedirect to="general" />
-        <Route title={t`Settings`}>
-          <Route path="*" component={SettingsEditor} />
-        </Route>
+        {getSettingsRoutes()}
       </Route>
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
@@ -177,6 +174,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           ))}
         </Route>
       </Route>
+      {PLUGIN_METABOT.AdminRoute}
       <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={Tools}>
           <IndexRedirect to="errors" />
@@ -197,10 +195,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
-      {/* PLUGINS */}
-      <Fragment>
-        {PLUGIN_ADMIN_ROUTES.map((getRoutes) => getRoutes(store))}
-      </Fragment>
     </Route>
   </Route>
 );
