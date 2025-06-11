@@ -73,7 +73,7 @@ describe("scenarios > admin > localization > content translation", () => {
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
       });
 
-      it.only("accepts a CSV upload with non-ASCII characters", () => {
+      it("accepts a CSV upload with non-ASCII characters", () => {
         uploadTranslationDictionary(nonAsciiFieldNames);
         cy.findByTestId("content-localization-setting").findByText(
           "Dictionary uploaded",
