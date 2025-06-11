@@ -167,6 +167,7 @@ function SettingsNavItem({
 
   return (
     <NavLink
+      data-testid={`settings-sidebar-link`}
       component={Link}
       to={`/admin/settings/${path}`}
       defaultOpened={subpath.includes(path)}

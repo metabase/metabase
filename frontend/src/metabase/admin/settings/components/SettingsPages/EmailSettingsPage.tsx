@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Center, Stack, Title } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
@@ -16,13 +17,17 @@ export function EmailSettingsPage() {
   const [showModal, { open: openModal, close: closeModal }] =
     useDisclosure(false);
 
-  const { data: settingValues } = useGetSettingsQuery();
+  const { data: settingValues, isLoading } = useGetSettingsQuery();
   const isHosted = settingValues?.["is-hosted?"];
   const isEmailConfigured = settingValues?.["email-configured?"];
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
     "email_restrict_recipients",
   );
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   return (
     <>

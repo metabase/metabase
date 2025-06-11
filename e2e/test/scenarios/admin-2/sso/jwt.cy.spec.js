@@ -19,13 +19,13 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
     H.typeAndBlurUsingLabel(
-      /JWT Identity Provider URI/,
+      /JWT Identity Provider URI/i,
       "https://example.test",
     );
     cy.button("Generate key").click();
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
-    cy.findAllByRole("link", { name: "Authentication" }).first().click();
+    H.goToAuthOverviewPage();
 
     getJwtCard().findByText("Active").should("exist");
   });
@@ -84,8 +84,9 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Success").should("exist");
+    cy.findByTestId("admin-layout-content")
+      .findByText("Success")
+      .should("exist");
   });
 
   describe("Group Mappings Widget", () => {
@@ -109,5 +110,9 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
 });
 
 const getJwtCard = () => {
-  return cy.findByText("JWT").parent().parent();
+  return cy
+    .findByTestId("admin-layout-content")
+    .findByText("JWT")
+    .parent()
+    .parent();
 };

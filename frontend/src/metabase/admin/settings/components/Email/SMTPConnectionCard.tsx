@@ -30,7 +30,7 @@ export const SMTPConnectionCard = ({
             )}
           </Flex>
           <Button onClick={onOpenSMTPModal} variant="filled">
-            {isEmailConfigured ? t`Edit Configuration` : t`Configure`}
+            {isEmailConfigured ? t`Edit configuration` : t`Configure`}
           </Button>
         </Flex>
       </SettingsSection>
