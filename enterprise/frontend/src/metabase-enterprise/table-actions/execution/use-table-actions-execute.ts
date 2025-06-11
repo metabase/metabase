@@ -6,11 +6,11 @@ import type { SelectedTableActionState } from "metabase/visualizations/types/tab
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   ActionFormInitialValues,
+  DataGridWritebackAction,
   DatasetData,
   RowValues,
   TableActionDisplaySettings,
   TableRowActionDisplaySettings,
-  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -66,7 +66,7 @@ export const useTableActionsExecute = ({
   }, [actions, actionsVizSettings]);
 
   const handleTableActionRun = useCallback(
-    (action: WritebackAction, row: Row<RowValues>) => {
+    (action: DataGridWritebackAction, row: Row<RowValues>) => {
       if (!datasetData) {
         console.warn("Failed to trigger action, datasetData is null");
         return;

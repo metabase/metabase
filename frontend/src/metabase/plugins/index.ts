@@ -69,6 +69,7 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
+  DataGridWritebackAction,
   Database as DatabaseType,
   Dataset,
   DatasetData,
@@ -89,7 +90,6 @@ import type {
   TimelineEvent,
   User,
   VisualizationSettings,
-  WritebackAction,
 } from "metabase-types/api";
 import type {
   AdminPath,
@@ -791,10 +791,10 @@ export const PLUGIN_TABLE_ACTIONS = {
       handleTableActionRun: _.noop,
       handleExecuteActionModalClose: _.noop,
     }) as {
-      tableActions: WritebackAction[];
+      tableActions: DataGridWritebackAction[];
       selectedTableActionState: SelectedTableActionState | null;
       handleTableActionRun: (
-        action: WritebackAction,
+        action: DataGridWritebackAction,
         row: Row<RowValues>,
       ) => void;
       handleExecuteActionModalClose: () => void;
