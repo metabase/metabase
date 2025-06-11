@@ -1712,27 +1712,28 @@
 
 (defmethod hydrate-can-restore :default [_model items]
   (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
-    (assoc item :can_restore (boolean
-                              (and
-                               ;; the item is archived
-                               (:archived item)
+    (do (clojure.pprint/pprint item)
+        (assoc item :can_restore (boolean
+                                  (and
+                                   ;; the item is archived
+                                   (:archived item)
 
-                               ;; the item is directly in the trash (it was archived independently, not as
-                               ;; part of a collection)
-                               (:archived_directly item)
+                                   ;; the item is directly in the trash (it was archived independently, not as
+                                   ;; part of a collection)
+                                   (:archived_directly item)
 
-                               ;; EITHER:
-                               (or
-                                ;; the item was archived from the root collection
-                                (nil? (:collection_id item))
-                                ;; or the collection we'll restore to actually exists.
-                                (some? collection))
+                                   ;; EITHER:
+                                   (or
+                                    ;; the item was archived from the root collection
+                                    (nil? (:collection_id item))
+                                    ;; or the collection we'll restore to actually exists.
+                                    (some? collection))
 
-                               ;; the collection we'll restore to is not archived
-                               (not (:archived collection))
+                                   ;; the collection we'll restore to is not archived
+                                   (not (:archived collection))
 
-                               ;; we have perms on the collection
-                               (mi/can-write? (or collection root-collection)))))))
+                                   ;; we have perms on the collection
+                                   (mi/can-write? (or collection root-collection))))))))
 
 (mi/define-batched-hydration-method can-restore
   :can_restore
