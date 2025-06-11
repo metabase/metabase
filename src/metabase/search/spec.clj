@@ -44,6 +44,7 @@
    :dashboard-id        :int
    :dashboardcard-count :int
    :database-id         :pk
+   :display             :text
    :id                  :text
    :last-edited-at      :timestamp
    :last-editor-id      :pk
