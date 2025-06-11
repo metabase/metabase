@@ -3,6 +3,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -212,7 +213,7 @@
                                (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
           fields-by-table    (group-by :table_id fields)
           table-actions      (for [t            editable-tables
-                                   [op op-name] actions/enabled-table-actions
+                                   [op op-name] actions.models/enabled-table-actions
                                    :let [fields (fields-by-table (:id t))
                                          action (actions/table-primitive-action t fields op)]]
                                (assoc action :table_name op-name))

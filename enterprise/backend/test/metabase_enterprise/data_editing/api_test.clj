@@ -1172,9 +1172,10 @@
             (testing "table actions have neg ids"
               (is (every? neg? (map :id table-actions))))
             (testing "one action for each crud op"
-              (is (= {"table.row/create" 1
-                      "table.row/update" 1
-                      "table.row/delete" 1}
+              (is (= {"table.row/create"           1
+                      "table.row/create-or-update" 1
+                      "table.row/update"           1
+                      "table.row/delete"           1}
                      (frequencies (map :kind table-actions)))))
             (mt/with-temp [:model/Dashboard dash {}]
               (let [{create-action "table.row/create"
