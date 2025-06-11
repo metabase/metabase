@@ -5,7 +5,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [mage.color :as c]))
+   [mage.color :as c]
+   [puget.printer :as puget]))
 
 (set! *warn-on-reflection* true)
 
@@ -143,3 +144,9 @@
         (reset! done? true)))))
 
 (defn- without-slash [s] (str/replace s #"/$" ""))
+
+(defn pp [& xs]
+  (doseq [x xs] (puget/cprint x)))
+
+(defn pp-line [& xs]
+  (doseq [x xs] (puget/cprint x {:width 10e20})))
