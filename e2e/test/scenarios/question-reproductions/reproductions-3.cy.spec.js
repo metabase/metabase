@@ -2628,7 +2628,7 @@ describe("issue 23449", () => {
     });
   };
 
-  it("Remapped fields should work in a model", () => {
+  it("Remapped fields should work in a model (metabase#23449)", () => {
     cy.log("set the metadata for review");
     cy.visit(
       `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
