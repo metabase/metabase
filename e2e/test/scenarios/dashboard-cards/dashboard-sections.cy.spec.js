@@ -42,7 +42,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
     });
 
     cy.findByPlaceholderText(
-      "You can connect widgets to {{variables}} in heading cards",
+      "You can connect widgets to {{variables}} in heading cards.",
     ).type("This is a heading");
     selectQuestion("Orders, Count");
 

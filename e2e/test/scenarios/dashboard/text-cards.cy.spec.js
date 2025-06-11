@@ -178,7 +178,7 @@ describe("scenarios > dashboard > text and headings", () => {
           .should(
             "have.attr",
             "placeholder",
-            "You can connect widgets to {{variables}} in heading cards",
+            "You can connect widgets to {{variables}} in heading cards.",
           );
       });
 
@@ -192,7 +192,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
         cy.get("h2")
           .findByText(
-            "You can connect widgets to {{variables}} in heading cards",
+            "You can connect widgets to {{variables}} in heading cards.",
           )
           .should("be.visible");
       });

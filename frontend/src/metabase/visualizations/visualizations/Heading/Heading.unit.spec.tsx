@@ -105,7 +105,7 @@ describe("Text", () => {
         expect(
           screen.getByTestId("editing-dashboard-heading-preview"),
         ).toHaveTextContent(
-          "You can connect widgets to {{variables}} in heading cards",
+          "You can connect widgets to {{variables}} in heading cards.",
         );
         expect(screen.getByTestId("editing-dashboard-heading-container"))
           .toHaveStyle(`border: 1px solid var(--mb-color-brand);
@@ -176,7 +176,7 @@ describe("Text", () => {
         );
         expect(
           screen.getByPlaceholderText(
-            "You can connect widgets to {{variables}} in heading cards",
+            "You can connect widgets to {{variables}} in heading cards.",
           ),
         ).toBeInTheDocument();
       });

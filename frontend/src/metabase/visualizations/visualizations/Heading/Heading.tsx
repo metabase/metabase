@@ -75,7 +75,7 @@ export function Heading({
   );
 
   const hasContent = !isEmpty(settings.text);
-  const placeholder = t`You can connect widgets to {{variables}} in heading cards`;
+  const placeholder = t`You can connect widgets to {{variables}} in heading cards.`;
 
   if (isEditing) {
     return (
