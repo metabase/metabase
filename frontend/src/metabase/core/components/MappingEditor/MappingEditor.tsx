@@ -120,7 +120,7 @@ export const MappingEditor = ({
   };
 
   return (
-    <table className={className} style={style}>
+    <table className={className} style={style} data-testid="mapping-editor">
       {keyHeader || valueHeader ? (
         <thead>
           <tr>
