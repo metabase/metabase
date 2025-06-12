@@ -13,8 +13,7 @@ type EmbeddingSetupContextType = {
   setError: (error: string) => void;
   selectedTables: Table[];
   setSelectedTables: (tables: Table[]) => void;
-  sandboxingColumn: Table | null;
-  setSandboxingColumn: (table: Table | null) => void;
+
   createdDashboardIds: number[];
   setCreatedDashboardIds: (ids: number[]) => void;
 };
@@ -45,7 +44,6 @@ export const EmbeddingSetupProvider = ({
   const [processingStatus, setProcessingStatus] = useState("");
   const [error, setError] = useState("");
   const [selectedTables, setSelectedTables] = useState<Table[]>([]);
-  const [sandboxingColumn, setSandboxingColumn] = useState<Table | null>(null);
   const [createdDashboardIds, setCreatedDashboardIds] = useState<number[]>([]);
 
   return (
@@ -59,8 +57,6 @@ export const EmbeddingSetupProvider = ({
         setError,
         selectedTables,
         setSelectedTables,
-        sandboxingColumn,
-        setSandboxingColumn,
         createdDashboardIds,
         setCreatedDashboardIds,
       }}

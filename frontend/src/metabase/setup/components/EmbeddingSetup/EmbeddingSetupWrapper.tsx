@@ -29,7 +29,7 @@ export const EmbeddingSetupWrapper = ({
         <Box p="xl" flex={1} maw="53rem">
           <Box
             p="xl"
-            flex={1} /* The main content area takes remaining space */
+            flex={1}
             bg="bg-white"
             bd="1px solid var(--mb-color-border)"
             w="100%"

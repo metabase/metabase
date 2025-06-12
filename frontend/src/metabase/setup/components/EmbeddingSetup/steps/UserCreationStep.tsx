@@ -32,7 +32,6 @@ export const UserCreationStep = () => {
       <UserForm
         // user={user}
         isHosted={isHosted}
-        // onValidatePassword={validatePassword}
         onSubmit={handleSubmit}
       />
     </Box>

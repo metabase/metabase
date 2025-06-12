@@ -1,15 +1,12 @@
 import { Link } from "react-router";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getUser } from "metabase/selectors/user";
 import { Box, Button, List, Space, Text, Title } from "metabase/ui";
 
 import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const WelcomeStep = () => {
   useForceLocaleRefresh();
-  const user = useSelector(getUser);
 
   return (
     <Box
@@ -19,8 +16,7 @@ export const WelcomeStep = () => {
       bg="white"
     >
       <Title order={2} mb="lg">
-        {c("{0} is the first name of the logged in user")
-          .t`Howdy, ${user?.first_name}`}
+        {t`Howdy,`}
       </Title>
       <Title order={2} mb="lg">
         {t`Let's get you up and running with a starting setup for embedded analytics`}
