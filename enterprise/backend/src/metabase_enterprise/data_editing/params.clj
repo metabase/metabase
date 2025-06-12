@@ -32,8 +32,7 @@
              param-mapping
              dashcard-viz
              row-delay]}]
-  (let [table-id                    table-id
-        table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
+  (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
         field-name->mapping         (u/index-by :parameterId param-mapping)
         fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
@@ -172,7 +171,7 @@
         :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
       (:inner-action unified)
       (let [inner       (:inner-action unified)
-            mapping     (:param-map unified)
+            mapping     (:param-mapping unified)
             dashcard-id (:dashcard-id unified)
             saved-id    (:action-id inner)
             action-kw   (:action-kw inner)

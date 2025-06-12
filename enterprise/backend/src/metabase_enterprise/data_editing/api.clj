@@ -2,7 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase-enterprise.data-editing.params :as data-editing.describe]
+   [metabase-enterprise.data-editing.describe :as data-editing.describe]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]

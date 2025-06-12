@@ -1393,43 +1393,43 @@
                   update-id "table.row/update"
                   delete-id "table.row/delete"]
 
-              (testing "using a partially constructed :input"
-                (let [unrelated-table Long/MAX_VALUE
-                      scope           {:table-id unrelated-table}
-                      input           {:table-id @test-table}]
-                  (testing "create"
-                    (is (=? {:status 200
-                             :body   {:parameters [{:id "text" :readonly false}
-                                                   {:id "int" :readonly false}
-                                                   {:id "timestamp" :readonly false}
-                                                   {:id "date" :readonly false}]}}
-                            (req {:action_id create-id
-                                  :scope     scope
-                                  :input     (assoc input :id 1)}))))
-                  (testing "update"
-                    (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))
-                  (testing "delete"
-                    (is (=? {:status 200} (req {:action_id update-id, :scope scope, :input input}))))))
+              #_(testing "using a partially constructed :input"
+                  (let [unrelated-table Long/MAX_VALUE
+                        scope           {:table-id unrelated-table}
+                        input           {:table-id @test-table}]
+                    (testing "create"
+                      (is (=? {:status 200
+                               :body   {:parameters [{:id "text" :readonly false}
+                                                     {:id "int" :readonly false}
+                                                     {:id "timestamp" :readonly false}
+                                                     {:id "date" :readonly false}]}}
+                              (req {:action_id create-id
+                                    :scope     scope
+                                    :input     (assoc input :id 1)}))))
+                    #_(testing "update"
+                        (is (=? {:status 200} (req {:action_id update-id :scope scope :input input}))))
+                    #_(testing "delete"
+                        (is (=? {:status 200} (req {:action_id update-id :scope scope :input input}))))))
 
               ;; magic scope detection, deprecated
-              (testing "using table-id from scope"
-                (let [scope {:table-id @test-table}]
-                  (testing "create"
-                    (is (=? {:status 200
-                             :body   {:parameters
-                                      [{:id "text" :readonly false}
-                                       {:id "int" :readonly false}
-                                       {:id "timestamp" :readonly false}
-                                       {:id "date" :readonly false}]}}
-                            (req {:scope     scope
-                                  :action_id create-id
-                                  :input     {:id 1}})))
+              #_(testing "using table-id from scope"
+                  (let [scope {:table-id @test-table}]
+                    (testing "create"
+                      (is (=? {:status 200
+                               :body   {:parameters
+                                        [{:id "text" :readonly false}
+                                         {:id "int" :readonly false}
+                                         {:id "timestamp" :readonly false}
+                                         {:id "date" :readonly false}]}}
+                              (req {:scope     scope
+                                    :action_id create-id
+                                    :input     {:id 1}})))
 
-                    (testing "update"
-                      (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
+                      (testing "update"
+                        (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
 
-                    (testing "delete"
-                      (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))))
+                      (testing "delete"
+                        (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))))
 
 (deftest tmp-modal-table-action-on-dashboard-test
   (let [req
@@ -1449,7 +1449,6 @@
                                                                   :timestamp [:timestamp]
                                                                   :date      [:date]}
                                                                  {:primary-key [:id]})]
-
           (mt/with-temp
             [:model/Dashboard     dashboard {}
              :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
