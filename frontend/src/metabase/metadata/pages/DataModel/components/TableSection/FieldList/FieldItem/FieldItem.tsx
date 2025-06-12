@@ -105,6 +105,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
           p={rem(1)}
           placeholder={t`Give this field a name`}
           rows={1}
+          tabIndex={undefined}
           onChange={handleNameChange}
         />
       </Group>
@@ -120,6 +121,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
         p={rem(1)}
         placeholder={t`No description yet`}
         rows={1}
+        tabIndex={undefined}
         onChange={handleDescriptionChange}
       />
     </Flex>
